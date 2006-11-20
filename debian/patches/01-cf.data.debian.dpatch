@@ -1,0 +1,134 @@
+#! /bin/sh /usr/share/dpatch/dpatch-run
+## 01-cf.data.debian.dpatch by Luigi Gangitano <luigi@debian.org>
+##
+## All lines beginning with `## DP:' are a description of the patch.
+## DP: Default configuration file for debian
+
+@DPATCH@
+diff -urNad squid3-3.0.PRE4~/src/cf.data.pre squid3-3.0.PRE4/src/cf.data.pre
+--- squid3-3.0.PRE4~/src/cf.data.pre	2006-07-08 01:49:53.000000000 +0200
++++ squid3-3.0.PRE4/src/cf.data.pre	2006-07-08 01:50:54.000000000 +0200
+@@ -1729,7 +1729,7 @@
+ 	schemes.
+ 	format: auth_param scheme parameter [setting]
+ 
+-	auth_param basic program @DEFAULT_PREFIX@/bin/ncsa_auth @DEFAULT_PREFIX@/etc/passwd
++	auth_param basic program @DEFAULT_PREFIX@/lib/squid3/ncsa_auth @DEFAULT_PREFIX@/etc/passwd
+ 	would tell the basic authentication scheme it's program parameter.
+ 
+ 	The order authentication prompts are presented to the client_agent
+@@ -1765,7 +1765,7 @@
+ 
+ 	Then, set this line to something like
+ 
+-	auth_param basic program @DEFAULT_PREFIX@/libexec/ncsa_auth @DEFAULT_PREFIX@/etc/passwd
++	auth_param basic program @DEFAULT_PREFIX@/lib/squid3/ncsa_auth @DEFAULT_PREFIX@/etc/passwd
+ 
+ 	"children" numberofchildren
+ 	The number of authenticator processes to spawn (no default).
+@@ -1829,7 +1829,7 @@
+ 
+ 	Then, set this line to something like
+ 
+-	auth_param digest program @DEFAULT_PREFIX@/bin/digest_auth_pw @DEFAULT_PREFIX@/etc/digpass
++	auth_param digest program @DEFAULT_PREFIX@/lib/squid3/digest_auth_pw @DEFAULT_PREFIX@/etc/digpass
+ 
+ 
+ 	"children" numberofchildren
+@@ -1886,7 +1886,7 @@
+ 	of type proxy_auth.  By default, the NTLM authenticator_program
+ 	is not used.
+ 
+-	auth_param ntlm program @DEFAULT_PREFIX@/bin/ntlm_auth
++	auth_param ntlm program @DEFAULT_PREFIX@/lib/squid3/ntlm_auth
+ 
+ 	"children" numberofchildren
+ 	The number of authenticator processes to spawn (no default).
+@@ -1921,7 +1921,7 @@
+ 	The only supported program for this role is the ntlm_auth
+ 	program distributed as part of Samba, version 4 or later.
+ 
+-	auth_param negotiate program @DEFAULT_PREFIX@/bin/ntlm_auth --helper-protocol=gss-spnego
++	auth_param negotiate program @DEFAULT_PREFIX@/lib/squid3/ntlm_auth --helper-protocol=gss-spnego
+ 
+ 	"children" numberofchildren
+ 	The number of authenticator processes to spawn (no default).
+@@ -2731,6 +2731,7 @@
+ # be allowed
+ #acl our_networks src 192.168.1.0/24 192.168.2.0/24
+ #http_access allow our_networks
++http_access allow localhost
+ 
+ # And finally deny all other access to this proxy
+ http_access deny all
+@@ -3008,12 +3009,12 @@
+ 
+ NAME: cache_effective_user
+ TYPE: string
+-DEFAULT: nobody
++DEFAULT: proxy
+ LOC: Config.effectiveUser
+ DOC_START
+ 	If you start Squid as root, it will change its effective/real
+ 	UID/GID to the user specified below.  The default is to change
+-	to UID to nobody.  If you define cache_effective_user, but not
++	to UID to proxy.  If you define cache_effective_user, but not
+ 	cache_effective_group, Squid sets the GID to the effective
+ 	user's default group ID (taken from the password file) and
+ 	supplementary group list from the from groups membership of
+@@ -3023,7 +3024,7 @@
+ 
+ NAME: cache_effective_group
+ TYPE: string
+-DEFAULT: none
++DEFAULT: proxy
+ LOC: Config.effectiveGroup
+ DOC_START
+ 	If you want Squid to run with a specific GID regardless of
+@@ -3049,7 +3050,7 @@
+ NAME: visible_hostname
+ TYPE: string
+ LOC: Config.visibleHostname
+-DEFAULT: none
++DEFAULT: localhost
+ DOC_START
+ 	If you want to present a special hostname in error messages, etc,
+ 	define this.  Otherwise, the return value of gethostname()
+@@ -3201,7 +3202,7 @@
+ 
+ NAME: logfile_rotate
+ TYPE: int
+-DEFAULT: 10
++DEFAULT: 0
+ LOC: Config.Log.rotateNumber
+ DOC_START
+ 	Specifies the number of logfile rotations to make when you
+@@ -3217,6 +3218,9 @@
+ 	purposes, so -k rotate uses another signal.  It is best to get
+ 	in the habit of using 'squid -k rotate' instead of 'kill -USR1
+ 	<pid>'.
++
++	Note2, for Debian/Linux the default of logfile_rotate is
++	zero, since it includes external logfile-rotation methods.
+ DOC_END
+ 
+ 
+@@ -3928,7 +3932,7 @@
+ NAME: snmp_port
+ TYPE: ushort
+ LOC: Config.Port.snmp
+-DEFAULT: 3401
++DEFAULT: 0
+ IFDEF: SQUID_SNMP
+ DOC_START
+ 	Squid can now serve statistics and status information via SNMP.
+@@ -3938,6 +3942,9 @@
+ 	Note: If you want Squid to use parents for all requests see
+ 	the never_direct directive. prefer_direct only modifies how Squid
+ 	acts on cachable requests.
++
++	Note2: On Debian/Linux SNMP is disabled by default. Set snmp_port to
++	3401 to enable SNMP support.
+ DOC_END
+ 
+ NAME: snmp_access

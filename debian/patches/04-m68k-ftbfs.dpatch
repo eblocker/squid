@@ -1,0 +1,19 @@
+#! /bin/sh /usr/share/dpatch/dpatch-run
+## 04-m68k-ftbfs.dpatch by Luigi Gangitano <luigi@debian.org>
+##
+## All lines beginning with `## DP:' are a description of the patch.
+## DP: No description.
+
+@DPATCH@
+diff -urNad squid3-3.0.PRE5~/helpers/ntlm_auth/SMB/ntlm_auth.c squid3-3.0.PRE5/helpers/ntlm_auth/SMB/ntlm_auth.c
+--- squid3-3.0.PRE5~/helpers/ntlm_auth/SMB/ntlm_auth.c	2006-04-23 20:21:56.000000000 +0200
++++ squid3-3.0.PRE5/helpers/ntlm_auth/SMB/ntlm_auth.c	2006-11-09 15:48:16.000000000 +0100
+@@ -308,7 +308,7 @@
+ 	    SEND("NA Broken authentication packet");
+ 	    return;
+ 	}
+-	switch le32toh(fast_header->type) {
++	switch (le32toh(fast_header->type)) {
+ 	case NTLM_NEGOTIATE:
+ 	    SEND("NA Invalid negotiation request received");
+ 	    return;

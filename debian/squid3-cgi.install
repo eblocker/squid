@@ -1,0 +1,3 @@
+usr/lib/cgi-bin/cachemgr3.cgi
+usr/share/man/man8/cachemgr3.cgi.8
+etc/squid3/cachemgr.conf

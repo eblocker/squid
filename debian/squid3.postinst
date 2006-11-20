@@ -1,0 +1,75 @@
+#! /bin/sh
+
+grepconf () {
+	w=" 	" # space tab
+	sq=/etc/squid3/squid.conf
+	# sed is cool.
+	res=`sed -ne '
+		s/^'$1'['"$w"']\+\([^'"$w"']\+\).*$/\1/p;
+		t end;
+		d;
+		:end q' < $sq`
+	[ -n "$res" ] || res=$2
+	echo "$res"
+}
+
+grepconf2 () {
+	w=" 	" # space tab
+	sq=/etc/squid3/squid.conf
+	# sed is cool.
+	res=`sed -ne '
+		s/^'$1'['"$w"']\+[^'"$w"']\+['"$w"']\+\([^'"$w"']\+\).*$/\1/p;
+		t end;
+		d;
+		:end q' < $sq`
+	[ -n "$res" ] || res=$2
+	echo "$res"
+}
+
+case "$1" in
+	configure)
+		#
+		# Chown the directories.
+		#
+		log_dir=/var/log/squid3
+		cache_dir=`grepconf2 cache_dir /var/spool/squid3`
+        usr=`grepconf cache_effective_user proxy`
+		grp=`grepconf cache_effective_group proxy`
+		
+		if [ "$(/usr/bin/stat -c %U $cache_dir)" != "$usr" ] ||
+		   [ "$(/usr/bin/stat -c %G $cache_dir)" != "$grp" ] ; then
+			chown $usr:$grp $cache_dir -R
+		fi
+		
+		if [ "$(/usr/bin/stat -c %U $log_dir)" != "$usr" ] ||
+		   [ "$(/usr/bin/stat -c %G $log_dir)" != "$grp" ] ; then
+			if [ "$(/usr/sbin/dpkg-statoverride --list $log_dir)" == "" ] ; then
+		  		chown $usr:$grp $log_dir -R
+			fi
+		fi
+	 
+		#
+		# Create spool dirs if they don't exist.
+		#
+		if [ -d "$cache_dir" -a ! -d "$cache_dir/00" ]
+		then
+			echo "Creating Squid HTTP proxy 3.0 spool directory structure"
+			/usr/sbin/squid3 -z
+		fi
+		;;
+	abort-upgrade|abort-remove|abort-deconfigure)
+		;;
+	*)
+		#
+		#	Unknown action - do nothing.
+		#
+		exit 0
+		;;
+esac
+
+#
+#	Update links if needed and start squid3.
+#
+update-rc.d squid3 defaults 30 >/dev/null
+
+invoke-rc.d squid3 restart

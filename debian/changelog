@@ -1,3 +1,10 @@
+squid3 (3.0.PRE5-4) unstable; urgency=low
+
+  * debian/{rules,squid3-client.install}
+    - Fix path for squid3client (Closes: #400893)
+
+ -- Luigi Gangitano <luigi@debian.org>  Thu, 30 Nov 2006 15:32:53 +0100
+
 squid3 (3.0.PRE5-3) unstable; urgency=low
 
   * debian/rules

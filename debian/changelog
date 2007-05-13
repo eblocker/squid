@@ -10,6 +10,7 @@ squid3 (3.0.PRE6-1) UNRELEASED; urgency=low
     - Enable delay pools (Closes: #410785)
     - Enable cache digests (Closes: #416631)
     - Enable ICAP client
+    - Raised Max Filedescriptor limit to 65536
 
   * debian/control
     - Added real package dependency for httpd in squid3-cgi

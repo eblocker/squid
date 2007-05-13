@@ -16,6 +16,9 @@ squid3 (3.0.PRE6-1) UNRELEASED; urgency=low
   * debian/squid3.postinst
     - Fixed bashish in postinst (Closes: #411797)
 
+  * debian/patches/05-helpers-typo
+    - Added upstream patch fixing compilation error in src/helpers.cc
+
  -- Luigi Gangitano <luigi@debian.org>  Sun, 13 May 2007 16:03:16 +0200
 
 squid3 (3.0.PRE5-5) unstable; urgency=low

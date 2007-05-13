@@ -1,0 +1,29 @@
+#! /bin/sh /usr/share/dpatch/dpatch-run
+## 05-helpers-typo.dpatch by Luigi Gangitano <luigi@debian.org>
+##
+## All lines beginning with `## DP:' are a description of the patch.
+## DP: No description.
+
+@DPATCH@
+diff -urNad squid3~/src/helper.cc squid3/src/helper.cc
+--- squid3~/src/helper.cc	2007-05-13 16:02:10.000000000 +0200
++++ squid3/src/helper.cc	2007-05-13 17:34:48.000000000 +0200
+@@ -1,6 +1,6 @@
+ 
+ /*
+- * $Id: helper.cc,v 1.84 2007/05/09 09:07:39 wessels Exp $
++ * $Id: helper.cc,v 1.85 2007/05/11 04:06:08 rousskov Exp $
+  *
+  * DEBUG: section 84    Helper process maintenance
+  * AUTHOR: Harvest Derived?
+@@ -486,8 +486,8 @@
+ helperStatefulReleaseServer(helper_stateful_server * srv)
+ {
+     debugs(84, 3, HERE << "srv-" << srv->index << " flags.reserved = " << srv->flags.reserved);
+-    if (srv->flags.reserved = S_HELPER_FREE)
+-	return;
++    if (srv->flags.reserved == S_HELPER_FREE)
++        return;
+ 
+     srv->stats.releases++;
+ 

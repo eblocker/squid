@@ -26,6 +26,9 @@ squid3 (3.0.PRE6-1) UNRELEASED; urgency=low
   * debian/patches/07-close-icap-connections
     - Added upstream patch fixing icap connection starvation
 
+  * debian/squid3.rc
+    - Added LSB-compliant description to rc script
+
  -- Luigi Gangitano <luigi@debian.org>  Sun, 13 May 2007 16:03:16 +0200
 
 squid3 (3.0.PRE5-5) unstable; urgency=low

@@ -11,6 +11,9 @@ squid3 (3.0.PRE6-1) UNRELEASED; urgency=low
   * debian/patches/02-makefile-defaults
     - Fix default configuration file for cachemgr.cgi (Closes: #416630)
 
+  * debian/squid3.postinst
+    - Fixed bashish in postinst (Closes: #411797)
+
  -- Luigi Gangitano <luigi@debian.org>  Sun, 13 May 2007 16:03:16 +0200
 
 squid3 (3.0.PRE5-5) unstable; urgency=low

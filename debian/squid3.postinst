@@ -43,7 +43,7 @@ case "$1" in
 		
 		if [ "$(/usr/bin/stat -c %U $log_dir)" != "$usr" ] ||
 		   [ "$(/usr/bin/stat -c %G $log_dir)" != "$grp" ] ; then
-			if [ "$(/usr/sbin/dpkg-statoverride --list $log_dir)" == "" ] ; then
+			if [ "$(/usr/sbin/dpkg-statoverride --list $log_dir)" = "" ] ; then
 		  		chown $usr:$grp $log_dir -R
 			fi
 		fi

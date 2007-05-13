@@ -22,6 +22,7 @@ DEB_CONFIGURE_EXTRA_FLAGS := --datadir=/usr/share/squid3 \
 		--enable-removal-policies="lru,heap" \
 		--enable-poll \
 		--enable-delay-pools \
+		--enable-cache-digests \
 		--enable-snmp \
 		--enable-htcp \
 		--enable-select \

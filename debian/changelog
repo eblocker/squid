@@ -19,6 +19,9 @@ squid3 (3.0.PRE6-1) UNRELEASED; urgency=low
   * debian/patches/05-helpers-typo
     - Added upstream patch fixing compilation error in src/helpers.cc
 
+  * debian/patches/06-mem-obj-reference
+    - Added upstream patch fixing a mem_obj reference in src/store.cc
+
  -- Luigi Gangitano <luigi@debian.org>  Sun, 13 May 2007 16:03:16 +0200
 
 squid3 (3.0.PRE5-5) unstable; urgency=low

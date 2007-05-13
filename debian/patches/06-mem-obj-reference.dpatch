@@ -1,0 +1,27 @@
+#! /bin/sh /usr/share/dpatch/dpatch-run
+## 06-mem-obj-reference.dpatch by Luigi Gangitano <luigi@debian.org>
+##
+## All lines beginning with `## DP:' are a description of the patch.
+## DP: No description.
+
+@DPATCH@
+diff -urNad squid3~/src/store.cc squid3/src/store.cc
+--- squid3~/src/store.cc	2007-05-13 16:01:13.000000000 +0200
++++ squid3/src/store.cc	2007-05-13 17:38:21.000000000 +0200
+@@ -1,6 +1,6 @@
+ 
+ /*
+- * $Id: store.cc,v 1.612 2007/05/07 21:51:21 wessels Exp $
++ * $Id: store.cc,v 1.613 2007/05/10 22:40:12 hno Exp $
+  *
+  * DEBUG: section 20    Storage Manager
+  * AUTHOR: Harvest Derived
+@@ -650,7 +650,7 @@
+ #if MORE_DEBUG_OUTPUT
+ 
+     if (EBIT_TEST(flags, RELEASE_REQUEST))
+-        debugs(20, 1, "assertion failed: RELEASE key " << key << ", url " << mem->url);
++        debugs(20, 1, "assertion failed: RELEASE key " << key << ", url " << mem_obj->url);
+ 
+ #endif
+ 

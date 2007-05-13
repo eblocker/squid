@@ -3,6 +3,8 @@ squid3 (3.0.PRE6-1) UNRELEASED; urgency=low
   * (NOT RELEASED YET)
   
   * New upstream release
+    - Removed patches integrated upsteam:
+      + 04-m68k-ftbfs
 
   * debian/rules
     - Enable delay pools (Closes: #410785)

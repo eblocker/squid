@@ -21,7 +21,7 @@ DEB_CONFIGURE_EXTRA_FLAGS := --datadir=/usr/share/squid3 \
 		--enable-diskio="AIO,Blocking,DiskDaemon,DiskThreads" \
 		--enable-removal-policies="lru,heap" \
 		--enable-poll \
-		--enable-digest-pools \
+		--enable-delay-pools \
 		--enable-snmp \
 		--enable-htcp \
 		--enable-select \

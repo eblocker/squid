@@ -1,6 +1,6 @@
 
 /*
- * $Id: Store.h,v 1.26 2006/09/03 21:05:20 hno Exp $
+ * $Id: Store.h,v 1.33 2007/04/21 07:14:13 wessels Exp $
  *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
@@ -80,10 +80,38 @@ public:
     virtual void replaceHttpReply(HttpReply *);
     virtual bool swapoutPossible();
     virtual void trimMemory();
+    void abort();
     void unlink();
     void makePublic();
     void makePrivate();
-    void cacheNegatively();
+    void setPublicKey();
+    void setPrivateKey();
+    void expireNow();
+    void releaseRequest();
+    void negativeCache();
+    void cacheNegatively();		/* argh, why both? */
+    void invokeHandlers();
+    void purgeMem();
+    void swapOut();
+    bool swapOutAble() const;
+    void swapOutFileClose();
+    const char *url() const;
+    int checkCachable();
+    int checkNegativeHit() const;
+    int locked() const;
+    int validToSend() const;
+    int keepInMemory() const;
+    void createMemObject(const char *, const char *);
+    void dump(int debug_lvl) const;
+    void hashDelete();
+    void hashInsert(const cache_key *);
+    void registerAbort(STABH * cb, void *);
+    void reset();
+    void setMemStatus(mem_status_t);
+    void timestampsSet();
+    void unregisterAbort();
+    void destroyMemObject();
+    int checkTooSmall();
 
     void delayAwareRead(int fd, char *buf, int len, IOCB *handler, void *data);
 
@@ -150,6 +178,8 @@ public:
     /* reduce the memory lock count on the entry */
     virtual int unlock();
     /* increate the memory lock count on the entry */
+    virtual ssize_t objectLen() const;
+    virtual int contentLen() const;
 
     virtual void lock()
 
@@ -271,38 +301,18 @@ private:
 typedef RefCount<Store> StorePointer;
 
 SQUIDCEXTERN size_t storeEntryInUse();
-SQUIDCEXTERN off_t storeLowestMemReaderOffset(const StoreEntry * entry);
 SQUIDCEXTERN const char *storeEntryFlags(const StoreEntry *);
-SQUIDCEXTERN int storeEntryLocked(const StoreEntry *);
 extern void storeEntryReplaceObject(StoreEntry *, HttpReply *);
 
 SQUIDCEXTERN StoreEntry *storeGetPublic(const char *uri, const method_t method);
 SQUIDCEXTERN StoreEntry *storeGetPublicByRequest(HttpRequest * request);
 SQUIDCEXTERN StoreEntry *storeGetPublicByRequestMethod(HttpRequest * request, const method_t method);
 SQUIDCEXTERN StoreEntry *storeCreateEntry(const char *, const char *, request_flags, method_t);
-SQUIDCEXTERN void storeSetPublicKey(StoreEntry *);
-SQUIDCEXTERN void storeCreateMemObject(StoreEntry *, const char *, const char *);
 SQUIDCEXTERN void storeInit(void);
 extern void storeRegisterWithCacheManager(CacheManager & manager);
-SQUIDCEXTERN void storeAbort(StoreEntry *);
-SQUIDCEXTERN void storeAppend(StoreEntry *, const char *, int);
-SQUIDCEXTERN void storeExpireNow(StoreEntry *);
-SQUIDCEXTERN void storeReleaseRequest(StoreEntry *);
 SQUIDCEXTERN void storeConfigure(void);
-SQUIDCEXTERN int storeCheckNegativeHit(StoreEntry *);
-SQUIDCEXTERN void storeNegativeCache(StoreEntry *);
 SQUIDCEXTERN void storeFreeMemory(void);
 SQUIDCEXTERN int expiresMoreThan(time_t, time_t);
-SQUIDCEXTERN int storeEntryValidToSend(StoreEntry *);
-SQUIDCEXTERN void storeTimestampsSet(StoreEntry *);
-SQUIDCEXTERN void storeRegisterAbort(StoreEntry * e, STABH * cb, void *);
-SQUIDCEXTERN void storeUnregisterAbort(StoreEntry * e);
-SQUIDCEXTERN void storeEntryDump(const StoreEntry * e, int debug_lvl);
-SQUIDCEXTERN const char *storeUrl(const StoreEntry *);
-SQUIDCEXTERN void storeBuffer(StoreEntry *);
-SQUIDCEXTERN void storeBufferFlush(StoreEntry *);
-SQUIDCEXTERN void storeHashInsert(StoreEntry * e, const cache_key *);
-SQUIDCEXTERN void storeSetMemStatus(StoreEntry * e, mem_status_t);
 #if STDC_HEADERS
 SQUIDCEXTERN void
 storeAppendPrintf(StoreEntry *, const char *,...) PRINTF_FORMAT_ARG2;
@@ -310,12 +320,8 @@ storeAppendPrintf(StoreEntry *, const char *,...) PRINTF_FORMAT_ARG2;
 SQUIDCEXTERN void storeAppendPrintf();
 #endif
 SQUIDCEXTERN void storeAppendVPrintf(StoreEntry *, const char *, va_list ap);
-SQUIDCEXTERN int storeCheckCachable(StoreEntry * e);
-SQUIDCEXTERN void storeSetPrivateKey(StoreEntry *);
 SQUIDCEXTERN ssize_t objectLen(const StoreEntry * e);
-SQUIDCEXTERN int contentLen(const StoreEntry * e);
 SQUIDCEXTERN int storeTooManyDiskFilesOpen(void);
-SQUIDCEXTERN void storeEntryReset(StoreEntry *);
 SQUIDCEXTERN void storeHeapPositionUpdate(StoreEntry *, SwapDir *);
 SQUIDCEXTERN void storeSwapFileNumberSet(StoreEntry * e, sfileno filn);
 SQUIDCEXTERN void storeFsInit(void);

@@ -1,6 +1,6 @@
 
 /*
- * $Id: AuthUserRequest.h,v 1.4 2005/10/23 11:55:31 hno Exp $
+ * $Id: AuthUserRequest.h,v 1.6 2007/05/09 09:07:38 wessels Exp $
  *
  * DO NOT MODIFY NEXT 2 LINES:
  * arch-tag: 674533af-8b21-4641-b71a-74c4639072a0
@@ -78,8 +78,8 @@ public:
 
     virtual void user (AuthUser *aUser) {_auth_user=aUser;}
 
-    static auth_acl_t tryToAuthenticateAndSetAuthUser(auth_user_request_t **, http_hdr_type, HttpRequest *, ConnStateData::Pointer, struct IN_ADDR);
-    static void addReplyAuthHeader(HttpReply * rep, auth_user_request_t * auth_user_request, HttpRequest * request, int accelerated, int internal);
+    static auth_acl_t tryToAuthenticateAndSetAuthUser(AuthUserRequest **, http_hdr_type, HttpRequest *, ConnStateData::Pointer, struct IN_ADDR);
+    static void addReplyAuthHeader(HttpReply * rep, AuthUserRequest * auth_user_request, HttpRequest * request, int accelerated, int internal);
 
     AuthUserRequest();
 
@@ -94,11 +94,8 @@ public:
     char const * getDenyMessage ();
 
     size_t refCount() const;
-
-    void lock ()
-
-        ;
-    void unlock ();
+    void _lock ();		// please use AUTHUSERREQUESTLOCK()
+    void _unlock ();		// please use AUTHUSERREQUESTUNLOCK()
 
     char const *username() const;
 
@@ -108,7 +105,7 @@ public:
 
 private:
 
-    static auth_acl_t authenticate(auth_user_request_t ** auth_user_request, http_hdr_type headertype, HttpRequest * request, ConnStateData::Pointer conn, struct IN_ADDR src_addr);
+    static auth_acl_t authenticate(AuthUserRequest ** auth_user_request, http_hdr_type headertype, HttpRequest * request, ConnStateData::Pointer conn, struct IN_ADDR src_addr);
 
     /* return a message on the 407 error pages */
     char *message;
@@ -124,17 +121,25 @@ private:
 };
 
 /* AuthUserRequest */
-extern size_t authenticateRequestRefCount (auth_user_request_t *);
+extern size_t authenticateRequestRefCount (AuthUserRequest *);
 
-extern void authenticateFixHeader(HttpReply *, auth_user_request_t *, HttpRequest *, int, int);
-extern void authenticateAddTrailer(HttpReply *, auth_user_request_t *, HttpRequest *, int);
+extern void authenticateFixHeader(HttpReply *, AuthUserRequest *, HttpRequest *, int, int);
+extern void authenticateAddTrailer(HttpReply *, AuthUserRequest *, HttpRequest *, int);
 
-extern void authenticateAuthUserRequestRemoveIp(auth_user_request_t *, struct IN_ADDR);
-extern void authenticateAuthUserRequestClearIp(auth_user_request_t *);
-extern int authenticateAuthUserRequestIPCount(auth_user_request_t *);
-extern int authenticateDirection(auth_user_request_t *);
+extern void authenticateAuthUserRequestRemoveIp(AuthUserRequest *, struct IN_ADDR);
+extern void authenticateAuthUserRequestClearIp(AuthUserRequest *);
+extern int authenticateAuthUserRequestIPCount(AuthUserRequest *);
+extern int authenticateDirection(AuthUserRequest *);
 
-extern int authenticateUserAuthenticated(auth_user_request_t *);
-extern int authenticateValidateUser(auth_user_request_t *);
+extern int authenticateUserAuthenticated(AuthUserRequest *);
+extern int authenticateValidateUser(AuthUserRequest *);
+
+#if 0
+#define AUTHUSERREQUESTUNLOCK(a,b) if(a){(a)->_unlock();debugs(0,0,HERE << "auth_user_request " << a << " was unlocked for " << b); (a)=NULL;}
+#define AUTHUSERREQUESTLOCK(a,b) { (a)->_lock(); debugs(0,0,HERE << "auth_user_request " << a << " was locked for " << b); }
+#endif
+#define AUTHUSERREQUESTUNLOCK(a,b) if(a){(a)->_unlock();(a)=NULL;}
+#define AUTHUSERREQUESTLOCK(a,b) (a)->_lock()
+
 
 #endif /* SQUID_AUTHUSERREQUEST_H */

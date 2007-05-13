@@ -1,5 +1,5 @@
 /*
- * $Id: diskd.cc,v 1.4 2006/05/08 23:05:45 wessels Exp $
+ * $Id: diskd.cc,v 1.7 2007/04/25 16:41:56 wessels Exp $
  *
  * DEBUG: section --    External DISKD process implementation.
  * AUTHOR: Harvest Derived
@@ -66,7 +66,7 @@ struct _file_state
 static hash_table *hash = NULL;
 static pid_t mypid;
 static char *shmbuf;
-static int DebugLevel = 1;
+static int DebugLevel = 0;
 
 static int
 do_open(diomsg * r, int len, const char *buf)
@@ -226,25 +226,10 @@ do_write(diomsg * r, int len, const char *buf)
 static int
 do_unlink(diomsg * r, int len, const char *buf)
 {
-#if USE_TRUNCATE
-
-    if (truncate(buf, 0) < 0)
-#else
-
-    if (unlink(buf) < 0)
-#endif
-
-    {
+    if (unlink(buf) < 0) {
         DEBUG(1) {
             fprintf(stderr, "%d UNLNK id %d %s: ", (int) mypid, r->id, buf);
-#if USE_TRUNCATE
-
-            perror("truncate");
-#else
-
             perror("unlink");
-#endif
-
         }
 
         return -errno;
@@ -260,10 +245,13 @@ msg_handle(diomsg * r, int rl, diomsg * s)
 {
     char *buf = NULL;
     s->mtype = r->mtype;
+    s->id = r->id;
+    s->seq_no = r->seq_no;	/* optional, debugging */
     s->callback_data = r->callback_data;
     s->requestor = r->requestor;
+    s->size = 0;		/* optional, debugging */
+    s->offset = 0;		/* optional, debugging */
     s->shm_offset = r->shm_offset;
-    s->id = r->id;
     s->newstyle = r->newstyle;
 
     if (s->shm_offset > -1)

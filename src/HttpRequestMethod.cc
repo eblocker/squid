@@ -1,6 +1,6 @@
 
 /*
- * $Id: HttpRequestMethod.cc,v 1.1 2006/05/08 23:38:33 robertc Exp $
+ * $Id: HttpRequestMethod.cc,v 1.4 2007/04/30 16:56:09 wessels Exp $
  *
  * DEBUG: section 73    HTTP Request
  * AUTHOR: Duane Wessels
@@ -67,6 +67,9 @@ const char *RequestMethodStr[] =
         "UNSUBSCRIBE",
         "POLL",
         "REPORT",
+        "MKACTIVITY",
+        "CHECKOUT",
+        "MERGE",
         "%EXT00",
         "%EXT01",
         "%EXT02",
@@ -141,7 +144,7 @@ HttpRequestMethod::AddExtension(const char *mstr)
 
     for (++method; method < METHOD_ENUM_END; ++method) {
         if (0 == strcmp(mstr, RequestMethodStr[method])) {
-            debug(23, 2) ("Extension method '%s' already exists\n", mstr);
+            debugs(23, 2, "Extension method '" << mstr << "' already exists");
             return;
         }
 
@@ -151,12 +154,12 @@ HttpRequestMethod::AddExtension(const char *mstr)
         /* Don't free statically allocated "%EXTnn" string */
         RequestMethodStr[method] = xstrdup(mstr);
 
-        debug(23, 1) ("Extension method '%s' added, enum=%d\n", mstr, (int) method);
+        debugs(23, 1, "Extension method '" << mstr << "' added, enum=" << method);
 
         return;
     }
 
-    debug(23, 1) ("WARNING: Could not add new extension method '%s' due to lack of array space\n", mstr);
+    debugs(23, 1, "WARNING: Could not add new extension method '" << mstr << "' due to lack of array space");
 }
 
 void

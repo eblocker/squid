@@ -1,17 +1,17 @@
 
 dnl  Configuration input file for Squid
 dnl
-dnl  $Id: configure.in,v 1.442 2006/11/06 05:14:48 adrian Exp $
+dnl  $Id: configure.in,v 1.453 2007/05/09 22:14:24 wessels Exp $
 dnl
 dnl
 dnl
-AC_INIT(Squid Web Proxy, 3.0.PRE5, http://www.squid-cache.org/bugs/, squid)
+AC_INIT(Squid Web Proxy, 3.0.PRE6, http://www.squid-cache.org/bugs/, squid)
 AC_PREREQ(2.52)
 AM_CONFIG_HEADER(include/autoconf.h)
 AC_CONFIG_AUX_DIR(cfgaux)
 AC_CONFIG_SRCDIR([src/main.cc])
 AM_INIT_AUTOMAKE([tar-ustar])
-AC_REVISION($Revision: 1.442 $)dnl
+AC_REVISION($Revision: 1.453 $)dnl
 AC_PREFIX_DEFAULT(/usr/local/squid)
 AM_MAINTAINER_MODE
 
@@ -894,6 +894,8 @@ AC_ARG_ENABLE(arp-acl,
 	    ;;
 	*-openbsd*)
 	    ;;
+	*-netbsd*)
+	    ;;
 	*-cygwin*)
         LIBS="$LIBS -liphlpapi"
 	    ;;
@@ -931,7 +933,7 @@ AC_ARG_ENABLE(ssl,
     case "$host_os" in
     mingw|mingw32)
         dnl Native Windows port of OpenSSL needs -lgdi32
-        SSLLIB='-lssl -lcrypto -lgdi32'
+        SSLLIB='-lssleay32 -leay32 -lgdi32'
         ;;
     *)
         SSLLIB='-lssl -lcrypto'
@@ -1272,6 +1274,21 @@ dnl "-64" from LDFLAGS
 	esac
 fi
 
+dnl Enable Linux transparent proxy support
+AC_ARG_ENABLE(linux-tproxy,
+[  --enable-linux-tproxy
+			  Enable real Transparent Proxy support for Netfilter TPROXY.],
+[ if test "$enableval" = "yes" ; then
+	echo "Linux Netfilter/TPROXY enabled"
+	AC_DEFINE(LINUX_TPROXY, 1, [Enable real Transparent Proxy support for Netfilter TPROXY.])
+	LINUX_TPROXY="yes"
+        if test -z "$LINUX_NETFILTER"; then
+	    echo "Linux-Netfilter Transparent Proxy automatically enabled"
+	    LINUX_NETFILTER="yes"
+	fi
+  fi
+])
+
 AM_CONDITIONAL(MAKE_LEAKFINDER, false)
 dnl Enable Leak Finding Functions
 AC_ARG_ENABLE(leakfinder,
@@ -1321,46 +1338,6 @@ if test "$use_dnsserver" = "yes"; then
     AC_DEFINE(USE_DNSSERVERS,1,[Use dnsserver processes instead of the internal DNS protocol support])
     AM_CONDITIONAL(USE_DNSSERVER, true)
 fi
-
-AC_ARG_ENABLE(truncate,
-[  --enable-truncate       This uses truncate() instead of unlink() when
-                          removing cache files.  Truncate gives a little
-                          performance improvement, but may cause problems
-                          when used with async I/O.  Truncate uses more
-                          filesystem inodes than unlink..],
-[ if test "$enableval" = "yes" ; then
-    echo "Enabling truncate instead of unlink"
-    AC_DEFINE(USE_TRUNCATE,1,[Do we want to use truncate(2) or unlink(2)?])
-  fi
-])
-
-dnl Disable hostname checks
-AC_ARG_ENABLE(hostname-checks,
-[  --enable-hostname-checks
-                          Tells Squid to rejects any host names with
-			  odd characters in their name to conform with
-			  internet standards. This was the default in
-			  prior Squid versions, but since Squid-3 Squid
-			  no longer tries to police the use of DNS],
-[ if test "$enableval" = "yes"; then
-    echo "Enabling hostname sanity checks"
-    AC_DEFINE(CHECK_HOSTNAMES, 1, [Enable hostname sanity checks])
-  fi
-])
-
-dnl Enable underscore in hostnames
-AC_ARG_ENABLE(underscores,
-[  --enable-underscores    Squid by default rejects any host names with _
-                          in their name to conform with internet standards.
-                          If you disagree with this you may allow _ in
-                          hostnames by using this switch, provided that
-                          the resolver library on the host where Squid runs
-                          does not reject _ in hostnames...],
-[ if test "$enableval" = "yes" ; then
-    echo "Enabling the use of underscores in host names"
-    AC_DEFINE(ALLOW_HOSTNAME_UNDERSCORES, 1,[Allow underscores in host names])
-  fi
-])
 
 dnl Select Default hosts file location
 AC_ARG_ENABLE(default-hostsfile,
@@ -1807,22 +1784,20 @@ AC_ARG_WITH(filedescriptors,
 AC_PATH_PROG(CPPUNITCONFIG, cppunit-config, false)
 if $CPPUNITCONFIG --help >/dev/null; then
   echo "using system installed cppunit"
-  SQUID_CPPUNIT_DIR=''
   SQUID_CPPUNIT_LIBS="`$CPPUNITCONFIG --libs`"
   SQUID_CPPUNIT_LA=''
   SQUID_CPPUNIT_INC="`$CPPUNITCONFIG --cflags`"
 else
-  SQUID_CPPUNIT_DIR='cppunit-1.10.0'
-  SQUID_CPPUNIT_LA='$(top_builddir)/lib/cppunit-1.10.0/src/cppunit/libcppunit.la' 
-  SQUID_CPPUNIT_LIBS='$(SQUID_CPPUNIT_LA)'
-  SQUID_CPPUNIT_INC='-I$(top_builddir)/lib/cppunit-1.10.0/include -I $(top_srcdir)/lib/cppunit-1.10.0/include'
+  echo "cppunit does not apear to be installed. squid does not require this, but code testing with 'make check' will fail."
+  SQUID_CPPUNIT_LA='' 
+  SQUID_CPPUNIT_LIBS=''
+  SQUID_CPPUNIT_INC=''
 fi
 
 AC_ARG_WITH(cppunit-basedir,
 [  --with-cppunit-basedir=/path/to/cppunit-base
                           Path where the cppunit headers are libraries are found
-			  for unit testing. (defaults to use internal copies -
-			  version 1.10.0)
+			  for unit testing.
 			  ],
 [ if test -f $withval/include/cppunit/TestCase.h; then
 	echo "Using cppunit includes from $withval"
@@ -1839,12 +1814,10 @@ AC_ARG_WITH(cppunit-basedir,
 	echo "ERROR: Cannot find cppunit at $withval"
 	exit 1
     fi
-  SQUID_CPPUNIT_DIR=''
 ])
 AC_SUBST(SQUID_CPPUNIT_LIBS)
 AC_SUBST(SQUID_CPPUNIT_LA)
 AC_SUBST(SQUID_CPPUNIT_INC)
-AC_SUBST(SQUID_CPPUNIT_DIR)
 
 # Force some compilers to use ANSI features
 #
@@ -1989,7 +1962,10 @@ AC_CHECK_HEADERS( \
 	db_185.h
 )
 
-AC_CHECK_HEADERS(linux/netfilter_ipv4.h,,,
+AC_CHECK_HEADERS(
+	linux/netfilter_ipv4.h \
+	linux/netfilter_ipv4/ip_tproxy.h \
+,,,
 SQUID_DEFAULT_INCLUDES
 #if HAVE_LIMITS_H
 #include <limits.h>
@@ -2578,6 +2554,7 @@ AC_CHECK_FUNCS(\
 	getrlimit \
 	getrusage \
 	getspnam \
+	gettimeofday \
 	htobe16 \
 	htole16 \
 	lrand48 \
@@ -2819,6 +2796,27 @@ fi
 if test "$LINUX_NETFILTER" = "no" ; then
     echo "WARNING: Cannot find necessary Linux kernel (Netfilter) header files"
     echo "         Linux Transparent Proxy support WILL NOT be enabled"
+    sleep 10
+fi
+
+dnl Linux Netfilter/TPROXY support requires some specific header files
+dnl Shamelessly copied from shamelessly copied from above
+if test "$LINUX_TPROXY" ; then
+    AC_MSG_CHECKING(if TPROXY header files are installed)
+    # hold on to your hats...
+    if test "$ac_cv_header_linux_netfilter_ipv4_ip_tproxy_h" = "yes" && test "$LINUX_NETFILTER" = "yes"; then
+	LINUX_TPROXY="yes"
+	AC_DEFINE(LINUX_TPROXY, 1, [Enable real Transparent Proxy support for Netfilter TPROXY.])
+    else
+	LINUX_TPROXY="no"
+	AC_DEFINE(LINUX_TPROXY, 0, [Enable real Transparent Proxy support for Netfilter TPROXY.])
+    fi
+    AC_MSG_RESULT($LINUX_TPROXY)
+fi
+if test "$LINUX_TPROXY" = "no" && test "$LINUX_NETFILTER" = "yes"; then
+    echo "WARNING: Cannot find TPROXY headers, you need to install the"
+    echo "tproxy package from:"
+    echo " - lynx http://www.balabit.com/downloads/tproxy/"
     sleep 10
 fi
 
@@ -3280,6 +3278,7 @@ AC_CONFIG_FILES([\
 	helpers/basic_auth/getpwnam/Makefile \
 	helpers/basic_auth/multi-domain-NTLM/Makefile \
 	helpers/basic_auth/SASL/Makefile \
+	helpers/basic_auth/POP3/Makefile \
 	helpers/digest_auth/Makefile \
 	helpers/digest_auth/password/Makefile \
 	helpers/digest_auth/ldap/Makefile \
@@ -3302,6 +3301,5 @@ AC_CONFIG_FILES([\
 ])
 
 AC_CONFIG_SUBDIRS(lib/libTrie)
-AC_CONFIG_SUBDIRS(lib/cppunit-1.10.0)
 
 AC_OUTPUT

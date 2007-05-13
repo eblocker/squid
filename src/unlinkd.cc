@@ -1,6 +1,6 @@
 
 /*
- * $Id: unlinkd.cc,v 1.58 2006/09/10 03:49:05 adrian Exp $
+ * $Id: unlinkd.cc,v 1.64 2007/04/30 16:56:09 wessels Exp $
  *
  * DEBUG: section 2     Unlink Daemon
  * AUTHOR: Duane Wessels
@@ -34,51 +34,9 @@
  */
 
 #include "squid.h"
-
-#ifdef UNLINK_DAEMON
-
-/* This is the external unlinkd process */
-
-#define UNLINK_BUF_LEN 1024
-
-int
-main(int argc, char *argv[])
-{
-    char buf[UNLINK_BUF_LEN];
-    char *t;
-    int x;
-    setbuf(stdin, NULL);
-    setbuf(stdout, NULL);
-    close(2);
-    open(_PATH_DEVNULL, O_RDWR);
-
-    while (fgets(buf, UNLINK_BUF_LEN, stdin)) {
-        if ((t = strchr(buf, '\n')))
-            *t = '\0';
-
-#if USE_TRUNCATE
-
-        x = truncate(buf, 0);
-
-#else
-
-        x = unlink(buf);
-
-#endif
-
-        if (x < 0)
-            printf("ERR\n");
-        else
-            printf("OK\n");
-    }
-
-    exit(0);
-}
-
-#else /* UNLINK_DAEMON */
-
 #include "SquidTime.h"
 #include "fde.h"
+#include "xusleep.h"
 
 /* This code gets linked to Squid */
 
@@ -105,13 +63,24 @@ unlinkdUnlink(const char *path)
     }
 
     /*
-    * If the queue length is greater than our limit, then
-    * we pause for up to 100ms, hoping that unlinkd
-    * has some feedback for us.  Maybe it just needs a slice
-    * of the CPU's time.
-    */
+     * If the queue length is greater than our limit, then we pause
+     * for a small amount of time, hoping that unlinkd has some
+     * feedback for us.  Maybe it just needs a slice of the CPU's
+     * time.
+     */
     if (queuelen >= UNLINKD_QUEUE_LIMIT) {
-
+#if defined(USE_EPOLL) || defined(USE_KQUEUE)
+	/*
+	 * DPW 2007-04-23
+	 * We can't use fd_set when using epoll() or kqueue().  In
+	 * these cases we block for 10 ms.
+	 */
+	xusleep(10000);
+#else
+	/*
+	 * DPW 2007-04-23
+	 * When we can use select, block for up to 100 ms.
+	 */
         struct timeval to;
         fd_set R;
         FD_ZERO(&R);
@@ -119,6 +88,7 @@ unlinkdUnlink(const char *path)
         to.tv_sec = 0;
         to.tv_usec = 100000;
         select(unlinkd_rfd + 1, &R, NULL, NULL, &to);
+#endif
     }
 
     /*
@@ -151,13 +121,11 @@ unlinkdUnlink(const char *path)
     x = write(unlinkd_wfd, buf, l);
 
     if (x < 0) {
-        debug(2, 1) ("unlinkdUnlink: write FD %d failed: %s\n",
-                     unlinkd_wfd, xstrerror());
+        debugs(2, 1, "unlinkdUnlink: write FD " << unlinkd_wfd << " failed: " << xstrerror());
         safeunlink(path, 0);
         return;
     } else if (x != l) {
-        debug(2, 1) ("unlinkdUnlink: FD %d only wrote %d of %d bytes\n",
-                     unlinkd_wfd, x, l);
+        debugs(2, 1, "unlinkdUnlink: FD " << unlinkd_wfd << " only wrote " << x << " of " << l << " bytes");
         safeunlink(path, 0);
         return;
     }
@@ -227,7 +195,6 @@ unlinkdInit(void)
 {
     const char *args[2];
 
-    struct timeval slp;
     args[0] = "(unlinkd)";
     args[1] = NULL;
     pid = ipcCreate(
@@ -251,11 +218,7 @@ IPC_FIFO,
     if (pid < 0)
         fatal("Failed to create unlinkd subprocess");
 
-    slp.tv_sec = 0;
-
-    slp.tv_usec = 250000;
-
-    select(0, NULL, NULL, NULL, &slp);
+    xusleep(250000);
 
     fd_note(unlinkd_wfd, "squid -> unlinkd");
 
@@ -277,14 +240,12 @@ IPC_FIFO,
     if (FD_PIPE == fd_table[unlinkd_wfd].type)
         commUnsetNonBlocking(unlinkd_wfd);
 
-    debug(2, 1) ("Unlinkd pipe opened on FD %d\n", unlinkd_wfd);
+    debugs(2, 1, "Unlinkd pipe opened on FD " << unlinkd_wfd);
 
 #ifdef _SQUID_MSWIN_
 
-    debug(2, 4) ("Unlinkd handle: 0x%x, PID: %d\n", (unsigned)hIpc, pid);
+    debugs(2, 4, "Unlinkd handle: 0x" << std::hex << hIpc << std::dec << ", PID: " << pid);
 
 #endif
 
 }
-
-#endif /* ndef UNLINK_DAEMON */

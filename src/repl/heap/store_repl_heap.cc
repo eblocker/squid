@@ -1,8 +1,8 @@
 
 /*
- * $Id: store_repl_heap.cc,v 1.21 2006/08/21 00:50:47 robertc Exp $
+ * $Id: store_repl_heap.cc,v 1.25 2007/04/30 16:56:19 wessels Exp $
  *
- * DEBUG: section ?     HEAP based removal policies
+ * DEBUG: section 81    Store HEAP Removal Policies
  * AUTHOR: Henrik Nordstrom
  *
  * Based on the ideas of the heap policy implemented by John Dilley of
@@ -232,7 +232,7 @@ try_again:
 
     entry = (StoreEntry *)heap_extractmin(heap->theHeap);
 
-    if (storeEntryLocked(entry)) {
+    if (entry->locked()) {
 
         entry->lock()
 
@@ -260,8 +260,7 @@ heap_purgeDone(RemovalPurgeWalker * walker)
 
     if (heap_walker->min_age > 0) {
         heap->theHeap->age = heap_walker->min_age;
-        debug(81, 3) ("heap_purgeDone: Heap age set to %f\n",
-                      (double) heap->theHeap->age);
+        debugs(81, 3, "heap_purgeDone: Heap age set to " << heap->theHeap->age  );
     }
 
     /*
@@ -326,7 +325,7 @@ createRemovalPolicy_heap(wordlist * args)
         keytype = args->key;
         args = args->next;
     } else {
-        debug(81, 1) ("createRemovalPolicy_heap: No key type specified. Using LRU\n");
+        debugs(81, 1, "createRemovalPolicy_heap: No key type specified. Using LRU");
         keytype = "LRU";
     }
 
@@ -337,8 +336,7 @@ createRemovalPolicy_heap(wordlist * args)
     else if (!strcmp(keytype, "LRU"))
         heap_data->keyfunc = HeapKeyGen_StoreEntry_LRU;
     else {
-        debug(81, 0) ("createRemovalPolicy_heap: Unknown key type \"%s\". Using LRU\n",
-                      keytype);
+        debugs(81, 0, "createRemovalPolicy_heap: Unknown key type \"" << keytype << "\". Using LRU");
         heap_data->keyfunc = HeapKeyGen_StoreEntry_LRU;
     }
 

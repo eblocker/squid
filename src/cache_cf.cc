@@ -1,6 +1,6 @@
 
 /*
- * $Id: cache_cf.cc,v 1.501 2006/10/08 13:10:34 serassio Exp $
+ * $Id: cache_cf.cc,v 1.510 2007/04/28 22:26:37 hno Exp $
  *
  * DEBUG: section 3     Configuration File Parsing
  * AUTHOR: Harvest Derived
@@ -135,9 +135,6 @@ static int check_null_sockaddr_in_list(const sockaddr_in_list *);
 static void parse_http_port_list(http_port_list **);
 static void dump_http_port_list(StoreEntry *, const char *, const http_port_list *);
 static void free_http_port_list(http_port_list **);
-#if UNUSED_CODE
-static int check_null_http_port_list(const http_port_list *);
-#endif
 #if USE_SSL
 static void parse_https_port_list(https_port_list **);
 static void dump_https_port_list(StoreEntry *, const char *, const https_port_list *);
@@ -255,7 +252,7 @@ parseConfigFile(const char *file_name, CacheManager & manager)
             if (file == token)
                 continue;	/* Not a valid #line directive, may be a comment */
 
-            while (*file && isspace((unsigned char) *file))
+            while (*file && xisspace((unsigned char) *file))
                 file++;
 
             if (*file) {
@@ -297,18 +294,16 @@ parseConfigFile(const char *file_name, CacheManager & manager)
         tmp_line_len += append_len;
 
         if (tmp_line[tmp_line_len-1] == '\\') {
-            debug(3, 5) ("parseConfigFile: tmp_line='%s'\n", tmp_line);
+            debugs(3, 5, "parseConfigFile: tmp_line='" << tmp_line << "'");
             tmp_line[--tmp_line_len] = '\0';
             continue;
         }
 
-        debug(3, 5) ("Processing: '%s'\n", tmp_line);
+        debugs(3, 5, "Processing: '" << tmp_line << "'");
 
         if (!parse_line(tmp_line)) {
-            debug(3, 0) ("parseConfigFile: '%s' line %d unrecognized: '%s'\n",
-                         cfg_filename,
-                         config_lineno,
-                         config_input_line);
+            debugs(3, 0, "parseConfigFile: '" << cfg_filename << "' line " <<
+                   config_lineno << " unrecognized: '" << config_input_line << "'");
             err_count++;
         }
 
@@ -328,13 +323,18 @@ parseConfigFile(const char *file_name, CacheManager & manager)
 
     defaults_if_none();
 
+    /*
+     * We must call configDoConfigure() before leave_suid() because
+     * configDoConfigure() is where we turn username strings into
+     * uid values.
+     */
+    configDoConfigure();
+
     if (!Config.chroot_dir) {
         leave_suid();
         _db_init(Config.Log.log, Config.debugOptions);
         enter_suid();
     }
-
-    configDoConfigure();
 
     if (opt_send_signal == -1) {
         manager.registerAction("config",
@@ -362,7 +362,7 @@ configDoConfigure(void)
         (void) 0;
     else if (Store::Root().maxSize() < (Config.memMaxSize >> 10))
         /* This is bogus. folk with NULL caches will want this */
-        debug(3, 0) ("WARNING cache_mem is larger than total disk cache space!\n");
+        debugs(3, 0, "WARNING cache_mem is larger than total disk cache space!");
 
     if (Config.Announce.period > 0) {
         Config.onoff.announce = 1;
@@ -426,7 +426,7 @@ configDoConfigure(void)
         fatal("maximum_single_addr_tries cannot be larger than 10");
 
     if (Config.retry.maxtries < 1) {
-        debug(3, 0) ("WARNING: resetting 'maximum_single_addr_tries to 1\n");
+        debugs(3, 0, "WARNING: resetting 'maximum_single_addr_tries to 1");
         Config.retry.maxtries = 1;
     }
 
@@ -457,7 +457,7 @@ configDoConfigure(void)
             if (!R->flags.override_expire)
                 continue;
 
-            debug(22, 1) ("WARNING: use of 'override-expire' in 'refresh_pattern' violates HTTP\n");
+            debugs(22, 1, "WARNING: use of 'override-expire' in 'refresh_pattern' violates HTTP");
 
             break;
         }
@@ -467,7 +467,7 @@ configDoConfigure(void)
             if (!R->flags.override_lastmod)
                 continue;
 
-            debug(22, 1) ("WARNING: use of 'override-lastmod' in 'refresh_pattern' violates HTTP\n");
+            debugs(22, 1, "WARNING: use of 'override-lastmod' in 'refresh_pattern' violates HTTP");
 
             break;
         }
@@ -477,7 +477,7 @@ configDoConfigure(void)
             if (!R->flags.reload_into_ims)
                 continue;
 
-            debug(22, 1) ("WARNING: use of 'reload-into-ims' in 'refresh_pattern' violates HTTP\n");
+            debugs(22, 1, "WARNING: use of 'reload-into-ims' in 'refresh_pattern' violates HTTP");
 
             break;
         }
@@ -487,7 +487,7 @@ configDoConfigure(void)
             if (!R->flags.ignore_reload)
                 continue;
 
-            debug(22, 1) ("WARNING: use of 'ignore-reload' in 'refresh_pattern' violates HTTP\n");
+            debugs(22, 1, "WARNING: use of 'ignore-reload' in 'refresh_pattern' violates HTTP");
 
             break;
         }
@@ -497,7 +497,7 @@ configDoConfigure(void)
             if (!R->flags.ignore_no_cache)
                 continue;
 
-            debug(22, 1) ("WARNING: use of 'ignore-no-cache' in 'refresh_pattern' violates HTTP\n");
+            debugs(22, 1, "WARNING: use of 'ignore-no-cache' in 'refresh_pattern' violates HTTP");
 
             break;
         }
@@ -507,7 +507,7 @@ configDoConfigure(void)
             if (!R->flags.ignore_no_store)
                 continue;
 
-            debug(22, 1) ("WARNING: use of 'ignore-no-store' in 'refresh_pattern' violates HTTP\n");
+            debugs(22, 1, "WARNING: use of 'ignore-no-store' in 'refresh_pattern' violates HTTP");
 
             break;
         }
@@ -517,7 +517,7 @@ configDoConfigure(void)
             if (!R->flags.ignore_private)
                 continue;
 
-            debug(22, 1) ("WARNING: use of 'ignore-private' in 'refresh_pattern' violates HTTP\n");
+            debugs(22, 1, "WARNING: use of 'ignore-private' in 'refresh_pattern' violates HTTP");
 
             break;
         }
@@ -527,7 +527,7 @@ configDoConfigure(void)
             if (!R->flags.ignore_auth)
                 continue;
 
-            debug(22, 1) ("WARNING: use of 'ignore-auth' in 'refresh_pattern' violates HTTP\n");
+            debugs(22, 1, "WARNING: use of 'ignore-auth' in 'refresh_pattern' violates HTTP");
 
             break;
         }
@@ -539,22 +539,9 @@ configDoConfigure(void)
 #else
 
     if (!Config.onoff.via)
-        debug(22, 1) ("WARNING: HTTP requires the use of Via\n");
+        debugs(22, 1, "WARNING: HTTP requires the use of Via");
 
 #endif
-
-    if (Config.Wais.relayHost) {
-        if (Config.Wais._peer)
-            cbdataFree(Config.Wais._peer);
-
-        CBDATA_INIT_TYPE_FREECB(peer, peerDestroy);
-
-        Config.Wais._peer = cbdataAlloc(peer);
-
-        Config.Wais._peer->host = xstrdup(Config.Wais.relayHost);
-
-        Config.Wais._peer->http_port = Config.Wais.relayPort;
-    }
 
     if (aclPurgeMethodInUse(Config.accessList.http))
         Config2.onoff.enable_purge = 1;
@@ -614,7 +601,7 @@ configDoConfigure(void)
     HttpRequestMethod::Configure(Config);
 #if USE_SSL
 
-    debug(3, 1) ("Initializing https proxy context\n");
+    debugs(3, 1, "Initializing https proxy context");
 
     Config.ssl_client.sslContext = sslCreateClientContext(Config.ssl_client.cert, Config.ssl_client.key, Config.ssl_client.version, Config.ssl_client.cipher, Config.ssl_client.options, Config.ssl_client.flags, Config.ssl_client.cafile, Config.ssl_client.capath, Config.ssl_client.crlfile);
 
@@ -624,7 +611,7 @@ configDoConfigure(void)
 
         for (p = Config.peers; p != NULL; p = p->next) {
             if (p->use_ssl) {
-                debug(3, 1) ("Initializing cache_peer %s SSL context\n", p->name);
+                debugs(3, 1, "Initializing cache_peer " << p->name << " SSL context");
                 p->sslContext = sslCreateClientContext(p->sslcert, p->sslkey, p->sslversion, p->sslcipher, p->ssloptions, p->sslflags, p->sslcafile, p->sslcapath, p->sslcrlfile);
             }
         }
@@ -635,7 +622,10 @@ configDoConfigure(void)
         https_port_list *s;
 
         for (s = Config.Sockaddr.https; s != NULL; s = (https_port_list *) s->http.next) {
-            debug(3, 1) ("Initializing https_port %s:%d SSL context\n", inet_ntoa(s->http.s.sin_addr), ntohs(s->http.s.sin_port));
+            debugs(3, 1, "Initializing https_port " <<
+                   inet_ntoa(s->http.s.sin_addr) << ":" <<
+                   ntohs(s->http.s.sin_port) << " SSL context");
+
             s->sslContext = sslCreateServerContext(s->cert, s->key, s->version, s->cipher, s->options, s->sslflags, s->clientca, s->cafile, s->capath, s->crlfile, s->dhfile, s->sslcontext);
         }
     }
@@ -666,8 +656,9 @@ parseTimeLine(time_t * tptr, const char *units)
     if (0 == d)
         (void) 0;
     else if ((token = strtok(NULL, w_space)) == NULL)
-        debug(3, 0) ("WARNING: No units on '%s', assuming %f %s\n",
-                     config_input_line, d, units);
+        debugs(3, 0, "WARNING: No units on '" << 
+                     config_input_line << "', assuming " << 
+                     d << " " << units  );
     else if ((m = parseTimeUnits(token)) == 0)
         self_destruct();
 
@@ -704,7 +695,7 @@ parseTimeUnits(const char *unit)
     if (!strncasecmp(unit, T_DECADE_STR, strlen(T_DECADE_STR)))
         return static_cast<int>(86400 * 365.2522 * 10);
 
-    debug(3, 1) ("parseTimeUnits: unknown time unit '%s'\n", unit);
+    debugs(3, 1, "parseTimeUnits: unknown time unit '" << unit << "'");
 
     return 0;
 }
@@ -735,8 +726,9 @@ parseBytesLine(size_t * bptr, const char *units)
     if (0.0 == d)
         (void) 0;
     else if ((token = strtok(NULL, w_space)) == NULL)
-        debug(3, 0) ("WARNING: No units on '%s', assuming %f %s\n",
-                     config_input_line, d, units);
+        debugs(3, 0, "WARNING: No units on '" << 
+                     config_input_line << "', assuming " <<
+                     d << " " <<  units  );
     else if ((m = parseBytesUnits(token)) == 0)
         self_destruct();
 
@@ -761,7 +753,7 @@ parseBytesUnits(const char *unit)
     if (!strncasecmp(unit, B_GBYTES_STR, strlen(B_GBYTES_STR)))
         return 1 << 30;
 
-    debug(3, 1) ("parseBytesUnits: unknown bytes unit '%s'\n", unit);
+    debugs(3, 1, "parseBytesUnits: unknown bytes unit '" << unit << "'");
 
     return 0;
 }
@@ -777,7 +769,7 @@ dump_acl(StoreEntry * entry, const char *name, ACL * ae)
     wordlist *v;
 
     while (ae != NULL) {
-        debug(3, 3) ("dump_acl: %s %s\n", name, ae->name);
+        debugs(3, 3, "dump_acl: " << name << " " << ae->name);
         storeAppendPrintf(entry, "%s %s %s ",
                           name,
                           ae->name,
@@ -785,7 +777,7 @@ dump_acl(StoreEntry * entry, const char *name, ACL * ae)
         v = w = ae->dump();
 
         while (v != NULL) {
-            debug(3, 3) ("dump_acl: %s %s %s\n", name, ae->name, v->key);
+            debugs(3, 3, "dump_acl: " << name << " " << ae->name << " " << v->key);
             storeAppendPrintf(entry, "%s ", v->key);
             v = v->next;
         }
@@ -1132,9 +1124,8 @@ parse_http_header_access(header_mangler header[])
     char *t = NULL;
 
     if ((t = strtok(NULL, w_space)) == NULL) {
-        debug(3, 0) ("%s line %d: %s\n",
-                     cfg_filename, config_lineno, config_input_line);
-        debug(3, 0) ("parse_http_header_access: missing header name.\n");
+        debugs(3, 0, "" << cfg_filename << " line " << config_lineno << ": " << config_input_line);
+        debugs(3, 0, "parse_http_header_access: missing header name.");
         return;
     }
 
@@ -1146,9 +1137,8 @@ parse_http_header_access(header_mangler header[])
     else if (strcmp(t, "Other") == 0)
         id = HDR_OTHER;
     else if (id == -1) {
-        debug(3, 0) ("%s line %d: %s\n",
-                     cfg_filename, config_lineno, config_input_line);
-        debug(3, 0) ("parse_http_header_access: unknown header name %s.\n", t);
+        debugs(3, 0, "" << cfg_filename << " line " << config_lineno << ": " << config_input_line);
+        debugs(3, 0, "parse_http_header_access: unknown header name '" << t << "'");
         return;
     }
 
@@ -1200,9 +1190,8 @@ parse_http_header_replace(header_mangler header[])
     char *t = NULL;
 
     if ((t = strtok(NULL, w_space)) == NULL) {
-        debug(3, 0) ("%s line %d: %s\n",
-                     cfg_filename, config_lineno, config_input_line);
-        debug(3, 0) ("parse_http_header_replace: missing header name.\n");
+        debugs(3, 0, "" << cfg_filename << " line " << config_lineno << ": " << config_input_line);
+        debugs(3, 0, "parse_http_header_replace: missing header name.");
         return;
     }
 
@@ -1214,10 +1203,9 @@ parse_http_header_replace(header_mangler header[])
     else if (strcmp(t, "Other") == 0)
         id = HDR_OTHER;
     else if (id == -1) {
-        debug(3, 0) ("%s line %d: %s\n",
-                     cfg_filename, config_lineno, config_input_line);
-        debug(3, 0) ("parse_http_header_replace: unknown header name %s.\n",
-                     t);
+        debugs(3, 0, "" << cfg_filename << " line " << config_lineno << ": " << config_input_line);
+        debugs(3, 0, "parse_http_header_replace: unknown header name " << t << ".");
+
         return;
     }
 
@@ -1296,7 +1284,7 @@ parse_authparam(authConfig * config)
         AuthScheme *theScheme;
 
         if ((theScheme = AuthScheme::Find(type_str)) == NULL) {
-            debug(3, 0) ("Parsing Config File: Unknown authentication scheme '%s'.\n", type_str);
+            debugs(3, 0, "Parsing Config File: Unknown authentication scheme '" << type_str << "'.");
             return;
         }
 
@@ -1378,7 +1366,8 @@ parse_cachedir(_SquidConfig::_cacheSwap * swap)
             sd = dynamic_cast<SwapDir *>(swap->swapDirs[i].getRaw());
 
             if (sd->type() != StoreFileSystem::FileSystems().items[fs]->type()) {
-                debug(3, 0) ("ERROR: Can't change type of existing cache_dir %s %s to %s. Restart required\n", sd->type(), sd->path, type_str);
+                debugs(3, 0, "ERROR: Can't change type of existing cache_dir " <<
+                       sd->type() << " " << sd->path << " to " << type_str << ". Restart required");
                 return;
             }
 
@@ -1498,6 +1487,11 @@ parse_peer(peer ** head)
         self_destruct();
 
     p->type = parseNeighborType(token);
+
+    if (p->type == PEER_MULTICAST) {
+        p->options.no_digest = 1;
+        p->options.no_netdb_exchange = 1;
+    }
 
     p->http_port = GetShort();
 
@@ -1633,7 +1627,7 @@ parse_peer(peer ** head)
         } else if (strcmp(token, "front-end-https=auto") == 0) {
             p->front_end_https = 2;
         } else {
-            debug(3, 0) ("parse_peer: token='%s'\n", token);
+            debugs(3, 0, "parse_peer: token='" << token << "'");
             self_destruct();
         }
     }
@@ -1645,8 +1639,6 @@ parse_peer(peer ** head)
         p->weight = 1;
 
     p->icp.version = ICP_VERSION_CURRENT;
-
-    p->tcp_up = PEER_TCP_MAGIC_COUNT;
 
     p->test_fd = -1;
 
@@ -1739,8 +1731,7 @@ parse_cachemgrpasswd(cachemgr_passwd ** head)
                 if (strcmp(w->key, u->key))
                     continue;
 
-                debug(0, 0) ("WARNING: action '%s' (line %d) already has a password\n",
-                             u->key, config_lineno);
+                debugs(0, 0, "WARNING: action '" << u->key << "' (line " << config_lineno << ") already has a password");
             }
         }
     }
@@ -1817,8 +1808,7 @@ parse_peer_access(void)
         self_destruct();
 
     if ((p = peerFindByName(host)) == NULL) {
-        debug(15, 0) ("%s, line %d: No cache_peer '%s'\n",
-                      cfg_filename, config_lineno, host);
+        debugs(15, 0, "" << cfg_filename << ", line " << config_lineno << ": No cache_peer '" << host << "'");
         return;
     }
 
@@ -1840,8 +1830,7 @@ parse_hostdomain(void)
         peer *p;
 
         if ((p = peerFindByName(host)) == NULL) {
-            debug(15, 0) ("%s, line %d: No cache_peer '%s'\n",
-                          cfg_filename, config_lineno, host);
+            debugs(15, 0, "" << cfg_filename << ", line " << config_lineno << ": No cache_peer '" << host << "'");
             continue;
         }
 
@@ -1881,8 +1870,7 @@ parse_hostdomaintype(void)
         peer *p;
 
         if ((p = peerFindByName(host)) == NULL) {
-            debug(15, 0) ("%s, line %d: No cache_peer '%s'\n",
-                          cfg_filename, config_lineno, host);
+            debugs(15, 0, "" << cfg_filename << ", line " << config_lineno << ": No cache_peer '" << host << "'");
             return;
         }
 
@@ -1896,55 +1884,6 @@ parse_hostdomaintype(void)
         *L = l;
     }
 }
-
-#if UNUSED_CODE
-static void
-dump_ushortlist(StoreEntry * entry, const char *name, ushortlist * u)
-{
-    while (u) {
-        storeAppendPrintf(entry, "%s %d\n", name, (int) u->i);
-        u = u->next;
-    }
-}
-
-static int
-check_null_ushortlist(ushortlist * u)
-{
-    return u == NULL;
-}
-
-static void
-parse_ushortlist(ushortlist ** P)
-{
-    char *token;
-    u_short i;
-    ushortlist *u;
-    ushortlist **U;
-
-    while ((token = strtok(NULL, w_space))) {
-        i = GetShort();
-        u = xcalloc(1, sizeof(ushortlist));
-        u->i = i;
-
-        for (U = P; *U; U = &(*U)->next)
-
-            ;
-        *U = u;
-    }
-}
-
-static void
-free_ushortlist(ushortlist ** P)
-{
-    ushortlist *u;
-
-    while ((u = *P) != NULL) {
-        *P = u->next;
-        xfree(u);
-    }
-}
-
-#endif
 
 static void
 dump_int(StoreEntry * entry, const char *name, int var)
@@ -2154,17 +2093,14 @@ parse_refreshpattern(refresh_t ** head)
 #endif
 
         } else
-            debug(22, 0) ("redreshAddToList: Unknown option '%s': %s\n",
-                          pattern, token);
+             debugs(22, 0, "redreshAddToList: Unknown option '" << pattern << "': " << token);
     }
 
     if ((errcode = regcomp(&comp, pattern, flags)) != 0) {
         char errbuf[256];
         regerror(errcode, &comp, errbuf, sizeof errbuf);
-        debug(22, 0) ("%s line %d: %s\n",
-                      cfg_filename, config_lineno, config_input_line);
-        debug(22, 0) ("refreshAddToList: Invalid regular expression '%s': %s\n",
-                      pattern, errbuf);
+        debugs(22, 0, "" << cfg_filename << " line " << config_lineno << ": " << config_input_line);
+        debugs(22, 0, "refreshAddToList: Invalid regular expression '" << pattern << "': " << errbuf);
         return;
     }
 
@@ -2220,15 +2156,6 @@ parse_refreshpattern(refresh_t ** head)
 
     safe_free(pattern);
 }
-
-#if UNUSED_CODE
-static int
-check_null_refreshpattern(refresh_t * data)
-{
-    return data == NULL;
-}
-
-#endif
 
 static void
 free_refreshpattern(refresh_t ** head)
@@ -2299,7 +2226,7 @@ parse_eol(char *volatile *var)
     if (token == NULL)
         self_destruct();
 
-    while (*token && isspace(*token))
+    while (*token && xisspace(*token))
         token++;
 
     if (!*token)
@@ -2572,7 +2499,7 @@ parseNeighborType(const char *s)
     if (!strcasecmp(s, "multicast"))
         return PEER_MULTICAST;
 
-    debug(15, 0) ("WARNING: Unknown neighbor type: %s\n", s);
+    debugs(15, 0, "WARNING: Unknown neighbor type: " << s);
 
     return PEER_SIBLING;
 }
@@ -2583,6 +2510,7 @@ parse_sockaddr_in_list_token(sockaddr_in_list ** head, char *token)
 {
     char *t;
     char *host;
+    char *tmp;
 
     const struct hostent *hp;
     unsigned short port;
@@ -2599,10 +2527,11 @@ parse_sockaddr_in_list_token(sockaddr_in_list ** head, char *token)
 
         if (0 == port)
             self_destruct();
-    } else if ((port = xatoi(token)) > 0) {
+    } else if ((port = strtol(token, &tmp, 10)), !*tmp) {
         /* port */
     } else {
-        self_destruct();
+        host = token;
+        port = 0;
     }
 
     s = static_cast<sockaddr_in_list *>(xcalloc(1, sizeof(*s)));
@@ -2742,6 +2671,14 @@ parse_http_port_option(http_port_list * s, char *token)
             s->disable_pmtu_discovery = DISABLE_PMTU_ALWAYS;
         else
             self_destruct();
+
+#if LINUX_TPROXY
+
+    } else if (strcmp(token, "tproxy") == 0) {
+        s->tproxy = 1;
+        need_linux_tproxy = 1;
+#endif
+
     } else {
         self_destruct();
     }
@@ -2854,15 +2791,6 @@ free_http_port_list(http_port_list ** head)
         cbdataFree(s);
     }
 }
-
-#if UNUSED_CODE
-static int
-check_null_http_port_list(const http_port_list * s)
-{
-    return NULL == s;
-}
-
-#endif
 
 #if USE_SSL
 static void
@@ -3065,7 +2993,7 @@ parse_logformat(logformat ** logformat_definitions)
     if ((def = strtok(NULL, "\r\n")) == NULL)
         self_destruct();
 
-    debug(3, 2) ("Logformat for '%s' is '%s'\n", name, def);
+    debugs(3, 2, "Logformat for '" << name << "' is '" << def << "'");
 
     nlf = (logformat *)xcalloc(1, sizeof(logformat));
 
@@ -3099,7 +3027,7 @@ parse_access_log(customlog ** logs)
     if ((logdef_name = strtok(NULL, w_space)) == NULL)
         logdef_name = "auto";
 
-    debug(3, 9) ("Log definition name '%s' file '%s'\n", logdef_name, filename);
+    debugs(3, 9, "Log definition name '" << logdef_name << "' file '" << filename << "'");
 
     cl->filename = xstrdup(filename);
 
@@ -3107,7 +3035,7 @@ parse_access_log(customlog ** logs)
     lf = Config.Log.logformats;
 
     while (lf != NULL) {
-        debug(3, 9) ("Comparing against '%s'\n", lf->name);
+        debugs(3, 9, "Comparing against '" << lf->name << "'");
 
         if (strcmp(lf->name, logdef_name) == 0)
             break;
@@ -3125,7 +3053,7 @@ parse_access_log(customlog ** logs)
     } else if (strcmp(logdef_name, "common") == 0) {
         cl->type = CLF_COMMON;
     } else {
-        debug(3, 0) ("Log format '%s' is not defined\n", logdef_name);
+        debugs(3, 0, "Log format '" << logdef_name << "' is not defined");
         self_destruct();
     }
 

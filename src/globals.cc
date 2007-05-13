@@ -1,7 +1,7 @@
 #include "squid.h"
 
 /*
- * $Id: globals.h,v 1.139 2006/09/13 18:55:10 serassio Exp $
+ * $Id: globals.h,v 1.140 2007/04/15 14:46:16 serassio Exp $
  *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
@@ -169,6 +169,10 @@ int ssl_ctx_ex_index_dont_verify_domain = -1;
 const char *external_acl_message = NULL;
 int opt_send_signal = -1;
 int opt_no_daemon = 0;
+#if LINUX_TPROXY
+int need_linux_tproxy = 0;
+#endif
+
 
 #ifdef __cplusplus
 }

@@ -1,6 +1,6 @@
 
 /*
- * $Id: access_log.cc,v 1.119 2006/11/04 15:44:58 hno Exp $
+ * $Id: access_log.cc,v 1.122 2007/04/28 22:26:37 hno Exp $
  *
  * DEBUG: section 46    Access Log
  * AUTHOR: Duane Wessels
@@ -445,6 +445,9 @@ struct logformat_token_table_entry logformat_token_table[] =
         /*{ "<a", LFT_SERVER_IP_ADDRESS }, */
         /*{ "<p", LFT_SERVER_PORT }, */
         {"<A", LFT_SERVER_IP_OR_PEER_NAME},
+
+	/* {"oa", LFT_OUTGOING_IP}, */
+	/* {"ot", LFT_OUTGOING_TOS}, */
 
         {"la", LFT_LOCAL_IP},
         {"lp", LFT_LOCAL_PORT},
@@ -1095,7 +1098,7 @@ accessLogParseLogFormat(logformat_token ** fmt, char *def)
     logformat_token *new_lt, *last_lt;
     enum log_quote quote = LOG_QUOTE_NONE;
 
-    debug(46, 2) ("accessLogParseLogFormat: got definition '%s'\n", def);
+    debugs(46, 2, "accessLogParseLogFormat: got definition '" << def << "'");
 
     /* very inefficent parser, but who cares, this needs to be simple */
     /* First off, let's tokenize, we'll optimize in a second pass.
@@ -1123,10 +1126,10 @@ accessLogDumpLogFormat(StoreEntry * entry, const char *name, logformat * definit
     logformat *format;
 
     struct logformat_token_table_entry *te;
-    debug(46, 0) ("accessLogDumpLogFormat called\n");
+    debugs(46, 0, "accessLogDumpLogFormat called");
 
     for (format = definitions; format; format = format->next) {
-        debug(46, 0) ("Dumping logformat definition for %s\n", format->name);
+        debugs(46, 0, "Dumping logformat definition for " << format->name);
         storeAppendPrintf(entry, "logformat %s ", format->name);
 
         for (t = format->format; t; t = t->next) {
@@ -1177,24 +1180,24 @@ accessLogDumpLogFormat(StoreEntry * entry, const char *name, logformat * definit
                     break;
                 }
 
-                storeAppend(entry, "%", 1);
+                entry->append("%", 1);
 
                 switch (t->quote) {
 
                 case LOG_QUOTE_QUOTES:
-                    storeAppend(entry, "\"", 1);
+                    entry->append("\"", 1);
                     break;
 
                 case LOG_QUOTE_BRAKETS:
-                    storeAppend(entry, "[", 1);
+                    entry->append("[", 1);
                     break;
 
                 case LOG_QUOTE_URL:
-                    storeAppend(entry, "#", 1);
+                    entry->append("#", 1);
                     break;
 
                 case LOG_QUOTE_RAW:
-                    storeAppend(entry, "'", 1);
+                    entry->append("'", 1);
                     break;
 
                 case LOG_QUOTE_NONE:
@@ -1202,10 +1205,10 @@ accessLogDumpLogFormat(StoreEntry * entry, const char *name, logformat * definit
                 }
 
                 if (t->left)
-                    storeAppend(entry, "-", 1);
+                    entry->append("-", 1);
 
                 if (t->zero)
-                    storeAppend(entry, "0", 1);
+                    entry->append("0", 1);
 
                 if (t->width)
                     storeAppendPrintf(entry, "%d", (int) t->width);
@@ -1224,13 +1227,13 @@ accessLogDumpLogFormat(StoreEntry * entry, const char *name, logformat * definit
                 }
 
                 if (t->space)
-                    storeAppend(entry, " ", 1);
+                    entry->append(" ", 1);
 
                 assert(te->config != NULL);
             }
         }
 
-        storeAppend(entry, "\n", 1);
+        entry->append("\n", 1);
     }
 
 }
@@ -1570,8 +1573,7 @@ accessLogInit(void)
         if (mcast_miss_fd < 0)
             fatal("Cannot open Multicast Miss Stream Socket");
 
-        debug(46, 1) ("Multicast Miss Stream Socket opened on FD %d\n",
-                      mcast_miss_fd);
+        debugs(46, 1, "Multicast Miss Stream Socket opened on FD " << mcast_miss_fd);
 
         mcastSetTtl(mcast_miss_fd, Config.mcast_miss.ttl);
 

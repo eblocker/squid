@@ -1,6 +1,6 @@
 
 /*
- * $Id: forward.cc,v 1.151 2006/09/13 15:54:21 adrian Exp $
+ * $Id: forward.cc,v 1.163 2007/04/30 16:56:09 wessels Exp $
  *
  * DEBUG: section 17    Request Forwarding
  * AUTHOR: Duane Wessels
@@ -48,6 +48,10 @@
 #include "pconn.h"
 #include "SquidTime.h"
 #include "Store.h"
+
+#if LINUX_TPROXY
+#include <linux/netfilter_ipv4/ip_tproxy.h>
+#endif
 
 static PSC fwdStartCompleteWrapper;
 static PF fwdServerClosedWrapper;
@@ -99,20 +103,36 @@ FwdState::FwdState(int fd, StoreEntry * e, HttpRequest * r)
 
     ;
     EBIT_SET(e->flags, ENTRY_FWD_HDR_WAIT);
+}
 
-    self = this;	// refcounted
+// Called once, right after object creation, when it is safe to set self
+void FwdState::start(Pointer aSelf)
+{
+    // Protect ourselves from being destroyed when the only Server pointing
+    // to us is gone (while we expect to talk to more Servers later).
+    // Once we set self, we are responsible for clearing it when we do not
+    // expect to talk to any servers.
+    self = aSelf; // refcounted
 
-    storeRegisterAbort(e, FwdState::abort, this);
+    // We hope that either the store entry aborts or peer is selected.
+    // Otherwise we are going to leak our object.
+
+    entry->registerAbort(FwdState::abort, this);
+    peerSelect(request, entry, fwdStartCompleteWrapper, this);
+
+    // TODO: set self _after_ the peer is selected because we do not need
+    // self until we start talking to some Server.
 }
 
 void
 FwdState::completed()
 {
-	if (flags.forward_completed == 1) {
-		debugs(17, 1, HERE << "FwdState::completed called on a completed request! Bad!");
-		return;
-	}
-	flags.forward_completed = 1;
+    if (flags.forward_completed == 1) {
+        debugs(17, 1, HERE << "FwdState::completed called on a completed request! Bad!");
+        return;
+    }
+
+    flags.forward_completed = 1;
 
 #if URL_CHECKSUM_DEBUG
 
@@ -131,7 +151,7 @@ FwdState::completed()
         } else {
             EBIT_CLR(entry->flags, ENTRY_FWD_HDR_WAIT);
             entry->complete();
-            storeReleaseRequest(entry);
+            entry->releaseRequest();
         }
     }
 
@@ -143,8 +163,9 @@ FwdState::completed()
 FwdState::~FwdState()
 {
     debugs(17, 3, HERE << "FwdState destructor starting");
+
     if (! flags.forward_completed)
-	    completed();
+        completed();
 
     serversFree(&servers);
 
@@ -153,7 +174,7 @@ FwdState::~FwdState()
     if (err)
         errorStateFree(err);
 
-    storeUnregisterAbort(entry);
+    entry->unregisterAbort();
 
     entry->unlock();
 
@@ -164,9 +185,10 @@ FwdState::~FwdState()
     if (fd > -1) {
         server_fd = -1;
         comm_remove_close_handler(fd, fwdServerClosedWrapper, this);
-        debug(17, 3) ("fwdStateFree: closing FD %d\n", fd);
+        debugs(17, 3, "fwdStateFree: closing FD " << fd);
         comm_close(fd);
     }
+
     debugs(17, 3, HERE << "FwdState destructor done");
 }
 
@@ -199,7 +221,7 @@ FwdState::fwdStart(int client_fd, StoreEntry *entry, HttpRequest *request)
 
         if (answer == 0) {
             err_type page_id;
-            page_id = aclGetDenyInfoPage(&Config.denyInfoList, AclMatchedName);
+            page_id = aclGetDenyInfoPage(&Config.denyInfoList, AclMatchedName, 1);
 
             if (page_id == ERR_NONE)
                 page_id = ERR_FORWARDING_DENIED;
@@ -212,7 +234,7 @@ FwdState::fwdStart(int client_fd, StoreEntry *entry, HttpRequest *request)
         }
     }
 
-    debug(17, 3) ("FwdState::start() '%s'\n", storeUrl(entry));
+    debugs(17, 3, "FwdState::start() '" << entry->url() << "'");
     /*
      * This seems like an odd place to bind mem_obj and request.
      * Might want to assert that request is NULL at this point
@@ -245,9 +267,16 @@ FwdState::fwdStart(int client_fd, StoreEntry *entry, HttpRequest *request)
         return;
 
     default:
-        FwdState *fwd = new FwdState(client_fd, entry, request);
-	fwd->flags.forward_completed = 0;
-        peerSelect(request, entry, fwdStartCompleteWrapper, fwd);
+        FwdState::Pointer fwd = new FwdState(client_fd, entry, request);
+#if LINUX_TPROXY
+        /* If we need to transparently proxy the request
+         * then we need the client source address and port */
+        fwd->src.sin_family = AF_INET;
+        fwd->src.sin_addr = request->client_addr;
+        fwd->src.sin_port = request->client_port;
+#endif
+
+        fwd->start(fwd);
         return;
     }
 
@@ -257,10 +286,7 @@ FwdState::fwdStart(int client_fd, StoreEntry *entry, HttpRequest *request)
 void
 FwdState::fail(ErrorState * errorState)
 {
-    debug(17, 3) ("fwdFail: %s \"%s\"\n\t%s\n",
-                  err_type_str[errorState->type],
-                  httpStatusString(errorState->httpStatus),
-                  storeUrl(entry));
+    debugs(17, 3, "fwdFail: " << err_type_str[errorState->type] << " \"" << httpStatusString(errorState->httpStatus) << "\"\n\t" << entry->url()  );
 
     if (err)
         errorStateFree(err);
@@ -277,7 +303,7 @@ FwdState::fail(ErrorState * errorState)
 void
 FwdState::unregister(int fd)
 {
-    debug(17, 3) ("fwdUnregister: %s\n", storeUrl(entry));
+    debugs(17, 3, "fwdUnregister: " << entry->url()  );
     assert(fd == server_fd);
     assert(fd > -1);
     comm_remove_close_handler(fd, fwdServerClosedWrapper, this);
@@ -295,8 +321,7 @@ FwdState::complete()
 {
     StoreEntry *e = entry;
     assert(entry->store_status == STORE_PENDING);
-    debug(17, 3) ("fwdComplete: %s\n\tstatus %d\n", storeUrl(e),
-                  entry->getReply()->sline.status);
+    debugs(17, 3, "fwdComplete: " << e->url() << "\n\tstatus " << entry->getReply()->sline.status  );
 #if URL_CHECKSUM_DEBUG
 
     entry->mem_obj->checkUrlChecksum();
@@ -305,31 +330,23 @@ FwdState::complete()
     logReplyStatus(n_tries, entry->getReply()->sline.status);
 
     if (reforward()) {
-        debug(17, 3) ("fwdComplete: re-forwarding %d %s\n",
-                      entry->getReply()->sline.status,
-                      storeUrl(e));
+        debugs(17, 3, "fwdComplete: re-forwarding " << entry->getReply()->sline.status << " " << e->url());
 
         if (server_fd > -1)
             unregister(server_fd);
 
-        storeEntryReset(e);
-
-        /*
-         * Need to re-establish the self-reference here since we'll
-         * be trying to forward the request again.  Otherwise the
-         * ref count could go to zero before a connection is
-         * established.
-         */
-        self = this;	// refcounted
+        e->reset();
 
         startComplete(servers);
     } else {
-        debug(17, 3) ("fwdComplete: not re-forwarding status %d\n",
-                      entry->getReply()->sline.status);
+        debugs(17, 3, "fwdComplete: not re-forwarding status " << entry->getReply()->sline.status);
         EBIT_CLR(entry->flags, ENTRY_FWD_HDR_WAIT);
-	entry->complete();
-	if (server_fd < 0)
-		completed();
+        entry->complete();
+
+        if (server_fd < 0)
+            completed();
+
+        self = NULL; // refcounted
     }
 }
 
@@ -393,6 +410,13 @@ fwdPeerClosed(int fd, void *data)
 
 /**** PRIVATE *****************************************************************/
 
+/*
+ * FwdState::checkRetry
+ * 
+ * Return TRUE if the request SHOULD be retried.  This method is
+ * called when the HTTP connection fails, or when the connection
+ * is closed before server-side read the end of HTTP headers.
+ */
 bool
 FwdState::checkRetry()
 {
@@ -417,12 +441,20 @@ FwdState::checkRetry()
     if (flags.dont_retry)
         return false;
 
-    if (request->flags.body_sent)
+    if (request->bodyNibbled())
         return false;
 
     return true;
 }
 
+/*
+ * FwdState::checkRetriable
+ *
+ * Return TRUE if this is the kind of request that can be retried
+ * after a failure.  If the request is not retriable then we don't
+ * want to risk sending it on a persistent connection.  Instead we'll
+ * force it to go on a new HTTP connection.
+ */
 bool
 FwdState::checkRetriable()
 {
@@ -430,7 +462,7 @@ FwdState::checkRetriable()
      * even if the method is indempotent
      */
 
-    if (request->body_reader != NULL)
+    if (request->body_pipe != NULL)
         return false;
 
     /* RFC2616 9.1 Safe and Idempotent Methods */
@@ -461,15 +493,13 @@ FwdState::checkRetriable()
 void
 FwdState::serverClosed(int fd)
 {
-    debug(17, 2) ("fwdServerClosed: FD %d %s\n", fd, storeUrl(entry));
+    debugs(17, 2, "fwdServerClosed: FD " << fd << " " << entry->url());
     assert(server_fd == fd);
     server_fd = -1;
 
     if (checkRetry()) {
         int originserver = (servers->_peer == NULL);
-        debug(17, 3) ("fwdServerClosed: re-forwarding (%d tries, %d secs)\n",
-                      n_tries,
-                      (int) (squid_curtime - start_t));
+        debugs(17, 3, "fwdServerClosed: re-forwarding (" << n_tries << " tries, " << (squid_curtime - start_t) << " secs)");
 
         if (servers->next) {
             /* use next, or cycle if origin server isn't last */
@@ -527,7 +557,9 @@ FwdState::negotiateSSL(int fd)
             return;
 
         default:
-            debug(81, 1) ("fwdNegotiateSSL: Error negotiating SSL connection on FD %d: %s (%d/%d/%d)\n", fd, ERR_error_string(ERR_get_error(), NULL), ssl_error, ret, errno);
+             debugs(81, 1, "fwdNegotiateSSL: Error negotiating SSL connection on FD " << fd << 
+                    ": " << ERR_error_string(ERR_get_error(), NULL) << " (" << ssl_error << 
+                    "/" << ret << "/" << errno << ")");
             ErrorState *anErr = errorCon(ERR_CONNECT_FAIL, HTTP_SERVICE_UNAVAILABLE, request);
 #ifdef EPROTO
 
@@ -578,8 +610,7 @@ FwdState::initiateSSL()
     assert(sslContext);
 
     if ((ssl = SSL_new(sslContext)) == NULL) {
-        debug(83, 1) ("fwdInitiateSSL: Error allocating handle: %s\n",
-                      ERR_error_string(ERR_get_error(), NULL));
+        debugs(83, 1, "fwdInitiateSSL: Error allocating handle: " << ERR_error_string(ERR_get_error(), NULL)  );
         ErrorState *anErr = errorCon(ERR_SOCKET_FAILURE, HTTP_INTERNAL_SERVER_ERROR, request);
         anErr->xerrno = errno;
         fail(anErr);
@@ -637,8 +668,7 @@ FwdState::connectDone(int aServerFD, comm_err_t status, int xerrno)
         if (NULL == fs->_peer)
             flags.dont_retry = 1;
 
-        debug(17, 4) ("fwdConnectDone: Unknown host: %s\n",
-                      request->host);
+        debugs(17, 4, "fwdConnectDone: Unknown host: " << request->host);
 
         ErrorState *anErr = errorCon(ERR_DNS_FAIL, HTTP_SERVICE_UNAVAILABLE, request);
 
@@ -659,7 +689,7 @@ FwdState::connectDone(int aServerFD, comm_err_t status, int xerrno)
 
         comm_close(server_fd);
     } else {
-        debug(17, 3) ("fwdConnectDone: FD %d: '%s'\n", server_fd, storeUrl(entry));
+        debugs(17, 3, "fwdConnectDone: FD " << server_fd << ": '" << entry->url() << "'" );
 
         if (fs->_peer)
             peerConnectSucceded(fs->_peer);
@@ -682,7 +712,7 @@ FwdState::connectTimeout(int fd)
 {
     FwdServer *fs = servers;
 
-    debug(17, 2) ("fwdConnectTimeout: FD %d: '%s'\n", fd, storeUrl(entry));
+    debugs(17, 2, "fwdConnectTimeout: FD " << fd << ": '" << entry->url() << "'" );
     assert(fd == server_fd);
 
     if (Config.onoff.log_ip_on_direct && fs->code == HIER_DIRECT && fd_table[fd].ipaddr[0])
@@ -707,7 +737,7 @@ FwdState::connectTimeout(int fd)
 void
 FwdState::connectStart()
 {
-    const char *url = storeUrl(entry);
+    const char *url = entry->url();
     int fd = -1;
     FwdServer *fs = servers;
     const char *host;
@@ -715,12 +745,18 @@ FwdState::connectStart()
     const char *domain = NULL;
     int ctimeout;
     int ftimeout = Config.Timeout.forward - (squid_curtime - start_t);
+#if LINUX_TPROXY
+
+    struct in_tproxy itp;
+#endif
 
     struct IN_ADDR outgoing;
     unsigned short tos;
+
+    struct IN_ADDR *client_addr = NULL;
     assert(fs);
     assert(server_fd == -1);
-    debug(17, 3) ("fwdConnectStart: %s\n", url);
+    debugs(17, 3, "fwdConnectStart: " << url);
 
     if (fs->_peer) {
         host = fs->_peer->host;
@@ -736,15 +772,21 @@ FwdState::connectStart()
         ctimeout = Config.Timeout.connect;
     }
 
+#if LINUX_TPROXY
+    if (request->flags.tproxy)
+        client_addr = &request->client_addr;
+
+#endif
+
     if (ftimeout < 0)
         ftimeout = 5;
 
     if (ftimeout < ctimeout)
         ctimeout = ftimeout;
 
-    if ((fd = fwdPconnPool->pop(host, port, domain)) >= 0) {
+    if ((fd = fwdPconnPool->pop(host, port, domain, client_addr)) >= 0) {
         if (checkRetriable()) {
-            debug(17, 3) ("fwdConnectStart: reusing pconn FD %d\n", fd);
+            debugs(17, 3, "fwdConnectStart: reusing pconn FD " << fd);
             server_fd = fd;
             n_tries++;
 
@@ -774,8 +816,7 @@ FwdState::connectStart()
 
     tos = getOutgoingTOS(request);
 
-    debug(17, 3) ("fwdConnectStart: got addr %s, tos %d\n",
-                  inet_ntoa(outgoing), tos);
+    debugs(17, 3, "fwdConnectStart: got addr " << inet_ntoa(outgoing) << ", tos " << tos);
 
     fd = comm_openex(SOCK_STREAM,
                      IPPROTO_TCP,
@@ -786,7 +827,7 @@ FwdState::connectStart()
                      url);
 
     if (fd < 0) {
-        debug(50, 4) ("fwdConnectStart: %s\n", xstrerror());
+        debugs(50, 4, "fwdConnectStart: " << xstrerror());
         ErrorState *anErr = errorCon(ERR_SOCKET_FAILURE, HTTP_INTERNAL_SERVER_ERROR, request);
         anErr->xerrno = errno;
         fail(anErr);
@@ -816,10 +857,43 @@ FwdState::connectStart()
 
     commSetTimeout(fd, ctimeout, fwdConnectTimeoutWrapper, this);
 
-    if (fs->_peer)
+    if (fs->_peer) {
         hierarchyNote(&request->hier, fs->code, fs->_peer->host);
-    else
+    } else {
+#if LINUX_TPROXY
+
+        if (request->flags.tproxy) {
+            itp.v.addr.faddr.s_addr = src.sin_addr.s_addr;
+            itp.v.addr.fport = 0;
+
+            /* If these syscalls fail then we just fallback to connecting
+             * normally by simply ignoring the errors...
+             */
+            itp.op = TPROXY_ASSIGN;
+
+            if (setsockopt(fd, SOL_IP, IP_TPROXY, &itp, sizeof(itp)) == -1) {
+                debugs(20, 1, "tproxy ip=" << inet_ntoa(itp.v.addr.faddr) <<
+                       ",0x" << std::hex << itp.v.addr.faddr.s_addr << std::dec <<
+                       ",port=" << itp.v.addr.fport << " ERROR ASSIGN");
+
+                request->flags.tproxy = 0;
+            } else {
+                itp.op = TPROXY_FLAGS;
+                itp.v.flags = ITP_CONNECT;
+
+                if (setsockopt(fd, SOL_IP, IP_TPROXY, &itp, sizeof(itp)) == -1) {
+                    debugs(20, 1, "tproxy ip=" << std::hex <<
+                           itp.v.addr.faddr.s_addr << std::dec << ",port=" <<
+                           itp.v.addr.fport << " ERROR CONNECT");
+
+                    request->flags.tproxy = 0;
+                }
+            }
+        }
+
+#endif
         hierarchyNote(&request->hier, fs->code, request->host);
+    }
 
     commConnectStart(fd, host, port, fwdConnectDoneWrapper, this);
 }
@@ -827,7 +901,7 @@ FwdState::connectStart()
 void
 FwdState::startComplete(FwdServer * theServers)
 {
-    debug(17, 3) ("fwdStartComplete: %s\n", storeUrl(entry));
+    debugs(17, 3, "fwdStartComplete: " << entry->url()  );
 
     if (theServers != NULL) {
         servers = theServers;
@@ -840,7 +914,7 @@ FwdState::startComplete(FwdServer * theServers)
 void
 FwdState::startFail()
 {
-    debug(17, 3) ("fwdStartFail: %s\n", storeUrl(entry));
+    debugs(17, 3, "fwdStartFail: " << entry->url()  );
     ErrorState *anErr = errorCon(ERR_CANNOT_FORWARD, HTTP_SERVICE_UNAVAILABLE, request);
     anErr->xerrno = errno;
     fail(anErr);
@@ -851,10 +925,7 @@ void
 FwdState::dispatch()
 {
     peer *p = NULL;
-    debug(17, 3) ("fwdDispatch: FD %d: Fetching '%s %s'\n",
-                  client_fd,
-                  RequestMethodStr[request->method],
-                  storeUrl(entry));
+    debugs(17, 3, "fwdDispatch: FD " << client_fd << ": Fetching '" << RequestMethodStr[request->method] << " " << entry->url() << "'" );
     /*
      * Assert that server_fd is set.  This is to guarantee that fwdState
      * is attached to something and will be deallocated when server_fd
@@ -862,7 +933,7 @@ FwdState::dispatch()
      */
     assert(server_fd > -1);
 
-    fd_note(server_fd, storeUrl(entry));
+    fd_note(server_fd, entry->url());
 
     fd_table[server_fd].noteUse(fwdPconnPool);
 
@@ -904,10 +975,6 @@ FwdState::dispatch()
             ftpStart(this);
             break;
 
-        case PROTO_WAIS:
-            waisStart(this);
-            break;
-
         case PROTO_CACHEOBJ:
 
         case PROTO_INTERNAL:
@@ -920,9 +987,10 @@ FwdState::dispatch()
             whoisStart(this);
             break;
 
+        case PROTO_WAIS:	/* Not implemented */
+
         default:
-            debug(17, 1) ("fwdDispatch: Cannot retrieve '%s'\n",
-                          storeUrl(entry));
+            debugs(17, 1, "fwdDispatch: Cannot retrieve '" << entry->url() << "'" );
             ErrorState *anErr = errorCon(ERR_UNSUP_REQ, HTTP_BAD_REQUEST, request);
             fail(anErr);
             /*
@@ -940,14 +1008,16 @@ FwdState::dispatch()
             break;
         }
     }
-
-    /*
-     * remove our self-refcount now that we've handed off the request
-     * to a server-side module
-     */
-    self = NULL;
 }
 
+/*
+ * FwdState::reforward
+ *
+ * returns TRUE if the transaction SHOULD be re-forwarded to the
+ * next choice in the FwdServers list.  This method is called when
+ * server-side communication completes normally, or experiences
+ * some error after receiving the end of HTTP headers.
+ */
 int
 FwdState::reforward()
 {
@@ -961,10 +1031,10 @@ FwdState::reforward()
     e->mem_obj->checkUrlChecksum();
 #endif
 
-    debug(17, 3) ("fwdReforward: %s?\n", storeUrl(e));
+    debugs(17, 3, "fwdReforward: " << e->url() << "?" );
 
     if (!EBIT_TEST(e->flags, ENTRY_FWD_HDR_WAIT)) {
-        debug(17, 3) ("fwdReforward: No, ENTRY_FWD_HDR_WAIT isn't set\n");
+        debugs(17, 3, "fwdReforward: No, ENTRY_FWD_HDR_WAIT isn't set");
         return 0;
     }
 
@@ -974,7 +1044,7 @@ FwdState::reforward()
     if (origin_tries > 1)
         return 0;
 
-    if (request->flags.body_sent)
+    if (request->bodyNibbled())
         return 0;
 
     assert(fs);
@@ -984,12 +1054,12 @@ FwdState::reforward()
     fwdServerFree(fs);
 
     if (servers == NULL) {
-        debug(17, 3) ("fwdReforward: No forward-servers left\n");
+        debugs(17, 3, "fwdReforward: No forward-servers left");
         return 0;
     }
 
     s = e->getReply()->sline.status;
-    debug(17, 3) ("fwdReforward: status %d\n", (int) s);
+    debugs(17, 3, "fwdReforward: status " << s);
     return reforwardableStatus(s);
 }
 
@@ -1050,9 +1120,10 @@ FwdState::reforwardableStatus(http_status s)
 }
 
 void
-FwdState::pconnPush(int fd, const char *host, int port, const char *domain)
+
+FwdState::pconnPush(int fd, const char *host, int port, const char *domain, struct IN_ADDR *client_addr)
 {
-    fwdPconnPool->push(fd, host, port, domain);
+    fwdPconnPool->push(fd, host, port, domain, client_addr);
 }
 
 void

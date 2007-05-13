@@ -1,6 +1,6 @@
 
 /*
- * $Id: DiskThreadsIOStrategy.cc,v 1.9 2006/09/03 21:05:20 hno Exp $
+ * $Id: DiskThreadsIOStrategy.cc,v 1.12 2007/04/28 22:26:47 hno Exp $
  *
  * DEBUG: section 79    Squid-side Disk I/O functions.
  * AUTHOR: Robert Collins
@@ -102,8 +102,6 @@ DiskThreadsIOStrategy::callback()
 
         case _AIO_OP_NONE:
 
-        case _AIO_OP_TRUNCATE:
-
         case _AIO_OP_OPENDIR:
             break;
 
@@ -179,13 +177,13 @@ DiskThreadsIOStrategy::sync()
         return;			/* nothing to do then */
 
     /* Flush all pending operations */
-    debug(32, 1) ("aioSync: flushing pending I/O operations\n");
+    debugs(32, 1, "aioSync: flushing pending I/O operations");
 
     do {
         callback();
     } while (squidaio_sync());
 
-    debug(32, 1) ("aioSync: done\n");
+    debugs(32, 1, "aioSync: done");
 }
 
 DiskThreadsIOStrategy::DiskThreadsIOStrategy() :  initialised (false) {}
@@ -238,7 +236,7 @@ DiskThreadsIOStrategy::load()
 
     loadav = ql * 1000 / MAGIC1;
 
-    debug(47, 9) ("DiskThreadsIOStrategy::load: load=%d\n", loadav);
+    debugs(47, 9, "DiskThreadsIOStrategy::load: load=" << loadav);
 
     return loadav;
 }
@@ -257,11 +255,5 @@ void
 DiskThreadsIOStrategy::unlinkFile(char const *path)
 {
     statCounter.syscalls.disk.unlinks++;
-#if USE_TRUNCATE
-
-    aioTruncate(path, NULL, NULL);
-#else
-
     aioUnlink(path, NULL, NULL);
-#endif
 }

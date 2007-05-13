@@ -1,5 +1,5 @@
 /*
- * DEBUG: section 93  ICAP (RFC 3507) Client
+ * DEBUG: section 93    ICAP (RFC 3507) Client
  */
 
 #include "squid.h"
@@ -11,30 +11,19 @@
 #include "TextException.h"
 
 CBDATA_CLASS_INIT(ICAPOptXact);
+CBDATA_CLASS_INIT(ICAPOptXactLauncher);
 
-ICAPOptXact::ICAPOptXact(): ICAPXaction("ICAPOptXact"), options(NULL),
-        cb(NULL), cbData(NULL)
 
+ICAPOptXact::ICAPOptXact(ICAPInitiator *anInitiator, ICAPServiceRep::Pointer &aService):
+    ICAPXaction("ICAPOptXact", anInitiator, aService)
 {
 }
 
-ICAPOptXact::~ICAPOptXact()
+void ICAPOptXact::start()
 {
-    Must(!options); // the caller must set to NULL
-}
-
-void ICAPOptXact::start(ICAPServiceRep::Pointer &aService, Callback *aCb, void *aCbData)
-{
-    ICAPXaction_Enter(start);
-    service(aService);
-
-    Must(!cb && aCb && aCbData);
-    cb = aCb;
-    cbData = cbdataReference(aCbData);
+    ICAPXaction::start();
 
     openConnection();
-
-    ICAPXaction_Exit();
 }
 
 void ICAPOptXact::handleCommConnected()
@@ -48,32 +37,6 @@ void ICAPOptXact::handleCommConnected()
            (requestBuf.terminate(), requestBuf.content()));
 
     scheduleWrite(requestBuf);
-}
-
-bool ICAPOptXact::doneAll() const
-{
-    return options && ICAPXaction::doneAll();
-}
-
-
-void ICAPOptXact::doStop()
-{
-    ICAPXaction::doStop();
-
-    if (Callback *call = cb) {
-        cb = NULL;
-        void *data = NULL;
-
-        if (cbdataReferenceValidDone(cbData, &data)) {
-            (*call)(this, data); // will delete us
-            return;
-        }
-    }
-
-    // get rid of options if we did not call the callback
-    delete options;
-
-    options = NULL;
 }
 
 void ICAPOptXact::makeRequest(MemBuf &buf)
@@ -93,13 +56,16 @@ void ICAPOptXact::handleCommWrote(size_t size)
 // comm module read a portion of the ICAP response for us
 void ICAPOptXact::handleCommRead(size_t)
 {
-    if (parseResponse())
+    if (HttpMsg *r = parseResponse()) {
+        sendAnswer(r);
         Must(done()); // there should be nothing else to do
-    else
-        scheduleRead();
+        return;
+    }
+
+    scheduleRead();
 }
 
-bool ICAPOptXact::parseResponse()
+HttpMsg *ICAPOptXact::parseResponse()
 {
     debugs(93, 5, HERE << "have " << readBuf.contentSize() << " bytes to parse" <<
            status());
@@ -108,19 +74,25 @@ bool ICAPOptXact::parseResponse()
     HttpReply *r = new HttpReply;
     r->protoPrefix = "ICAP/"; // TODO: make an IcapReply class?
 
-    if (!parseHttpMsg(r)) {
+    if (!parseHttpMsg(r)) { // throws on errors
         delete r;
-        return false;
+        return 0;
     }
-
-    options = new ICAPOptions;
-
-    options->configure(r);
 
     if (httpHeaderHasConnDir(&r->header, "close"))
         reuseConnection = false;
 
-    delete r;
+    return r;
+}
 
-    return true;
+/* ICAPOptXactLauncher */
+
+ICAPOptXactLauncher::ICAPOptXactLauncher(ICAPInitiator *anInitiator, ICAPServiceRep::Pointer &aService):
+    ICAPLauncher("ICAPOptXactLauncher", anInitiator, aService)
+{
+}
+
+ICAPXaction *ICAPOptXactLauncher::createXaction()
+{
+    return new ICAPOptXact(this, theService);
 }

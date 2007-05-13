@@ -1,6 +1,6 @@
 
 /*
- * $Id: redirect.cc,v 1.115 2006/08/21 00:50:41 robertc Exp $
+ * $Id: redirect.cc,v 1.118 2007/05/07 18:38:40 wessels Exp $
  *
  * DEBUG: section 61    Redirector
  * AUTHOR: Duane Wessels
@@ -70,7 +70,7 @@ redirectHandleReply(void *data, char *reply)
     redirectStateData *r = static_cast<redirectStateData *>(data);
     char *t;
     void *cbdata;
-    debug(61, 5) ("redirectHandleRead: {%s}\n", reply ? reply : "<NULL>");
+    debugs(61, 5, "redirectHandleRead: {" << (reply ? reply : "<NULL>") << "}");
 
     if (reply) {
         if ((t = strchr(reply, ' ')))
@@ -101,8 +101,7 @@ redirectStats(StoreEntry * sentry)
         return;
     }
 
-    storeAppendPrintf(sentry, "Redirector Statistics:\n");
-    helperStats(sentry, redirectors);
+    helperStats(sentry, redirectors, "Redirector Statistics");
 
     if (Config.onoff.redirector_bypass)
         storeAppendPrintf(sentry, "\nNumber of requests bypassed "
@@ -120,7 +119,7 @@ redirectStart(ClientHttpRequest * http, RH * handler, void *data)
     char buf[8192];
     assert(http);
     assert(handler);
-    debug(61, 5) ("redirectStart: '%s'\n", http->uri);
+    debugs(61, 5, "redirectStart: '" << http->uri << "'");
 
     if (Config.onoff.redirector_bypass && redirectors->stats.queue_size) {
         /* Skip redirector if there is one request queued */
@@ -131,7 +130,7 @@ redirectStart(ClientHttpRequest * http, RH * handler, void *data)
 
     r = cbdataAlloc(redirectStateData);
     r->orig_url = xstrdup(http->uri);
-    r->client_addr = conn.getRaw() != NULL ? conn->log_addr : no_addr;
+    r->client_addr = conn != NULL ? conn->log_addr : no_addr;
     r->client_ident = NULL;
 
     if (http->request->auth_user_request)
@@ -140,12 +139,12 @@ redirectStart(ClientHttpRequest * http, RH * handler, void *data)
         r->client_ident = http->request->extacl_user.buf();
     }
 
-    if (!r->client_ident && (conn.getRaw() != NULL && conn->rfc931[0]))
+    if (!r->client_ident && (conn != NULL && conn->rfc931[0]))
         r->client_ident = conn->rfc931;
 
 #if USE_SSL
 
-    if (!r->client_ident && conn.getRaw() != NULL)
+    if (!r->client_ident && conn != NULL)
         r->client_ident = sslGetUserEmail(fd_table[conn->fd].ssl);
 
 #endif

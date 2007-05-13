@@ -1,6 +1,6 @@
 
 /*
- * $Id: icp_v3.cc,v 1.40 2006/01/19 18:40:28 wessels Exp $
+ * $Id: icp_v3.cc,v 1.42 2007/04/28 22:26:37 hno Exp $
  *
  * DEBUG: section 12    Internet Cache Protocol
  * AUTHOR: Duane Wessels
@@ -42,7 +42,9 @@ class ICP3State : public ICPState, public StoreClient
 {
 
 public:
-    ICP3State(icp_common_t &aHeader):ICPState(aHeader){}
+    ICP3State(icp_common_t &aHeader, HttpRequest *aRequest):
+	ICPState(aHeader, aRequest)
+	{}
 
     ~ICP3State();
     void created (StoreEntry *newEntry);
@@ -67,9 +69,7 @@ doV3Query(int fd, struct sockaddr_in from, char *buf, icp_common_t header)
     }
 
     /* The peer is allowed to use this cache */
-    ICP3State *state = new ICP3State (header);
-
-    state->request = icp_request;
+    ICP3State *state = new ICP3State (header, icp_request);
 
     state->fd = fd;
 
@@ -87,8 +87,7 @@ void
 ICP3State::created (StoreEntry *newEntry)
 {
     StoreEntry *entry = newEntry->isNull () ? NULL : newEntry;
-    debug(12, 5) ("icpHandleIcpV3: OPCODE %s\n",
-                  icp_opcode_str[header.opcode]);
+    debugs(12, 5, "icpHandleIcpV3: OPCODE " << icp_opcode_str[header.opcode]);
     icp_opcode codeToSend;
 
     if (icpCheckUdpHit(entry, request)) {
@@ -110,7 +109,7 @@ icpHandleIcpV3(int fd, struct sockaddr_in from, char *buf, int len)
 {
     if (len <= 0)
     {
-        debug(12, 3) ("icpHandleIcpV3: ICP message is too small\n");
+        debugs(12, 3, "icpHandleIcpV3: ICP message is too small");
         return;
     }
 
@@ -121,7 +120,7 @@ icpHandleIcpV3(int fd, struct sockaddr_in from, char *buf, int len)
 
     if (len != header.length)
     {
-        debug(12, 3) ("icpHandleIcpV3: ICP message is too small\n");
+        debugs(12, 3, "icpHandleIcpV3: ICP message is too small");
         return;
     }
 
@@ -154,8 +153,7 @@ icpHandleIcpV3(int fd, struct sockaddr_in from, char *buf, int len)
         break;
 
     default:
-        debug(12, 0) ("icpHandleIcpV3: UNKNOWN OPCODE: %d from %s\n",
-                      header.opcode, inet_ntoa(from.sin_addr));
+        debugs(12, 0, "icpHandleIcpV3: UNKNOWN OPCODE: " << header.opcode << " from " << inet_ntoa(from.sin_addr));
         break;
     }
 }

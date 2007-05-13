@@ -1,8 +1,8 @@
 
 /*
- * $Id: ProfStats.cc,v 1.8 2006/08/07 02:28:22 robertc Exp $
+ * $Id: ProfStats.cc,v 1.10 2007/04/25 11:30:18 adrian Exp $
  *
- * DEBUG: section 81     CPU Profiling Routines
+ * DEBUG: section 81    CPU Profiling Routines
  * AUTHOR: Andres Kroonmaa
  *
  * SQUID Internet Object Cache  http://squid.nlanr.net/Squid/
@@ -298,8 +298,6 @@ xprof_event(void *data)
     if (xprof_average_delta > (xprof_delta >> 1))
         xprof_average_delta = xprof_average_delta - (xprof_average_delta >> 8) + (xprof_delta >> 8);
 
-    xprof_nesting++;
-
     xprof_chk_overhead(2);
 
     xprof_average(&xprof_stats_avg24hour, 24 * 3600);
@@ -321,8 +319,6 @@ xprof_event(void *data)
     xprof_average(&xprof_stats_avg1sec, 1);
 
     xprof_chk_overhead(30);
-
-    xprof_nesting--;
 
     eventAdd("cpuProfiling", xprof_event, NULL, 1.0, 1);
 }

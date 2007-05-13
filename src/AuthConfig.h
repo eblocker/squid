@@ -1,6 +1,6 @@
 
 /*
- * $Id: AuthConfig.h,v 1.2 2006/05/29 00:14:59 robertc Exp $
+ * $Id: AuthConfig.h,v 1.4 2007/05/09 07:45:58 wessels Exp $
  *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
@@ -45,6 +45,7 @@
  * ref counting...
  */
 
+class AuthUserRequest;
 class AuthConfig
 {
 
@@ -71,7 +72,7 @@ public:
     /* output the parameters */
     virtual void dump(StoreEntry *, const char *, AuthConfig *) = 0;
     /* add headers as needed when challenging for auth */
-    virtual void fixHeader(auth_user_request_t *, HttpReply *, http_hdr_type, HttpRequest *) = 0;
+    virtual void fixHeader(AuthUserRequest *, HttpReply *, http_hdr_type, HttpRequest *) = 0;
     /* prepare to handle requests */
     virtual void init(AuthConfig *) = 0;
     /* expose any/all statistics to a CacheManager */

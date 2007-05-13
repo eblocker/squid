@@ -1,8 +1,8 @@
 
 /*
- * $Id: SwapDir.cc,v 1.7 2005/01/03 16:08:25 robertc Exp $
+ * $Id: SwapDir.cc,v 1.11 2007/04/30 16:56:09 wessels Exp $
  *
- * DEBUG: section ??    Swap Dir base object
+ * DEBUG: section 20    Swap Dir base object
  * AUTHOR: Robert Collins
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
@@ -195,8 +195,7 @@ SwapDir::parseOptions(int reconfiguring)
 
     if (reconfiguring) {
         if (old_read_only != flags.read_only) {
-            debug(3, 1) ("Cache dir '%s' now %s\n",
-                         path, flags.read_only ? "Read-Only" : "Read-Write");
+            debugs(3, 1, "Cache dir '" << path << "' now " << (flags.read_only ? "No-Store" : "Read-Write"));
         }
     }
 }
@@ -215,7 +214,7 @@ SwapDir::dumpOptions(StoreEntry * entry) const
 bool
 SwapDir::optionReadOnlyParse(char const *option, const char *value, int reconfiguring)
 {
-    if (strcmp(option, "read-only") != 0)
+    if (strcmp(option, "no-store") != 0 && strcmp(option, "read-only") != 0)
         return false;
 
     int read_only = 0;
@@ -234,7 +233,7 @@ void
 SwapDir::optionReadOnlyDump(StoreEntry * e) const
 {
     if (flags.read_only)
-        storeAppendPrintf(e, " read-only");
+        storeAppendPrintf(e, " no-store");
 }
 
 bool
@@ -249,7 +248,7 @@ SwapDir::optionMaxSizeParse(char const *option, const char *value, int reconfigu
     ssize_t size = xatoi(value);
 
     if (reconfiguring && max_objsize != size)
-        debug(3, 1) ("Cache dir '%s' max object size now %ld\n", path, (long int) size);
+        debugs(3, 1, "Cache dir '" << path << "' max object size now " << size);
 
     max_objsize = size;
 

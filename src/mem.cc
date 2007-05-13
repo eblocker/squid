@@ -1,6 +1,6 @@
 
 /*
- * $Id: mem.cc,v 1.101 2006/09/03 21:05:20 hno Exp $
+ * $Id: mem.cc,v 1.104 2007/04/28 22:26:37 hno Exp $
  *
  * DEBUG: section 13    High Level Memory Pool Management
  * AUTHOR: Harvest Derived
@@ -143,9 +143,9 @@ Mem::Stats(StoreEntry * sentry)
 	long int leaked = 0, dubious = 0, reachable = 0, suppressed = 0;
 	stream << "Valgrind Report:\n";
 	stream << "Type\tAmount\n";
-	debug(13, 1) ("Asking valgrind for memleaks\n");
+       debugs(13, 1, "Asking valgrind for memleaks");
 	VALGRIND_DO_LEAK_CHECK;
-	debug(13, 1) ("Getting valgrind statistics\n");
+       debugs(13, 1, "Getting valgrind statistics");
 	VALGRIND_COUNT_LEAKS(leaked, dubious, reachable, suppressed);
 	stream << "Leaked\t" << leaked << "\n";
 	stream << "Dubious\t" << dubious << "\n";
@@ -354,8 +354,16 @@ memConfigure(void)
     else
         new_pool_limit = mem_unlimited_size;
 
+#if 0
+    /*
+     * DPW 2007-04-12
+     * No debugging here please because this method is called before
+     * the debug log is configured and we'll get the message on
+     * stderr when doing things like 'squid -k reconfigure'
+     */
     if (MemPools::GetInstance().idleLimit() > new_pool_limit)
-        debug(13, 1) ("Shrinking idle mem pools to %.2f MB\n", toMB(new_pool_limit));
+        debugs(13, 1, "Shrinking idle mem pools to "<< std::setprecision(3) << toMB(new_pool_limit) << " MB");
+#endif
 
     MemPools::GetInstance().setIdleLimit(new_pool_limit);
 }
@@ -374,8 +382,8 @@ Mem::Init(void)
      * debug messages here at level 0 or 1 will always be printed
      * on stderr.
      */
-    debug(13, 3) ("Memory pools are '%s'; limit: %.2f MB\n",
-                  (Config.onoff.mem_pools ? "on" : "off"), toMB(MemPools::GetInstance().idleLimit()));
+    debugs(13, 3, "Memory pools are '" << ((Config.onoff.mem_pools ? "on" : "off"))  << "'; limit: "<<
+            std::setprecision(3) << toMB(MemPools::GetInstance().idleLimit()) << " MB");
 
     /* set all pointers to null */
     memset(MemPools, '\0', sizeof(MemPools));
@@ -457,20 +465,6 @@ memCheckInit(void)
     }
 }
 
-#if UNUSED_CODE
-/* to-do: make debug level a parameter? */
-static void memPoolDescribe(const MemAllocator * pool);
-static void
-memPoolDescribe(const MemAllocator * pool)
-{
-    assert(pool);
-    debug(13, 2) ("%-20s: %6d x %4d bytes = %5d KB\n",
-                  pool->label, memPoolInUseCount(pool), pool->obj_size,
-                  toKB(pool->obj_size * pool->meter.inuse.level));
-}
-
-#endif
-
 void
 memClean(void)
 {
@@ -480,8 +474,9 @@ memClean(void)
     memPoolGetGlobalStats(&stats);
 
     if (stats.tot_items_inuse)
-        debug(13, 2) ("memCleanModule: %d items in %d chunks and %d pools are left dirty\n", stats.tot_items_inuse,
-                      stats.tot_chunks_inuse, stats.tot_pools_inuse);
+        debugs(13, 2, "memCleanModule: " << stats.tot_items_inuse <<
+               " items in " << stats.tot_chunks_inuse << " chunks and " <<
+               stats.tot_pools_inuse << " pools are left dirty");
 }
 
 int

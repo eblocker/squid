@@ -1,6 +1,6 @@
 
 /*
- * $Id: HttpStatusLine.cc,v 1.30 2005/09/14 20:56:33 wessels Exp $
+ * $Id: HttpStatusLine.cc,v 1.32 2007/05/04 22:12:55 wessels Exp $
  *
  * DEBUG: section 57    HTTP Status-line
  * AUTHOR: Alex Rousskov
@@ -69,7 +69,7 @@ void
 httpStatusLinePackInto(const HttpStatusLine * sline, Packer * p)
 {
     assert(sline && p);
-    debug(57, 9) ("packing sline %p using %p:\n", sline, p);
+    debugs(57, 9, "packing sline " << sline << " using " << p << ":");
     debug(57, 9) (HttpStatusLineFormat, sline->version.major,
                   sline->version.minor, sline->status,
                   sline->reason ? sline->reason : httpStatusString(sline->status));
@@ -99,7 +99,7 @@ httpStatusLineParse(HttpStatusLine * sline, const String &protoPrefix, const cha
         return 0;
 
     if (sscanf(start, "%d.%d", &sline->version.major, &sline->version.minor) != 2) {
-        debug(57, 7) ("httpStatusLineParse: Invalid HTTP identifier.\n");
+        debugs(57, 7, "httpStatusLineParse: Invalid HTTP identifier.");
     }
 
     if (!(start = strchr(start, ' ')))
@@ -259,6 +259,14 @@ httpStatusString(http_status status)
         p = "Unsupported Media Type";
         break;
 
+    case HTTP_REQUESTED_RANGE_NOT_SATISFIABLE:
+        p = "Requested Range Not Satisfiable";
+        break;
+
+    case HTTP_EXPECTATION_FAILED:
+        p = "Expectation Failed";
+        break;
+
     case HTTP_INTERNAL_SERVER_ERROR:
         p = "Internal Server Error";
         break;
@@ -285,7 +293,7 @@ httpStatusString(http_status status)
 
     default:
         p = "Unknown";
-        debug(57, 3) ("Unknown HTTP status code: %d\n", status);
+        debugs(57, 3, "Unknown HTTP status code: " << status);
         break;
     }
 

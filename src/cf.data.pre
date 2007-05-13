@@ -1,6 +1,6 @@
 
 #
-# $Id: cf.data.pre,v 1.427 2006/11/04 15:44:58 hno Exp $
+# $Id: cf.data.pre,v 1.433 2007/04/16 22:10:49 hno Exp $
 #
 #
 # SQUID Web Proxy Cache		http://www.squid-cache.org/
@@ -99,6 +99,10 @@ DOC_START
 
 	   protocol=	Protocol to reconstruct accelerated requests with.
 			Defaults to http
+
+	   tproxy	Support Linux TPROXY for spoofing
+			outgoing connections using the client
+			IP address.
 
 	   disable-pmtu-discovery=
 			Control Path-MTU discovery usage:
@@ -1153,7 +1157,7 @@ DOC_START
 
 	Common options:
 
-	read-only, this cache_dir is read only.
+	no-store, no new objects should be stored to this cache_dir
 
 	max-size=n, refers to the max object size this storedir supports.
 	It is used to initially choose the storedir to dump the object.
@@ -1509,12 +1513,23 @@ DOC_END
 
 NAME: check_hostnames
 TYPE: onoff
-DEFAULT: on
+DEFAULT: off
 LOC: Config.onoff.check_hostnames
 DOC_START
-	For security and stability reasons Squid by default checks
-	hostnames for Internet standard RFC compliance. If you do not want
-	Squid to perform these checks turn this directive off.
+	For security and stability reasons Squid can check
+	hostnames for Internet standard RFC compliance. If you want
+	Squid to perform these checks turn this directive on.
+DOC_END
+
+NAME: allow_underscore
+TYPE: onoff
+DEFAULT: on
+LOC: Config.onoff.allow_underscore
+DOC_START
+	Underscore characers is not strictly allowed in Internet hostnames
+	but nevertheless used by many sites. Set this to off if you want
+	Squid to be strict about the standard.
+	This check is performed only when check_hostnames is set to on.
 DOC_END
 
 NAME: ftp_telnet_protocol
@@ -1813,7 +1828,7 @@ DOC_START
 	"program" cmdline
 	Specify the command for the external authenticator.  Such
 	a program reads a line containing "username":"realm" and
-	replies with the appropriate H(A1) value base64 encoded or
+	replies with the appropriate H(A1) value hex encoded or
 	ERR if the user (or his H(A1) hash) does not exists.
 	See rfc 2616 for the definition of H(A1).
 	"ERR" responses may optionally be followed by a error description
@@ -2088,21 +2103,6 @@ COMMENT_START
  OPTIONS FOR TUNING THE CACHE
  -----------------------------------------------------------------------------
 COMMENT_END
-
-NAME: wais_relay_host
-TYPE: string
-DEFAULT: none
-LOC: Config.Wais.relayHost
-DOC_NONE
-
-NAME: wais_relay_port
-TYPE: ushort
-DEFAULT: 0
-LOC: Config.Wais.relayPort
-DOC_START
-	Relay WAIS request to host (1st arg) at port (2 arg).
-DOC_END
-
 
 NAME: request_header_max_size
 COMMENT: (KB)
@@ -4983,6 +4983,39 @@ DOC_START
     If you want to enable the ICAP module support, set this to on.
 DOC_END
 
+NAME: icap_service_failure_limit
+TYPE: int
+IFDEF: ICAP_CLIENT
+LOC: TheICAPConfig.service_failure_limit
+DEFAULT: 10
+DOC_START
+	The limit specifies the number of failures that Squid tolerates
+	when establishing a new TCP connection with an ICAP service. If
+	the number of failures exceeds the limit, the ICAP service is
+	not used for new ICAP requests until it is time to refresh its
+	OPTIONS. The per-service failure counter is reset to zero each
+	time Squid fetches new service OPTIONS.
+
+	A negative value disables the limit. Without the limit, an ICAP
+	service will not be considered down due to connectivity failures
+	between ICAP OPTIONS requests.
+DOC_END
+
+NAME: icap_service_revival_delay
+TYPE: int
+IFDEF: ICAP_CLIENT
+LOC: TheICAPConfig.service_revival_delay
+DEFAULT: 180
+DOC_START
+	The delay specifies the number of seconds to wait after an ICAP
+	OPTIONS request failure before requesting the options again. The
+	failed ICAP service is considered "down" until fresh OPTIONS are
+	fetched.
+
+	The actual delay cannot be smaller than the hardcoded minimum
+	delay of 60 seconds.
+DOC_END
+
 NAME: icap_preview_enable
 TYPE: onoff
 IFDEF: ICAP_CLIENT
@@ -5043,8 +5076,29 @@ COMMENT: on|off
 LOC: TheICAPConfig.send_client_username
 DEFAULT: off
 DOC_START
-        This adds the header "X-Client-Username" to ICAP requests
-        if proxy access is authentified.
+	This sends authenticated HTTP client username (if available) to
+	the ICAP service. The username value is encoded based on the
+	icap_client_username_encode option and is sent using the header
+	specified by the icap_client_username_header option.
+DOC_END
+
+NAME: icap_client_username_header
+TYPE: string
+IFDEF: ICAP_CLIENT
+LOC: TheICAPConfig.client_username_header
+DEFAULT: X-Client-Username
+DOC_START
+	ICAP request header name to use for send_client_username.
+DOC_END
+
+NAME: icap_client_username_encode
+TYPE: onoff
+IFDEF: ICAP_CLIENT
+COMMENT: on|off
+LOC: TheICAPConfig.client_username_encode
+DEFAULT: off
+DOC_START
+	Whether to base64 encode the authenticated client username.
 DOC_END
 
 NAME: icap_service

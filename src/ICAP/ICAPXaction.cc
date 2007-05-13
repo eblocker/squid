@@ -1,23 +1,24 @@
 /*
- * DEBUG: section 93  ICAP (RFC 3507) Client
+ * DEBUG: section 93    ICAP (RFC 3507) Client
  */
 
 #include "squid.h"
 #include "comm.h"
-#include "HttpReply.h"
+#include "HttpMsg.h"
 #include "ICAPXaction.h"
-#include "ICAPClient.h"
 #include "TextException.h"
 #include "pconn.h"
 #include "fde.h"
 
 static PconnPool *icapPconnPool = new PconnPool("ICAP Servers");
 
+int ICAPXaction::TheLastId = 0;
+
+//CBDATA_CLASS_INIT(ICAPXaction);
+
 /* comm module handlers (wrappers around corresponding ICAPXaction methods */
 
 // TODO: Teach comm module to call object methods directly
-
-//CBDATA_CLASS_INIT(ICAPXaction);
 
 static
 ICAPXaction &ICAPXaction_fromData(void *data)
@@ -58,56 +59,74 @@ void ICAPXaction_noteCommRead(int, char *, size_t size, comm_err_t status, int x
     ICAPXaction_fromData(data).noteCommRead(status, size);
 }
 
-ICAPXaction::ICAPXaction(const char *aTypeName):
+ICAPXaction::ICAPXaction(const char *aTypeName, ICAPInitiator *anInitiator, ICAPServiceRep::Pointer &aService):
+        ICAPInitiate(aTypeName, anInitiator, aService),
+        id(++TheLastId),
         connection(-1),
         commBuf(NULL), commBufSize(0),
         commEof(false),
         reuseConnection(true),
-        connector(NULL), reader(NULL), writer(NULL), closer(NULL),
-        typeName(aTypeName),
-        theService(NULL),
-        inCall(NULL)
+        isRetriable(true),
+        connector(NULL), reader(NULL), writer(NULL), closer(NULL)
 {
-    debug(93,3)("%s constructed, this=%p\n", typeName, this);
+    debugs(93,3, typeName << " constructed, this=" << this <<
+        " [icapx" << id << ']'); // we should not call virtual status() here
+}
+
+ICAPXaction::~ICAPXaction()
+{
+    debugs(93,3, typeName << " destructed, this=" << this <<
+        " [icapx" << id << ']'); // we should not call virtual status() here
+}
+
+void ICAPXaction::disableRetries() {
+    debugs(93,5, typeName << (isRetriable ? "becomes" : "remains") <<
+        " final" << status());
+    isRetriable = false;
+}
+
+void ICAPXaction::start()
+{
+    ICAPInitiate::start();
+
     readBuf.init(SQUID_TCP_SO_RCVBUF, SQUID_TCP_SO_RCVBUF);
     commBuf = (char*)memAllocBuf(SQUID_TCP_SO_RCVBUF, &commBufSize);
     // make sure maximum readBuf space does not exceed commBuf size
     Must(static_cast<size_t>(readBuf.potentialSpaceSize()) <= commBufSize);
 }
 
-ICAPXaction::~ICAPXaction()
-{
-    debug(93,3)("%s destructing, this=%p\n", typeName, this);
-    doStop();
-    readBuf.clean();
-    memFreeBuf(commBufSize, commBuf);
-}
-
 // TODO: obey service-specific, OPTIONS-reported connection limit
 void ICAPXaction::openConnection()
 {
-    const ICAPServiceRep &s = service();
-    // TODO: check whether NULL domain is appropriate here
-    connection = icapPconnPool->pop(s.host.buf(), s.port, NULL);
+    Must(connection < 0);
 
-    if (connection >= 0) {
-        debugs(93,3, HERE << "reused pconn FD " << connection);
-        eventAdd("ICAPXaction::reusedConnection",
+    const ICAPServiceRep &s = service();
+
+    // if we cannot retry, we must not reuse pconns because of race conditions
+    if (isRetriable) {
+        // TODO: check whether NULL domain is appropriate here
+        connection = icapPconnPool->pop(s.host.buf(), s.port, NULL, NULL);
+
+        if (connection >= 0) {
+            debugs(93,3, HERE << "reused pconn FD " << connection);
+            connector = &ICAPXaction_noteCommConnected; // make doneAll() false
+            eventAdd("ICAPXaction::reusedConnection",
                  reusedConnection,
                  this,
                  0.0,
                  0,
                  true);
-        return;
+            return;
+        }
+
+        disableRetries(); // we only retry pconn failures
     }
 
-    if (connection < 0) {
-        connection = comm_open(SOCK_STREAM, 0, getOutgoingAddr(NULL), 0,
-                               COMM_NONBLOCKING, s.uri.buf());
+    connection = comm_open(SOCK_STREAM, 0, getOutgoingAddr(NULL), 0,
+        COMM_NONBLOCKING, s.uri.buf());
 
-        if (connection < 0)
-            dieOnConnectionFailure(); // throws
-    }
+    if (connection < 0)
+        dieOnConnectionFailure(); // throws
 
     debugs(93,3, typeName << " opens connection to " << s.host.buf() << ":" << s.port);
 
@@ -128,12 +147,8 @@ void ICAPXaction::openConnection()
 void
 ICAPXaction::reusedConnection(void *data)
 {
-    debug(93,5)("ICAPXaction::reusedConnection\n");
+    debugs(93, 5, "ICAPXaction::reusedConnection");
     ICAPXaction *x = (ICAPXaction*)data;
-    /*
-     * XXX noteCommConnected Must()s that connector is set to something;
-     */
-    x->connector = &ICAPXaction_noteCommConnected;
     x->noteCommConnected(COMM_OK);
 }
 
@@ -148,17 +163,18 @@ void ICAPXaction::closeConnection()
 
         cancelRead(); // may not work
 
-        if (reuseConnection && (writer || reader)) {
-            debugs(93,5, HERE << "not reusing pconn due to pending I/O " << status());
+        if (reuseConnection && !doneWithIo()) {
+            debugs(93,5, HERE << "not reusing pconn due to pending I/O" << status());
             reuseConnection = false;
         }
 
         if (reuseConnection) {
-            debugs(93,3, HERE << "pushing pconn " << status());
+            debugs(93,3, HERE << "pushing pconn" << status());
             commSetTimeout(connection, -1, NULL, NULL);
-            icapPconnPool->push(connection, theService->host.buf(), theService->port, NULL);
+            icapPconnPool->push(connection, theService->host.buf(), theService->port, NULL, NULL);
+            disableRetries();
         } else {
-            debugs(93,3, HERE << "closing pconn " << status());
+            debugs(93,3, HERE << "closing pconn" << status());
             // comm_close will clear timeout
             comm_close(connection);
         }
@@ -259,15 +275,18 @@ void ICAPXaction::handleCommClosed()
     mustStop("ICAP service connection externally closed");
 }
 
-bool ICAPXaction::done() const
+void ICAPXaction::callEnd()
 {
-    // stopReason, set in mustStop(), overwrites all other conditions
-    return stopReason != NULL || doneAll();
+    if (doneWithIo()) {
+        debugs(93, 5, HERE << typeName << " done with I/O" << status());
+        closeConnection();
+    }
+    ICAPInitiate::callEnd(); // may destroy us
 }
 
 bool ICAPXaction::doneAll() const
 {
-    return !connector && !reader && !writer;
+    return !connector && !reader && !writer && ICAPInitiate::doneAll();
 }
 
 void ICAPXaction::updateTimeout() {
@@ -319,10 +338,13 @@ void ICAPXaction::noteCommRead(comm_err_t commStatus, size_t sz)
      * here instead of reading directly into readBuf.buf.
      */
 
-    if (sz > 0)
+    if (sz > 0) {
         readBuf.append(commBuf, sz);
-    else
+        disableRetries(); // because pconn did not fail
+    } else {
+        reuseConnection = false;
         commEof = true;
+    }
 
     handleCommRead(sz);
 
@@ -386,79 +408,38 @@ bool ICAPXaction::doneWithIo() const
         doneReading() && doneWriting();
 }
 
-void ICAPXaction::mustStop(const char *aReason)
+// initiator aborted
+void ICAPXaction::noteInitiatorAborted()
 {
-    Must(inCall); // otherwise nobody will call doStop()
-    Must(aReason);
-    if (!stopReason) {
-        stopReason = aReason;
-        debugs(93, 5, typeName << " will stop, reason: " << stopReason);
-    } else {
-        debugs(93, 5, typeName << " will stop, another reason: " << aReason);
-    }
-}
+    ICAPXaction_Enter(noteInitiatorAborted);
 
-// internal cleanup
-void ICAPXaction::doStop()
-{
-    debugs(93, 5, typeName << "::doStop " << status());
-
-    closeConnection(); // TODO: pconn support: close iff bad connection
-}
-
-void ICAPXaction::service(ICAPServiceRep::Pointer &aService)
-{
-    Must(!theService);
-    Must(aService != NULL);
-    theService = aService;
-}
-
-ICAPServiceRep &ICAPXaction::service()
-{
-    Must(theService != NULL);
-    return *theService;
-}
-
-bool ICAPXaction::callStart(const char *method)
-{
-    debugs(93, 5, typeName << "::" << method << " called " << status());
-
-    if (inCall) {
-        // this may happen when we have bugs or when arguably buggy
-        // comm interface calls us while we are closing the connection
-        debugs(93, 5, typeName << "::" << inCall << " is in progress; " <<
-               typeName << "::" << method << " cancels reentry.");
-        return false;
+    if (theInitiator) {
+        clearInitiator();
+        mustStop("initiator aborted");
     }
 
-    inCall = method;
-    return true;
+    ICAPXaction_Exit();
 }
 
-void ICAPXaction::callException(const TextException &e)
+// This 'last chance' method is called before a 'done' transaction is deleted.
+// It is wrong to call virtual methods from a destructor. Besides, this call
+// indicates that the transaction will terminate as planned.
+void ICAPXaction::swanSong()
 {
-    debugs(93, 4, typeName << "::" << inCall << " caught an exception: " <<
-           e.message << ' ' << status());
+    // kids should sing first and then call the parent method.
 
-    reuseConnection = false; // be conservative
-    mustStop("exception");
-}
+    closeConnection(); // TODO: rename because we do not always close
 
-void ICAPXaction::callEnd()
-{
-    if (done()) {
-        debugs(93, 5, HERE << "ICAPXaction::" << inCall << " ends xaction " <<
-               status());
-        doStop(); // may delete us
-        return;
-    } else
-    if (doneWithIo()) {
-        debugs(93, 5, HERE << typeName << " done with I/O " << status());
-        closeConnection();
-    }
+    if (!readBuf.isNull())
+        readBuf.clean();
 
-    debugs(93, 6, typeName << "::" << inCall << " ended " << status());
-    inCall = NULL;
+    if (commBuf)
+        memFreeBuf(commBufSize, commBuf);
+
+    if (theInitiator)
+        tellQueryAborted(!isRetriable);
+
+    ICAPInitiate::swanSong();
 }
 
 // returns a temporary string depicting transaction status, for debugging
@@ -467,13 +448,13 @@ const char *ICAPXaction::status() const
     static MemBuf buf;
     buf.reset();
 
-    buf.append("[", 1);
+    buf.append(" [", 2);
 
     fillPendingStatus(buf);
     buf.append("/", 1);
     fillDoneStatus(buf);
 
-    buf.append("]", 1);
+    buf.Printf(" icapx%d]", id);
 
     buf.terminate();
 
@@ -483,7 +464,7 @@ const char *ICAPXaction::status() const
 void ICAPXaction::fillPendingStatus(MemBuf &buf) const
 {
     if (connection >= 0) {
-        buf.Printf("Comm(%d", connection);
+        buf.Printf("FD %d", connection);
 
         if (writer)
             buf.append("w", 1);
@@ -491,7 +472,7 @@ void ICAPXaction::fillPendingStatus(MemBuf &buf) const
         if (reader)
             buf.append("r", 1);
 
-        buf.append(")", 1);
+        buf.append(";", 1);
     }
 }
 

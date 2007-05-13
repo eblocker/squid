@@ -1,6 +1,6 @@
 
 /*
- * $Id: store_digest.cc,v 1.70 2006/08/21 00:50:41 robertc Exp $
+ * $Id: store_digest.cc,v 1.75 2007/04/30 16:56:09 wessels Exp $
  *
  * DEBUG: section 71    Store Digest Manager
  * AUTHOR: Alex Rousskov
@@ -115,18 +115,20 @@ storeDigestInit(void)
 
     if (!Config.onoff.digest_generation) {
         store_digest = NULL;
-        debug(71, 3) ("Local cache digest generation disabled\n");
+        debugs(71, 3, "Local cache digest generation disabled");
         return;
     }
 
     store_digest = cacheDigestCreate(cap, Config.digest.bits_per_entry);
-    debug(71, 1) ("Local cache digest enabled; rebuild/rewrite every %d/%d sec\n",
-                  (int) Config.digest.rebuild_period, (int) Config.digest.rewrite_period);
+    debugs(71, 1, "Local cache digest enabled; rebuild/rewrite every " <<
+           (int) Config.digest.rebuild_period << "/" <<
+           (int) Config.digest.rewrite_period << " sec");
+
     memset(&sd_state, 0, sizeof(sd_state));
 #else
 
     store_digest = NULL;
-    debug(71, 3) ("Local cache digest is 'off'\n");
+    debugs(71, 3, "Local cache digest is 'off'");
 #endif
 }
 
@@ -161,19 +163,16 @@ storeDigestDel(const StoreEntry * entry)
     }
 
     assert(entry && store_digest);
-    debug(71, 6) ("storeDigestDel: checking entry, key: %s\n",
-                  entry->getMD5Text());
+    debugs(71, 6, "storeDigestDel: checking entry, key: " << entry->getMD5Text());
 
     if (!EBIT_TEST(entry->flags, KEY_PRIVATE)) {
         if (!cacheDigestTest(store_digest,  (const cache_key *)entry->key)) {
             sd_stats.del_lost_count++;
-            debug(71, 6) ("storeDigestDel: lost entry, key: %s url: %s\n",
-                          entry->getMD5Text(), storeUrl(entry));
+            debugs(71, 6, "storeDigestDel: lost entry, key: " << entry->getMD5Text() << " url: " << entry->url()  );
         } else {
             sd_stats.del_count++;
             cacheDigestDel(store_digest,  (const cache_key *)entry->key);
-            debug(71, 6) ("storeDigestDel: deled entry, key: %s\n",
-                          entry->getMD5Text());
+            debugs(71, 6, "storeDigestDel: deled entry, key: " << entry->getMD5Text());
         }
     }
 
@@ -218,47 +217,45 @@ storeDigestAddable(const StoreEntry * e)
 {
     /* add some stats! XXX */
 
-    debug(71, 6) ("storeDigestAddable: checking entry, key: %s\n",
-                  e->getMD5Text());
+    debugs(71, 6, "storeDigestAddable: checking entry, key: " << e->getMD5Text());
 
-    /* check various entry flags (mimics storeCheckCachable XXX) */
+    /* check various entry flags (mimics StoreEntry::checkCachable XXX) */
 
     if (!EBIT_TEST(e->flags, ENTRY_CACHABLE)) {
-        debug(71, 6) ("storeDigestAddable: NO: not cachable\n");
+        debugs(71, 6, "storeDigestAddable: NO: not cachable");
         return 0;
     }
 
     if (EBIT_TEST(e->flags, KEY_PRIVATE)) {
-        debug(71, 6) ("storeDigestAddable: NO: private key\n");
+        debugs(71, 6, "storeDigestAddable: NO: private key");
         return 0;
     }
 
     if (EBIT_TEST(e->flags, ENTRY_NEGCACHED)) {
-        debug(71, 6) ("storeDigestAddable: NO: negative cached\n");
+        debugs(71, 6, "storeDigestAddable: NO: negative cached");
         return 0;
     }
 
     if (EBIT_TEST(e->flags, RELEASE_REQUEST)) {
-        debug(71, 6) ("storeDigestAddable: NO: release requested\n");
+        debugs(71, 6, "storeDigestAddable: NO: release requested");
         return 0;
     }
 
     if (e->store_status == STORE_OK && EBIT_TEST(e->flags, ENTRY_BAD_LENGTH)) {
-        debug(71, 6) ("storeDigestAddable: NO: wrong content-length\n");
+        debugs(71, 6, "storeDigestAddable: NO: wrong content-length");
         return 0;
     }
 
     /* do not digest huge objects */
     if (e->swap_file_sz > Config.Store.maxObjectSize) {
-        debug(71, 6) ("storeDigestAddable: NO: too big\n");
+        debugs(71, 6, "storeDigestAddable: NO: too big");
         return 0;
     }
 
     /* still here? check staleness */
     /* Note: We should use the time of the next rebuild, not (cur_time+period) */
     if (refreshCheckDigest(e, Config.digest.rebuild_period)) {
-        debug(71, 6) ("storeDigestAdd: entry expires within %d secs, ignoring\n",
-                      (int) Config.digest.rebuild_period);
+        debugs(71, 6, "storeDigestAdd: entry expires within " << Config.digest.rebuild_period << " secs, ignoring");
         return 0;
     }
 
@@ -271,12 +268,6 @@ storeDigestAddable(const StoreEntry * e)
      * idea: skip objects that are going to be purged before the next
      * update.
      */
-#if OLD_UNUSED_CODE		/* This code isn't applicable anymore, we can't fix it atm either :( */
-    if ((squid_curtime + Config.digest.rebuild_period) - e->lastref > storeExpiredReferenceAge())
-        return 0;
-
-#endif
-
     return 1;
 }
 
@@ -293,8 +284,7 @@ storeDigestAdd(const StoreEntry * entry)
 
         cacheDigestAdd(store_digest,  (const cache_key *)entry->key);
 
-        debug(71, 6) ("storeDigestAdd: added entry, key: %s\n",
-                      entry->getMD5Text());
+        debugs(71, 6, "storeDigestAdd: added entry, key: " << entry->getMD5Text());
     } else {
         sd_stats.rej_count++;
 
@@ -311,15 +301,15 @@ storeDigestRebuildStart(void *datanotused)
     /* prevent overlapping if rebuild schedule is too tight */
 
     if (sd_state.rebuild_lock) {
-        debug(71, 1) ("storeDigestRebuildStart: overlap detected, consider increasing rebuild period\n");
+        debugs(71, 1, "storeDigestRebuildStart: overlap detected, consider increasing rebuild period");
         return;
     }
 
     sd_state.rebuild_lock = 1;
-    debug(71, 2) ("storeDigestRebuildStart: rebuild #%d\n", sd_state.rebuild_count + 1);
+    debugs(71, 2, "storeDigestRebuildStart: rebuild #" << sd_state.rebuild_count + 1);
 
     if (sd_state.rewrite_lock) {
-        debug(71, 2) ("storeDigestRebuildStart: waiting for Rewrite to finish.\n");
+        debugs(71, 2, "storeDigestRebuildStart: waiting for Rewrite to finish.");
         return;
     }
 
@@ -350,7 +340,7 @@ storeDigestRebuildFinish(void)
     assert(sd_state.rebuild_lock);
     sd_state.rebuild_lock = 0;
     sd_state.rebuild_count++;
-    debug(71, 2) ("storeDigestRebuildFinish: done.\n");
+    debugs(71, 2, "storeDigestRebuildFinish: done.");
     eventAdd("storeDigestRebuildStart", storeDigestRebuildStart, NULL, (double)
              Config.digest.rebuild_period, 1);
     /* resume pending Rewrite if any */
@@ -368,8 +358,7 @@ storeDigestRebuildStep(void *datanotused)
                 (double) Config.digest.rebuild_chunk_percentage / 100.0);
     assert(sd_state.rebuild_lock);
 
-    debug(71, 3) ("storeDigestRebuildStep: buckets: %d entries to check: %d\n",
-                  store_hash_buckets, count);
+    debugs(71, 3, "storeDigestRebuildStep: buckets: " << store_hash_buckets << " entries to check: " << count);
 
     while (count-- && !sd_state.theSearch->isDone() && sd_state.theSearch->next())
         storeDigestAdd(sd_state.theSearch->currentItem());
@@ -394,24 +383,24 @@ storeDigestRewriteStart(void *datanotused)
     /* prevent overlapping if rewrite schedule is too tight */
 
     if (sd_state.rewrite_lock) {
-        debug(71, 1) ("storeDigestRewrite: overlap detected, consider increasing rewrite period\n");
+        debugs(71, 1, "storeDigestRewrite: overlap detected, consider increasing rewrite period");
         return;
     }
 
-    debug(71, 2) ("storeDigestRewrite: start rewrite #%d\n", sd_state.rewrite_count + 1);
+    debugs(71, 2, "storeDigestRewrite: start rewrite #" << sd_state.rewrite_count + 1);
     /* make new store entry */
     url = internalLocalUri("/squid-internal-periodic/", StoreDigestFileName);
     flags.cachable = 1;
     e = storeCreateEntry(url, url, flags, METHOD_GET);
     assert(e);
     sd_state.rewrite_lock = e;
-    debug(71, 3) ("storeDigestRewrite: url: %s key: %s\n", url, e->getMD5Text());
+    debugs(71, 3, "storeDigestRewrite: url: " << url << " key: " << e->getMD5Text());
     HttpRequest *req = HttpRequest::CreateFromUrl(url);
     e->mem_obj->request = HTTPMSGLOCK(req);
     /* wait for rebuild (if any) to finish */
 
     if (sd_state.rebuild_lock) {
-        debug(71, 2) ("storeDigestRewriteStart: waiting for rebuild to finish.\n");
+        debugs(71, 2, "storeDigestRewriteStart: waiting for rebuild to finish.");
         return;
     }
 
@@ -429,19 +418,19 @@ storeDigestRewriteResume(void)
     sd_state.rewrite_offset = 0;
     EBIT_SET(e->flags, ENTRY_SPECIAL);
     /* setting public key will purge old digest entry if any */
-    storeSetPublicKey(e);
+    e->setPublicKey();
     /* fake reply */
     HttpReply *rep = new HttpReply;
     HttpVersion version(1, 0);
     rep->setHeaders(version, HTTP_OK, "Cache Digest OK",
                     "application/cache-digest", store_digest->mask_size + sizeof(sd_state.cblock),
                     squid_curtime, squid_curtime + Config.digest.rewrite_period);
-    debug(71, 3) ("storeDigestRewrite: entry expires on %ld (%+d)\n",
-                  (long int) rep->expires, (int) (rep->expires - squid_curtime));
-    storeBuffer(e);
+    debugs(71, 3, "storeDigestRewrite: entry expires on " << rep->expires << 
+           " (" << std::showpos << (int) (rep->expires - squid_curtime) << ")");
+    e->buffer();
     e->replaceHttpReply(rep);
     storeDigestCBlockSwapOut(e);
-    storeBufferFlush(e);
+    e->flush();
     eventAdd("storeDigestSwapOutStep", storeDigestSwapOutStep, sd_state.rewrite_lock, 0.0, 1, false);
 }
 
@@ -451,9 +440,9 @@ storeDigestRewriteFinish(StoreEntry * e)
 {
     assert(e == sd_state.rewrite_lock);
     e->complete();
-    storeTimestampsSet(e);
-    debug(71, 2) ("storeDigestRewriteFinish: digest expires at %ld (%+d)\n",
-                  (long int) e->expires, (int) (e->expires - squid_curtime));
+    e->timestampsSet();
+    debugs(71, 2, "storeDigestRewriteFinish: digest expires at " << e->expires << 
+           " (" << std::showpos << (int) (e->expires - squid_curtime) << ")");
     /* is this the write order? @?@ */
     e->mem_obj->unlinkRequest();
     e->unlock();
@@ -480,7 +469,7 @@ storeDigestSwapOutStep(void *data)
     if ((size_t)(sd_state.rewrite_offset + chunk_size) > store_digest->mask_size)
         chunk_size = store_digest->mask_size - sd_state.rewrite_offset;
 
-    storeAppend(e, store_digest->mask + sd_state.rewrite_offset, chunk_size);
+    e->append(store_digest->mask + sd_state.rewrite_offset, chunk_size);
 
     debugs(71, 3, "storeDigestSwapOutStep: size: " << store_digest->mask_size <<
            " offset: " << sd_state.rewrite_offset << " chunk: " <<
@@ -508,7 +497,7 @@ storeDigestCBlockSwapOut(StoreEntry * e)
     sd_state.cblock.bits_per_entry = (unsigned char)
                                      Config.digest.bits_per_entry;
     sd_state.cblock.hash_func_count = (unsigned char) CacheDigestHashFuncCount;
-    storeAppend(e, (char *) &sd_state.cblock, sizeof(sd_state.cblock));
+    e->append((char *) &sd_state.cblock, sizeof(sd_state.cblock));
 }
 
 /* calculates digest capacity */
@@ -524,8 +513,8 @@ storeDigestCalcCap(void)
     const int lo_cap = 1 + store_swap_size / Config.Store.avgObjectSize;
     const int e_count = StoreEntry::inUseCount();
     int cap = e_count ? e_count : hi_cap;
-    debug(71, 2) ("storeDigestCalcCap: have: %d, want %d entries; limits: [%d, %d]\n",
-                  e_count, cap, lo_cap, hi_cap);
+    debugs(71, 2, "storeDigestCalcCap: have: " << e_count << ", want " << cap <<
+           " entries; limits: [" << lo_cap << ", " << hi_cap << "]");
 
     if (cap < lo_cap)
         cap = lo_cap;
@@ -545,16 +534,16 @@ storeDigestResize(void)
     int diff;
     assert(store_digest);
     diff = abs(cap - store_digest->capacity);
-    debug(71, 2) ("storeDigestResize: %d -> %d; change: %d (%d%%)\n",
-                  store_digest->capacity, cap, diff,
-                  xpercentInt(diff, store_digest->capacity));
+    debugs(71, 2, "storeDigestResize: " << 
+           store_digest->capacity << " -> " << cap << "; change: " << 
+           diff << " (" << xpercentInt(diff, store_digest->capacity) << "%)" );
     /* avoid minor adjustments */
 
     if (diff <= store_digest->capacity / 10) {
-        debug(71, 2) ("storeDigestResize: small change, will not resize.\n");
+        debugs(71, 2, "storeDigestResize: small change, will not resize.");
         return 0;
     } else {
-        debug(71, 2) ("storeDigestResize: big change, resizing.\n");
+        debugs(71, 2, "storeDigestResize: big change, resizing.");
         cacheDigestChangeCap(store_digest, cap);
         return 1;
     }

@@ -17,7 +17,7 @@
 CPPUNIT_TEST_SUITE_REGISTRATION( testUfs );
 
 typedef RefCount<UFSSwapDir> SwapDirPointer;
-extern REMOVALPOLICYCREATE createRemovalPolicy_lru;
+extern REMOVALPOLICYCREATE createRemovalPolicy_lru;	/* XXX fails with --enable-removal-policies=heap */
 
 static void
 addSwapDir(SwapDirPointer aStore)
@@ -119,12 +119,12 @@ testUfs::testUfsSearch()
     Store::Root().init();
 
     /* our swapdir must be scheduled to rebuild */
-    CPPUNIT_ASSERT_EQUAL(1, StoreController::store_dirs_rebuilding);
+    CPPUNIT_ASSERT_EQUAL(2, StoreController::store_dirs_rebuilding);
 
     /* rebuild is a scheduled event */
     StockEventLoop loop;
 
-    while (StoreController::store_dirs_rebuilding)
+    while (StoreController::store_dirs_rebuilding > 1)
         loop.runOnce();
 
     /* cannot use loop.run(); as the loop will never idle: the store-dir
@@ -132,7 +132,7 @@ testUfs::testUfsSearch()
      */
 
     /* nothing left to rebuild */
-    CPPUNIT_ASSERT_EQUAL(0, StoreController::store_dirs_rebuilding);
+    CPPUNIT_ASSERT_EQUAL(1, StoreController::store_dirs_rebuilding);
 
     /* add an entry */
     {
@@ -144,9 +144,9 @@ testUfs::testUfsSearch()
         HttpReply *rep = (HttpReply *) pe->getReply();	// bypass const
         rep->setHeaders(version, HTTP_OK, "dummy test object", "x-squid-internal/test", -1, -1, squid_curtime + 100000);
 
-        storeSetPublicKey(pe);
+        pe->setPublicKey();
 
-        storeBuffer(pe);
+        pe->buffer();
         /* TODO: remove this when the metadata is separated */
         {
             Packer p;
@@ -155,10 +155,10 @@ testUfs::testUfsSearch()
             packerClean(&p);
         }
 
-        storeBufferFlush(pe);
-        storeTimestampsSet(pe);
+        pe->flush();
+        pe->timestampsSet();
         pe->complete();
-        storeSwapOut(pe);
+        pe->swapOut();
         CPPUNIT_ASSERT(pe->swap_dirn == 0);
         CPPUNIT_ASSERT(pe->swap_filen == 0);
         pe->unlock();

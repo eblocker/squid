@@ -11,6 +11,9 @@ squid3 (3.0.PRE6-1) UNRELEASED; urgency=low
     - Enable cache digests (Closes: #416631)
     - Enable ICAP client
 
+  * debian/control
+    - Added real package dependency for httpd in squid3-cgi
+
   * debian/patches/02-makefile-defaults
     - Fix default configuration file for cachemgr.cgi (Closes: #416630)
 

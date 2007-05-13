@@ -1,6 +1,6 @@
 
 /*
- * $Id: HttpRequest.h,v 1.24 2006/09/26 13:30:09 adrian Exp $
+ * $Id: HttpRequest.h,v 1.27 2007/05/09 07:36:24 wessels Exp $
  *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
@@ -37,7 +37,6 @@
 #include "HttpMsg.h"
 #include "client_side.h"
 #include "HierarchyLogEntry.h"
-#include "BodyReader.h"
 #include "HttpRequestMethod.h"
 
 /*  Http Request */
@@ -81,7 +80,7 @@ public:
 
     char host[SQUIDHOSTNAMELEN + 1];
 
-    auth_user_request_t *auth_user_request;
+    AuthUserRequest *auth_user_request;
 
     u_short port;
 
@@ -108,8 +107,6 @@ public:
     unsigned short my_port;
 
     unsigned short client_port;
-
-    BodyReader::Pointer body_reader;
 
     HierarchyLogEntry hier;
 
@@ -139,6 +136,8 @@ public:
     int parseHeader(const char *parse_start, int len);
 
     virtual bool expectingBody(method_t unused, ssize_t&) const;
+
+    bool bodyNibbled() const; // the request has a [partially] consumed body
 
     int prefixLen();
 

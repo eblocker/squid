@@ -1,6 +1,6 @@
 
 /*
- * $Id: structs.h,v 1.550 2006/11/01 19:22:10 serassio Exp $
+ * $Id: structs.h,v 1.555 2007/04/16 17:43:27 rousskov Exp $
  *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
@@ -150,6 +150,10 @@ unsigned int vhost:
 
     int vport;                 /* virtual port support, -1 for dynamic, >0 static*/
     int disable_pmtu_discovery;
+#if LINUX_TPROXY
+unsigned int tproxy:
+    1; /* spoof client ip using tproxy */
+#endif
 };
 
 
@@ -202,15 +206,6 @@ struct _SquidConfig
 
     Swap;
     size_t memMaxSize;
-
-    struct
-    {
-        char *relayHost;
-        u_short relayPort;
-        peer *_peer;
-    }
-
-    Wais;
 
     struct
     {
@@ -553,6 +548,7 @@ struct _SquidConfig
         int balance_on_multiple_ip;
         int relaxed_header_parser;
         int check_hostnames;
+        int allow_underscore;
         int via;
         int emailErrData;
         int httpd_suppress_version_string;
@@ -1234,16 +1230,19 @@ struct _iostats
         int write_hist[16];
     }
 
-    Http, Ftp, Gopher, Wais;
+    Http, Ftp, Gopher;
 };
 
 
 struct request_flags
 {
-    request_flags():range(0),nocache(0),ims(0),auth(0),cachable(0),hierarchical(0),loopdetect(0),proxy_keepalive(0),proxying(0),refresh(0),redirected(0),need_validation(0),accelerated(0),transparent(0),internal(0),internalclient(0),body_sent(0),must_keepalive(0),destinationIPLookedUp_(0)
+    request_flags():range(0),nocache(0),ims(0),auth(0),cachable(0),hierarchical(0),loopdetect(0),proxy_keepalive(0),proxying(0),refresh(0),redirected(0),need_validation(0),accelerated(0),transparent(0),internal(0),internalclient(0),must_keepalive(0),destinationIPLookedUp_(0)
     {
 #if HTTP_VIOLATIONS
         nocache_hack = 0;
+#endif
+#if LINUX_TPROXY
+	tproxy = 0;
 #endif
 
     }
@@ -1295,22 +1294,30 @@ unsigned int accelerated:
 unsigned int transparent:
     1;
 
+#if LINUX_TPROXY
+unsigned int tproxy:
+    1; /* spoof client ip using tproxy */
+#endif
 unsigned int internal:
     1;
 
 unsigned int internalclient:
     1;
 
-unsigned int body_sent:
-    1;
-
 unsigned int must_keepalive:
     1;
+
+    // When adding new flags, please update cloneAdaptationImmune() as needed.
+
     bool resetTCP() const;
     void setResetTCP();
     void clearResetTCP();
     void destinationIPLookupCompleted();
     bool destinationIPLookedUp() const;
+
+    // returns a partial copy of the flags that includes only those flags
+    // that are safe for a related (e.g., ICAP-adapted) request to inherit
+    request_flags cloneAdaptationImmune() const;
 
 private:
 

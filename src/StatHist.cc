@@ -1,6 +1,6 @@
 
 /*
- * $Id: StatHist.cc,v 1.32 2005/09/03 12:33:32 serassio Exp $
+ * $Id: StatHist.cc,v 1.34 2007/04/28 22:26:37 hno Exp $
  *
  * DEBUG: section 62    Generic Histogram
  * AUTHOR: Duane Wessels
@@ -107,25 +107,24 @@ statHistCopy(StatHist * Dest, const StatHist * Orig)
 {
     assert(Dest);
     assert(Orig);
-    debug(62, 3) ("statHistCopy: Dest=%p, Orig=%p\n", Dest, Orig);
+    debugs(62, 3, "statHistCopy: Dest=" << Dest << ", Orig=" << Orig);
     assert(Dest->bins);
     /* better be safe than sorry */
-    debug(62, 3) ("statHistCopy: capacity %d %d\n",
-                  Dest->capacity, Orig->capacity);
+    debugs(62, 3, "statHistCopy: capacity " << Dest->capacity << " " << Orig->capacity);
     assert(Dest->capacity == Orig->capacity);
-    debug(62, 3) ("statHistCopy: min %f %f\n", Dest->min, Orig->min);
+    debugs(62, 3, "statHistCopy: min " << Dest->min << " " << Orig->min  );
     assert(Dest->min == Orig->min);
-    debug(62, 3) ("statHistCopy: max %f %f\n", Dest->max, Orig->max);
+    debugs(62, 3, "statHistCopy: max " << Dest->max << " " << Orig->max  );
     assert(Dest->max == Orig->max);
-    debug(62, 3) ("statHistCopy: scale %f %f\n", Dest->scale, Orig->scale);
+    debugs(62, 3, "statHistCopy: scale " << Dest->scale << " " << Orig->scale  );
     assert(fabs(Dest->scale - Orig->scale) < 0.0000001);
     assert(Dest->val_in == Orig->val_in);
     assert(Dest->val_out == Orig->val_out);
     /* actual copy */
-    debug(62, 3) ("statHistCopy: copying %ld bytes to %p from %p\n",
-                  (long int) (Dest->capacity * sizeof(*Dest->bins)),
-                  Dest->bins,
-                  Orig->bins);
+    debugs(62, 3, "statHistCopy: copying " <<
+           (long int) (Dest->capacity * sizeof(*Dest->bins)) << " bytes to " <<
+           Dest->bins << " from " << Orig->bins);
+
     xmemcpy(Dest->bins, Orig->bins, Dest->capacity * sizeof(*Dest->bins));
 }
 
@@ -188,6 +187,12 @@ statHistVal(const StatHist * H, int bin)
 double
 statHistDeltaMedian(const StatHist * A, const StatHist * B)
 {
+    return statHistDeltaPctile(A, B, 0.5);
+}
+
+double
+statHistDeltaPctile(const StatHist * A, const StatHist * B, double pctile)
+{
     int i;
     int s1 = 0;
     int h = 0;
@@ -208,7 +213,7 @@ statHistDeltaMedian(const StatHist * A, const StatHist * B)
     for (i = 0; i < A->capacity; i++)
         s1 += D[i];
 
-    h = s1 >> 1;
+    h = int(s1 * pctile);
 
     for (i = 0; i < A->capacity; i++) {
         J = i;

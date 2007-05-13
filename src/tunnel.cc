@@ -1,6 +1,6 @@
 
 /*
- * $Id: tunnel.cc,v 1.165 2006/09/19 07:56:57 adrian Exp $
+ * $Id: tunnel.cc,v 1.168 2007/04/30 16:56:09 wessels Exp $
  *
  * DEBUG: section 26    Secure Sockets Layer Proxy
  * AUTHOR: Duane Wessels
@@ -130,7 +130,7 @@ static void
 sslServerClosed(int fd, void *data)
 {
     SslStateData *sslState = (SslStateData *)data;
-    debug(26, 3) ("sslServerClosed: FD %d\n", fd);
+    debugs(26, 3, "sslServerClosed: FD " << fd);
     assert(fd == sslState->server.fd());
     sslState->server.fd(-1);
 
@@ -142,7 +142,7 @@ static void
 sslClientClosed(int fd, void *data)
 {
     SslStateData *sslState = (SslStateData *)data;
-    debug(26, 3) ("sslClientClosed: FD %d\n", fd);
+    debugs(26, 3, "sslClientClosed: FD " << fd);
     assert(fd == sslState->client.fd());
     sslState->client.fd(-1);
 
@@ -153,7 +153,7 @@ sslClientClosed(int fd, void *data)
 static void
 sslStateFree(SslStateData * sslState)
 {
-    debug(26, 3) ("sslStateFree: sslState=%p\n", sslState);
+    debugs(26, 3, "sslStateFree: sslState=" << sslState);
     assert(sslState != NULL);
     assert(sslState->noConnections());
     safe_free(sslState->url);
@@ -227,7 +227,7 @@ SslStateData::readServer(char *buf, size_t len, comm_err_t errcode, int xerrno)
     if (errcode == COMM_ERR_CLOSING)
         return;
 
-    debug(26, 3) ("sslReadServer: FD %d, read   %d bytes\n", server.fd(), (int)len);
+    debugs(26, 3, "sslReadServer: FD " << server.fd() << ", read   " << len << " bytes");
 
     if (len > 0) {
         server.bytesIn(len);
@@ -247,8 +247,8 @@ SslStateData::Connection::error(int const xerrno)
     if (xerrno == COMM_ERR_CLOSING)
         return;
 
-    debug(50, debugLevelForError(xerrno))
-    ("sslReadServer: FD %d: read failure: %s\n", fd(), xstrerror());
+    debugs(50, debugLevelForError(xerrno), "sslReadServer: FD " << fd() << 
+           ": read failure: " << xstrerror());
 
     if (!ignoreErrno(xerrno))
         comm_close(fd());
@@ -276,7 +276,7 @@ SslStateData::readClient(char *buf, size_t len, comm_err_t errcode, int xerrno)
     if (errcode == COMM_ERR_CLOSING)
         return;
 
-    debug(26, 3) ("sslReadClient: FD %d, read %d bytes\n", client.fd(), (int) len);
+    debugs(26, 3, "sslReadClient: FD " << client.fd() << ", read " << len << " bytes");
 
     if (len > 0) {
         client.bytesIn(len);
@@ -323,20 +323,24 @@ SslStateData::WriteServerDone(int fd, char *buf, size_t len, comm_err_t flag, in
 void
 SslStateData::writeServerDone(char *buf, size_t len, comm_err_t flag, int xerrno)
 {
-    debug(26, 3) ("sslWriteServer: FD %d, %d bytes written\n", server.fd(), (int)len);
-    /* Valid data */
+    debugs(26, 3, "sslWriteServer: FD " << server.fd() << ", " << len << " bytes written");
 
-    if (len > 0) {
-        kb_incr(&statCounter.server.all.kbytes_out, len);
-        kb_incr(&statCounter.server.other.kbytes_out, len);
-        client.dataSent(len);
+    /* Error? */
+    if (len < 0 || flag != COMM_OK) {
+        server.error(xerrno); // may call comm_close
+        return;
     }
 
-    /* EOF */
+    /* EOF? */
     if (len == 0) {
         comm_close(server.fd());
         return;
     }
+
+    /* Valid data */
+    kb_incr(&statCounter.server.all.kbytes_out, len);
+    kb_incr(&statCounter.server.other.kbytes_out, len);
+    client.dataSent(len);
 
     /* If the other end has closed, so should we */
     if (client.fd() == -1) {
@@ -345,11 +349,8 @@ SslStateData::writeServerDone(char *buf, size_t len, comm_err_t flag, int xerrno
     }
 
     cbdataInternalLock(this);	/* ??? should be locked by the caller... */
-    /* Error? */
 
-    if (len < 0)
-        server.error(xerrno);
-    else if (cbdataReferenceValid(this))
+    if (cbdataReferenceValid(this))
         copyRead(client, ReadClient);
 
     cbdataInternalUnlock(this);	/* ??? */
@@ -380,18 +381,23 @@ SslStateData::Connection::dataSent (size_t amount)
 void
 SslStateData::writeClientDone(char *buf, size_t len, comm_err_t flag, int xerrno)
 {
-    debug(26, 3) ("sslWriteClient: FD %d, %d bytes written\n", client.fd(), (int)len);
+    debugs(26, 3, "sslWriteClient: FD " << client.fd() << ", " << len << " bytes written");
 
-    if (len > 0) {
-        kb_incr(&statCounter.client_http.kbytes_out, len);
-        server.dataSent(len);
+    /* Error? */
+    if (len < 0 || flag != COMM_OK) {
+        client.error(xerrno); // may call comm_close
+        return;
     }
 
-    /* EOF */
+    /* EOF? */
     if (len == 0) {
         comm_close(client.fd());
         return;
     }
+
+    /* Valid data */
+    kb_incr(&statCounter.client_http.kbytes_out, len);
+    server.dataSent(len);
 
     /* If the other end has closed, so should we */
     if (server.fd() == -1) {
@@ -400,11 +406,8 @@ SslStateData::writeClientDone(char *buf, size_t len, comm_err_t flag, int xerrno
     }
 
     cbdataInternalLock(this);	/* ??? should be locked by the caller... */
-    /* Error? */
 
-    if (len < 0)
-        client.error(xerrno);
-    else if (cbdataReferenceValid(this))
+    if (cbdataReferenceValid(this))
         copyRead(server, ReadServer);
 
     cbdataInternalUnlock(this);	/* ??? */
@@ -414,7 +417,7 @@ static void
 sslTimeout(int fd, void *data)
 {
     SslStateData *sslState = (SslStateData *)data;
-    debug(26, 3) ("sslTimeout: FD %d\n", fd);
+    debugs(26, 3, "sslTimeout: FD " << fd);
     /* Temporary lock to protect our own feets (comm_close -> sslClientClosed -> Free) */
     cbdataInternalLock(sslState);
 
@@ -500,7 +503,7 @@ static void
 sslConnected(int fd, void *data)
 {
     SslStateData *sslState = (SslStateData *)data;
-    debug(26, 3) ("sslConnected: FD %d sslState=%p\n", fd, sslState);
+    debugs(26, 3, "sslConnected: FD " << fd << " sslState=" << sslState);
     *sslState->status_ptr = HTTP_OK;
     comm_write(sslState->client.fd(), conn_established, strlen(conn_established),
                sslConnectedWriteDone, sslState, NULL);
@@ -542,7 +545,7 @@ sslConnectDone(int fdnotused, comm_err_t status, int xerrno, void *data)
                       sslState->host);
 
     if (status == COMM_ERR_DNS) {
-        debug(26, 4) ("sslConnect: Unknown host: %s\n", sslState->host);
+        debugs(26, 4, "sslConnect: Unknown host: " << sslState->host);
         err = errorCon(ERR_DNS_FAIL, HTTP_NOT_FOUND, request);
         *sslState->status_ptr = HTTP_NOT_FOUND;
         err->dnsserver_msg = xstrdup(dns_error_message);
@@ -609,8 +612,7 @@ sslStart(ClientHttpRequest * http, size_t * size_ptr, int *status_ptr)
         }
     }
 
-    debug(26, 3) ("sslStart: '%s %s'\n",
-                  RequestMethodStr[request->method], url);
+    debugs(26, 3, "sslStart: '" << RequestMethodStr[request->method] << " " << url << "'");
     statCounter.server.all.requests++;
     statCounter.server.other.requests++;
     /* Create socket. */
@@ -623,7 +625,7 @@ sslStart(ClientHttpRequest * http, size_t * size_ptr, int *status_ptr)
                        url);
 
     if (sock == COMM_ERROR) {
-        debug(26, 4) ("sslStart: Failed because we're out of sockets.\n");
+        debugs(26, 4, "sslStart: Failed because we're out of sockets.");
         err = errorCon(ERR_SOCKET_FAILURE, HTTP_INTERNAL_SERVER_ERROR, request);
         *status_ptr = HTTP_INTERNAL_SERVER_ERROR;
         err->xerrno = errno;
@@ -675,7 +677,7 @@ sslProxyConnected(int fd, void *data)
     HttpHeader hdr_out(hoRequest);
     Packer p;
     http_state_flags flags;
-    debug(26, 3) ("sslProxyConnected: FD %d sslState=%p\n", fd, sslState);
+    debugs(26, 3, "sslProxyConnected: FD " << fd << " sslState=" << sslState);
     memset(&flags, '\0', sizeof(flags));
     flags.proxying = sslState->request->flags.proxying;
     MemBuf mb;

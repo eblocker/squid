@@ -175,7 +175,7 @@ testCoss::testCossSearch()
     StockEventLoop loop;
 
     /* our swapdir must be scheduled to rebuild */
-    CPPUNIT_ASSERT_EQUAL(1, StoreController::store_dirs_rebuilding);
+    CPPUNIT_ASSERT_EQUAL(2, StoreController::store_dirs_rebuilding);
 
     loop.run();
 
@@ -184,7 +184,7 @@ testCoss::testCossSearch()
      */
 
     /* nothing left to rebuild */
-    CPPUNIT_ASSERT_EQUAL(0, StoreController::store_dirs_rebuilding);
+    CPPUNIT_ASSERT_EQUAL(1, StoreController::store_dirs_rebuilding);
 
     /* add an entry */
     {
@@ -196,9 +196,9 @@ testCoss::testCossSearch()
         HttpReply *rep = (HttpReply *) pe->getReply();	// bypass const
         rep->setHeaders(version, HTTP_OK, "dummy test object", "x-squid-internal/test", -1, -1, squid_curtime + 100000);
 
-        storeSetPublicKey(pe);
+        pe->setPublicKey();
 
-        storeBuffer(pe);
+        pe->buffer();
         /* TODO: remove this when the metadata is separated */
         {
             Packer p;
@@ -207,10 +207,10 @@ testCoss::testCossSearch()
             packerClean(&p);
         }
 
-        storeBufferFlush(pe);
-        storeTimestampsSet(pe);
+        pe->flush();
+        pe->timestampsSet();
         pe->complete();
-        storeSwapOut(pe);
+        pe->swapOut();
         CPPUNIT_ASSERT(pe->swap_dirn == 0);
         CPPUNIT_ASSERT(pe->swap_filen == 0);
         pe->unlock();

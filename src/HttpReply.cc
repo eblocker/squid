@@ -1,6 +1,6 @@
 
 /*
- * $Id: HttpReply.cc,v 1.90 2006/10/31 23:30:56 wessels Exp $
+ * $Id: HttpReply.cc,v 1.92 2007/04/20 07:29:47 wessels Exp $
  *
  * DEBUG: section 58    HTTP Reply (Response)
  * AUTHOR: Alex Rousskov
@@ -114,28 +114,15 @@ void HttpReply::reset()
 void
 HttpReply::clean()
 {
+    // we used to assert that the pipe is NULL, but now the message only 
+    // points to a pipe that is owned and initiated by another object.
+    body_pipe = NULL;
+
     httpBodyClean(&body);
     hdrCacheClean();
     header.clean();
     httpStatusLineClean(&sline);
 }
-
-#if OLD
-/* absorb: copy the contents of a new reply to the old one, destroy new one */
-void
-HttpReply::absorb(HttpReply * new_rep)
-{
-    assert(new_rep);
-    clean();
-    *this = *new_rep;
-    new_rep->header.entries.clean();
-    /* cannot use Clean() on new reply now! */
-    new_rep->do_clean = false;
-    new_rep->cache_control = NULL;	// helps with debugging
-    delete new_rep;
-}
-
-#endif
 
 void
 HttpReply::packHeadersInto(Packer * p) const

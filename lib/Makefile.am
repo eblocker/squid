@@ -1,10 +1,10 @@
 ## Process this file with automake to produce Makefile.in
 #
-#  $Id: Makefile.am,v 1.23 2006/09/02 13:48:53 serassio Exp $
+#  $Id: Makefile.am,v 1.25 2007/04/24 06:30:37 wessels Exp $
 #
 
-DIST_SUBDIRS = libTrie cppunit-1.10.0
-SUBDIRS= libTrie @SQUID_CPPUNIT_DIR@
+DIST_SUBDIRS = libTrie
+SUBDIRS= libTrie
 
 install: all
 install-strip: all
@@ -80,6 +80,7 @@ libmiscutil_a_SOURCES = \
 	util.c \
 	uudecode.c \
 	assert.c \
+	xusleep.c \
 	$(XPROF_STATS_SOURCE) \
 	$(WIN32SRC)
 libmiscutil_a_LIBADD = \

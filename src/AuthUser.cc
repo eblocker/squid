@@ -1,6 +1,6 @@
 
 /*
- * $Id: AuthUser.cc,v 1.2 2006/08/07 02:28:22 robertc Exp $
+ * $Id: AuthUser.cc,v 1.7 2007/05/09 08:26:57 wessels Exp $
  *
  * DEBUG: section 29    Authenticator
  * AUTHOR:  Robert Collins
@@ -41,10 +41,14 @@
 #include "authenticate.h"
 #include "ACL.h"
 #include "event.h"
+#include "SquidTime.h"
 
 #ifndef _USE_INLINE_
 #include "AuthUser.cci"
 #endif
+
+// This should be converted into a pooled type. Does not need to be cbdata
+CBDATA_TYPE(auth_user_ip_t);
 
 AuthUser::AuthUser (AuthConfig *aConfig) :
         auth_type (AUTH_UNKNOWN), config(aConfig),
@@ -54,7 +58,7 @@ AuthUser::AuthUser (AuthConfig *aConfig) :
     proxy_match_cache.head = proxy_match_cache.tail = NULL;
     ip_list.head = ip_list.tail = NULL;
     requests.head = requests.tail = NULL;
-    debug(29, 5) ("AuthUser::AuthUser: Initialised auth_user '%p' with refcount '%ld'.\n", this, (long int) references);
+    debugs(29, 5, "AuthUser::AuthUser: Initialised auth_user '" << this << "' with refcount '" << references << "'.");
 }
 
 /* Combine two user structs. ONLY to be called from within a scheme
@@ -66,17 +70,17 @@ AuthUser::AuthUser (AuthConfig *aConfig) :
 void
 AuthUser::absorb (AuthUser *from)
 {
-    auth_user_request_t *auth_user_request;
+    AuthUserRequest *auth_user_request;
     /*
      * XXX combine two authuser structs. Incomplete: it should merge
      * in hash references too and ask the module to merge in scheme
      * data
      */
-    debug(29, 5) ("authenticateAuthUserMerge auth_user '%p' into auth_user '%p'.\n", from, this);
+    debugs(29, 5, "authenticateAuthUserMerge auth_user '" << from << "' into auth_user '" << this << "'.");
     dlink_node *link = from->requests.head;
 
     while (link) {
-        auth_user_request = static_cast<auth_user_request_t *>(link->data);
+        auth_user_request = static_cast<AuthUserRequest *>(link->data);
         dlink_node *tmplink = link;
         link = link->next;
         dlinkDelete(tmplink, &from->requests);
@@ -91,15 +95,15 @@ AuthUser::absorb (AuthUser *from)
 
 AuthUser::~AuthUser()
 {
-    auth_user_request_t *auth_user_request;
+    AuthUserRequest *auth_user_request;
     dlink_node *link, *tmplink;
-    debug(29, 5) ("AuthUser::~AuthUser: Freeing auth_user '%p' with refcount '%ld'.\n", this, (long int) references);
+    debugs(29, 5, "AuthUser::~AuthUser: Freeing auth_user '" << this << "' with refcount '" << references << "'.");
     assert(references == 0);
     /* were they linked in by username ? */
 
     if (usernamehash) {
         assert(usernamehash->user() == this);
-        debug(29, 5) ("AuthUser::~AuthUser: removing usernamehash entry '%p'\n", usernamehash);
+        debugs(29, 5, "AuthUser::~AuthUser: removing usernamehash entry '" << usernamehash << "'");
         hash_remove_link(proxy_auth_username_cache,
                          (hash_link *) usernamehash);
         /* don't free the key as we use the same user string as the auth_user
@@ -111,8 +115,8 @@ AuthUser::~AuthUser()
     link = requests.head;
 
     while (link) {
-        debug(29, 5) ("AuthUser::~AuthUser: removing request entry '%p'\n", link->data);
-        auth_user_request = static_cast<auth_user_request_t *>(link->data);
+        debugs(29, 5, "AuthUser::~AuthUser: removing request entry '" << link->data << "'");
+        auth_user_request = static_cast<AuthUserRequest *>(link->data);
         tmplink = link;
         link = link->next;
         dlinkDelete(tmplink, &requests);
@@ -126,8 +130,8 @@ AuthUser::~AuthUser()
     /* free seen ip address's */
     clearIp();
 
-    if (username())
-        xfree((char *)username());
+    if (username_)
+        xfree((char*)username_);
 
     /* prevent accidental reuse */
     auth_type = AUTH_UNKNOWN;
@@ -155,7 +159,7 @@ AuthUser::CachedACLsReset()
     AuthUserHashPointer *usernamehash;
     auth_user_t *auth_user;
     char const *username = NULL;
-    debug(29, 3) ("AuthUser::CachedACLsReset: Flushing the ACL caches for all users.\n");
+    debugs(29, 3, "AuthUser::CachedACLsReset: Flushing the ACL caches for all users.");
     hash_first(proxy_auth_username_cache);
 
     while ((usernamehash = ((AuthUserHashPointer *) hash_next(proxy_auth_username_cache)))) {
@@ -166,7 +170,7 @@ AuthUser::CachedACLsReset()
 
     }
 
-    debug(29, 3) ("AuthUser::CachedACLsReset: Finished.\n");
+    debugs(29, 3, "AuthUser::CachedACLsReset: Finished.");
 }
 
 void
@@ -180,8 +184,8 @@ AuthUser::cacheCleanup(void *datanotused)
     AuthUserHashPointer *usernamehash;
     auth_user_t *auth_user;
     char const *username = NULL;
-    debug(29, 3) ("AuthUser::cacheCleanup: Cleaning the user cache now\n");
-    debug(29, 3) ("AuthUser::cacheCleanup: Current time: %ld\n", (long int) current_time.tv_sec);
+    debugs(29, 3, "AuthUser::cacheCleanup: Cleaning the user cache now");
+    debugs(29, 3, "AuthUser::cacheCleanup: Current time: " << current_time.tv_sec);
     hash_first(proxy_auth_username_cache);
 
     while ((usernamehash = ((AuthUserHashPointer *) hash_next(proxy_auth_username_cache)))) {
@@ -190,10 +194,14 @@ AuthUser::cacheCleanup(void *datanotused)
 
         /* if we need to have inpedendent expiry clauses, insert a module call
          * here */
-        debug(29, 4) ("AuthUser::cacheCleanup: Cache entry:\n\tType: %d\n\tUsername: %s\n\texpires: %ld\n\treferences: %ld\n", auth_user->auth_type, username, (long int) (auth_user->expiretime + Config.authenticateTTL), (long int) auth_user->references);
+        debugs(29, 4, "AuthUser::cacheCleanup: Cache entry:\n\tType: " <<
+               auth_user->auth_type << "\n\tUsername: " << username <<
+               "\n\texpires: " <<
+               (long int) (auth_user->expiretime + Config.authenticateTTL) <<
+               "\n\treferences: " << (long int) auth_user->references);
 
         if (auth_user->expiretime + Config.authenticateTTL <= current_time.tv_sec) {
-            debug(29, 5) ("AuthUser::cacheCleanup: Removing user %s from cache due to timeout.\n", username);
+            debugs(29, 5, "AuthUser::cacheCleanup: Removing user " << username << " from cache due to timeout.");
             /* the minus 1 accounts for the cache lock */
 
             if (!(authenticateAuthUserInuse(auth_user) - 1))
@@ -205,7 +213,7 @@ AuthUser::cacheCleanup(void *datanotused)
         }
     }
 
-    debug(29, 3) ("AuthUser::cacheCleanup: Finished cleaning the user cache.\n");
+    debugs(29, 3, "AuthUser::cacheCleanup: Finished cleaning the user cache.");
     eventAdd("User Cache Maintenance", cacheCleanup, NULL, Config.authenticateGCInterval, 1);
 }
 
@@ -232,28 +240,109 @@ AuthUser::clearIp()
 }
 
 void
+AuthUser::removeIp(struct IN_ADDR ipaddr)
+{
+    auth_user_ip_t *ipdata = (auth_user_ip_t *) ip_list.head;
 
+    while (ipdata)
+    {
+        /* walk the ip list */
+
+        if (ipdata->ipaddr.s_addr == ipaddr.s_addr) {
+            /* remove the node */
+            dlinkDelete(&ipdata->node, &ip_list);
+            cbdataFree(ipdata);
+            /* catch incipient underflow */
+            assert(ipcount);
+            ipcount--;
+            return;
+        }
+
+        ipdata = (auth_user_ip_t *) ipdata->node.next;
+    }
+
+}
+
+void
+AuthUser::addIp(struct IN_ADDR ipaddr)
+{
+    auth_user_ip_t *ipdata = (auth_user_ip_t *) ip_list.head;
+    char *ip1;
+    int found = 0;
+
+    CBDATA_INIT_TYPE(auth_user_ip_t);
+
+    /*
+     * we walk the entire list to prevent the first item in the list
+     * preventing old entries being flushed and locking a user out after
+     * a timeout+reconfigure
+     */
+    while (ipdata)
+    {
+        auth_user_ip_t *tempnode = (auth_user_ip_t *) ipdata->node.next;
+        /* walk the ip list */
+
+        if (ipdata->ipaddr.s_addr == ipaddr.s_addr) {
+            /* This ip has alreadu been seen. */
+            found = 1;
+            /* update IP ttl */
+            ipdata->ip_expiretime = squid_curtime;
+        } else if (ipdata->ip_expiretime + Config.authenticateIpTTL < squid_curtime) {
+            /* This IP has expired - remove from the seen list */
+            dlinkDelete(&ipdata->node, &ip_list);
+            cbdataFree(ipdata);
+            /* catch incipient underflow */
+            assert(ipcount);
+            ipcount--;
+        }
+
+        ipdata = tempnode;
+    }
+
+    if (found)
+        return;
+
+    /* This ip is not in the seen list */
+    ipdata = cbdataAlloc(auth_user_ip_t);
+
+    ipdata->ip_expiretime = squid_curtime;
+
+    ipdata->ipaddr = ipaddr;
+
+    dlinkAddTail(ipdata, &ipdata->node, &ip_list);
+
+    ipcount++;
+
+    ip1 = xstrdup(inet_ntoa(ipaddr));
+
+    debugs(29, 2, "authenticateAuthUserAddIp: user '" << username() << "' has been seen at a new IP address (" << ip1 << ")");
+
+    safe_free(ip1);
+}
+
+
+void
 AuthUser::lock()
 {
-    debug(29, 9) ("authenticateAuthUserLock auth_user '%p'.\n", this);
+    debugs(29, 9, "authenticateAuthUserLock auth_user '" << this << "'.");
     assert(this != NULL);
     references++;
-    debug(29, 9) ("authenticateAuthUserLock auth_user '%p' now at '%ld'.\n", this, (long int) references);
+    debugs(29, 9, "authenticateAuthUserLock auth_user '" << this << "' now at '" << references << "'.");
 }
 
 void
 AuthUser::unlock()
 {
-    debug(29, 9) ("authenticateAuthUserUnlock auth_user '%p'.\n", this);
+    debugs(29, 9, "authenticateAuthUserUnlock auth_user '" << this << "'.");
     assert(this != NULL);
 
     if (references > 0) {
         references--;
     } else {
-        debug(29, 1) ("Attempt to lower Auth User %p refcount below 0!\n", this);
+        debugs(29, 1, "Attempt to lower Auth User " << this << " refcount below 0!");
     }
 
-    debug(29, 9) ("authenticateAuthUserUnlock auth_user '%p' now at '%ld'.\n", this, (long int) references);
+    debugs(29, 9, "authenticateAuthUserUnlock auth_user '" << this << "' now at '" << references << "'.");
 
     if (references == 0)
         delete this;

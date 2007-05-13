@@ -1,5 +1,5 @@
 /*
- * $Id: ICAPOptXact.h,v 1.4 2006/10/31 23:30:58 wessels Exp $
+ * $Id: ICAPOptXact.h,v 1.6 2007/05/08 16:32:11 rousskov Exp $
  *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
@@ -34,45 +34,49 @@
 #define SQUID_ICAPOPTXACT_H
 
 #include "ICAPXaction.h"
+#include "ICAPLauncher.h"
 
 class ICAPOptions;
 
+
 /* ICAPOptXact sends an ICAP OPTIONS request to the ICAP service,
- * converts the response into ICAPOptions object, and notifies
- * the caller via the callback. NULL options objects means the
- * ICAP service could not be contacted or did not return any response */
+ * parses the ICAP response, and sends it to the initiator. A NULL response
+ * means the ICAP service could not be contacted or did not return any
+ * valid response. */
 
 class ICAPOptXact: public ICAPXaction
 {
 
 public:
-    typedef void Callback(ICAPOptXact*, void *data);
-
-    ICAPOptXact();
-    virtual ~ICAPOptXact();
-
-    void start(ICAPServiceRep::Pointer &aService, Callback *aCb, void *aCbData);
-
-    ICAPOptions *options; // result for the caller to take/handle
+    ICAPOptXact(ICAPInitiator *anInitiator, ICAPServiceRep::Pointer &aService);
 
 protected:
+    virtual void start();
     virtual void handleCommConnected();
     virtual void handleCommWrote(size_t size);
     virtual void handleCommRead(size_t size);
-    virtual bool doneAll() const;
 
     void makeRequest(MemBuf &buf);
-    bool parseResponse();
+    HttpMsg *parseResponse();
 
     void startReading();
 
-    virtual void doStop();
+private:
+    CBDATA_CLASS2(ICAPOptXact);
+};
+
+// An ICAPLauncher that stores ICAPOptXact construction info and 
+// creates ICAPOptXact when needed
+class ICAPOptXactLauncher: public ICAPLauncher
+{
+public:
+    ICAPOptXactLauncher(ICAPInitiator *anInitiator, ICAPServiceRep::Pointer &aService);
+
+protected:
+    virtual ICAPXaction *createXaction();
 
 private:
-    Callback *cb;
-    void *cbData;
-
-    CBDATA_CLASS2(ICAPOptXact);
+    CBDATA_CLASS2(ICAPOptXactLauncher);
 };
 
 #endif /* SQUID_ICAPOPTXACT_H */

@@ -1,6 +1,6 @@
 
 /*
- * $Id: HttpMsg.cc,v 1.39 2006/10/02 12:08:20 adrian Exp $
+ * $Id: HttpMsg.cc,v 1.42 2007/04/28 22:26:37 hno Exp $
  *
  * DEBUG: section 74    HTTP Message
  * AUTHOR: Alex Rousskov
@@ -45,6 +45,7 @@ HttpMsg::HttpMsg(http_hdr_owner_type owner): header(owner),
 HttpMsg::~HttpMsg()
 {
     assert(lock_count == 0);
+    assert(!body_pipe);
 }
 
 HttpMsgParseState &operator++ (HttpMsgParseState &aState)
@@ -399,7 +400,7 @@ HttpParserInit(HttpParser *hdr, const char *buf, int bufsiz)
 	hdr->bufsiz = bufsiz;
 	hdr->req_start = hdr->req_end = -1;
 	hdr->hdr_start = hdr->hdr_end = -1;
-	debug(74, 5)("httpParseInit: Request buffer is %s\n", buf);
+        debugs(74, 5, "httpParseInit: Request buffer is " << buf);
 }
 
 #if MSGDODEBUG
@@ -465,7 +466,7 @@ HttpParserParseReqLine(HttpParser *hmsg)
 	int maj = -1, min = -1;
 	int last_whitespace = -1, line_end = -1;
 
-	debug(74, 5)("httpParserParseReqLine: parsing %s\n", hmsg->buf);
+        debugs(74, 5, "httpParserParseReqLine: parsing " << hmsg->buf);
 
 	PROF_start(HttpParserParseReqLine);
 	/* Find \r\n - end of URL+Version (and the request) */
@@ -489,7 +490,7 @@ HttpParserParseReqLine(HttpParser *hmsg)
 	i = 0;
 
 	/* Find first non-whitespace - beginning of method */
-	for (; i < hmsg->req_end && (isspace(hmsg->buf[i])); i++);
+	for (; i < hmsg->req_end && (xisspace(hmsg->buf[i])); i++);
 	if (i >= hmsg->req_end) {
 		retcode = 0;
 		goto finish;
@@ -498,7 +499,7 @@ HttpParserParseReqLine(HttpParser *hmsg)
 	hmsg->req_start = i;
 
 	/* Find first whitespace - end of method */
-	for (; i < hmsg->req_end && (! isspace(hmsg->buf[i])); i++);
+	for (; i < hmsg->req_end && (! xisspace(hmsg->buf[i])); i++);
 	if (i >= hmsg->req_end) {
 		retcode = 0;
 		goto finish;
@@ -506,7 +507,7 @@ HttpParserParseReqLine(HttpParser *hmsg)
 	hmsg->m_end = i - 1;
 
 	/* Find first non-whitespace - beginning of URL+Version */
-	for (; i < hmsg->req_end && (isspace(hmsg->buf[i])); i++);
+	for (; i < hmsg->req_end && (xisspace(hmsg->buf[i])); i++);
 	if (i >= hmsg->req_end) {
 		retcode = 0;
 		goto finish;
@@ -549,7 +550,7 @@ HttpParserParseReqLine(HttpParser *hmsg)
 	} else {
 		/* Find the first non-whitespace after last_whitespace */
 		/* XXX why <= vs < ? I do need to really re-audit all of this ..*/
-		for (i = last_whitespace; i <= hmsg->req_end && isspace(hmsg->buf[i]); i++);
+		for (i = last_whitespace; i <= hmsg->req_end && xisspace(hmsg->buf[i]); i++);
 		if (i > hmsg->req_end) {
 			retcode = 0;
 			goto finish;
@@ -611,11 +612,12 @@ finish:
 	hmsg->v_maj = maj;
 	hmsg->v_min = min;
 	PROF_stop(HttpParserParseReqLine);
-	debug(74, 5) ("Parser: retval %d: from %d->%d: method %d->%d; url %d->%d; version %d->%d (%d/%d)\n",
-	    retcode, hmsg->req_start, hmsg->req_end,
-	    hmsg->m_start, hmsg->m_end,
-	    hmsg->u_start, hmsg->u_end,
-	    hmsg->v_start, hmsg->v_end, maj, min);
+        debugs(74, 5, "Parser: retval " << retcode << ": from " << hmsg->req_start <<
+               "->" << hmsg->req_end << ": method " << hmsg->m_start << "->" <<
+               hmsg->m_end << "; url " << hmsg->u_start << "->" << hmsg->u_end <<
+               "; version " << hmsg->v_start << "->" << hmsg->v_end << " (" << maj <<
+               "/" << min << ")");
+
 	return retcode;
 }
 

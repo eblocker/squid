@@ -1,6 +1,6 @@
 
 /*
- * $Id: icp_v2.cc,v 1.94 2006/08/19 12:31:21 robertc Exp $
+ * $Id: icp_v2.cc,v 1.99 2007/04/30 16:56:09 wessels Exp $
  *
  * DEBUG: section 12    Internet Cache Protocol
  * AUTHOR: Duane Wessels
@@ -90,8 +90,9 @@ _icp_common_t::getOpCode() const
 
 /* ICPState */
 
-ICPState:: ICPState(icp_common_t & aHeader):header(aHeader)
-        ,request(NULL),
+ICPState:: ICPState(icp_common_t & aHeader, HttpRequest *aRequest):
+	header(aHeader),
+	request(HTTPMSGLOCK(aRequest)),
         fd(-1),
         url(NULL)
 {}
@@ -99,9 +100,7 @@ ICPState:: ICPState(icp_common_t & aHeader):header(aHeader)
 ICPState::~ICPState()
 {
     safe_free(url);
-
-    if (request)
-        delete request;
+    HTTPMSGUNLOCK(request);
 }
 
 
@@ -113,7 +112,8 @@ class ICP2State:public ICPState, public StoreClient
 {
 
 public:
-    ICP2State(icp_common_t & aHeader):ICPState(aHeader),rtt(0),src_rtt(0),flags(0)
+    ICP2State(icp_common_t & aHeader, HttpRequest *aRequest):
+	ICPState(aHeader, aRequest),rtt(0),src_rtt(0),flags(0)
     {}
 
     ~ICP2State();
@@ -131,7 +131,7 @@ void
 ICP2State::created (StoreEntry *newEntry)
 {
     StoreEntry *entry = newEntry->isNull () ? NULL : newEntry;
-    debug(12, 5) ("icpHandleIcpV2: OPCODE %s\n", icp_opcode_str[header.opcode]);
+    debugs(12, 5, "icpHandleIcpV2: OPCODE " << icp_opcode_str[header.opcode]);
     icp_opcode codeToSend;
 
     if (icpCheckUdpHit(entry, request)) {
@@ -264,12 +264,10 @@ icpUdpSend(int fd,
     int x;
     int len;
     len = (int) ntohs(msg->length);
-    debug(12, 5) ("icpUdpSend: FD %d sending %s, %d bytes to %s:%d\n",
-                  fd,
-                  icp_opcode_str[msg->opcode],
-                  len,
-                  inet_ntoa(to->sin_addr),
-                  ntohs(to->sin_port));
+    debugs(12, 5, "icpUdpSend: FD " << fd << " sending " <<
+           icp_opcode_str[msg->opcode] << ", " << len << " bytes to " <<
+           inet_ntoa(to->sin_addr) << ":" << ntohs(to->sin_port));
+
     x = comm_udp_sendto(fd, to, sizeof(*to), msg, len);
 
     if (x >= 0)
@@ -316,7 +314,7 @@ icpCheckUdpHit(StoreEntry * e, HttpRequest * request)
     if (e == NULL)
         return 0;
 
-    if (!storeEntryValidToSend(e))
+    if (!e->validToSend())
         return 0;
 
     if (Config.onoff.icp_hit_stale)
@@ -380,8 +378,7 @@ void
 
 icpDenyAccess(struct sockaddr_in *from, char *url, int reqnum, int fd)
 {
-    debug(12, 2) ("icpDenyAccess: Access Denied for %s by %s.\n",
-                  inet_ntoa(from->sin_addr), AclMatchedName);
+    debugs(12, 2, "icpDenyAccess: Access Denied for " << inet_ntoa(from->sin_addr) << " by " << AclMatchedName << ".");
 
     if (clientdbCutoffDenied(from->sin_addr))
     {
@@ -473,7 +470,7 @@ doV2Query(int fd, struct sockaddr_in from, char *buf, icp_common_t header)
     }
 
     /* The peer is allowed to use this cache */
-    ICP2State *state = new ICP2State (header);
+    ICP2State *state = new ICP2State (header, icp_request);
 
     state->fd = fd;
 
@@ -498,17 +495,14 @@ _icp_common_t::handleReply(char *buf, struct sockaddr_in *from)
 {
     if (neighbors_do_private_keys && reqnum == 0)
     {
-        debug(12, 0) ("icpHandleIcpV2: Neighbor %s returned reqnum = 0\n",
-                      inet_ntoa(from->sin_addr));
-        debug(12, 0) ("icpHandleIcpV2: Disabling use of private keys\n");
+        debugs(12, 0, "icpHandleIcpV2: Neighbor " << inet_ntoa(from->sin_addr) << " returned reqnum = 0");
+        debugs(12, 0, "icpHandleIcpV2: Disabling use of private keys");
         neighbors_do_private_keys = 0;
     }
 
     char *url = buf + sizeof(icp_common_t);
-    debug(12, 3) ("icpHandleIcpV2: %s from %s for '%s'\n",
-                  icp_opcode_str[opcode],
-                  inet_ntoa(from->sin_addr),
-                  url);
+    debugs(12, 3, "icpHandleIcpV2: " << icp_opcode_str[opcode] << " from " << inet_ntoa(from->sin_addr) << " for '" << url << "'");
+
     const cache_key *key = icpGetCacheKey(url, (int) reqnum);
     /* call neighborsUdpAck even if ping_status != PING_WAITING */
     neighborsUdpAck(key, this, from);
@@ -520,7 +514,7 @@ icpHandleIcpV2(int fd, struct sockaddr_in from, char *buf, int len)
 {
     if (len <= 0)
     {
-        debug(12, 3) ("icpHandleIcpV2: ICP message is too small\n");
+        debugs(12, 3, "icpHandleIcpV2: ICP message is too small");
         return;
     }
 
@@ -531,7 +525,7 @@ icpHandleIcpV2(int fd, struct sockaddr_in from, char *buf, int len)
 
     if (len != header.length)
     {
-        debug(12, 3) ("icpHandleIcpV2: ICP message is too small\n");
+        debugs(12, 3, "icpHandleIcpV2: ICP message is too small");
         return;
     }
 
@@ -565,8 +559,8 @@ icpHandleIcpV2(int fd, struct sockaddr_in from, char *buf, int len)
         break;
 
     default:
-        debug(12, 0) ("icpHandleIcpV2: UNKNOWN OPCODE: %d from %s\n",
-                      header.opcode, inet_ntoa(from.sin_addr));
+        debugs(12, 0, "icpHandleIcpV2: UNKNOWN OPCODE: " << header.opcode << " from " << inet_ntoa(from.sin_addr));
+
         break;
     }
 }
@@ -578,16 +572,14 @@ icpPktDump(icp_common_t * pkt)
 
     struct IN_ADDR a;
 
-    debug(12, 9) ("opcode:     %3d %s\n",
-                  (int) pkt->opcode,
-                  icp_opcode_str[pkt->opcode]);
-    debug(12, 9) ("version: %-8d\n", (int) pkt->version);
-    debug(12, 9) ("length:  %-8d\n", (int) ntohs(pkt->length));
-    debug(12, 9) ("reqnum:  %-8d\n", ntohl(pkt->reqnum));
-    debug(12, 9) ("flags:   %-8x\n", ntohl(pkt->flags));
+    debugs(12, 9, "opcode:     " << std::setw(3) << pkt->opcode  << " " << icp_opcode_str[pkt->opcode]);
+    debugs(12, 9, "version: "<< std::left << std::setw(8) << pkt->version);
+    debugs(12, 9, "length:  "<< std::left << std::setw(8) << ntohs(pkt->length));
+    debugs(12, 9, "reqnum:  "<< std::left << std::setw(8) << ntohl(pkt->reqnum));
+    debugs(12, 9, "flags:   "<< std::left << std::hex << std::setw(8) << ntohl(pkt->flags));
     a.s_addr = pkt->shostid;
-    debug(12, 9) ("shostid: %s\n", inet_ntoa(a));
-    debug(12, 9) ("payload: %s\n", (char *) pkt + sizeof(icp_common_t));
+    debugs(12, 9, "shostid: " << inet_ntoa(a));
+    debugs(12, 9, "payload: " << (char *) pkt + sizeof(icp_common_t));
 }
 
 #endif
@@ -600,7 +592,7 @@ icpHandleUdp(int sock, void *data)
     struct sockaddr_in from;
     socklen_t from_len;
     LOCAL_ARRAY(char, buf, SQUID_UDP_SO_RCVBUF);
-    size_t len;
+    int len;
     int icp_version;
     int max = INCOMING_ICP_MAX;
     commSetSelect(sock, COMM_SELECT_READ, icpHandleUdp, NULL, 0);
@@ -631,8 +623,7 @@ icpHandleUdp(int sock, void *data)
             if (errno != ECONNREFUSED && errno != EHOSTUNREACH)
 #endif
 
-                debug(50, 1) ("icpHandleUdp: FD %d recvfrom: %s\n",
-                              sock, xstrerror());
+                debugs(50, 1, "icpHandleUdp: FD " << sock << " recvfrom: " << xstrerror());
 
             break;
         }
@@ -640,17 +631,17 @@ icpHandleUdp(int sock, void *data)
         (*N)++;
         icpCount(buf, RECV, (size_t) len, 0);
         buf[len] = '\0';
-        debug(12, 4) ("icpHandleUdp: FD %d: received %lu bytes from %s.\n",
-                      sock,
-                      (unsigned long int)len,
-                      inet_ntoa(from.sin_addr));
+        debugs(12, 4, "icpHandleUdp: FD " << sock << ": received " <<
+               (unsigned long int)len << " bytes from " <<
+               inet_ntoa(from.sin_addr) << ".");
+
 #ifdef ICP_PACKET_DUMP
 
         icpPktDump(buf);
 #endif
 
-        if (len < sizeof(icp_common_t)) {
-            debug(12, 4) ("icpHandleUdp: Ignoring too-small UDP packet\n");
+        if ((size_t) len < sizeof(icp_common_t)) {
+            debugs(12, 4, "icpHandleUdp: Ignoring too-small UDP packet");
             break;
         }
 
@@ -661,10 +652,8 @@ icpHandleUdp(int sock, void *data)
         else if (icp_version == ICP_VERSION_3)
             icpHandleIcpV3(sock, from, buf, len);
         else
-            debug(12, 1) ("WARNING: Unused ICP version %d received from %s:%d\n",
-                          icp_version,
-                          inet_ntoa(from.sin_addr),
-                          ntohs(from.sin_port));
+        debugs(12, 1, "WARNING: Unused ICP version " << icp_version <<
+               " received from " << inet_ntoa(from.sin_addr) << ":" << ntohs(from.sin_port));
     }
 }
 
@@ -706,9 +695,10 @@ icpConnectionsOpen(void)
     for (s = Config.mcast_group_list; s; s = s->next)
         ipcache_nbgethostbyname(s->key, mcastJoinGroups, NULL);
 
-    debug(12, 1) ("Accepting ICP messages at %s, port %d, FD %d.\n",
-                  inet_ntoa(Config.Addrs.udp_incoming),
-                  (int) port, theInIcpConnection);
+        debugs(12, 1, "Accepting ICP messages at " <<
+               inet_ntoa(Config.Addrs.udp_incoming) << ", port " << (int) port <<
+               ", FD " << theInIcpConnection << ".");
+
 
     if ((addr = Config.Addrs.udp_outgoing).s_addr != no_addr.s_addr) {
         enter_suid();
@@ -729,8 +719,7 @@ icpConnectionsOpen(void)
                       NULL,
                       0);
 
-        debug(12, 1) ("Outgoing ICP messages on port %d, FD %d.\n",
-                      (int) port, theOutIcpConnection);
+        debugs(12, 1, "Outgoing ICP messages on port " << port << ", FD " << theOutIcpConnection << ".");
 
         fd_note(theOutIcpConnection, "Outgoing ICP socket");
 
@@ -748,8 +737,7 @@ icpConnectionsOpen(void)
                     (struct sockaddr *) &xaddr, &len);
 
     if (x < 0)
-        debug(50, 1) ("theOutIcpConnection FD %d: getsockname: %s\n",
-                      theOutIcpConnection, xstrerror());
+        debugs(50, 1, "theOutIcpConnection FD " << theOutIcpConnection << ": getsockname: " << xstrerror());
     else
         theOutICPAddr = xaddr.sin_addr;
 }
@@ -765,7 +753,7 @@ icpConnectionShutdown(void)
         return;
 
     if (theInIcpConnection != theOutIcpConnection) {
-        debug(12, 1) ("FD %d Closing ICP connection\n", theInIcpConnection);
+        debugs(12, 1, "FD " << theInIcpConnection << " Closing ICP connection");
         comm_close(theInIcpConnection);
     }
 
@@ -794,7 +782,7 @@ icpConnectionClose(void)
     icpConnectionShutdown();
 
     if (theOutIcpConnection > -1) {
-        debug(12, 1) ("FD %d Closing ICP connection\n", theOutIcpConnection);
+        debugs(12, 1, "FD " << theOutIcpConnection << " Closing ICP connection");
         comm_close(theOutIcpConnection);
         theOutIcpConnection = -1;
     }

@@ -1,6 +1,6 @@
 
 /*
- * $Id: async_io.cc,v 1.2 2005/07/10 15:43:30 serassio Exp $
+ * $Id: async_io.cc,v 1.4 2007/04/28 22:26:47 hno Exp $
  *
  * DEBUG: section 32    Asynchronous Disk I/O
  * AUTHOR: Pete Bentley <pete@demon.net>
@@ -113,7 +113,7 @@ aioCancel(int fd)
             AIOCB *callback = ctrlp->done_handler;
             void *cbdata;
             ctrlp->done_handler = NULL;
-            debug(32, 1) ("this be aioCancel. Danger ahead!\n");
+            debugs(32, 1, "this be aioCancel. Danger ahead!");
 
             if (cbdataReferenceValidDone(ctrlp->done_handler_data, &cbdata))
                 callback(fd, cbdata, NULL, -2, -2);
@@ -210,24 +210,6 @@ aioStat(char *path, struct stat *sb, AIOCB * callback, void *callback_data)
     return;
 }				/* aioStat */
 
-#if USE_TRUNCATE
-void
-aioTruncate(const char *path, off_t length, AIOCB * callback, void *callback_data)
-{
-    squidaio_ctrl_t *ctrlp;
-    assert(DiskThreadsIOStrategy::Instance.initialised);
-    squidaio_counts.unlink_start++;
-    ctrlp = (squidaio_ctrl_t *)DiskThreadsIOStrategy::Instance.squidaio_ctrl_pool->alloc();
-    ctrlp->fd = -2;
-    ctrlp->done_handler = callback;
-    ctrlp->done_handler_data = cbdataReference(callback_data);
-    ctrlp->operation = _AIO_TRUNCATE;
-    ctrlp->result.data = ctrlp;
-    squidaio_truncate(path, length, &ctrlp->result);
-    dlinkAdd(ctrlp, &ctrlp->node, &used_list);
-}				/* aioTruncate */
-
-#else
 void
 aioUnlink(const char *path, AIOCB * callback, void *callback_data)
 {
@@ -243,8 +225,6 @@ aioUnlink(const char *path, AIOCB * callback, void *callback_data)
     squidaio_unlink(path, &ctrlp->result);
     dlinkAdd(ctrlp, &ctrlp->node, &used_list);
 }				/* aioUnlink */
-
-#endif
 
 int
 aioQueueSize(void)

@@ -1,6 +1,6 @@
 
 /*
- * $Id: main.cc,v 1.438 2006/10/24 04:48:10 wessels Exp $
+ * $Id: main.cc,v 1.447 2007/04/30 16:56:09 wessels Exp $
  *
  * DEBUG: section 1     Startup and Main Loop
  * AUTHOR: Harvest Derived
@@ -165,6 +165,7 @@ bool
 SignalDispatcher::dispatch()
 {
     PROF_start(SignalDispatcher_dispatch);
+
     if (do_reconfigure) {
         mainReconfigure();
         do_reconfigure = 0;
@@ -173,10 +174,8 @@ SignalDispatcher::dispatch()
         do_rotate = 0;
     } else if (do_shutdown) {
         time_t wait = do_shutdown > 0 ? (int) Config.shutdownLifetime : 0;
-        debug(1, 1) ("Preparing for shutdown after %d requests\n",
-                     statCounter.client_http.requests);
-        debug(1, 1) ("Waiting %d seconds for active connections to finish\n",
-                     (int) wait);
+        debugs(1, 1, "Preparing for shutdown after " << statCounter.client_http.requests << " requests");
+        debugs(1, 1, "Waiting " << wait << " seconds for active connections to finish");
         do_shutdown = 0;
         shutting_down = 1;
 #if USE_WIN32_SERVICE
@@ -252,7 +251,7 @@ mainParseOptions(int argc, char *argv[])
     while ((c = getopt(argc, argv, "CDFNO:RSVYXa:d:f:hik:m::n:rsl:u:vz?")) != -1)
 #else
 
-    while ((c = getopt(argc, argv, "CDFNRSVYXa:d:f:hk:m::sl:u:vz?")) != -1)
+    while ((c = getopt(argc, argv, "CDFNRSYXa:d:f:hk:m::sl:u:vz?")) != -1)
 #endif
 
     {
@@ -289,23 +288,6 @@ mainParseOptions(int argc, char *argv[])
 
         case 'S':
             opt_store_doublecheck = 1;
-            break;
-
-        case 'V':
-
-            if (Config.Sockaddr.http)
-                Config.Sockaddr.http->vhost = 1;
-
-#if USE_SSL
-
-            else if (Config.Sockaddr.https)
-                Config.Sockaddr.https->http.vhost = 1;
-
-#endif
-
-            else
-                fatal("No http_port specified\n");
-
             break;
 
         case 'X':
@@ -351,6 +333,7 @@ mainParseOptions(int argc, char *argv[])
             break;
 
         case 'k':
+
             if ((int) strlen(optarg) < 1)
                 usage();
 
@@ -404,10 +387,10 @@ mainParseOptions(int argc, char *argv[])
         case 'm':
             if (optarg) {
 #if MALLOC_DBG
-                    malloc_debug_level = atoi(optarg);
+                malloc_debug_level = atoi(optarg);
 #else
 
-                    fatal("Need to add -DMALLOC_DBG when compiling to use -mX option");
+                fatal("Need to add -DMALLOC_DBG when compiling to use -mX option");
 #endif
 
             } else {
@@ -619,7 +602,7 @@ serverConnectionsClose(void)
 static void
 mainReconfigure(void)
 {
-    debug(1, 1) ("Reconfiguring Squid Cache (version %s)...\n", version_string);
+    debugs(1, 1, "Reconfiguring Squid Cache (version " << version_string << ")...");
     reconfiguring = 1;
     /* Already called serverConnectionsClose and ipcacheShutdownServers() */
     serverConnectionsClose();
@@ -684,10 +667,8 @@ mainReconfigure(void)
 
     serverConnectionsOpen();
 
-    if (theOutIcpConnection >= 0) {
-        neighbors_init();
-        neighborsRegisterWithCacheManager(manager);
-    }
+    neighbors_init();
+    neighborsRegisterWithCacheManager(manager);
 
     storeDirOpenSwapLogs();
 
@@ -703,7 +684,7 @@ mainReconfigure(void)
 
     writePidFile();		/* write PID file */
 
-    debug(1, 1) ("Ready to serve requests.\n");
+    debugs(1, 1, "Ready to serve requests.");
 
     reconfiguring = 0;
 }
@@ -745,6 +726,7 @@ mainRotate(void)
 static void
 setEffectiveUser(void)
 {
+    keepCapabilities();
     leave_suid();		/* Run as non privilegied user */
 #ifdef _SQUID_OS2_
 
@@ -752,10 +734,10 @@ setEffectiveUser(void)
 #endif
 
     if (geteuid() == 0) {
-        debug(0, 0) ("Squid is not safe to run as root!  If you must\n");
-        debug(0, 0) ("start Squid as root, then you must configure\n");
-        debug(0, 0) ("it to run as a non-priveledged user with the\n");
-        debug(0, 0) ("'cache_effective_user' option in the config file.\n");
+        debugs(0, 0, "Squid is not safe to run as root!  If you must");
+        debugs(0, 0, "start Squid as root, then you must configure");
+        debugs(0, 0, "it to run as a non-priveledged user with the");
+        debugs(0, 0, "'cache_effective_user' option in the config file.");
         fatal("Don't run Squid as root, set 'cache_effective_user'!");
     }
 }
@@ -769,18 +751,18 @@ mainSetCwd(void)
         if (0 == strcmp("none", Config.coredump_dir)) {
             (void) 0;
         } else if (chdir(Config.coredump_dir) == 0) {
-            debug(0, 1) ("Set Current Directory to %s\n", Config.coredump_dir);
+            debugs(0, 1, "Set Current Directory to " << Config.coredump_dir);
             return;
         } else {
-            debug(50, 0) ("chdir: %s: %s\n", Config.coredump_dir, xstrerror());
+            debugs(50, 0, "chdir: " << Config.coredump_dir << ": " << xstrerror());
         }
     }
 
     /* If we don't have coredump_dir or couldn't cd there, report current dir */
     if (getcwd(pathbuf, MAXPATHLEN)) {
-        debug(0, 1) ("Current Directory is %s\n", pathbuf);
+        debugs(0, 1, "Current Directory is " << pathbuf);
     } else {
-        debug(50, 0) ("WARNING: Can't find current directory, getcwd: %s\n", xstrerror());
+        debugs(50, 0, "WARNING: Can't find current directory, getcwd: " << xstrerror());
     }
 }
 
@@ -820,30 +802,28 @@ mainInitialize(void)
 
 #endif
 
-    debug(1, 0) ("Starting Squid Cache version %s for %s...\n",
-                 version_string,
-                 CONFIG_HOST_TYPE);
+    debugs(1, 0, "Starting Squid Cache version " << version_string << " for " << CONFIG_HOST_TYPE << "...");
 
 #ifdef _SQUID_WIN32_
 
     if (WIN32_run_mode == _WIN_SQUID_RUN_MODE_SERVICE) {
-        debug(1, 0) ("Running as %s Windows System Service on %s\n", WIN32_Service_name, WIN32_OS_string);
-        debug(1, 0) ("Service command line is: %s\n", WIN32_Service_Command_Line);
+        debugs(1, 0, "Running as " << WIN32_Service_name << " Windows System Service on " << WIN32_OS_string);
+        debugs(1, 0, "Service command line is: " << WIN32_Service_Command_Line);
     } else
-        debug(1, 0) ("Running on %s\n",WIN32_OS_string);
+        debugs(1, 0, "Running on " << WIN32_OS_string);
 
 #endif
 
     debugs(1, 1, "Process ID " << getpid());
 
-    debug(1, 1) ("With %d file descriptors available\n", Squid_MaxFD);
+    debugs(1, 1, "With " << Squid_MaxFD << " file descriptors available");
 
 #ifdef _SQUID_MSWIN_
 
-    debug(1, 1) ("With %d CRT stdio descriptors available\n", _getmaxstdio());
+    debugs(1, 1, "With " << _getmaxstdio() << " CRT stdio descriptors available");
 
     if (WIN32_Socks_initialized)
-        debug(1, 1)("Windows sockets initialized\n");
+        debugs(1, 1, "Windows sockets initialized");
 
 #endif
 
@@ -981,6 +961,7 @@ mainInitialize(void)
         storeDigestRegisterWithCacheManager(manager);
         StoreFileSystem::RegisterAllFsWithCacheManager(manager);
         storeRegisterWithCacheManager(manager);
+        storeLogRegisterWithCacheManager(manager);
 #if DEBUGSTRINGS
 
         StringRegistry::Instance().registerWithCacheManager(manager);
@@ -1005,10 +986,9 @@ mainInitialize(void)
 
     serverConnectionsOpen();
 
-    if (theOutIcpConnection >= 0) {
-        neighbors_init();
-        neighborsRegisterWithCacheManager(manager);
-    }
+    neighbors_init();
+
+    neighborsRegisterWithCacheManager(manager);
 
     if (Config.chroot_dir)
         no_suid();
@@ -1044,7 +1024,7 @@ mainInitialize(void)
 
     memCheckInit();
 
-    debug(1, 1) ("Ready to serve requests.\n");
+    debugs(1, 1, "Ready to serve requests.");
 
     if (!configured_once) {
         eventAdd("storeMaintain", Store::Maintain, NULL, 1.0, 1);
@@ -1267,7 +1247,7 @@ main(int argc, char **argv)
         }
 
         setEffectiveUser();
-        debug(0, 0) ("Creating Swap Directories\n");
+        debugs(0, 0, "Creating Swap Directories");
         Store::Root().create();
 
         return 0;
@@ -1356,7 +1336,7 @@ sendSignal(void)
     debug_log = stderr;
 
     if (strcmp(Config.pidFilename, "none") == 0) {
-        debug(0, 1) ("No pid_filename specified. Trusting you know what you are doing.\n");
+        debugs(0, 1, "No pid_filename specified. Trusting you know what you are doing.");
     }
 
     pid = readPidFile();
@@ -1617,7 +1597,7 @@ SquidShutdown()
     WIN32_svcstatusupdate(SERVICE_STOP_PENDING, 10000);
 #endif
 
-    debug(1, 1) ("Shutting down...\n");
+    debugs(1, 1, "Shutting down...");
 #if USE_DNSSERVERS
 
     dnsShutdown();
@@ -1654,16 +1634,17 @@ SquidShutdown()
 #endif
 
     authenticateShutdown();
-#if USE_UNLINKD
-
-    unlinkdClose();
-#endif
 #if USE_WIN32_SERVICE
 
     WIN32_svcstatusupdate(SERVICE_STOP_PENDING, 10000);
 #endif
 
     Store::Root().sync(); /* Flush pending object writes/unlinks */
+#if USE_UNLINKD
+
+    unlinkdClose();	  /* after sync/flush */
+#endif
+
     storeDirWriteCleanLogs(0);
     PrintRusage();
     dumpMallocStats();
@@ -1715,7 +1696,7 @@ SquidShutdown()
 
     xmalloc_find_leaks();
 
-    debug(1, 0) ("Memory used after shutdown: %d\n", xmalloc_total);
+    debugs(1, 0, "Memory used after shutdown: " << xmalloc_total);
 
 #endif
 #if MEM_GEN_TRACE
@@ -1730,8 +1711,7 @@ SquidShutdown()
         leave_suid();
     }
 
-    debug(1, 1) ("Squid Cache (Version %s): Exiting normally.\n",
-                 version_string);
+    debugs(1, 1, "Squid Cache (Version " << version_string << "): Exiting normally.");
 
     /*
      * DPW 2006-10-23

@@ -1,6 +1,6 @@
 
 /*
- * $Id: store_rebuild.cc,v 1.86 2006/08/19 12:31:21 robertc Exp $
+ * $Id: store_rebuild.cc,v 1.89 2007/04/28 22:26:38 hno Exp $
  *
  * DEBUG: section 20    Store Rebuild Routines
  * AUTHOR: Duane Wessels
@@ -113,6 +113,7 @@ storeCleanup(void *datanotused)
         debugs(20, 1, "  Completed Validation Procedure");
         debugs(20, 1, "  Validated " << validated << " Entries");
         debugs(20, 1, "  store_swap_size = " << store_swap_size);
+	StoreController::store_dirs_rebuilding--;
         assert(0 == StoreController::store_dirs_rebuilding);
 
         if (opt_store_doublecheck)
@@ -143,38 +144,28 @@ storeRebuildComplete(struct _store_rebuild_data *dc)
     counts.bad_log_op += dc->bad_log_op;
     counts.zero_object_sz += dc->zero_object_sz;
     /*
-     * When store_dirs_rebuilding == 0, it means we are done reading
+     * When store_dirs_rebuilding == 1, it means we are done reading
      * or scanning all cache_dirs.  Now report the stats and start
      * the validation (storeCleanup()) thread.
      */
 
-    if (StoreController::store_dirs_rebuilding)
+    if (StoreController::store_dirs_rebuilding > 1)
         return;
 
     dt = tvSubDsec(rebuild_start, current_time);
 
-    debug(20, 1) ("Finished rebuilding storage from disk.\n");
-
-    debug(20, 1) ("  %7d Entries scanned\n", counts.scancount);
-
-    debug(20, 1) ("  %7d Invalid entries.\n", counts.invalid);
-
-    debug(20, 1) ("  %7d With invalid flags.\n", counts.badflags);
-
-    debug(20, 1) ("  %7d Objects loaded.\n", counts.objcount);
-
-    debug(20, 1) ("  %7d Objects expired.\n", counts.expcount);
-
-    debug(20, 1) ("  %7d Objects cancelled.\n", counts.cancelcount);
-
-    debug(20, 1) ("  %7d Duplicate URLs purged.\n", counts.dupcount);
-
-    debug(20, 1) ("  %7d Swapfile clashes avoided.\n", counts.clashcount);
-
-    debug(20, 1) ("  Took %3.1f seconds (%6.1f objects/sec).\n", dt,
-                  (double) counts.objcount / (dt > 0.0 ? dt : 1.0));
-
-    debug(20, 1) ("Beginning Validation Procedure\n");
+    debugs(20, 1, "Finished rebuilding storage from disk.");
+    debugs(20, 1, "  " << std::setw(7) << counts.scancount  << " Entries scanned");
+    debugs(20, 1, "  " << std::setw(7) << counts.invalid  << " Invalid entries.");
+    debugs(20, 1, "  " << std::setw(7) << counts.badflags  << " With invalid flags.");
+    debugs(20, 1, "  " << std::setw(7) << counts.objcount  << " Objects loaded.");
+    debugs(20, 1, "  " << std::setw(7) << counts.expcount  << " Objects expired.");
+    debugs(20, 1, "  " << std::setw(7) << counts.cancelcount  << " Objects cancelled.");
+    debugs(20, 1, "  " << std::setw(7) << counts.dupcount  << " Duplicate URLs purged.");
+    debugs(20, 1, "  " << std::setw(7) << counts.clashcount  << " Swapfile clashes avoided.");
+    debugs(20, 1, "  Took "<< std::setw(3)<< std::setprecision(2) << dt << " seconds ("<< std::setw(6) <<
+           ((double) counts.objcount / (dt > 0.0 ? dt : 1.0)) << " objects/sec).");
+    debugs(20, 1, "Beginning Validation Procedure");
 
     eventAdd("storeCleanup", storeCleanup, NULL, 0.0, 1);
 
@@ -194,7 +185,7 @@ storeRebuildStart(void)
     memset(&counts, '\0', sizeof(counts));
     rebuild_start = current_time;
     /*
-     * Note: store_dirs_rebuilding is initialized to 0.
+     * Note: store_dirs_rebuilding is initialized to 1.
      *  
      * When we parse the configuration and construct each swap dir, 
      * the construction of that raises the rebuild count.
@@ -240,6 +231,6 @@ storeRebuildProgress(int sd_index, int total, int sofar)
         d += (double) RebuildProgress[sd_index].total;
     }
 
-    debug(20, 1) ("Store rebuilding is %4.1f%% complete\n", 100.0 * n / d);
+    debugs(20, 1, "Store rebuilding is "<< std::setw(4)<< std::setprecision(2) << 100.0 * n / d << "% complete");
     last_report = squid_curtime;
 }

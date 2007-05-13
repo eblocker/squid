@@ -22,7 +22,6 @@ class FwdState : public RefCountable
 
 public:
     typedef RefCount<FwdState> Pointer;
-    FwdState(int fd, StoreEntry *, HttpRequest *);
     ~FwdState();
     static void initModule();
     static void RegisterWithCacheManager(CacheManager & manager);
@@ -44,7 +43,7 @@ public:
     bool checkRetry();
     bool checkRetriable();
     void dispatch();
-    void pconnPush(int fd, const char *host, int port, const char *domain);
+    void pconnPush(int fd, const char *host, int port, const char *domain, struct IN_ADDR *client_addr);
 
     bool dontRetry() { return flags.dont_retry; }
 
@@ -57,6 +56,10 @@ public:
     static void serversFree(FwdServer **);
 
 private:
+    // hidden for safer management of self; use static fwdStart
+    FwdState(int fd, StoreEntry *, HttpRequest *);
+    void start(Pointer aSelf);
+
     static void logReplyStatus(int tries, http_status status);
     void completed();
 
@@ -100,6 +103,9 @@ unsigned int forward_completed:1;
     }
 
     flags;
+#if LINUX_NETFILTER
+    struct sockaddr_in src;
+#endif
 
 };
 

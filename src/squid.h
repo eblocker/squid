@@ -1,6 +1,6 @@
 
 /*
- * $Id: squid.h,v 1.259 2006/09/03 04:09:36 hno Exp $
+ * $Id: squid.h,v 1.261 2007/04/24 15:04:22 hno Exp $
  *
  * AUTHOR: Duane Wessels
  *
@@ -199,16 +199,23 @@ using namespace Squid;
 /* Limited due to delay pools */
 # define SQUID_MAXFD_LIMIT FD_SETSIZE
 #elif defined(USE_KQUEUE) || defined(USE_EPOLL)
-# if DONT_LIMIT_TO_FD_SETSIZE
-#  define fd_set ERROR_FD_SET_USED */
-# else
-#  define SQUID_MAXFD_LIMIT FD_SETSIZE
-# endif
+# define SQUID_FDSET_NOUSE 1
 #else
 # error Unknown select loop model!
 #endif
 
-#
+
+/*
+ * Trap unintentional use of fd_set. Must not be used outside the
+ * select code as it only supports FD_SETSIZE number of filedescriptors
+ * and Squid may be running with a lot more..
+ * But only for code linked into Squid, not the helpers.. (unlinkd, pinger)
+ */
+#ifdef SQUID_FDSET_NOUSE
+# ifndef SQUID_HELPER
+#  define fd_set ERROR_FD_SET_USED
+# endif
+#endif
 
 #if defined(HAVE_STDARG_H)
 #include <stdarg.h>

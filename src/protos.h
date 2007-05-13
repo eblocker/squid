@@ -1,6 +1,6 @@
 
 /*
- * $Id: protos.h,v 1.537 2006/09/03 18:47:18 serassio Exp $
+ * $Id: protos.h,v 1.542 2007/04/20 23:53:41 wessels Exp $
  *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
@@ -476,6 +476,7 @@ SQUIDCEXTERN void statHistCount(StatHist * H, double val);
 SQUIDCEXTERN void statHistCopy(StatHist * Dest, const StatHist * Orig);
 SQUIDCEXTERN void statHistSafeCopy(StatHist * Dest, const StatHist * Orig);
 SQUIDCEXTERN double statHistDeltaMedian(const StatHist * A, const StatHist * B);
+SQUIDCEXTERN double statHistDeltaPctile(const StatHist * A, const StatHist * B, double pctile);
 SQUIDCEXTERN void statHistDump(const StatHist * H, StoreEntry * sentry, StatHistBinDumper * bd);
 SQUIDCEXTERN void statHistLogInit(StatHist * H, int capacity, double min, double max);
 SQUIDCEXTERN void statHistEnumInit(StatHist * H, int last_enum);
@@ -519,6 +520,7 @@ SQUIDCEXTERN void storeLog(int tag, const StoreEntry * e);
 SQUIDCEXTERN void storeLogRotate(void);
 SQUIDCEXTERN void storeLogClose(void);
 SQUIDCEXTERN void storeLogOpen(void);
+SQUIDCEXTERN void storeLogRegisterWithCacheManager(CacheManager &);
 
 
 /*
@@ -563,19 +565,11 @@ SQUIDCEXTERN void storeRebuildProgress(int sd_index, int total, int sofar);
 SQUIDCEXTERN void storeSwapInStart(store_client *);
 
 /*
- * store_swapout.c
- */
-SQUIDCEXTERN void storeSwapOut(StoreEntry * e);
-SQUIDCEXTERN void storeSwapOutFileClose(StoreEntry * e);
-SQUIDCEXTERN int storeSwapOutAble(const StoreEntry * e);
-
-/*
  * store_client.c
  */
 SQUIDCEXTERN store_client *storeClientListAdd(StoreEntry * e, void *data);
 SQUIDCEXTERN int storeClientCopyPending(store_client *, StoreEntry * e, void *data);
 SQUIDCEXTERN int storeUnregister(store_client * sc, StoreEntry * e, void *data);
-SQUIDCEXTERN void InvokeHandlers(StoreEntry * e);
 SQUIDCEXTERN int storePendingNClients(const StoreEntry * e);
 SQUIDCEXTERN int storeClientIsThisAClient(store_client * sc, void *someClient);
 
@@ -604,6 +598,7 @@ SQUIDCEXTERN int percent(int, int);
 SQUIDCEXTERN double dpercent(double, double);
 SQUIDCEXTERN void squid_signal(int sig, SIGHDLR *, int flags);
 SQUIDCEXTERN pid_t readPidFile(void);
+SQUIDCEXTERN void keepCapabilities(void);
 
 SQUIDCEXTERN struct IN_ADDR inaddrFromHostent(const struct hostent *hp);
 SQUIDCEXTERN int intAverage(int, int, int, int);

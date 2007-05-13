@@ -143,14 +143,15 @@ testNull::testNullSearch()
     StockEventLoop loop;
 
     /* our swapdir must be scheduled to rebuild - though it does not
-     * make sense to rebuild Null stores at all.
+     * make sense to rebuild Null stores at all.  store_dirs_rebuilding
+     * is initialized to _1_ and adding our swapdir makes it 2.
      */
-    CPPUNIT_ASSERT_EQUAL(1, StoreController::store_dirs_rebuilding);
+    CPPUNIT_ASSERT_EQUAL(2, StoreController::store_dirs_rebuilding);
 
     loop.run();
 
     /* nothing left to rebuild */
-    CPPUNIT_ASSERT_EQUAL(0, StoreController::store_dirs_rebuilding);
+    CPPUNIT_ASSERT_EQUAL(1, StoreController::store_dirs_rebuilding);
 
     /* add an entry */
     {
@@ -163,9 +164,9 @@ testNull::testNullSearch()
         HttpReply *rep = (HttpReply *) pe->getReply();	// bypass const
         rep->setHeaders(version, HTTP_OK, "dummy test object", "x-squid-internal/test", -1, -1, squid_curtime + 100000);
 
-        storeSetPublicKey(pe);
+        pe->setPublicKey();
 
-        storeBuffer(pe);
+        pe->buffer();
         /* TODO: remove this when the metadata is separated */
         {
             Packer p;
@@ -174,10 +175,10 @@ testNull::testNullSearch()
             packerClean(&p);
         }
 
-        storeBufferFlush(pe);
-        storeTimestampsSet(pe);
+        pe->flush();
+        pe->timestampsSet();
         pe->complete();
-        storeSwapOut(pe);
+        pe->swapOut();
         /* Null does not accept store entries */
         CPPUNIT_ASSERT(pe->swap_dirn == -1);
         pe->unlock();

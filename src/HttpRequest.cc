@@ -1,6 +1,6 @@
 
 /*
- * $Id: HttpRequest.cc,v 1.69 2006/10/31 23:30:56 wessels Exp $
+ * $Id: HttpRequest.cc,v 1.74 2007/05/09 09:07:38 wessels Exp $
  *
  * DEBUG: section 73    HTTP Request
  * AUTHOR: Duane Wessels
@@ -86,7 +86,7 @@ HttpRequest::init()
     my_addr = no_addr;
     my_port = 0;
     client_port = 0;
-    body_reader = NULL;
+    body_pipe = NULL;
     // hier
     errType = ERR_NONE;
     peer_login = NULL;		// not allocated/deallocated by this class
@@ -102,13 +102,11 @@ HttpRequest::init()
 void
 HttpRequest::clean()
 {
-    if (body_reader != NULL)
-        fatal ("request being destroyed with body reader intact\n");
+    // we used to assert that the pipe is NULL, but now the request only 
+    // points to a pipe that is owned and initiated by another object.
+    body_pipe = NULL; 
 
-    if (auth_user_request) {
-        auth_user_request->unlock();
-        auth_user_request = NULL;
-    }
+    AUTHUSERREQUESTUNLOCK(auth_user_request, "request");
 
     safe_free(canonical);
 
@@ -154,7 +152,7 @@ HttpRequest::sanityCheckStartLine(MemBuf *buf, http_status *error)
      */
 
     if (METHOD_NONE == HttpRequestMethod(buf->content())) {
-        debug(73, 3)("HttpRequest::sanityCheckStartLine: did not find HTTP request method\n");
+        debugs(73, 3, "HttpRequest::sanityCheckStartLine: did not find HTTP request method");
         return false;
     }
 
@@ -183,7 +181,7 @@ HttpRequest::parseFirstLine(const char *start, const char *end)
         end++;                 // back to space
 
         if (2 != sscanf(ver + 5, "%d.%d", &http_ver.major, &http_ver.minor)) {
-            debug(73, 1) ("parseRequestLine: Invalid HTTP identifier.\n");
+            debugs(73, 1, "parseRequestLine: Invalid HTTP identifier.");
             return false;
         }
     } else {
@@ -304,14 +302,14 @@ request_flags::resetTCP() const
 void
 request_flags::setResetTCP()
 {
-    debug (73, 9) ("request_flags::setResetTCP\n");
+    debugs(73, 9, "request_flags::setResetTCP");
     reset_tcp = 1;
 }
 
 void
 request_flags::clearResetTCP()
 {
-    debug(73, 9) ("request_flags::clearResetTCP\n");
+    debugs(73, 9, "request_flags::clearResetTCP");
     reset_tcp = 0;
 }
 
@@ -331,6 +329,20 @@ bool
 request_flags::destinationIPLookedUp() const
 {
     return destinationIPLookedUp_;
+}
+
+request_flags
+request_flags::cloneAdaptationImmune() const
+{
+    // At the time of writing, all flags where either safe to copy after
+    // adaptation or were not set at the time of the adaptation. If there
+    // are flags that are different, they should be cleared in the clone.
+    return *this;
+}
+
+bool
+HttpRequest::bodyNibbled() const {
+    return body_pipe != NULL && body_pipe->consumedSize() > 0;
 }
 
 const char *HttpRequest::packableURI(bool full_uri) const
@@ -422,12 +434,6 @@ HttpRequest::cacheable() const
 {
     if (protocol == PROTO_HTTP)
         return httpCachable(method);
-
-    /* FTP is always cachable */
-
-    /* WAIS is never cachable */
-    if (protocol == PROTO_WAIS)
-        return 0;
 
     /*
      * The below looks questionable: what non HTTP protocols use connect,

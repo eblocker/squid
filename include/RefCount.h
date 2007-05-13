@@ -1,8 +1,8 @@
 
 /*
- * $Id: RefCount.h,v 1.9 2005/11/21 22:45:16 wessels Exp $
+ * $Id: RefCount.h,v 1.11 2007/04/25 11:30:15 adrian Exp $
  *
- * DEBUG: section xx    Refcount allocator
+ * DEBUG: none          Refcount allocator
  * AUTHOR:  Robert Collins
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
@@ -35,6 +35,8 @@
 
 #ifndef _SQUID_REFCOUNT_H_
 #define _SQUID_REFCOUNT_H_
+
+#include <iostream>
 
 template <class C>
 
@@ -139,10 +141,21 @@ struct RefCountable_
         return --count_;
     }
 
+    unsigned RefCountCount() const { return count_; } // for debugging only
+
 private:
     mutable unsigned count_;
 };
 
 #define RefCountable virtual RefCountable_
+
+template <class C>
+inline std::ostream &operator <<(std::ostream &os, const RefCount<C> &p)
+{
+    if (p != NULL)
+        return os << p.getRaw() << '*' << p->RefCountCount();
+    else
+        return os << "NULL";
+}
 
 #endif /* _SQUID_REFCOUNT_H_ */

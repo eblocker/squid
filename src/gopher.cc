@@ -1,6 +1,6 @@
 
 /*
- * $Id: gopher.cc,v 1.200 2006/09/19 07:56:57 adrian Exp $
+ * $Id: gopher.cc,v 1.204 2007/04/30 16:56:09 wessels Exp $
  *
  * DEBUG: section 10    Gopher
  * AUTHOR: Harvest Derived
@@ -222,7 +222,7 @@ gopherMimeCreate(GopherStateData * gopherState)
 
     mb.Printf("\r\n");
     EBIT_CLR(gopherState->entry->flags, ENTRY_FWD_HDR_WAIT);
-    storeAppend(gopherState->entry, mb.buf, mb.size);
+    gopherState->entry->append(mb.buf, mb.size);
     mb.clean();
 }
 
@@ -347,7 +347,7 @@ gopherToHTML(GopherStateData * gopherState, char *inbuf, int len)
     entry = gopherState->entry;
 
     if (gopherState->conversion == gopher_ds::HTML_INDEX_PAGE) {
-        char *html_url = html_quote(storeUrl(entry));
+        char *html_url = html_quote(entry->url());
         gopherHTMLHeader(entry, "Gopher Index %s", html_url);
         storeAppendPrintf(entry,
                           "<p>This is a searchable Gopher index. Use the search\n"
@@ -355,14 +355,14 @@ gopherToHTML(GopherStateData * gopherState, char *inbuf, int len)
                           "<ISINDEX>\n");
         gopherHTMLFooter(entry);
         /* now let start sending stuff to client */
-        storeBufferFlush(entry);
+        entry->flush();
         gopherState->HTML_header_added = 1;
 
         return;
     }
 
     if (gopherState->conversion == gopher_ds::HTML_CSO_PAGE) {
-        char *html_url = html_quote(storeUrl(entry));
+        char *html_url = html_quote(entry->url());
         gopherHTMLHeader(entry, "CSO Search of %s", html_url);
         storeAppendPrintf(entry,
                           "<P>A CSO database usually contains a phonebook or\n"
@@ -370,7 +370,7 @@ gopherToHTML(GopherStateData * gopherState, char *inbuf, int len)
                           "search terms.</P><ISINDEX>\n");
         gopherHTMLFooter(entry);
         /* now let start sending stuff to client */
-        storeBufferFlush(entry);
+        entry->flush();
         gopherState->HTML_header_added = 1;
 
         return;
@@ -399,8 +399,7 @@ gopherToHTML(GopherStateData * gopherState, char *inbuf, int len)
             xstrncpy(line, gopherState->buf, gopherState->len + 1);
 
             if (gopherState->len + len > TEMP_BUF_SIZE) {
-                debug(10, 1) ("GopherHTML: Buffer overflow. Lost some data on URL: %s\n",
-                              storeUrl(entry));
+                debugs(10, 1, "GopherHTML: Buffer overflow. Lost some data on URL: " << entry->url()  );
                 len = TEMP_BUF_SIZE - gopherState->len;
             }
 
@@ -413,8 +412,7 @@ gopherToHTML(GopherStateData * gopherState, char *inbuf, int len)
                 /* copy it to temp buffer */
 
                 if (gopherState->len + len > TEMP_BUF_SIZE) {
-                    debug(10, 1) ("GopherHTML: Buffer overflow. Lost some data on URL: %s\n",
-                                  storeUrl(entry));
+                    debugs(10, 1, "GopherHTML: Buffer overflow. Lost some data on URL: " << entry->url()  );
                     len = TEMP_BUF_SIZE - gopherState->len;
                 }
 
@@ -444,8 +442,7 @@ gopherToHTML(GopherStateData * gopherState, char *inbuf, int len)
                 /* copy it to temp buffer */
 
                 if ((len - (pos - inbuf)) > TEMP_BUF_SIZE) {
-                    debug(10, 1) ("GopherHTML: Buffer overflow. Lost some data on URL: %s\n",
-                                  storeUrl(entry));
+                    debugs(10, 1, "GopherHTML: Buffer overflow. Lost some data on URL: " << entry->url()  );
                     len = TEMP_BUF_SIZE;
                 }
 
@@ -694,9 +691,9 @@ gopherToHTML(GopherStateData * gopherState, char *inbuf, int len)
     }				/* while loop */
 
     if (outbuf.size() > 0) {
-        storeAppend(entry, outbuf.buf(), outbuf.size());
+        entry->append(outbuf.buf(), outbuf.size());
         /* now let start sending stuff to client */
-        storeBufferFlush(entry);
+        entry->flush();
     }
 
     outbuf.clean();
@@ -708,7 +705,7 @@ gopherTimeout(int fd, void *data)
 {
     GopherStateData *gopherState = (GopherStateData *)data;
     StoreEntry *entry = gopherState->entry;
-    debug(10, 4) ("gopherTimeout: FD %d: '%s'\n", fd, storeUrl(entry));
+    debugs(10, 4, "gopherTimeout: FD " << fd << ": '" << entry->url() << "'" );
 
     gopherState->fwd->fail(errorCon(ERR_READ_TIMEOUT, HTTP_GATEWAY_TIMEOUT, gopherState->fwd->request));
 
@@ -761,7 +758,7 @@ gopherReadReply(int fd, char *buf, size_t len, comm_err_t flag, int xerrno, void
         kb_incr(&statCounter.server.other.kbytes_in, len);
     }
 
-    debug(10, 5) ("gopherReadReply: FD %d read len=%d\n", fd, (int)len);
+    debugs(10, 5, "gopherReadReply: FD " << fd << " read len=" << len);
 
     if (flag == COMM_OK && len > 0) {
         commSetTimeout(fd, Config.Timeout.read, NULL, NULL);
@@ -774,7 +771,7 @@ gopherReadReply(int fd, char *buf, size_t len, comm_err_t flag, int xerrno, void
     }
 
     if (flag != COMM_OK || len < 0) {
-        debug(50, 1) ("gopherReadReply: error reading: %s\n", xstrerror());
+        debugs(50, 1, "gopherReadReply: error reading: " << xstrerror());
 
         if (ignoreErrno(errno)) {
             do_next_read = 1;
@@ -797,9 +794,9 @@ gopherReadReply(int fd, char *buf, size_t len, comm_err_t flag, int xerrno, void
         if (gopherState->conversion != gopher_ds::NORMAL)
             gopherEndHTML(gopherState);
 
-        storeTimestampsSet(entry);
+        entry->timestampsSet();
 
-        storeBufferFlush(entry);
+        entry->flush();
 
         gopherState->fwd->complete();
 
@@ -810,7 +807,7 @@ gopherReadReply(int fd, char *buf, size_t len, comm_err_t flag, int xerrno, void
         if (gopherState->conversion != gopher_ds::NORMAL) {
             gopherToHTML(gopherState, buf, len);
         } else {
-            storeAppend(entry, buf, len);
+            entry->append(buf, len);
         }
 
         do_next_read = 1;
@@ -829,8 +826,7 @@ gopherSendComplete(int fd, char *buf, size_t size, comm_err_t errflag, int xerrn
 {
     GopherStateData *gopherState = (GopherStateData *) data;
     StoreEntry *entry = gopherState->entry;
-    debug(10, 5) ("gopherSendComplete: FD %d size: %d errflag: %d\n",
-                  fd, (int) size, errflag);
+    debugs(10, 5, "gopherSendComplete: FD " << fd << " size: " << size << " errflag: " << errflag);
 
     if (size > 0) {
         fd_bytes(fd, size, FD_WRITE);
@@ -843,7 +839,7 @@ gopherSendComplete(int fd, char *buf, size_t size, comm_err_t errflag, int xerrn
         err = errorCon(ERR_WRITE_ERROR, HTTP_SERVICE_UNAVAILABLE, gopherState->fwd->request);
         err->xerrno = errno;
         err->port = gopherState->req->port;
-        err->url = xstrdup(storeUrl(entry));
+        err->url = xstrdup(entry->url());
         gopherState->fwd->fail(err);
         comm_close(fd);
 
@@ -857,7 +853,7 @@ gopherSendComplete(int fd, char *buf, size_t size, comm_err_t errflag, int xerrn
      * OK. We successfully reach remote site.  Start MIME typing
      * stuff.  Do it anyway even though request is not HTML type.
      */
-    storeBuffer(entry);
+    entry->buffer();
 
     gopherMimeCreate(gopherState);
 
@@ -884,7 +880,7 @@ gopherSendComplete(int fd, char *buf, size_t size, comm_err_t errflag, int xerrn
 
     default:
         gopherState->conversion = gopher_ds::NORMAL;
-        storeBufferFlush(entry);
+        entry->flush();
     }
 
     /* Schedule read reply. */
@@ -921,11 +917,11 @@ gopherSendRequest(int fd, void *data)
         snprintf(buf, 4096, "%s\r\n", gopherState->request);
     }
 
-    debug(10, 5) ("gopherSendRequest: FD %d\n", fd);
+    debugs(10, 5, "gopherSendRequest: FD " << fd);
     comm_write(fd, buf, strlen(buf), gopherSendComplete, gopherState, NULL);
 
     if (EBIT_TEST(gopherState->entry->flags, ENTRY_CACHABLE))
-        storeSetPublicKey(gopherState->entry);	/* Make it public */
+        gopherState->entry->setPublicKey();	/* Make it public */
 }
 
 CBDATA_TYPE(GopherStateData);
@@ -947,7 +943,7 @@ gopherStart(FwdState * fwd)
 
     gopherState->fwd = fwd;
 
-    debug(10, 3) ("gopherStart: %s\n", storeUrl(entry));
+    debugs(10, 3, "gopherStart: " << entry->url()  );
 
     statCounter.server.all.requests++;
 

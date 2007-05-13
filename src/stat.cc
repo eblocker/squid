@@ -1,5 +1,5 @@
 /*
- * $Id: stat.cc,v 1.398 2006/08/28 09:53:51 serassio Exp $
+ * $Id: stat.cc,v 1.405 2007/04/28 22:26:37 hno Exp $
  *
  * DEBUG: section 18    Cache Manager Statistics
  * AUTHOR: Harvest Derived
@@ -85,7 +85,7 @@ static void statCountersInit(StatCounters *);
 static void statCountersInitSpecial(StatCounters *);
 static void statCountersClean(StatCounters *);
 static void statCountersCopy(StatCounters * dest, const StatCounters * orig);
-static double statMedianSvc(int, int);
+static double statPctileSvc(double, int, int);
 static void statStoreEntry(MemBuf * mb, StoreEntry * e);
 static double statCPUUsage(int minutes);
 static OBJH stat_io_get;
@@ -228,17 +228,6 @@ stat_io_get(StoreEntry * sentry)
     }
 
     storeAppendPrintf(sentry, "\n");
-    storeAppendPrintf(sentry, "WAIS I/O\n");
-    storeAppendPrintf(sentry, "number of reads: %d\n", IOStats.Wais.reads);
-    storeAppendPrintf(sentry, "Read Histogram:\n");
-
-    for (i = 0; i < 16; i++) {
-        storeAppendPrintf(sentry, "%5d-%5d: %9d %2d%%\n",
-                          i ? (1 << (i - 1)) + 1 : 1,
-                          1 << i,
-                          IOStats.Wais.read_hist[i],
-                          percent(IOStats.Wais.read_hist[i], IOStats.Wais.reads));
-    }
 }
 
 static const char *
@@ -360,7 +349,7 @@ statObjects(void *data)
         return;
     }
 
-    storeBuffer(state->sentry);
+    state->sentry->buffer();
     size_t statCount = 0;
     MemBuf mb;
     mb.init();
@@ -376,7 +365,7 @@ statObjects(void *data)
     }
 
     if (mb.size)
-        storeAppend(state->sentry, mb.buf, mb.size);
+        state->sentry->append(mb.buf, mb.size);
     mb.clean();
 
     eventAdd("statObjects", statObjects, state, 0.0, 1);
@@ -551,8 +540,17 @@ info_get(StoreEntry * sentry)
     storeAppendPrintf(sentry, "\tStorage Swap size:\t%lu KB\n",
                       store_swap_size);
 
+    storeAppendPrintf(sentry, "\tStorage Swap capacity:\t%4.1f%% used, %4.1f%% free\n",
+                      dpercent((int) store_swap_size, (int) Store::Root().maxSize()),  
+                      dpercent((int) (Store::Root().maxSize() - store_swap_size), (int) Store::Root().maxSize()));
+
+
     storeAppendPrintf(sentry, "\tStorage Mem size:\t%d KB\n",
                       (int) (mem_node::store_mem_size >> 10));
+
+    storeAppendPrintf(sentry, "\tStorage Mem capacity:\t%4.1f%% used, %4.1f%% free\n",
+                      dpercent(mem_node::InUseCount(), store_pages_max),
+                      dpercent(((double)store_pages_max - mem_node::InUseCount()), store_pages_max));
 
     storeAppendPrintf(sentry, "\tMean Object Size:\t%0.2f KB\n",
                       n_disk_objects ? (double) store_swap_size / n_disk_objects : 0.0);
@@ -563,32 +561,32 @@ info_get(StoreEntry * sentry)
     storeAppendPrintf(sentry, "Median Service Times (seconds)  5 min    60 min:\n");
 
     storeAppendPrintf(sentry, "\tHTTP Requests (All):  %8.5f %8.5f\n",
-                      statMedianSvc(5, MEDIAN_HTTP) / 1000.0,
-                      statMedianSvc(60, MEDIAN_HTTP) / 1000.0);
+                      statPctileSvc(0.5, 5, PCTILE_HTTP) / 1000.0,
+                      statPctileSvc(0.5, 60, PCTILE_HTTP) / 1000.0);
 
     storeAppendPrintf(sentry, "\tCache Misses:         %8.5f %8.5f\n",
-                      statMedianSvc(5, MEDIAN_MISS) / 1000.0,
-                      statMedianSvc(60, MEDIAN_MISS) / 1000.0);
+                      statPctileSvc(0.5, 5, PCTILE_MISS) / 1000.0,
+                      statPctileSvc(0.5, 60, PCTILE_MISS) / 1000.0);
 
     storeAppendPrintf(sentry, "\tCache Hits:           %8.5f %8.5f\n",
-                      statMedianSvc(5, MEDIAN_HIT) / 1000.0,
-                      statMedianSvc(60, MEDIAN_HIT) / 1000.0);
+                      statPctileSvc(0.5, 5, PCTILE_HIT) / 1000.0,
+                      statPctileSvc(0.5, 60, PCTILE_HIT) / 1000.0);
 
     storeAppendPrintf(sentry, "\tNear Hits:            %8.5f %8.5f\n",
-                      statMedianSvc(5, MEDIAN_NH) / 1000.0,
-                      statMedianSvc(60, MEDIAN_NH) / 1000.0);
+                      statPctileSvc(0.5, 5, PCTILE_NH) / 1000.0,
+                      statPctileSvc(0.5, 60, PCTILE_NH) / 1000.0);
 
     storeAppendPrintf(sentry, "\tNot-Modified Replies: %8.5f %8.5f\n",
-                      statMedianSvc(5, MEDIAN_NM) / 1000.0,
-                      statMedianSvc(60, MEDIAN_NM) / 1000.0);
+                      statPctileSvc(0.5, 5, PCTILE_NM) / 1000.0,
+                      statPctileSvc(0.5, 60, PCTILE_NM) / 1000.0);
 
     storeAppendPrintf(sentry, "\tDNS Lookups:          %8.5f %8.5f\n",
-                      statMedianSvc(5, MEDIAN_DNS) / 1000.0,
-                      statMedianSvc(60, MEDIAN_DNS) / 1000.0);
+                      statPctileSvc(0.5, 5, PCTILE_DNS) / 1000.0,
+                      statPctileSvc(0.5, 60, PCTILE_DNS) / 1000.0);
 
     storeAppendPrintf(sentry, "\tICP Queries:          %8.5f %8.5f\n",
-                      statMedianSvc(5, MEDIAN_ICP_QUERY) / 1000000.0,
-                      statMedianSvc(60, MEDIAN_ICP_QUERY) / 1000000.0);
+                      statPctileSvc(0.5, 5, PCTILE_ICP_QUERY) / 1000000.0,
+                      statPctileSvc(0.5, 60, PCTILE_ICP_QUERY) / 1000000.0);
 
     squid_getrusage(&rusage);
 
@@ -764,6 +762,55 @@ info_get(StoreEntry * sentry)
 #endif
 }
 
+static void
+service_times(StoreEntry * sentry)
+{
+    int p;
+    storeAppendPrintf(sentry, "Service Time Percentiles            5 min    60 min:\n");
+    for (p = 5; p < 100; p += 5) {
+       storeAppendPrintf(sentry, "\tHTTP Requests (All):  %2d%%  %8.5f %8.5f\n",
+	p,
+	statPctileSvc((double) p / 100.0, 5, PCTILE_HTTP) / 1000.0,
+	statPctileSvc((double) p / 100.0, 60, PCTILE_HTTP) / 1000.0);
+    }
+    for (p = 5; p < 100; p += 5) {
+       storeAppendPrintf(sentry, "\tCache Misses:         %2d%%  %8.5f %8.5f\n",
+	p,
+	statPctileSvc((double) p / 100.0, 5, PCTILE_MISS) / 1000.0,
+	statPctileSvc((double) p / 100.0, 60, PCTILE_MISS) / 1000.0);
+    }
+    for (p = 5; p < 100; p += 5) {
+       storeAppendPrintf(sentry, "\tCache Hits:           %2d%%  %8.5f %8.5f\n",
+	p,
+	statPctileSvc((double) p / 100.0, 5, PCTILE_HIT) / 1000.0,
+	statPctileSvc((double) p / 100.0, 60, PCTILE_HIT) / 1000.0);
+    }
+    for (p = 5; p < 100; p += 5) {
+       storeAppendPrintf(sentry, "\tNear Hits:            %2d%%  %8.5f %8.5f\n",
+	p,
+	statPctileSvc((double) p / 100.0, 5, PCTILE_NH) / 1000.0,
+	statPctileSvc((double) p / 100.0, 60, PCTILE_NH) / 1000.0);
+    }
+    for (p = 5; p < 100; p += 5) {
+       storeAppendPrintf(sentry, "\tNot-Modified Replies: %2d%%  %8.5f %8.5f\n",
+	p,
+	statPctileSvc((double) p / 100.0, 5, PCTILE_NM) / 1000.0,
+	statPctileSvc((double) p / 100.0, 60, PCTILE_NM) / 1000.0);
+    }
+    for (p = 5; p < 100; p += 5) {
+       storeAppendPrintf(sentry, "\tDNS Lookups:          %2d%%  %8.5f %8.5f\n",
+	p,
+	statPctileSvc((double) p / 100.0, 5, PCTILE_DNS) / 1000.0,
+	statPctileSvc((double) p / 100.0, 60, PCTILE_DNS) / 1000.0);
+    }
+    for (p = 5; p < 100; p += 5) {
+       storeAppendPrintf(sentry, "\tICP Queries:          %2d%%  %8.5f %8.5f\n",
+	p,
+	statPctileSvc((double) p / 100.0, 5, PCTILE_ICP_QUERY) / 1000000.0,
+	statPctileSvc((double) p / 100.0, 60, PCTILE_ICP_QUERY) / 1000000.0);
+    }
+}
+
 #define XAVG(X) (dt ? (double) (f->X - l->X) / dt : 0.0)
 static void
 statAvgDump(StoreEntry * sentry, int minutes, int hours)
@@ -793,8 +840,7 @@ statAvgDump(StoreEntry * sentry, int minutes, int hours)
 
         l = &CountHourHist[hours];
     } else {
-        debug(18, 1) ("statAvgDump: Invalid args, minutes=%d, hours=%d\n",
-                      minutes, hours);
+        debugs(18, 1, "statAvgDump: Invalid args, minutes=" << minutes << ", hours=" << hours);
         return;
     }
 
@@ -973,7 +1019,7 @@ void
 statInit(void)
 {
     int i;
-    debug(18, 5) ("statInit: Initializing...\n");
+    debugs(18, 5, "statInit: Initializing...");
 
     for (i = 0; i < N_COUNT_HIST; i++)
         statCountersInit(&CountHist[i]);
@@ -996,6 +1042,10 @@ statRegisterWithCacheManager(CacheManager & manager)
     manager.registerAction("info",
                            "General Runtime Information",
                            info_get, 0, 1);
+
+    manager.registerAction("service_times",
+                           "Service Times (Percentiles)",
+                           service_times, 0, 1);
 
     manager.registerAction("filedescriptors",
                            "Process Filedescriptor Allocation",
@@ -1093,10 +1143,10 @@ statAvgTick(void *notused)
     }
 
     if (Config.warnings.high_rptm > 0) {
-        int i = (int) statMedianSvc(20, MEDIAN_HTTP);
+        int i = (int) statPctileSvc(0.5, 20, PCTILE_HTTP);
 
         if (Config.warnings.high_rptm < i)
-            debug(18, 0) ("WARNING: Median response time is %d milliseconds\n", i);
+            debugs(18, 0, "WARNING: Median response time is " << i << " milliseconds");
     }
 
     if (Config.warnings.high_pf) {
@@ -1107,7 +1157,7 @@ statAvgTick(void *notused)
             i /= (int) dt;
 
             if (Config.warnings.high_pf < i)
-                debug(18, 0) ("WARNING: Page faults occuring at %d/sec\n", i);
+                debugs(18, 0, "WARNING: Page faults occuring at " << i << "/sec");
         }
     }
 
@@ -1127,7 +1177,7 @@ statAvgTick(void *notused)
 #endif
 
         if (Config.warnings.high_memory < i)
-            debug(18, 0) ("WARNING: Memory usage at %lu MB\n", (unsigned long int)(i >> 20));
+            debugs(18, 0, "WARNING: Memory usage at " << ((unsigned long int)(i >> 20)) << " MB");
     }
 }
 
@@ -1447,7 +1497,7 @@ statAvg60min(StoreEntry * e)
 }
 
 static double
-statMedianSvc(int interval, int which)
+statPctileSvc(double pctile, int interval, int which)
 {
     StatCounters *f;
     StatCounters *l;
@@ -1467,53 +1517,41 @@ statMedianSvc(int interval, int which)
 
     switch (which) {
 
-    case MEDIAN_HTTP:
-        x = statHistDeltaMedian(&l->client_http.all_svc_time, &f->client_http.all_svc_time);
+    case PCTILE_HTTP:
+        x = statHistDeltaPctile(&l->client_http.all_svc_time, &f->client_http.all_svc_time, pctile);
         break;
 
-    case MEDIAN_HIT:
-        x = statHistDeltaMedian(&l->client_http.hit_svc_time, &f->client_http.hit_svc_time);
+    case PCTILE_HIT:
+        x = statHistDeltaPctile(&l->client_http.hit_svc_time, &f->client_http.hit_svc_time, pctile);
         break;
 
-    case MEDIAN_MISS:
-        x = statHistDeltaMedian(&l->client_http.miss_svc_time, &f->client_http.miss_svc_time);
+    case PCTILE_MISS:
+        x = statHistDeltaPctile(&l->client_http.miss_svc_time, &f->client_http.miss_svc_time, pctile);
         break;
 
-    case MEDIAN_NM:
-        x = statHistDeltaMedian(&l->client_http.nm_svc_time, &f->client_http.nm_svc_time);
+    case PCTILE_NM:
+        x = statHistDeltaPctile(&l->client_http.nm_svc_time, &f->client_http.nm_svc_time, pctile);
         break;
 
-    case MEDIAN_NH:
-        x = statHistDeltaMedian(&l->client_http.nh_svc_time, &f->client_http.nh_svc_time);
+    case PCTILE_NH:
+        x = statHistDeltaPctile(&l->client_http.nh_svc_time, &f->client_http.nh_svc_time, pctile);
         break;
 
-    case MEDIAN_ICP_QUERY:
-        x = statHistDeltaMedian(&l->icp.query_svc_time, &f->icp.query_svc_time);
+    case PCTILE_ICP_QUERY:
+        x = statHistDeltaPctile(&l->icp.query_svc_time, &f->icp.query_svc_time, pctile);
         break;
 
-    case MEDIAN_DNS:
-        x = statHistDeltaMedian(&l->dns.svc_time, &f->dns.svc_time);
+    case PCTILE_DNS:
+        x = statHistDeltaPctile(&l->dns.svc_time, &f->dns.svc_time, pctile);
         break;
 
     default:
-        debug(49, 5) ("get_median_val: unknown type.\n");
+        debugs(49, 5, "statPctileSvc: unknown type.");
         x = 0;
     }
 
     return x;
 }
-
-/*
- * SNMP wants ints, ick
- */
-#if UNUSED_CODE
-int
-get_median_svc(int interval, int which)
-{
-    return (int) statMedianSvc(interval, which);
-}
-
-#endif
 
 StatCounters *
 snmpStatGet(int minutes)
@@ -1617,7 +1655,7 @@ statClientRequests(StoreEntry * s)
         ConnStateData::Pointer conn = http->getConn();
         storeAppendPrintf(s, "Connection: %p\n", conn.getRaw());
 
-        if (conn.getRaw() != NULL) {
+        if (conn != NULL) {
             fd = conn->fd;
             storeAppendPrintf(s, "\tFD %d, read %d, wrote %d\n", fd,
                               fd_table[fd].bytes_read, fd_table[fd].bytes_written);
@@ -1658,12 +1696,12 @@ statClientRequests(StoreEntry * s)
             p = http->request->extacl_user.buf();
         }
 
-        if (!p && (conn.getRaw() != NULL && conn->rfc931[0]))
+        if (!p && (conn != NULL && conn->rfc931[0]))
             p = conn->rfc931;
 
 #if USE_SSL
 
-        if (!p && conn.getRaw() != NULL)
+        if (!p && conn != NULL)
             p = sslGetUserEmail(fd_table[conn->fd].ssl);
 
 #endif

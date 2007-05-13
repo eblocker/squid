@@ -1,7 +1,7 @@
 #
 #  Makefile for the Squid Object Cache server
 #
-#  $Id: Makefile.am,v 1.173 2006/11/01 19:55:29 serassio Exp $
+#  $Id: Makefile.am,v 1.180 2007/05/08 16:32:11 rousskov Exp $
 #
 #  Uncomment and customize the following to suit your needs:
 #
@@ -286,7 +286,7 @@ EXTRA_squid_SOURCES = \
 	LeakFinder.cc \
 	LeakFinder.h \
 	$(SNMP_ALL_SOURCE) \
-	unlinkd.cc \
+	$(UNLINKDSOURCE) \
 	$(SSL_ALL_SOURCE) \
 	$(WIN32_ALL_SOURCE) \
 	DiskIO/DiskThreads/aiops.cc \
@@ -411,6 +411,8 @@ squid_SOURCES = \
 	ACLChecklist.h \
 	$(squid_ACLSOURCES) \
 	asn.cc \
+	AsyncCall.cc \
+	AsyncCall.h \
 	AsyncEngine.cc \
 	AsyncEngine.h \
 	authenticate.cc \
@@ -429,8 +431,8 @@ squid_SOURCES = \
 	client_side_reply.h \
 	client_side_request.cc \
 	client_side_request.h \
-	BodyReader.cc \
-	BodyReader.h \
+	BodyPipe.cc \
+	BodyPipe.h \
 	ClientRequestContext.h \
 	clientStream.cc \
 	clientStream.h \
@@ -607,7 +609,6 @@ squid_SOURCES = \
 	URLScheme.h \
 	urn.cc \
 	useragent.cc \
-	wais.cc \
 	wccp.cc \
 	wccp2.cc \
 	whois.cc \
@@ -666,16 +667,19 @@ squid_DEPENDENCIES = $(top_builddir)/lib/libmiscutil.a @STORE_OBJS@ @STORE_LINKO
 	@ICAP_LIBS@
 
 ICAP_libicap_a_SOURCES = \
+	ICAP/AsyncJob.cc \
+	ICAP/AsyncJob.h \
  	ICAP/ChunkedCodingParser.cc \
  	ICAP/ChunkedCodingParser.h \
 	ICAP/ICAPClient.cc \
 	ICAP/ICAPClient.h \
-	ICAP/ICAPClientVector.cc \
-	ICAP/ICAPClientVector.h \
-	ICAP/ICAPClientReqmodPrecache.cc \
-	ICAP/ICAPClientReqmodPrecache.h \
-	ICAP/ICAPClientRespmodPrecache.cc \
-	ICAP/ICAPClientRespmodPrecache.h \
+	ICAP/ICAPInitiator.cc \
+	ICAP/ICAPInitiator.h \
+	ICAP/ICAPInitiate.cc \
+	ICAP/ICAPInitiate.h \
+	ICAP/ICAPInOut.h \
+	ICAP/ICAPLauncher.cc \
+	ICAP/ICAPLauncher.h \
 	ICAP/ICAPConfig.cc \
 	ICAP/ICAPConfig.h \
 	ICAP/ICAPElements.cc \
@@ -690,18 +694,11 @@ ICAP_libicap_a_SOURCES = \
 	ICAP/ICAPServiceRep.h \
 	ICAP/ICAPXaction.cc \
 	ICAP/ICAPXaction.h \
-	ICAP/MsgPipe.cc \
-	ICAP/MsgPipe.h \
-	ICAP/MsgPipeData.h \
-	ICAP/MsgPipeEnd.h \
-	ICAP/MsgPipeSink.h \
-	ICAP/MsgPipeSource.h \
 	ICAP/TextException.cc \
 	ICAP/TextException.h
 
 
-unlinkd_SOURCES = unlinkd.cc SquidNew.cc
-unlinkd_CXXFLAGS = -DUNLINK_DAEMON
+unlinkd_SOURCES = unlinkd_daemon.cc SquidNew.cc
 
 pinger_SOURCES = \
 	pinger.cc \
@@ -740,7 +737,10 @@ ufsdump_SOURCES = \
 	time.cc \
 	ufsdump.cc \
 	url.cc \
-	BodyReader.cc \
+	AsyncCall.cc \
+	AsyncCall.h \
+	BodyPipe.cc \
+	BodyPipe.h \
 	ConfigParser.cc \
 	store.cc \
 	StoreFileSystem.cc \
@@ -868,7 +868,6 @@ ufsdump_SOURCES = \
 	URLScheme.cc \
 	urn.cc \
 	useragent.cc \
-	wais.cc \
 	wccp.cc \
 	wccp2.cc \
 	whois.cc \
@@ -1255,8 +1254,9 @@ tests_testCacheManager_SOURCES = \
 	ACLStringData.cc \
 	ACLRegexData.cc \
 	ACLUserData.cc \
+	AsyncCall.cc \
 	authenticate.cc \
-	BodyReader.cc \
+	BodyPipe.cc \
 	cache_manager.cc \
 	cache_cf.cc \
 	CacheDigest.cc \
@@ -1358,7 +1358,6 @@ tests_testCacheManager_SOURCES = \
 	URLScheme.cc \
 	urn.cc \
 	useragent.cc \
-	wais.cc \
 	wccp2.cc \
 	whois.cc \
 	$(WIN32_SOURCE) \
@@ -1420,8 +1419,9 @@ tests_testEvent_SOURCES = \
 	ACLStringData.cc \
 	ACLRegexData.cc \
 	ACLUserData.cc \
+	AsyncCall.cc \
 	authenticate.cc \
-	BodyReader.cc \
+	BodyPipe.cc \
 	cache_manager.cc \
 	cache_cf.cc \
 	CacheDigest.cc \
@@ -1522,7 +1522,6 @@ tests_testEvent_SOURCES = \
 	URLScheme.cc \
 	urn.cc \
 	useragent.cc \
-	wais.cc \
 	wccp2.cc \
 	whois.cc \
 	$(WIN32_SOURCE) \
@@ -1571,8 +1570,9 @@ tests_testEventLoop_SOURCES = \
 	ACLStringData.cc \
 	ACLRegexData.cc \
 	ACLUserData.cc \
+	AsyncCall.cc \
 	authenticate.cc \
-	BodyReader.cc \
+	BodyPipe.cc \
 	cache_manager.cc \
 	cache_cf.cc \
 	CacheDigest.cc \
@@ -1673,7 +1673,6 @@ tests_testEventLoop_SOURCES = \
 	URLScheme.cc \
 	urn.cc \
 	useragent.cc \
-	wais.cc \
 	wccp2.cc \
 	whois.cc \
 	$(WIN32_SOURCE) \
@@ -1746,8 +1745,9 @@ tests_test_http_range_SOURCES = \
 	ACLStringData.cc \
 	ACLRegexData.cc \
 	ACLUserData.cc \
+	AsyncCall.cc \
 	authenticate.cc \
-	BodyReader.cc \
+	BodyPipe.cc \
 	cache_cf.cc \
 	cache_manager.cc \
 	CacheDigest.cc \
@@ -1854,7 +1854,6 @@ tests_test_http_range_SOURCES = \
 	URLScheme.cc \
 	urn.cc \
 	useragent.cc \
-	wais.cc \
 	wccp2.cc \
 	whois.cc \
 	$(WIN32_SOURCE) \
@@ -1903,8 +1902,9 @@ tests_testHttpRequest_SOURCES = \
 	ACLStringData.cc \
 	ACLRegexData.cc \
 	ACLUserData.cc \
+	AsyncCall.cc \
 	authenticate.cc \
-	BodyReader.cc \
+	BodyPipe.cc \
 	cache_manager.cc \
 	cache_cf.cc \
 	CacheDigest.cc \
@@ -2006,7 +2006,6 @@ tests_testHttpRequest_SOURCES = \
 	URLScheme.cc \
 	urn.cc \
 	useragent.cc \
-	wais.cc \
 	wccp2.cc \
 	whois.cc \
 	$(WIN32_SOURCE) \
@@ -2152,7 +2151,7 @@ SWAP_TEST_SOURCES = \
 	store_io.cc \
 	store_swapout.cc \
 	store_swapmeta.cc \
-	unlinkd.cc \
+	$(UNLINKDSOURCE) \
 	$(WIN32_SOURCE) \
 	$(STORE_TEST_SOURCES) \
 	$(DISKIO_SOURCE)
@@ -2239,8 +2238,9 @@ tests_testURL_SOURCES = \
 	ACLStringData.cc \
 	ACLRegexData.cc \
 	ACLUserData.cc \
+	AsyncCall.cc \
 	authenticate.cc \
-	BodyReader.cc \
+	BodyPipe.cc \
 	cache_manager.cc \
 	cache_cf.cc \
 	CacheDigest.cc \
@@ -2339,7 +2339,6 @@ tests_testURL_SOURCES = \
 	SwapDir.cc \
 	urn.cc \
 	useragent.cc \
-	wais.cc \
 	wccp2.cc \
 	whois.cc \
 	$(WIN32_SOURCE) \

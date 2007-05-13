@@ -1,8 +1,8 @@
 
 /*
- * $Id: store_repl_lru.cc,v 1.20 2006/09/03 21:05:21 hno Exp $
+ * $Id: store_repl_lru.cc,v 1.22 2007/04/25 11:30:19 adrian Exp $
  *
- * DEBUG: section ?     LRU Removal policy
+ * DEBUG: none          LRU Removal Policy
  * AUTHOR: Henrik Nordstrom
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
@@ -246,7 +246,7 @@ try_again:
     entry = (StoreEntry *) lru_node->node.data;
     dlinkDelete(&lru_node->node, &lru->list);
 
-    if (storeEntryLocked(entry)) {
+    if (entry->locked()) {
         /* Shit, it is locked. we can't return this one */
         walker->locked++;
         dlinkAddTail(entry, &lru_node->node, &lru->list);
@@ -300,7 +300,7 @@ again:
     if (lru_node) {
         StoreEntry *entry = (StoreEntry *) lru_node->node.data;
 
-        if (storeEntryLocked(entry)) {
+        if (entry->locked()) {
             lru_node = (LruNode *) lru_node->node.next;
             goto again;
         }

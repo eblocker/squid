@@ -29,6 +29,7 @@ DEB_CONFIGURE_EXTRA_FLAGS := --datadir=/usr/share/squid3 \
 		--enable-carp \
 		--enable-large-files \
 		--enable-underscores \
+		--enable-icap-client \
 		--enable-auth="basic,digest,ntlm" \
 		--enable-basic-auth-helpers="LDAP,MSNT,NCSA,PAM,SASL,SMB,YP,getpwnam,multi-domain-NTLM" \
 		--enable-ntlm-auth-helpers="SMB" \

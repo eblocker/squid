@@ -9,6 +9,7 @@ squid3 (3.0.PRE6-1) UNRELEASED; urgency=low
   * debian/rules
     - Enable delay pools (Closes: #410785)
     - Enable cache digests (Closes: #416631)
+    - Enable ICAP client
 
   * debian/patches/02-makefile-defaults
     - Fix default configuration file for cachemgr.cgi (Closes: #416630)

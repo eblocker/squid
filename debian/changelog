@@ -5,6 +5,9 @@ squid3 (3.0.PRE6-2) UNRELEASED; urgency=low
   * debian/control
     - Make package binNMU safe (Closes: #432981)
 
+  * debian/rules
+    - Enabled diskio (Closes: #434621)
+
  -- Luigi Gangitano <luigi@debian.org>  Sun, 13 May 2007 19:13:03 +0200
 
 squid3 (3.0.PRE6-1) unstable; urgency=low

@@ -7,6 +7,7 @@ squid3 (3.0.PRE6-2) UNRELEASED; urgency=low
 
   * debian/rules
     - Enabled diskd (Closes: #434621)
+    - Removed --enable-diskio option (Closes: #435230)
 
  -- Luigi Gangitano <luigi@debian.org>  Sun, 13 May 2007 19:13:03 +0200
 

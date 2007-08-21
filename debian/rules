@@ -18,7 +18,6 @@ DEB_CONFIGURE_EXTRA_FLAGS := --datadir=/usr/share/squid3 \
 		--enable-inline \
 		--enable-async-io=8 \
 		--enable-storeio="ufs,aufs,coss,diskd" \
-		--enable-diskio="AIO,Blocking,DiskDaemon,DiskThreads" \
 		--enable-removal-policies="lru,heap" \
 		--enable-poll \
 		--enable-delay-pools \

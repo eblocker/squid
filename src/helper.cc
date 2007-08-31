@@ -1,6 +1,6 @@
 
 /*
- * $Id: helper.cc,v 1.84 2007/05/09 09:07:39 wessels Exp $
+ * $Id: helper.cc,v 1.88 2007/08/27 12:50:43 hno Exp $
  *
  * DEBUG: section 84    Helper process maintenance
  * AUTHOR: Harvest Derived?
@@ -486,8 +486,8 @@ void
 helperStatefulReleaseServer(helper_stateful_server * srv)
 {
     debugs(84, 3, HERE << "srv-" << srv->index << " flags.reserved = " << srv->flags.reserved);
-    if (srv->flags.reserved = S_HELPER_FREE)
-	return;
+    if (srv->flags.reserved == S_HELPER_FREE)
+        return;
 
     srv->stats.releases++;
 
@@ -1128,11 +1128,11 @@ helperStatefulHandleRead(int fd, char *buf, size_t len, comm_err_t flag, int xer
 
         *t = '\0';
 
-        if (cbdataReferenceValid(r->data)) {
+        if (r && cbdataReferenceValid(r->data)) {
             switch ((r->callback(r->data, srv, srv->rbuf))) {	/*if non-zero reserve helper */
 
             case S_HELPER_UNKNOWN:
-                    fatal("helperStatefulHandleRead: either a non-state aware callback was give to the stateful helper routines, or an uninitialised callback response was recieved.\n");
+                    fatal("helperStatefulHandleRead: either a non-state aware callback was give to the stateful helper routines, or an uninitialised callback response was received.\n");
                 break;
 
             case S_HELPER_RELEASE:	/* helper finished with */
@@ -1602,9 +1602,11 @@ helperRequestFree(helper_request * r)
 static void
 helperStatefulRequestFree(helper_stateful_request * r)
 {
-    cbdataReferenceDone(r->data);
-    xfree(r->buf);
-    delete r;
+    if(r) {
+        cbdataReferenceDone(r->data);
+        xfree(r->buf);
+        delete r;
+    }
 }
 
 // TODO: should helper_ and helper_stateful_ have a common parent?

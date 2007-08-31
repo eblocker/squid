@@ -1,6 +1,6 @@
 
 /*
- * $Id: forward.cc,v 1.163 2007/04/30 16:56:09 wessels Exp $
+ * $Id: forward.cc,v 1.168 2007/07/21 16:32:03 hno Exp $
  *
  * DEBUG: section 17    Request Forwarding
  * AUTHOR: Duane Wessels
@@ -80,6 +80,7 @@ void
 FwdState::abort(void* d)
 {
     FwdState* fwd = (FwdState*)d;
+    Pointer tmp = fwd; // Grab a temporary pointer to keep the object alive during our scope.
 
     if (fwd->server_fd >= 0) {
         comm_close(fwd->server_fd);
@@ -497,6 +498,17 @@ FwdState::serverClosed(int fd)
     assert(server_fd == fd);
     server_fd = -1;
 
+    retryOrBail();
+}
+
+void
+FwdState::retryOrBail() {
+    if (!self) { // we have aborted before the server called us back
+        debugs(17, 5, HERE << "not retrying because of earlier abort");
+        // we will be destroyed when the server clears its Pointer to us
+        return;
+    }
+
     if (checkRetry()) {
         int originserver = (servers->_peer == NULL);
         debugs(17, 3, "fwdServerClosed: re-forwarding (" << n_tries << " tries, " << (squid_curtime - start_t) << " secs)");
@@ -533,6 +545,16 @@ FwdState::serverClosed(int fd)
     }
 
     self = NULL;	// refcounted
+}
+
+// called by the server that failed after calling unregister()
+void
+FwdState::handleUnregisteredServerEnd()
+{
+    debugs(17, 2, "handleUnregisteredServerEnd: self=" << self <<
+        " err=" << err << ' ' << entry->url());
+    assert(server_fd < 0);
+    retryOrBail();
 }
 
 #if USE_SSL
@@ -784,27 +806,20 @@ FwdState::connectStart()
     if (ftimeout < ctimeout)
         ctimeout = ftimeout;
 
-    if ((fd = fwdPconnPool->pop(host, port, domain, client_addr)) >= 0) {
-        if (checkRetriable()) {
-            debugs(17, 3, "fwdConnectStart: reusing pconn FD " << fd);
-            server_fd = fd;
-            n_tries++;
+    fd = fwdPconnPool->pop(host, port, domain, client_addr, checkRetriable());
+    if (fd >= 0) {
+        debugs(17, 3, "fwdConnectStart: reusing pconn FD " << fd);
+        server_fd = fd;
+        n_tries++;
 
-            if (!fs->_peer)
-                origin_tries++;
+        if (!fs->_peer)
+            origin_tries++;
 
-            comm_add_close_handler(fd, fwdServerClosedWrapper, this);
+        comm_add_close_handler(fd, fwdServerClosedWrapper, this);
 
-            dispatch();
+        dispatch();
 
-            return;
-        } else {
-            /* Discard the persistent connection to not cause
-             * an imbalance in number of connections open if there
-             * is a lot of POST requests
-             */
-            comm_close(fd);
-        }
+        return;
     }
 
 #if URL_CHECKSUM_DEBUG
@@ -1204,7 +1219,11 @@ static struct IN_ADDR
     return addr;
 }
 
-static int
+/*
+ * DPW 2007-05-19
+ * Formerly static, but now used by client_side_request.cc
+ */
+int
 aclMapTOS(acl_tos * head, ACLChecklist * ch)
 {
     acl_tos *l;

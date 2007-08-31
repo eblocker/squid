@@ -1,6 +1,6 @@
 
 /*
- * $Id: tools.cc,v 1.275 2007/04/29 17:45:18 hno Exp $
+ * $Id: tools.cc,v 1.278 2007/08/24 18:05:28 hno Exp $
  *
  * DEBUG: section 21    Misc Functions
  * AUTHOR: Harvest Derived
@@ -389,9 +389,11 @@ death(int sig)
 
         if (Config.adminEmail)
             mail_warranty();
-        else
-            puts(dead_msg());
+	puts(dead_msg());
     }
+
+    if (shutting_down)
+	exit(1);
 
     abort();
 }
@@ -466,15 +468,22 @@ fatal(const char *message)
      * - RBC 20060819
      */
 
+    /*
+     * DPW 2007-07-06
+     * Call leave_suid() here to make sure that swap.state files
+     * are written as the effective user, rather than root.  Squid
+     * may take on root privs during reconfigure.  If squid.conf
+     * contains a "Bungled" line, fatal() will be called when the
+     * process still has root privs.
+     */
+    leave_suid();
+
     if (0 == StoreController::store_dirs_rebuilding)
         storeDirWriteCleanLogs(0);
 
     fatal_common(message);
 
-    if (shutting_down)
-        exit(1);
-    else
-        abort();
+    exit(1);
 }
 
 /* printf-style interface for fatal */
@@ -516,6 +525,15 @@ fatal_dump(const char *message) {
 
     if (message)
         fatal_common(message);
+
+    /*
+     * Call leave_suid() here to make sure that swap.state files
+     * are written as the effective user, rather than root.  Squid
+     * may take on root privs during reconfigure.  If squid.conf
+     * contains a "Bungled" line, fatal() will be called when the
+     * process still has root privs.
+     */
+    leave_suid();
 
     if (opt_catch_signals)
         storeDirWriteCleanLogs(0);

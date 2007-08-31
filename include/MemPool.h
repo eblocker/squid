@@ -112,6 +112,9 @@ public:
     virtual int getInUseCount() = 0;
     int inUseCount();
     virtual void setChunkSize(size_t chunksize) {}
+
+    // smallest size divisible by sizeof(void*) and at least minSize
+    static size_t RoundedSize(size_t minSize);
 private:
     const char *label;
 };
@@ -297,8 +300,6 @@ struct _MemPoolGlobalStats
     int tot_overhead;
     int mem_idle_limit;
 };
-
-#define SIZEOF_CHUNK  ( ( sizeof(MemChunk) + sizeof(double) -1) / sizeof(double) ) * sizeof(double);
 
 #define memPoolCreate MemPools::GetInstance().create
 

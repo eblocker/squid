@@ -1,6 +1,6 @@
 
 /*
- * $Id: event.cc,v 1.47 2007/04/12 23:25:07 wessels Exp $
+ * $Id: event.cc,v 1.49 2007/07/30 15:05:42 hno Exp $
  *
  * DEBUG: section 41    Event Processing
  * AUTHOR: Henrik Nordstrom
@@ -276,7 +276,7 @@ EventScheduler::dump(StoreEntry * sentry)
 
     while (e != NULL) {
         storeAppendPrintf(sentry, "%s\t%f seconds\t%d\t%s\n",
-                          e->name, e->when - current_dtime, e->weight,
+                          e->name, e->when ? e->when - current_dtime : 0, e->weight,
                   (e->arg && e->cbdata) ? cbdataReferenceValid(e->arg) ? "yes" : "no" : "N/A");
         e = e->next;
     }
@@ -305,8 +305,11 @@ EventScheduler::GetInstance()
 void
 EventScheduler::schedule(const char *name, EVH * func, void *arg, double when, int weight, bool cbdata)
 {
-
-    struct ev_entry *event = new ev_entry(name, func, arg, current_dtime + when, weight, cbdata);
+    // Use zero timestamp for when=0 events: Many of them are async calls that
+    // must fire in the submission order. We cannot use current_dtime for them
+    // because it may decrease if system clock is adjusted backwards.
+    const double timestamp = when > 0.0 ? current_dtime + when : 0;
+    struct ev_entry *event = new ev_entry(name, func, arg, timestamp, weight, cbdata);
 
     struct ev_entry **E;
     debugs(41, 7, HERE << "schedule: Adding '" << name << "', in " << when << " seconds");

@@ -1,6 +1,6 @@
 
 /*
- * $Id: http.h,v 1.28 2007/04/20 07:29:47 wessels Exp $
+ * $Id: http.h,v 1.32 2007/08/09 23:30:53 rousskov Exp $
  *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
@@ -39,12 +39,6 @@
 #include "forward.h"
 #include "Server.h"
 
-#if ICAP_CLIENT
-#include "ICAP/ICAPServiceRep.h"
-
-class ICAPAccessCheck;
-#endif
-
 class HttpStateData : public ServerStateData
 {
 
@@ -74,7 +68,6 @@ public:
     HttpRequest *orig_request;
     int fd;
     http_state_flags flags;
-    off_t currentOffset;
     size_t read_sz;
     int header_bytes_read;	// to find end of response,
     int reply_bytes_read;	// without relying on StoreEntry
@@ -84,16 +77,8 @@ public:
 
     void processSurrogateControl(HttpReply *);
 
-#if ICAP_CLIENT
-    void icapAclCheckDone(ICAPServiceRep::Pointer);
-    bool icapAccessCheckPending;
-#endif
-
-    /*
-     * getReply() public only because it is called from a static function
-     * as httpState->getReply()
-     */
-    const HttpReply * getReply() const { assert(reply); return reply; }
+protected:
+    virtual HttpRequest *originalRequest();
 
 private:
     enum ConnectionStatus {
@@ -103,9 +88,10 @@ private:
     };
     ConnectionStatus statusIfComplete() const;
     ConnectionStatus persistentConnStatus() const;
-    void failReply (HttpReply *reply, http_status const &status);
     void keepaliveAccounting(HttpReply *);
     void checkDateSkew(HttpReply *);
+
+    bool continueAfterParsingHeader();
 
     virtual void haveParsedReplyHeaders();
     virtual void closeServer(); // end communication with the server
@@ -126,9 +112,6 @@ private:
                                  MemBuf * mb,
                                  http_state_flags flags);
     static bool decideIfWeDoRanges (HttpRequest * orig_request);
-
-#if ICAP_CLIENT
-#endif
 
 private:
     CBDATA_CLASS2(HttpStateData);

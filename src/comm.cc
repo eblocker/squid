@@ -1,6 +1,6 @@
 
 /*
- * $Id: comm.cc,v 1.430 2007/04/30 16:56:09 wessels Exp $
+ * $Id: comm.cc,v 1.435 2007/08/24 17:56:45 hno Exp $
  *
  * DEBUG: section 5     Socket Functions
  * AUTHOR: Harvest Derived
@@ -822,6 +822,21 @@ limitError(int const anErrno)
     return anErrno == ENFILE || anErrno == EMFILE;
 }
 
+int
+comm_set_tos(int fd, int tos)
+{
+#ifdef IP_TOS
+	int x = setsockopt(fd, IPPROTO_IP, IP_TOS, (char *) &tos, sizeof(int));
+        if (x < 0)
+            debugs(50, 1, "comm_set_tos: setsockopt(IP_TOS) on FD " << fd << ": " << xstrerror());
+	return x;
+#else
+        debugs(50, 0, "comm_set_tos: setsockopt(IP_TOS) not supported on this platform");
+	return -1;
+#endif
+}
+
+
 /* Create a socket. Default is blocking, stream (TCP) socket.  IO_TYPE
  * is OR of flags specified in defines.h:COMM_* */
 int
@@ -1632,7 +1647,7 @@ void
 comm_remove_close_handler(int fd, PF * handler, void *data)
 {
     assert (fdc_table[fd].active);
-    close_handler *p;
+    close_handler *p = NULL;
     close_handler *last = NULL;
     /* Find handler in list */
     debugs(5, 5, "comm_remove_close_handler: FD " << fd << ", handler=" <<
@@ -1683,6 +1698,12 @@ commSetTcpRcvbuf(int fd, int size)
 {
     if (setsockopt(fd, SOL_SOCKET, SO_RCVBUF, (char *) &size, sizeof(size)) < 0)
         debugs(50, 1, "commSetTcpRcvbuf: FD " << fd << ", SIZE " << size << ": " << xstrerror());
+    if (setsockopt(fd, SOL_SOCKET, SO_SNDBUF, (char *) &size, sizeof(size)) < 0)
+        debugs(50, 1, "commSetTcpRcvbuf: FD " << fd << ", SIZE " << size << ": " << xstrerror());
+#ifdef TCP_WINDOW_CLAMP
+    if (setsockopt(fd, SOL_TCP, TCP_WINDOW_CLAMP, (char *) &size, sizeof(size)) < 0)
+        debugs(50, 1, "commSetTcpRcvbuf: FD " << fd << ", SIZE " << size << ": " << xstrerror());
+#endif
 }
 
 int
@@ -2034,6 +2055,19 @@ comm_listen(int sock) {
         debugs(50, 0, "comm_listen: listen(" << (Squid_MaxFD >> 2) << ", " << sock << "): " << xstrerror());
         return x;
     }
+
+#ifdef SO_ACCEPTFILTER
+    if (Config.accept_filter) {
+	struct accept_filter_arg afa;
+	bzero(&afa, sizeof(afa));
+	debug(5, 0) ("Installing accept filter '%s' on FD %d\n",
+	Config.accept_filter, sock);
+	xstrncpy(afa.af_name, Config.accept_filter, sizeof(afa.af_name));
+	x = setsockopt(sock, SOL_SOCKET, SO_ACCEPTFILTER, &afa, sizeof(afa));
+	if (x < 0)
+	    debug(5, 0) ("SO_ACCEPTFILTER '%s': %s\n", Config.accept_filter, xstrerror());
+    }
+#endif
 
     return sock;
 }

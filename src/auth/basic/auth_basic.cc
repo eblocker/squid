@@ -1,5 +1,5 @@
 /*
- * $Id: auth_basic.cc,v 1.48 2007/05/09 07:36:26 wessels Exp $
+ * $Id: auth_basic.cc,v 1.52 2007/08/03 02:11:17 amosjeffries Exp $
  *
  * DEBUG: section 29    Authenticator
  * AUTHOR: Duane Wessels
@@ -143,7 +143,7 @@ int
 AuthBasicUserRequest::authenticated() const
 {
     BasicUser const *basic_auth = dynamic_cast<BasicUser const *>(user());
-    assert (user());
+    assert (basic_auth != NULL);
 
     if (basic_auth->authenticated())
         return 1;
@@ -162,7 +162,7 @@ AuthBasicUserRequest::authenticate(HttpRequest * request, ConnStateData::Pointer
 
     /* if the password is not ok, do an identity */
 
-    if (basic_auth->flags.credentials_ok != 1)
+    if (!basic_auth || basic_auth->flags.credentials_ok != 1)
         return;
 
     /* are we about to recheck the credentials externally? */
@@ -259,6 +259,8 @@ authenticateBasicHandleReply(void *data, char *reply)
     assert(r->auth_user_request->user()->auth_type == AUTH_BASIC);
     basic_data *basic_auth = dynamic_cast<basic_data *>(r->auth_user_request->user());
 
+    assert(basic_auth != NULL);
+
     if (reply && (strncasecmp(reply, "OK", 2) == 0))
         basic_auth->flags.credentials_ok = 1;
     else {
@@ -316,6 +318,13 @@ AuthBasicConfig::AuthBasicConfig()
     authenticateChildren = 5;
     credentialsTTL = 2 * 60 * 60;	/* two hours */
     basicAuthRealm = xstrdup("Squid proxy-caching web server");
+}
+
+AuthBasicConfig::~AuthBasicConfig()
+{
+    if(basicAuthRealm)
+        delete basicAuthRealm;
+    basicAuthRealm = NULL;
 }
 
 void
@@ -635,6 +644,7 @@ AuthBasicUserRequest::module_start(RH * handler, void *data)
     basic_data *basic_auth;
     assert(user()->auth_type == AUTH_BASIC);
     basic_auth = dynamic_cast<basic_data *>(user());
+    assert(basic_auth != NULL);
     debugs(29, 9, "AuthBasicUserRequest::start: '" << basic_auth->username() << ":" << basic_auth->passwd << "'");
 
     if (basicConfig.authenticate == NULL) {

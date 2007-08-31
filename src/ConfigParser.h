@@ -1,6 +1,6 @@
 
 /*
- * $Id: ConfigParser.h,v 1.6 2006/05/29 00:14:59 robertc Exp $
+ * $Id: ConfigParser.h,v 1.8 2007/05/29 13:31:36 amosjeffries Exp $
  *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/

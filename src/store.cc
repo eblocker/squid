@@ -1,6 +1,6 @@
 
 /*
- * $Id: store.cc,v 1.612 2007/05/07 21:51:21 wessels Exp $
+ * $Id: store.cc,v 1.618 2007/08/30 19:26:10 hno Exp $
  *
  * DEBUG: section 20    Storage Manager
  * AUTHOR: Harvest Derived
@@ -650,7 +650,7 @@ StoreEntry::setPublicKey()
 #if MORE_DEBUG_OUTPUT
 
     if (EBIT_TEST(flags, RELEASE_REQUEST))
-        debugs(20, 1, "assertion failed: RELEASE key " << key << ", url " << mem->url);
+        debugs(20, 1, "assertion failed: RELEASE key " << key << ", url " << mem_obj->url);
 
 #endif
 
@@ -818,7 +818,7 @@ StoreEntry::write (StoreIOBuffer writeBuffer)
 
     if (!writeBuffer.length)
       {
-        /* the headers are recieved already, but we have not recieved
+        /* the headers are received already, but we have not received
          * any body data. There are BROKEN abuses of HTTP which require
          * the headers to be passed along before any body data - see
          * http://developer.apple.com/documentation/QuickTime/QTSS/Concepts/chapter_2_section_14.html
@@ -940,11 +940,10 @@ StoreEntry::checkTooSmall()
 
     if (STORE_OK == store_status)
         if (mem_obj->object_sz < 0 ||
-                static_cast<size_t>(mem_obj->object_sz)
-                < Config.Store.minObjectSize)
+	    mem_obj->object_sz < Config.Store.minObjectSize)
             return 1;
     if (getReply()->content_length > -1)
-        if (getReply()->content_length < (int) Config.Store.minObjectSize)
+        if (getReply()->content_length < Config.Store.minObjectSize)
             return 1;
     return 0;
 }
@@ -970,12 +969,12 @@ StoreEntry::checkCachable()
             store_check_cachable_hist.no.negative_cached++;
             return 0;           /* avoid release call below */
         } else if ((getReply()->content_length > 0 &&
-                    static_cast<size_t>(getReply()->content_length)
+                    getReply()->content_length
                     > Config.Store.maxObjectSize) ||
-                   static_cast<size_t>(mem_obj->endOffset()) > Config.Store.maxObjectSize) {
+                   mem_obj->endOffset() > Config.Store.maxObjectSize) {
             debugs(20, 2, "StoreEntry::checkCachable: NO: too big");
             store_check_cachable_hist.no.too_big++;
-        } else if (getReply()->content_length > (int) Config.Store.maxObjectSize) {
+        } else if (getReply()->content_length > Config.Store.maxObjectSize) {
             debugs(20, 2, "StoreEntry::checkCachable: NO: too big");
             store_check_cachable_hist.no.too_big++;
         } else if (checkTooSmall()) {
@@ -1356,7 +1355,7 @@ StoreEntry::locked() const
 bool
 StoreEntry::validLength() const
 {
-    int diff;
+    int64_t diff;
     const HttpReply *reply;
     assert(mem_obj != NULL);
     reply = getReply();
@@ -1659,14 +1658,14 @@ StoreEntry::flush()
     }
 }
 
-ssize_t
+int64_t
 StoreEntry::objectLen() const
 {
     assert(mem_obj != NULL);
     return mem_obj->object_sz;
 }
 
-int
+int64_t
 StoreEntry::contentLen() const
 {
     assert(mem_obj != NULL);
@@ -1842,11 +1841,17 @@ StoreEntry::swapoutPossible()
 void
 StoreEntry::trimMemory()
 {
+    /*
+     * DPW 2007-05-09
+     * Bug #1943.  We must not let go any data for IN_MEMORY
+     * objects.  We have to wait until the mem_status changes.
+     */
+    if (mem_status == IN_MEMORY)
+	return;
+
     if (mem_obj->policyLowestOffsetToKeep() == 0)
         /* Nothing to do */
         return;
-
-    assert (mem_obj->policyLowestOffsetToKeep() > 0);
 
     if (!swapOutAble()) {
         /*

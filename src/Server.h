@@ -1,6 +1,6 @@
 
 /*
- * $Id: Server.h,v 1.4 2007/05/08 16:46:37 rousskov Exp $
+ * $Id: Server.h,v 1.9 2007/08/09 23:30:52 rousskov Exp $
  *
  * AUTHOR: Duane Wessels
  *
@@ -85,8 +85,12 @@ public:
     // abnormal transaction termination; reason is for debugging only
     virtual void abortTransaction(const char *reason) = 0;
 
+    // a hack to reach HttpStateData::orignal_request
+    virtual  HttpRequest *originalRequest();
+
 #if ICAP_CLIENT
-    virtual void icapAclCheckDone(ICAPServiceRep::Pointer) = 0;
+    void icapAclCheckDone(ICAPServiceRep::Pointer);
+    static void icapAclCheckDoneWrapper(ICAPServiceRep::Pointer service, void *data);
 
     // ICAPInitiator: start an ICAP transaction and receive adapted headers.
     virtual void noteIcapAnswer(HttpMsg *message);
@@ -96,9 +100,14 @@ public:
     virtual void noteMoreBodySpaceAvailable(BodyPipe &);
     virtual void noteBodyConsumerAborted(BodyPipe &);
 #endif
+    virtual void processReplyBody() = 0;
 
 public: // should be protected
     void serverComplete(); // call when no server communication is expected
+
+private:
+    void serverComplete2(); // Continuation of serverComplete
+    bool completed;	// serverComplete() has been called
 
 protected:
     // kids customize these
@@ -125,6 +134,7 @@ protected:
 
 #if ICAP_CLIENT
     bool startIcap(ICAPServiceRep::Pointer, HttpRequest *cause);
+    void adaptVirginReplyBody(const char *buf, ssize_t len);
     void cleanIcap();
     virtual bool doneWithIcap() const; // did we end ICAP communication?
 
@@ -137,11 +147,28 @@ protected:
     void handleIcapAborted(bool bypassable = false);
 #endif
 
+protected:
+    const HttpReply *virginReply() const;
+    HttpReply *virginReply();
+    HttpReply *setVirginReply(HttpReply *r);
+
+    HttpReply *finalReply();
+    HttpReply *setFinalReply(HttpReply *r);
+
+    // Kids use these to stuff data into the response instead of messing with the entry directly
+    void adaptOrFinalizeReply();
+    void addVirginReplyBody(const char *buf, ssize_t len);
+    void storeReplyBody(const char *buf, ssize_t len);
+    size_t replyBodySpace(size_t space = 4096 * 10);
+
+    // These should be private
+    off_t currentOffset;	// Our current offset in the StoreEntry
+    MemBuf *responseBodyBuffer;	// Data temporarily buffered for ICAP
+
 public: // should not be
     StoreEntry *entry;
     FwdState::Pointer fwd;
     HttpRequest *request;
-    HttpReply *reply;
 
 protected:
     BodyPipe::Pointer requestBodySource; // to consume request body
@@ -153,11 +180,14 @@ protected:
     BodyPipe::Pointer adaptedBodySource; // to consume adated response body
 
     bool icapAccessCheckPending;
+    bool startedIcap;
 #endif
 
 private:
     void quitIfAllDone(); // successful termination
-    
+
+	HttpReply *theVirginReply; // reply received from the origin server
+	HttpReply *theFinalReply; // adapted reply from ICAP or virgin reply
 };
 
 #endif /* SQUID_SERVER_H */

@@ -1,5 +1,5 @@
 /*
- * $Id: ACLUrlPath.cc,v 1.2 2003/07/11 01:40:34 robertc Exp $
+ * $Id: ACLUrlPath.cc,v 1.4 2007/05/29 13:31:36 amosjeffries Exp $
  *
  * DEBUG: section 28    Access Control
  * AUTHOR: Duane Wessels

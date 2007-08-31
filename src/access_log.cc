@@ -1,6 +1,6 @@
 
 /*
- * $Id: access_log.cc,v 1.122 2007/04/28 22:26:37 hno Exp $
+ * $Id: access_log.cc,v 1.128 2007/08/13 18:25:14 hno Exp $
  *
  * DEBUG: section 46    Access Log
  * AUTHOR: Duane Wessels
@@ -364,6 +364,7 @@ typedef enum {
 
     LFT_REQUEST_METHOD,
     LFT_REQUEST_URI,
+    LFT_REQUEST_URLPATH,
     /*LFT_REQUEST_QUERY, * // * this is not needed. see strip_query_terms */
     LFT_REQUEST_VERSION,
 
@@ -482,6 +483,7 @@ struct logformat_token_table_entry logformat_token_table[] =
 
         {"rm", LFT_REQUEST_METHOD},
         {"ru", LFT_REQUEST_URI},	/* doesn't include the query-string */
+        {"rp", LFT_REQUEST_URLPATH},	/* doesn't include the host */
         /* { "rq", LFT_REQUEST_QUERY }, * /     / * the query-string, INCLUDING the leading ? */
         {">v", LFT_REQUEST_VERSION},
         {"rv", LFT_REQUEST_VERSION},
@@ -529,6 +531,8 @@ accessLogCustom(AccessLogEntry * al, customlog * log)
         long int outint = 0;
         int doint = 0;
         int dofree = 0;
+        int64_t outoff = 0;
+        int dooff = 0;
 
         switch (fmt->type) {
 
@@ -634,7 +638,7 @@ accessLogCustom(AccessLogEntry * al, customlog * log)
 
         case LFT_REPLY_HEADER:
             if (al->reply)
-                sb = al->request->header.getByName(fmt->data.header.header);
+                sb = al->reply->header.getByName(fmt->data.header.header);
 
             out = sb.buf();
 
@@ -654,7 +658,7 @@ accessLogCustom(AccessLogEntry * al, customlog * log)
 
         case LFT_REPLY_HEADER_ELEM:
             if (al->reply)
-                sb = al->request->header.getByNameListMember(fmt->data.header.header, fmt->data.header.element, fmt->data.header.separator);
+                sb = al->reply->header.getByNameListMember(fmt->data.header.header, fmt->data.header.element, fmt->data.header.separator);
 
             out = sb.buf();
 
@@ -763,6 +767,13 @@ accessLogCustom(AccessLogEntry * al, customlog * log)
 
             break;
 
+        case LFT_REQUEST_URLPATH:
+	    if (al->request) {
+		out = al->request->urlpath.buf();
+		quote = 1;
+	    }
+            break;
+
         case LFT_REQUEST_VERSION:
             snprintf(tmp, sizeof(tmp), "%d.%d", (int) al->http.version.major, (int) al->http.version.minor);
 
@@ -777,9 +788,9 @@ accessLogCustom(AccessLogEntry * al, customlog * log)
             /*case LFT_REQUEST_SIZE_BODY_NO_TE: */
 
         case LFT_REPLY_SIZE_TOTAL:
-            outint = al->cache.size;
+            outoff = al->cache.size;
 
-            doint = 1;
+            dooff = 1;
 
             break;
 
@@ -824,7 +835,11 @@ accessLogCustom(AccessLogEntry * al, customlog * log)
             break;
         }
 
-        if (doint) {
+	if (dooff) {
+            snprintf(tmp, sizeof(tmp), "%0*" PRId64, fmt->zero ? (int) fmt->width : 0, outoff);
+            out = tmp;
+	    
+        } else if (doint) {
             snprintf(tmp, sizeof(tmp), "%0*ld", fmt->zero ? (int) fmt->width : 0, outint);
             out = tmp;
         }
@@ -1280,14 +1295,14 @@ accessLogSquid(AccessLogEntry * al, Logfile * logfile)
         safe_free(user);
 
     if (!Config.onoff.log_mime_hdrs) {
-        logfilePrintf(logfile, "%9ld.%03d %6d %s %s/%03d %ld %s %s %s %s%s/%s %s",
+        logfilePrintf(logfile, "%9ld.%03d %6d %s %s/%03d %"PRId64" %s %s %s %s%s/%s %s",
                       (long int) current_time.tv_sec,
                       (int) current_time.tv_usec / 1000,
                       al->cache.msec,
                       client,
                       log_tags[al->cache.code],
                       al->http.code,
-                      (long int) al->cache.size,
+                      al->cache.size,
                       al->_private.method_str,
                       al->url,
                       user ? user : dash_str,
@@ -1298,14 +1313,14 @@ accessLogSquid(AccessLogEntry * al, Logfile * logfile)
     } else {
         char *ereq = log_quote(al->headers.request);
         char *erep = log_quote(al->headers.reply);
-        logfilePrintf(logfile, "%9ld.%03d %6d %s %s/%03d %ld %s %s %s %s%s/%s %s [%s] [%s]",
+        logfilePrintf(logfile, "%9ld.%03d %6d %s %s/%03d %"PRId64" %s %s %s %s%s/%s %s [%s] [%s]",
                       (long int) current_time.tv_sec,
                       (int) current_time.tv_usec / 1000,
                       al->cache.msec,
                       client,
                       log_tags[al->cache.code],
                       al->http.code,
-                      (long int) al->cache.size,
+                      al->cache.size,
                       al->_private.method_str,
                       al->url,
                       user ? user : dash_str,
@@ -1338,7 +1353,7 @@ accessLogCommon(AccessLogEntry * al, Logfile * logfile)
 
     user2 = accessLogFormatName(al->cache.rfc931);
 
-    logfilePrintf(logfile, "%s %s %s [%s] \"%s %s HTTP/%d.%d\" %d %ld %s:%s",
+    logfilePrintf(logfile, "%s %s %s [%s] \"%s %s HTTP/%d.%d\" %d %"PRId64" %s:%s",
                   client,
                   user2 ? user2 : dash_str,
                   user1 ? user1 : dash_str,
@@ -1347,7 +1362,7 @@ accessLogCommon(AccessLogEntry * al, Logfile * logfile)
                   al->url,
                   al->http.version.major, al->http.version.minor,
                   al->http.code,
-                  (long int) al->cache.size,
+                  al->cache.size,
                   log_tags[al->cache.code],
                   hier_strings[al->hier.code]);
 

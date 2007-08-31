@@ -1,6 +1,6 @@
 
 /*
- * $Id: HttpStatusLine.h,v 1.2 2005/09/12 23:28:57 wessels Exp $
+ * $Id: HttpStatusLine.h,v 1.4 2007/05/29 13:31:38 amosjeffries Exp $
  *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/

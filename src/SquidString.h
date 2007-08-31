@@ -1,6 +1,6 @@
 
 /*
- * $Id: SquidString.h,v 1.8 2006/05/29 00:15:01 robertc Exp $
+ * $Id: SquidString.h,v 1.10 2007/05/29 13:31:38 amosjeffries Exp $
  *
  * DEBUG: section 67    String
  * AUTHOR: Duane Wessels
@@ -127,9 +127,9 @@ public:
 
 private:
     /* never reference these directly! */
-    unsigned short int size_;	/* buffer size; 64K limit */
+    unsigned short int size_; /* buffer size; 64K limit */
 
-    unsigned short int len_;	/* current length  */
+    unsigned short int len_;  /* current length  */
 
     char *buf_;
 };
@@ -141,4 +141,5 @@ _SQUID_INLINE_ std::ostream & operator<<(std::ostream& os, String const &aString
 #endif
 
 #endif /* SQUID_STRING_H */
+
 

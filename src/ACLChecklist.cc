@@ -1,5 +1,5 @@
 /*
- * $Id: ACLChecklist.cc,v 1.38 2007/05/09 09:07:38 wessels Exp $
+ * $Id: ACLChecklist.cc,v 1.41 2007/07/19 00:37:05 hno Exp $
  *
  * DEBUG: section 28    Access Control
  * AUTHOR: Duane Wessels
@@ -128,6 +128,11 @@ ACLChecklist::check()
     /* deny if no rules present */
     currentAnswer(ACCESS_DENIED);
 
+    if (callerGone()) {
+	checkCallback(currentAnswer());
+	return;
+    }
+
     /* NOTE: This holds a cbdata reference to the current access_list
      * entry, not the whole list.
      */
@@ -197,12 +202,6 @@ ACLChecklist::asyncInProgress(bool const newAsync)
     async_ = newAsync;
     debugs(28, 3, "ACLChecklist::asyncInProgress: " << this <<
            " async set to " << async_);
-}
-
-void
-ACLChecklist::markDeleteWhenDone()
-{
-    deleteWhenDone = true;
 }
 
 bool
@@ -276,6 +275,12 @@ ACLChecklist::checkCallback(allow_t answer)
 }
 
 void
+ACLChecklist::matchAclListSlow(const acl_list * list)
+{
+    matchAclList(list, false);
+}
+
+void
 ACLChecklist::matchAclList(const acl_list * head, bool const fast)
 {
     PROF_start(aclMatchAclList);
@@ -318,9 +323,6 @@ ACLChecklist::matchAclList(const acl_list * head, bool const fast)
                 node = node->next;
                 continue;
             }
-
-            if (deleteWhenDone && !asyncInProgress())
-                delete this;
 
             PROF_stop(aclMatchAclList);
 
@@ -366,7 +368,6 @@ ACLChecklist::ACLChecklist() : accessList (NULL), my_port (0), request (NULL),
         conn_(NULL),
         async_(false),
         finished_(false),
-        deleteWhenDone(false),
         allow_(ACCESS_DENIED),
         state_(NullState::Instance()),
         destinationDomainChecked_(false),
@@ -582,6 +583,12 @@ aclChecklistCreate(const acl_access * A, HttpRequest * request, const char *iden
 #endif
 
     return checklist;
+}
+
+bool
+ACLChecklist::callerGone()
+{
+    return !cbdataReferenceValid(callback_data);
 }
 
 #ifndef _USE_INLINE_

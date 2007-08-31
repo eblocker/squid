@@ -1,6 +1,6 @@
 
 /*
- * $Id: ICAPConfig.cc,v 1.14 2007/04/28 22:26:48 hno Exp $
+ * $Id: ICAPConfig.cc,v 1.19 2007/06/28 15:28:59 rousskov Exp $
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
  * ----------------------------------------------------------
@@ -345,9 +345,9 @@ ICAPConfig::freeICAPService()
 };
 
 void
-ICAPConfig::dumpICAPService(StoreEntry *entry, const char *name)
+ICAPConfig::dumpICAPService(StoreEntry *entry, const char *name) const
 {
-    typedef Vector<ICAPServiceRep::Pointer>::iterator VI;
+    typedef Vector<ICAPServiceRep::Pointer>::const_iterator VI;
 
     for (VI i = services.begin(); i != services.end(); ++i) {
         const ICAPServiceRep::Pointer &r = *i;
@@ -375,9 +375,9 @@ ICAPConfig::freeICAPClass()
 };
 
 void
-ICAPConfig::dumpICAPClass(StoreEntry *entry, const char *name)
+ICAPConfig::dumpICAPClass(StoreEntry *entry, const char *name) const
 {
-    Vector<ICAPClass*>::iterator i = classes.begin();
+    Vector<ICAPClass*>::const_iterator i = classes.begin();
 
     while (i != classes.end()) {
         storeAppendPrintf(entry, "%s %s\n", name, (*i)->key.buf());
@@ -406,11 +406,11 @@ ICAPConfig::freeICAPAccess()
 };
 
 void
-ICAPConfig::dumpICAPAccess(StoreEntry *entry, const char *name)
+ICAPConfig::dumpICAPAccess(StoreEntry *entry, const char *name) const
 {
     LOCAL_ARRAY(char, nom, 64);
 
-    Vector<ICAPClass*>::iterator i = classes.begin();
+    Vector<ICAPClass*>::const_iterator i = classes.begin();
 
     while (i != classes.end()) {
         snprintf(nom, 64, "%s %s", name, (*i)->key.buf());
@@ -431,3 +431,31 @@ ICAPConfig::~ICAPConfig()
     classes.clean();
 
 };
+
+time_t ICAPConfig::connect_timeout(bool bypassable) const
+{
+    if (connect_timeout_raw > 0)
+        return connect_timeout_raw; // explicitly configured
+
+    return bypassable ? Config.Timeout.peer_connect : Config.Timeout.connect;
+}
+
+time_t ICAPConfig::io_timeout(bool) const
+{
+    if (io_timeout_raw > 0)
+        return io_timeout_raw; // explicitly configured
+    // TODO: provide a different default for an ICAP transaction that 
+    // can still be bypassed
+    return Config.Timeout.read; 
+}
+
+ICAPConfig::ICAPConfig(const ICAPConfig &)
+{
+    assert(false); // unsupported
+}
+
+ICAPConfig &ICAPConfig::operator =(const ICAPConfig &)
+{
+    assert(false); // unsupported
+    return *this;
+}

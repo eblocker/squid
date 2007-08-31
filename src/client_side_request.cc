@@ -1,6 +1,6 @@
 
 /*
- * $Id: client_side_request.cc,v 1.85 2007/05/09 09:07:39 wessels Exp $
+ * $Id: client_side_request.cc,v 1.92 2007/08/13 17:20:51 hno Exp $
  * 
  * DEBUG: section 85    Client-side Request Routines
  * AUTHOR: Robert Collins (Originally Duane Wessels in client_side.c)
@@ -111,14 +111,6 @@ ClientRequestContext::~ClientRequestContext()
 
     if (http)
         cbdataReferenceDone(http);
-
-    if (acl_checklist) {
-        if (acl_checklist->asyncInProgress()) {
-            acl_checklist->markDeleteWhenDone();
-        } else {
-            delete acl_checklist;
-        }
-    }
 
     debugs(85,3, HERE << this << " ClientRequestContext destructed");
 }
@@ -889,7 +881,7 @@ ClientHttpRequest::processRequest()
 
     if (request->method == METHOD_CONNECT && !redirect.status) {
         logType = LOG_TCP_MISS;
-        sslStart(this, &out.size, &al.http.code);
+        tunnelStart(this, &out.size, &al.http.code);
         return;
     }
 
@@ -926,19 +918,19 @@ ClientHttpRequest::gotEnough() const
 }
 
 void
-ClientHttpRequest::maxReplyBodySize(ssize_t clen)
+ClientHttpRequest::maxReplyBodySize(int64_t clen)
 {
     maxReplyBodySize_ = clen;
 }
 
-ssize_t
+int64_t
 ClientHttpRequest::maxReplyBodySize() const
 {
     return maxReplyBodySize_;
 }
 
 bool
-ClientHttpRequest::isReplyBodyTooLarge(ssize_t clen) const
+ClientHttpRequest::isReplyBodyTooLarge(int64_t clen) const
 {
     if (0 == maxReplyBodySize())
         return 0;	/* disabled */
@@ -1001,12 +993,15 @@ ClientHttpRequest::loggingEntry(StoreEntry *newEntry)
  * the callout.  This is strictly for convenience.
  */
 
+extern int aclMapTOS (acl_tos * head, ACLChecklist * ch);
+
 void
 ClientHttpRequest::doCallouts()
 {
     assert(calloutContext);
 
     if (!calloutContext->http_access_done) {
+	debugs(83, 3, HERE << "Doing calloutContext->clientAccessCheck()");
         calloutContext->http_access_done = true;
         calloutContext->clientAccessCheck();
         return;
@@ -1014,6 +1009,7 @@ ClientHttpRequest::doCallouts()
 
 #if ICAP_CLIENT
     if (TheICAPConfig.onoff && !calloutContext->icap_acl_check_done) {
+	debugs(83, 3, HERE << "Doing calloutContext->icapAccessCheck()");
         calloutContext->icap_acl_check_done = true;
         calloutContext->icapAccessCheck();
         return;
@@ -1026,6 +1022,7 @@ ClientHttpRequest::doCallouts()
         assert(calloutContext->redirect_state == REDIRECT_NONE);
 
         if (Config.Program.redirect) {
+	    debugs(83, 3, HERE << "Doing calloutContext->clientRedirectStart()");
             calloutContext->redirect_state = REDIRECT_PENDING;
             calloutContext->clientRedirectStart();
             return;
@@ -1033,6 +1030,7 @@ ClientHttpRequest::doCallouts()
     }
 
     if (!calloutContext->interpreted_req_hdrs) {
+	debugs(83, 3, HERE << "Doing clientInterpretRequestHeaders()");
         calloutContext->interpreted_req_hdrs = 1;
         clientInterpretRequestHeaders(this);
     }
@@ -1041,9 +1039,24 @@ ClientHttpRequest::doCallouts()
         calloutContext->no_cache_done = true;
 
         if (Config.accessList.noCache && request->flags.cachable) {
+	    debugs(83, 3, HERE << "Doing calloutContext->checkNoCache()");
             calloutContext->checkNoCache();
             return;
         }
+    }
+
+    if (!calloutContext->clientside_tos_done) {
+        calloutContext->clientside_tos_done = true;
+	if (getConn() != NULL) {
+	    ACLChecklist ch;
+            ch.src_addr = request->client_addr;
+            ch.my_addr = request->my_addr;
+            ch.my_port = request->my_port;
+            ch.request = HTTPMSGLOCK(request);
+	    int tos = aclMapTOS(Config.accessList.clientside_tos, &ch);
+	    if (tos)
+		comm_set_tos(getConn()->fd, tos);
+	}
     }
 
     cbdataReferenceDone(calloutContext->http);
@@ -1054,6 +1067,7 @@ ClientHttpRequest::doCallouts()
     headersLog(0, 1, request->method, request);
 #endif
 
+    debugs(83, 3, HERE << "calling processRequest()");
     processRequest();
 }
 

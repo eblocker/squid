@@ -1,6 +1,6 @@
 
 /*
- * $Id: AIODiskFile.h,v 1.2 2006/08/21 00:50:43 robertc Exp $
+ * $Id: AIODiskFile.h,v 1.4 2007/05/29 13:31:43 amosjeffries Exp $
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
  * ----------------------------------------------------------

@@ -1,6 +1,6 @@
 
 /*
- * $Id: store_null.h,v 1.3 2006/05/23 00:48:13 wessels Exp $
+ * $Id: store_null.h,v 1.5 2007/05/29 13:31:47 amosjeffries Exp $
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
  * ----------------------------------------------------------

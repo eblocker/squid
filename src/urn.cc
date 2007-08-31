@@ -1,6 +1,6 @@
 
 /*
- * $Id: urn.cc,v 1.105 2007/04/28 22:26:38 hno Exp $
+ * $Id: urn.cc,v 1.107 2007/05/29 13:31:41 amosjeffries Exp $
  *
  * DEBUG: section 52    URN Parsing
  * AUTHOR: Kostas Anagnostakis

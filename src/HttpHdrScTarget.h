@@ -1,6 +1,6 @@
 
 /*
- * $Id: HttpHdrScTarget.h,v 1.1 2006/04/22 13:25:35 robertc Exp $
+ * $Id: HttpHdrScTarget.h,v 1.3 2007/05/29 13:31:37 amosjeffries Exp $
  *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/

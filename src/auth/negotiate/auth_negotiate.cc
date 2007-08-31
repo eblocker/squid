@@ -1,6 +1,6 @@
 
 /*
- * $Id: auth_negotiate.cc,v 1.18 2007/05/09 09:07:40 wessels Exp $
+ * $Id: auth_negotiate.cc,v 1.26 2007/08/28 22:35:29 hno Exp $
  *
  * DEBUG: section 29    Negotiate Authenticator
  * AUTHOR: Robert Collins, Henrik Nordstrom, Francesco Chemolli
@@ -174,6 +174,7 @@ void
 AuthNegotiateConfig::init(AuthConfig * scheme)
 {
     if (authenticate) {
+
         authnegotiate_initialised = 1;
 
         if (negotiateauthenticators == NULL)
@@ -286,16 +287,17 @@ AuthNegotiateConfig::fixHeader(AuthUserRequest *auth_user_request, HttpReply *re
 {
     AuthNegotiateUserRequest *negotiate_request;
 
-    if (!request->flags.proxy_keepalive)
-        return;
-
     if (!authenticate)
         return;
 
+    /* Need keep-alive */
+    if (!request->flags.proxy_keepalive && request->flags.must_keepalive)
+	return;
+
     /* New request, no user details */
     if (auth_user_request == NULL) {
-        debugs(29, 9, "AuthNegotiateConfig::fixHeader: Sending type:" << type << " header: 'NEGOTIATE'");
-        httpHeaderPutStrf(&rep->header, type, "NEGOTIATE");
+        debugs(29, 9, "AuthNegotiateConfig::fixHeader: Sending type:" << type << " header: 'Negotiate'");
+        httpHeaderPutStrf(&rep->header, type, "Negotiate");
 
         if (!keep_alive) {
             /* drop the connection */
@@ -304,6 +306,8 @@ AuthNegotiateConfig::fixHeader(AuthUserRequest *auth_user_request, HttpReply *re
         }
     } else {
         negotiate_request = dynamic_cast<AuthNegotiateUserRequest *>(auth_user_request);
+
+        assert(negotiate_request != NULL);
 
         switch (negotiate_request->auth_state) {
 
@@ -333,7 +337,7 @@ AuthNegotiateConfig::fixHeader(AuthUserRequest *auth_user_request, HttpReply *re
         case AUTHENTICATE_STATE_NONE:
             /* semantic change: do not drop the connection.
              * 2.5 implementation used to keep it open - Kinkie */
-            debugs(29, 9, "AuthNegotiateConfig::fixHeader: Sending type:" << type << " header: 'NEGOTIATE'");
+            debugs(29, 9, "AuthNegotiateConfig::fixHeader: Sending type:" << type << " header: 'Negotiate'");
             httpHeaderPutStrf(&rep->header, type, "Negotiate");
             break;
 
@@ -341,7 +345,6 @@ AuthNegotiateConfig::fixHeader(AuthUserRequest *auth_user_request, HttpReply *re
             /* we're waiting for a response from the client. Pass it the blob */
             debugs(29, 9, "AuthNegotiateConfig::fixHeader: Sending type:" << type << " header: 'Negotiate " << negotiate_request->server_blob << "'");
             httpHeaderPutStrf(&rep->header, type, "Negotiate %s", negotiate_request->server_blob);
-            request->flags.must_keepalive = 1;
             safe_free(negotiate_request->server_blob);
             break;
 
@@ -355,7 +358,7 @@ AuthNegotiateConfig::fixHeader(AuthUserRequest *auth_user_request, HttpReply *re
 
 NegotiateUser::~NegotiateUser()
 {
-    debugs(29, 5, "NegotiateUser::~NegotiateUser: doing nothing to clearNEGOTIATE scheme data for '" << this << "'");
+    debugs(29, 5, "NegotiateUser::~NegotiateUser: doing nothing to clearNegotiate scheme data for '" << this << "'");
 }
 
 static stateful_helper_callback_t
@@ -392,6 +395,7 @@ authenticateNegotiateHandleReply(void *data, void *lastserver, char *reply)
     assert(auth_user_request != NULL);
     negotiate_request = dynamic_cast<AuthNegotiateUserRequest *>(auth_user_request);
 
+    assert(negotiate_request != NULL);
     assert(negotiate_request->waiting);
     negotiate_request->waiting = 0;
     safe_free(negotiate_request->client_blob);
@@ -400,6 +404,8 @@ authenticateNegotiateHandleReply(void *data, void *lastserver, char *reply)
     assert(auth_user != NULL);
     assert(auth_user->auth_type == AUTH_NEGOTIATE);
     negotiate_user = dynamic_cast<negotiate_user_t *>(auth_user_request->user());
+
+    assert(negotiate_user != NULL);
 
     if (negotiate_request->authserver == NULL)
         negotiate_request->authserver = static_cast<helper_stateful_server*>(lastserver);
@@ -418,21 +424,21 @@ authenticateNegotiateHandleReply(void *data, void *lastserver, char *reply)
 
     if (strncasecmp(reply, "TT ", 3) == 0) {
         /* we have been given a blob to send to the client */
-
         if (arg)
             *arg++ = '\0';
-
         safe_free(negotiate_request->server_blob);
-
-        negotiate_request->server_blob = xstrdup(blob);
-
-        negotiate_request->auth_state = AUTHENTICATE_STATE_IN_PROGRESS;
-
-        auth_user_request->denyMessage("Authentication in progress");
-
-        debugs(29, 4, "authenticateNegotiateHandleReply: Need to challenge the client with a server blob '" << blob << "'");
-
-        result = S_HELPER_RESERVE;
+	negotiate_request->request->flags.must_keepalive = 1;
+	if (negotiate_request->request->flags.proxy_keepalive) {
+	    negotiate_request->server_blob = xstrdup(blob);
+	    negotiate_request->auth_state = AUTHENTICATE_STATE_IN_PROGRESS;
+	    auth_user_request->denyMessage("Authentication in progress");
+	    debugs(29, 4, "authenticateNegotiateHandleReply: Need to challenge the client with a server blob '" << blob << "'");
+	    result = S_HELPER_RESERVE;
+	} else {
+	    negotiate_request->auth_state = AUTHENTICATE_STATE_FAILED;
+	    auth_user_request->denyMessage("NTLM authentication requires a persistent connection");
+	    result = S_HELPER_RELEASE;
+	}
     } else if (strncasecmp(reply, "AF ", 3) == 0 && arg != NULL) {
         /* we're finished, release the helper */
 
@@ -453,13 +459,13 @@ authenticateNegotiateHandleReply(void *data, void *lastserver, char *reply)
 
         result = S_HELPER_RELEASE;
 
-        debugs(29, 4, "authenticateNegotiateHandleReply: Successfully validated user via NEGOTIATE. Username '" << blob << "'");
+        debugs(29, 4, "authenticateNegotiateHandleReply: Successfully validated user via Negotiate. Username '" << blob << "'");
 
         /* connection is authenticated */
         debugs(29, 4, "AuthNegotiateUserRequest::authenticate: authenticated user " << negotiate_user->username());
         /* see if this is an existing user with a different proxy_auth
          * string */
-	auth_user_hash_pointer *usernamehash = static_cast<AuthUserHashPointer *>(hash_lookup(proxy_auth_username_cache, negotiate_user->username()));
+        auth_user_hash_pointer *usernamehash = static_cast<AuthUserHashPointer *>(hash_lookup(proxy_auth_username_cache, negotiate_user->username()));
 	auth_user_t *local_auth_user = negotiate_request->user();
         while (usernamehash && (usernamehash->user()->auth_type != AUTH_NEGOTIATE || strcmp(usernamehash->user()->username(), negotiate_user->username()) != 0))
             usernamehash = static_cast<AuthUserHashPointer *>(usernamehash->next);
@@ -480,7 +486,7 @@ authenticateNegotiateHandleReply(void *data, void *lastserver, char *reply)
          * existing user or a new user */
         local_auth_user->expiretime = current_time.tv_sec;
         authenticateNegotiateReleaseServer(negotiate_request);
-        negotiate_request->auth_state = AUTHENTICATE_STATE_DONE;
+	negotiate_request->auth_state = AUTHENTICATE_STATE_DONE;
 
     } else if (strncasecmp(reply, "NA ", 3) == 0 && arg != NULL) {
         /* authentication failure (wrong password, etc.) */
@@ -500,11 +506,11 @@ authenticateNegotiateHandleReply(void *data, void *lastserver, char *reply)
 
         result = S_HELPER_RELEASE;
 
-        debugs(29, 4, "authenticateNegotiateHandleReply: Failed validating user via NEGOTIATE. Error returned '" << blob << "'");
+        debugs(29, 4, "authenticateNegotiateHandleReply: Failed validating user via Negotiate. Error returned '" << blob << "'");
     } else if (strncasecmp(reply, "BH ", 3) == 0) {
         /* TODO kick off a refresh process. This can occur after a YR or after
          * a KK. If after a YR release the helper and resubmit the request via
-         * Authenticate NEGOTIATE start.
+         * Authenticate Negotiate start.
          * If after a KK deny the user's request w/ 407 and mark the helper as
          * Needing YR. */
         auth_user_request->denyMessage(blob);
@@ -512,12 +518,16 @@ authenticateNegotiateHandleReply(void *data, void *lastserver, char *reply)
         safe_free(negotiate_request->server_blob);
         authenticateNegotiateReleaseServer(negotiate_request);
         result = S_HELPER_RELEASE;
-        debugs(29, 1, "authenticateNegotiateHandleReply: Error validating user via NEGOTIATE. Error returned '" << reply << "'");
+        debugs(29, 1, "authenticateNegotiateHandleReply: Error validating user via Negotiate. Error returned '" << reply << "'");
     } else {
         /* protocol error */
         fatalf("authenticateNegotiateHandleReply: *** Unsupported helper response ***, '%s'\n", reply);
     }
 
+    if (negotiate_request->request) {
+	HTTPMSGUNLOCK(negotiate_request->request);
+	negotiate_request->request = NULL;
+    }
     r->handler(r->data, NULL);
     cbdataReferenceDone(r->data);
     authenticateStateFree(r);
@@ -528,7 +538,7 @@ authenticateNegotiateHandleReply(void *data, void *lastserver, char *reply)
 static void
 authenticateNegotiateStats(StoreEntry * sentry)
 {
-    helperStatefulStats(sentry, negotiateauthenticators, "NEGOTIATE Authenticator Statistics");
+    helperStatefulStats(sentry, negotiateauthenticators, "Negotiate Authenticator Statistics");
 }
 
 
@@ -551,7 +561,7 @@ AuthNegotiateUserRequest::module_start(RH * handler, void *data)
     debugs(29, 8, "AuthNegotiateUserRequest::module_start: auth state is '" << auth_state << "'");
 
     if (negotiateConfig.authenticate == NULL) {
-        debugs(29, 0, "AuthNegotiateUserRequest::module_start: no NEGOTIATE program specified.");
+        debugs(29, 0, "AuthNegotiateUserRequest::module_start: no Negotiate program specified.");
         handler(data, NULL);
         return;
     }
@@ -559,7 +569,9 @@ AuthNegotiateUserRequest::module_start(RH * handler, void *data)
     r = cbdataAlloc(authenticateStateData);
     r->handler = handler;
     r->data = cbdataReference(data);
+    r->auth_user_request = this;
     AUTHUSERREQUESTLOCK(r->auth_user_request, "r");
+
     if (auth_state == AUTHENTICATE_STATE_INITIAL) {
         snprintf(buf, 8192, "YR %s\n", client_blob); //CHECKME: can ever client_blob be 0 here?
     } else {
@@ -572,20 +584,25 @@ AuthNegotiateUserRequest::module_start(RH * handler, void *data)
     helperStatefulSubmit(negotiateauthenticators, buf, authenticateNegotiateHandleReply, r, authserver);
 }
 
-/* clear the NEGOTIATE helper of being reserved for future requests */
+/* clear the Negotiate helper of being reserved for future requests */
 static void
 authenticateNegotiateReleaseServer(AuthUserRequest * auth_user_request)
 {
     AuthNegotiateUserRequest *negotiate_request;
     assert(auth_user_request->user()->auth_type == AUTH_NEGOTIATE);
     negotiate_request = dynamic_cast< AuthNegotiateUserRequest *>(auth_user_request);
+    assert(negotiate_request != NULL);
     debugs(29, 9, "authenticateNegotiateReleaseServer: releasing server '" << negotiate_request->authserver << "'");
     /* is it possible for the server to be NULL? hno seems to think so.
      * Let's see what happens, might segfault in helperStatefulReleaseServer
      * if it does. I leave it like this not to cover possibly problematic
      * code-paths. Kinkie */
-    helperStatefulReleaseServer(negotiate_request->authserver);
-    negotiate_request->authserver = NULL;
+    /* DPW 2007-05-07
+     * yes, it is possible */
+    if (negotiate_request->authserver) {
+	helperStatefulReleaseServer(negotiate_request->authserver);
+	negotiate_request->authserver = NULL;
+    }
 }
 
 /* clear any connection related authentication details */
@@ -606,11 +623,12 @@ AuthNegotiateUserRequest::onConnectionClose(ConnStateData *conn)
 
     /* unlock the connection based lock */
     debugs(29, 9, "AuthNegotiateUserRequest::onConnectionClose: Unlocking auth_user from the connection '" << conn << "'.");
+
     AUTHUSERREQUESTUNLOCK(conn->auth_user_request, "conn");
 }
 
 /*
- * Decode a NEGOTIATE [Proxy-]Auth string, placing the results in the passed
+ * Decode a Negotiate [Proxy-]Auth string, placing the results in the passed
  * Auth_user structure.
  */
 AuthUserRequest *
@@ -623,8 +641,8 @@ AuthNegotiateConfig::decode(char const *proxy_auth)
     auth_user_request->user()->auth_type = AUTH_NEGOTIATE;
     auth_user_request->user()->addRequest(auth_user_request);
 
-    /* all we have to do is identify that it's NEGOTIATE - the helper does the rest */
-    debugs(29, 9, "AuthNegotiateConfig::decode: NEGOTIATE authentication");
+    /* all we have to do is identify that it's Negotiate - the helper does the rest */
+    debugs(29, 9, "AuthNegotiateConfig::decode: Negotiate authentication");
     return auth_user_request;
 }
 
@@ -681,27 +699,31 @@ AuthNegotiateUserRequest::authenticate(HttpRequest * request, ConnStateData::Poi
     /* locate second word */
     blob = proxy_auth;
 
-    while (xisspace(*blob) && *blob)
-        blob++;
+    if(blob) {
+        while (xisspace(*blob) && *blob)
+            blob++;
 
-    while (!xisspace(*blob) && *blob)
-        blob++;
+        while (!xisspace(*blob) && *blob)
+            blob++;
 
-    while (xisspace(*blob) && *blob)
-        blob++;
+        while (xisspace(*blob) && *blob)
+            blob++;
+    }
 
     switch (auth_state) {
 
     case AUTHENTICATE_STATE_NONE:
-        /* we've recieved a negotiate request. pass to a helper */
+        /* we've received a negotiate request. pass to a helper */
         debugs(29, 9, "AuthNegotiateUserRequest::authenticate: auth state negotiate none. Received blob: '" << proxy_auth << "'");
         auth_state = AUTHENTICATE_STATE_INITIAL;
         safe_free(client_blob);
         client_blob=xstrdup(blob);
         conn->auth_type = AUTH_NEGOTIATE;
-	assert(conn->auth_user_request == NULL);
+        assert(conn->auth_user_request == NULL);
         conn->auth_user_request = this;
-        AUTHUSERREQUESTLOCK(conn->auth_user_request, "conn");
+	AUTHUSERREQUESTLOCK(conn->auth_user_request, "conn");
+	this->request = request;
+	HTTPMSGLOCK(this->request);
         return;
 
         break;
@@ -721,14 +743,10 @@ AuthNegotiateUserRequest::authenticate(HttpRequest * request, ConnStateData::Poi
 
         client_blob = xstrdup (blob);
 
-        return;
-
-        break;
-
-    case AUTHENTICATE_STATE_FAILED:
-        /* we've failed somewhere in authentication */
-        debugs(29, 9, "AuthNegotiateUserRequest::authenticate: auth state negotiate failed. " << proxy_auth);
-
+	if (this->request)
+	    HTTPMSGUNLOCK(this->request);
+	this->request = request;
+	HTTPMSGLOCK(this->request);
         return;
 
         break;
@@ -738,6 +756,13 @@ AuthNegotiateUserRequest::authenticate(HttpRequest * request, ConnStateData::Poi
 
 	break;
 
+    case AUTHENTICATE_STATE_FAILED:
+        /* we've failed somewhere in authentication */
+        debugs(29, 9, "AuthNegotiateUserRequest::authenticate: auth state negotiate failed. " << proxy_auth);
+
+        return;
+
+        break;
     }
 
     return;
@@ -762,6 +787,10 @@ AuthNegotiateUserRequest::~AuthNegotiateUserRequest()
         debugs(29, 9, "AuthNegotiateUserRequest::~AuthNegotiateUserRequest: releasing server '" << authserver << "'");
         helperStatefulReleaseServer(authserver);
         authserver = NULL;
+    }
+    if (request) {
+	HTTPMSGUNLOCK(request);
+	request = NULL;
     }
 }
 

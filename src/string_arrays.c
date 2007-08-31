@@ -1,6 +1,6 @@
 
 /*
- * $Id: enums.h,v 1.257 2007/05/04 22:12:55 wessels Exp $
+ * $Id: enums.h,v 1.258 2007/08/13 17:20:51 hno Exp $
  *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
@@ -108,5 +108,6 @@ const char *swap_log_op_str[] = {
 	"SWAP_LOG_NOP",
 	"SWAP_LOG_ADD",
 	"SWAP_LOG_DEL",
+	"SWAP_LOG_VERSION",
 	"SWAP_LOG_MAX"
 };

@@ -1,17 +1,17 @@
 
 dnl  Configuration input file for Squid
 dnl
-dnl  $Id: configure.in,v 1.453 2007/05/09 22:14:24 wessels Exp $
+dnl  $Id: configure.in,v 1.473 2007/08/30 20:38:48 wessels Exp $
 dnl
 dnl
 dnl
-AC_INIT(Squid Web Proxy, 3.0.PRE6, http://www.squid-cache.org/bugs/, squid)
+AC_INIT(Squid Web Proxy, 3.0.PRE7, http://www.squid-cache.org/bugs/, squid)
 AC_PREREQ(2.52)
 AM_CONFIG_HEADER(include/autoconf.h)
 AC_CONFIG_AUX_DIR(cfgaux)
 AC_CONFIG_SRCDIR([src/main.cc])
 AM_INIT_AUTOMAKE([tar-ustar])
-AC_REVISION($Revision: 1.453 $)dnl
+AC_REVISION($Revision: 1.473 $)dnl
 AC_PREFIX_DEFAULT(/usr/local/squid)
 AM_MAINTAINER_MODE
 
@@ -95,12 +95,20 @@ AC_DEFINE_UNQUOTED(CACHE_HTTP_PORT, $CACHE_HTTP_PORT,
 [What default TCP port to use for HTTP listening?])
 AC_SUBST(CACHE_HTTP_PORT)
 AC_DEFINE_UNQUOTED(CACHE_ICP_PORT, $CACHE_ICP_PORT,
-AC_SUBST(CACHE_ICP_PORT)
 [What default UDP port to use for ICP listening?])
+AC_SUBST(CACHE_ICP_PORT)
 
 AC_DEFINE_UNQUOTED(CONFIG_HOST_TYPE, "$host",[Host type from configure])
 
 AC_DEFINE_UNQUOTED(SQUID_CONFIGURE_OPTIONS, "$ac_configure_args", [configure command line used to configure Squid])
+
+CACHE_EFFECTIVE_USER="nobody"
+AC_ARG_WITH(default-user,
+ [  --with-default-user=USER System user account for squid permissions.
+                         default: nobody],
+ [ CACHE_EFFECTIVE_USER="$withval" ]
+)
+AC_SUBST(CACHE_EFFECTIVE_USER)
 
 dnl Gerben Wierda <Gerben_Wierda@RnA.nl>
 case "$host" in
@@ -167,11 +175,22 @@ fi
 
 dnl set squid required flags
 if test "$GCC" = "yes"; then
-  SQUID_CFLAGS="-Werror -Wall -Wpointer-arith -Wwrite-strings -Wmissing-prototypes -Wmissing-declarations -Wcomments"
-  SQUID_CXXFLAGS="-Werror -Wall -Wpointer-arith -Wwrite-strings -Wcomments"
+dnl Guido Serassio (serassio@squid-cache.org) 20070811
+dnl Using the latest MinGW (gcc 3.4.5 + mingw-runtime 3.13) cannot build with
+dnl -Wmissing-prototypes -Wmissing-declarations
+dnl TODO: check if the problem will be present in any other newer MinGW release.
+    case "$host_os" in
+    mingw|mingw32)
+        SQUID_CFLAGS="-Werror -Wall -Wpointer-arith -Wwrite-strings -Wcomments"
+	;;
+    *)
+        SQUID_CFLAGS="-Werror -Wall -Wpointer-arith -Wwrite-strings -Wmissing-prototypes -Wmissing-declarations -Wcomments"
+	;;
+    esac
+    SQUID_CXXFLAGS="-Werror -Wall -Wpointer-arith -Wwrite-strings -Wcomments"
 else
-  SQUID_CFLAGS=
-  SQUID_CXXFLAGS=
+    SQUID_CFLAGS=
+    SQUID_CXXFLAGS=
 fi
 AC_SUBST(SQUID_CFLAGS)
 AC_SUBST(SQUID_CXXFLAGS)
@@ -199,88 +218,6 @@ if test -z "$PRESET_LDFLAGS"; then
 	esac
     fi
 fi
-
-dnl Enable optional modules
-AC_ARG_ENABLE(dlmalloc,
-[  --enable-dlmalloc[=LIB] Compile & use the malloc package by Doug Lea],
-[
- case "$enableval" in
- 'yes')
-    use_dlmalloc="yes"
-    LIBDLMALLOC="libdlmalloc.a"
-    LIB_MALLOC="-L../lib -ldlmalloc"
-    echo "dlmalloc enabled"
-    ;;
- 'no')
-    use_dlmalloc="no"
-    echo "dlmalloc disabled"
-    ;;
- *) use_dlmalloc="yes"
-    LIB_MALLOC="$enableval"
-    echo "dlmalloc enabled with $LIB_MALLOC"
- esac
-])
-if test "${use_dlmalloc-unset}" = unset; then
-    case "$host" in
-	i386-*-solaris2.*)
-		echo "Enabling dlmalloc for $host"
-		use_dlmalloc="yes"
-		LIBDLMALLOC="libdlmalloc.a"
-		LIB_MALLOC="-L../lib -ldlmalloc"
-		;;
-	*-sgi-irix*)
-		echo "Enabling dlmalloc for $host"
-		use_dlmalloc="yes"
-		LIBDLMALLOC="libdlmalloc.a"
-		LIB_MALLOC="-L../lib -ldlmalloc"
-		;;
-    esac
-fi
-if test "x$ac_cv_enabled_dlmalloc" = "xyes"; then
-    # Ok. dlmalloc was enabled before, but state may be changed.
-    # we have to test these again
-    unset ac_cv_func_mallinfo
-    unset ac_cv_func_mallocblksize
-    unset ac_cv_func_free
-    unset ac_cv_func_realloc
-    unset ac_cv_func_memalign
-    unset ac_cv_func_valloc
-    unset ac_cv_func_pvalloc
-    unset ac_cv_func_calloc
-    unset ac_cv_func_cfree
-    unset ac_cv_func_malloc_trim
-    unset ac_cv_func_malloc_usable_size
-    unset ac_cv_func_malloc_stats
-    unset ac_cv_func_mallinfo
-    unset ac_cv_func_mallopt
-    unset ac_cv_lib_gnumalloc
-    unset ac_cv_header_gnumalloc_h
-    unset ac_cv_lib_malloc
-    unset ac_cv_enabled_dlmalloc
-fi
-if test "$use_dlmalloc" = yes; then
-    ac_cv_func_mallinfo="yes"
-    ac_cv_func_mallocblksize="no"
-    ac_cv_func_free="yes"
-    ac_cv_func_realloc="yes"
-    ac_cv_func_memalign="yes"
-    ac_cv_func_valloc="yes"
-    ac_cv_func_pvalloc="yes"
-    ac_cv_func_calloc="yes"
-    ac_cv_func_cfree="yes"
-    ac_cv_func_malloc_trim="yes"
-    ac_cv_func_malloc_usable_size="yes"
-    ac_cv_func_malloc_stats="yes"
-    ac_cv_func_mallopt="yes"
-    ac_cv_lib_gnumalloc="no"
-    ac_cv_header_gnumalloc_h="no"
-    ac_cv_lib_malloc="no"
-    ac_cv_enabled_dlmalloc="yes"
-    AC_DEFINE(USE_DLMALLOC, 1, [Compile & use the malloc package by Doug Lea])
-fi
-
-AC_SUBST(LIBDLMALLOC)
-AC_SUBST(LIB_MALLOC)
 
 AC_ARG_ENABLE(gnuregex,
 [  --enable-gnuregex       Compile GNUregex.  Unless you have reason to use this
@@ -371,7 +308,7 @@ AC_ARG_ENABLE(xmalloc-statistics,
 
 use_carp=1
 AC_ARG_ENABLE(carp,
-[  --disable-carp           Disable CARP support],
+[  --disable-carp          Disable CARP support],
 [ if test "$enableval" = "no" ; then
     echo "CARP disabled"
     use_carp=0
@@ -756,9 +693,8 @@ AC_ARG_ENABLE(delay-pools,
 AM_CONDITIONAL(USE_ESI, false)
 AC_ARG_ENABLE(esi,
               AC_HELP_STRING([--enable-esi],[Enable ESI for accelerators. Requires libexpat. Enabling ESI will cause squid to follow the Edge Acceleration Specification (www.esi.org). This causes squid to IGNORE client Cache-Control headers. DO NOT use this in a squid configured as a web proxy, ONLY use it in a squid configured for webserver acceleration.]),
-	      ac_cv_use_esi=$enableval, ac_cv_use_esi=no)
-AC_CACHE_CHECK(whether to enable ESI,ac_cv_use_esi, ac_cv_use_esi=no)
-if test "$ac_cv_use_esi" = "yes" ; then
+	      use_esi=$enableval, use_esi=no)
+if test "$use_esi" = "yes" ; then
   AC_DEFINE(ESI,1,[Compile the ESI processor and Surrogate header support])
   AM_CONDITIONAL(USE_ESI, true)
   XTRA_LIBS="$XTRA_LIBS -lexpat -lxml2"
@@ -769,9 +705,8 @@ fi
 AM_CONDITIONAL(USE_ICAP_CLIENT, false)
 AC_ARG_ENABLE(icap-client,
               AC_HELP_STRING([--enable-icap-client],[Enable the ICAP client.]),
-	      ac_cv_use_icap_client=$enableval, ac_cv_use_icap_client=no)
-AC_CACHE_CHECK(whether to enable the ICAP client,ac_cv_use_icap_client, ac_cv_use_icap_client=no)
-if test "$ac_cv_use_icap_client" = "yes" ; then
+	      use_icap_client=$enableval, use_icap_client=no)
+if test "$use_icap_client" = "yes" ; then
   AC_DEFINE(ICAP_CLIENT,1,[Enable ICAP client features in Squid])
   AM_CONDITIONAL(USE_ICAP_CLIENT, true)
   ICAP_LIBS="ICAP/libicap.a"
@@ -846,18 +781,20 @@ AC_ARG_ENABLE(kill-parent-hack,
   fi
 ])
 
-AM_CONDITIONAL(USE_SNMP, false)
+USE_SNMP=true
 AC_ARG_ENABLE(snmp,
-[  --enable-snmp           Enable SNMP monitoring],
-[ if test "$enableval" = "yes" ; then
-    echo "SNMP monitoring enabled"
-    AC_DEFINE(SQUID_SNMP,1,[Define to enable SNMP monitoring of Squid])
-    SNMPLIB='../snmplib/libsnmp.a'
-    AM_CONDITIONAL(USE_SNMP, true)
-    SNMP_MAKEFILE=./snmplib/Makefile
-    makesnmplib=snmplib
+[  --disable-snmp          Disable SNMP monitoring support],
+[ if test "$enableval" = "no" ; then
+    echo "SNMP monitoring disabled"
+    USE_SNMP=
   fi
 ])
+if [ "$USE_SNMP" ]; then
+    AC_DEFINE(SQUID_SNMP,1,[Define to enable SNMP monitoring of Squid])
+    SNMPLIB='../snmplib/libsnmp.a'
+    makesnmplib=snmplib
+fi
+AM_CONDITIONAL(USE_SNMP, [test x$USE_SNMP == xtrue])
 AC_SUBST(SNMPLIB)
 AC_SUBST(makesnmplib)
 
@@ -912,15 +849,18 @@ AC_ARG_ENABLE(arp-acl,
    fi
 ])
 
+USE_HTCP=true
 AM_CONDITIONAL(ENABLE_HTCP, false)
 AC_ARG_ENABLE(htcp,
-[  --enable-htcp           Enable HTCP protocol],
-[ if test "$enableval" = "yes" ; then
-    echo "HTCP enabled"
-    AC_DEFINE(USE_HTCP,1, [Define this to include code for the Hypertext Cache Protocol (HTCP)])
-    AM_CONDITIONAL(ENABLE_HTCP, true)
+[  --disable-htcp          Disable HTCP protocol support],
+[ if test "$enableval" = "no" ; then
+    echo "HTCP support disabled"
   fi
 ])
+if test x$USE_HTCP = xtrue; then
+    AC_DEFINE(USE_HTCP,1, [Define this to include code for the Hypertext Cache Protocol (HTCP)])
+fi
+AM_CONDITIONAL(ENABLE_HTCP, [test x$USE_HTCP = xtrue])
 
 AM_CONDITIONAL(ENABLE_SSL, false)
 
@@ -1050,74 +990,76 @@ AC_ARG_WITH(coss-membuf-size,
 ])
 
 dnl check for netio plugin stuff
+
 dnl Enable poll()
+disable_poll=
 AC_ARG_ENABLE(poll,
-[  --enable-poll           Enable poll() support.
-  --disable-poll          Disable poll() support. ],
+[  --disable-poll          Disable poll() support. ],
 
 [
   case "$enableval" in
   yes)
     echo "Forcing poll() to be enabled"
-    ac_cv_func_poll='yes'
+    SELECT_TYPE="poll"
     ;;
   no)
     echo "Forcing poll() to be disabled"
-    ac_cv_func_poll='no'
+    disable_poll=true
     ;;
   esac
 ])
 
 dnl Enable select()
+disable_select=
 AC_ARG_ENABLE(select,
-[  --enable-select         Enable select() support.
-  --disable-select        Disable select() support. ],
+[  --disable-select        Disable select() support. ],
 
 [
   case "$enableval" in
   yes)
     echo "Forcing select() to be enabled"
-    ac_cv_func_select='yes'
+    SELECT_TYPE="select"
     ;;
   no)
     echo "Forcing select() to be disabled"
-    ac_cv_func_select='no'
+    disable_select=true
     ;;
   esac
 ])
 
 dnl Enable kqueue()
+dnl kqueue support is still experiemntal and unstable. Not enabled by default.
+disable_kqueue=true
 AC_ARG_ENABLE(kqueue,
-[  --enable-kqueue         Enable kqueue() support.
-  --disable-kqueue        Disable kqueue() support. ],
+[  --enable-kqueue         Enable kqueue() support (experimental).],
 
 [
   case "$enableval" in
   yes)
     echo "Forcing kqueue() to be enabled"
-    ac_cv_func_kqueue='yes'
+    SELECT_TYPE="kqueue"
     ;;
   no)
     echo "Forcing kqueue() to be disabled"
-    ac_cv_func_kqueue='no'
+    disable_kqueue=true
   ;;
 esac
 ])
 
 dnl Enable epoll()
+disable_epoll=
 AC_ARG_ENABLE(epoll,
-[  --enable-epoll          Enable epoll() support.
-  --disable-epoll         Disable epoll() support. ],
+[  --disable-epoll         Disable Linux epoll() support.],
 
 [
   case "$enableval" in
   yes)
     echo "Forcing epoll() to be enabled"
-    ac_cv_func_epoll='yes'
+    SELECT_TYPE="epoll"
     ;;
   no)
     echo "Forcing epoll() to be disabled"
-    ac_cv_func_epoll='no'
+    disable_epoll=true
   ;;
 esac
 ])
@@ -1139,6 +1081,18 @@ if test $http_violations = 1; then
 else
     AC_DEFINE(HTTP_VIOLATIONS, 0)
 fi
+
+dnl Enable IPFW Transparent Proxy
+AC_ARG_ENABLE(ipfw-transparent,
+[  --enable-ipfw-transparent
+                          Enable Transparent Proxy support for systems
+                          using FreeBSD IPFW style redirection.],
+[ if test "$enableval" = "yes" ; then
+	echo "IPFW Transparent Proxy enabled"
+	AC_DEFINE(IPFW_TRANSPARENT,1,[Enable support for Transparent Proxy on systems using FreeBSD IPFW address redirection.])
+	IPFW_TRANSPARENT="yes"
+  fi
+])
 
 dnl Enable IP-Filter Transparent Proxy
 AC_ARG_ENABLE(ipf-transparent,
@@ -1650,7 +1604,7 @@ fi
 AC_SUBST(EXTERNAL_ACL_HELPERS)
 
 AC_ARG_WITH(valgrind,
-[  --with-valgrind       Include debug instrumentation for use with valgrind],
+[  --with-valgrind        Include debug instrumentation for use with valgrind],
 [ case $withval in
   yes)
 	valgrind=1
@@ -1778,7 +1732,8 @@ AC_ARG_ENABLE(x_accelerator_vary,
 ])
 
 AC_ARG_WITH(filedescriptors,
-[  --with-filedescriptors=NUMBER Force squid to support NUMBER filedescriptors],
+[  --with-filedescriptors=NUMBER
+                          Force squid to support NUMBER filedescriptors],
 [ squid_filedescriptors_num=$withval ])
 
 AC_PATH_PROG(CPPUNITCONFIG, cppunit-config, false)
@@ -1992,16 +1947,6 @@ AC_CHECK_HEADERS([libxml/parser.h], [], [
 
 AC_C_CONST
 AC_C_BIGENDIAN
-
-AC_CACHE_CHECK(if ANSI prototypes work,ac_cv_have_ansi_prototypes, [
-  AC_TRY_COMPILE([int foo(char *); int foo (char *bar) {return 1;}],
-    [foo("bar")],
-    ac_cv_have_ansi_prototypes="yes",
-    ac_cv_have_ansi_prototypes="no")
-])
-if test $ac_cv_have_ansi_prototypes = "yes" ; then
-  AC_DEFINE(HAVE_ANSI_PROTOTYPES,1,[Define if your compiler supports prototyping])
-fi
 
 AC_STRUCT_TM
 AC_CHECK_MEMBERS([struct tm.tm_gmtoff],,,[
@@ -2277,9 +2222,6 @@ if test x"$squid_cv_unixsocket" = x"yes"; then
 fi
 dnl end rip
 
-if test "x$ac_cv_enabled_dlmalloc" = "xyes" ; then
-  echo "skipping libmalloc check (--enable-dlmalloc specified)"
-else
   AC_CHECK_LIB(gnumalloc, main)
   if test "$ac_cv_lib_gnumalloc_main" = "yes"; then
 		echo "Disabling extended malloc functions when using gnumalloc"
@@ -2300,7 +2242,6 @@ else
 				;;
 		esac
   fi
-fi
 
 AC_CHECK_LIB(bsd, main)
 AC_CHECK_LIB(regex, main, [REGEXLIB="-lregex"])
@@ -2546,7 +2487,6 @@ AC_CHECK_FUNCS(\
 	bswap_32 \
 	bswap16 \
 	bswap32 \
-	crypt \
 	fchmod \
 	getdtablesize \
 	getpagesize \
@@ -2557,6 +2497,7 @@ AC_CHECK_FUNCS(\
 	gettimeofday \
 	htobe16 \
 	htole16 \
+	kqueue\
 	lrand48 \
 	mallinfo \
 	mallocblksize \
@@ -2594,11 +2535,55 @@ AC_CHECK_FUNCS(\
 	srandom \
 	statfs \
 	strsep \
+	strtoll \
 	sysconf \
 	syslog \
 	timegm \
 	vsnprintf \
 )
+dnl ... and some we provide local replacements for
+AC_REPLACE_FUNCS(\
+	drand48 \
+	initgroups \
+	strerror \
+	tempnam \
+)
+
+# check for crypt, may require -lcrypt
+SAVED_LIBS="$LIBS"
+LIBS="$LIBS $CRYPTLIB"
+AC_CHECK_FUNCS(crypt)
+LIBS="$SAVED_LIBS"
+
+# Check for libepoll
+EPOLL_LIB=
+AC_CHECK_LIB(epoll, epoll_ctl, [EPOLL_LIBS="-lepoll"])
+AC_SUBST(EPOLL_LIBS)
+
+# Check for epoll_ctl, may need -lepoll
+SAVED_LIBS="$LIBS"
+LIBS="$LIBS $LIB_EPOLL"
+AC_CHECK_FUNCS(epoll_ctl)
+LIBS="$SAVED_LIBS"
+
+dnl Verify that epoll really works
+if test $ac_cv_func_epoll_ctl = yes; then
+  AC_CACHE_CHECK(if epoll works, ac_cv_epoll_works,
+    AC_TRY_RUN([
+#include <sys/epoll.h>
+#include <stdlib.h>
+#include <stdio.h>
+int main(int argc, char **argv)
+{
+    int fd = epoll_create(256);
+    if (fd < 0) {
+	perror("epoll_create:");
+	exit(1);
+    }
+    exit(0);
+}
+    ], [ac_cv_epoll_works=yes], [ac_cv_epoll_works=no]))
+fi
 
 dnl Magic which checks whether we are forcing a type of comm loop we
 dnl are actually going to (ab)use
@@ -2606,26 +2591,21 @@ dnl are actually going to (ab)use
 dnl Actually do the define magic now
 dnl mostly ripped from squid-commloops, thanks to adrian and benno
 
-if test "$ac_cv_func_kqueue" = "yes" ; then
-	SELECT_TYPE="kqueue"
-	AC_DEFINE(USE_KQUEUE,1,[Use kqueue() for the IO loop])
-elif test "$ac_cv_func_epoll" = "yes" ; then
+if test -n "$SELECT_TYPE"; then
+	: # Already decided above. Nothing to do here
+elif test -z "$disable_epoll" && test "$ac_cv_epoll_works" = "yes" ; then
 	SELECT_TYPE="epoll"
-	AC_DEFINE(USE_EPOLL,1,[Use epoll() for the IO loop])
-	AC_CHECK_LIB(epoll, epoll_create, [EPOLL_LIBS="-lepoll"])
-	AC_SUBST(EPOLL_LIBS)
-elif test "$ac_cv_func_poll" = "yes" ; then
+elif test -z "$disable_kqueue" && test "$ac_cv_func_kqueue" = "yes" ; then
+	SELECT_TYPE="kqueue"
+elif test -z "$disable_poll" && test "$ac_cv_func_poll" = "yes" ; then
         SELECT_TYPE="poll"
-        AC_DEFINE(USE_POLL,1,[Use poll() for the IO loop])
-elif test "$ac_cv_func_select" = "yes" ; then
+elif test -z "$disable_select" && test "$ac_cv_func_select" = "yes" ; then
 	case "$host_os" in
 	mingw|mingw32)
 	        SELECT_TYPE="select_win32"
-	        AC_DEFINE(USE_SELECT_WIN32,1,[Use Winsock select() for the IO loop])
 		;;
 	*)
 	        SELECT_TYPE="select"
-	        AC_DEFINE(USE_SELECT,1,[Use select() for the IO loop])
 		;;
 	esac
 else
@@ -2634,7 +2614,35 @@ else
         SELECT_TYPE="select"
         AC_DEFINE(USE_SELECT,1)
 fi
-echo "Using ${SELECT_TYPE} for select loop."
+
+echo "Using ${SELECT_TYPE} for the IO loop."
+
+AM_CONDITIONAL([USE_POLL], [test $SELECT_TYPE = poll])
+AM_CONDITIONAL([USE_EPOLL], [test $SELECT_TYPE = epoll])
+AM_CONDITIONAL([USE_SELECT], [test $SELECT_TYPE = select])
+AM_CONDITIONAL([USE_SELECT_SIMPLE], [test $SELECT_TYPE = select_simple])
+AM_CONDITIONAL([USE_SELECT_WIN32], [test $SELECT_TYPE = select_win32])
+AM_CONDITIONAL([USE_KQUEUE], [test $SELECT_TYPE = kqueue])
+AM_CONDITIONAL([USE_DEVPOLL], [test $SELECT_TYPE = devpoll])
+
+case $SELECT_TYPE in
+epoll)
+	AC_DEFINE(USE_EPOLL,1,[Use epoll() for the IO loop])
+	;;
+poll)
+        AC_DEFINE(USE_POLL,1,[Use poll() for the IO loop])
+	;;
+kqueue)
+	AC_DEFINE(USE_KQUEUE,1,[Use kqueue() for the IO loop])
+	;;
+select_win32)
+	AC_DEFINE(USE_SELECT_WIN32,1,[Use Winsock select() for the IO loop])
+	;;
+select)
+	AC_DEFINE(USE_SELECT,1,[Use select() for the IO loop])
+	;;
+esac
+
 
 
 dnl Yay!  Another Linux brokenness.  Its not good enough
@@ -2665,6 +2673,11 @@ fi
 AM_CONDITIONAL(NEED_OWN_STRSEP, false)
 if test "$ac_cv_func_strsep" = "no" ; then
   AM_CONDITIONAL(NEED_OWN_STRSEP, true)
+fi
+
+AM_CONDITIONAL(NEED_OWN_STRTOLL, false)
+if test "$ac_cv_func_strtoll" = "no" ; then
+  AM_CONDITIONAL(NEED_OWN_STRTOLL, true)
 fi
 
 dnl
@@ -2849,13 +2862,6 @@ if test "$USE_GNUREGEX" = "yes"; then
 fi
 AC_SUBST(REGEXLIB)
 AC_SUBST(LIBREGEX)
-
-AC_REPLACE_FUNCS(\
-	drand48 \
-	tempnam \
-	strerror \
-    initgroups
-)
 
 dnl Not cached since people are likely to tune this
 AC_MSG_CHECKING(Default FD_SETSIZE value)
@@ -3141,7 +3147,7 @@ else
 	mingw|mingw32)
 	  echo "Using Win32 resolver instead."
 	  ;;
-	*)      
+	*)
 	  echo "Will use our own inet_ntoa()."
 	  AC_LIBOBJ(inet_ntoa)
 #	  echo "WARNING: This looks bad, and probably prevents Squid from working."
@@ -3279,9 +3285,12 @@ AC_CONFIG_FILES([\
 	helpers/basic_auth/multi-domain-NTLM/Makefile \
 	helpers/basic_auth/SASL/Makefile \
 	helpers/basic_auth/POP3/Makefile \
+	helpers/basic_auth/DB/Makefile \
+	helpers/basic_auth/squid_radius_auth/Makefile \
 	helpers/digest_auth/Makefile \
 	helpers/digest_auth/password/Makefile \
 	helpers/digest_auth/ldap/Makefile \
+	helpers/digest_auth/eDirectory/Makefile \
 	helpers/ntlm_auth/Makefile \
 	helpers/ntlm_auth/fakeauth/Makefile \
 	helpers/ntlm_auth/no_check/Makefile \
@@ -3290,6 +3299,7 @@ AC_CONFIG_FILES([\
 	helpers/ntlm_auth/mswin_sspi/Makefile \
 	helpers/negotiate_auth/Makefile \
 	helpers/negotiate_auth/mswin_sspi/Makefile \
+	helpers/negotiate_auth/squid_kerb_auth/Makefile \
 	helpers/external_acl/Makefile \
 	helpers/external_acl/ip_user/Makefile \
 	helpers/external_acl/ldap_group/Makefile \

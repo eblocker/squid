@@ -1,6 +1,6 @@
 
 /*
- * $Id: client_side_reply.cc,v 1.126 2007/05/09 09:07:38 wessels Exp $
+ * $Id: client_side_reply.cc,v 1.138 2007/08/30 13:15:13 hno Exp $
  *
  * DEBUG: section 88    Client-side Reply Routines
  * AUTHOR: Robert Collins (Originally Duane Wessels in client_side.c)
@@ -287,7 +287,7 @@ clientReplyContext::sendClientUpstreamResponse()
 {
     StoreIOBuffer tempresult;
     removeStoreReference(&old_sc, &old_entry);
-    /* here the data to send is the data we just recieved */
+    /* here the data to send is the data we just received */
     tempBuffer.offset = 0;
     old_reqsize = 0;
     /* sendMoreData tracks the offset as well.
@@ -503,6 +503,12 @@ clientReplyContext::cacheHit(StoreIOBuffer result)
      * Got the headers, now grok them
      */
     assert(http->logType == LOG_TCP_HIT);
+
+    if (strcmp(e->mem_obj->url, urlCanonical(r)) != 0) {
+	debugs(33, 1, "clientProcessHit: URL mismatch, '" << e->mem_obj->url << "' != '" << urlCanonical(r) << "'");
+        processMiss();
+        return;
+    }
 
     switch (varyEvaluateMatch(e, r)) {
 
@@ -977,8 +983,13 @@ clientReplyContext::checkTransferDone()
 int
 clientReplyContext::storeOKTransferDone() const
 {
-    if (http->out.offset >= http->storeEntry()->objectLen() - headers_sz)
+    if (http->out.offset >= http->storeEntry()->objectLen() - headers_sz) {
+	debugs(88,3,HERE << "storeOKTransferDone " <<
+	" out.offset=" << http->out.offset <<
+	" objectLen()=" << http->storeEntry()->objectLen() <<
+	" headers_sz=" << headers_sz);
         return 1;
+    }
 
     return 0;
 }
@@ -1015,12 +1026,16 @@ clientReplyContext::storeNotOKTransferDone() const
     if (reply->content_length < 0)
         return 0;
 
-    size_t expectedLength = http->out.headers_sz + reply->content_length;
+    int64_t expectedLength = reply->content_length + http->out.headers_sz;
 
     if (http->out.size < expectedLength)
         return 0;
-    else
+    else {
+	debugs(88,3,HERE << "storeNotOKTransferDone " <<
+	" out.size=" << http->out.size <<
+	" expectedLength=" << expectedLength);
         return 1;
+    }
 }
 
 
@@ -1033,23 +1048,22 @@ clientReplyContext::storeNotOKTransferDone() const
 int
 clientHttpRequestStatus(int fd, ClientHttpRequest const *http)
 {
-#if SIZEOF_SIZE_T == 4
-
+#if SIZEOF_INT64_T == 4
     if (http->out.size > 0x7FFF0000) {
-        debugs(88, 1, "WARNING: closing FD " << fd << " to prevent counter overflow" );
-        debugs(88, 1, "\tclient " << (inet_ntoa(http->getConn() != NULL ? http->getConn()->peer.sin_addr : no_addr))  );
-        debugs(88, 1, "\treceived " << http->out.size << " bytes" );
-        debugs(88, 1, "\tURI " << http->log_uri  );
+        debugs(88, 1, "WARNING: closing FD " << fd << " to prevent out.size counter overflow");
+        debugs(88, 1, "\tclient " << (inet_ntoa(http->getConn() != NULL ? http->getConn()->peer.sin_addr : no_addr)));
+        debugs(88, 1, "\treceived " << http->out.size << " bytes");
+        debugs(88, 1, "\tURI " << http->log_uri);
         return 1;
     }
 
 #endif
-#if SIZEOF_OFF_T == 4
+#if SIZEOF_INT64_T == 4
     if (http->out.offset > 0x7FFF0000) {
-        debugs(88, 1, "WARNING: closing FD " << fd << " to prevent counter overflow" );
-        debugs(88, 1, "\tclient " << (inet_ntoa(http->getConn() != NULL ? http->getConn()->peer.sin_addr : no_addr))  );
-        debugs(88, 1, "\treceived " << http->out.size << " bytes (offset " << http->out.offset << ")" );
-        debugs(88, 1, "\tURI " << http->log_uri  );
+        debugs(88, 1, "WARNING: closing FD " << fd < " to prevent out.offset counter overflow");
+        debugs(88, 1, "\tclient " << (inet_ntoa(http->getConn() != NULL ? http->getConn()->peer.sin_addr : no_addr)));
+        debugs(88, 1, "\treceived " << http->out.size << " bytes, offset " << http->out.offset);
+        debugs(88, 1, "\tURI " << http->log_uri);
         return 1;
     }
 
@@ -1312,7 +1326,7 @@ clientReplyContext::buildReplyHeader()
         request->flags.proxy_keepalive = 0;
 
     /* Append VIA */
-    {
+    if (Config.onoff.via) {
         LOCAL_ARRAY(char, bbuf, MAX_URL + 32);
         String strVia;
        	hdr->getList(HDR_VIA, &strVia);
@@ -1721,7 +1735,7 @@ clientReplyContext::buildMaxBodySize(HttpReply * reply)
 
     for (l = Config.ReplyBodySize; l; l = l -> next) {
         if (ch->matchAclListFast(l->aclList)) {
-            if (l->size != static_cast<size_t>(-1)) {
+            if (l->size != -1) {
                 debugs(58, 3, "clientReplyContext: Setting maxBodySize to " <<  l->size);
                 http->maxReplyBodySize(l->size);
             }
@@ -1739,6 +1753,12 @@ clientReplyContext::processReplyAccess ()
     assert(reply);
     buildMaxBodySize(reply);
 
+    /* Dont't block our own responses or HTTP status messages */
+    if (http->logType == LOG_TCP_DENIED || http->logType == LOG_TCP_DENIED_REPLY || alwaysAllowResponse(reply->sline.status)) {
+	processReplyAccessResult(1);
+	return;
+    }
+
     if (http->isReplyBodyTooLarge(reply->content_length)) {
         ErrorState *err =
             clientBuildError(ERR_TOO_BIG, HTTP_FORBIDDEN, NULL,
@@ -1751,6 +1771,12 @@ clientReplyContext::processReplyAccess ()
     }
 
     headers_sz = reply->hdr_sz;
+
+    if (!Config.accessList.reply) {
+	processReplyAccessResult(1);
+	return;
+    }
+
     ACLChecklist *replyChecklist;
     replyChecklist = clientAclChecklistCreate(Config.accessList.reply, http);
     replyChecklist->reply = HTTPMSGLOCK(reply);
@@ -1773,14 +1799,12 @@ clientReplyContext::processReplyAccessResult(bool accessAllowed)
            << ", because it matched '" 
            << (AclMatchedName ? AclMatchedName : "NO ACL's") << "'" );
 
-    if (!accessAllowed && reply->sline.status != HTTP_FORBIDDEN
-            && !alwaysAllowResponse(reply->sline.status)) {
-        /* the if above is slightly broken, but there is no way
-         * to tell if this is a squid generated error page, or one from
-         *  upstream at this point. */
+    if (!accessAllowed) {
         ErrorState *err;
         err_type page_id;
         page_id = aclGetDenyInfoPage(&Config.denyInfoList, AclMatchedName, 1);
+
+        http->logType = LOG_TCP_DENIED_REPLY;
 
         if (page_id == ERR_NONE)
             page_id = ERR_ACCESS_DENIED;
@@ -1796,7 +1820,6 @@ clientReplyContext::processReplyAccessResult(bool accessAllowed)
 
         startError(err);
 
-        http->logType = LOG_TCP_DENIED_REPLY;
 
         return;
     }
@@ -1845,7 +1868,7 @@ clientReplyContext::processReplyAccessResult(bool accessAllowed)
 
     if (next()->readBuffer.offset != 0) {
         if (next()->readBuffer.offset > body_size) {
-            /* Can't use any of the body we recieved. send nothing */
+            /* Can't use any of the body we received. send nothing */
             tempBuffer.length = 0;
             tempBuffer.data = NULL;
         } else {
@@ -1915,21 +1938,15 @@ clientReplyContext::sendMoreData (StoreIOBuffer result)
     makeThisHead();
 
     debugs(88, 5, "clientReplyContext::sendMoreData: " << http->uri << ", " <<
-           (int) reqofs << " bytes (" << (unsigned int)result.length <<
+           reqofs << " bytes (" << result.length <<
            " new bytes)");
-    debugs(88, 5, "clientReplyContext::sendMoreData: FD " << fd << " '" << entry->url() << "', out.offset=" << http->out.offset << " " );
+    debugs(88, 5, "clientReplyContext::sendMoreData:"
+		" FD " << fd <<
+		" '" << entry->url() << "'" <<
+		" out.offset=" << http->out.offset);
 
     /* update size of the request */
     reqsize = reqofs;
-
-    if (http->request->flags.resetTCP()) {
-        /* yuck. FIXME: move to client_side.c */
-
-        if (fd != -1)
-            comm_reset_close(fd);
-
-        return;
-    }
 
     if (errorInStream(result, reqofs)) {
         sendStreamError(result);

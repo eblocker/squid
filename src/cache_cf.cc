@@ -1,6 +1,6 @@
 
 /*
- * $Id: cache_cf.cc,v 1.510 2007/04/28 22:26:37 hno Exp $
+ * $Id: cache_cf.cc,v 1.519 2007/08/17 03:35:31 hno Exp $
  *
  * DEBUG: section 3     Configuration File Parsing
  * AUTHOR: Harvest Derived
@@ -56,16 +56,15 @@
 
 #if ICAP_CLIENT
 #include "ICAP/ICAPConfig.h"
-extern ICAPConfig TheICAPConfig;	// for cf_parser.h
 
 static void parse_icap_service_type(ICAPConfig *);
-static void dump_icap_service_type(StoreEntry *, const char *, ICAPConfig );
+static void dump_icap_service_type(StoreEntry *, const char *, const ICAPConfig &);
 static void free_icap_service_type(ICAPConfig *);
 static void parse_icap_class_type(ICAPConfig *);
-static void dump_icap_class_type(StoreEntry *, const char *, ICAPConfig );
+static void dump_icap_class_type(StoreEntry *, const char *, const ICAPConfig &);
 static void free_icap_class_type(ICAPConfig *);
 static void parse_icap_access_type(ICAPConfig *);
-static void dump_icap_access_type(StoreEntry *, const char *, ICAPConfig );
+static void dump_icap_access_type(StoreEntry *, const char *, const ICAPConfig &);
 static void free_icap_access_type(ICAPConfig *);
 
 #endif
@@ -91,7 +90,9 @@ static const char *const list_sep = ", \t\n\r";
 
 static void parse_logformat(logformat ** logformat_definitions);
 static void parse_access_log(customlog ** customlog_definitions);
+#if UNUSED_CODE
 static int check_null_access_log(customlog *customlog_definitions);
+#endif
 
 static void dump_logformat(StoreEntry * entry, const char *name, logformat * definitions);
 static void dump_access_log(StoreEntry * entry, const char *name, customlog * definitions);
@@ -144,6 +145,7 @@ static int check_null_https_port_list(const https_port_list *);
 #endif
 #endif /* USE_SSL */
 static void parse_b_size_t(size_t * var);
+static void parse_b_int64_t(int64_t * var);
 
 /*
  * LegacyParser is a parser for legacy code that uses the global
@@ -163,7 +165,7 @@ static void
 update_maxobjsize(void)
 {
     int i;
-    ssize_t ms = -1;
+    int64_t ms = -1;
 
     for (i = 0; i < Config.cacheSwap.n_configured; i++) {
         assert (Config.cacheSwap.swapDirs[i].getRaw());
@@ -172,7 +174,6 @@ update_maxobjsize(void)
                 max_objsize > ms)
             ms = dynamic_cast<SwapDir *>(Config.cacheSwap.swapDirs[i].getRaw())->max_objsize;
     }
-
     store_maxobjsize = ms;
 }
 
@@ -357,6 +358,12 @@ configDoConfigure(void)
     if (Config.cacheSwap.swapDirs == NULL)
         fatal("No cache_dir's specified in config file");
 
+#if SIZEOF_OFF_T <= 4
+    if (Config.Store.maxObjectSize > 0x7FFF0000) {
+	debugs(3, 0, "WARNING: This Squid binary can not handle files larger than 2GB. Limiting maximum_object_size to just below 2GB");
+	Config.Store.maxObjectSize = 0x7FFF0000;
+    }
+#endif
     if (0 == Store::Root().maxSize())
         /* people might want a zero-sized cache on purpose */
         (void) 0;
@@ -701,12 +708,51 @@ parseTimeUnits(const char *unit)
 }
 
 static void
+parseBytesLine64(int64_t * bptr, const char *units)
+{
+    char *token;
+    double d;
+    int64_t m;
+    int64_t u;
+
+    if ((u = parseBytesUnits(units)) == 0)
+        self_destruct();
+
+    if ((token = strtok(NULL, w_space)) == NULL)
+        self_destruct();
+
+    if (strcmp(token, "none") == 0 || strcmp(token, "-1") == 0) {
+        *bptr = -1;
+        return;
+    }
+
+    d = xatof(token);
+
+    m = u;			/* default to 'units' if none specified */
+
+    if (0.0 == d)
+        (void) 0;
+    else if ((token = strtok(NULL, w_space)) == NULL)
+        debugs(3, 0, "WARNING: No units on '" << 
+                     config_input_line << "', assuming " <<
+                     d << " " <<  units  );
+    else if ((m = parseBytesUnits(token)) == 0)
+        self_destruct();
+
+    *bptr = static_cast<int64_t>(m * d / u);
+
+    if (static_cast<double>(*bptr) * 2 != m * d / u * 2)
+        self_destruct();
+}
+
+
+static void
 parseBytesLine(size_t * bptr, const char *units)
 {
     char *token;
     double d;
-    size_t m;
-    size_t u;
+    int m;
+    int u;
 
     if ((u = parseBytesUnits(units)) == 0)
         self_destruct();
@@ -1001,7 +1047,7 @@ dump_acl_b_size_t(StoreEntry * entry, const char *name, acl_size_t * head)
     acl_size_t *l;
 
     for (l = head; l; l = l->next) {
-        if (l->size != static_cast<size_t>(-1))
+        if (l->size != -1)
             storeAppendPrintf(entry, "%s %d %s\n", name, (int) l->size, B_BYTES_STR);
         else
             storeAppendPrintf(entry, "%s none", name);
@@ -1029,7 +1075,7 @@ parse_acl_b_size_t(acl_size_t ** head)
 
     l = cbdataAlloc(acl_size_t);
 
-    parse_b_size_t(&l->size);
+    parse_b_int64_t(&l->size);
 
     aclParseAclList(LegacyParser, &l->aclList);
 
@@ -1246,6 +1292,7 @@ dump_cachedir(StoreEntry * entry, const char *name, _SquidConfig::_cacheSwap swa
 
     for (i = 0; i < swap.n_configured; i++) {
         s = dynamic_cast<SwapDir *>(swap.swapDirs[i].getRaw());
+        if(!s) continue;
         storeAppendPrintf(entry, "%s %s %s", name, s->type(), s->path);
         s->dump(*entry);
         storeAppendPrintf(entry, "\n");
@@ -2287,6 +2334,18 @@ dump_kb_size_t(StoreEntry * entry, const char *name, size_t var)
 }
 
 static void
+dump_b_int64_t(StoreEntry * entry, const char *name, int64_t var)
+{
+    storeAppendPrintf(entry, "%s %"PRId64" %s\n", name, var, B_BYTES_STR);
+}
+
+static void
+dump_kb_int64_t(StoreEntry * entry, const char *name, int64_t var)
+{
+    storeAppendPrintf(entry, "%s %"PRId64" %s\n", name, var, B_KBYTES_STR);
+}
+
+static void
 parse_size_t(size_t * var)
 {
     int i;
@@ -2307,7 +2366,25 @@ parse_kb_size_t(size_t * var)
 }
 
 static void
+parse_b_int64_t(int64_t * var)
+{
+    parseBytesLine64(var, B_BYTES_STR);
+}
+
+static void
+parse_kb_int64_t(int64_t * var)
+{
+    parseBytesLine64(var, B_KBYTES_STR);
+}
+
+static void
 free_size_t(size_t * var)
+{
+    *var = 0;
+}
+
+static void
+free_b_int64_t(int64_t * var)
 {
     *var = 0;
 }
@@ -2316,6 +2393,7 @@ free_size_t(size_t * var)
 #define free_kb_size_t free_size_t
 #define free_mb_size_t free_size_t
 #define free_gb_size_t free_size_t
+#define free_kb_int64_t free_b_int64_t
 
 static void
 dump_ushort(StoreEntry * entry, const char *name, u_short var)
@@ -3066,11 +3144,13 @@ done:
     *logs = cl;
 }
 
+#if UNUSED_CODE
 static int
 check_null_access_log(customlog *customlog_definitions)
 {
     return customlog_definitions == NULL;
 }
+#endif
 
 static void
 dump_logformat(StoreEntry * entry, const char *name, logformat * definitions)
@@ -3169,7 +3249,7 @@ free_icap_service_type(ICAPConfig * cfg)
 }
 
 static void
-dump_icap_service_type(StoreEntry * entry, const char *name, ICAPConfig cfg)
+dump_icap_service_type(StoreEntry * entry, const char *name, const ICAPConfig &cfg)
 {
     cfg.dumpICAPService(entry, name);
 }
@@ -3187,7 +3267,7 @@ free_icap_class_type(ICAPConfig * cfg)
 }
 
 static void
-dump_icap_class_type(StoreEntry * entry, const char *name, ICAPConfig cfg)
+dump_icap_class_type(StoreEntry * entry, const char *name, const ICAPConfig &cfg)
 {
     cfg.dumpICAPClass(entry, name);
 }
@@ -3205,7 +3285,7 @@ free_icap_access_type(ICAPConfig * cfg)
 }
 
 static void
-dump_icap_access_type(StoreEntry * entry, const char *name, ICAPConfig cfg)
+dump_icap_access_type(StoreEntry * entry, const char *name, const ICAPConfig &cfg)
 {
     cfg.dumpICAPAccess(entry, name);
 }

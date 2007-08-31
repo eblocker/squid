@@ -1,6 +1,6 @@
 
 /*
- * $Id: test_http_range.cc,v 1.1 2006/05/21 14:35:11 robertc Exp $
+ * $Id: test_http_range.cc,v 1.3 2007/05/29 13:31:48 amosjeffries Exp $
  *
  * DEBUG: section 64    HTTP Range Header
  * AUTHOR: Alex Rousskov

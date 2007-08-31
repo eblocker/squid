@@ -55,9 +55,6 @@
    */
 #undef HAVE_ALLOCA_H
 
-/* Define if your compiler supports prototyping */
-#undef HAVE_ANSI_PROTOTYPES
-
 /* Define to 1 if you have the <arpa/inet.h> header file. */
 #undef HAVE_ARPA_INET_H
 
@@ -127,6 +124,9 @@
 
 /* Define if you have the _dyld_func_lookup function. */
 #undef HAVE_DYLD
+
+/* Define to 1 if you have the `epoll_ctl' function. */
+#undef HAVE_EPOLL_CTL
 
 /* Define to 1 if you have the <errno.h> header file. */
 #undef HAVE_ERRNO_H
@@ -220,6 +220,9 @@
 
 /* Define to 1 if you have the <ip_nat.h> header file. */
 #undef HAVE_IP_NAT_H
+
+/* Define to 1 if you have the `kqueue' function. */
+#undef HAVE_KQUEUE
 
 /* Define to 1 if you have the `44bsd' library (-l44bsd). */
 #undef HAVE_LIB44BSD
@@ -559,6 +562,9 @@
 /* Define to 1 if you have the `strsep' function. */
 #undef HAVE_STRSEP
 
+/* Define to 1 if you have the `strtoll' function. */
+#undef HAVE_STRTOLL
+
 /* Define to 1 if `ip_hl' is member of `struct iphdr'. */
 #undef HAVE_STRUCT_IPHDR_IP_HL
 
@@ -725,6 +731,10 @@
 /* Enable ICAP client features in Squid */
 #undef ICAP_CLIENT
 
+/* Enable support for Transparent Proxy on systems using FreeBSD IPFW address
+   redirection. */
+#undef IPFW_TRANSPARENT
+
 /* Enable support for Transparent Proxy on systems using IP-Filter address
    redirection. This provides "masquerading" support for non Linux system. */
 #undef IPF_TRANSPARENT
@@ -888,9 +898,6 @@
 
 /* Cache Array Routing Protocol */
 #undef USE_CARP
-
-/* Compile & use the malloc package by Doug Lea */
-#undef USE_DLMALLOC
 
 /* Use dnsserver processes instead of the internal DNS protocol support */
 #undef USE_DNSSERVERS

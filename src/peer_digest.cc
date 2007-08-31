@@ -1,6 +1,6 @@
 
 /*
- * $Id: peer_digest.cc,v 1.123 2007/04/30 16:56:09 wessels Exp $
+ * $Id: peer_digest.cc,v 1.127 2007/08/27 12:50:43 hno Exp $
  *
  * DEBUG: section 72    Peer Digest Routines
  * AUTHOR: Alex Rousskov
@@ -417,21 +417,21 @@ peerDigestRequest(PeerDigest * pd)
  * not interested in rewriting everything to suit my little idea.
  */
 static void
-peerDigestHandleReply(void *data, StoreIOBuffer recievedData)
+peerDigestHandleReply(void *data, StoreIOBuffer receivedData)
 {
     DigestFetchState *fetch = (DigestFetchState *)data;
     int retsize = -1;
     digest_read_state_t prevstate;
     int newsize;
 
-    assert(fetch->pd && recievedData.data);
-    /* The existing code assumes that the recieved pointer is
+    assert(fetch->pd && receivedData.data);
+    /* The existing code assumes that the received pointer is
      * where we asked the data to be put
      */
-    assert(fetch->buf + fetch->bufofs == recievedData.data);
+    assert(fetch->buf + fetch->bufofs == receivedData.data);
 
     /* Update the buffer size */
-    fetch->bufofs += recievedData.length;
+    fetch->bufofs += receivedData.length;
 
     assert(fetch->bufofs <= SM_PAGE_SIZE);
 
@@ -500,7 +500,7 @@ peerDigestHandleReply(void *data, StoreIOBuffer recievedData)
     } while (cbdataReferenceValid(fetch) && prevstate != fetch->state && fetch->bufofs > 0);
 
     /* Update the copy offset */
-    fetch->offset += recievedData.length;
+    fetch->offset += receivedData.length;
 
     /* Schedule another copy */
     if (cbdataReferenceValid(fetch)) {
@@ -787,7 +787,7 @@ peerDigestFetchedEnough(DigestFetchState * fetch, char *buf, ssize_t size, const
     if (!reason && !size) {
         if (!pd->cd)
             reason = "null digest?!";
-        else if (fetch->mask_offset != (off_t)pd->cd->mask_size)
+        else if (fetch->mask_offset != (int)pd->cd->mask_size)
             reason = "premature end of digest?!";
         else if (!peerDigestUseful(pd))
             reason = "useless digest";

@@ -1,6 +1,6 @@
 
 /*
- * $Id: auth_digest.cc,v 1.55 2007/05/09 09:07:39 wessels Exp $
+ * $Id: auth_digest.cc,v 1.59 2007/08/27 12:50:45 hno Exp $
  *
  * DEBUG: section 29    Authenticator
  * AUTHOR: Robert Collins
@@ -588,6 +588,8 @@ AuthDigestUserRequest::authenticate(HttpRequest * request, ConnStateData::Pointe
 
     digest_user = dynamic_cast < digest_user_h * >(auth_user);
 
+    assert(digest_user != NULL);
+
     /* if the check has corrupted the user, just return */
 
     if (credentials() == Failed) {
@@ -786,7 +788,7 @@ AuthDigestConfig::fixHeader(AuthUserRequest *auth_user_request, HttpReply *rep, 
     if (auth_user_request) {
         AuthDigestUserRequest *digest_request;
         digest_request = dynamic_cast < AuthDigestUserRequest * >(auth_user_request);
-        assert (digest_request);
+        assert (digest_request != NULL);
 
         stale = digest_request->flags.nonce_stale;
     }
@@ -842,7 +844,9 @@ authenticateDigestHandleReply(void *data, char *reply)
     auth_user_request = replyData->auth_user_request;
     digest_request = dynamic_cast < AuthDigestUserRequest * >(auth_user_request);
     assert(digest_request);
+
     digest_user = dynamic_cast < digest_user_h * >(auth_user_request->user());
+    assert(digest_user != NULL);
 
     if (reply && (strncasecmp(reply, "ERR", 3) == 0)) {
         digest_request->credentials(AuthDigestUserRequest::Failed);
@@ -1232,7 +1236,7 @@ AuthDigestConfig::decode(char const *proxy_auth)
 
     if (!nonce) {
         /* we couldn't find a matching nonce! */
-        debugs(29, 4, "authenticateDigestDecode: Unexpected or invalid nonce recieved");
+        debugs(29, 4, "authenticateDigestDecode: Unexpected or invalid nonce received");
         delete digest_request;
         return authDigestLogUsername(username);
     }
@@ -1244,8 +1248,8 @@ AuthDigestConfig::decode(char const *proxy_auth)
      * RFC 2069 we should support a missing qop. Tough. */
 
     if (!digest_request->qop || strcmp(digest_request->qop, QOP_AUTH)) {
-        /* we recieved a qop option we didn't send */
-        debugs(29, 4, "authenticateDigestDecode: Invalid qop option recieved");
+        /* we received a qop option we didn't send */
+        debugs(29, 4, "authenticateDigestDecode: Invalid qop option received");
         delete digest_request;
         return authDigestLogUsername(username);
     }
@@ -1359,6 +1363,7 @@ AuthDigestUserRequest::module_start(RH * handler, void *data)
     digest_user_h *digest_user;
     assert(user()->auth_type == AUTH_DIGEST);
     digest_user = dynamic_cast < digest_user_h * >(user());
+    assert(digest_user != NULL);
     debugs(29, 9, "authenticateStart: '\"" << digest_user->username() << "\":\"" << realm << "\"'");
 
     if (digestConfig.authenticate == NULL) {

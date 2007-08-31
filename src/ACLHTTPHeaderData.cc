@@ -1,5 +1,5 @@
 /*
- * $Id: ACLHTTPHeaderData.cc,v 1.3 2007/04/28 22:26:37 hno Exp $
+ * $Id: ACLHTTPHeaderData.cc,v 1.5 2007/05/29 13:31:36 amosjeffries Exp $
  *
  * DEBUG: section 28    Access Control
  * AUTHOR: Duane Wessels

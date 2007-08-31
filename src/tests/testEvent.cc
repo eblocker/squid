@@ -19,16 +19,12 @@ shut_down(int)
 
 /* init legacy static-initialized modules */
 
-struct Initer
+void
+testEvent::setUp()
 {
-    Initer()
-    {
-        Mem::Init();
-        statInit();
-    }
-};
-
-static Initer ensure_mempools;
+    Mem::Init();
+    statInit();
+}
 
 /*
  * Test creating a EventDispatcher and Scheduler
@@ -41,7 +37,7 @@ testEvent::testCreate()
 }
 
 
-/* Helper for tests - an event which records the number of calls it recieved. */
+/* Helper for tests - an event which records the number of calls it received. */
 
 struct CalledEvent
 {

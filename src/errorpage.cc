@@ -1,6 +1,6 @@
 
 /*
- * $Id: errorpage.cc,v 1.225 2007/05/09 09:07:39 wessels Exp $
+ * $Id: errorpage.cc,v 1.227 2007/05/29 13:31:39 amosjeffries Exp $
  *
  * DEBUG: section 4     Error Generation
  * AUTHOR: Duane Wessels

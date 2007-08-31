@@ -1,6 +1,6 @@
 
 /*
- * $Id: ACLChecklist.h,v 1.24 2007/05/09 07:36:24 wessels Exp $
+ * $Id: ACLChecklist.h,v 1.27 2007/07/19 00:37:05 hno Exp $
  *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
@@ -97,14 +97,12 @@ class NullState : public AsyncState
     void checkCallback(allow_t answer);
     void preCheck();
     _SQUID_INLINE_ bool matchAclListFast(const acl_list * list);
-    _SQUID_INLINE_ void matchAclListSlow(const acl_list * list);
     ConnStateData::Pointer conn();
     void conn(ConnStateData::Pointer);
     int authenticated();
 
     bool asyncInProgress() const;
     void asyncInProgress(bool const);
-    void markDeleteWhenDone();
     bool finished() const;
     void markFinished();
     void check();
@@ -143,11 +141,11 @@ class NullState : public AsyncState
 
 private:
     void matchAclList(const acl_list * list, bool const fast);
+    void matchAclListSlow(const acl_list * list);
     CBDATA_CLASS(ACLChecklist);
     ConnStateData::Pointer conn_;	/* hack for ident and NTLM */
     bool async_;
     bool finished_;
-    bool deleteWhenDone;
     allow_t allow_;
     AsyncState *state_;
     bool destinationDomainChecked_;
@@ -157,6 +155,7 @@ private:
     void checking (bool const);
 
     bool lastACLResult_;
+    bool callerGone();
 
 public:
     bool lastACLResult(bool x) { return lastACLResult_ = x; }

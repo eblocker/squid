@@ -1,6 +1,6 @@
 
 /*
- * $Id: ICAPConfig.h,v 1.11 2007/04/06 04:50:07 rousskov Exp $
+ * $Id: ICAPConfig.h,v 1.16 2007/06/28 15:28:59 rousskov Exp $
  *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
@@ -96,6 +96,8 @@ public:
     int onoff;
     int preview_enable;
     int preview_size;
+    time_t connect_timeout_raw;
+    time_t io_timeout_raw;
     int default_options_ttl;
     int send_client_ip;
     int send_client_username;
@@ -112,20 +114,26 @@ public:
 
     ~ICAPConfig();
 
+    time_t connect_timeout(bool bypassable) const;
+    time_t io_timeout(bool bypassable) const;
+
     void parseICAPService(void);
     void freeICAPService(void);
-    void dumpICAPService(StoreEntry *, const char *);
+    void dumpICAPService(StoreEntry *, const char *) const;
     ICAPServiceRep::Pointer findService(const String&);
     ICAPClass * findClass(const String& key);
 
     void parseICAPClass(void);
     void freeICAPClass(void);
-    void dumpICAPClass(StoreEntry *, const char *);
+    void dumpICAPClass(StoreEntry *, const char *) const;
 
     void parseICAPAccess(ConfigParser &parser);
     void freeICAPAccess(void);
-    void dumpICAPAccess(StoreEntry *, const char *);
+    void dumpICAPAccess(StoreEntry *, const char *) const;
 
+private:
+    ICAPConfig(const ICAPConfig &); // unsupported
+    ICAPConfig &operator =(const ICAPConfig &); // unsupported
 };
 
 extern ICAPConfig TheICAPConfig;

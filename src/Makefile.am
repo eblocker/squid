@@ -1,7 +1,7 @@
 #
 #  Makefile for the Squid Object Cache server
 #
-#  $Id: Makefile.am,v 1.180 2007/05/08 16:32:11 rousskov Exp $
+#  $Id: Makefile.am,v 1.187 2007/08/26 21:04:32 hno Exp $
 #
 #  Uncomment and customize the following to suit your needs:
 #
@@ -584,6 +584,8 @@ squid_SOURCES = \
 	StoreMetaMD5.h \
 	StoreMetaSTD.cc \
 	StoreMetaSTD.h \
+	StoreMetaSTDLFS.cc \
+	StoreMetaSTDLFS.h \
 	StoreMetaUnpacker.cc \
 	StoreMetaUnpacker.h \
 	StoreMetaURL.cc \
@@ -652,13 +654,14 @@ squid_LDADD = \
 	@REGEXLIB@ \
 	@SNMPLIB@ \
 	@ICAP_LIBS@ \
-	@LIB_MALLOC@ \
 	@SSLLIB@ \
 	-lmiscutil \
 	@XTRA_LIBS@ \
 	@EPOLL_LIBS@ \
 	@MINGW_LIBS@ 
-squid_DEPENDENCIES = $(top_builddir)/lib/libmiscutil.a @STORE_OBJS@ @STORE_LINKOBJS@ \
+squid_DEPENDENCIES = $(top_builddir)/lib/libmiscutil.a \
+	@STORE_OBJS@ \
+	@STORE_LINKOBJS@ \
 	@DISK_LIBS@ \
 	@DISK_LINKOBJS@ \
 	@REPL_OBJS@ \
@@ -730,6 +733,7 @@ ufsdump_SOURCES = \
 	StoreMeta.cc \
 	StoreMetaMD5.cc \
 	StoreMetaSTD.cc \
+	StoreMetaSTDLFS.cc \
 	StoreMetaUnpacker.cc \
 	StoreMetaURL.cc \
 	StoreMetaVary.cc \
@@ -885,13 +889,21 @@ ufsdump_LDADD = \
 	@REGEXLIB@ \
 	@SNMPLIB@ \
 	@ICAP_LIBS@ \
-	@LIB_MALLOC@ \
 	@SSLLIB@ \
 	-lmiscutil \
 	@XTRA_LIBS@ \
 	@EPOLL_LIBS@ \
 	@MINGW_LIBS@ 
-ufsdump_DEPENDENCIES = $(top_builddir)/lib/libmiscutil.a
+ufsdump_DEPENDENCIES = $(top_builddir)/lib/libmiscutil.a \
+	@STORE_OBJS@ \
+	@STORE_LINKOBJS@ \
+	@DISK_LIBS@ \
+	@DISK_LINKOBJS@ \
+	@REPL_OBJS@ \
+	@AUTH_LINKOBJS@ \
+	@AUTH_OBJS@ \
+	@ICAP_LIBS@
+
 nodist_ufsdump_SOURCES = \
 	repl_modules.cc \
 	cf_parser.h \
@@ -1023,6 +1035,7 @@ cf.data: cf.data.pre Makefile
 	sed "\
 	s%@DEFAULT_HTTP_PORT@%$(DEFAULT_HTTP_PORT)%g;\
 	s%@DEFAULT_ICP_PORT@%$(DEFAULT_ICP_PORT)%g;\
+	s%@DEFAULT_CACHE_EFFECTIVE_USER@%${CACHE_EFFECTIVE_USER}%g;\
 	s%@DEFAULT_MIME_TABLE@%$(DEFAULT_MIME_TABLE)%g;\
 	s%@DEFAULT_DNSSERVER@%$(DEFAULT_DNSSERVER)%g;\
 	s%@DEFAULT_UNLINKD@%$(DEFAULT_UNLINKD)%g;\
@@ -1347,6 +1360,7 @@ tests_testCacheManager_SOURCES = \
 	StoreMeta.cc \
 	StoreMetaMD5.cc \
 	StoreMetaSTD.cc \
+	StoreMetaSTDLFS.cc \
 	StoreMetaUnpacker.cc \
 	StoreMetaURL.cc \
 	StoreMetaVary.cc \
@@ -1511,6 +1525,7 @@ tests_testEvent_SOURCES = \
 	StoreMeta.cc \
 	StoreMetaMD5.cc \
 	StoreMetaSTD.cc \
+	StoreMetaSTDLFS.cc \
 	StoreMetaUnpacker.cc \
 	StoreMetaURL.cc \
 	StoreMetaVary.cc \
@@ -1662,6 +1677,7 @@ tests_testEventLoop_SOURCES = \
 	StoreMeta.cc \
 	StoreMetaMD5.cc \
 	StoreMetaSTD.cc \
+	StoreMetaSTDLFS.cc \
 	StoreMetaUnpacker.cc \
 	StoreMetaURL.cc \
 	StoreMetaVary.cc \
@@ -1841,6 +1857,7 @@ tests_test_http_range_SOURCES = \
 	StoreMeta.cc \
 	StoreMetaMD5.cc \
 	StoreMetaSTD.cc \
+	StoreMetaSTDLFS.cc \
 	StoreMetaUnpacker.cc \
 	StoreMetaURL.cc \
 	StoreMetaVary.cc \
@@ -1995,6 +2012,7 @@ tests_testHttpRequest_SOURCES = \
 	StoreMeta.cc \
 	StoreMetaMD5.cc \
 	StoreMetaSTD.cc \
+	StoreMetaSTDLFS.cc \
 	StoreMetaUnpacker.cc \
 	StoreMetaURL.cc \
 	StoreMetaVary.cc \
@@ -2144,6 +2162,7 @@ SWAP_TEST_SOURCES = \
 	StoreMeta.cc \
 	StoreMetaMD5.cc \
 	StoreMetaSTD.cc \
+	StoreMetaSTDLFS.cc \
 	StoreMetaUnpacker.cc \
 	StoreMetaURL.cc \
 	StoreMetaVary.cc \
@@ -2330,6 +2349,7 @@ tests_testURL_SOURCES = \
 	StoreMeta.cc \
 	StoreMetaMD5.cc \
 	StoreMetaSTD.cc \
+	StoreMetaSTDLFS.cc \
 	StoreMetaUnpacker.cc \
 	StoreMetaURL.cc \
 	StoreMetaVary.cc \

@@ -1,6 +1,6 @@
 
 /*
- * $Id: AuthUser.cc,v 1.7 2007/05/09 08:26:57 wessels Exp $
+ * $Id: AuthUser.cc,v 1.9 2007/05/29 13:31:36 amosjeffries Exp $
  *
  * DEBUG: section 29    Authenticator
  * AUTHOR:  Robert Collins

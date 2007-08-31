@@ -1,5 +1,2 @@
 01-cf.data.debian
 02-makefile-defaults
-05-helpers-typo
-06-mem-obj-reference
-07-close-icap-connections

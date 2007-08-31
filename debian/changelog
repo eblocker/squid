@@ -3,6 +3,10 @@ squid3 (3.0.PRE7-1) UNRELEASED; urgency=low
   * (NOT RELEASED YET)
 
   * New upstream release
+    - Removed patches integrated upstream:
+      + debian/patches/05-helpers-typo
+      + debian/patches/06-mem-obj-reference
+      + debian/patches/07-close-icap-connections
 
   * debian/patches/01-cf.data.debian
     - Removed upstream-integrated patches

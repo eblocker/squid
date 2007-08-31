@@ -1,6 +1,6 @@
 
 /*
- * $Id: dns_internal.cc,v 1.98 2007/04/30 16:56:09 wessels Exp $
+ * $Id: dns_internal.cc,v 1.101 2007/06/23 21:08:39 hno Exp $
  *
  * DEBUG: section 78    DNS lookups; interacts with lib/rfc1035.c
  * AUTHOR: Duane Wessels
@@ -967,6 +967,10 @@ idnsGrokReply(const char *buf, size_t sz)
             }
 
             rfc1035MessageDestroy(message);
+	    if (q->hash.key) {
+		hash_remove_link(idns_lookup_hash, &q->hash);
+		q->hash.key = NULL;
+	    }
             q->start_t = current_time;
             q->id = idnsQueryID();
             rfc1035SetQueryID(q->buf, q->id);

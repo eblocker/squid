@@ -1,7 +1,7 @@
 #include "squid.h"
 
 /*
- * $Id: globals.h,v 1.140 2007/04/15 14:46:16 serassio Exp $
+ * $Id: globals.h,v 1.141 2007/08/13 17:20:51 hno Exp $
  *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
@@ -142,7 +142,7 @@ int store_open_disk_fd = 0;
 int store_swap_low = 0;
 int store_swap_high = 0;
 size_t store_pages_max = 0;
-ssize_t store_maxobjsize = -1;
+int64_t store_maxobjsize = -1;
 hash_table *proxy_auth_username_cache = NULL;
 int incoming_sockets_accepted;
 #ifdef _SQUID_MSWIN_

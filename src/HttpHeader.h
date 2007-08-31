@@ -1,6 +1,6 @@
 
 /*
- * $Id: HttpHeader.h,v 1.19 2007/05/07 18:12:28 wessels Exp $
+ * $Id: HttpHeader.h,v 1.23 2007/08/13 17:20:51 hno Exp $
  *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
@@ -124,6 +124,7 @@ typedef enum {
 typedef enum {
     ftInvalid = HDR_ENUM_END,	/* to catch nasty errors with hdr_id<->fld_type clashes */
     ftInt,
+    ftInt64,
     ftStr,
     ftDate_1123,
     ftETag,
@@ -136,7 +137,7 @@ typedef enum {
 
 /* possible owners of http header */
 typedef enum {
-    hoNone,
+    hoNone =0,
 #if USE_HTCP
     hoHtcpReply,
 #endif
@@ -181,6 +182,7 @@ public:
     HttpHeaderEntry *clone() const;
     void packInto(Packer *p) const;
     int getInt() const;
+    int64_t getInt64() const;
     MEMPROXY_CLASS(HttpHeaderEntry);
     http_hdr_type id;
     String name;
@@ -219,6 +221,7 @@ public:
     String getListMember(http_hdr_type id, const char *member, const char separator) const;
     int has(http_hdr_type id) const;
     void putInt(http_hdr_type id, int number);
+    void putInt64(http_hdr_type id, int64_t number);
     void putTime(http_hdr_type id, time_t htime);
     void insertTime(http_hdr_type id, time_t htime);
     void putStr(http_hdr_type id, const char *str);
@@ -229,6 +232,7 @@ public:
     void putSc(HttpHdrSc *sc);
     void putExt(const char *name, const char *value);
     int getInt(http_hdr_type id) const;
+    int64_t getInt64(http_hdr_type id) const;
     time_t getTime(http_hdr_type id) const;
     const char *getStr(http_hdr_type id) const;
     const char *getLastStr(http_hdr_type id) const;

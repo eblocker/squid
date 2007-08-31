@@ -15,7 +15,7 @@
 @SET_MAKE@
 
 #
-#  $Id: Makefile.in,v 1.131 2007/04/24 06:35:52 wessels Exp $
+#  $Id: Makefile.in,v 1.141 2007/08/27 13:15:09 hno Exp $
 #
 
 srcdir = @srcdir@
@@ -54,32 +54,29 @@ CONFIG_HEADER = $(top_builddir)/include/autoconf.h
 CONFIG_CLEAN_FILES =
 LIBRARIES = $(noinst_LIBRARIES)
 ARFLAGS = cru
-libdlmalloc_a_AR = $(AR) $(ARFLAGS)
-libdlmalloc_a_LIBADD =
-am_libdlmalloc_a_OBJECTS = dlmalloc.$(OBJEXT)
-libdlmalloc_a_OBJECTS = $(am_libdlmalloc_a_OBJECTS)
 libmiscutil_a_AR = $(AR) $(ARFLAGS)
 libmiscutil_a_DEPENDENCIES = libTrie/src/Trie.o libTrie/src/TrieNode.o \
 	@LIBOBJS@ $(am__empty)
 am__libmiscutil_a_SOURCES_DIST = MemPool.cc base64.c getfullhostname.c \
 	hash.c heap.c html_quote.c iso3307.c md5.c radix.c rfc1035.c \
 	rfc1123.c rfc1738.c rfc2617.c safe_inet_addr.c snprintf.c \
-	Splay.cc strsep.c stub_memaccount.c util.c uudecode.c assert.c \
-	xusleep.c Profiler.c win32lib.c
+	Splay.cc strsep.c strtoll.c stub_memaccount.c util.c \
+	uudecode.c assert.c xusleep.c Profiler.c win32lib.c
 @NEED_OWN_MD5_TRUE@am__objects_1 = md5.$(OBJEXT)
 @NEED_OWN_SNPRINTF_TRUE@am__objects_2 = snprintf.$(OBJEXT)
 @NEED_OWN_STRSEP_TRUE@am__objects_3 = strsep.$(OBJEXT)
-@ENABLE_XPROF_STATS_TRUE@am__objects_4 = Profiler.$(OBJEXT)
-@ENABLE_WIN32SPECIFIC_TRUE@am__objects_5 = win32lib.$(OBJEXT)
+@NEED_OWN_STRTOLL_TRUE@am__objects_4 = strtoll.$(OBJEXT)
+@ENABLE_XPROF_STATS_TRUE@am__objects_5 = Profiler.$(OBJEXT)
+@ENABLE_WIN32SPECIFIC_TRUE@am__objects_6 = win32lib.$(OBJEXT)
 am_libmiscutil_a_OBJECTS = MemPool.$(OBJEXT) base64.$(OBJEXT) \
 	getfullhostname.$(OBJEXT) hash.$(OBJEXT) heap.$(OBJEXT) \
 	html_quote.$(OBJEXT) iso3307.$(OBJEXT) $(am__objects_1) \
 	radix.$(OBJEXT) rfc1035.$(OBJEXT) rfc1123.$(OBJEXT) \
 	rfc1738.$(OBJEXT) rfc2617.$(OBJEXT) safe_inet_addr.$(OBJEXT) \
 	$(am__objects_2) Splay.$(OBJEXT) $(am__objects_3) \
-	stub_memaccount.$(OBJEXT) util.$(OBJEXT) uudecode.$(OBJEXT) \
-	assert.$(OBJEXT) xusleep.$(OBJEXT) $(am__objects_4) \
-	$(am__objects_5)
+	$(am__objects_4) stub_memaccount.$(OBJEXT) util.$(OBJEXT) \
+	uudecode.$(OBJEXT) assert.$(OBJEXT) xusleep.$(OBJEXT) \
+	$(am__objects_5) $(am__objects_6)
 libmiscutil_a_OBJECTS = $(am_libmiscutil_a_OBJECTS)
 libntlmauth_a_AR = $(AR) $(ARFLAGS)
 libntlmauth_a_DEPENDENCIES = @LIBOBJS@
@@ -96,7 +93,7 @@ libsspwin32_a_OBJECTS = $(am_libsspwin32_a_OBJECTS)
 am__tests_testAll_SOURCES_DIST = tests/testArray.cc tests/testMain.cc \
 	tests/testArray.h Profiler.c win32lib.c util.c assert.c
 am_tests_testAll_OBJECTS = testArray.$(OBJEXT) testMain.$(OBJEXT) \
-	$(am__objects_4) $(am__objects_5) util.$(OBJEXT) \
+	$(am__objects_5) $(am__objects_6) util.$(OBJEXT) \
 	assert.$(OBJEXT)
 tests_testAll_OBJECTS = $(am_tests_testAll_OBJECTS)
 tests_testAll_DEPENDENCIES =
@@ -120,12 +117,10 @@ LTCXXCOMPILE = $(LIBTOOL) --tag=CXX --mode=compile $(CXX) $(DEFS) \
 CXXLD = $(CXX)
 CXXLINK = $(LIBTOOL) --tag=CXX --mode=link $(CXXLD) $(AM_CXXFLAGS) \
 	$(CXXFLAGS) $(AM_LDFLAGS) $(LDFLAGS) -o $@
-SOURCES = $(libdlmalloc_a_SOURCES) $(libmiscutil_a_SOURCES) \
-	$(EXTRA_libmiscutil_a_SOURCES) $(libntlmauth_a_SOURCES) \
-	$(libregex_a_SOURCES) $(libsspwin32_a_SOURCES) \
-	$(tests_testAll_SOURCES)
-DIST_SOURCES = $(libdlmalloc_a_SOURCES) \
-	$(am__libmiscutil_a_SOURCES_DIST) \
+SOURCES = $(libmiscutil_a_SOURCES) $(EXTRA_libmiscutil_a_SOURCES) \
+	$(libntlmauth_a_SOURCES) $(libregex_a_SOURCES) \
+	$(libsspwin32_a_SOURCES) $(tests_testAll_SOURCES)
+DIST_SOURCES = $(am__libmiscutil_a_SOURCES_DIST) \
 	$(EXTRA_libmiscutil_a_SOURCES) $(libntlmauth_a_SOURCES) \
 	$(libregex_a_SOURCES) $(libsspwin32_a_SOURCES) \
 	$(am__tests_testAll_SOURCES_DIST)
@@ -154,6 +149,7 @@ AUTOHEADER = @AUTOHEADER@
 AUTOMAKE = @AUTOMAKE@
 AWK = @AWK@
 BASIC_AUTH_HELPERS = @BASIC_AUTH_HELPERS@
+CACHE_EFFECTIVE_USER = @CACHE_EFFECTIVE_USER@
 CACHE_HTTP_PORT = @CACHE_HTTP_PORT@
 CACHE_ICP_PORT = @CACHE_ICP_PORT@
 CC = @CC@
@@ -211,7 +207,6 @@ INSTALL_SCRIPT = @INSTALL_SCRIPT@
 INSTALL_STRIP_PROGRAM = @INSTALL_STRIP_PROGRAM@
 LDFLAGS = @LDFLAGS@
 LIBADD_DL = @LIBADD_DL@
-LIBDLMALLOC = @LIBDLMALLOC@
 LIBOBJS = @LIBOBJS@
 LIBREGEX = @LIBREGEX@
 LIBS = @LIBS@
@@ -220,7 +215,6 @@ LIBTOOL = @LIBTOOL@
 LIB_DB = @LIB_DB@
 LIB_LBER = @LIB_LBER@
 LIB_LDAP = @LIB_LDAP@
-LIB_MALLOC = @LIB_MALLOC@
 LN = @LN@
 LN_S = @LN_S@
 LTLIBOBJS = @LTLIBOBJS@
@@ -239,6 +233,8 @@ NEED_OWN_SNPRINTF_FALSE = @NEED_OWN_SNPRINTF_FALSE@
 NEED_OWN_SNPRINTF_TRUE = @NEED_OWN_SNPRINTF_TRUE@
 NEED_OWN_STRSEP_FALSE = @NEED_OWN_STRSEP_FALSE@
 NEED_OWN_STRSEP_TRUE = @NEED_OWN_STRSEP_TRUE@
+NEED_OWN_STRTOLL_FALSE = @NEED_OWN_STRTOLL_FALSE@
+NEED_OWN_STRTOLL_TRUE = @NEED_OWN_STRTOLL_TRUE@
 NEGOTIATE_AUTH_HELPERS = @NEGOTIATE_AUTH_HELPERS@
 NTLM_AUTH_HELPERS = @NTLM_AUTH_HELPERS@
 OBJEXT = @OBJEXT@
@@ -279,14 +275,28 @@ USE_AIO_WIN32_FALSE = @USE_AIO_WIN32_FALSE@
 USE_AIO_WIN32_TRUE = @USE_AIO_WIN32_TRUE@
 USE_DELAY_POOLS_FALSE = @USE_DELAY_POOLS_FALSE@
 USE_DELAY_POOLS_TRUE = @USE_DELAY_POOLS_TRUE@
+USE_DEVPOLL_FALSE = @USE_DEVPOLL_FALSE@
+USE_DEVPOLL_TRUE = @USE_DEVPOLL_TRUE@
 USE_DNSSERVER_FALSE = @USE_DNSSERVER_FALSE@
 USE_DNSSERVER_TRUE = @USE_DNSSERVER_TRUE@
+USE_EPOLL_FALSE = @USE_EPOLL_FALSE@
+USE_EPOLL_TRUE = @USE_EPOLL_TRUE@
 USE_ESI_FALSE = @USE_ESI_FALSE@
 USE_ESI_TRUE = @USE_ESI_TRUE@
 USE_ICAP_CLIENT_FALSE = @USE_ICAP_CLIENT_FALSE@
 USE_ICAP_CLIENT_TRUE = @USE_ICAP_CLIENT_TRUE@
 USE_IPC_WIN32_FALSE = @USE_IPC_WIN32_FALSE@
 USE_IPC_WIN32_TRUE = @USE_IPC_WIN32_TRUE@
+USE_KQUEUE_FALSE = @USE_KQUEUE_FALSE@
+USE_KQUEUE_TRUE = @USE_KQUEUE_TRUE@
+USE_POLL_FALSE = @USE_POLL_FALSE@
+USE_POLL_TRUE = @USE_POLL_TRUE@
+USE_SELECT_FALSE = @USE_SELECT_FALSE@
+USE_SELECT_SIMPLE_FALSE = @USE_SELECT_SIMPLE_FALSE@
+USE_SELECT_SIMPLE_TRUE = @USE_SELECT_SIMPLE_TRUE@
+USE_SELECT_TRUE = @USE_SELECT_TRUE@
+USE_SELECT_WIN32_FALSE = @USE_SELECT_WIN32_FALSE@
+USE_SELECT_WIN32_TRUE = @USE_SELECT_WIN32_TRUE@
 USE_SNMP_FALSE = @USE_SNMP_FALSE@
 USE_SNMP_TRUE = @USE_SNMP_TRUE@
 VERSION = @VERSION@
@@ -348,6 +358,8 @@ AM_CXXFLAGS = @SQUID_CXXFLAGS@
 @NEED_OWN_SNPRINTF_TRUE@SNPRINTFSOURCE = snprintf.c
 @NEED_OWN_STRSEP_FALSE@STRSEPSOURCE = 
 @NEED_OWN_STRSEP_TRUE@STRSEPSOURCE = strsep.c
+@NEED_OWN_STRTOLL_FALSE@STRTOLLSOURCE = 
+@NEED_OWN_STRTOLL_TRUE@STRTOLLSOURCE = strtoll.c
 @NEED_OWN_MD5_FALSE@MD5SOURCE = 
 @NEED_OWN_MD5_TRUE@MD5SOURCE = md5.c
 @ENABLE_WIN32SPECIFIC_FALSE@LIBSSPWIN32 = 
@@ -355,12 +367,10 @@ AM_CXXFLAGS = @SQUID_CXXFLAGS@
 @ENABLE_WIN32SPECIFIC_FALSE@WIN32SRC = 
 @ENABLE_WIN32SPECIFIC_TRUE@WIN32SRC = win32lib.c
 EXTRA_LIBRARIES = \
-	libdlmalloc.a \
 	libregex.a \
 	libsspwin32.a
 
 noinst_LIBRARIES = \
-	@LIBDLMALLOC@ \
 	libmiscutil.a \
 	libntlmauth.a \
 	$(LIBSSPWIN32) \
@@ -371,6 +381,7 @@ EXTRA_libmiscutil_a_SOURCES = \
 	Profiler.c \
 	snprintf.c \
 	strsep.c \
+	strtoll.c \
 	win32lib.c
 
 libmiscutil_a_SOURCES = \
@@ -391,6 +402,7 @@ libmiscutil_a_SOURCES = \
 	$(SNPRINTFSOURCE) \
 	Splay.cc \
 	$(STRSEPSOURCE) \
+	$(STRTOLLSOURCE) \
 	stub_memaccount.c \
 	util.c \
 	uudecode.c \
@@ -407,9 +419,6 @@ libmiscutil_a_LIBADD = \
 # $(top_srcdir)/include/version.h should be a dependency
 libregex_a_SOURCES = \
 	GNUregex.c
-
-libdlmalloc_a_SOURCES = \
-	dlmalloc.c
 
 libntlmauth_a_SOURCES = \
 	ntlmauth.c
@@ -465,10 +474,6 @@ $(ACLOCAL_M4): @MAINTAINER_MODE_TRUE@ $(am__aclocal_m4_deps)
 
 clean-noinstLIBRARIES:
 	-test -z "$(noinst_LIBRARIES)" || rm -f $(noinst_LIBRARIES)
-libdlmalloc.a: $(libdlmalloc_a_OBJECTS) $(libdlmalloc_a_DEPENDENCIES) 
-	-rm -f libdlmalloc.a
-	$(libdlmalloc_a_AR) libdlmalloc.a $(libdlmalloc_a_OBJECTS) $(libdlmalloc_a_LIBADD)
-	$(RANLIB) libdlmalloc.a
 libmiscutil.a: $(libmiscutil_a_OBJECTS) $(libmiscutil_a_DEPENDENCIES) 
 	-rm -f libmiscutil.a
 	$(libmiscutil_a_AR) libmiscutil.a $(libmiscutil_a_OBJECTS) $(libmiscutil_a_LIBADD)
@@ -516,7 +521,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Splay.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/assert.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/base64.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/dlmalloc.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/getfullhostname.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/hash.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/heap.Po@am__quote@
@@ -533,6 +537,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/snprintf.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sspwin32.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/strsep.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/strtoll.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/stub_memaccount.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/testArray.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/testMain.Po@am__quote@

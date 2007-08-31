@@ -42,7 +42,8 @@ ICAPModXact::ICAPModXact(ICAPInitiator *anInitiator, HttpMsg *virginHeader,
     ICAPXaction("ICAPModXact", anInitiator, aService),
     icapReply(NULL),
     virginConsumed(0),
-    bodyParser(NULL)
+    bodyParser(NULL),
+    canStartBypass(false) // too early
 {
     assert(virginHeader);
 
@@ -69,6 +70,8 @@ void ICAPModXact::start()
     ICAPXaction::start();
 
     estimateVirginBody(); // before virgin disappears!
+
+    canStartBypass = service().bypass;
 
     // it is an ICAP violation to send request to a service w/o known OPTIONS
 
@@ -109,7 +112,7 @@ void ICAPModXact::noteServiceReady()
         startWriting();
     } else {
         disableRetries();
-        mustStop("ICAP service unusable");
+        throw TexcHere("ICAP service is unusable");
     }
 
     ICAPXaction_Exit();
@@ -330,24 +333,26 @@ size_t ICAPModXact::virginContentSize(const VirginBodyAct &act) const
 {
     Must(act.active());
     // asbolute start of unprocessed data
-    const size_t start = act.offset();
+    const uint64_t start = act.offset();
     // absolute end of buffered data
-    const size_t end = virginConsumed + virgin.body_pipe->buf().contentSize();
+    const uint64_t end = virginConsumed + virgin.body_pipe->buf().contentSize();
     Must(virginConsumed <= start && start <= end);
-    return end - start;
+    return static_cast<size_t>(end - start);
 }
 
 // pointer to buffered virgin body data available for the specified activity
 const char *ICAPModXact::virginContentData(const VirginBodyAct &act) const
 {
     Must(act.active());
-    const size_t start = act.offset();
+    const uint64_t start = act.offset();
     Must(virginConsumed <= start);
-    return virgin.body_pipe->buf().content() + (start-virginConsumed);
+    return virgin.body_pipe->buf().content() + static_cast<size_t>(start-virginConsumed);
 }
 
 void ICAPModXact::virginConsume()
 {
+    debugs(93, 9, "consumption guards: " << !virgin.body_pipe << isRetriable);
+
     if (!virgin.body_pipe)
         return; // nothing to consume
 
@@ -355,9 +360,27 @@ void ICAPModXact::virginConsume()
         return; // do not consume if we may have to retry later
 
     BodyPipe &bp = *virgin.body_pipe;
+
+    // Why > 2? HttpState does not use the last bytes in the buffer
+    // because delayAwareRead() is arguably broken. See 
+    // HttpStateData::maybeReadVirginBody for more details.
+    if (canStartBypass && bp.buf().spaceSize() > 2) {
+        // Postponing may increase memory footprint and slow the HTTP side
+        // down. Not postponing may increase the number of ICAP errors 
+        // if the ICAP service fails. We may also use "potential" space to
+        // postpone more aggressively. Should the trade-off be configurable?
+        debugs(93, 8, HERE << "postponing consumption from " << bp.status());
+        return;
+    }
+
     const size_t have = static_cast<size_t>(bp.buf().contentSize());
-    const size_t end = virginConsumed + have;
-    size_t offset = end;
+    const uint64_t end = virginConsumed + have;
+    uint64_t offset = end;
+
+    debugs(93, 9, HERE << "max virgin consumption offset=" << offset <<
+        " acts " << virginBodyWriting.active() << virginBodySending.active() <<
+        " consumed=" << virginConsumed << 
+        " from " << virgin.body_pipe->status());
 
     if (virginBodyWriting.active())
         offset = XMIN(virginBodyWriting.offset(), offset);
@@ -367,12 +390,13 @@ void ICAPModXact::virginConsume()
 
     Must(virginConsumed <= offset && offset <= end);
 
-    if (const size_t size = offset - virginConsumed) {
+    if (const size_t size = static_cast<size_t>(offset - virginConsumed)) {
         debugs(93, 8, HERE << "consuming " << size << " out of " << have <<
                " virgin body bytes");
         bp.consume(size);
         virginConsumed += size;
         Must(!isRetriable); // or we should not be consuming
+        disableBypass("consumed content");
     }
 }
 
@@ -396,7 +420,7 @@ void ICAPModXact::stopWriting(bool nicely)
             checkConsuming();
             return;
         }
-        debugs(93, 2, HERE << "will NOT wait for the last write" << status());
+        debugs(93, 3, HERE << "will NOT wait for the last write" << status());
 
         // Comm does not have an interface to clear the writer callback nicely,
         // but without clearing the writer we cannot recycle the connection.
@@ -404,15 +428,16 @@ void ICAPModXact::stopWriting(bool nicely)
         // call at any time, usually in the middle of the destruction sequence!
         // Somebody should add comm_remove_write_handler() to comm API.
         reuseConnection = false;
+        ignoreLastWrite = true;
     }
 
     debugs(93, 7, HERE << "will no longer write" << status());
-    state.writing = State::writingReallyDone;
-
     if (virginBodyWriting.active()) {
         virginBodyWriting.disable();
         virginConsume();
     }
+    state.writing = State::writingReallyDone;
+    checkConsuming();
 }
 
 void ICAPModXact::stopBackup()
@@ -489,6 +514,7 @@ void ICAPModXact::echoMore()
            " bytes");
         virginBodySending.progress(size);
         virginConsume();
+        disableBypass("echoed content");
     }
 
     if (virginBodyEndReached(virginBodySending)) {
@@ -507,6 +533,7 @@ bool ICAPModXact::doneSending() const
     return state.sending == State::sendingDone;
 }
 
+// stop (or do not start) sending adapted message body
 void ICAPModXact::stopSending(bool nicely)
 {
     if (doneSending())
@@ -554,6 +581,56 @@ void ICAPModXact::parseMore()
         parseBody();
 }
 
+void ICAPModXact::callException(const TextException &e)
+{
+    if (!canStartBypass || isRetriable) {
+        ICAPXaction::callException(e);
+        return;
+    }
+
+    try {
+        debugs(93, 3, "bypassing ICAPModXact::" << inCall << " exception: " <<
+           e.message << ' ' << status());
+        bypassFailure();
+    }
+    catch (const TextException &bypassE) {
+        ICAPXaction::callException(bypassE);
+    }
+}
+
+void ICAPModXact::bypassFailure()
+{
+    disableBypass("already started to bypass");
+
+    Must(!isRetriable); // or we should not be bypassing
+
+    prepEchoing();
+
+    startSending();
+
+    // end all activities associated with the ICAP server
+
+    stopParsing();
+
+    stopWriting(true); // or should we force it?
+    if (connection >= 0) {
+        reuseConnection = false; // be conservative
+        cancelRead(); // may not work; and we cannot stop connecting either
+        if (!doneWithIo())
+            debugs(93, 7, "Warning: bypass failed to stop I/O" << status());
+    }
+}
+
+void ICAPModXact::disableBypass(const char *reason)
+{
+    if (canStartBypass) {
+        debugs(93,7, HERE << "will never start bypass because " << reason);
+        canStartBypass = false;
+    }
+}
+
+
+
 // note that allocation for echoing is done in handle204NoContent()
 void ICAPModXact::maybeAllocateHttpMsg()
 {
@@ -587,6 +664,13 @@ void ICAPModXact::parseHeaders()
         return;
     }
 
+    startSending();
+}
+
+// called after parsing all headers or when bypassing an exception
+void ICAPModXact::startSending()
+{
+    disableBypass("sent headers");
     sendAnswer(adapted.header);
 
     if (state.sending == State::sendingVirgin)
@@ -687,6 +771,15 @@ void ICAPModXact::handle200Ok()
 void ICAPModXact::handle204NoContent()
 {
     stopParsing();
+    prepEchoing();
+}
+
+// Called when we receive a 204 No Content response and
+// when we are trying to bypass a service failure.
+// We actually start sending (echoig or not) in startSending.
+void ICAPModXact::prepEchoing()
+{
+    disableBypass("preparing to echo content");
 
     // We want to clone the HTTP message, but we do not want
     // to copy some non-HTTP state parts that HttpMsg kids carry in them.
@@ -732,9 +825,11 @@ void ICAPModXact::handle204NoContent()
     if (oldHead->body_pipe != NULL) {
         debugs(93, 7, HERE << "will echo virgin body from " <<
             oldHead->body_pipe);
+        if (!virginBodySending.active())
+            virginBodySending.plan(); // will throw if not possible
         state.sending = State::sendingVirgin;
         checkConsuming();
-        Must(virginBodySending.active());
+
         // TODO: optimize: is it possible to just use the oldHead pipe and
         // remove ICAP from the loop? This echoing is probably a common case!
         makeAdaptedBodyPipe("echoed virgin response");
@@ -850,6 +945,10 @@ void ICAPModXact::parseBody()
     debugs(93, 5, HERE << "have " << readBuf.contentSize() << " body bytes after " <<
            "parse; parsed all: " << parsed);
 
+    // TODO: expose BodyPipe::putSize() to make this check simpler and clearer
+    if (adapted.body_pipe->buf().contentSize() > 0) // parsed something sometime
+        disableBypass("sent adapted content");
+
     if (parsed) {
         stopParsing();
         stopSending(true); // the parser succeeds only if all parsed data fits
@@ -915,12 +1014,19 @@ void ICAPModXact::noteBodyProductionEnded(BodyPipe &)
     ICAPXaction_Exit();
 }
 
-// body producer aborted
+// body producer aborted, but the initiator may still want to know 
+// the answer, even though the HTTP message has been truncated
 void ICAPModXact::noteBodyProducerAborted(BodyPipe &)
 {
     ICAPXaction_Enter(noteBodyProducerAborted);
 
-    mustStop("virgin HTTP body producer aborted");
+    Must(virgin.body_pipe->productionEnded());
+
+    // push writer and sender in case we were waiting for the last-chunk
+    writeMore();
+
+    if (state.sending == State::sendingVirgin)
+        echoMore();
 
     ICAPXaction_Exit();
 }
@@ -1109,7 +1215,7 @@ void ICAPModXact::decideOnPreview()
         ad = 0;
     else
     if (virginBody.knownSize())
-        ad = XMIN(ad, virginBody.size()); // not more than we have
+        ad = XMIN(static_cast<uint64_t>(ad), virginBody.size()); // not more than we have
 
     debugs(93, 5, "ICAPModXact should offer " << ad << "-byte preview " <<
            "(service wanted " << wantedSize << ")");
@@ -1208,6 +1314,9 @@ void ICAPModXact::fillPendingStatus(MemBuf &buf) const
 
     if (!doneSending() && state.sending != State::sendingUndecided)
         buf.Printf("S(%d)", state.sending);
+
+    if (canStartBypass)
+       buf.append("Y", 1);
 }
 
 void ICAPModXact::fillDoneStatus(MemBuf &buf) const
@@ -1261,7 +1370,7 @@ void ICAPModXact::estimateVirginBody()
     else
         method = METHOD_NONE;
 
-    ssize_t size;
+    int64_t size;
     // expectingBody returns true for zero-sized bodies, but we will not
     // get a pipe for that body, so we treat the message as bodyless
     if (method != METHOD_NONE && msg->expectingBody(method, size) && size) {
@@ -1301,9 +1410,9 @@ SizedEstimate::SizedEstimate()
         : theData(dtUnexpected)
 {}
 
-void SizedEstimate::expect(ssize_t aSize)
+void SizedEstimate::expect(int64_t aSize)
 {
-    theData = (aSize >= 0) ? aSize : (ssize_t)dtUnknown;
+    theData = (aSize >= 0) ? aSize : (int64_t)dtUnknown;
 }
 
 bool SizedEstimate::expected() const
@@ -1317,39 +1426,40 @@ bool SizedEstimate::knownSize() const
     return theData != dtUnknown;
 }
 
-size_t SizedEstimate::size() const
+uint64_t SizedEstimate::size() const
 {
     Must(knownSize());
-    return static_cast<size_t>(theData);
+    return static_cast<uint64_t>(theData);
 }
 
 
 
-VirginBodyAct::VirginBodyAct(): theStart(-1)
+VirginBodyAct::VirginBodyAct(): theStart(0), theState(stUndecided)
 {}
 
 void VirginBodyAct::plan()
 {
-    if (theStart < 0)
-        theStart = 0;
+    Must(!disabled());
+    Must(!theStart); // not started
+    theState = stActive;
 }
 
 void VirginBodyAct::disable()
 {
-    theStart = -2;
+    theState = stDisabled;
 }
 
 void VirginBodyAct::progress(size_t size)
 {
     Must(active());
     Must(size >= 0);
-    theStart += static_cast<ssize_t>(size);
+    theStart += static_cast<int64_t>(size);
 }
 
-size_t VirginBodyAct::offset() const
+uint64_t VirginBodyAct::offset() const
 {
     Must(active());
-    return static_cast<size_t>(theStart);
+    return static_cast<uint64_t>(theStart);
 }
 
 

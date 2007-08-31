@@ -1,6 +1,6 @@
 
 /*
- * $Id: client_db.cc,v 1.68 2007/04/28 22:26:37 hno Exp $
+ * $Id: client_db.cc,v 1.70 2007/05/29 13:31:39 amosjeffries Exp $
  *
  * DEBUG: section 0     Client Database
  * AUTHOR: Duane Wessels

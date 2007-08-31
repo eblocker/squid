@@ -1,6 +1,6 @@
 ## Process this file with automake to produce Makefile.in
 #
-#  $Id: Makefile.am,v 1.25 2007/04/24 06:30:37 wessels Exp $
+#  $Id: Makefile.am,v 1.28 2007/08/27 13:14:20 hno Exp $
 #
 
 DIST_SUBDIRS = libTrie
@@ -28,6 +28,11 @@ STRSEPSOURCE=strsep.c
 else
 STRSEPSOURCE=
 endif
+if NEED_OWN_STRTOLL
+STRTOLLSOURCE=strtoll.c
+else
+STRTOLLSOURCE=
+endif
 if NEED_OWN_MD5
 MD5SOURCE=md5.c
 else
@@ -43,11 +48,9 @@ WIN32SRC=
 endif
 
 EXTRA_LIBRARIES = \
-	libdlmalloc.a \
 	libregex.a \
 	libsspwin32.a
 noinst_LIBRARIES = \
-	@LIBDLMALLOC@ \
 	libmiscutil.a \
 	libntlmauth.a \
 	$(LIBSSPWIN32) \
@@ -57,6 +60,7 @@ EXTRA_libmiscutil_a_SOURCES = \
 	Profiler.c \
 	snprintf.c \
 	strsep.c \
+	strtoll.c \
 	win32lib.c
 libmiscutil_a_SOURCES = \
 	MemPool.cc \
@@ -76,6 +80,7 @@ libmiscutil_a_SOURCES = \
 	$(SNPRINTFSOURCE) \
 	Splay.cc \
 	$(STRSEPSOURCE) \
+	$(STRTOLLSOURCE) \
 	stub_memaccount.c \
 	util.c \
 	uudecode.c \
@@ -90,8 +95,6 @@ libmiscutil_a_LIBADD = \
 # $(top_srcdir)/include/version.h should be a dependency
 libregex_a_SOURCES = \
 	GNUregex.c
-libdlmalloc_a_SOURCES = \
-	dlmalloc.c
 libntlmauth_a_SOURCES = \
 	ntlmauth.c
 libntlmauth_a_LIBADD = \

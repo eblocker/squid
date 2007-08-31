@@ -1,6 +1,6 @@
 
 /*
- * $Id: ExternalACLEntry.h,v 1.6 2006/08/21 00:50:40 robertc Exp $
+ * $Id: ExternalACLEntry.h,v 1.8 2007/05/29 13:31:37 amosjeffries Exp $
  *
  * DEBUG: section 82    External ACL
  * AUTHOR: Henrik Nordstrom, MARA Systems AB

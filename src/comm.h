@@ -22,7 +22,7 @@ typedef enum {
     COMM_ERR_DNS = -9,
     COMM_ERR_CLOSING = -10,
 } comm_err_t;
-typedef void IOFCB(int fd, StoreIOBuffer recievedData, comm_err_t flag, int xerrno, void *data);
+typedef void IOFCB(int fd, StoreIOBuffer receivedData, comm_err_t flag, int xerrno, void *data);
 typedef void IOWCB(int fd, char *buffer, size_t len, comm_err_t flag, int xerrno, void *data);
 
 typedef void CWCB(int fd, char *, size_t size, comm_err_t flag, void *data);
@@ -53,6 +53,7 @@ SQUIDCEXTERN int comm_open(int, int, struct IN_ADDR, u_short port, int, const ch
 
 SQUIDCEXTERN int comm_openex(int, int, struct IN_ADDR, u_short, int, unsigned char TOS, const char *);
 SQUIDCEXTERN u_short comm_local_port(int fd);
+SQUIDCEXTERN int comm_set_tos(int fd, int tos);
 
 SQUIDCEXTERN void commSetSelect(int, unsigned int, PF *, void *, time_t);
 

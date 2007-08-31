@@ -1,6 +1,6 @@
 
 /*
- * $Id: squid.h,v 1.261 2007/04/24 15:04:22 hno Exp $
+ * $Id: squid.h,v 1.266 2007/08/17 18:56:31 serassio Exp $
  *
  * AUTHOR: Duane Wessels
  *
@@ -34,6 +34,11 @@
 
 #ifndef SQUID_H
 #define SQUID_H
+
+/*
+ * On linux this must be defined to get PRId64 and friends
+ */
+#define __STDC_FORMAT_MACROS
 
 #include "config.h"
 
@@ -289,11 +294,9 @@ struct rusage
 #define getpagesize( )   sysconf(_SC_PAGE_SIZE)
 #endif
 
-#if defined(_SQUID_MSWIN_)
+#if defined(_SQUID_MSWIN_) && !defined(getpagesize) 
 /* Windows may lack getpagesize() prototype */
-#ifndef getpagesize
 SQUIDCEXTERN size_t getpagesize(void);
-#endif
 #endif /* _SQUID_MSWIN_ */
 
 #ifndef BUFSIZ
@@ -383,6 +386,10 @@ extern "C"
 
 #if !HAVE_STRSEP
 #include "strsep.h"
+#endif
+
+#if !HAVE_STRTOLL
+#include "strtoll.h"
 #endif
 
 #if !HAVE_INITGROUPS
@@ -484,15 +491,5 @@ void free(V x) { fatal("Do not use ::free()"); }
 #ifndef IPPROTO_TCP
 #define IPPROTO_TCP 0
 #endif
-
-#ifndef PRIu64 /* ISO C99 Standard printf() macro for 64 bit unsigned int */
-#ifdef _SQUID_MSWIN_ /* Windows native port using MSVCRT */
-#define PRIu64 "I64u"
-#elif SIZEOF_INT64_T > SIZEOF_LONG
-#define PRIu64 "llu"
-#else
-#define PRIu64 "lu"
-#endif /* _SQUID_MSWIN_ */
-#endif /* PRIu64 */
 
 #endif /* SQUID_H */

@@ -1,6 +1,6 @@
 
 /*
- * $Id: String.cc,v 1.23 2007/04/06 12:15:51 serassio Exp $
+ * $Id: String.cc,v 1.26 2007/05/29 13:31:38 amosjeffries Exp $
  *
  * DEBUG: section 67    String
  * AUTHOR: Duane Wessels

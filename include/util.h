@@ -1,5 +1,5 @@
 /*
- * $Id: util.h,v 1.74 2006/10/14 13:43:18 serassio Exp $
+ * $Id: util.h,v 1.77 2007/08/17 19:01:41 serassio Exp $
  *
  * AUTHOR: Harvest Derived
  *
@@ -135,6 +135,7 @@ SQUIDCEXTERN int xpercentInt(double part, double whole);
 SQUIDCEXTERN double xdiv(double nom, double denom);
 
 SQUIDCEXTERN const char *xitoa(int num);
+SQUIDCEXTERN const char *xint64toa(int64_t num);
 
 #if !HAVE_DRAND48
 SQUIDCEXTERN double drand48(void);
@@ -161,4 +162,29 @@ extern void gb_flush(gb_t *);  /* internal, do not use this */
  */
 int statMemoryAccounted(void);
 
+/* Windows Port */
+/* win32lib.c */
+#ifdef _SQUID_MSWIN_
+SQUIDCEXTERN int chroot (const char *);
+SQUIDCEXTERN int ftruncate(int, off_t);
+#ifndef HAVE_GETTIMEOFDAY
+SQUIDCEXTERN int gettimeofday(struct timeval * ,void *);
+#endif
+SQUIDCEXTERN int kill(pid_t, int);
+SQUIDCEXTERN int statfs(const char *, struct statfs *);
+SQUIDCEXTERN int truncate(const char *, off_t);
+SQUIDCEXTERN const char * wsastrerror(int);
+SQUIDCEXTERN struct passwd *getpwnam(char *);
+SQUIDCEXTERN struct group *getgrnam(char *);
+SQUIDCEXTERN uid_t geteuid(void);
+SQUIDCEXTERN uid_t getuid(void);
+SQUIDCEXTERN int setuid(uid_t);
+SQUIDCEXTERN int seteuid(uid_t);
+SQUIDCEXTERN gid_t getgid(void);
+SQUIDCEXTERN gid_t getegid(void);
+SQUIDCEXTERN int setgid(gid_t);
+SQUIDCEXTERN int setegid(gid_t);
+SQUIDCEXTERN const char *WIN32_strerror(int);
+SQUIDCEXTERN void WIN32_maperror(unsigned long);
+#endif
 #endif /* SQUID_UTIL_H */

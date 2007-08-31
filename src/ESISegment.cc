@@ -1,6 +1,6 @@
 
 /*
- * $Id: ESISegment.cc,v 1.4 2007/04/28 22:26:37 hno Exp $
+ * $Id: ESISegment.cc,v 1.6 2007/05/29 13:31:37 amosjeffries Exp $
  *
  * DEBUG: section 86    ESI processing
  * AUTHOR: Robert Collins

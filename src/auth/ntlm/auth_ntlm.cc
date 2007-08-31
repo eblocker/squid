@@ -1,6 +1,6 @@
 
 /*
- * $Id: auth_ntlm.cc,v 1.68 2007/05/09 09:07:43 wessels Exp $
+ * $Id: auth_ntlm.cc,v 1.76 2007/08/28 22:35:29 hno Exp $
  *
  * DEBUG: section 29    NTLM Authenticator
  * AUTHOR: Robert Collins, Henrik Nordstrom, Francesco Chemolli
@@ -268,6 +268,10 @@ AuthNTLMConfig::fixHeader(AuthUserRequest *auth_user_request, HttpReply *rep, ht
     if (!authenticate)
         return;
 
+    /* Need keep-alive */
+    if (!request->flags.proxy_keepalive && request->flags.must_keepalive)
+	return;
+
     /* New request, no user details */
     if (auth_user_request == NULL) {
         debugs(29, 9, "AuthNTLMConfig::fixHeader: Sending type:" << type << " header: 'NTLM'");
@@ -280,6 +284,8 @@ AuthNTLMConfig::fixHeader(AuthUserRequest *auth_user_request, HttpReply *rep, ht
         }
     } else {
         ntlm_request = dynamic_cast<AuthNTLMUserRequest *>(auth_user_request);
+
+        assert(ntlm_request != NULL);
 
         switch (ntlm_request->auth_state) {
 
@@ -307,7 +313,6 @@ AuthNTLMConfig::fixHeader(AuthUserRequest *auth_user_request, HttpReply *rep, ht
             /* we're waiting for a response from the client. Pass it the blob */
             debugs(29, 9, "AuthNTLMConfig::fixHeader: Sending type:" << type << " header: 'NTLM " << ntlm_request->server_blob << "'");
             httpHeaderPutStrf(&rep->header, type, "NTLM %s", ntlm_request->server_blob);
-            request->flags.must_keepalive = 1;
             safe_free(ntlm_request->server_blob);
             break;
 
@@ -358,6 +363,7 @@ authenticateNTLMHandleReply(void *data, void *lastserver, char *reply)
     assert(auth_user_request != NULL);
     ntlm_request = dynamic_cast<AuthNTLMUserRequest *>(auth_user_request);
 
+    assert(ntlm_request != NULL);
     assert(ntlm_request->waiting);
     ntlm_request->waiting = 0;
     safe_free(ntlm_request->client_blob);
@@ -366,6 +372,8 @@ authenticateNTLMHandleReply(void *data, void *lastserver, char *reply)
     assert(auth_user != NULL);
     assert(auth_user->auth_type == AUTH_NTLM);
     ntlm_user = dynamic_cast<ntlm_user_t *>(auth_user_request->user());
+
+    assert(ntlm_user != NULL);
 
     if (ntlm_request->authserver == NULL)
         ntlm_request->authserver = static_cast<helper_stateful_server*>(lastserver);
@@ -381,11 +389,18 @@ authenticateNTLMHandleReply(void *data, void *lastserver, char *reply)
     if (strncasecmp(reply, "TT ", 3) == 0) {
         /* we have been given a blob to send to the client */
         safe_free(ntlm_request->server_blob);
-        ntlm_request->server_blob = xstrdup(blob);
-        ntlm_request->auth_state = AUTHENTICATE_STATE_IN_PROGRESS;
-        auth_user_request->denyMessage("Authenication in progress");
-        debugs(29, 4, "authenticateNTLMHandleReply: Need to challenge the client with a server blob '" << blob << "'");
-        result = S_HELPER_RESERVE;
+	ntlm_request->request->flags.must_keepalive = 1;
+	if (ntlm_request->request->flags.proxy_keepalive) {
+	    ntlm_request->server_blob = xstrdup(blob);
+	    ntlm_request->auth_state = AUTHENTICATE_STATE_IN_PROGRESS;
+	    auth_user_request->denyMessage("Authentication in progress");
+	    debugs(29, 4, "authenticateNTLMHandleReply: Need to challenge the client with a server blob '" << blob << "'");
+	    result = S_HELPER_RESERVE;
+	} else {
+	    ntlm_request->auth_state = AUTHENTICATE_STATE_FAILED;
+	    auth_user_request->denyMessage("NTLM authentication requires a persistent connection");
+	    result = S_HELPER_RELEASE;
+	}
     } else if (strncasecmp(reply, "AF ", 3) == 0) {
         /* we're finished, release the helper */
         ntlm_user->username(blob);
@@ -445,6 +460,10 @@ authenticateNTLMHandleReply(void *data, void *lastserver, char *reply)
         fatalf("authenticateNTLMHandleReply: *** Unsupported helper response ***, '%s'\n", reply);
     }
 
+    if (ntlm_request->request) {
+	HTTPMSGUNLOCK(ntlm_request->request);
+	ntlm_request->request = NULL;
+    }
     r->handler(r->data, NULL);
     cbdataReferenceDone(r->data);
     authenticateStateFree(r);
@@ -515,6 +534,7 @@ authenticateNTLMReleaseServer(AuthUserRequest * auth_user_request)
      * code-paths. Kinkie */
     /* DPW 2007-05-07
      * yes, it is possible */
+    assert(ntlm_request != NULL);
     if (ntlm_request->authserver) {
 	helperStatefulReleaseServer(ntlm_request->authserver);
 	ntlm_request->authserver = NULL;
@@ -615,19 +635,22 @@ AuthNTLMUserRequest::authenticate(HttpRequest * request, ConnStateData::Pointer 
     /* locate second word */
     blob = proxy_auth;
 
-    while (xisspace(*blob) && *blob)
-        blob++;
+    /* if proxy_auth is actually NULL, we'd better not manipulate it. */
+    if(blob) {
+        while (xisspace(*blob) && *blob)
+            blob++;
 
-    while (!xisspace(*blob) && *blob)
-        blob++;
+        while (!xisspace(*blob) && *blob)
+            blob++;
 
-    while (xisspace(*blob) && *blob)
-        blob++;
+        while (xisspace(*blob) && *blob)
+            blob++;
+    }
 
     switch (auth_state) {
 
     case AUTHENTICATE_STATE_NONE:
-        /* we've recieved a ntlm request. pass to a helper */
+        /* we've received a ntlm request. pass to a helper */
         debugs(29, 9, "AuthNTLMUserRequest::authenticate: auth state ntlm none. Received blob: '" << proxy_auth << "'");
         auth_state = AUTHENTICATE_STATE_INITIAL;
         safe_free(client_blob);
@@ -636,6 +659,8 @@ AuthNTLMUserRequest::authenticate(HttpRequest * request, ConnStateData::Pointer 
         assert(conn->auth_user_request == NULL);
         conn->auth_user_request = this;
 	AUTHUSERREQUESTLOCK(conn->auth_user_request, "conn");
+	this->request = request;
+	HTTPMSGLOCK(this->request);
         return;
 
         break;
@@ -655,6 +680,10 @@ AuthNTLMUserRequest::authenticate(HttpRequest * request, ConnStateData::Pointer 
 
         client_blob = xstrdup (blob);
 
+	if (this->request)
+	    HTTPMSGUNLOCK(this->request);
+	this->request = request;
+	HTTPMSGLOCK(this->request);
         return;
 
         break;
@@ -695,6 +724,10 @@ AuthNTLMUserRequest::~AuthNTLMUserRequest()
         debugs(29, 9, "AuthNTLMUserRequest::~AuthNTLMUserRequest: releasing server '" << authserver << "'");
         helperStatefulReleaseServer(authserver);
         authserver = NULL;
+    }
+    if (request) {
+	HTTPMSGUNLOCK(request);
+	request = NULL;
     }
 }
 

@@ -1,6 +1,6 @@
 
 /*
- * $Id: tunnel.cc,v 1.168 2007/04/30 16:56:09 wessels Exp $
+ * $Id: tunnel.cc,v 1.173 2007/08/13 17:20:51 hno Exp $
  *
  * DEBUG: section 26    Secure Sockets Layer Proxy
  * AUTHOR: Duane Wessels
@@ -47,7 +47,7 @@
 #include "MemBuf.h"
 #include "http.h"
 
-class SslStateData
+class TunnelStateData
 {
 
 public:
@@ -90,7 +90,7 @@ public:
         void dataSent (size_t amount);
         int len;
         char *buf;
-        size_t *size_ptr;		/* pointer to size in an ConnStateData for logging */
+        int64_t *size_ptr;		/* pointer to size in an ConnStateData for logging */
 
     private:
         int fd_;
@@ -106,7 +106,7 @@ public:
     void copyRead(Connection &from, IOCB *completion);
 
 private:
-    CBDATA_CLASS(SslStateData);
+    CBDATA_CLASS(TunnelStateData);
     void copy (size_t len, comm_err_t errcode, int xerrno, Connection &from, Connection &to, IOCB *);
     void readServer(char *buf, size_t len, comm_err_t errcode, int xerrno);
     void readClient(char *buf, size_t len, comm_err_t errcode, int xerrno);
@@ -116,60 +116,60 @@ private:
 
 static const char *const conn_established = "HTTP/1.0 200 Connection established\r\n\r\n";
 
-static CNCB sslConnectDone;
-static ERCB sslErrorComplete;
-static PF sslServerClosed;
-static PF sslClientClosed;
-static PF sslTimeout;
-static PSC sslPeerSelectComplete;
-static void sslStateFree(SslStateData * sslState);
-static void sslConnected(int fd, void *);
-static void sslProxyConnected(int fd, void *);
+static CNCB tunnelConnectDone;
+static ERCB tunnelErrorComplete;
+static PF tunnelServerClosed;
+static PF tunnelClientClosed;
+static PF tunnelTimeout;
+static PSC tunnelPeerSelectComplete;
+static void tunnelStateFree(TunnelStateData * tunnelState);
+static void tunnelConnected(int fd, void *);
+static void tunnelProxyConnected(int fd, void *);
 
 static void
-sslServerClosed(int fd, void *data)
+tunnelServerClosed(int fd, void *data)
 {
-    SslStateData *sslState = (SslStateData *)data;
-    debugs(26, 3, "sslServerClosed: FD " << fd);
-    assert(fd == sslState->server.fd());
-    sslState->server.fd(-1);
+    TunnelStateData *tunnelState = (TunnelStateData *)data;
+    debugs(26, 3, "tunnelServerClosed: FD " << fd);
+    assert(fd == tunnelState->server.fd());
+    tunnelState->server.fd(-1);
 
-    if (sslState->noConnections())
-        sslStateFree(sslState);
+    if (tunnelState->noConnections())
+        tunnelStateFree(tunnelState);
 }
 
 static void
-sslClientClosed(int fd, void *data)
+tunnelClientClosed(int fd, void *data)
 {
-    SslStateData *sslState = (SslStateData *)data;
-    debugs(26, 3, "sslClientClosed: FD " << fd);
-    assert(fd == sslState->client.fd());
-    sslState->client.fd(-1);
+    TunnelStateData *tunnelState = (TunnelStateData *)data;
+    debugs(26, 3, "tunnelClientClosed: FD " << fd);
+    assert(fd == tunnelState->client.fd());
+    tunnelState->client.fd(-1);
 
-    if (sslState->noConnections())
-        sslStateFree(sslState);
+    if (tunnelState->noConnections())
+        tunnelStateFree(tunnelState);
 }
 
 static void
-sslStateFree(SslStateData * sslState)
+tunnelStateFree(TunnelStateData * tunnelState)
 {
-    debugs(26, 3, "sslStateFree: sslState=" << sslState);
-    assert(sslState != NULL);
-    assert(sslState->noConnections());
-    safe_free(sslState->url);
-    FwdState::serversFree(&sslState->servers);
-    sslState->host = NULL;
-    HTTPMSGUNLOCK(sslState->request);
-    delete sslState;
+    debugs(26, 3, "tunnelStateFree: tunnelState=" << tunnelState);
+    assert(tunnelState != NULL);
+    assert(tunnelState->noConnections());
+    safe_free(tunnelState->url);
+    FwdState::serversFree(&tunnelState->servers);
+    tunnelState->host = NULL;
+    HTTPMSGUNLOCK(tunnelState->request);
+    delete tunnelState;
 }
 
-SslStateData::Connection::~Connection()
+TunnelStateData::Connection::~Connection()
 {
     safe_free (buf);
 }
 
 int
-SslStateData::Connection::bytesWanted(int lowerbound, int upperbound) const
+TunnelStateData::Connection::bytesWanted(int lowerbound, int upperbound) const
 {
 #if DELAY_POOLS
     return delayId.bytesWanted(lowerbound, upperbound);
@@ -180,7 +180,7 @@ SslStateData::Connection::bytesWanted(int lowerbound, int upperbound) const
 }
 
 void
-SslStateData::Connection::bytesIn(int const &count)
+TunnelStateData::Connection::bytesIn(int const &count)
 {
 #if DELAY_POOLS
     delayId.bytesIn(count);
@@ -190,7 +190,7 @@ SslStateData::Connection::bytesIn(int const &count)
 }
 
 int
-SslStateData::Connection::debugLevelForError(int const xerrno) const
+TunnelStateData::Connection::debugLevelForError(int const xerrno) const
 {
 #ifdef ECONNRESET
 
@@ -207,17 +207,17 @@ SslStateData::Connection::debugLevelForError(int const xerrno) const
 
 /* Read from server side and queue it for writing to the client */
 void
-SslStateData::ReadServer(int fd, char *buf, size_t len, comm_err_t errcode, int xerrno, void *data)
+TunnelStateData::ReadServer(int fd, char *buf, size_t len, comm_err_t errcode, int xerrno, void *data)
 {
-    SslStateData *sslState = (SslStateData *)data;
-    assert (cbdataReferenceValid (sslState));
+    TunnelStateData *tunnelState = (TunnelStateData *)data;
+    assert (cbdataReferenceValid (tunnelState));
 
-    assert(fd == sslState->server.fd());
-    sslState->readServer(buf, len, errcode, xerrno);
+    assert(fd == tunnelState->server.fd());
+    tunnelState->readServer(buf, len, errcode, xerrno);
 }
 
 void
-SslStateData::readServer(char *buf, size_t len, comm_err_t errcode, int xerrno)
+TunnelStateData::readServer(char *buf, size_t len, comm_err_t errcode, int xerrno)
 {
     /*
      * Bail out early on COMM_ERR_CLOSING
@@ -227,7 +227,7 @@ SslStateData::readServer(char *buf, size_t len, comm_err_t errcode, int xerrno)
     if (errcode == COMM_ERR_CLOSING)
         return;
 
-    debugs(26, 3, "sslReadServer: FD " << server.fd() << ", read   " << len << " bytes");
+    debugs(26, 3, "tunnelReadServer: FD " << server.fd() << ", read   " << len << " bytes");
 
     if (len > 0) {
         server.bytesIn(len);
@@ -239,7 +239,7 @@ SslStateData::readServer(char *buf, size_t len, comm_err_t errcode, int xerrno)
 }
 
 void
-SslStateData::Connection::error(int const xerrno)
+TunnelStateData::Connection::error(int const xerrno)
 {
     /* XXX fixme xstrerror and xerrno... */
     errno = xerrno;
@@ -247,7 +247,7 @@ SslStateData::Connection::error(int const xerrno)
     if (xerrno == COMM_ERR_CLOSING)
         return;
 
-    debugs(50, debugLevelForError(xerrno), "sslReadServer: FD " << fd() << 
+    debugs(50, debugLevelForError(xerrno), "tunnelReadServer: FD " << fd() << 
            ": read failure: " << xstrerror());
 
     if (!ignoreErrno(xerrno))
@@ -256,17 +256,17 @@ SslStateData::Connection::error(int const xerrno)
 
 /* Read from client side and queue it for writing to the server */
 void
-SslStateData::ReadClient(int fd, char *buf, size_t len, comm_err_t errcode, int xerrno, void *data)
+TunnelStateData::ReadClient(int fd, char *buf, size_t len, comm_err_t errcode, int xerrno, void *data)
 {
-    SslStateData *sslState = (SslStateData *)data;
-    assert (cbdataReferenceValid (sslState));
+    TunnelStateData *tunnelState = (TunnelStateData *)data;
+    assert (cbdataReferenceValid (tunnelState));
 
-    assert(fd == sslState->client.fd());
-    sslState->readClient(buf, len, errcode, xerrno);
+    assert(fd == tunnelState->client.fd());
+    tunnelState->readClient(buf, len, errcode, xerrno);
 }
 
 void
-SslStateData::readClient(char *buf, size_t len, comm_err_t errcode, int xerrno)
+TunnelStateData::readClient(char *buf, size_t len, comm_err_t errcode, int xerrno)
 {
     /*
      * Bail out early on COMM_ERR_CLOSING
@@ -276,7 +276,7 @@ SslStateData::readClient(char *buf, size_t len, comm_err_t errcode, int xerrno)
     if (errcode == COMM_ERR_CLOSING)
         return;
 
-    debugs(26, 3, "sslReadClient: FD " << client.fd() << ", read " << len << " bytes");
+    debugs(26, 3, "tunnelReadClient: FD " << client.fd() << ", read " << len << " bytes");
 
     if (len > 0) {
         client.bytesIn(len);
@@ -287,12 +287,16 @@ SslStateData::readClient(char *buf, size_t len, comm_err_t errcode, int xerrno)
 }
 
 void
-SslStateData::copy (size_t len, comm_err_t errcode, int xerrno, Connection &from, Connection &to, IOCB *completion)
+TunnelStateData::copy (size_t len, comm_err_t errcode, int xerrno, Connection &from, Connection &to, IOCB *completion)
 {
     /* I think this is to prevent free-while-in-a-callback behaviour
      * - RBC 20030229 
      */
     cbdataInternalLock(this);	/* ??? should be locked by the caller... */
+
+    /* Bump the server connection timeout on any activity */
+    if (server.fd() != -1)
+	commSetTimeout(server.fd(), Config.Timeout.read, tunnelTimeout, this);
 
     if (len < 0 || errcode)
         from.error (xerrno);
@@ -311,19 +315,19 @@ SslStateData::copy (size_t len, comm_err_t errcode, int xerrno, Connection &from
 
 /* Writes data from the client buffer to the server side */
 void
-SslStateData::WriteServerDone(int fd, char *buf, size_t len, comm_err_t flag, int xerrno, void *data)
+TunnelStateData::WriteServerDone(int fd, char *buf, size_t len, comm_err_t flag, int xerrno, void *data)
 {
-    SslStateData *sslState = (SslStateData *)data;
-    assert (cbdataReferenceValid (sslState));
+    TunnelStateData *tunnelState = (TunnelStateData *)data;
+    assert (cbdataReferenceValid (tunnelState));
 
-    assert(fd == sslState->server.fd());
-    sslState->writeServerDone(buf, len, flag, xerrno);
+    assert(fd == tunnelState->server.fd());
+    tunnelState->writeServerDone(buf, len, flag, xerrno);
 }
 
 void
-SslStateData::writeServerDone(char *buf, size_t len, comm_err_t flag, int xerrno)
+TunnelStateData::writeServerDone(char *buf, size_t len, comm_err_t flag, int xerrno)
 {
-    debugs(26, 3, "sslWriteServer: FD " << server.fd() << ", " << len << " bytes written");
+    debugs(26, 3, "tunnelWriteServer: FD " << server.fd() << ", " << len << " bytes written");
 
     /* Error? */
     if (len < 0 || flag != COMM_OK) {
@@ -358,17 +362,17 @@ SslStateData::writeServerDone(char *buf, size_t len, comm_err_t flag, int xerrno
 
 /* Writes data from the server buffer to the client side */
 void
-SslStateData::WriteClientDone(int fd, char *buf, size_t len, comm_err_t flag, int xerrno, void *data)
+TunnelStateData::WriteClientDone(int fd, char *buf, size_t len, comm_err_t flag, int xerrno, void *data)
 {
-    SslStateData *sslState = (SslStateData *)data;
-    assert (cbdataReferenceValid (sslState));
+    TunnelStateData *tunnelState = (TunnelStateData *)data;
+    assert (cbdataReferenceValid (tunnelState));
 
-    assert(fd == sslState->client.fd());
-    sslState->writeClientDone(buf, len, flag, xerrno);
+    assert(fd == tunnelState->client.fd());
+    tunnelState->writeClientDone(buf, len, flag, xerrno);
 }
 
 void
-SslStateData::Connection::dataSent (size_t amount)
+TunnelStateData::Connection::dataSent (size_t amount)
 {
     assert(amount == (size_t)len);
     len =0;
@@ -379,9 +383,9 @@ SslStateData::Connection::dataSent (size_t amount)
 }
 
 void
-SslStateData::writeClientDone(char *buf, size_t len, comm_err_t flag, int xerrno)
+TunnelStateData::writeClientDone(char *buf, size_t len, comm_err_t flag, int xerrno)
 {
-    debugs(26, 3, "sslWriteClient: FD " << client.fd() << ", " << len << " bytes written");
+    debugs(26, 3, "tunnelWriteClient: FD " << client.fd() << ", " << len << " bytes written");
 
     /* Error? */
     if (len < 0 || flag != COMM_OK) {
@@ -414,79 +418,79 @@ SslStateData::writeClientDone(char *buf, size_t len, comm_err_t flag, int xerrno
 }
 
 static void
-sslTimeout(int fd, void *data)
+tunnelTimeout(int fd, void *data)
 {
-    SslStateData *sslState = (SslStateData *)data;
-    debugs(26, 3, "sslTimeout: FD " << fd);
-    /* Temporary lock to protect our own feets (comm_close -> sslClientClosed -> Free) */
-    cbdataInternalLock(sslState);
+    TunnelStateData *tunnelState = (TunnelStateData *)data;
+    debugs(26, 3, "tunnelTimeout: FD " << fd);
+    /* Temporary lock to protect our own feets (comm_close -> tunnelClientClosed -> Free) */
+    cbdataInternalLock(tunnelState);
 
-    sslState->client.closeIfOpen();
-    sslState->server.closeIfOpen();
-    cbdataInternalUnlock(sslState);
+    tunnelState->client.closeIfOpen();
+    tunnelState->server.closeIfOpen();
+    cbdataInternalUnlock(tunnelState);
 }
 
 void
-SslStateData::Connection::closeIfOpen()
+TunnelStateData::Connection::closeIfOpen()
 {
     if (fd() != -1)
         comm_close(fd());
 }
 
 void
-SslStateData::copyRead(Connection &from, IOCB *completion)
+TunnelStateData::copyRead(Connection &from, IOCB *completion)
 {
     assert(from.len == 0);
     comm_read(from.fd(), from.buf, from.bytesWanted(1, SQUID_TCP_SO_RCVBUF), completion, this);
 }
 
 static void
-sslConnectTimeout(int fd, void *data)
+tunnelConnectTimeout(int fd, void *data)
 {
-    SslStateData *sslState = (SslStateData *)data;
-    HttpRequest *request = sslState->request;
+    TunnelStateData *tunnelState = (TunnelStateData *)data;
+    HttpRequest *request = tunnelState->request;
     ErrorState *err = NULL;
 
-    if (sslState->servers->_peer)
-        hierarchyNote(&sslState->request->hier, sslState->servers->code,
-                      sslState->servers->_peer->host);
+    if (tunnelState->servers->_peer)
+        hierarchyNote(&tunnelState->request->hier, tunnelState->servers->code,
+                      tunnelState->servers->_peer->host);
     else if (Config.onoff.log_ip_on_direct)
-        hierarchyNote(&sslState->request->hier, sslState->servers->code,
-                      fd_table[sslState->server.fd()].ipaddr);
+        hierarchyNote(&tunnelState->request->hier, tunnelState->servers->code,
+                      fd_table[tunnelState->server.fd()].ipaddr);
     else
-        hierarchyNote(&sslState->request->hier, sslState->servers->code,
-                      sslState->host);
+        hierarchyNote(&tunnelState->request->hier, tunnelState->servers->code,
+                      tunnelState->host);
 
     comm_close(fd);
 
     err = errorCon(ERR_CONNECT_FAIL, HTTP_SERVICE_UNAVAILABLE, request);
 
-    *sslState->status_ptr = HTTP_SERVICE_UNAVAILABLE;
+    *tunnelState->status_ptr = HTTP_SERVICE_UNAVAILABLE;
 
     err->xerrno = ETIMEDOUT;
 
-    err->port = sslState->port;
+    err->port = tunnelState->port;
 
-    err->callback = sslErrorComplete;
+    err->callback = tunnelErrorComplete;
 
-    err->callback_data = sslState;
+    err->callback_data = tunnelState;
 
-    errorSend(sslState->client.fd(), err);
+    errorSend(tunnelState->client.fd(), err);
 }
 
 static void
-sslConnectedWriteDone(int fd, char *buf, size_t size, comm_err_t flag, int xerrno, void *data)
+tunnelConnectedWriteDone(int fd, char *buf, size_t size, comm_err_t flag, int xerrno, void *data)
 {
-    SslStateData *sslState = (SslStateData *)data;
+    TunnelStateData *tunnelState = (TunnelStateData *)data;
 
     if (flag != COMM_OK) {
-        sslErrorComplete(fd, data, 0);
+        tunnelErrorComplete(fd, data, 0);
         return;
     }
 
-    if (cbdataReferenceValid(sslState)) {
-        sslState->copyRead(sslState->server, SslStateData::ReadServer);
-        sslState->copyRead(sslState->client, SslStateData::ReadClient);
+    if (cbdataReferenceValid(tunnelState)) {
+        tunnelState->copyRead(tunnelState->server, TunnelStateData::ReadServer);
+        tunnelState->copyRead(tunnelState->client, TunnelStateData::ReadClient);
     }
 }
 
@@ -494,91 +498,91 @@ sslConnectedWriteDone(int fd, char *buf, size_t size, comm_err_t flag, int xerrn
  * handle the write completion from a proxy request to an upstream proxy
  */
 static void
-sslProxyConnectedWriteDone(int fd, char *buf, size_t size, comm_err_t flag, int xerrno, void *data)
+tunnelProxyConnectedWriteDone(int fd, char *buf, size_t size, comm_err_t flag, int xerrno, void *data)
 {
-    sslConnectedWriteDone(fd, buf, size, flag, xerrno, data);
+    tunnelConnectedWriteDone(fd, buf, size, flag, xerrno, data);
 }
 
 static void
-sslConnected(int fd, void *data)
+tunnelConnected(int fd, void *data)
 {
-    SslStateData *sslState = (SslStateData *)data;
-    debugs(26, 3, "sslConnected: FD " << fd << " sslState=" << sslState);
-    *sslState->status_ptr = HTTP_OK;
-    comm_write(sslState->client.fd(), conn_established, strlen(conn_established),
-               sslConnectedWriteDone, sslState, NULL);
+    TunnelStateData *tunnelState = (TunnelStateData *)data;
+    debugs(26, 3, "tunnelConnected: FD " << fd << " tunnelState=" << tunnelState);
+    *tunnelState->status_ptr = HTTP_OK;
+    comm_write(tunnelState->client.fd(), conn_established, strlen(conn_established),
+               tunnelConnectedWriteDone, tunnelState, NULL);
 }
 
 static void
-sslErrorComplete(int fdnotused, void *data, size_t sizenotused)
+tunnelErrorComplete(int fdnotused, void *data, size_t sizenotused)
 {
-    SslStateData *sslState = (SslStateData *)data;
-    assert(sslState != NULL);
-    /* temporary lock to save our own feets (comm_close -> sslClientClosed -> Free) */
-    cbdataInternalLock(sslState);
+    TunnelStateData *tunnelState = (TunnelStateData *)data;
+    assert(tunnelState != NULL);
+    /* temporary lock to save our own feets (comm_close -> tunnelClientClosed -> Free) */
+    cbdataInternalLock(tunnelState);
 
-    if (sslState->client.fd() > -1)
-        comm_close(sslState->client.fd());
+    if (tunnelState->client.fd() > -1)
+        comm_close(tunnelState->client.fd());
 
-    if (sslState->server.fd() > -1)
-        comm_close(sslState->server.fd());
+    if (tunnelState->server.fd() > -1)
+        comm_close(tunnelState->server.fd());
 
-    cbdataInternalUnlock(sslState);
+    cbdataInternalUnlock(tunnelState);
 }
 
 
 static void
-sslConnectDone(int fdnotused, comm_err_t status, int xerrno, void *data)
+tunnelConnectDone(int fdnotused, comm_err_t status, int xerrno, void *data)
 {
-    SslStateData *sslState = (SslStateData *)data;
-    HttpRequest *request = sslState->request;
+    TunnelStateData *tunnelState = (TunnelStateData *)data;
+    HttpRequest *request = tunnelState->request;
     ErrorState *err = NULL;
 
-    if (sslState->servers->_peer)
-        hierarchyNote(&sslState->request->hier, sslState->servers->code,
-                      sslState->servers->_peer->host);
+    if (tunnelState->servers->_peer)
+        hierarchyNote(&tunnelState->request->hier, tunnelState->servers->code,
+                      tunnelState->servers->_peer->host);
     else if (Config.onoff.log_ip_on_direct)
-        hierarchyNote(&sslState->request->hier, sslState->servers->code,
-                      fd_table[sslState->server.fd()].ipaddr);
+        hierarchyNote(&tunnelState->request->hier, tunnelState->servers->code,
+                      fd_table[tunnelState->server.fd()].ipaddr);
     else
-        hierarchyNote(&sslState->request->hier, sslState->servers->code,
-                      sslState->host);
+        hierarchyNote(&tunnelState->request->hier, tunnelState->servers->code,
+                      tunnelState->host);
 
     if (status == COMM_ERR_DNS) {
-        debugs(26, 4, "sslConnect: Unknown host: " << sslState->host);
+        debugs(26, 4, "tunnelConnect: Unknown host: " << tunnelState->host);
         err = errorCon(ERR_DNS_FAIL, HTTP_NOT_FOUND, request);
-        *sslState->status_ptr = HTTP_NOT_FOUND;
+        *tunnelState->status_ptr = HTTP_NOT_FOUND;
         err->dnsserver_msg = xstrdup(dns_error_message);
-        err->callback = sslErrorComplete;
-        err->callback_data = sslState;
-        errorSend(sslState->client.fd(), err);
+        err->callback = tunnelErrorComplete;
+        err->callback_data = tunnelState;
+        errorSend(tunnelState->client.fd(), err);
     } else if (status != COMM_OK) {
         err = errorCon(ERR_CONNECT_FAIL, HTTP_SERVICE_UNAVAILABLE, request);
-        *sslState->status_ptr = HTTP_SERVICE_UNAVAILABLE;
+        *tunnelState->status_ptr = HTTP_SERVICE_UNAVAILABLE;
         err->xerrno = xerrno;
-        err->port = sslState->port;
-        err->callback = sslErrorComplete;
-        err->callback_data = sslState;
-        errorSend(sslState->client.fd(), err);
+        err->port = tunnelState->port;
+        err->callback = tunnelErrorComplete;
+        err->callback_data = tunnelState;
+        errorSend(tunnelState->client.fd(), err);
     } else {
-        if (sslState->servers->_peer)
-            sslProxyConnected(sslState->server.fd(), sslState);
+        if (tunnelState->servers->_peer)
+            tunnelProxyConnected(tunnelState->server.fd(), tunnelState);
         else {
-            sslConnected(sslState->server.fd(), sslState);
+            tunnelConnected(tunnelState->server.fd(), tunnelState);
         }
 
-        commSetTimeout(sslState->server.fd(),
+        commSetTimeout(tunnelState->server.fd(),
                        Config.Timeout.read,
-                       sslTimeout,
-                       sslState);
+                       tunnelTimeout,
+                       tunnelState);
     }
 }
 
 void
-sslStart(ClientHttpRequest * http, size_t * size_ptr, int *status_ptr)
+tunnelStart(ClientHttpRequest * http, int64_t * size_ptr, int *status_ptr)
 {
     /* Create state structure. */
-    SslStateData *sslState = NULL;
+    TunnelStateData *tunnelState = NULL;
     int sock;
     ErrorState *err = NULL;
     int answer;
@@ -612,7 +616,7 @@ sslStart(ClientHttpRequest * http, size_t * size_ptr, int *status_ptr)
         }
     }
 
-    debugs(26, 3, "sslStart: '" << RequestMethodStr[request->method] << " " << url << "'");
+    debugs(26, 3, "tunnelStart: '" << RequestMethodStr[request->method] << " " << url << "'");
     statCounter.server.all.requests++;
     statCounter.server.other.requests++;
     /* Create socket. */
@@ -625,7 +629,7 @@ sslStart(ClientHttpRequest * http, size_t * size_ptr, int *status_ptr)
                        url);
 
     if (sock == COMM_ERROR) {
-        debugs(26, 4, "sslStart: Failed because we're out of sockets.");
+        debugs(26, 4, "tunnelStart: Failed because we're out of sockets.");
         err = errorCon(ERR_SOCKET_FAILURE, HTTP_INTERNAL_SERVER_ERROR, request);
         *status_ptr = HTTP_INTERNAL_SERVER_ERROR;
         err->xerrno = errno;
@@ -633,58 +637,58 @@ sslStart(ClientHttpRequest * http, size_t * size_ptr, int *status_ptr)
         return;
     }
 
-    sslState = new SslStateData;
+    tunnelState = new TunnelStateData;
 #if DELAY_POOLS
 
-    sslState->server.setDelayId(DelayId::DelayClient(http));
+    tunnelState->server.setDelayId(DelayId::DelayClient(http));
 #endif
 
-    sslState->url = xstrdup(url);
-    sslState->request = HTTPMSGLOCK(request);
-    sslState->server.size_ptr = size_ptr;
-    sslState->status_ptr = status_ptr;
-    sslState->client.fd(fd);
-    sslState->server.fd(sock);
-    comm_add_close_handler(sslState->server.fd(),
-                           sslServerClosed,
-                           sslState);
-    comm_add_close_handler(sslState->client.fd(),
-                           sslClientClosed,
-                           sslState);
-    commSetTimeout(sslState->client.fd(),
+    tunnelState->url = xstrdup(url);
+    tunnelState->request = HTTPMSGLOCK(request);
+    tunnelState->server.size_ptr = size_ptr;
+    tunnelState->status_ptr = status_ptr;
+    tunnelState->client.fd(fd);
+    tunnelState->server.fd(sock);
+    comm_add_close_handler(tunnelState->server.fd(),
+                           tunnelServerClosed,
+                           tunnelState);
+    comm_add_close_handler(tunnelState->client.fd(),
+                           tunnelClientClosed,
+                           tunnelState);
+    commSetTimeout(tunnelState->client.fd(),
                    Config.Timeout.lifetime,
-                   sslTimeout,
-                   sslState);
-    commSetTimeout(sslState->server.fd(),
+                   tunnelTimeout,
+                   tunnelState);
+    commSetTimeout(tunnelState->server.fd(),
                    Config.Timeout.connect,
-                   sslConnectTimeout,
-                   sslState);
+                   tunnelConnectTimeout,
+                   tunnelState);
     peerSelect(request,
                NULL,
-               sslPeerSelectComplete,
-               sslState);
+               tunnelPeerSelectComplete,
+               tunnelState);
     /*
      * Disable the client read handler until peer selection is complete
      * Take control away from client_side.c.
      */
-    commSetSelect(sslState->client.fd(), COMM_SELECT_READ, NULL, NULL, 0);
+    commSetSelect(tunnelState->client.fd(), COMM_SELECT_READ, NULL, NULL, 0);
 }
 
 static void
-sslProxyConnected(int fd, void *data)
+tunnelProxyConnected(int fd, void *data)
 {
-    SslStateData *sslState = (SslStateData *)data;
+    TunnelStateData *tunnelState = (TunnelStateData *)data;
     HttpHeader hdr_out(hoRequest);
     Packer p;
     http_state_flags flags;
-    debugs(26, 3, "sslProxyConnected: FD " << fd << " sslState=" << sslState);
+    debugs(26, 3, "tunnelProxyConnected: FD " << fd << " tunnelState=" << tunnelState);
     memset(&flags, '\0', sizeof(flags));
-    flags.proxying = sslState->request->flags.proxying;
+    flags.proxying = tunnelState->request->flags.proxying;
     MemBuf mb;
     mb.init();
-    mb.Printf("CONNECT %s HTTP/1.0\r\n", sslState->url);
-    HttpStateData::httpBuildRequestHeader(sslState->request,
-                                          sslState->request,
+    mb.Printf("CONNECT %s HTTP/1.0\r\n", tunnelState->url);
+    HttpStateData::httpBuildRequestHeader(tunnelState->request,
+                                          tunnelState->request,
                                           NULL,			/* StoreEntry */
                                           &hdr_out,
                                           flags);			/* flags */
@@ -694,94 +698,94 @@ sslProxyConnected(int fd, void *data)
     packerClean(&p);
     mb.append("\r\n", 2);
 
-    comm_write_mbuf(sslState->server.fd(), &mb, sslProxyConnectedWriteDone, sslState);
-    commSetTimeout(sslState->server.fd(), Config.Timeout.read, sslTimeout, sslState);
+    comm_write_mbuf(tunnelState->server.fd(), &mb, tunnelProxyConnectedWriteDone, tunnelState);
+    commSetTimeout(tunnelState->server.fd(), Config.Timeout.read, tunnelTimeout, tunnelState);
 }
 
 static void
-sslPeerSelectComplete(FwdServer * fs, void *data)
+tunnelPeerSelectComplete(FwdServer * fs, void *data)
 {
-    SslStateData *sslState = (SslStateData *)data;
-    HttpRequest *request = sslState->request;
+    TunnelStateData *tunnelState = (TunnelStateData *)data;
+    HttpRequest *request = tunnelState->request;
     peer *g = NULL;
 
     if (fs == NULL) {
         ErrorState *err;
         err = errorCon(ERR_CANNOT_FORWARD, HTTP_SERVICE_UNAVAILABLE, request);
-        *sslState->status_ptr = HTTP_SERVICE_UNAVAILABLE;
-        err->callback = sslErrorComplete;
-        err->callback_data = sslState;
-        errorSend(sslState->client.fd(), err);
+        *tunnelState->status_ptr = HTTP_SERVICE_UNAVAILABLE;
+        err->callback = tunnelErrorComplete;
+        err->callback_data = tunnelState;
+        errorSend(tunnelState->client.fd(), err);
         return;
     }
 
-    sslState->servers = fs;
-    sslState->host = fs->_peer ? fs->_peer->host : request->host;
+    tunnelState->servers = fs;
+    tunnelState->host = fs->_peer ? fs->_peer->host : request->host;
 
     if (fs->_peer == NULL) {
-        sslState->port = request->port;
+        tunnelState->port = request->port;
     } else if (fs->_peer->http_port != 0) {
-        sslState->port = fs->_peer->http_port;
+        tunnelState->port = fs->_peer->http_port;
     } else if ((g = peerFindByName(fs->_peer->host))) {
-        sslState->port = g->http_port;
+        tunnelState->port = g->http_port;
     } else {
-        sslState->port = CACHE_HTTP_PORT;
+        tunnelState->port = CACHE_HTTP_PORT;
     }
 
     if (fs->_peer) {
-        sslState->request->peer_login = fs->_peer->login;
-        sslState->request->flags.proxying = 1;
+        tunnelState->request->peer_login = fs->_peer->login;
+        tunnelState->request->flags.proxying = 1;
     } else {
-        sslState->request->peer_login = NULL;
-        sslState->request->flags.proxying = 0;
+        tunnelState->request->peer_login = NULL;
+        tunnelState->request->flags.proxying = 0;
     }
 
 #if DELAY_POOLS
-    /* no point using the delayIsNoDelay stuff since ssl is nice and simple */
+    /* no point using the delayIsNoDelay stuff since tunnel is nice and simple */
     if (g && g->options.no_delay)
-        sslState->server.setDelayId(DelayId());
+        tunnelState->server.setDelayId(DelayId());
 
 #endif
 
-    commConnectStart(sslState->server.fd(),
-                     sslState->host,
-                     sslState->port,
-                     sslConnectDone,
-                     sslState);
+    commConnectStart(tunnelState->server.fd(),
+                     tunnelState->host,
+                     tunnelState->port,
+                     tunnelConnectDone,
+                     tunnelState);
 }
 
-CBDATA_CLASS_INIT(SslStateData);
+CBDATA_CLASS_INIT(TunnelStateData);
 
 void *
-SslStateData::operator new (size_t)
+TunnelStateData::operator new (size_t)
 {
-    CBDATA_INIT_TYPE(SslStateData);
-    SslStateData *result = cbdataAlloc(SslStateData);
+    CBDATA_INIT_TYPE(TunnelStateData);
+    TunnelStateData *result = cbdataAlloc(TunnelStateData);
     return result;
 }
 
 void
-SslStateData::operator delete (void *address)
+TunnelStateData::operator delete (void *address)
 {
-    SslStateData *t = static_cast<SslStateData *>(address);
+    TunnelStateData *t = static_cast<TunnelStateData *>(address);
     cbdataFree(t);
 }
 
 void
-SslStateData::Connection::fd(int const newFD)
+TunnelStateData::Connection::fd(int const newFD)
 {
     fd_ = newFD;
 }
 
 bool
-SslStateData::noConnections() const
+TunnelStateData::noConnections() const
 {
     return (server.fd() == -1) && (client.fd() == -1);
 }
 
 #if DELAY_POOLS
 void
-SslStateData::Connection::setDelayId(DelayId const &newDelay)
+TunnelStateData::Connection::setDelayId(DelayId const &newDelay)
 {
     delayId = newDelay;
 }

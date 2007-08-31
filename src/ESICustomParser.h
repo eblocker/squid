@@ -1,5 +1,5 @@
 /*
- * $Id: ESICustomParser.h,v 1.6 2005/07/03 15:25:08 serassio Exp $
+ * $Id: ESICustomParser.h,v 1.8 2007/05/29 13:31:37 amosjeffries Exp $
  *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/

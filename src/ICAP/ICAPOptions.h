@@ -1,6 +1,6 @@
 
 /*
- * $Id: ICAPOptions.h,v 1.9 2007/04/06 04:50:07 rousskov Exp $
+ * $Id: ICAPOptions.h,v 1.11 2007/05/29 13:31:44 amosjeffries Exp $
  *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/

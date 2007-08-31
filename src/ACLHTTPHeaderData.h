@@ -1,6 +1,6 @@
 
 /*
- * $Id: ACLHTTPHeaderData.h,v 1.2 2006/08/05 12:05:35 robertc Exp $
+ * $Id: ACLHTTPHeaderData.h,v 1.4 2007/05/29 13:31:36 amosjeffries Exp $
  *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/

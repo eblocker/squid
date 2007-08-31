@@ -1,5 +1,5 @@
 /*
- * $Id: ACLExtUser.cc,v 1.9 2007/04/28 22:26:37 hno Exp $
+ * $Id: ACLExtUser.cc,v 1.11 2007/05/29 13:31:36 amosjeffries Exp $
  *
  * DEBUG: section 28    Access Control
  * AUTHOR: Duane Wessels

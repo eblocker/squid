@@ -1,6 +1,5 @@
-
 /*
- * $Id: ftp.cc,v 1.422 2007/05/07 21:32:00 wessels Exp $
+ * $Id: ftp.cc,v 1.440 2007/08/15 06:56:19 amosjeffries Exp $
  *
  * DEBUG: section 9     File Transfer Protocol (FTP)
  * AUTHOR: Harvest Derived
@@ -54,13 +53,6 @@
 #include "wordlist.h"
 #include "SquidTime.h"
 #include "URLScheme.h"
-
-#if ICAP_CLIENT
-#include "ICAP/ICAPConfig.h"
-#include "ICAP/ICAPModXact.h"
-extern ICAPConfig TheICAPConfig;
-static void icapAclCheckDoneWrapper(ICAPServiceRep::Pointer service, void *data);
-#endif
 
 static const char *const crlf = "\r\n";
 static char cbuf[1024];
@@ -133,12 +125,12 @@ public:
     int login_att;
     ftp_state_t state;
     time_t mdtm;
-    int size;
+    int64_t theSize;
     wordlist *pathcomps;
     char *filepath;
     char *dirpath;
-    int restart_offset;
-    int restarted_offset;
+    int64_t restart_offset;
+    int64_t restarted_offset;
     char *proxy_host;
     size_t list_width;
     wordlist *cwd_message;
@@ -152,7 +144,7 @@ public:
         int fd;
         char *buf;
         size_t size;
-        off_t offset;
+        size_t offset;
         wordlist *message;
         char *last_command;
         char *last_reply;
@@ -199,13 +191,14 @@ public:
     int checkAuth(const HttpHeader * req_hdr);
     void checkUrlpath();
     void buildTitleUrl();
-    void writeReplyBody(const char *, int len);
+    void writeReplyBody(const char *, size_t len);
     void printfReplyBody(const char *fmt, ...);
     virtual int dataDescriptor() const;
     virtual void maybeReadVirginBody();
     virtual void closeServer();
     virtual void completeForwarding();
     virtual void abortTransaction(const char *reason);
+    void processHeadResponse();
     void processReplyBody();
     void writeCommand(const char *buf);
 
@@ -217,25 +210,20 @@ public:
     static IOCB ftpReadControlReply;
     static IOCB ftpWriteCommandCallback;
     static HttpReply *ftpAuthRequired(HttpRequest * request, const char *realm);
-    static wordlist *ftpParseControlReply(char *, size_t, int *, int *);
+    static wordlist *ftpParseControlReply(char *, size_t, int *, size_t *);
 
     // sending of the request body to the server
     virtual void sentRequestBody(int fd, size_t size, comm_err_t errflag);
     virtual void doneSendingRequestBody();
 
+    virtual void haveParsedReplyHeaders();
+
     virtual bool doneWithServer() const;
+    virtual bool haveControlChannel(const char *caller_name) const;
 
 private:
     // BodyConsumer for HTTP: consume request body.
     virtual void handleRequestBodyProducerAborted();
-
-#if ICAP_CLIENT
-public:
-    void icapAclCheckDone(ICAPServiceRep::Pointer);
-
-    bool icapAccessCheckPending;
-#endif
-
 };
 
 CBDATA_CLASS_INIT(FtpStateData);
@@ -258,7 +246,7 @@ FtpStateData::operator delete (void *address)
 typedef struct
 {
     char type;
-    int size;
+    int64_t size;
     char *date;
     char *name;
     char *showname;
@@ -381,7 +369,7 @@ FtpStateData::FtpStateData(FwdState *theFwdState) : ServerStateData(theFwdState)
     statCounter.server.ftp.requests++;
     ctrl.fd = theFwdState->server_fd;
     data.fd = -1;
-    size = -1;
+    theSize = -1;
     mdtm = -1;
 
     if (Config.Ftp.passive && !theFwdState->ftpPasvFailed())
@@ -726,7 +714,7 @@ ftpListParseParts(const char *buf, struct _ftp_flags flags)
 
         if ((copyFrom = strstr(buf, tbuf))) {
             p->type = *tokens[0];
-            p->size = atoi(size);
+            p->size = strtoll(size, NULL, 10);
             p->date = xstrdup(tbuf);
 
             if (flags.skip_whitespace) {
@@ -763,7 +751,7 @@ ftpListParseParts(const char *buf, struct _ftp_flags flags)
             p->type = 'd';
         } else {
             p->type = '-';
-            p->size = atoi(tokens[2]);
+            p->size = strtoll(tokens[2], NULL, 10);
         }
 
         snprintf(tbuf, 128, "%s %s", tokens[0], tokens[1]);
@@ -1054,7 +1042,7 @@ FtpStateData::htmlifyListEntry(const char *line)
         snprintf(icon, 2048, "<IMG border=\"0\" SRC=\"%s\" ALT=\"%-6s\">",
                  mimeGetIconURL(parts->name),
                  "[FILE]");
-        snprintf(size, 2048, " %6dk", parts->size);
+        snprintf(size, 2048, " %6"PRId64"k", parts->size);
         break;
     }
 
@@ -1158,17 +1146,6 @@ FtpStateData::parseListing()
 
         assert(t != NULL);
 
-#if ICAP_CLIENT
-        if (virginBodyDestination != NULL) {
-            // XXX: There are other places where writeReplyBody may overflow!
-            if ((int)strlen(t) > virginBodyDestination->buf().potentialSpaceSize()) {
-                debugs(0,0,HERE << "WARNING avoid overwhelming ICAP with data!");
-                usable = s - sbuf;
-                break;
-            }
-        }
-#endif
-
         writeReplyBody(t, strlen(t));
     }
 
@@ -1226,12 +1203,7 @@ FtpStateData::maybeReadVirginBody()
     if (data.read_pending)
         return;
 
-    int read_sz = data.readBuf->spaceSize();
-
-#if ICAP_CLIENT
-    // See HttpStateData::maybeReadVirginBody() for a size-limiting piece of
-    // code that used to be there. Hopefully, it is not really needed.
-#endif
+    int read_sz = replyBodySpace(data.readBuf->spaceSize());
 
     debugs(11,9, HERE << "FTP may read up to " << read_sz << " bytes");
 
@@ -1339,6 +1311,12 @@ void
 FtpStateData::processReplyBody()
 {
     debugs(9, 5, HERE << "FtpStateData::processReplyBody starting.");
+
+    if (request->method == METHOD_HEAD && (flags.isdir || theSize != -1)) {
+        serverComplete();
+        return;
+    }
+
     if (!flags.http_header_sent && data.readBuf->contentSize() >= 0)
         appendSuccessHeader();
 
@@ -1619,7 +1597,7 @@ FtpStateData::ftpWriteCommandCallback(int fd, char *buf, size_t size, comm_err_t
 }
 
 wordlist *
-FtpStateData::ftpParseControlReply(char *buf, size_t len, int *codep, int *used)
+FtpStateData::ftpParseControlReply(char *buf, size_t len, int *codep, size_t *used)
 {
     char *s;
     char *sbuf;
@@ -1629,7 +1607,7 @@ FtpStateData::ftpParseControlReply(char *buf, size_t len, int *codep, int *used)
     wordlist *head = NULL;
     wordlist *list;
     wordlist **tail = &head;
-    off_t offset;
+    size_t offset;
     size_t linelen;
     int code = -1;
     debugs(9, 5, "ftpParseControlReply");
@@ -1694,7 +1672,7 @@ FtpStateData::ftpParseControlReply(char *buf, size_t len, int *codep, int *used)
         tail = &list->next;
     }
 
-    *used = (int) (s - sbuf);
+    *used = (size_t) (s - sbuf);
     safe_free(sbuf);
 
     if (!complete)
@@ -1755,7 +1733,7 @@ FtpStateData::ftpReadControlReply(int fd, char *buf, size_t len, comm_err_t errf
         return;
     }
 
-    assert(ftpState->ctrl.offset < (off_t)ftpState->ctrl.size);
+    assert(ftpState->ctrl.offset < ftpState->ctrl.size);
 
     if (errflag == COMM_OK && len > 0) {
         fd_bytes(fd, len, FD_READ);
@@ -1798,7 +1776,7 @@ void
 FtpStateData::handleControlReply()
 {
     wordlist **W;
-    int bytes_used = 0;
+    size_t bytes_used = 0;
     wordlistDestroy(&ctrl.message);
     ctrl.message = ftpParseControlReply(ctrl.buf,
                                         ctrl.offset, &ctrl.replycode, &bytes_used);
@@ -1806,7 +1784,7 @@ FtpStateData::handleControlReply()
     if (ctrl.message == NULL) {
         /* didn't get complete reply yet */
 
-        if (ctrl.offset == (off_t)ctrl.size) {
+        if (ctrl.offset == ctrl.size) {
             ctrl.buf = (char *)memReallocBuf(ctrl.buf, ctrl.size << 1, &ctrl.size);
         }
 
@@ -1877,6 +1855,10 @@ ftpReadWelcome(FtpStateData * ftpState)
 static void
 ftpSendUser(FtpStateData * ftpState)
 {
+    /* check the server control channel is still available */
+    if(!ftpState || !ftpState->haveControlChannel("ftpSendUser"))
+        return;
+
     if (ftpState->proxy_host != NULL)
         snprintf(cbuf, 1024, "USER %s@%s\r\n",
                  ftpState->user,
@@ -1907,6 +1889,10 @@ ftpReadUser(FtpStateData * ftpState)
 static void
 ftpSendPass(FtpStateData * ftpState)
 {
+    /* check the server control channel is still available */
+    if(!ftpState || !ftpState->haveControlChannel("ftpSendPass"))
+        return;
+
     snprintf(cbuf, 1024, "PASS %s\r\n", ftpState->password);
     ftpState->writeCommand(cbuf);
     ftpState->state = SENT_PASS;
@@ -1931,6 +1917,11 @@ ftpSendType(FtpStateData * ftpState)
     const char *t;
     const char *filename;
     char mode;
+
+    /* check the server control channel is still available */
+    if(!ftpState || !ftpState->haveControlChannel("ftpSendType"))
+        return;
+
     /*
      * Ref section 3.2.2 of RFC 1738
      */
@@ -2050,8 +2041,15 @@ ftpTraverseDirectory(FtpStateData * ftpState)
 static void
 ftpSendCwd(FtpStateData * ftpState)
 {
-    char *path = ftpState->filepath;
+    char *path = NULL;
+
+    /* check the server control channel is still available */
+    if(!ftpState || !ftpState->haveControlChannel("ftpSendCwd"))
+        return;
+
     debugs(9, 3, "ftpSendCwd");
+
+    path = ftpState->filepath;
 
     if (!strcmp(path, "..") || !strcmp(path, "/")) {
         ftpState->flags.no_dotdot = 1;
@@ -2099,7 +2097,13 @@ ftpReadCwd(FtpStateData * ftpState)
 static void
 ftpSendMkdir(FtpStateData * ftpState)
 {
-    char *path = ftpState->filepath;
+    char *path = NULL;
+
+    /* check the server control channel is still available */
+    if(!ftpState || !ftpState->haveControlChannel("ftpSendMkdir"))
+        return;
+
+    path = ftpState->filepath;
     debugs(9, 3, "ftpSendMkdir: with path=" << path);
     snprintf(cbuf, 1024, "MKD %s\r\n", path);
     ftpState->writeCommand(cbuf);
@@ -2150,6 +2154,10 @@ ftpListDir(FtpStateData * ftpState)
 static void
 ftpSendMdtm(FtpStateData * ftpState)
 {
+    /* check the server control channel is still available */
+    if(!ftpState || !ftpState->haveControlChannel("ftpSendMdtm"))
+        return;
+
     assert(*ftpState->filepath != '\0');
     snprintf(cbuf, 1024, "MDTM %s\r\n", ftpState->filepath);
     ftpState->writeCommand(cbuf);
@@ -2167,6 +2175,7 @@ ftpReadMdtm(FtpStateData * ftpState)
         ftpState->unhack();
     } else if (code < 0) {
         ftpFail(ftpState);
+	return;
     }
 
     ftpSendSize(ftpState);
@@ -2175,6 +2184,10 @@ ftpReadMdtm(FtpStateData * ftpState)
 static void
 ftpSendSize(FtpStateData * ftpState)
 {
+    /* check the server control channel is still available */
+    if(!ftpState || !ftpState->haveControlChannel("ftpSendPasv"))
+        return;
+
     /* Only send SIZE for binary transfers. The returned size
      * is useless on ASCII transfers */
 
@@ -2197,17 +2210,17 @@ ftpReadSize(FtpStateData * ftpState)
 
     if (code == 213) {
         ftpState->unhack();
-        ftpState->size = atoi(ftpState->ctrl.last_reply);
+        ftpState->theSize = strtoll(ftpState->ctrl.last_reply, NULL, 10);
 
-        if (ftpState->size == 0) {
+        if (ftpState->theSize == 0) {
             debugs(9, 2, "ftpReadSize: SIZE reported " <<
-                   ftpState->ctrl.last_reply << " on " <<
-                   ftpState->title_url.buf());
-
-            ftpState->size = -1;
+                         ftpState->ctrl.last_reply << " on " << 
+                         ftpState->title_url.buf());
+            ftpState->theSize = -1;
         }
     } else if (code < 0) {
         ftpFail(ftpState);
+	return;
     }
 
     ftpSendPasv(ftpState);
@@ -2216,27 +2229,17 @@ ftpReadSize(FtpStateData * ftpState)
 static void
 ftpSendPasv(FtpStateData * ftpState)
 {
-
     struct sockaddr_in addr;
     socklen_t addr_len;
 
+    /* check the server control channel is still available */
+    if(!ftpState || !ftpState->haveControlChannel("ftpSendPasv"))
+        return;
+
     debugs(9, 3, HERE << "ftpSendPasv started");
 
-    if (ftpState->request->method == METHOD_HEAD && (ftpState->flags.isdir || ftpState->size != -1)) {
-        /* Terminate here for HEAD requests */
-        ftpState->appendSuccessHeader();
-        ftpState->entry->timestampsSet();
-        /*
-         * On rare occasions I'm seeing the entry get aborted after
-         * ftpReadControlReply() and before here, probably when
-         * trying to write to the client.
-         */
-
-        if (!EBIT_TEST(ftpState->entry->flags, ENTRY_ABORTED))
-        ftpState->completeForwarding();
-
-        ftpSendQuit(ftpState);
-
+    if (ftpState->request->method == METHOD_HEAD && (ftpState->flags.isdir || ftpState->theSize != -1)) {
+        ftpState->processHeadResponse(); // may call serverComplete
         return;
     }
 
@@ -2297,6 +2300,34 @@ ftpSendPasv(FtpStateData * ftpState)
      * dont acknowledge PASV commands.
      */
     commSetTimeout(ftpState->data.fd, 15, FtpStateData::ftpTimeout, ftpState);
+}
+
+void
+FtpStateData::processHeadResponse()
+{
+    debugs(9, 5, HERE << "handling HEAD response");
+    ftpSendQuit(this);
+    appendSuccessHeader();
+
+    /*
+     * On rare occasions I'm seeing the entry get aborted after
+     * ftpReadControlReply() and before here, probably when
+     * trying to write to the client.
+     */
+    if (EBIT_TEST(entry->flags, ENTRY_ABORTED)) {
+        abortTransaction("entry aborted while processing HEAD");
+        return;
+    }
+
+#if ICAP_CLIENT
+    if (icapAccessCheckPending) {
+        debugs(9,3,HERE << "returning from ftpSendPasv due to icapAccessCheckPending");
+        return;
+    }
+#endif
+
+    // processReplyBody calls serverComplete() since there is no body
+    processReplyBody(); 
 }
 
 static void
@@ -2476,6 +2507,11 @@ ftpSendPort(FtpStateData * ftpState)
     socklen_t addr_len;
     unsigned char *addrptr;
     unsigned char *portptr;
+
+    /* check the server control channel is still available */
+    if(!ftpState || !ftpState->haveControlChannel("ftpSendPort"))
+        return;
+
     debugs(9, 3, "This is ftpSendPort");
     ftpState->flags.pasv_supported = 0;
     fd = ftpOpenListenSocket(ftpState, 0);
@@ -2601,12 +2637,16 @@ ftpRestOrList(FtpStateData * ftpState)
 static void
 ftpSendStor(FtpStateData * ftpState)
 {
+    /* check the server control channel is still available */
+    if(!ftpState || !ftpState->haveControlChannel("ftpSendStor"))
+        return;
+
     if (ftpState->filepath != NULL) {
         /* Plain file upload */
         snprintf(cbuf, 1024, "STOR %s\r\n", ftpState->filepath);
         ftpState->writeCommand(cbuf);
         ftpState->state = SENT_STOR;
-    } else if (ftpState->request->header.getInt(HDR_CONTENT_LENGTH) > 0) {
+    } else if (ftpState->request->header.getInt64(HDR_CONTENT_LENGTH) > 0) {
         /* File upload without a filename. use STOU to generate one */
         snprintf(cbuf, 1024, "STOU\r\n");
         ftpState->writeCommand(cbuf);
@@ -2662,7 +2702,11 @@ void FtpStateData::readStor() {
 static void
 ftpSendRest(FtpStateData * ftpState)
 {
-    snprintf(cbuf, 1024, "REST %d\r\n", ftpState->restart_offset);
+    /* check the server control channel is still available */
+    if(!ftpState || !ftpState->haveControlChannel("ftpSendRest"))
+        return;
+
+    snprintf(cbuf, 1024, "REST %"PRId64"\r\n", ftpState->restart_offset);
     ftpState->writeCommand(cbuf);
     ftpState->state = SENT_REST;
 }
@@ -2679,15 +2723,15 @@ FtpStateData::restartable()
     if (!flags.binary)
         return 0;
 
-    if (size <= 0)
+    if (theSize <= 0)
         return 0;
 
-    int desired_offset = request->range->lowestOffset((size_t) size);
+    int64_t desired_offset = request->range->lowestOffset(theSize);
 
     if (desired_offset <= 0)
         return 0;
 
-    if (desired_offset >= size)
+    if (desired_offset >= theSize)
 	return 0;
 
     restart_offset = desired_offset;
@@ -2716,6 +2760,10 @@ ftpReadRest(FtpStateData * ftpState)
 static void
 ftpSendList(FtpStateData * ftpState)
 {
+    /* check the server control channel is still available */
+    if(!ftpState || !ftpState->haveControlChannel("ftpSendList"))
+        return;
+
     if (ftpState->filepath) {
         snprintf(cbuf, 1024, "LIST %s\r\n", ftpState->filepath);
     } else {
@@ -2729,6 +2777,10 @@ ftpSendList(FtpStateData * ftpState)
 static void
 ftpSendNlst(FtpStateData * ftpState)
 {
+    /* check the server control channel is still available */
+    if(!ftpState || !ftpState->haveControlChannel("ftpSendNlst"))
+        return;
+
     ftpState->flags.tried_nlst = 1;
 
     if (ftpState->filepath) {
@@ -2779,6 +2831,10 @@ ftpReadList(FtpStateData * ftpState)
 static void
 ftpSendRetr(FtpStateData * ftpState)
 {
+    /* check the server control channel is still available */
+    if(!ftpState || !ftpState->haveControlChannel("ftpSendRetr"))
+        return;
+
     assert(ftpState->filepath != NULL);
     snprintf(cbuf, 1024, "RETR %s\r\n", ftpState->filepath);
     ftpState->writeCommand(cbuf);
@@ -2882,7 +2938,10 @@ ftpWriteTransferDone(FtpStateData * ftpState)
 static void
 ftpSendQuit(FtpStateData * ftpState)
 {
-    assert(ftpState->ctrl.fd > -1);
+    /* check the server control channel is still available */
+    if(!ftpState || !ftpState->haveControlChannel("ftpSendQuit"))
+        return;
+
     snprintf(cbuf, 1024, "QUIT\r\n");
     ftpState->writeCommand(cbuf);
     ftpState->state = SENT_QUIT;
@@ -2958,7 +3017,7 @@ ftpFail(FtpStateData *ftpState)
 
     if (!ftpState->flags.isdir &&	/* Not a directory */
             !ftpState->flags.try_slash_hack &&	/* Not in slash hack */
-            ftpState->mdtm <= 0 && ftpState->size < 0 &&	/* Not known as a file */
+            ftpState->mdtm <= 0 && ftpState->theSize < 0 &&	/* Not known as a file */
             ftpState->request->urlpath.caseCmp("/%2f", 4) != 0) {	/* No slash encoded */
 
         switch (ftpState->state) {
@@ -3078,6 +3137,7 @@ ftpSendReply(FtpStateData * ftpState)
     int code = ftpState->ctrl.replycode;
     http_status http_code;
     err_type err_code = ERR_NONE;
+
     debugs(9, 5, "ftpSendReply: " << ftpState->entry->url() << ", code " << code  );
 
     if (cbdataReferenceValid(ftpState))
@@ -3122,14 +3182,13 @@ FtpStateData::appendSuccessHeader()
     const char *filename = NULL;
     const char *t = NULL;
     StoreEntry *e = entry;
-    HttpReply *newrep = new HttpReply;
 
     debugs(9, 3, HERE << "FtpStateData::appendSuccessHeader starting");
 
-    reply = HTTPMSGLOCK(newrep);
-
     if (flags.http_header_sent)
         return;
+
+    HttpReply *reply = new HttpReply;
 
     flags.http_header_sent = 1;
 
@@ -3168,52 +3227,42 @@ FtpStateData::appendSuccessHeader()
     if (0 == restarted_offset) {
         /* Full reply */
         reply->setHeaders(version, HTTP_OK, "Gatewaying",
-                          mime_type, size, mdtm, -2);
-    } else if (size < restarted_offset) {
+                          mime_type, theSize, mdtm, -2);
+    } else if (theSize < restarted_offset) {
 	/*
 	 * DPW 2007-05-04
-	 * offset should not be larger than size.  We should
+	 * offset should not be larger than theSize.  We should
 	 * not be seeing this condition any more because we'll only
-	 * send REST if we know the size and if it is less than size.
+	 * send REST if we know the theSize and if it is less than theSize.
 	 */
 	debugs(0,0,HERE << "Whoops! " <<
 		" restarted_offset=" << restarted_offset <<
-		", but size=" << size <<
+		", but theSize=" << theSize <<
 		".  assuming full content response");
         reply->setHeaders(version, HTTP_OK, "Gatewaying",
-                          mime_type, size, mdtm, -2);
+                          mime_type, theSize, mdtm, -2);
     } else {
         /* Partial reply */
         HttpHdrRangeSpec range_spec;
         range_spec.offset = restarted_offset;
-        range_spec.length = size - restarted_offset;
+        range_spec.length = theSize - restarted_offset;
         reply->setHeaders(version, HTTP_PARTIAL_CONTENT, "Gatewaying",
-                          mime_type, size - restarted_offset, mdtm, -2);
-        httpHeaderAddContRange(&reply->header, range_spec, size);
+                          mime_type, theSize - restarted_offset, mdtm, -2);
+        httpHeaderAddContRange(&reply->header, range_spec, theSize);
     }
 
     /* additional info */
     if (mime_enc)
         reply->header.putStr(HDR_CONTENT_ENCODING, mime_enc);
 
-#if ICAP_CLIENT
+    setVirginReply(reply);
+    adaptOrFinalizeReply();
+}
 
-    if (TheICAPConfig.onoff) {
-        ICAPAccessCheck *icap_access_check = new ICAPAccessCheck(ICAP::methodRespmod,
-                                             ICAP::pointPreCache,
-                                             request,
-                                             reply,
-                                             icapAclCheckDoneWrapper,
-                                             this);
-
-        icapAccessCheckPending = true;
-        icap_access_check->check(); // will eventually delete self
-        return;
-    }
-
-#endif
-
-    e->replaceHttpReply(reply);
+void
+FtpStateData::haveParsedReplyHeaders()
+{
+    StoreEntry *e = entry;
 
     e->timestampsSet();
 
@@ -3296,27 +3345,10 @@ FtpStateData::printfReplyBody(const char *fmt, ...)
  * which should be sent to either StoreEntry, or to ICAP...
  */
 void
-FtpStateData::writeReplyBody(const char *data, int len)
+FtpStateData::writeReplyBody(const char *data, size_t len)
 {
-#if ICAP_CLIENT
-    if (virginBodyDestination != NULL)  {
-        debugs(9,5,HERE << "writing " << len << " bytes to ICAP");
-        const size_t putSize = virginBodyDestination->putMoreData(data, len);
-        if (putSize != (size_t)len) {
-            // XXX: FTP writing should be rewritten to avoid temporary buffers
-            // because temporary buffers cannot handle overflows.
-            debugs(0,0,HERE << "ICAP cannot keep up with FTP; lost " << 
-                (len - putSize) << '/' << len << " bytes.");
-        }
-        return;
-    }
-#endif
-
-    debugs(9,5,HERE << "writing " << len << " bytes to StoreEntry");
-
-    //debugs(9,5,HERE << data);
-
-    entry->append(data, len);
+    debugs(9,5,HERE << "writing " << len << " bytes to the reply");
+    addVirginReplyBody(data, len);
 }
 
 // called after we wrote the last byte of the request body
@@ -3370,6 +3402,22 @@ FtpStateData::doneWithServer() const
     return ctrl.fd < 0 && data.fd < 0;
 }
 
+bool
+FtpStateData::haveControlChannel(const char *caller_name) const
+{
+    if(doneWithServer())
+        return false;
+
+    /* doneWithServer() only checks BOTH channels are closed. */
+    if(ctrl.fd < 0) {
+        debugs(9, 1, "WARNING! FTP Server Control channel is closed, but Data channel still active.");
+        debugs(9, 2, caller_name << ": attempted on a closed FTP channel.");
+        return false;
+    }
+
+    return true;
+}
+
 // Quickly abort the transaction
 // TODO: destruction should be sufficient as the destructor should cleanup,
 // including canceling close handlers
@@ -3378,47 +3426,11 @@ FtpStateData::abortTransaction(const char *reason)
 {
     debugs(9,5,HERE << "aborting transaction for " << reason <<
         "; FD " << ctrl.fd << ", Data FD " << data.fd << ", this " << this);
-    if (ctrl.fd >= 0)
-        comm_close(ctrl.fd);
-    else
-        delete this;
-}
-
-#if ICAP_CLIENT
-
-static void
-icapAclCheckDoneWrapper(ICAPServiceRep::Pointer service, void *data)
-{
-    FtpStateData *ftpState = (FtpStateData *)data;
-    ftpState->icapAclCheckDone(service);
-}
-
-// TODO: merge with http.cc and move to Server.cc?
-void
-FtpStateData::icapAclCheckDone(ICAPServiceRep::Pointer service)
-{
-    icapAccessCheckPending = false;
-
-    const bool startedIcap = startIcap(service, request);
-
-    if (!startedIcap && (!service || service->bypass)) {
-        // handle ICAP start failure when no service was selected
-        // or where the selected service was optional
-        entry->replaceHttpReply(reply);
-        processReplyBody();
-        return;
-    }
-
-    if (!startedIcap) {
-        // handle start failure for an essential ICAP service
-        ErrorState *err = errorCon(ERR_ICAP_FAILURE, HTTP_INTERNAL_SERVER_ERROR, request);
-        err->xerrno = errno;
-        errorAppendEntry(entry, err);
+    if (ctrl.fd >= 0) {
         comm_close(ctrl.fd);
         return;
     }
-
-    processReplyBody();
+    
+    fwd->handleUnregisteredServerEnd();
+    delete this;
 }
-
-#endif

@@ -1,6 +1,6 @@
 
 /*
- * $Id: ESIVarState.h,v 1.2 2003/08/04 22:14:40 robertc Exp $
+ * $Id: ESIVarState.h,v 1.4 2007/05/29 13:31:37 amosjeffries Exp $
  *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/

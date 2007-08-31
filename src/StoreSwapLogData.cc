@@ -1,5 +1,5 @@
 /*
- * $Id: StoreSwapLogData.cc,v 1.3 2004/08/30 05:12:31 robertc Exp $
+ * $Id: StoreSwapLogData.cc,v 1.4 2007/08/13 17:20:51 hno Exp $
  *
  * DEBUG: section 47    Store Directory Routines
  * AUTHOR: Duane Wessels
@@ -37,4 +37,9 @@
 StoreSwapLogData::StoreSwapLogData(): op(0), swap_filen (0), timestamp (0), lastref (0), expires (0), lastmod(0), swap_file_sz (0), refcount (0), flags (0)
 {
     memset (key, '\0', sizeof(key));
+}
+
+StoreSwapLogHeader::StoreSwapLogHeader():op(SWAP_LOG_VERSION), version(1)
+{
+     record_size = sizeof(StoreSwapLogData);
 }

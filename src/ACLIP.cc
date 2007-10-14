@@ -97,16 +97,9 @@ acl_ip_data::toStr(char *buf, int len) const
 }
 
 /*
- * aclIpAddrNetworkCompare - The guts of the comparison for IP ACLs.
- * The first argument (a) is a "host" address, i.e. the IP address
- * of a cache client.  The second argument (b) is a "network" address
- * that might have a subnet and/or range.  We mask the host address
- * bits with the network subnet mask.
- */
-/*
- * aclIpAddrNetworkCompare - The comparison function used for ACL
- * matching checks.  The first argument (a) is a "host" address,
- * i.e.  the IP address of a cache client.  The second argument (b)
+ * aclIpAddrNetworkCompare - The guts of the comparison for IP ACLs
+ * matching checks.  The first argument (p) is a "host" address,
+ * i.e.  the IP address of a cache client.  The second argument (q)
  * is an entry in some address-based access control element.  This
  * function is called via ACLIP::match() and the splay library.
  */
@@ -146,6 +139,9 @@ aclIpAddrNetworkCompare(acl_ip_data * const &p, acl_ip_data * const &q)
  * used by the splay insertion routine.  It emits a warning if it
  * detects a "collision" or overlap that would confuse the splay
  * sorting algorithm.  Much like aclDomainCompare.
+ * The first argument (p) is a "host" address, i.e. the IP address of a cache client.
+ * The second argument (b) is a "network" address that might have a subnet and/or range.
+ * We mask the host address bits with the network subnet mask.
  */
 int
 acl_ip_data::NetworkCompare(acl_ip_data * const & a, acl_ip_data * const &b)
@@ -177,12 +173,11 @@ acl_ip_data::NetworkCompare(acl_ip_data * const & a, acl_ip_data * const &b)
 }
 
 /*
- * Decode a ascii representation (asc) of a IP adress, and place
- * adress and netmask information in addr and mask.
+ * Decode an ascii representation (asc) of a IP netmask address or CIDR,
+ * and place resulting information in mask.
  * This function should NOT be called if 'asc' is a hostname!
  */
 bool
-
 acl_ip_data::DecodeMask(const char *asc, struct IN_ADDR *mask)
 {
     char junk;
@@ -191,25 +186,26 @@ acl_ip_data::DecodeMask(const char *asc, struct IN_ADDR *mask)
     if (!asc || !*asc)
     {
         mask->s_addr = htonl(0xFFFFFFFFul);
-        return 1;
+        return true;
     }
 
     if (sscanf(asc, "%d%c", &a1, &junk) == 1 && a1 >= 0 && a1 < 33)
     {		/* a significant bits value for a mask */
         mask->s_addr = a1 ? htonl(0xfffffffful << (32 - a1)) : 0;
-        return 1;
+        return true;
     }
 
     /* dotted notation */
     if (safe_inet_addr(asc, mask))
-        return 1;
+        return true;
 
-    return 0;
+    return false;
 }
 
 #define SCAN_ACL1       "%[0123456789.]-%[0123456789.]/%[0123456789.]"
 #define SCAN_ACL2       "%[0123456789.]-%[0123456789.]%c"
 #define SCAN_ACL3       "%[0123456789.]/%[0123456789.]"
+#define SCAN_ACL4	"%[0123456789.]%c"
 
 acl_ip_data *
 acl_ip_data::FactoryParse(const char *t)
@@ -238,14 +234,13 @@ acl_ip_data::FactoryParse(const char *t)
         mask[0] = '\0';
     } else if (sscanf(t, SCAN_ACL3, addr1, mask) == 2) {
         addr2[0] = '\0';
+    } else if (sscanf(t, SCAN_ACL4, addr1, &c) == 1) {
+	addr2[0] = '\0';
+	mask[0] = '\0';
     } else if (sscanf(t, "%[^/]/%s", addr1, mask) == 2) {
         addr2[0] = '\0';
     } else if (sscanf(t, "%s", addr1) == 1) {
-        addr2[0] = '\0';
-        mask[0] = '\0';
-    }
 
-    if (!*addr2) {
         /*
          * Note, must use plain gethostbyname() here because at startup
          * ipcache hasn't been initialized
@@ -267,15 +262,7 @@ acl_ip_data::FactoryParse(const char *t)
             xmemcpy(&r->addr1.s_addr, *x, sizeof(r->addr1.s_addr));
 
             r->addr2.s_addr = 0;
-
-            if (!DecodeMask(mask, &r->mask)) {
-                debugs(28, 0, "aclParseIpData: unknown netmask '" << mask << "' in '" << t << "'");
-                delete r;
-                *Q = NULL;
-                self_destruct();
-                continue;
-            }
-
+	    DecodeMask(NULL, &r->mask);
 
             Q = &r->next;
 
@@ -299,14 +286,14 @@ acl_ip_data::FactoryParse(const char *t)
     }
 
     /* Decode addr2 */
-    if (!safe_inet_addr(addr2, &q->addr2)) {
+    if (*addr2 && !safe_inet_addr(addr2, &q->addr2)) {
         debugs(28, 0, "aclParseIpData: unknown second address in '" << t << "'");
         delete q;
         self_destruct();
         return NULL;
     }
 
-    /* Decode mask */
+    /* Decode mask (NULL or empty means a exact host mask) */
     if (!DecodeMask(mask, &q->mask)) {
         debugs(28, 0, "aclParseIpData: unknown netmask '" << mask << "' in '" << t << "'");
         delete q;

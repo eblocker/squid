@@ -1,7 +1,7 @@
 #
 #  Makefile for the Squid Object Cache server
 #
-#  $Id: Makefile.am,v 1.187 2007/08/26 21:04:32 hno Exp $
+#  $Id: Makefile.am,v 1.192 2007/09/19 08:54:50 hno Exp $
 #
 #  Uncomment and customize the following to suit your needs:
 #
@@ -586,6 +586,7 @@ squid_SOURCES = \
 	StoreMetaSTD.h \
 	StoreMetaSTDLFS.cc \
 	StoreMetaSTDLFS.h \
+	StoreMetaObjSize.h \
 	StoreMetaUnpacker.cc \
 	StoreMetaUnpacker.h \
 	StoreMetaURL.cc \
@@ -932,6 +933,7 @@ LDADD = libsquid.la libauth.la -L../lib -lmiscutil @XTRA_LIBS@ @EPOLL_LIBS@ @MIN
 EXTRA_DIST = \
 	cf_gen_defines \
 	cf.data.pre \
+	cf.data.depend \
 	mk-globals-c.pl \
 	mk-globals-c.awk \
 	mk-string-arrays.pl \
@@ -1019,11 +1021,12 @@ test_cache_digest: test_cache_digest.o CacheDigest.o debug.o globals.o store_key
 ## If autodependency works well this is not needed anymore
 cache_cf.o: cf_parser.h
 
+# squd.conf.default is built by cf_gen when making cf_parser.h
 squid.conf.default: cf_parser.h
-	$(SHELL) -c "test -f squid.conf.default || ./cf_gen cf.data"
+	true
 
 cf_parser.h: cf.data cf_gen$(EXEEXT)
-	./cf_gen cf.data 
+	./cf_gen cf.data $(srcdir)/cf.data.depend
 
 cf_gen_defines.h: $(srcdir)/cf_gen_defines $(srcdir)/cf.data.pre
 	$(AWK) -f $(srcdir)/cf_gen_defines <$(srcdir)/cf.data.pre >cf_gen_defines.h
@@ -1893,6 +1896,7 @@ tests_test_http_range_LDADD = \
 	@SQUID_CPPUNIT_LA@ \
 	@SSLLIB@ \
 	@XTRA_LIBS@
+tests_test_http_range_LDFLAGS = $(LIBADD_DL)
 tests_test_http_range_DEPENDENCIES = \
 	@SQUID_CPPUNIT_LA@
 

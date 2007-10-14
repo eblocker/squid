@@ -1,6 +1,6 @@
 
 /*
- * $Id: HttpHeader.cc,v 1.134 2007/08/13 17:20:51 hno Exp $
+ * $Id: HttpHeader.cc,v 1.136 2007/09/28 00:22:37 hno Exp $
  *
  * DEBUG: section 55    HTTP Header
  * AUTHOR: Alex Rousskov
@@ -566,7 +566,7 @@ HttpHeader::parse(const char *header_start, const char *header_end)
 
         if (e->id == HDR_CONTENT_LENGTH && (e2 = findEntry(e->id)) != NULL) {
             if (e->value.cmp(e2->value.buf()) != 0) {
-                ssize_t l1, l2;
+                int64_t l1, l2;
                 debugs(55, Config.onoff.relaxed_header_parser <= 0 ? 1 : 2,
                   "WARNING: found two conflicting content-length headers in {" << getStringPrefix(header_start, header_end) << "}");
 
@@ -575,11 +575,11 @@ HttpHeader::parse(const char *header_start, const char *header_end)
                     goto reset;
                 }
 
-                if (!httpHeaderParseSize(e->value.buf(), &l1)) {
+                if (!httpHeaderParseOffset(e->value.buf(), &l1)) {
                     debugs(55, 1, "WARNING: Unparseable content-length '" << e->value.buf() << "'");
                     delete e;
                     continue;
-                } else if (!httpHeaderParseSize(e2->value.buf(), &l2)) {
+                } else if (!httpHeaderParseOffset(e2->value.buf(), &l2)) {
                     debugs(55, 1, "WARNING: Unparseable content-length '" << e2->value.buf() << "'");
                     delById(e2->id);
                 } else if (l1 > l2) {
@@ -1642,12 +1642,12 @@ httpHeaderStoreReport(StoreEntry * e)
     /* field stats for all messages */
     storeAppendPrintf(e, "\nHttp Fields Stats (replies and requests)\n");
 
-    storeAppendPrintf(e, "%2s\t %-20s\t %5s\t %6s\t %6s\n",
+    storeAppendPrintf(e, "%2s\t %-25s\t %5s\t %6s\t %6s\n",
                       "id", "name", "#alive", "%err", "%repeat");
 
     for (ht = (http_hdr_type)0; ht < HDR_ENUM_END; ++ht) {
         HttpHeaderFieldInfo *f = Headers + ht;
-        storeAppendPrintf(e, "%2d\t %-20s\t %5d\t %6.3f\t %6.3f\n",
+        storeAppendPrintf(e, "%2d\t %-25s\t %5d\t %6.3f\t %6.3f\n",
                           f->id, f->name.buf(), f->stat.aliveCount,
                           xpercent(f->stat.errCount, f->stat.parsCount),
                           xpercent(f->stat.repCount, f->stat.seenCount));

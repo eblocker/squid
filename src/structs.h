@@ -1,6 +1,6 @@
 
 /*
- * $Id: structs.h,v 1.561 2007/08/13 17:20:51 hno Exp $
+ * $Id: structs.h,v 1.565 2007/09/28 00:22:38 hno Exp $
  *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
@@ -91,7 +91,7 @@ struct _snmp_request_t
 struct _acl_address
 {
     acl_address *next;
-    acl_list *aclList;
+    ACLList *aclList;
 
     struct IN_ADDR addr;
 };
@@ -99,14 +99,14 @@ struct _acl_address
 struct _acl_tos
 {
     acl_tos *next;
-    acl_list *aclList;
+    ACLList *aclList;
     int tos;
 };
 
 struct _acl_size_t
 {
     acl_size_t *next;
-    acl_list *aclList;
+    ACLList *aclList;
     int64_t size;
 };
 
@@ -475,7 +475,7 @@ struct _SquidConfig
     struct
     {
         int objectsPerBucket;
-        size_t avgObjectSize;
+        int64_t avgObjectSize;
         int64_t maxObjectSize;
         int64_t minObjectSize;
         size_t maxInMemObjSize;
@@ -738,9 +738,7 @@ struct _SquidConfig
     ssl_client;
 #endif
 
-#ifdef SO_ACCEPTFILTER
     char *accept_filter;
-#endif
 };
 
 struct _SquidConfig2
@@ -1569,14 +1567,7 @@ struct _StatCounters
         }
 
         sock;
-#if HAVE_POLL
-
-        int polls;
-#else
-
         int selects;
-#endif
-
     }
 
     syscalls;
@@ -1696,7 +1687,7 @@ struct _logformat
 struct _customlog
 {
     char *filename;
-    acl_list *aclList;
+    ACLList *aclList;
     logformat *logFormat;
     Logfile *logfile;
     customlog *next;

@@ -1,5 +1,5 @@
 /*
- * $Id: stat.cc,v 1.408 2007/08/13 17:20:51 hno Exp $
+ * $Id: stat.cc,v 1.410 2007/09/20 20:22:20 hno Exp $
  *
  * DEBUG: section 18    Cache Manager Statistics
  * AUTHOR: Harvest Derived
@@ -609,8 +609,8 @@ info_get(StoreEntry * sentry)
 
 #if HAVE_SBRK
 
-    storeAppendPrintf(sentry, "\tProcess Data Segment Size via sbrk(): %d KB\n",
-                      (int) (((char *) sbrk(0) - (char *) sbrk_start) >> 10));
+    storeAppendPrintf(sentry, "\tProcess Data Segment Size via sbrk(): %lu KB\n",
+                      (unsigned long) (((char *) sbrk(0) - (char *) sbrk_start) >> 10));
 
 #endif
 
@@ -985,11 +985,8 @@ statAvgDump(StoreEntry * sentry, int minutes, int hours)
                       XAVG(aborted_requests));
 
 #if USE_POLL
-
-    storeAppendPrintf(sentry, "syscalls.polls = %f/sec\n", XAVG(syscalls.polls));
-#endif
-#if defined(USE_SELECT) || defined(USE_SELECT_WIN32)
-
+    storeAppendPrintf(sentry, "syscalls.polls = %f/sec\n", XAVG(syscalls.selects));
+#elif defined(USE_SELECT) || defined(USE_SELECT_WIN32)
     storeAppendPrintf(sentry, "syscalls.selects = %f/sec\n", XAVG(syscalls.selects));
 #endif
 

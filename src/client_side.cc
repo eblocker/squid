@@ -1,6 +1,6 @@
 
 /*
- * $Id: client_side.cc,v 1.764 2007/08/30 15:57:16 hno Exp $
+ * $Id: client_side.cc,v 1.767 2007/09/28 00:22:38 hno Exp $
  *
  * DEBUG: section 33    Client-side Routines
  * AUTHOR: Duane Wessels
@@ -1549,7 +1549,7 @@ ClientSocketContext::initiateClose(const char *reason)
         ConnStateData::Pointer conn = http->getConn();
 
         if (conn != NULL) {
-            if (const ssize_t expecting = conn->bodySizeLeft()) {
+            if (const int64_t expecting = conn->bodySizeLeft()) {
                 debugs(33, 5, HERE << "ClientSocketContext::initiateClose: " <<
                        "closing, but first " << conn << " needs to read " <<
                        expecting << " request body bytes with " <<
@@ -2103,7 +2103,7 @@ clientAfterReadingRequests(int fd, ConnStateData::Pointer &conn, int do_next_rea
      */
 
     if (fd_table[fd].flags.socket_eof) {
-        if ((ssize_t) conn->in.notYetUsed < conn->bodySizeLeft()) {
+        if ((int64_t)conn->in.notYetUsed < conn->bodySizeLeft()) {
             /* Partial request received. Abort client connection! */
             debugs(33, 3, "clientAfterReadingRequests: FD " << fd << " aborted, partial request");
             comm_close(fd);
@@ -2175,7 +2175,7 @@ clientProcessRequest(ConnStateData::Pointer &conn, HttpParser *hp, ClientSocketC
 
 #if LINUX_TPROXY
 
-    request->flags.tproxy = conn->port->tproxy;
+    request->flags.tproxy = conn->port->tproxy && need_linux_tproxy;
 #endif
 
     if (internalCheck(request->urlpath.buf())) {
@@ -2323,7 +2323,7 @@ connOkToAddRequest(ConnStateData::Pointer &conn)
  * Report on the number of bytes of body content that we
  * know are yet to be read on this connection.
  */
-ssize_t
+int64_t
 ConnStateData::bodySizeLeft()
 {
     // XXX: this logic will not work for chunked requests with unknown sizes
@@ -2454,6 +2454,10 @@ clientReadRequest(int fd, char *buf, size_t size, comm_err_t flag, int xerrno,
 
             conn->handleReadData(buf, size);
 
+	    /* The above may close the connection under our feets */
+	    if (!conn->isOpen())
+		return;
+
         } else if (size == 0) {
             debugs(33, 5, "clientReadRequest: FD " << fd << " closed?");
 
@@ -2484,6 +2488,8 @@ clientReadRequest(int fd, char *buf, size_t size, comm_err_t flag, int xerrno,
         fd_note(conn->fd, "Reading next request");
 
     if (! clientParseRequest(conn, do_next_read)) {
+	if (!conn->isOpen())
+	    return;
         /*
          * If the client here is half closed and we failed
          * to parse a request, close the connection.
@@ -2491,7 +2497,6 @@ clientReadRequest(int fd, char *buf, size_t size, comm_err_t flag, int xerrno,
          * succeeds _if_ the buffer is empty which it won't
          * be if we have an incomplete request.
          */
-
         if (conn->getConcurrentRequestCount() == 0 && commIsHalfClosed(fd)) {
             debugs(33, 5, "clientReadRequest: FD " << fd << ": half-closed connection, no completed request parsed, connection closing.");
             comm_close(fd);
@@ -3208,7 +3213,7 @@ ConnStateData::reading(bool const newBool)
 
 
 BodyPipe::Pointer
-ConnStateData::expectRequestBody(size_t size)
+ConnStateData::expectRequestBody(int64_t size)
 {
     bodyPipe = new BodyPipe(this);
     bodyPipe->setBodySize(size);

@@ -36,7 +36,7 @@
 /* Traffic management via "delay pools". */
 #undef DELAY_POOLS
 
-/* Define if you have problems with memPools and want to disable Pools */
+/* Define if you have problems with memPools and want to disable Pools. */
 #undef DISABLE_POOLS
 
 /* Compile the ESI processor and Surrogate header support */
@@ -598,6 +598,9 @@
 /* Define to 1 if you have the <sys/bswap.h> header file. */
 #undef HAVE_SYS_BSWAP_H
 
+/* Define to 1 if you have the <sys/capability.h> header file. */
+#undef HAVE_SYS_CAPABILITY_H
+
 /* Define to 1 if you have the <sys/dir.h> header file, and it defines `DIR'.
    */
 #undef HAVE_SYS_DIR_H
@@ -719,6 +722,9 @@
 
 /* __int64 is defined in system headers */
 #undef HAVE___INT64
+
+/* Define to 1 if you have the `__res_init' function. */
+#undef HAVE___RES_INIT
 
 /* Some systems have __va_copy instead of va_copy */
 #undef HAVE___VA_COPY

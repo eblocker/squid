@@ -8,6 +8,9 @@ squid3 (3.0.RC1-1) UNRELEASED; urgency=low
   * debian/patches/01-cf.data.debian
     - Updated to match upstream changes
 
+  * debian/control
+    - Updated Build-Depends to libdb 4.6
+
  -- Luigi Gangitano <luigi@debian.org>  Sun, 14 Oct 2007 16:07:28 +0200
 
 squid3 (3.0.PRE7-1) unstable; urgency=low

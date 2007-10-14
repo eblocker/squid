@@ -3,7 +3,7 @@ Section: web
 Priority: optional
 Maintainer: Luigi Gangitano <luigi@debian.org>
 Standards-Version: 3.7.2
-Build-Depends: libldap2-dev, libpam0g-dev, libdb4.4-dev, sharutils, dpatch (>= 2.0.9), cdbs, libsasl2-dev, debhelper (>=5), libcppunit-dev
+Build-Depends: libldap2-dev, libpam0g-dev, libdb-dev, sharutils, dpatch (>= 2.0.9), cdbs, libsasl2-dev, debhelper (>=5), libcppunit-dev
 
 Package: squid3
 Architecture: any

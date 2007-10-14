@@ -1,6 +1,6 @@
 
 /*
- * $Id: comm.cc,v 1.435 2007/08/24 17:56:45 hno Exp $
+ * $Id: comm.cc,v 1.437 2007/09/25 13:24:59 hno Exp $
  *
  * DEBUG: section 5     Socket Functions
  * AUTHOR: Harvest Derived
@@ -1841,6 +1841,17 @@ comm_init(void) {
     conn_close_pool = memPoolCreate("close_handler", sizeof(close_handler));
 }
 
+void
+comm_exit(void) {
+    safe_free(fd_table);
+    safe_free(fdd_table);
+    if (fdc_table) {
+	delete[] fdc_table;
+	fdc_table = NULL;
+    }
+    safe_free(commfd_table);
+}
+
 /* Write to FD. */
 static void
 commHandleWrite(int fd, void *data) {
@@ -2056,8 +2067,8 @@ comm_listen(int sock) {
         return x;
     }
 
+    if (Config.accept_filter && strcmp(Config.accept_filter, "none") != 0) {
 #ifdef SO_ACCEPTFILTER
-    if (Config.accept_filter) {
 	struct accept_filter_arg afa;
 	bzero(&afa, sizeof(afa));
 	debug(5, 0) ("Installing accept filter '%s' on FD %d\n",
@@ -2065,9 +2076,18 @@ comm_listen(int sock) {
 	xstrncpy(afa.af_name, Config.accept_filter, sizeof(afa.af_name));
 	x = setsockopt(sock, SOL_SOCKET, SO_ACCEPTFILTER, &afa, sizeof(afa));
 	if (x < 0)
-	    debug(5, 0) ("SO_ACCEPTFILTER '%s': %s\n", Config.accept_filter, xstrerror());
-    }
+	    debugs(5, 0, "SO_ACCEPTFILTER '" << Config.accept_filter << "': '" << xstrerror());
+#elif defined(TCP_DEFER_ACCEPT)
+	int seconds = 30;
+	if (strncmp(Config.accept_filter, "data=", 5) == 0)
+	    seconds = atoi(Config.accept_filter + 5);
+	x = setsockopt(sock, IPPROTO_TCP, TCP_DEFER_ACCEPT, &seconds, sizeof(seconds));
+	if (x < 0)
+	    debugs(5, 0, "TCP_DEFER_ACCEPT '" << Config.accept_filter << "': '" << xstrerror());
+#else
+	debugs(5, 0, "accept_filter not supported on your OS");
 #endif
+    }
 
     return sock;
 }

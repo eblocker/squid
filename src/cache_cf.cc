@@ -1,6 +1,6 @@
 
 /*
- * $Id: cache_cf.cc,v 1.519 2007/08/17 03:35:31 hno Exp $
+ * $Id: cache_cf.cc,v 1.521 2007/09/28 00:22:37 hno Exp $
  *
  * DEBUG: section 3     Configuration File Parsing
  * AUTHOR: Harvest Derived
@@ -847,9 +847,9 @@ free_acl(ACL ** ae)
 }
 
 static void
-dump_acl_list(StoreEntry * entry, acl_list * head)
+dump_acl_list(StoreEntry * entry, ACLList * head)
 {
-    acl_list *l;
+    ACLList *l;
 
     for (l = head; l; l = l->next) {
         storeAppendPrintf(entry, " %s%s",
@@ -2327,11 +2327,13 @@ dump_b_size_t(StoreEntry * entry, const char *name, size_t var)
     storeAppendPrintf(entry, "%s %d %s\n", name, (int) var, B_BYTES_STR);
 }
 
+#if UNUSED_CODE
 static void
 dump_kb_size_t(StoreEntry * entry, const char *name, size_t var)
 {
     storeAppendPrintf(entry, "%s %d %s\n", name, (int) var, B_KBYTES_STR);
 }
+#endif
 
 static void
 dump_b_int64_t(StoreEntry * entry, const char *name, int64_t var)
@@ -2359,11 +2361,13 @@ parse_b_size_t(size_t * var)
     parseBytesLine(var, B_BYTES_STR);
 }
 
+#if UNUSED_CODE
 static void
 parse_kb_size_t(size_t * var)
 {
     parseBytesLine(var, B_KBYTES_STR);
 }
+#endif
 
 static void
 parse_b_int64_t(int64_t * var)

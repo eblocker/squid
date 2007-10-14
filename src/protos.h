@@ -1,6 +1,6 @@
 
 /*
- * $Id: protos.h,v 1.548 2007/08/13 17:20:51 hno Exp $
+ * $Id: protos.h,v 1.550 2007/09/28 00:22:38 hno Exp $
  *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
@@ -148,7 +148,6 @@ SQUIDCEXTERN void fd_close(int fd);
 SQUIDCEXTERN void fd_open(int fd, unsigned int type, const char *);
 SQUIDCEXTERN void fd_note(int fd, const char *);
 SQUIDCEXTERN void fd_bytes(int fd, int len, unsigned int type);
-SQUIDCEXTERN void fdFreeMemory(void);
 SQUIDCEXTERN void fdDumpOpen(void);
 SQUIDCEXTERN int fdNFree(void);
 SQUIDCEXTERN int fdUsageHigh(void);
@@ -244,7 +243,6 @@ SQUIDCEXTERN int strListIsSubstr(const String * list, const char *s, char del);
 SQUIDCEXTERN int strListGetItem(const String * str, char del, const char **item, int *ilen, const char **pos);
 SQUIDCEXTERN const char *getStringPrefix(const char *str, const char *end);
 SQUIDCEXTERN int httpHeaderParseInt(const char *start, int *val);
-SQUIDCEXTERN int httpHeaderParseSize(const char *start, ssize_t * sz);
 SQUIDCEXTERN int httpHeaderParseOffset(const char *start, int64_t * off);
 #if STDC_HEADERS
 SQUIDCEXTERN void

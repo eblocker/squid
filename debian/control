@@ -9,7 +9,7 @@ Package: squid3
 Architecture: any
 Section: web
 Priority: optional
-Depends: ${shlibs:Depends}, netbase, adduser, logrotate (>= 3.5.4-1), squid3-common (= ${source:Version}), coreutils, lsb-base
+Depends: ${shlibs:Depends}, netbase, adduser, logrotate (>= 3.5.4-1), squid3-common (= ${source:Version}), lsb-base
 Suggests: squid3-client, squid3-cgi, resolvconf (>= 0.40), smbclient
 Description: A full featured Web Proxy cache (HTTP proxy)
  Squid is a high-performance proxy caching server for web clients, supporting
@@ -52,7 +52,7 @@ Package: squid3-cgi
 Architecture: any
 Section: web
 Priority: optional
-Depends: httpd | apache2, ${shlibs:Depends}
+Depends: apache2 | httpd, ${shlibs:Depends}
 Description: A full featured Web Proxy cache (HTTP proxy) - control CGI
  Squid is a high-performance proxy caching server for web clients, supporting
  FTP, gopher, and HTTP data objects.

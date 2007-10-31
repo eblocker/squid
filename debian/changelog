@@ -2,6 +2,9 @@ squid3 (3.0.RC1-2) UNRELEASED; urgency=low
 
   * NOT RELEASED YET
 
+  * debian/patches/08-resume-http.dpatch
+    - Added upstream patch fixing failure to resume downloads
+
  -- Luigi Gangitano <luigi@debian.org>  Mon, 15 Oct 2007 02:43:44 +0200
 
 squid3 (3.0.RC1-1) unstable; urgency=low

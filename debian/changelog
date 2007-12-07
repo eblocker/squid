@@ -1,3 +1,11 @@
+squid3 (3.0.PRE5-5etch1) stable-security; urgency=high
+
+  * debian/patches/09-dos-cache-update
+    - Added upstream patch fixing DoS in cache update reply processing
+      (Ref: CVE-2007-6239, SQUID-2007:2)
+
+ -- Luigi Gangitano <luigi@debian.org>  Fri, 07 Dec 2007 21:10:47 +0100
+
 squid3 (3.0.PRE5-5) unstable; urgency=low
 
   * debian/control

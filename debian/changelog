@@ -2,6 +2,10 @@ squid3 (3.0.RC1-3) UNRELEASED; urgency=low
 
   * NOT RELEASED YET
 
+  * debian/patches/09-dos-cache-update
+    - Added upstream patch fixing DoS in cache update reply processing
+      (Ref: CVE-2007-6239, SQUID-2007:2)
+
  -- Luigi Gangitano <luigi@debian.org>  Fri,  7 Dec 2007 16:30:39 +0100
 
 squid3 (3.0.RC1-2) unstable; urgency=low

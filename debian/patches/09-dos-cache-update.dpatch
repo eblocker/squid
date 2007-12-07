@@ -1,0 +1,105 @@
+#! /bin/sh /usr/share/dpatch/dpatch-run
+## 09-dos-cache-update.dpatch by Luigi Gangitano <luigi@debian.org>
+##
+## All lines beginning with `## DP:' are a description of the patch.
+## DP: No description.
+
+@DPATCH@
+diff -urNad squid3~/include/Array.h squid3/include/Array.h
+--- squid3~/include/Array.h	2006-11-20 15:18:03.000000000 +0100
++++ squid3/include/Array.h	2007-12-07 16:30:34.000000000 +0100
+@@ -1,5 +1,5 @@
+ /*
+- * $Id: Array.h,v 1.24 2005/11/21 22:43:41 wessels Exp $
++ * $Id: Array.h,v 1.25 2007/11/26 13:09:54 hno Exp $
+  *
+  * AUTHOR: Alex Rousskov
+  *
+@@ -98,6 +98,7 @@
+     E &back();
+     E pop_back();
+     E shift();         // aka pop_front
++    void prune(E);
+     void preAppend(int app_count);
+     bool empty() const;
+     size_t size() const;
+@@ -243,6 +244,22 @@
+     return items[size() - 1];
+ }
+ 
++template<class E>
++void
++Vector<E>::prune(E item)
++{
++    unsigned int n = 0;
++    for (unsigned int i = 0; i < count; i++) {
++	if (items[i] != item) {
++	    if (i != n)
++		items[n] = items[i];
++	    n++;
++	}
++    }
++
++    count = n;
++}
++
+ /* if you are going to append a known and large number of items, call this first */
+ template<class E>
+ void
+diff -urNad squid3~/src/HttpHeader.cc squid3/src/HttpHeader.cc
+--- squid3~/src/HttpHeader.cc	2007-10-14 16:06:22.000000000 +0200
++++ squid3/src/HttpHeader.cc	2007-12-07 16:30:34.000000000 +0100
+@@ -779,6 +779,15 @@
+ }
+ 
+ /*
++ * Compacts the header storage
++ */
++void
++HttpHeader::compact()
++{
++    entries.prune(NULL);
++}
++
++/*
+  * Refreshes the header mask. Required after delAt() calls.
+  */
+ void
+diff -urNad squid3~/src/HttpHeader.h squid3/src/HttpHeader.h
+--- squid3~/src/HttpHeader.h	2007-08-31 18:02:57.000000000 +0200
++++ squid3/src/HttpHeader.h	2007-12-07 16:30:34.000000000 +0100
+@@ -1,6 +1,6 @@
+ 
+ /*
+- * $Id: HttpHeader.h,v 1.23 2007/08/13 17:20:51 hno Exp $
++ * $Id: HttpHeader.h,v 1.24 2007/11/26 13:09:55 hno Exp $
+  *
+  *
+  * SQUID Web Proxy Cache          http://www.squid-cache.org/
+@@ -202,6 +202,7 @@
+     void clean();
+     void append(const HttpHeader * src);
+     void update (HttpHeader const *fresh, HttpHeaderMask const *denied_mask);
++    void compact();
+     int reset();
+     int parse(const char *header_start, const char *header_end);
+     void packInto(Packer * p) const;
+diff -urNad squid3~/src/HttpReply.cc squid3/src/HttpReply.cc
+--- squid3~/src/HttpReply.cc	2007-08-31 18:04:05.000000000 +0200
++++ squid3/src/HttpReply.cc	2007-12-07 16:30:34.000000000 +0100
+@@ -1,6 +1,6 @@
+ 
+ /*
+- * $Id: HttpReply.cc,v 1.96 2007/08/13 17:20:51 hno Exp $
++ * $Id: HttpReply.cc,v 1.97 2007/11/26 13:09:55 hno Exp $
+  *
+  * DEBUG: section 58    HTTP Reply (Response)
+  * AUTHOR: Alex Rousskov
+@@ -312,6 +312,7 @@
+     header.update(&freshRep->header,
+                   (const HttpHeaderMask *) &Denied304HeadersMask);
+ 
++    header.compact();
+     /* init cache */
+     hdrCacheInit();
+ }

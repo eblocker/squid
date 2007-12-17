@@ -3,6 +3,7 @@ squid3 (3.0.STABLE1-1) UNRELEASED; urgency=low
   * (NOT RELEASED YET)
   
   * New upstream release
+    - Updated debian/watch (Closes: #456470)
 
  -- Luigi Gangitano <luigi@debian.org>  Mon, 17 Dec 2007 11:36:57 +0100
 

@@ -1,2 +1,2 @@
-version=2
-http://www.squid-cache.org/Versions/v3/3.0/squid-(.?\..?\.RC.{1,2})\.tar\.gz 3.0.RC1 uupdate
+version=3
+http://www.squid-cache.org/Versions/v3/3.0/squid-(.?\..?\.STABLE.{1,2})\.tar\.gz

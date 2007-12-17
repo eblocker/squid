@@ -1,3 +1,11 @@
+squid3 (3.0.STABLE1-1) UNRELEASED; urgency=low
+
+  * (NOT RELEASED YET)
+  
+  * New upstream release
+
+ -- Luigi Gangitano <luigi@debian.org>  Mon, 17 Dec 2007 11:36:57 +0100
+
 squid3 (3.0.RC1-3) unstable; urgency=high
 
   * Urgency high due to security fixes

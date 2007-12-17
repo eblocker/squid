@@ -17,7 +17,7 @@
 #
 #  Makefile for the Squid LDAP authentication helper
 #
-#  $Id: Makefile.in,v 1.11 2007/09/21 00:10:56 hno Exp $
+#  $Id: Makefile.in,v 1.20 2007/12/05 01:10:59 hno Exp $
 #
 #  Uncomment and customize the following to suit your needs:
 #
@@ -58,12 +58,12 @@ CONFIG_CLEAN_FILES =
 am__installdirs = "$(DESTDIR)$(libexecdir)" "$(DESTDIR)$(man8dir)"
 libexecPROGRAMS_INSTALL = $(INSTALL_PROGRAM)
 PROGRAMS = $(libexec_PROGRAMS)
-am_squid_radius_auth_OBJECTS = squid_rad_auth.$(OBJEXT) md5.$(OBJEXT) \
-	util.$(OBJEXT)
+am_squid_radius_auth_OBJECTS = squid_rad_auth.$(OBJEXT) util.$(OBJEXT)
 squid_radius_auth_OBJECTS = $(am_squid_radius_auth_OBJECTS)
 squid_radius_auth_LDADD = $(LDADD)
 am__DEPENDENCIES_1 =
-squid_radius_auth_DEPENDENCIES = $(am__DEPENDENCIES_1)
+squid_radius_auth_DEPENDENCIES = $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1)
 DEFAULT_INCLUDES = -I. -I$(srcdir) -I$(top_builddir)/include
 depcomp = $(SHELL) $(top_srcdir)/cfgaux/depcomp
 am__depfiles_maybe = depfiles
@@ -150,6 +150,7 @@ EXTERNAL_ACL_HELPERS = @EXTERNAL_ACL_HELPERS@
 F77 = @F77@
 FALSE = @FALSE@
 FFLAGS = @FFLAGS@
+GREP = @GREP@
 ICAP_LIBS = @ICAP_LIBS@
 INSTALL_DATA = @INSTALL_DATA@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
@@ -177,10 +178,6 @@ MAKE_LEAKFINDER_TRUE = @MAKE_LEAKFINDER_TRUE@
 MINGW_LIBS = @MINGW_LIBS@
 MKDIR = @MKDIR@
 MV = @MV@
-NEED_OWN_MD5_FALSE = @NEED_OWN_MD5_FALSE@
-NEED_OWN_MD5_TRUE = @NEED_OWN_MD5_TRUE@
-NEED_OWN_SNPRINTF_FALSE = @NEED_OWN_SNPRINTF_FALSE@
-NEED_OWN_SNPRINTF_TRUE = @NEED_OWN_SNPRINTF_TRUE@
 NEED_OWN_STRSEP_FALSE = @NEED_OWN_STRSEP_FALSE@
 NEED_OWN_STRSEP_TRUE = @NEED_OWN_STRSEP_TRUE@
 NEED_OWN_STRTOLL_FALSE = @NEED_OWN_STRTOLL_FALSE@
@@ -203,6 +200,7 @@ REPL_LIBS = @REPL_LIBS@
 REPL_OBJS = @REPL_OBJS@
 REPL_POLICIES = @REPL_POLICIES@
 RM = @RM@
+SED = @SED@
 SET_MAKE = @SET_MAKE@
 SH = @SH@
 SHELL = @SHELL@
@@ -253,12 +251,9 @@ VERSION = @VERSION@
 WIN32_PSAPI = @WIN32_PSAPI@
 XTRA_LIBS = @XTRA_LIBS@
 XTRA_OBJS = @XTRA_OBJS@
-ac_ct_AR = @ac_ct_AR@
 ac_ct_CC = @ac_ct_CC@
 ac_ct_CXX = @ac_ct_CXX@
 ac_ct_F77 = @ac_ct_F77@
-ac_ct_RANLIB = @ac_ct_RANLIB@
-ac_ct_STRIP = @ac_ct_STRIP@
 am__fastdepCC_FALSE = @am__fastdepCC_FALSE@
 am__fastdepCC_TRUE = @am__fastdepCC_TRUE@
 am__fastdepCXX_FALSE = @am__fastdepCXX_FALSE@
@@ -275,24 +270,31 @@ build_cpu = @build_cpu@
 build_os = @build_os@
 build_vendor = @build_vendor@
 datadir = @datadir@
+datarootdir = @datarootdir@
+docdir = @docdir@
+dvidir = @dvidir@
 exec_prefix = @exec_prefix@
 host = @host@
 host_alias = @host_alias@
 host_cpu = @host_cpu@
 host_os = @host_os@
 host_vendor = @host_vendor@
+htmldir = @htmldir@
 includedir = @includedir@
 infodir = @infodir@
 install_sh = @install_sh@
 libdir = @libdir@
 libexecdir = @libexecdir@
+localedir = @localedir@
 localstatedir = @localstatedir@
 makesnmplib = @makesnmplib@
 mandir = @mandir@
 mkdir_p = @mkdir_p@
 oldincludedir = @oldincludedir@
+pdfdir = @pdfdir@
 prefix = @prefix@
 program_transform_name = @program_transform_name@
+psdir = @psdir@
 sbindir = @sbindir@
 sharedstatedir = @sharedstatedir@
 subdirs = @subdirs@
@@ -302,11 +304,11 @@ man_MANS = squid_radius_auth.8
 EXTRA_DIST = squid_radius_auth.8
 squid_radius_auth_SOURCES = \
 			squid_rad_auth.c \
-			md5.c md5.h \
 			radius.h \
 			util.c util.h
 
-LDADD = $(XTRA_LIBS)
+LDADD = -L$(top_builddir)/lib -lmiscutil $(SSLLIB) $(XTRA_LIBS)
+INCLUDES = -I$(top_srcdir)/include
 all: all-am
 
 .SUFFIXES:
@@ -378,7 +380,6 @@ mostlyclean-compile:
 distclean-compile:
 	-rm -f *.tab.c
 
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/md5.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/squid_rad_auth.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/util.Po@am__quote@
 

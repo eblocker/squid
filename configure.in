@@ -1,17 +1,17 @@
 
 dnl  Configuration input file for Squid
 dnl
-dnl  $Id: configure.in,v 1.482 2007/10/01 05:04:21 wessels Exp $
+dnl  $Id: configure.in,v 1.488.2.1 2007/12/13 22:01:30 wessels Exp $
 dnl
 dnl
 dnl
-AC_INIT(Squid Web Proxy, 3.0.RC1, http://www.squid-cache.org/bugs/, squid)
+AC_INIT(Squid Web Proxy, 3.0.STABLE1, http://www.squid-cache.org/bugs/, squid)
 AC_PREREQ(2.52)
 AM_CONFIG_HEADER(include/autoconf.h)
 AC_CONFIG_AUX_DIR(cfgaux)
 AC_CONFIG_SRCDIR([src/main.cc])
 AM_INIT_AUTOMAKE([tar-ustar])
-AC_REVISION($Revision: 1.482 $)dnl
+AC_REVISION($Revision: 1.488.2.1 $)dnl
 AC_PREFIX_DEFAULT(/usr/local/squid)
 AM_MAINTAINER_MODE
 
@@ -695,11 +695,11 @@ AC_ARG_ENABLE(esi,
               AC_HELP_STRING([--enable-esi],[Enable ESI for accelerators. Requires libexpat. Enabling ESI will cause squid to follow the Edge Acceleration Specification (www.esi.org). This causes squid to IGNORE client Cache-Control headers. DO NOT use this in a squid configured as a web proxy, ONLY use it in a squid configured for webserver acceleration.]),
 	      use_esi=$enableval, use_esi=no)
 if test "$use_esi" = "yes" ; then
-  AC_DEFINE(ESI,1,[Compile the ESI processor and Surrogate header support])
+  AC_DEFINE(USE_SQUID_ESI,1,[Compile the ESI processor and Surrogate header support])
   AM_CONDITIONAL(USE_ESI, true)
   XTRA_LIBS="$XTRA_LIBS -lexpat -lxml2"
 else
-  AC_DEFINE(ESI,0,[Compile the ESI processor and Surrogate header support])
+  AC_DEFINE(USE_SQUID_ESI,0,[Compile the ESI processor and Surrogate header support])
 fi
 
 AM_CONDITIONAL(USE_ICAP_CLIENT, false)
@@ -862,8 +862,10 @@ if test x$USE_HTCP = xtrue; then
 fi
 AM_CONDITIONAL(ENABLE_HTCP, [test x$USE_HTCP = xtrue])
 
+dnl SSL is not enabled by default.
 AM_CONDITIONAL(ENABLE_SSL, false)
 
+dnl Default is to use OpenSSL when available
 AC_ARG_ENABLE(ssl,
 [  --enable-ssl            Enable ssl gatewaying support using OpenSSL],
 [ if test "$enableval" != "no"; then
@@ -883,8 +885,7 @@ AC_ARG_ENABLE(ssl,
   fi
 ])
 
-AM_CONDITIONAL(NEED_OWN_MD5, true)
-
+dnl User may specify OpenSSL is needed from a non-standard location
 AC_ARG_WITH(openssl,
 [  --with-openssl[=prefix]
                           Compile with the OpenSSL libraries. The path to
@@ -905,11 +906,9 @@ AC_ARG_WITH(openssl,
     USE_OPENSSL=1
   esac
 ])
-
 if test -n "$USE_OPENSSL"; then
   echo "Using OpenSSL MD5 implementation"
   AC_DEFINE(USE_OPENSSL,1,[Define this to make use of the OpenSSL libraries for MD5 calculation rather than Squid's own MD5 implementation or if building with SSL encryption (USE_SSL)])
-  AM_CONDITIONAL(NEED_OWN_MD5, false)
   if test -z "$SSLLIB"; then
     SSLLIB="-lcrypto" # for MD5 routines
   fi
@@ -924,6 +923,7 @@ if test -n "$SSLLIBDIR"; then
   SSLLIB="-L$SSLLIBDIR $SSLLIB"
 fi
 AC_SUBST(SSLLIB)
+
 
 AC_ARG_ENABLE(forw-via-db,
 [  --enable-forw-via-db    Enable Forw/Via database],
@@ -1861,11 +1861,12 @@ AC_CHECK_HEADERS( \
 	math.h \
 	memory.h \
 	mount.h \
+	net/if.h \
 	net/pfvar.h \
 	netdb.h \
 	netinet/in.h \
-	netinet/tcp.h \
 	netinet/ip_fil_compat.h \
+	netinet/tcp.h \
 	openssl/err.h \
 	openssl/md5.h \
 	openssl/ssl.h \
@@ -1890,6 +1891,7 @@ AC_CHECK_HEADERS( \
 	sys/ioctl.h \
 	sys/param.h \
 	sys/prctl.h \
+	sys/md5.h \
 	sys/msg.h \
 	sys/resource.h \
 	sys/select.h\
@@ -2273,6 +2275,10 @@ dnl Check for libcrypt
 dnl Some of our helpers use crypt(3) which may be in libc, or in
 dnl libcrypt (eg FreeBSD)
 AC_CHECK_LIB(crypt, crypt, [CRYPTLIB="-lcrypt"])
+
+dnl Solaris10 provides MD5 natively through libmd5
+AC_CHECK_LIB(md5, MD5Init, [CRYPTLIB="$CRYPTLIB -lmd5"])
+
 AC_SUBST(CRYPTLIB)
 
 dnl Check for libdl, used by auth_modules/PAM
@@ -2389,17 +2395,6 @@ dnl Please change your configure script.  AIX doesn't need -lbsd.
 	*-ibm-aix*)
 		echo "Removing -lbsd for AIX..."
 		LIBS=`echo $LIBS | sed -e s/-lbsd//`
-		case "$host" in
-dnl From: mlaster@metavillage.com (Mike Laster)
-dnl AIX 4.1.4.x does not have header files for snprintf/vsnprintf
-dnl So using the internal versions generates a load of warnings
-dnl during compile.
-			*-ibm-aix4*)
-				echo "disabling snprintf/vsnprintf for $host"
-				ac_cv_func_snprintf=no
-				ac_cv_func_vsnprintf=no
-			;;
-		esac
 		;;
 	*m88k*)
 		SQUID_CFLAGS="$SQUID_CFLAGS -D_SQUID_MOTOROLA_"
@@ -2667,11 +2662,6 @@ AC_CACHE_CHECK(if setresuid is implemented, ac_cv_func_setresuid,
 )
 if test "$ac_cv_func_setresuid" = "yes" ; then
   AC_DEFINE(HAVE_SETRESUID,1,[Yay! Another Linux brokenness.  Its not good enough to know that setresuid() exists, because RedHat 5.0 declare setresuid() but doesn't implement it.])
-fi
-
-AM_CONDITIONAL(NEED_OWN_SNPRINTF, false)
-if test "$ac_cv_func_snprintf" = "no" || test "$ac_cv_func_vsnprintf" = "no" ; then
-  AM_CONDITIONAL(NEED_OWN_SNPRINTF, true)
 fi
 
 AM_CONDITIONAL(NEED_OWN_STRSEP, false)

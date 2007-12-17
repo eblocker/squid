@@ -1,6 +1,6 @@
 
 /*
- * $Id: HttpHeader.cc,v 1.136 2007/09/28 00:22:37 hno Exp $
+ * $Id: HttpHeader.cc,v 1.138 2007/11/26 13:09:55 hno Exp $
  *
  * DEBUG: section 55    HTTP Header
  * AUTHOR: Alex Rousskov
@@ -453,12 +453,20 @@ HttpHeader::update (HttpHeader const *fresh, HttpHeaderMask const *denied_mask)
         if (denied_mask && CBIT_TEST(*denied_mask, e->id))
             continue;
 
-        debugs(55, 7, "Updating header '" << HeadersAttrs[e->id].name << "' in cached entry");
-
         if (e->id != HDR_OTHER)
             delById(e->id);
         else
             delByName(e->name.buf());
+    }
+
+    pos = HttpHeaderInitPos;
+    while ((e = fresh->getEntry(&pos))) {
+        /* deny bad guys (ok to check for HDR_OTHER) here */
+
+        if (denied_mask && CBIT_TEST(*denied_mask, e->id))
+            continue;
+
+        debugs(55, 7, "Updating header '" << HeadersAttrs[e->id].name << "' in cached entry");
 
         addEntry(e->clone());
     }
@@ -776,6 +784,15 @@ HttpHeader::delAt(HttpHeaderPos pos, int &headers_deleted)
     assert(len >= 0);
     delete e;
     ++headers_deleted;
+}
+
+/*
+ * Compacts the header storage
+ */
+void
+HttpHeader::compact()
+{
+    entries.prune(NULL);
 }
 
 /*

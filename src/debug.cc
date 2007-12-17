@@ -1,6 +1,5 @@
-
 /*
- * $Id: debug.cc,v 1.103 2007/08/01 23:04:23 amosjeffries Exp $
+ * $Id: debug.cc,v 1.106 2007/12/04 15:20:22 rousskov Exp $
  *
  * DEBUG: section 0     Debug Routines
  * AUTHOR: Harvest Derived
@@ -440,6 +439,11 @@ Debug::parseOptions(char const *options) {
     char *p = NULL;
     char *s = NULL;
 
+    if(Config.onoff.debug_override_X) {
+        debugs(0, 9, "command-line -X overrides: " << options);
+        return;
+    }
+
     for (i = 0; i < MAX_DEBUG_SECTIONS; i++)
         Debug::Levels[i] = -1;
 
@@ -735,6 +739,9 @@ std::ostream &
 Debug::getDebugOut() {
     assert (CurrentDebug == NULL);
     CurrentDebug = new std::ostringstream();
+    // set default formatting flags
+    CurrentDebug->setf(std::ios::fixed);
+    CurrentDebug->precision(2);
     return *CurrentDebug;
 }
 

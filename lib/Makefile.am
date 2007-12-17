@@ -1,6 +1,6 @@
 ## Process this file with automake to produce Makefile.in
 #
-#  $Id: Makefile.am,v 1.28 2007/08/27 13:14:20 hno Exp $
+#  $Id: Makefile.am,v 1.30 2007/12/04 13:22:54 hno Exp $
 #
 
 DIST_SUBDIRS = libTrie
@@ -18,11 +18,6 @@ else
 XPROF_STATS_SOURCE = 
 endif
 
-if NEED_OWN_SNPRINTF
-SNPRINTFSOURCE=snprintf.c
-else
-SNPRINTFSOURCE=
-endif
 if NEED_OWN_STRSEP
 STRSEPSOURCE=strsep.c
 else
@@ -32,11 +27,6 @@ if NEED_OWN_STRTOLL
 STRTOLLSOURCE=strtoll.c
 else
 STRTOLLSOURCE=
-endif
-if NEED_OWN_MD5
-MD5SOURCE=md5.c
-else
-MD5SOURCE=
 endif
 
 if ENABLE_WIN32SPECIFIC
@@ -58,7 +48,6 @@ noinst_LIBRARIES = \
 EXTRA_libmiscutil_a_SOURCES = \
 	md5.c \
 	Profiler.c \
-	snprintf.c \
 	strsep.c \
 	strtoll.c \
 	win32lib.c
@@ -70,7 +59,7 @@ libmiscutil_a_SOURCES = \
 	heap.c \
 	html_quote.c \
 	iso3307.c \
-	$(MD5SOURCE) \
+	md5.c \
 	radix.c \
 	rfc1035.c \
 	rfc1123.c \

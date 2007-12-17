@@ -2,6 +2,7 @@ Source: squid3
 Section: web
 Priority: optional
 Maintainer: Luigi Gangitano <luigi@debian.org>
+Homepage: http://www.squid-cache.org
 Standards-Version: 3.7.3
 Build-Depends: libldap2-dev, libpam0g-dev, libdb-dev, sharutils, dpatch (>= 2.0.9), cdbs, libsasl2-dev, debhelper (>=5), libcppunit-dev
 
@@ -17,8 +18,6 @@ Description: A full featured Web Proxy cache (HTTP proxy)
  .
  Squid version 3 is the development code base at the moment. Code is still
  unstable and should be used with caution.
- .
- Squid home page is http://www.squid-cache.org/
 
 Package: squid3-common
 Architecture: all

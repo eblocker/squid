@@ -16,6 +16,9 @@ squid3 (3.0.STABLE1-1) UNRELEASED; urgency=low
     - Adapted to new upstream version (remove default accesso to
       RFC1918 addresses)
 
+  * debian/squid3.{preinst,postinst,prerm,postrm}
+    - Added debhelper token
+
  -- Luigi Gangitano <luigi@debian.org>  Mon, 17 Dec 2007 11:36:57 +0100
 
 squid3 (3.0.RC1-3) unstable; urgency=high

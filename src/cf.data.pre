@@ -1,6 +1,6 @@
 
 #
-# $Id: cf.data.pre,v 1.477 2007/09/30 11:21:39 amosjeffries Exp $
+# $Id: cf.data.pre,v 1.488 2007/11/15 23:33:05 wessels Exp $
 #
 # SQUID Web Proxy Cache		http://www.squid-cache.org/
 # ----------------------------------------------------------
@@ -435,7 +435,7 @@ DOC_END
 NAME: acl
 TYPE: acl
 LOC: Config.aclList
-DEFAULT: none
+DEFAULT: all src all
 DOC_START
 	Defining an Access List
 
@@ -600,10 +600,17 @@ acl javascript rep_mime_type -i ^application/x-javascript$
 
 NOCOMMENT_START
 #Recommended minimum configuration:
-acl all src 0.0.0.0/0.0.0.0
 acl manager proto cache_object
-acl localhost src 127.0.0.1/255.255.255.255
+acl localhost src 127.0.0.1/32
 acl to_localhost dst 127.0.0.0/8
+#
+# Example rule allowing access from your local networks.
+# Adapt to list your (internal) IP networks from where browsing
+# should be allowed
+acl localnet src 10.0.0.0/8	# RFC1918 possible internal network
+acl localnet src 172.16.0.0/12	# RFC1918 possible internal network
+acl localnet src 192.168.0.0/16	# RFC1918 possible internal network
+#
 acl SSL_ports port 443
 acl Safe_ports port 80		# http
 acl Safe_ports port 21		# ftp
@@ -660,11 +667,10 @@ http_access deny CONNECT !SSL_ports
 #
 # INSERT YOUR OWN RULE(S) HERE TO ALLOW ACCESS FROM YOUR CLIENTS
 
-# Example rule allowing access from your local networks. Adapt
-# to list your (internal) IP networks from where browsing should
-# be allowed
-#acl our_networks src 192.168.1.0/24 192.168.2.0/24
-#http_access allow our_networks
+# Example rule allowing access from your local networks.
+# Adapt localnet in the ACL section to list your (internal) IP networks
+# from where browsing should be allowed
+http_access allow localnet
 
 # And finally deny all other access to this proxy
 http_access deny all
@@ -702,8 +708,9 @@ DOC_START
 	See http_access for details
 
 NOCOMMENT_START
-#Allow ICP queries from everyone
-icp_access allow all
+#Allow ICP queries from local networks only
+icp_access allow localnet
+icp_access deny all
 NOCOMMENT_END
 DOC_END
 
@@ -721,8 +728,15 @@ DOC_START
 
 	See http_access for details
 
-#Allow HTCP queries from everyone
-htcp_access allow all
+	NOTE: The default if no htcp_access lines are present is to
+	deny all traffic. This default may cause problems with peers
+	using the htcp or htcp-oldsquid options.
+
+NOCOMMENT_START
+#Allow HTCP queries from local networks only
+htcp_access allow localnet
+htcp_access deny all
+NOCOMMENT_END
 DOC_END
 
 NAME: htcp_clr_access
@@ -1331,7 +1345,7 @@ DOC_START
 		     use 'carp' to define a set of parents which should
 		     be used as a CARP array. The requests will be
 		     distributed among the parents based on the CARP load
-		     balancing hash function based on their weigth.
+		     balancing hash function based on their weight.
 
 		     'multicast-responder' indicates the named peer
 		     is a member of a multicast group.  ICP queries will
@@ -1400,8 +1414,12 @@ DOC_START
 		     use 'htcp' to send HTCP, instead of ICP, queries
 		     to the neighbor.  You probably also want to
 		     set the "icp port" to 4827 instead of 3130.
+		     You MUST also set htcp_access expicitly. The default of
+		     deny all will prevent peer traffic.
 
 		     use 'htcp-oldsquid' to send HTCP to old Squid versions
+		     You MUST also set htcp_access expicitly. The default of
+		     deny all will prevent peer traffic.		     
 
 		     'originserver' causes this parent peer to be contacted as
 		     a origin server. Meant to be used in accelerator setups.
@@ -2346,7 +2364,12 @@ DOC_START
 
 	For each requested URL rewriter will receive on line with the format
 
-	URL <SP> client_ip "/" fqdn <SP> user <SP> method <NL>
+	URL <SP> client_ip "/" fqdn <SP> user <SP> method [<SP> kvpairs]<NL>
+
+	In the future, the rewriter interface will be extended with
+	key=value pairs ("kvpairs" shown above).  Rewriter programs
+	should be prepared to receive and possibly ignore additional
+	whitespace-separated tokens on each input line.
 
 	And the rewriter may return a rewritten URL. The other components of
 	the request line does not need to be returned (ignored if they are).
@@ -3352,7 +3375,7 @@ COMMENT_START
 COMMENT_END
 
 NAME: httpd_accel_surrogate_id
-IFDEF: ESI
+IFDEF: USE_SQUID_ESI
 TYPE:  string
 LOC: Config.Accel.surrogate_id
 DEFAULT: unset-id
@@ -3364,7 +3387,7 @@ DOC_START
 DOC_END
 
 NAME: http_accel_surrogate_remote
-IFDEF: ESI
+IFDEF: USE_SQUID_ESI
 COMMENT: on|off
 TYPE: onoff
 DEFAULT: off
@@ -3375,7 +3398,7 @@ DOC_START
 DOC_END
 
 NAME: esi_parser
-IFDEF: ESI
+IFDEF: USE_SQUID_ESI
 COMMENT: libxml2|expat|custom
 TYPE: string
 LOC: ESIParser::Type
@@ -3829,7 +3852,7 @@ DEFAULT: on
 DOC_START
 	This controls whether the server will generate a Cache Digest
 	of its contents.  By default, Cache Digest generation is
-	enabled if Squid is compiled with USE_CACHE_DIGESTS defined.
+	enabled if Squid is compiled with --enable-cache-digests defined.
 DOC_END
 
 NAME: digest_bits_per_entry
@@ -3850,7 +3873,7 @@ TYPE: time_t
 LOC: Config.digest.rebuild_period
 DEFAULT: 1 hour
 DOC_START
-	This is the number of seconds between Cache Digest rebuilds.
+	This is the wait time between Cache Digest rebuilds.
 DOC_END
 
 NAME: digest_rewrite_period
@@ -3860,7 +3883,7 @@ TYPE: time_t
 LOC: Config.digest.rewrite_period
 DEFAULT: 1 hour
 DOC_START
-	This is the number of seconds between Cache Digest writes to
+	This is the wait time between Cache Digest writes to
 	disk.
 DOC_END
 
@@ -4004,31 +4027,46 @@ NAME: udp_incoming_address
 TYPE: address
 LOC:Config.Addrs.udp_incoming
 DEFAULT: 0.0.0.0
-DOC_NONE
+DOC_START
+	udp_incoming_address	is used for UDP packets received from other
+				caches.
+
+	The default behavior is to not bind to any specific address.
+
+	Only change this if you want to have all UDP queries received on
+	a specific interface/address.
+
+	NOTE: udp_incoming_address is used by the ICP, HTCP, and DNS
+	modules. Altering it will affect all of them in the same manner.
+
+	see also; udp_outgoing_address
+
+	NOTE, udp_incoming_address and udp_outgoing_address can not
+	have the same value since they both use the same port.
+DOC_END
 
 NAME: udp_outgoing_address
 TYPE: address
 LOC: Config.Addrs.udp_outgoing
 DEFAULT: 255.255.255.255
 DOC_START
-	udp_incoming_address	is used for the ICP socket receiving packets
-				from other caches.
-	udp_outgoing_address	is used for ICP packets sent out to other
+	udp_outgoing_address	is used for UDP packets sent out to other
 				caches.
 
 	The default behavior is to not bind to any specific address.
 
-	A udp_incoming_address value of 0.0.0.0 indicates Squid
-	should listen for UDP messages on all available interfaces.
-
-	If udp_outgoing_address is set to 255.255.255.255 (the default)
-	it will use the same socket as udp_incoming_address. Only
-	change this if you want to have ICP queries sent using another
-	address than where this Squid listens for ICP queries from other
+	Instead it will use the same socket as udp_incoming_address.
+	Only change this if you want to have UDP queries sent using another
+	address than where this Squid listens for UDP queries from other
 	caches.
 
+	NOTE: udp_outgoing_address is used by the ICP, HTCP, and DNS
+	modules. Altering it will affect all of them in the same manner.
+
+	see also; udp_incoming_address
+
 	NOTE, udp_incoming_address and udp_outgoing_address can not
-	have the same value since they both use port 3130.
+	have the same value since they both use the same port.
 DOC_END
 
 NAME: icp_hit_stale

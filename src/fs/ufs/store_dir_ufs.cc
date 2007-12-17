@@ -1,6 +1,6 @@
 
 /*
- * $Id: store_dir_ufs.cc,v 1.85 2007/08/13 17:20:57 hno Exp $
+ * $Id: store_dir_ufs.cc,v 1.87 2007/12/02 07:19:58 amosjeffries Exp $
  *
  * DEBUG: section 47    Store Directory Routines
  * AUTHOR: Duane Wessels
@@ -498,7 +498,7 @@ UFSSwapDir::createDirectory(const char *path, int should_exist)
 
     if (0 == ::stat(path, &st)) {
         if (S_ISDIR(st.st_mode)) {
-            debugs(47, should_exist ? 3 : 1, path << " exists");
+            debugs(47, (should_exist ? 3 : 1), path << " exists");
         } else {
             fatalf("Swap directory %s is not a directory.", path);
         }
@@ -510,7 +510,7 @@ UFSSwapDir::createDirectory(const char *path, int should_exist)
 
     } else if (0 == mkdir(path, 0755)) {
 #endif
-        debugs(47, should_exist ? 1 : 3, path << " created");
+        debugs(47, (should_exist ? 1 : 3), path << " created");
         created = 1;
     } else {
         fatalf("Failed to make swap directory %s: %s",
@@ -934,7 +934,7 @@ UFSCleanLog::write(StoreEntry const &e)
     s.swap_file_sz = e.swap_file_sz;
     s.refcount = e.refcount;
     s.flags = e.flags;
-    xmemcpy(&s.key, e.key, MD5_DIGEST_CHARS);
+    xmemcpy(&s.key, e.key, SQUID_MD5_DIGEST_LENGTH);
     xmemcpy(outbuf + outbuf_offset, &s, ss);
     outbuf_offset += ss;
     /* buffered write */
@@ -1043,7 +1043,7 @@ UFSSwapDir::logEntry(const StoreEntry & e, int op) const
     s->swap_file_sz = e.swap_file_sz;
     s->refcount = e.refcount;
     s->flags = e.flags;
-    xmemcpy(s->key, e.key, MD5_DIGEST_CHARS);
+    xmemcpy(s->key, e.key, SQUID_MD5_DIGEST_LENGTH);
     file_write(swaplog_fd,
                -1,
                s,

@@ -1,6 +1,6 @@
 
 /*
- * $Id: client_side.cc,v 1.767 2007/09/28 00:22:38 hno Exp $
+ * $Id: client_side.cc,v 1.770 2007/12/04 03:35:52 hno Exp $
  *
  * DEBUG: section 33    Client-side Routines
  * AUTHOR: Duane Wessels
@@ -925,7 +925,7 @@ ClientSocketContext::packRange(StoreIOBuffer const &source, MemBuf * mb)
         /*
          * paranoid check
          */
-        assert(available.size() >= 0 && i->debt() >= 0 || i->debt() == -1);
+        assert((available.size() >= 0 && i->debt() >= 0) || i->debt() == -1);
 
         if (!canPackMoreRanges()) {
             debugs(33, 3, "clientPackRange: Returning because !canPackMoreRanges.");
@@ -1204,6 +1204,7 @@ ClientSocketContext::sendStartOfMessage(HttpReply * rep, StoreIOBuffer bodyData)
     }
 
     /* write */
+    debugs(33,7, HERE << "sendStartOfMessage schedules clientWriteComplete");
     comm_write_mbuf(fd(), mb, clientWriteComplete, this);
 
     delete mb;
@@ -1290,6 +1291,7 @@ clientSocketDetach(clientStreamNode * node, ClientHttpRequest * http)
 static void
 clientWriteBodyComplete(int fd, char *buf, size_t size, comm_err_t errflag, int xerrno, void *data)
 {
+    debugs(33,7, HERE << "clientWriteBodyComplete schedules clientWriteComplete");
     clientWriteComplete(fd, NULL, size, errflag, xerrno, data);
 }
 
@@ -1497,15 +1499,30 @@ ClientSocketContext::socketState()
                     return STREAM_UNPLANNED_COMPLETE;
             }
         } else if (reply && reply->content_range) {
-            /* reply has content-range, but request did not */
+            /* reply has content-range, but Squid is not managing ranges */
+            const int64_t &bytesSent = http->out.offset;
+            const int64_t &bytesExpected = reply->content_range->spec.length;
 
-            if (http->memObject()->endOffset() <=
-                    reply->content_range->spec.offset + reply->content_range->spec.length) {
+            debugs(33, 7, HERE << "body bytes sent vs. expected: " <<
+                bytesSent << " ? " << bytesExpected << " (+" <<
+                reply->content_range->spec.offset << ")");
+
+            // did we get at least what we expected, based on range specs?
+
+            if (bytesSent == bytesExpected) // got everything
+                return STREAM_COMPLETE;
+
+            // The logic below is not clear: If we got more than we
+            // expected why would persistency matter? Should not this
+            // always be an error?
+            if (bytesSent > bytesExpected) { // got extra
                 if (http->request->flags.proxy_keepalive)
                     return STREAM_COMPLETE;
                 else
                     return STREAM_UNPLANNED_COMPLETE;
             }
+
+            // did not get enough yet, expecting more
         }
 
         return STREAM_NONE;
@@ -2234,9 +2251,12 @@ clientProcessRequest(ConnStateData::Pointer &conn, HttpParser *hp, ClientSocketC
     http->request = HTTPMSGLOCK(request);
     clientSetKeepaliveFlag(http);
 
-    /* Do we expect a request-body? */
+    /* If this is a CONNECT, don't schedule a read - ssl.c will handle it */
+    if (http->request->method == METHOD_CONNECT)
+        context->mayUseConnection(true);
 
-    if (request->content_length > 0) {
+    /* Do we expect a request-body? */
+    if (!context->mayUseConnection() && request->content_length > 0) {
         request->body_pipe = conn->expectRequestBody(request->content_length);
 
         // consume header early so that body pipe gets just the body
@@ -2265,10 +2285,6 @@ clientProcessRequest(ConnStateData::Pointer &conn, HttpParser *hp, ClientSocketC
 
         context->mayUseConnection(true);
     }
-
-    /* If this is a CONNECT, don't schedule a read - ssl.c will handle it */
-    if (http->request->method == METHOD_CONNECT)
-        context->mayUseConnection(true);
 
     http->calloutContext = new ClientRequestContext(http);
 

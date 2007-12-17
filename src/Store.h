@@ -1,6 +1,6 @@
 
 /*
- * $Id: Store.h,v 1.37 2007/09/28 00:22:37 hno Exp $
+ * $Id: Store.h,v 1.40 2007/11/18 17:19:35 serassio Exp $
  *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
@@ -45,7 +45,7 @@
 #include "Packer.h"
 #include "RemovalPolicy.h"
 
-#if ESI
+#if USE_SQUID_ESI
 #include "ESIElement.h"
 #endif
 
@@ -165,7 +165,7 @@ public:
     void *operator new(size_t byteCount);
     void operator delete(void *address);
     void setReleaseFlag();
-#if ESI
+#if USE_SQUID_ESI
 
     ESIElement::Pointer cachedESITree;
 #endif

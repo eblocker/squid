@@ -1,6 +1,6 @@
 
 /*
- * $Id: cache_cf.cc,v 1.521 2007/09/28 00:22:37 hno Exp $
+ * $Id: cache_cf.cc,v 1.528 2007/11/15 23:33:05 wessels Exp $
  *
  * DEBUG: section 3     Configuration File Parsing
  * AUTHOR: Harvest Derived
@@ -50,7 +50,7 @@
 #if SQUID_SNMP
 #include "snmp.h"
 #endif
-#if ESI
+#if USE_SQUID_ESI
 #include "ESIParser.h"
 #endif
 
@@ -125,6 +125,7 @@ static void free_http_header_replace(header_mangler * header);
 static void parse_denyinfo(acl_deny_info_list ** var);
 static void dump_denyinfo(StoreEntry * entry, const char *name, acl_deny_info_list * var);
 static void free_denyinfo(acl_deny_info_list ** var);
+
 #if USE_WCCPv2
 static void parse_sockaddr_in_list(sockaddr_in_list **);
 static void dump_sockaddr_in_list(StoreEntry *, const char *, const sockaddr_in_list *);
@@ -132,10 +133,12 @@ static void free_sockaddr_in_list(sockaddr_in_list **);
 #if CURRENTLY_UNUSED
 static int check_null_sockaddr_in_list(const sockaddr_in_list *);
 #endif /* CURRENTLY_UNUSED */
-#endif
+#endif /* USE_WCCPv2 */
+
 static void parse_http_port_list(http_port_list **);
 static void dump_http_port_list(StoreEntry *, const char *, const http_port_list *);
 static void free_http_port_list(http_port_list **);
+
 #if USE_SSL
 static void parse_https_port_list(https_port_list **);
 static void dump_https_port_list(StoreEntry *, const char *, const https_port_list *);
@@ -144,6 +147,7 @@ static void free_https_port_list(https_port_list **);
 static int check_null_https_port_list(const https_port_list *);
 #endif
 #endif /* USE_SSL */
+
 static void parse_b_size_t(size_t * var);
 static void parse_b_int64_t(int64_t * var);
 
@@ -560,7 +564,7 @@ configDoConfigure(void)
 
             struct passwd *pwd = getpwnam(Config.effectiveUser);
 
-            if (NULL == pwd)
+            if (NULL == pwd) {
                 /*
                  * Andres Kroonmaa <andre@online.ee>:
                  * Some getpwnam() implementations (Solaris?) require
@@ -572,6 +576,8 @@ configDoConfigure(void)
                  */
                 fatalf("getpwnam failed to find userid for effective user '%s'",
                        Config.effectiveUser);
+                return;
+            }
 
             Config2.effectiveUserID = pwd->pw_uid;
 
@@ -598,9 +604,11 @@ configDoConfigure(void)
 
         struct group *grp = getgrnam(Config.effectiveGroup);
 
-        if (NULL == grp)
+        if (NULL == grp) {
             fatalf("getgrnam failed to find groupid for effective group '%s'",
                    Config.effectiveGroup);
+            return;
+        }
 
         Config2.effectiveGroupID = grp->gr_gid;
     }
@@ -715,11 +723,15 @@ parseBytesLine64(int64_t * bptr, const char *units)
     int64_t m;
     int64_t u;
 
-    if ((u = parseBytesUnits(units)) == 0)
+    if ((u = parseBytesUnits(units)) == 0) {
         self_destruct();
+        return;
+    }
 
-    if ((token = strtok(NULL, w_space)) == NULL)
+    if ((token = strtok(NULL, w_space)) == NULL) {
         self_destruct();
+        return;
+    }
 
     if (strcmp(token, "none") == 0 || strcmp(token, "-1") == 0) {
         *bptr = -1;
@@ -736,8 +748,10 @@ parseBytesLine64(int64_t * bptr, const char *units)
         debugs(3, 0, "WARNING: No units on '" << 
                      config_input_line << "', assuming " <<
                      d << " " <<  units  );
-    else if ((m = parseBytesUnits(token)) == 0)
+    else if ((m = parseBytesUnits(token)) == 0) {
         self_destruct();
+        return;
+    }
 
     *bptr = static_cast<int64_t>(m * d / u);
 
@@ -754,11 +768,15 @@ parseBytesLine(size_t * bptr, const char *units)
     int m;
     int u;
 
-    if ((u = parseBytesUnits(units)) == 0)
+    if ((u = parseBytesUnits(units)) == 0) {
         self_destruct();
+        return;
+    }
 
-    if ((token = strtok(NULL, w_space)) == NULL)
+    if ((token = strtok(NULL, w_space)) == NULL) {
         self_destruct();
+        return;
+    }
 
     if (strcmp(token, "none") == 0 || strcmp(token, "-1") == 0) {
         *bptr = static_cast<size_t>(-1);
@@ -775,8 +793,10 @@ parseBytesLine(size_t * bptr, const char *units)
         debugs(3, 0, "WARNING: No units on '" << 
                      config_input_line << "', assuming " <<
                      d << " " <<  units  );
-    else if ((m = parseBytesUnits(token)) == 0)
+    else if ((m = parseBytesUnits(token)) == 0) {
         self_destruct();
+        return;
+    }
 
     *bptr = static_cast<size_t>(m * d / u);
 
@@ -899,8 +919,10 @@ parse_address(struct IN_ADDR *addr)
     const struct hostent *hp;
     char *token = strtok(NULL, w_space);
 
-    if (token == NULL)
+    if (!token) {
         self_destruct();
+        return;
+    }
 
     if (safe_inet_addr(token, addr) == 1)
         (void) 0;
@@ -1005,14 +1027,20 @@ parse_acl_tos(acl_tos ** head)
     char junk;
     char *token = strtok(NULL, w_space);
 
-    if (!token)
+    if (!token) {
         self_destruct();
+        return;
+    }
 
-    if (sscanf(token, "0x%x%c", &tos, &junk) != 1)
+    if (sscanf(token, "0x%x%c", &tos, &junk) != 1) {
         self_destruct();
+        return;
+    }
 
-    if (tos < 0 || tos > 255)
+    if (tos < 0 || tos > 255) {
         self_destruct();
+        return;
+    }
 
     CBDATA_INIT_TYPE_FREECB(acl_tos, freed_acl_tos);
 
@@ -1510,6 +1538,49 @@ dump_peer(StoreEntry * entry, const char *name, peer * p)
     }
 }
 
+/**
+ \param proto	'tcp' or 'udp' for protocol
+ \returns       Port the named service is supposed to be listening on.
+ */
+static u_short
+GetService(const char *proto)
+{
+    struct servent *port = NULL;
+    /** Parses a port number or service name from the squid.conf */
+    char *token = strtok(NULL, w_space);
+    if (token == NULL) {
+       self_destruct();
+       return 0; /* NEVER REACHED */
+    }
+    /** Returns either the service port number from /etc/services */
+    port = getservbyname(token, proto);
+    if (port != NULL) {
+        return ntohs((u_short)port->s_port);
+    }
+    /** Or a numeric translation of the config text. */
+    return xatos(token);
+}
+
+/**
+ \returns       Port the named TCP service is supposed to be listening on.
+ \copydoc GetService(const char *proto)
+ */
+inline u_short
+GetTcpService(void)
+{
+    return GetService("tcp");
+}
+
+/**
+ \returns       Port the named UDP service is supposed to be listening on.
+ \copydoc GetService(const char *proto)
+ */
+inline u_short
+GetUdpService(void)
+{
+    return GetService("udp");
+}
+
 static void
 parse_peer(peer ** head)
 {
@@ -1540,12 +1611,12 @@ parse_peer(peer ** head)
         p->options.no_netdb_exchange = 1;
     }
 
-    p->http_port = GetShort();
+    p->http_port = GetTcpService();
 
     if (!p->http_port)
         self_destruct();
 
-    p->icp.port = GetShort();
+    p->icp.port = GetUdpService();
 
     while ((token = strtok(NULL, w_space))) {
         if (!strcasecmp(token, "proxy-only")) {
@@ -2083,8 +2154,10 @@ parse_refreshpattern(refresh_t ** head)
     int errcode;
     int flags = REG_EXTENDED | REG_NOSUB;
 
-    if ((token = strtok(NULL, w_space)) == NULL)
+    if ((token = strtok(NULL, w_space)) == NULL) {
         self_destruct();
+        return;
+    }
 
     if (strcmp(token, "-i") == 0) {
         flags |= REG_ICASE;
@@ -2094,8 +2167,10 @@ parse_refreshpattern(refresh_t ** head)
         token = strtok(NULL, w_space);
     }
 
-    if (token == NULL)
+    if (token == NULL) {
         self_destruct();
+        return;
+    }
 
     pattern = xstrdup(token);
 
@@ -2270,14 +2345,18 @@ parse_eol(char *volatile *var)
     unsigned char *token = (unsigned char *) strtok(NULL, null_string);
     safe_free(*var);
 
-    if (token == NULL)
+    if (!token) {
         self_destruct();
+        return;
+    }
 
     while (*token && xisspace(*token))
         token++;
 
-    if (!*token)
+    if (!*token) {
         self_destruct();
+        return;
+    }
 
     *var = xstrdup((char *) token);
 }
@@ -2805,8 +2884,10 @@ parse_http_port_list(http_port_list ** head)
 {
     char *token = strtok(NULL, w_space);
 
-    if (!token)
+    if (!token) {
         self_destruct();
+        return;
+    }
 
     http_port_list *s = create_http_port(token);
 
@@ -3072,8 +3153,10 @@ parse_logformat(logformat ** logformat_definitions)
     if ((name = strtok(NULL, w_space)) == NULL)
         self_destruct();
 
-    if ((def = strtok(NULL, "\r\n")) == NULL)
+    if ((def = strtok(NULL, "\r\n")) == NULL) {
         self_destruct();
+        return;
+    }
 
     debugs(3, 2, "Logformat for '" << name << "' is '" << def << "'");
 
@@ -3081,8 +3164,10 @@ parse_logformat(logformat ** logformat_definitions)
 
     nlf->name = xstrdup(name);
 
-    if (!accessLogParseLogFormat(&nlf->format, def))
+    if (!accessLogParseLogFormat(&nlf->format, def)) {
         self_destruct();
+        return;
+    }
 
     nlf->next = *logformat_definitions;
 
@@ -3098,8 +3183,10 @@ parse_access_log(customlog ** logs)
 
     cl = (customlog *)xcalloc(1, sizeof(*cl));
 
-    if ((filename = strtok(NULL, w_space)) == NULL)
+    if ((filename = strtok(NULL, w_space)) == NULL) {
         self_destruct();
+        return;
+    }
 
     if (strcmp(filename, "none") == 0) {
         cl->type = CLF_NONE;
@@ -3137,6 +3224,7 @@ parse_access_log(customlog ** logs)
     } else {
         debugs(3, 0, "Log format '" << logdef_name << "' is not defined");
         self_destruct();
+        return;
     }
 
 done:

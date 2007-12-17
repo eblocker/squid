@@ -1,6 +1,6 @@
 
 /*
- * $Id: client_side_reply.cc,v 1.139 2007/09/07 17:54:52 rousskov Exp $
+ * $Id: client_side_reply.cc,v 1.144 2007/11/27 09:36:07 amosjeffries Exp $
  *
  * DEBUG: section 88    Client-side Reply Routines
  * AUTHOR: Robert Collins (Originally Duane Wessels in client_side.c)
@@ -44,7 +44,7 @@
 
 #include "clientStream.h"
 #include "AuthUserRequest.h"
-#if ESI
+#if USE_SQUID_ESI
 #include "ESI.h"
 #endif
 #include "MemObject.h"
@@ -636,9 +636,12 @@ clientReplyContext::cacheHit(StoreIOBuffer result)
          * plain ol' cache hit
          */
 
+#if DELAY_POOLS
         if (e->store_status != STORE_OK)
             http->logType = LOG_TCP_MISS;
-        else if (e->mem_status == IN_MEMORY)
+        else
+#endif
+	if (e->mem_status == IN_MEMORY)
             http->logType = LOG_TCP_MEM_HIT;
         else if (Config.onoff.offline)
             http->logType = LOG_TCP_OFFLINE_HIT;
@@ -1095,15 +1098,19 @@ clientReplyContext::replyStatus()
     int done;
     /* Here because lower nodes don't need it */
 
-    if (http->storeEntry() == NULL)
+    if (http->storeEntry() == NULL) {
+        debugs(88, 5, "clientReplyStatus: no storeEntry");
         return STREAM_FAILED;	/* yuck, but what can we do? */
+    }
 
-    if (EBIT_TEST(http->storeEntry()->flags, ENTRY_ABORTED))
+    if (EBIT_TEST(http->storeEntry()->flags, ENTRY_ABORTED)) {
         /* TODO: Could upstream read errors (result.flags.error) be
          * lost, and result in undersize requests being considered
          * complete. Should we tcp reset such connections ?
          */
+        debugs(88, 5, "clientReplyStatus: aborted storeEntry");
         return STREAM_FAILED;
+    }
 
     if ((done = checkTransferDone()) != 0 || flags.complete) {
         debugs(88, 5, "clientReplyStatus: transfer is DONE");
@@ -1836,7 +1843,7 @@ clientReplyContext::processReplyAccessResult(bool accessAllowed)
            (int) body_size << " bytes after " << reply->hdr_sz <<
            " bytes of headers");
 
-#if ESI
+#if USE_SQUID_ESI
 
     if (http->flags.accel && reply->sline.status != HTTP_FORBIDDEN &&
             !alwaysAllowResponse(reply->sline.status) &&

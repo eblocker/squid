@@ -1,6 +1,6 @@
 
 /*
- * $Id: structs.h,v 1.565 2007/09/28 00:22:38 hno Exp $
+ * $Id: structs.h,v 1.568 2007/12/02 08:23:56 amosjeffries Exp $
  *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
@@ -399,7 +399,7 @@ struct _SquidConfig
 
     struct
     {
-#if ESI
+#if USE_SQUID_ESI
         char *surrogate_id;
 #endif
 
@@ -538,7 +538,7 @@ struct _SquidConfig
         int ie_refresh;
         int vary_ignore_expire;
         int pipeline_prefetch;
-#if ESI
+#if USE_SQUID_ESI
 
         int surrogate_is_remote;
 #endif
@@ -553,6 +553,7 @@ struct _SquidConfig
         int emailErrData;
         int httpd_suppress_version_string;
         int global_internal_static;
+        int debug_override_X;
     }
 
     onoff;

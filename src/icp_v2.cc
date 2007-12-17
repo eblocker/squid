@@ -1,6 +1,6 @@
 
 /*
- * $Id: icp_v2.cc,v 1.99 2007/04/30 16:56:09 wessels Exp $
+ * $Id: icp_v2.cc,v 1.101 2007/11/15 16:47:35 wessels Exp $
  *
  * DEBUG: section 12    Internet Cache Protocol
  * AUTHOR: Duane Wessels
@@ -335,7 +335,7 @@ icpGetCommonOpcode()
 {
     /* if store is rebuilding, return a UDP_MISS_NOFETCH */
 
-    if (StoreController::store_dirs_rebuilding && opt_reload_hit_only ||
+    if ((StoreController::store_dirs_rebuilding && opt_reload_hit_only) ||
             hit_only_mode_until > squid_curtime) {
         return ICP_MISS_NOFETCH;
     }
@@ -832,7 +832,7 @@ icpCount(void *buf, int which, size_t len, int delay)
 
 #define N_QUERIED_KEYS 8192
 #define N_QUERIED_KEYS_MASK 8191
-static cache_key queried_keys[N_QUERIED_KEYS][MD5_DIGEST_CHARS];
+static cache_key queried_keys[N_QUERIED_KEYS][SQUID_MD5_DIGEST_LENGTH];
 
 int
 icpSetCacheKey(const cache_key * key)

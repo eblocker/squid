@@ -1,28 +1,6 @@
 #ifndef SQUID_MD5_H
 #define SQUID_MD5_H
 
-#if USE_OPENSSL
-
-/*
- * If Squid is compiled with OpenSSL then we use the MD5 routines
- * from there via some wrapper macros, and the rest of this file is ignored..
- */
-
-#if HAVE_OPENSSL_MD5_H
-#include <openssl/md5.h>
-#else
-#error Cannot find OpenSSL headers
-#endif
-
-/* Hack to adopt Squid to the OpenSSL syntax */
-#define MD5_DIGEST_CHARS MD5_DIGEST_LENGTH
-
-#define MD5Init MD5_Init
-#define MD5Update MD5_Update
-#define MD5Final MD5_Final
-
-#else /* USE_OPENSSL */
-
 /*
  * This is the header file for the MD5 message-digest algorithm.
  * The algorithm is due to Ron Rivest.  This code was
@@ -48,22 +26,25 @@
  * minor cleanup. - Henrik Nordstrom <henrik@henriknordstrom.net>.
  * Still in the public domain.
  *
+ * Prefixed all symbols with "Squid" so they don't collide with
+ * other libraries.  Duane Wessels <wessels@squid-cache.org>.
+ * Still in the public domain.
+ *
  */
 
 #include "squid_types.h"
 
-typedef struct MD5Context {
+typedef struct SquidMD5Context {
     uint32_t buf[4];
     uint32_t bytes[2];
     uint32_t in[16];
-} MD5_CTX;
+} SquidMD5_CTX;
 
-SQUIDCEXTERN void MD5Init(struct MD5Context *context);
-SQUIDCEXTERN void MD5Update(struct MD5Context *context, const void *buf, unsigned len);
-SQUIDCEXTERN void MD5Final(uint8_t digest[16], struct MD5Context *context);
-SQUIDCEXTERN void MD5Transform(uint32_t buf[4], uint32_t const in[16]);
+SQUIDCEXTERN void SquidMD5Init(struct SquidMD5Context *context);
+SQUIDCEXTERN void SquidMD5Update(struct SquidMD5Context *context, const void *buf, unsigned len);
+SQUIDCEXTERN void SquidMD5Final(uint8_t digest[16], struct SquidMD5Context *context);
+SQUIDCEXTERN void SquidMD5Transform(uint32_t buf[4], uint32_t const in[16]);
 
-#define MD5_DIGEST_CHARS         16
+#define SQUID_MD5_DIGEST_LENGTH         16
 
-#endif /* USE_OPENSSL */
 #endif /* SQUID_MD5_H */

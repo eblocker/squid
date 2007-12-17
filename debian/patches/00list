@@ -1,4 +1,2 @@
 01-cf.data.debian
 02-makefile-defaults
-08-resume-http.dpatch
-09-dos-cache-update

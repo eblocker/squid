@@ -1,6 +1,4 @@
-squid3 (3.0.STABLE1-2) UNRELEASED; urgency=low
-
-  * NOT RELEASED YET
+squid3 (3.0.STABLE1-2) unstable; urgency=low
 
   * debian/rules
     - Fixed --with-large-files option to ./configure (Closes: #459306)

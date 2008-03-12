@@ -67,7 +67,9 @@ install/squid3::
 	install -m 755 -g root debian/squid3.rc $(INSTALLDIR)/etc/init.d/squid3
 	install -m 755 -g root debian/squid3.resolvconf $(INSTALLDIR)/etc/resolvconf.d/update-libc.d/squid3
 	install -m 644 -g root debian/squid3.logrotate $(INSTALLDIR)/etc/logrotate.d/squid3
-	install -m 755 -g root -d debian/squid3/var/{log,spool,run}
+	install -m 755 -g root -d debian/squid3/var/log
+	install -m 755 -g root -d debian/squid3/var/spool
+	install -m 755 -g root -d debian/squid3/var/run
 	install -m 750 -o proxy -g proxy -d debian/squid3/var/log/squid3
 	install -m 750 -o proxy -g proxy -d debian/squid3/var/spool/squid3
 

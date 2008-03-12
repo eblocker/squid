@@ -2,8 +2,10 @@ squid3 (3.0.STABLE2-1) UNRELEASED; urgency=low
 
   * (NOT RELEASED YET)
   
-  * New upstream release
-    (Closes: #470641)
+  * New upstream release (Closes: #470641)
+
+  * debian/rules
+    - Fixed bashism (Closes: #468567)
 
  -- Luigi Gangitano <luigi@debian.org>  Wed, 12 Mar 2008 13:52:21 +0100
 

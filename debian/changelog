@@ -7,6 +7,9 @@ squid3 (3.0.STABLE2-1) UNRELEASED; urgency=low
   * debian/rules
     - Fixed bashism (Closes: #468567)
 
+  * debian/contole
+    - Fixed description, remove instability notice (Closes: #463347)
+
  -- Luigi Gangitano <luigi@debian.org>  Wed, 12 Mar 2008 13:52:21 +0100
 
 squid3 (3.0.STABLE1-2) unstable; urgency=low

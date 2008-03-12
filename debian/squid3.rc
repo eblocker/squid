@@ -28,6 +28,8 @@ PATH=/bin:/usr/bin:/sbin:/usr/sbin
 
 [ -x $DAEMON ] || exit 0
 
+ulimit -n 65535
+
 find_cache_dir () {
         w="     " # space tab
         res=`sed -ne '
@@ -52,6 +54,7 @@ start () {
 	fi
 
 	umask 027
+	ulimit -n 65535
 	cd $cache_dir
 	start-stop-daemon --quiet --start \
 		--pidfile $PIDFILE \

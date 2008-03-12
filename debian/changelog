@@ -7,8 +7,12 @@ squid3 (3.0.STABLE2-1) UNRELEASED; urgency=low
   * debian/rules
     - Fixed bashism (Closes: #468567)
 
-  * debian/contole
+  * debian/control
     - Fixed description, remove instability notice (Closes: #463347)
+
+  * debian/squid.rc
+    - Raise max open filedescriptor limit to match build time limit at
+      65535 (Closes: #470605, #470607)
 
  -- Luigi Gangitano <luigi@debian.org>  Wed, 12 Mar 2008 13:52:21 +0100
 

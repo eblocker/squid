@@ -1,6 +1,6 @@
 
 /*
- * $Id: ESI.cc,v 1.26 2007/08/27 12:50:42 hno Exp $
+ * $Id: ESI.cc,v 1.26.2.2 2008/02/25 23:08:50 amosjeffries Exp $
  *
  * DEBUG: section 86    ESI processing
  * AUTHOR: Robert Collins
@@ -35,6 +35,12 @@
  */
 
 #include "squid.h"
+
+/* MS Visual Studio Projects are monolithic, so we need the following
+ * #if to exclude the ESI code from compile process when not needed.
+ */
+#if (USE_SQUID_ESI == 1)
+
 #include "ESI.h"
 #include "clientStream.h"
 #include "client_side_request.h"
@@ -1560,7 +1566,7 @@ esiLiteral::esiLiteral(ESIContext *context, const char *s, int numberOfCharacter
     assert (s);
     buffer = new ESISegment;
     ESISegment::Pointer local = buffer;
-    off_t start = 0;
+    size_t start = 0;
     int remainingCharacters = numberOfCharacters;
 
     while (remainingCharacters > 0) {
@@ -2459,4 +2465,4 @@ esiEnableProcessing (HttpReply *rep)
     return rv;
 }
 
-
+#endif /* USE_SQUID_ESI == 1 */

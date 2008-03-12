@@ -1,6 +1,6 @@
 
 #
-# $Id: cf.data.pre,v 1.488 2007/11/15 23:33:05 wessels Exp $
+# $Id: cf.data.pre,v 1.488.2.5 2008/02/27 05:51:06 amosjeffries Exp $
 #
 # SQUID Web Proxy Cache		http://www.squid-cache.org/
 # ----------------------------------------------------------
@@ -45,6 +45,21 @@ COMMENT_START
 	option - the comments for that keyword indicate if this is the
 	case.
 
+COMMENT_END
+
+COMMENT_START
+  Configuration options can be included using the "include" directive.
+  Include takes a list of files to include. Quoting and wildcards is
+  supported.
+
+  For example,
+
+  include /path/to/included/file/squid.acl.config
+
+  Includes can be nested up to a hard-coded depth of 16 levels.
+  This arbitrary restriction is to prevent recursive include references
+  from causing Squid entering an infinite loop whilst trying to load
+  configuration files.
 COMMENT_END
 
 COMMENT_START
@@ -488,6 +503,7 @@ DOC_START
 	acl aclname port     80 70 21 ...
 	acl aclname port     0-1024 ...		# ranges allowed
 	acl aclname myport   3128 ...		# (local socket TCP port)
+	acl aclname myportname 3128 ...		# http(s)_port name
 	acl aclname proto    HTTP FTP ...
 	acl aclname method   GET POST ...
 	acl aclname browser  [-i] regexp ...
@@ -920,6 +936,9 @@ DOC_START
 			sporadically hang or never complete requests set
 			disable-pmtu-discovery option to 'transparent'.
 
+	   name=	Specifies a internal name for the port. Defaults to
+			the port specification (port or addr:port)
+
 	If you run Squid on a dual-homed machine with an internal
 	and an external interface we recommend you to specify the
 	internal address:port in http_port. This way Squid will only be
@@ -1032,6 +1051,9 @@ DOC_START
 	   vport=NN	As above, but uses specified port number rather
 			than the https_port number. Implies accel.
 
+	   name=	Specifies a internal name for the port. Defaults to
+			the port specification (port or addr:port)
+
 DOC_END
 
 NAME: tcp_outgoing_tos tcp_outgoing_ds tcp_outgoing_dscp
@@ -1097,11 +1119,11 @@ DOC_START
 	source address 10.1.0.2 and the rest will be forwarded with
 	source address 10.1.0.3.
 
-	acl normal_service_net src 10.0.0.0/255.255.255.0
-	acl good_service_net src 10.0.1.0/255.255.255.0
-	tcp_outgoing_address 10.0.0.1 normal_service_net
-	tcp_outgoing_address 10.0.0.2 good_service_net
-	tcp_outgoing_address 10.0.0.3
+	acl normal_service_net src 10.0.0.0/24
+	acl good_service_net src 10.0.2.0/24
+	tcp_outgoing_address 10.1.0.1 normal_service_net
+	tcp_outgoing_address 10.1.0.2 good_service_net
+	tcp_outgoing_address 10.1.0.3
 
 	Processing proceeds in the order specified, and stops at first fully
 	matching line.
@@ -2178,7 +2200,7 @@ DOC_START
 DOC_END
 
 NAME: debug_options
-TYPE: debug
+TYPE: eol
 DEFAULT: ALL,1
 LOC: Config.debugOptions
 DOC_START
@@ -2451,19 +2473,14 @@ TYPE: acl_access
 DEFAULT: none
 LOC: Config.accessList.noCache
 DOC_START
-	A list of ACL elements which, if matched, cause the request to
+	A list of ACL elements which, if matched and denied, cause the request to
 	not be satisfied from the cache and the reply to not be cached.
 	In other words, use this to force certain objects to never be cached.
 
-	You must use the word 'DENY' to indicate the ACL names which should
-	NOT be cached.
+	You must use the words 'allow' or 'deny' to indicate whether items
+	matching the ACL should be allowed or denied into the cache.
 
 	Default is to allow all to be cached
-NOCOMMENT_START
-#We recommend you to use the following two lines.
-acl QUERY urlpath_regex cgi-bin \?
-cache deny QUERY
-NOCOMMENT_END
 DOC_END
 
 NAME: refresh_pattern
@@ -2564,6 +2581,7 @@ Suggested default:
 NOCOMMENT_START
 refresh_pattern ^ftp:		1440	20%	10080
 refresh_pattern ^gopher:	1440	0%	1440
+refresh_pattern (cgi-bin|\?)	0	0%	0
 refresh_pattern .		0	20%	4320
 NOCOMMENT_END
 DOC_END

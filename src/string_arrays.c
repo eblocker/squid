@@ -1,6 +1,6 @@
 
 /*
- * $Id: enums.h,v 1.258 2007/08/13 17:20:51 hno Exp $
+ * $Id: enums.h,v 1.258.2.2 2008/02/24 11:29:55 amosjeffries Exp $
  *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/

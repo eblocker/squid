@@ -1,6 +1,6 @@
 
 /*
- * $Id: main.cc,v 1.451 2007/12/02 08:23:56 amosjeffries Exp $
+ * $Id: main.cc,v 1.451.2.5 2008/02/26 00:15:55 amosjeffries Exp $
  *
  * DEBUG: section 1     Startup and Main Loop
  * AUTHOR: Harvest Derived
@@ -62,10 +62,7 @@
 #if USE_POLL
 #include "comm_poll.h"
 #endif
-#if USE_SELECT
-#include "comm_select.h"
-#endif
-#if USE_SELECT_WIN32
+#if defined(USE_SELECT) || defined(USE_SELECT_WIN32)
 #include "comm_select.h"
 #endif
 #include "SquidTime.h"
@@ -635,6 +632,7 @@ mainReconfigure(void)
     errorClean();
     enter_suid();		/* root to read config file */
     parseConfigFile(ConfigFile, manager);
+    Mem::Report();
     setEffectiveUser();
     _db_init(Config.Log.log, Config.debugOptions);
     ipcache_restart();		/* clear stuck entries */
@@ -826,6 +824,10 @@ mainInitialize(void)
     if (WIN32_Socks_initialized)
         debugs(1, 1, "Windows sockets initialized");
 
+    if (WIN32_OS_version > _WIN_OS_WINNT) {
+	WIN32_IpAddrChangeMonitorInit();
+    }
+
 #endif
 
     if (!configured_once)
@@ -925,7 +927,7 @@ mainInitialize(void)
 
         commPollRegisterWithCacheManager(manager);
 #endif
-#ifdef USE_SELECT
+#if defined(USE_SELECT) || defined(USE_SELECT_WIN32)
 
         commSelectRegisterWithCacheManager(manager);
 #endif
@@ -1077,7 +1079,7 @@ main(int argc, char **argv)
     sbrk_start = sbrk(0);
 #endif
 
-    Debug::parseOptions("ALL,1");
+    Debug::parseOptions(NULL);
     debug_log = stderr;
 
 #if defined(SQUID_MAXFD_LIMIT)
@@ -1152,6 +1154,10 @@ main(int argc, char **argv)
 
     mainParseOptions(argc, argv);
 
+    if (opt_parse_cfg_only) {
+	Debug::parseOptions("ALL,1");
+    }
+
 #if USE_WIN32_SERVICE
 
     if (opt_install_service)
@@ -1199,6 +1205,8 @@ main(int argc, char **argv)
 
         parse_err = parseConfigFile(ConfigFile, manager);
 
+        Mem::Report();
+        
         if (opt_parse_cfg_only)
 
             return parse_err;

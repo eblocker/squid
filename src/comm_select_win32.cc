@@ -1,6 +1,6 @@
 
 /*
- * $Id: comm_select_win32.cc,v 1.4 2007/04/30 16:56:09 wessels Exp $
+ * $Id: comm_select_win32.cc,v 1.4.4.3 2008/02/25 03:45:24 amosjeffries Exp $
  *
  * DEBUG: section 5     Socket Functions
  *
@@ -156,6 +156,11 @@ commSetSelect(int fd, unsigned int type, PF * handler, void *client_data,
         F->timeout = squid_curtime + timeout;
 }
 
+void
+commResetSelect(int fd)
+{
+}
+
 
 static int
 fdIsIcp(int fd)
@@ -190,36 +195,6 @@ fdIsHttp(int fd)
 
     return 0;
 }
-
-#if DELAY_POOLS
-static int slowfdcnt = 0;
-static int slowfdarr[SQUID_MAXFD];
-
-static void
-commAddSlowFd(int fd)
-{
-    assert(slowfdcnt < SQUID_MAXFD);
-    slowfdarr[slowfdcnt++] = fd;
-}
-
-static int
-commGetSlowFd(void)
-{
-    int whichfd, retfd;
-
-    if (!slowfdcnt)
-        return -1;
-
-    whichfd = squid_random() % slowfdcnt;
-
-    retfd = slowfdarr[whichfd];
-
-    slowfdarr[whichfd] = slowfdarr[--slowfdcnt];
-
-    return retfd;
-}
-
-#endif
 
 static int
 comm_check_incoming_select_handlers(int nfds, int *fds)
@@ -268,7 +243,7 @@ comm_check_incoming_select_handlers(int nfds, int *fds)
     for (i = 0; i < nfds; i++) {
         fd = fds[i];
 
-        if (FD_ISSET(fd, &read_mask)) {
+        if (__WSAFDIsSet(fd_table[fd].win32.handle, &read_mask)) {
             if ((hdl = fd_table[fd].read_handler) != NULL) {
                 fd_table[fd].read_handler = NULL;
                 commUpdateReadBits(fd, NULL);
@@ -278,7 +253,7 @@ comm_check_incoming_select_handlers(int nfds, int *fds)
             }
         }
 
-        if (FD_ISSET(fd, &write_mask)) {
+        if (__WSAFDIsSet(fd_table[fd].win32.handle, &write_mask)) {
             if ((hdl = fd_table[fd].write_handler) != NULL) {
                 fd_table[fd].write_handler = NULL;
                 commUpdateWriteBits(fd, NULL);
@@ -365,10 +340,6 @@ comm_select(int msec)
     fd_set readfds;
     fd_set pendingfds;
     fd_set writefds;
-#if DELAY_POOLS
-
-    fd_set slowfds;
-#endif
 
     PF *hdl = NULL;
     int fd;
@@ -394,10 +365,6 @@ comm_select(int msec)
         double start;
         getCurrentTime();
         start = current_dtime;
-#if DELAY_POOLS
-
-        FD_ZERO(&slowfds);
-#endif
 
         if (commCheckICPIncoming)
             comm_select_icp_incoming();
@@ -439,7 +406,7 @@ comm_select(int msec)
             if (no_bits)
                 continue;
 
-            if (FD_ISSET(fd, &readfds) && fd_table[fd].flags.read_pending) {
+            if (__WSAFDIsSet(fd_table[fd].win32.handle, &readfds) && fd_table[fd].flags.read_pending) {
                 FD_SET(fd, &pendingfds);
                 pending++;
             }
@@ -450,11 +417,11 @@ comm_select(int msec)
             /* Check each open socket for a handler. */
 
             if (fd_table[i].read_handler) {
-                assert(FD_ISSET(i, &readfds));
+                assert(__WSAFDIsSet(fd_table[i].win32.handle, readfds));
             }
 
             if (fd_table[i].write_handler) {
-                assert(FD_ISSET(i, &writefds));
+                assert(__WSAFDIsSet(fd_table[i].win32.handle, writefds));
             }
         }
 
@@ -500,7 +467,7 @@ comm_select(int msec)
 
         getCurrentTime();
 
-        debugs(5, num ? 5 : 8, "comm_select: " << num << "+" << pending << " FDs ready\n");
+        debugs(5, num ? 5 : 8, "comm_select: " << num << "+" << pending << " FDs ready");
 
         statHistCount(&statCounter.select_fds_hist, num);
 
@@ -538,7 +505,7 @@ comm_select(int msec)
 
             debugs(5, 9, "FD " << fd << " bit set for reading");
 
-            assert(FD_ISSET(fd, &readfds));
+            assert(__WSAFDIsSet(fd_table[fd].win32.handle, readfds));
 
 #endif
 
@@ -562,16 +529,9 @@ comm_select(int msec)
 
             if (NULL == (hdl = F->read_handler))
                 (void) 0;
-
-#if DELAY_POOLS
-
-            else if (FD_ISSET(fd, &slowfds))
-                commAddSlowFd(fd);
-
-#endif
-
             else {
                 F->read_handler = NULL;
+                F->flags.read_pending = 0;
                 commUpdateReadBits(fd, NULL);
                 hdl(fd, F->read_data);
                 statCounter.select_fds++;
@@ -631,7 +591,7 @@ comm_select(int msec)
 
             debugs(5, 9, "FD " << fd << " bit set for writing");
 
-            assert(FD_ISSET(fd, &writefds));
+            assert(__WSAFDIsSet(fd_table[fd].win32.handle, writefds));
 
 #endif
 
@@ -667,8 +627,6 @@ comm_select(int msec)
 
                 if (commCheckHTTPIncoming)
                     comm_select_http_incoming();
-
-
             }
         }
 
@@ -681,30 +639,6 @@ comm_select(int msec)
         if (callhttp)
             comm_select_http_incoming();
 
-#if DELAY_POOLS
-
-        while ((fd = commGetSlowFd()) != -1) {
-            F = &fd_table[fd];
-            debugs(5, 6, "comm_select: slow FD " << fd << " selected for reading");
-
-            if ((hdl = F->read_handler)) {
-                F->read_handler = NULL;
-                commUpdateReadBits(fd, NULL);
-                hdl(fd, F->read_data);
-                statCounter.select_fds++;
-
-                if (commCheckICPIncoming)
-                    comm_select_icp_incoming();
-
-                if (commCheckDNSIncoming)
-                    comm_select_dns_incoming();
-
-                if (commCheckHTTPIncoming)
-                    comm_select_http_incoming();
-            }
-        }
-
-#endif
         getCurrentTime();
 
         statCounter.select_time += (current_dtime - start);
@@ -797,9 +731,9 @@ examine_select(fd_set * readfds, fd_set * writefds)
         FD_ZERO(&write_x);
         tv.tv_sec = tv.tv_usec = 0;
 
-        if (FD_ISSET(fd, readfds))
+        if (__WSAFDIsSet(fd_table[fd].win32.handle, readfds))
             FD_SET(fd, &read_x);
-        else if (FD_ISSET(fd, writefds))
+        else if (__WSAFDIsSet(fd_table[fd].win32.handle, writefds))
             FD_SET(fd, &write_x);
         else
             continue;
@@ -864,10 +798,10 @@ commIncomingStats(StoreEntry * sentry)
 void
 commUpdateReadBits(int fd, PF * handler)
 {
-    if (handler && !FD_ISSET(fd, &global_readfds)) {
+    if (handler && !__WSAFDIsSet(fd_table[fd].win32.handle, &global_readfds)) {
         FD_SET(fd, &global_readfds);
         nreadfds++;
-    } else if (!handler && FD_ISSET(fd, &global_readfds)) {
+    } else if (!handler && __WSAFDIsSet(fd_table[fd].win32.handle, &global_readfds)) {
         FD_CLR(fd, &global_readfds);
         nreadfds--;
     }
@@ -876,10 +810,10 @@ commUpdateReadBits(int fd, PF * handler)
 void
 commUpdateWriteBits(int fd, PF * handler)
 {
-    if (handler && !FD_ISSET(fd, &global_writefds)) {
+    if (handler && !__WSAFDIsSet(fd_table[fd].win32.handle, &global_writefds)) {
         FD_SET(fd, &global_writefds);
         nwritefds++;
-    } else if (!handler && FD_ISSET(fd, &global_writefds)) {
+    } else if (!handler && __WSAFDIsSet(fd_table[fd].win32.handle, &global_writefds)) {
         FD_CLR(fd, &global_writefds);
         nwritefds--;
     }

@@ -5,7 +5,7 @@ dnl  $Id: configure.in,v 1.488.2.3 2008/03/04 12:17:04 amosjeffries Exp $
 dnl
 dnl
 dnl
-AC_INIT(Squid Web Proxy, 3.0.STABLE2, http://www.squid-cache.org/bugs/, squid)
+AC_INIT(Squid Web Proxy, 3.0.STABLE4, http://www.squid-cache.org/bugs/, squid)
 AC_PREREQ(2.52)
 AM_CONFIG_HEADER(include/autoconf.h)
 AC_CONFIG_AUX_DIR(cfgaux)
@@ -2893,11 +2893,11 @@ AC_DEFINE_UNQUOTED(DEFAULT_FD_SETSIZE, $DEFAULT_FD_SETSIZE, [Default FD_SETSIZE 
 dnl Not cached since people are likely to tune this
 AC_MSG_CHECKING(Maximum number of filedescriptors we can open)
 dnl damn! FreeBSD's pthreads breaks dup2().
+TLDFLAGS="$LDFLAGS"
 if test -n "$squid_filedescriptors_num" ; then
   SQUID_MAXFD=$squid_filedescriptors_num
   AC_MSG_RESULT($SQUID_MAXFD (user-forced))
 else
-  TLDFLAGS="$LDFLAGS"
   case $host in
   i386-unknown-freebsd*)
       if echo "$LDFLAGS" | grep -q pthread; then

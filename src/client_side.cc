@@ -1,6 +1,6 @@
 
 /*
- * $Id: client_side.cc,v 1.770 2007/12/04 03:35:52 hno Exp $
+ * $Id: client_side.cc,v 1.778 2008/02/26 18:43:58 rousskov Exp $
  *
  * DEBUG: section 33    Client-side Routines
  * AUTHOR: Duane Wessels
@@ -55,6 +55,7 @@
  * stream calls occur. Then we simply read as normal.
  */
 
+#include "config.h"
 #include "squid.h"
 #include "client_side.h"
 #include "clientStream.h"
@@ -1406,8 +1407,7 @@ ClientSocketContext::canPackMoreRanges() const
     /* first update "i" if needed */
 
     if (!http->range_iter.debt()) {
-        debugs(33, 5, "ClientSocketContext::canPackMoreRanges: At end of current range spec for FD " <<
-               fd());
+        debugs(33, 5, "ClientSocketContext::canPackMoreRanges: At end of current range spec for FD " << fd());
 
         if (http->range_iter.pos.incrementable())
             ++http->range_iter.pos;
@@ -1463,7 +1463,7 @@ ClientSocketContext::getNextRangeOffset() const
 void
 ClientSocketContext::pullData()
 {
-    debugs(33, 5, "ClientSocketContext::pullData: FD " << fd() << " attempting to pull upstream data");
+    debugs(33, 5, "ClientSocketContext::pullData: FD " << fd() );
 
     /* More data will be coming from the stream. */
     StoreIOBuffer readBuffer;
@@ -1490,8 +1490,7 @@ ClientSocketContext::socketState()
             /* filter out data according to range specs */
 
             if (!canPackMoreRanges()) {
-                debugs(33, 5, "ClientSocketContext::socketState: Range request has hit end of returnable range sequence on FD " <<
-                       fd());
+                debugs(33, 5, "ClientSocketContext::socketState: Range request has hit end of returnable range sequence on FD " << fd() );
 
                 if (http->request->flags.proxy_keepalive)
                     return STREAM_COMPLETE;
@@ -1921,7 +1920,11 @@ parseHttpRequest(ConnStateData::Pointer & conn, HttpParser *hp, method_t * metho
 
     debugs(33, 3, "parseHttpRequest: end = {" << end << "}");
 
-    if (strstr(req_hdr, "\r\r\n")) {
+    /*
+     * Check that the headers don't have double-CR.
+     * NP: strnstr is required so we don't search any possible binary body blobs.
+     */
+    if ( squid_strnstr(req_hdr, "\r\r\n", req_sz) ) {
         debugs(33, 1, "WARNING: suspicious HTTP request contains double CR");
         xfree(url);
         return parseHttpRequestAbort(conn, "error:double-CR");
@@ -1963,6 +1966,9 @@ parseHttpRequest(ConnStateData::Pointer & conn, HttpParser *hp, method_t * metho
         /* prepend our name & port */
         http->uri = xstrdup(internalLocalUri(NULL, url));
         http->flags.accel = 1;
+    } else if (conn->port->transparent) {
+	// Fallback on transparent if enabled, useful for "self" requests
+        prepareTransparentURL(conn, http, url, req_hdr);
     }
 
     if (!http->uri) {

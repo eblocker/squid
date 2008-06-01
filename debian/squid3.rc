@@ -61,7 +61,7 @@ start () {
 	#
     # Create spool dirs if they don't exist.
     #
-	if [ -d "$cache_dir" -a ! -d "$cache_dir/00" ] || [ "$cache_type" = "coss" -a  ! -f "$cache_dir" ]
+	if [ "$cache_type" = "coss" -a -d "$cache_dir" -a ! -f "$cache_dir/stripe" ] || [ "$cache_type" != "coss" -a -d "$cache_dir" -a ! -d "$cache_dir/00" ]
 	then
 		log_warning_msg "Creating $DESC cache structure"
 		$DAEMON -z

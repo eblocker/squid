@@ -41,15 +41,27 @@ find_cache_dir () {
         echo "$res"
 }
 
+find_cache_type () {
+	w=" 	" # space tab
+	res=`sed -ne '
+		s/^'$1'['"$w"']\+\([^'"$w"']\+\).*$/\1/p;
+		t end;
+		d;
+		:end q' < $CONFIG`
+	[ -n "$res" ] || res=$2
+	echo "$res"
+}
+
 start () {
 	cache_dir=`find_cache_dir cache_dir /var/spool/squid3`
+	cache_type=`find_cache_type cache_dir ufs`
 
 	#
     # Create spool dirs if they don't exist.
     #
-	if [ -d "$cache_dir" -a ! -d "$cache_dir/00" ]
+	if [ -d "$cache_dir" -a ! -d "$cache_dir/00" ] || [ "$cache_type" = "coss" -a  ! -f "$cache_dir" ]
 	then
-		log_warning_msg "Creating $DESC spool directory structure"
+		log_warning_msg "Creating $DESC cache structure"
 		$DAEMON -z
 	fi
 

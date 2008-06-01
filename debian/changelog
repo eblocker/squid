@@ -2,6 +2,9 @@ squid3 (3.0.STABLE6-2) UNRELEASED; urgency=low
 
   * NOT RELEASED YET
 
+  * debian/control
+    - Fixed suggestion on squidlcient package
+
  -- Luigi Gangitano <luigi@debian.org>  Sun, 01 Jun 2008 05:48:22 +0200
 
 squid3 (3.0.STABLE6-1) unstable; urgency=low

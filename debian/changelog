@@ -1,6 +1,4 @@
-squid3 (3.0.STABLE6-2) UNRELEASED; urgency=low
-
-  * NOT RELEASED YET
+squid3 (3.0.STABLE6-2) unstable; urgency=low
 
   * debian/control
     - Fixed suggestion on squidlcient package

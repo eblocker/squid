@@ -9,6 +9,10 @@ squid3 (3.0.STABLE6-1) UNRELEASED; urgency=low
     - Removed default blocking logging to syslog
     - Added parsing of /etc/default/squid3 for SQUID_ARGS override
 
+  * debian/{rules,control,squidclient.install,squidclient.1}
+    - Rename squid3-client package to squidclient (Closes: #473876)
+    - Added squidclient man page from old squid package
+
  -- Luigi Gangitano <luigi@debian.org>  Sun, 01 Jun 2008 02:43:42 +0200
 
 squid3 (3.0.STABLE5-1) UNRELEASED; urgency=low

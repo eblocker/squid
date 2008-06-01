@@ -32,11 +32,14 @@ Description: A full featured Web Proxy cache (HTTP proxy) - common files
  .
  This package contains common files (errors and icons)
 
-Package: squid3-client
+Package: squidclient
 Architecture: any
 Section: web
 Priority: optional
 Depends: ${shlibs:Depends}
+Provides: squid3-client
+Conflicts: squid3-client
+Replaces: squid3-client
 Description: A full featured Web Proxy cache (HTTP proxy) - control utility
  Squid is a high-performance proxy caching server for web clients, supporting
  FTP, gopher, and HTTP data objects.

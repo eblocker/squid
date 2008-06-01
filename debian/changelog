@@ -1,7 +1,5 @@
 squid3 (3.0.STABLE5-1) UNRELEASED; urgency=low
 
-  * (NOT RELEASED YET)
-  
   * New upstream release (Closes: #478695)
 
  -- Luigi Gangitano <luigi@debian.org>  Sat, 03 May 2008 18:39:36 +0200

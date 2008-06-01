@@ -6,6 +6,8 @@ squid3 (3.0.STABLE6-1) UNRELEASED; urgency=low
 
   * debian/squid3.rc
     - Added automatic coss file creation (Closes: #478108)
+    - Removed default blocking logging to syslog
+    - Added parsing of /etc/default/squid3 for SQUID_ARGS override
 
  -- Luigi Gangitano <luigi@debian.org>  Sun, 01 Jun 2008 02:43:42 +0200
 

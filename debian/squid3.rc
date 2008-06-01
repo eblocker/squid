@@ -19,8 +19,10 @@ NAME=squid3
 DESC="Squid HTTP Proxy 3.0"
 DAEMON=/usr/sbin/squid3
 PIDFILE=/var/run/$NAME.pid
-SQUID_ARGS="-D -sYC"
+SQUID_ARGS="-D -YC"
 CONFIG=/etc/squid3/squid.conf
+
+[ ! -f /etc/default/squid3 ] || . /etc/default/squid3
 
 . /lib/lsb/init-functions
 

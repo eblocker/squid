@@ -1,3 +1,14 @@
+Changes to squid-3.0.STABLE7 (22 Jun 2008):
+
+	- Fix several ASN issues
+	- Fix SNMP reporting of counters
+	- Fix round-robin algorithms
+	- GCC 4.3 support
+	- Netfilter v1.4.0 bug workaround
+	- Bugs 2350 and 2323: memory issues
+	- Bugs 2384, 951, 1566: ESI assertions
+	- Various minor debug and documentation cleanups
+
 Changes to squid-3.0.STABLE6 (20 May 2008):
 
 	- Bug 2254: umask Feature from 2.6 added

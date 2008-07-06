@@ -1,6 +1,4 @@
-squid3 (3.0.PRE5-5etch2) UNRELEASED; urgency=low
-
-  * NOT RELEASED YET
+squid3 (3.0.PRE5-5etch2) stable-security; urgency=high
 
   * debian/patches/10-dos-snmp-parser
     - Added upsteam patch fixing DoS in SNMP parser library

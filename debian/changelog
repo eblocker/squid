@@ -4,6 +4,9 @@ squid3 (3.0.STABLE8-1) UNRELEASED; urgency=low
   
   * New upstream release
 
+  * debian/patches/10-mgr_active_requests
+    - Added upstream patch fixing delay_pool reporting in cachemgr.cgi
+
  -- Luigi Gangitano <luigi@debian.org>  Mon, 21 Jul 2008 09:20:31 +0200
 
 squid3 (3.0.STABLE7-1) unstable; urgency=low

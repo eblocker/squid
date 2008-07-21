@@ -1,7 +1,7 @@
-squid3 (3.0.STABLE8-1) UNRELEASED; urgency=low
+squid3 (3.0.STABLE8-1) unstable; urgency=high
 
-  * (NOT RELEASED YET)
-  
+  * Urgency high to meet freeze deadline
+
   * New upstream release
 
   * debian/patches/10-mgr_active_requests

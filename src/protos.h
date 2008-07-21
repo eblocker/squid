@@ -373,7 +373,8 @@ SQUIDCEXTERN peer *peerFindByNameAndPort(const char *, unsigned short);
 SQUIDCEXTERN peer *getDefaultParent(HttpRequest * request);
 SQUIDCEXTERN peer *getRoundRobinParent(HttpRequest * request);
 SQUIDCEXTERN peer *getWeightedRoundRobinParent(HttpRequest * request);
-SQUIDCEXTERN void peerClearRR(void *);
+SQUIDCEXTERN void peerClearRRStart(void);
+SQUIDCEXTERN void peerClearRR(void);
 SQUIDCEXTERN peer *getAnyParent(HttpRequest * request);
 SQUIDCEXTERN lookup_t peerDigestLookup(peer * p, HttpRequest * request);
 SQUIDCEXTERN peer *neighborsDigestSelect(HttpRequest * request);
@@ -706,10 +707,17 @@ SQUIDCEXTERN int internalHostnameIs(const char *);
 
 #if USE_CARP
 SQUIDCEXTERN void carpInit(void);
-extern void carpRegisterWithCacheManager(CacheManager & manager);
+SQUIDCEXTERN void carpRegisterWithCacheManager(CacheManager & manager);
 SQUIDCEXTERN peer *carpSelectParent(HttpRequest *);
 #endif
 
+SQUIDCEXTERN void peerUserHashInit(void);
+SQUIDCEXTERN void peerUserHashRegisterWithCacheManager(CacheManager & manager);
+SQUIDCEXTERN peer * peerUserHashSelectParent(HttpRequest * request);
+
+SQUIDCEXTERN void peerSourceHashInit(void);
+SQUIDCEXTERN void peerSourceHashRegisterWithCacheManager(CacheManager & manager);
+SQUIDCEXTERN peer * peerSourceHashSelectParent(HttpRequest * request);
 
 #if USE_LEAKFINDER
 SQUIDCEXTERN void leakInit(void);

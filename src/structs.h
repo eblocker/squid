@@ -554,6 +554,7 @@ struct _SquidConfig
         int httpd_suppress_version_string;
         int global_internal_static;
         int debug_override_X;
+        int WIN32_IpAddrChangeMonitor;
     }
 
     onoff;
@@ -1063,20 +1064,15 @@ unsigned int no_netdb_exchange:
 unsigned int no_delay:
         1;
 #endif
-
-unsigned int allow_miss:
-        1;
+        unsigned int allow_miss:1;
 #if USE_CARP
-
-unsigned int carp:
-        1;
+        unsigned int carp:1;
 #endif
+        unsigned int userhash:1;
+        unsigned int sourcehash:1;
+        unsigned int originserver:1;
+    } options;
 
-unsigned int originserver:
-        1;
-    }
-
-    options;
     int weight;
     int basetime;
 
@@ -1113,7 +1109,6 @@ unsigned int counting:
     struct IN_ADDR addresses[10];
     int n_addresses;
     int rr_count;
-    int rr_lastcount;
     peer *next;
     int test_fd;
 #if USE_CARP
@@ -1127,6 +1122,20 @@ unsigned int counting:
 
     carp;
 #endif
+
+    struct
+    {
+        unsigned int hash;
+        double load_multiplier;
+        double load_factor;	/* normalized weight value */
+    } userhash;
+
+    struct
+    {
+        unsigned int hash;
+        double load_multiplier;
+        double load_factor;	/* normalized weight value */
+    } sourcehash;
 
     char *login;		/* Proxy authorization */
     time_t connect_timeout;

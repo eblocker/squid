@@ -85,6 +85,7 @@
 #endif
 
 #if LINUX_NETFILTER
+#include <linux/types.h>
 #include <linux/netfilter_ipv4.h>
 #endif
 
@@ -235,7 +236,7 @@ clientNatLookup(int fd, struct sockaddr_in me, struct sockaddr_in peer, struct s
     static time_t last_reported = 0;
 
     if (pffd < 0)
-        pffd = open("/dev/pf", O_RDWR);
+        pffd = open("/dev/pf", O_RDONLY);
 
     if (pffd < 0)
     {

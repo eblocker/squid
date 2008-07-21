@@ -86,7 +86,13 @@ using namespace Squid;
 #include "util.h"
 
 #ifndef BUFSIZ
-#define BUFSIZ 8192
+#define BUFSIZ		8192
+#endif
+#ifndef MESSAGELEN
+#define MESSAGELEN	65536
+#endif
+#ifndef HEADERLEN
+#define HEADERLEN	65536
 #endif
 
 typedef void SIGHDLR(int sig);
@@ -109,6 +115,15 @@ static char *put_file = NULL;
 static struct stat sb;
 int total_bytes = 0;
 int io_timeout = 120;
+
+#ifdef _SQUID_MSWIN_
+void
+Win32SockCleanup(void)
+{
+    WSACleanup();
+    return;
+}
+#endif /* ifdef _SQUID_MSWIN_ */
 
 static void
 usage(const char *progname)
@@ -151,8 +166,8 @@ main(int argc, char *argv[])
     int opt_noaccept = 0;
     int opt_verbose = 0;
     const char *hostname, *localhost;
-    char url[BUFSIZ], msg[49152], buf[BUFSIZ];
-    char extra_hdrs[32768];
+    char url[BUFSIZ], msg[MESSAGELEN], buf[BUFSIZ];
+    char extra_hdrs[HEADERLEN];
     const char *method = "GET";
     extern char *optarg;
     time_t ims = 0;
@@ -313,6 +328,7 @@ main(int argc, char *argv[])
     {
 	WSADATA wsaData;
 	WSAStartup(2, &wsaData);
+	atexit(Win32SockCleanup);
     }
 #endif
     /* Build the HTTP request */

@@ -1,3 +1,10 @@
+squid3 (3.0.STABLE8-2) UNRELEASED; urgency=low
+
+  * NOT RELEASED YET
+
+
+ -- Luigi Gangitano <luigi@debian.org>  Mon, 21 Oct 2008 00:02:48 +0200
+
 squid3 (3.0.STABLE8-1) unstable; urgency=high
 
   * Urgency high to meet freeze deadline

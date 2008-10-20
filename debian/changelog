@@ -2,6 +2,8 @@ squid3 (3.0.STABLE8-2) UNRELEASED; urgency=low
 
   * NOT RELEASED YET
 
+  * debian/squid3.postinst
+    - Fixed non-POSIX option to chown (Closes: #491701)
 
  -- Luigi Gangitano <luigi@debian.org>  Mon, 21 Oct 2008 00:02:48 +0200
 

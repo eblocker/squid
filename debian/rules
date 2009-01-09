@@ -19,16 +19,11 @@ DEB_CONFIGURE_EXTRA_FLAGS := --datadir=/usr/share/squid3 \
 		--enable-async-io=8 \
 		--enable-storeio="ufs,aufs,coss,diskd,null" \
 		--enable-removal-policies="lru,heap" \
-		--enable-poll \
 		--enable-delay-pools \
 		--enable-cache-digests \
-		--enable-snmp \
-		--enable-htcp \
-		--enable-select \
-		--enable-carp \
-		--with-large-files \
 		--enable-underscores \
 		--enable-icap-client \
+        --enable-follow-x-forwarded-for \
 		--enable-auth="basic,digest,ntlm" \
 		--enable-basic-auth-helpers="LDAP,MSNT,NCSA,PAM,SASL,SMB,YP,getpwnam,multi-domain-NTLM" \
 		--enable-ntlm-auth-helpers="SMB" \

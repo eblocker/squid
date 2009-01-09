@@ -9,6 +9,9 @@ squid3 (3.0.STABLE8-2) UNRELEASED; urgency=low
     - Removed obsoleted configure options (Closes: 511272)
     - Added --enable-follow-x-forwarded-for configure option
 
+  * debian/control
+    - Added dependency on ${misc:Depends} to make lintian happy
+
  -- Luigi Gangitano <luigi@debian.org>  Fri,  9 Jan 2009 00:02:48 +0200
 
 squid3 (3.0.STABLE8-1) unstable; urgency=high

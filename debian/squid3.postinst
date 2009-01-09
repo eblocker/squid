@@ -56,7 +56,7 @@ case "$1" in
 		if [ -d "$cache_dir" -a ! -d "$cache_dir/00" ]
 		then
 			echo "Creating Squid HTTP proxy 3.0 spool directory structure"
-			/usr/sbin/squid3 -z
+			squid3 -z
 		fi
 		;;
 	abort-upgrade|abort-remove|abort-deconfigure)

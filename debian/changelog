@@ -1,3 +1,9 @@
+squid3 (3.0.STABLE8-3) UNRELEASED; urgency=low
+
+  * NOT RELEASED YET
+
+ -- Luigi Gangitano <luigi@debian.org>  Fri, 06 Feb 2009 20:23:57 +0100
+
 squid3 (3.0.STABLE8-2) unstable; urgency=low
 
   * debian/squid3.postinst

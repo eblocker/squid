@@ -1,6 +1,6 @@
-squid3 (3.0.STABLE8-3) UNRELEASED; urgency=low
+squid3 (3.0.STABLE8-3) unstable; urgency=high
 
-  * NOT RELEASED YET
+  * Urgency high due to security fixes
 
   * debian/patches/11-SQUID-2009-1
     - Added upstream patch fixing Denial of Service in request processing

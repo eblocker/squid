@@ -697,7 +697,7 @@ FwdState::connectDone(int aServerFD, comm_err_t status, int xerrno)
 
         ErrorState *anErr = errorCon(ERR_DNS_FAIL, HTTP_SERVICE_UNAVAILABLE, request);
 
-        anErr->dnsserver_msg = xstrdup(dns_error_message);
+        anErr->dnsserver_msg = xstrdup(dns_error_message_safe());
 
         fail(anErr);
 
@@ -1205,14 +1205,11 @@ FwdState::updateHierarchyInfo()
     FwdServer *fs = servers;
     assert(fs);
 
-    // some callers use one condition, some use the other; are they the same?
-    assert((fs->code == HIER_DIRECT) == !fs->_peer);
-
     const char *nextHop = NULL;
 
-    if (fs->_peer) { 
-        // went to peer, log peer domain name
-        nextHop = fs->_peer->host;
+    if (fs->_peer) {
+        // went to peer, log peer host name
+        nextHop = fs->_peer->name;
     } else {
         // went DIRECT, must honor log_ip_on_direct
 
@@ -1221,7 +1218,7 @@ FwdState::updateHierarchyInfo()
         nextHop = fd_table[server_fd].ipaddr;
         if (!Config.onoff.log_ip_on_direct || !nextHop[0])
             nextHop = request->host; // domain name
-	}
+    }
 
     assert(nextHop);
     hierarchyNote(&request->hier, fs->code, nextHop);

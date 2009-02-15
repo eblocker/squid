@@ -105,8 +105,8 @@ struct _idns_query
     int need_vc;
 
     struct timeval start_t;
-
     struct timeval sent_t;
+    struct timeval queue_t;
     dlink_node lru;
     IDNSCB *callback;
     void *callback_data;
@@ -715,6 +715,7 @@ idnsInitVCConnected(int fd, comm_err_t status, int xerrno, void *data)
     nsvc * vc = (nsvc *)data;
 
     if (status != COMM_OK) {
+        debugs(78, 1, "idnsInitVCConnected: Failed to connect to nameserver " << inet_ntoa(nameservers[vc->ns].S.sin_addr) << " using TCP!");
         comm_close(fd);
         return;
     }
@@ -729,7 +730,9 @@ idnsVCClosed(int fd, void *data)
 {
     nsvc * vc = (nsvc *)data;
     delete vc->queue;
+    vc->queue = NULL;
     delete vc->msg;
+    vc->msg = NULL;
     nameservers[vc->ns].vc = NULL;
     cbdataFree(vc);
 }
@@ -739,6 +742,7 @@ idnsInitVC(int ns)
 {
     nsvc *vc = cbdataAlloc(nsvc);
     nameservers[ns].vc = vc;
+    vc->ns = ns;
 
     struct IN_ADDR addr;
 
@@ -775,6 +779,16 @@ idnsSendQueryVC(idns_query * q, int ns)
         idnsInitVC(ns);
 
     nsvc *vc = nameservers[ns].vc;
+
+    if (!vc) {
+        debugs(78, 1, "idnsSendQuery: Failed to initiate TCP connection to nameserver " << inet_ntoa(nameservers[ns].S.sin_addr) << "!");
+        return;
+    }
+
+    if(vc->queue == NULL) {
+        vc->queue = new MemBuf;
+        vc->queue->init();
+    }
 
     vc->queue->reset();
 
@@ -817,7 +831,7 @@ idnsSendQuery(idns_query * q)
 
         q->nsends++;
 
-        q->sent_t = current_time;
+        q->queue_t = q->sent_t = current_time;
 
         if (x < 0)
             debugs(50, 1, "idnsSendQuery: FD " << DnsSocket << ": sendto: " << xstrerror());
@@ -830,6 +844,7 @@ idnsSendQuery(idns_query * q)
     }
 
     nameservers[ns].nqueries++;
+    q->queue_t = current_time;
     dlinkAdd(q, &q->lru, &lru_list);
     idnsTickleQueue();
 }
@@ -1095,19 +1110,28 @@ idnsCheckQueue(void *unused)
     idns_query *q;
     event_queued = 0;
 
+    if (0 == nns)
+        /* name servers went away; reconfiguring or shutting down */
+        return;
+
     for (n = lru_list.tail; n; n = p) {
-        if (0 == nns)
-            /* name servers went away; reconfiguring or shutting down */
-            break;
-
-        q = (idns_query *)n->data;
-
-        if (tvSubDsec(q->sent_t, current_time) < Config.Timeout.idns_retransmit * (1 << (q->nsends - 1) % nns))
-            break;
-
-        debugs(78, 3, "idnsCheckQueue: ID 0x" << std::hex << std::setfill('0') << std::setw(4) << q->id << "timeout" );
 
         p = n->prev;
+        q = static_cast<idns_query*>(n->data);
+
+        /* Anything to process in the queue? */
+        if (tvSubDsec(q->queue_t, current_time) < Config.Timeout.idns_retransmit )
+ 	    break;
+
+        /* Query timer expired? */
+        if (tvSubDsec(q->sent_t, current_time) < Config.Timeout.idns_retransmit * 1 << ((q->nsends - 1) / nns)) {
+            dlinkDelete(&q->lru, &lru_list);
+            q->queue_t = current_time;
+            dlinkAdd(q, &q->lru, &lru_list);
+            continue;
+        }
+
+        debugs(78, 3, "idnsCheckQueue: ID 0x" << std::hex << std::setfill('0') << std::setw(4) << q->id << "timeout" );
 
         dlinkDelete(&q->lru, &lru_list);
 

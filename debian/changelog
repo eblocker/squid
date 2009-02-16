@@ -3,6 +3,9 @@ squid3 (3.0.STABLE13-1) UNRELEASED; urgency=low
   * (NOT RELEASED YET)
 
   * New upstream release
+    - Removed patches integrated upstream
+      + 10-mgr_active_requests
+      + 11-SQUID-2009-1
 
  -- Luigi Gangitano <luigi@debian.org>  Mon, 16 Feb 2009 16:18:30 +0100
 

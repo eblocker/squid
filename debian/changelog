@@ -10,6 +10,9 @@ squid3 (3.0.STABLE13-1) UNRELEASED; urgency=low
   * debian/patches/02-makefile-defaults
     - Removed cachemgr configuration file fix integrated upstream
 
+  * debian/rules
+    - Disable support for coss witch is marked as unstable upstream
+
  -- Luigi Gangitano <luigi@debian.org>  Mon, 16 Feb 2009 16:18:30 +0100
 
 squid3 (3.0.STABLE8-3) unstable; urgency=high

@@ -7,6 +7,9 @@ squid3 (3.0.STABLE13-1) UNRELEASED; urgency=low
       + 10-mgr_active_requests
       + 11-SQUID-2009-1
 
+  * debian/patches/02-makefile-defaults
+    - Removed cachemgr configuration file fix integrated upstream
+
  -- Luigi Gangitano <luigi@debian.org>  Mon, 16 Feb 2009 16:18:30 +0100
 
 squid3 (3.0.STABLE8-3) unstable; urgency=high

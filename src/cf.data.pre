@@ -871,6 +871,12 @@ DOC_START
 
 	If you set this parameter none (the default), there will be
 	no limit imposed.
+
+	Configuration Format is:
+		reply_body_max_size SIZE UNITS [acl ...]
+	ie.
+		reply_body_max_size 10 MB
+
 DOC_END
 
 COMMENT_START
@@ -1839,6 +1845,11 @@ DOC_START
 
 	The coss store type:
 
+	NP: COSS filesystem in 3.0 has been deemed too unstable for
+	    production use and has thus been removed from this 3.0
+	    STABLE release. We hope that it can be made usable again
+	    in a future release.
+
 	block-size=n defines the "block size" for COSS cache_dir's.
 	Squid uses file numbers as block numbers.  Since file numbers
 	are limited to 24 bits, the block size determines the maximum
@@ -2685,9 +2696,8 @@ DOC_START
 	default is 5 minutes.  Note that this is different from
 	negative caching of DNS lookups.
 
-	WARNING: Doing this VIOLATES the HTTP standard.  Enabling
-	this feature could make you liable for problems which it
-	causes.
+	WARNING: This setting VIOLATES RFC 2616 when non-zero.
+	If you have problems with eror pages caching, set to '0 seconds'
 DOC_END
 
 NAME: positive_dns_ttl
@@ -3195,16 +3205,20 @@ DOC_END
 NAME: half_closed_clients
 TYPE: onoff
 LOC: Config.onoff.half_closed_clients
-DEFAULT: on
+DEFAULT: off
 DOC_START
 	Some clients may shutdown the sending side of their TCP
 	connections, while leaving their receiving sides open.	Sometimes,
 	Squid can not tell the difference between a half-closed and a
-	fully-closed TCP connection.  By default, half-closed client
-	connections are kept open until a read(2) or write(2) on the
-	socket returns an error.  Change this option to 'off' and Squid
-	will immediately close client connections when read(2) returns
-	"no more data to read."
+	fully-closed TCP connection.
+
+	By default, Squid will immediately close client connections when
+	read(2) returns "no more data to read."
+
+	Change this option to 'on' and Squid will keep open connections
+	until a read(2) or write(2) on the socket returns an error.
+	This may show some benefits for reverse proxies. But if not
+	it is recommended to leave OFF.
 DOC_END
 
 NAME: pconn_timeout
@@ -4417,15 +4431,18 @@ TYPE: string
 LOC: Config.errorDirectory
 DEFAULT: @DEFAULT_ERROR_DIR@
 DOC_START
-	If you wish to create your own versions of the default
-	(English) error files, either to customize them to suit your
-	language or company copy the template English files to another
-	directory and point this tag at them.
+	If you wish to create your own versions of the default files, to
+	customize them to suit your company copy the template files to
+	another directory and point this tag at them.
+
+	Current Language updates can be downloaded from:
+		http://www.squid-cache.org/Versions/langpack/
 
 	The squid developers are interested in making squid available in
 	a wide variety of languages. If you are making translations for a
 	langauge that Squid does not currently provide please consider
 	contributing your translation back to the project.
+	see http://wiki.squid-cache.org/Translations
 DOC_END
 
 NAME: err_html_text

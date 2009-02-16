@@ -527,7 +527,8 @@ ClientHttpRequest::logRequest()
             checklist->reply = HTTPMSGLOCK(al.reply);
 
         if (!Config.accessList.log || checklist->fastCheck()) {
-            al.request = HTTPMSGLOCK(request);
+            if(request)
+                al.request = HTTPMSGLOCK(request);
             accessLogLog(&al, checklist);
             updateCounters();
 
@@ -1891,8 +1892,17 @@ parseHttpRequest(ConnStateData::Pointer & conn, HttpParser *hp, method_t * metho
     *method_p = HttpRequestMethod(&hp->buf[hp->m_start], &hp->buf[hp->m_end]);
 
     if (*method_p == METHOD_NONE) {
+        /* AYJ: hp->buf is occasionally full of binary crap. Replace any non-printables with underscores.
+                Also crop the output at 100 chars, we should not need a whole binary streaming video to identify the issue
+         */
+        char garbage[101];
+        memset(garbage, 0, 101);
+	for(int i=0; i < 100 && i < hp->bufsiz && hp->buf[i] != '\0'; i++)
+            garbage[i] = ((hp->buf[i] < ' ' || hp->buf[i] > '~' )? '_': hp->buf[i]);
+
         /* XXX need a way to say "this many character length string" */
-        debugs(33, 1, "clientParseRequestMethod: Unsupported method in request '" << hp->buf << "'");
+        debugs(33, 1, "clientParseRequestMethod: Unsupported method attempted by " << inet_ntoa(conn->peer.sin_addr) << ": This is not a bug. see squid.conf extension_methods");
+        debugs(33, 1, "clientParseRequestMethod: Unsupported method in request '" << garbage << "'");
 
         /* XXX where's the method set for this error? */
         return parseHttpRequestAbort(conn, "error:unsupported-request-method");

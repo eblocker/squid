@@ -143,7 +143,7 @@ storeClientListAdd(StoreEntry * e, void *data)
 void
 store_client::callback(ssize_t sz, bool error)
 {
-    StoreIOBuffer result (sz, 0 ,copyInto.data);
+    StoreIOBuffer result(sz, 0 ,copyInto.data);
 
     if (sz < 0) {
         result.flags.error = 1;

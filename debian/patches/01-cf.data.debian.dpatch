@@ -6,9 +6,9 @@
 
 @DPATCH@
 diff -urNad squid3~/src/cf.data.pre squid3/src/cf.data.pre
---- squid3~/src/cf.data.pre	2007-12-17 11:35:55.000000000 +0100
-+++ squid3/src/cf.data.pre	2007-12-17 15:10:26.000000000 +0100
-@@ -107,7 +107,7 @@
+--- squid3~/src/cf.data.pre	2009-05-12 05:59:31.000000000 +0200
++++ squid3/src/cf.data.pre	2009-05-12 06:46:45.000000000 +0200
+@@ -123,7 +123,7 @@
  	If you want to use the traditional NCSA proxy authentication, set
  	this line to something like
  
@@ -17,16 +17,16 @@ diff -urNad squid3~/src/cf.data.pre squid3/src/cf.data.pre
  
  	"children" numberofchildren
  	The number of authenticator processes to spawn. If you start too few
-@@ -169,7 +169,7 @@
+@@ -185,7 +185,7 @@
  	If you want to use a digest authenticator, set this line to
  	something like
  
--	auth_param digest program @DEFAULT_PREFIX@/bin/digest_auth_pw @DEFAULT_PREFIX@/etc/digpass
-+	auth_param digest program @DEFAULT_PREFIX@/lib/squid3/digest_auth_pw @DEFAULT_PREFIX@/etc/digpass
+-	auth_param digest program @DEFAULT_PREFIX@/bin/digest_pw_auth @DEFAULT_PREFIX@/etc/digpass
++	auth_param digest program @DEFAULT_PREFIX@/lib/squid3/digest_pw_auth @DEFAULT_PREFIX@/etc/digpass
  
  	"children" numberofchildren
  	The number of authenticator processes to spawn (no default).
-@@ -225,7 +225,7 @@
+@@ -241,7 +241,7 @@
  	of type proxy_auth.  By default, the NTLM authenticator_program
  	is not used.
  
@@ -35,7 +35,7 @@ diff -urNad squid3~/src/cf.data.pre squid3/src/cf.data.pre
  
  	"children" numberofchildren
  	The number of authenticator processes to spawn (no default).
-@@ -260,7 +260,7 @@
+@@ -276,7 +276,7 @@
  	The only supported program for this role is the ntlm_auth
  	program distributed as part of Samba, version 4 or later.
  
@@ -44,7 +44,7 @@ diff -urNad squid3~/src/cf.data.pre squid3/src/cf.data.pre
  
  	"children" numberofchildren
  	The number of authenticator processes to spawn (no default).
-@@ -607,9 +607,9 @@
+@@ -637,9 +637,9 @@
  # Example rule allowing access from your local networks.
  # Adapt to list your (internal) IP networks from where browsing
  # should be allowed
@@ -57,7 +57,7 @@ diff -urNad squid3~/src/cf.data.pre squid3/src/cf.data.pre
  #
  acl SSL_ports port 443
  acl Safe_ports port 80		# http
-@@ -670,7 +670,8 @@
+@@ -700,7 +700,8 @@
  # Example rule allowing access from your local networks.
  # Adapt localnet in the ACL section to list your (internal) IP networks
  # from where browsing should be allowed
@@ -67,7 +67,7 @@ diff -urNad squid3~/src/cf.data.pre squid3/src/cf.data.pre
  
  # And finally deny all other access to this proxy
  http_access deny all
-@@ -709,7 +710,7 @@
+@@ -739,7 +740,7 @@
  
  NOCOMMENT_START
  #Allow ICP queries from local networks only
@@ -76,7 +76,7 @@ diff -urNad squid3~/src/cf.data.pre squid3/src/cf.data.pre
  icp_access deny all
  NOCOMMENT_END
  DOC_END
-@@ -734,7 +735,7 @@
+@@ -764,7 +765,7 @@
  
  NOCOMMENT_START
  #Allow HTCP queries from local networks only
@@ -85,7 +85,7 @@ diff -urNad squid3~/src/cf.data.pre squid3/src/cf.data.pre
  htcp_access deny all
  NOCOMMENT_END
  DOC_END
-@@ -2080,7 +2081,7 @@
+@@ -2141,7 +2142,7 @@
  
  NAME: logfile_rotate
  TYPE: int
@@ -94,7 +94,7 @@ diff -urNad squid3~/src/cf.data.pre squid3/src/cf.data.pre
  LOC: Config.Log.rotateNumber
  DOC_START
  	Specifies the number of logfile rotations to make when you
-@@ -2096,6 +2097,9 @@
+@@ -2157,6 +2158,9 @@
  	purposes, so -k rotate uses another signal.  It is best to get
  	in the habit of using 'squid -k rotate' instead of 'kill -USR1
  	<pid>'.
@@ -104,7 +104,7 @@ diff -urNad squid3~/src/cf.data.pre squid3/src/cf.data.pre
  DOC_END
  
  NAME: emulate_httpd_log
-@@ -3274,7 +3278,7 @@
+@@ -3340,7 +3344,7 @@
  NAME: visible_hostname
  TYPE: string
  LOC: Config.visibleHostname

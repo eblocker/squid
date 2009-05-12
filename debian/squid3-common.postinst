@@ -1,0 +1,28 @@
+#! /bin/sh
+
+set -e
+
+
+case "$1" in
+	configure)
+		#
+		# Fix directory->link transition for /usr/share/squid3/errors in
+		# 3.0.STABLE15-1
+		#
+		if [ -d "/usr/share/squid3/errors"  ]
+		then
+			rmdir /usr/share/squid3/errors
+			ln -sf /usr/share/squid-langpack /usr/share/squid3/errors
+		fi
+
+		;;
+	abort-upgrade|abort-remove|abort-deconfigure)
+		;;
+	*)
+		#
+		#	Unknown action - do nothing.
+		#
+		exit 0
+		;;
+esac
+

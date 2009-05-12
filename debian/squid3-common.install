@@ -1,1 +1,3 @@
-usr/share/squid3
+usr/share/squid3/icons
+usr/share/squid3/mib.txt
+usr/share/squid3/mime.conf

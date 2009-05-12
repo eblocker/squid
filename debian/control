@@ -23,7 +23,7 @@ Package: squid3-common
 Architecture: all
 Section: web
 Priority: optional
-Depends: ${misc:Depends}
+Depends: ${misc:Depends}, squid-langpack
 Description: A full featured Web Proxy cache (HTTP proxy) - common files
  Squid is a high-performance proxy caching server for web clients, supporting
  FTP, gopher, and HTTP data objects.

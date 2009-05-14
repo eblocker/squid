@@ -12,7 +12,6 @@ case "$1" in
 		if [ -d "/usr/share/squid3/errors"  ]
 		then
 			rmdir /usr/share/squid3/errors
-			ln -sf /usr/share/squid-langpack /usr/share/squid3/errors
 		fi
 
 		;;

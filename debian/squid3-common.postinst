@@ -9,7 +9,8 @@ case "$1" in
 		# Fix directory->link transition for /usr/share/squid3/errors in
 		# 3.0.STABLE15-1
 		#
-		if [ -d "/usr/share/squid3/errors"  ]
+		if [ ! -L "/usr/share/squid3/errors" ] &&
+		   [ -d "/usr/share/squid3/errors" ]
 		then
 			rmdir /usr/share/squid3/errors
 		fi

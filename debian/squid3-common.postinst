@@ -7,12 +7,11 @@ case "$1" in
 	configure)
 		#
 		# Fix directory->link transition for /usr/share/squid3/errors in
-		# 3.0.STABLE15-1
+		# 3.0.STABLE15-1: all has gone well, remove temporary directory
 		#
-		if [ ! -L "/usr/share/squid3/errors" ] &&
-		   [ -d "/usr/share/squid3/errors" ]
+		if [ -d "/usr/share/squid3/errors.pre_link_transition" ]
 		then
-			rmdir /usr/share/squid3/errors
+			rm -rf /usr/share/squid3/errors.pre_link_transition
 		fi
 
 		;;

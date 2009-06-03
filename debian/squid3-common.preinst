@@ -1,0 +1,27 @@
+#! /bin/sh
+
+set -e
+
+
+case "$1" in
+	upgrade)
+		#
+		# Fix directory->link transition for /usr/share/squid3/errors in
+		# 3.0.STABLE15-1: move to temporary directory
+		#
+		if (dpkg --compare-versions "$2" lt '3.0.STABLE15-1' &&
+		   [ ! -L "/usr/share/squid3/errors" ] &&
+		   [ -d "/usr/share/squid3/errors" ])
+		then
+			mv /usr/share/squid3/errors /usr/share/squid3/errors.pre_link_transition
+		fi
+
+		;;
+	*)
+		#
+		#	Unknown action - do nothing.
+		#
+		exit 0
+		;;
+esac
+

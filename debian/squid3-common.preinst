@@ -13,6 +13,7 @@ case "$1" in
 		   [ ! -h "/usr/share/squid3/errors" ] &&
 		   [ -d "/usr/share/squid3/errors" ])
 		then
+			exit 0
 		fi
 
 		;;

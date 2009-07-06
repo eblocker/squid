@@ -9,12 +9,15 @@ case "$1" in
 		# Fix directory->link transition for /usr/share/squid3/errors in
 		# 3.0.STABLE15-1: all has gone well, remove temporary directory
 		#
-		if [ -d "/usr/share/squid3/errors.pre_link_transition" ]
+		if (dpkg --compare-versions "$2" lt '3.0.STABLE15-1' &&
+		   [ ! -h "/usr/share/squid3/errors" ] &&
+		   [ -d "/usr/share/squid3/errors" ])
 		then
-			rm -rf /usr/share/squid3/errors.pre_link_transition
+			rm -rf /usr/share/squid3/errors
+			ln -s /usr/share/squid-langpack /usr/share/squid3/errors
 		fi
-
 		;;
+
 	abort-upgrade|abort-remove|abort-deconfigure)
 		;;
 	*)

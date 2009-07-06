@@ -10,10 +10,9 @@ case "$1" in
 		# 3.0.STABLE15-1: move to temporary directory
 		#
 		if (dpkg --compare-versions "$2" lt '3.0.STABLE15-1' &&
-		   [ ! -L "/usr/share/squid3/errors" ] &&
+		   [ ! -h "/usr/share/squid3/errors" ] &&
 		   [ -d "/usr/share/squid3/errors" ])
 		then
-			mv /usr/share/squid3/errors /usr/share/squid3/errors.pre_link_transition
 		fi
 
 		;;

@@ -4,7 +4,7 @@ squid3 (3.0.STABLE15-1) UNRELEASED; urgency=low
 
   * New upstream release
 
-  * debian/{control,squid3-common.{install,postinst,preinst,postrm,links}}
+  * debian/{control,squid3-common.{install,postinst,links}}
     - Added dependency on squid-langpack, linked error directory to
       /usr/share/squid-langpack
 

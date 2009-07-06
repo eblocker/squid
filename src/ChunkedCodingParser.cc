@@ -20,7 +20,6 @@ void ChunkedCodingParser::reset()
     theStep = psChunkBeg;
     theChunkSize = theLeftBodySize = 0;
     doNeedMoreData = false;
-    sawIeof = false;
     theIn = theOut = NULL;
 }
 
@@ -65,7 +64,7 @@ void ChunkedCodingParser::parseChunkBeg()
     size_t crlfEnd = 0;
 
     if (findCrlf(crlfBeg, crlfEnd)) {
-        debugs(93,7, "found chunk-size end: " << crlfBeg << "-" << crlfEnd);
+        debugs(94,7, "found chunk-size end: " << crlfBeg << "-" << crlfEnd);
         int64_t size = -1;
         const char *p = 0;
 
@@ -75,21 +74,9 @@ void ChunkedCodingParser::parseChunkBeg()
                 return;
             }
 
-            // check for ieof chunk extension in the last-chunk
-            if (size == 0 && p && *p++ == ';') {
-                const char *e = theIn->content() + crlfBeg; // end of extension
-
-                while (p < e && xisspace(*p))
-                    ++p; // skip space
-
-                sawIeof = e - p >= 4 &&
-                          strncmp(p, "ieof", 4) == 0 &&
-                          xisspace(p[4]);
-            }
-
             theIn->consume(crlfEnd);
             theChunkSize = theLeftBodySize = size;
-            debugs(93,7, "found chunk: " << theChunkSize);
+            debugs(94,7, "found chunk: " << theChunkSize);
             theStep = theChunkSize == 0 ? psTrailer : psChunkBody;
             return;
         }

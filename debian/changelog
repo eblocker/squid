@@ -14,12 +14,14 @@ squid3 (3.0.STABLE15-1) UNRELEASED; urgency=low
 
   * debian/control
     - Added debug package to help bug reports
+    - Added dependency on libkrb5-dev and comerr-dev
 
   * debian/squid3.resolvconf
     - Use invoke-rc.d instead of directly calling init script
 
   * debian/rules
     - Added missing --with-large-files configure option (Closes: #534888)
+    - Enabled Kerberos Negotiate Auth support (Closes: #532064)
 
   * debian/copyright
     - Fixed copyright to reflect current sources, thanks to Amos Jeffries

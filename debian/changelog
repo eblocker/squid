@@ -3,6 +3,7 @@ squid3 (3.0.STABLE15-1) UNRELEASED; urgency=low
   * (NOT RELEASED YET)
 
   * New upstream release
+    - Fixes wrong reference to digest_pw_auth (Closes: #517528)
 
   * debian/{control,squid3-common.{install,postinst,links}}
     - Added dependency on squid-langpack, linked error directory to

@@ -38,14 +38,14 @@ case "$1" in
         usr=`grepconf cache_effective_user proxy`
 		grp=`grepconf cache_effective_group proxy`
 		
-		if [ "$(/usr/bin/stat -c %U $cache_dir)" != "$usr" ] ||
-		   [ "$(/usr/bin/stat -c %G $cache_dir)" != "$grp" ] ; then
+		if [ "$(stat -c %U $cache_dir)" != "$usr" ] ||
+		   [ "$(stat -c %G $cache_dir)" != "$grp" ] ; then
 			chown $usr:$grp $cache_dir -R
 		fi
 		
-		if [ "$(/usr/bin/stat -c %U $log_dir)" != "$usr" ] ||
-		   [ "$(/usr/bin/stat -c %G $log_dir)" != "$grp" ] ; then
-			if [ "$(/usr/sbin/dpkg-statoverride --list $log_dir)" = "" ] ; then
+		if [ "$(stat -c %U $log_dir)" != "$usr" ] ||
+		   [ "$(stat -c %G $log_dir)" != "$grp" ] ; then
+			if [ "$(dpkg-statoverride --list $log_dir)" = "" ] ; then
 		  		chown -R $usr:$grp $log_dir
 			fi
 		fi

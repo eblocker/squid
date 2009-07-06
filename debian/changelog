@@ -10,6 +10,9 @@ squid3 (3.0.STABLE16-1) UNRELEASED; urgency=low
   * debian/control
    - Bumped Standard-Version to 3.8.2, no change needed
 
+  * debian/NEWS.Debian
+    - Fixed format of NEWS.Debian (double space at start)
+
  -- Luigi Gangitano <luigi@debian.org>  Mon, 06 Jul 2009 13:56:41 +0200
 
 squid3 (3.0.STABLE15-1) unstable; urgency=low

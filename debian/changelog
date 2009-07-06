@@ -20,6 +20,10 @@ squid3 (3.0.STABLE15-1) UNRELEASED; urgency=low
   * debian/rules
     - Added missing --with-large-files configure option (Closes: #534888)
 
+  * debian/copyright
+    - Fixed copyright to reflect current sources, thanks to Amos Jeffries
+      (Closes: #524601)
+
  -- Luigi Gangitano <luigi@debian.org>  Tue, 12 May 2009 06:01:10 +0200
 
 squid3 (3.0.STABLE13-1) unstable; urgency=low

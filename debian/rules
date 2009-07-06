@@ -30,6 +30,7 @@ DEB_CONFIGURE_EXTRA_FLAGS := --datadir=/usr/share/squid3 \
 		--enable-digest-auth-helpers="ldap,password" \
 		--enable-external-acl-helpers="ip_user,ldap_group,session,unix_group,wbinfo_group" \
 		--with-filedescriptors=65536 \
+		--with-large-files \
 		--with-default-user=proxy
 
 DEB_HOST_ARCH_OS := $(shell dpkg-architecture -qDEB_HOST_ARCH_OS 2>/dev/null)

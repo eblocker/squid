@@ -2,10 +2,10 @@
 <HTML>
 <HEAD>
  <META NAME="GENERATOR" CONTENT="LinuxDoc-Tools 0.9.50">
- <TITLE>Squid 3.0.STABLE15 release notes</TITLE>
+ <TITLE>Squid 3.0.STABLE16 release notes</TITLE>
 </HEAD>
 <BODY>
-<H1>Squid 3.0.STABLE15 release notes</H1>
+<H1>Squid 3.0.STABLE16 release notes</H1>
 
 <H2>Squid Developers</H2>
 <HR>
@@ -15,7 +15,7 @@ for Applied Network Research and members of the Web Caching community.</EM>
 <HR>
 <H2><A NAME="s1">1. Notice</A></H2>
 
-<P>The Squid Team are pleased to announce the release of Squid-3.0.STABLE15.</P>
+<P>The Squid Team are pleased to announce the release of Squid-3.0.STABLE16.</P>
 <P>This new release is available for download from 
 <A HREF="http://www.squid-cache.org/Versions/v3/3.0/">http://www.squid-cache.org/Versions/v3/3.0/</A> or the 
 <A HREF="http://www.squid-cache.org/Mirrors/http-mirrors.html">mirrors</A>.</P>
@@ -648,6 +648,32 @@ See the accf_http(9) man page.
 
         For a traditional octal representation of umasks, start
         your value with 0.
+        
+</PRE>
+</P>
+
+<DT><B>chunked_request_body_max_size</B><DD>
+<P>New tag to fix handling of chunked requests.
+<PRE>
+        A broken or confused HTTP/1.1 client may send a chunked HTTP
+        request to Squid. Squid does not have full support for that
+        feature yet. To cope with such requests, Squid buffers the
+        entire request and then dechunks request body to create a
+        plain HTTP/1.0 request with a known content length. The plain
+        request is then used by the rest of Squid code as usual.
+
+        The option value specifies the maximum size of the buffer used
+        to hold the request before the conversion. If the chunked
+        request size exceeds the specified limit, the conversion
+        fails, and the client receives an "unsupported request" error,
+        as if dechunking was disabled.
+
+        Dechunking is enabled by default. To disable conversion of
+        chunked requests, set the maximum to zero.
+
+        Request dechunking feature and this option in particular are a
+        temporary hack. When chunking requests and responses are fully
+        supported, there will be no need to buffer a chunked request.
         
 </PRE>
 </P>

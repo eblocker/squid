@@ -1,6 +1,4 @@
-squid3 (3.0.STABLE16-1) UNRELEASED; urgency=low
-
-  (NOT RELEASED YET)
+squid3 (3.0.STABLE16-1) unstable; urgency=low
 
   * New upstream release
 
@@ -13,7 +11,7 @@ squid3 (3.0.STABLE16-1) UNRELEASED; urgency=low
   * debian/NEWS.Debian
     - Fixed format of NEWS.Debian (double space at start)
 
- -- Luigi Gangitano <luigi@debian.org>  Mon, 06 Jul 2009 13:56:41 +0200
+ -- Luigi Gangitano <luigi@debian.org>  Tue, 07 Jul 2009 18:56:41 +0200
 
 squid3 (3.0.STABLE15-1) unstable; urgency=low
 

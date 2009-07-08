@@ -1,8 +1,7 @@
 
-This is the development version of next-generation Squid. In version 3.0
-squid has been ported to C++ for code manageability. Since squid 2.x is not
-developed anymore except for bug fixing, this package is where new features
-will be added.
+This is the next-generation Squid. In version 3.0 squid has been ported to C++
+for code manageability. Since squid 2.x is not developed anymore except for bug
+fixing, this package is where new features will be added.
 
 Squid 3.0 supports WCCPv2, ICAP, Edge Side Include, SSL offloading, etc. Please
 note that not all of the new feature have been enabled in Debian package.

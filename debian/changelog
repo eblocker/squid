@@ -1,6 +1,4 @@
-squid3 (3.0.STABLE16-2) UNRELEASED; urgency=low
-
-  * NOT RELEASED YET
+squid3 (3.0.STABLE16-2) unstable; urgency=low
 
   * debian/patches/13-signed-unsigned-fixes
     - Added upstream patch fixing build errors on 64-bit archs
@@ -12,7 +10,7 @@ squid3 (3.0.STABLE16-2) UNRELEASED; urgency=low
   * debian/control
     - Fixed squid3-dbg section and priority to match archive override
 
- -- Luigi Gangitano <luigi@debian.org>  Wed, 08 Jul 2009 14:56:45 +0200
+ -- Luigi Gangitano <luigi@debian.org>  Sat, 11 Jul 2009 13:46:45 +0200
 
 squid3 (3.0.STABLE16-1) unstable; urgency=low
 

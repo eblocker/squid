@@ -4,6 +4,7 @@ squid3 (3.0.STABLE16-2) UNRELEASED; urgency=low
 
   * debian/patches/13-signed-unsigned-fixes
     - Added upstream patch fixing build errors on 64-bit archs
+      (Closes: #536588)
 
   * debian/README.Debian
     - Removed instability notice of development version

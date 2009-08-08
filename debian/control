@@ -23,7 +23,7 @@ Package: squid3-dbg
 Architecture: any
 Section: debug
 Priority: extra
-Depends: squid3 (= ${source:Version})
+Depends: squid3 (= ${binary:Version})
 Description: A full featured Web Proxy cache (HTTP proxy) - Debug symbols
  Squid is a high-performance proxy caching server for web clients, supporting
  FTP, gopher, and HTTP data objects.

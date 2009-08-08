@@ -1,0 +1,286 @@
+#! /bin/sh /usr/share/dpatch/dpatch-run
+## SQUID-2009_2.dpatch by Nico Golde <nion@debian.org>
+##
+## All lines beginning with `## DP:' are a description of the patch.
+## multiple denial of sevice issues SQUID-2009_2
+
+@DPATCH@
+diff -urNad squid3-3.0.STABLE8~/src/HttpMsg.cc squid3-3.0.STABLE8/src/HttpMsg.cc
+--- squid3-3.0.STABLE8~/src/HttpMsg.cc	2008-07-18 10:02:53.000000000 +0000
++++ squid3-3.0.STABLE8/src/HttpMsg.cc	2009-07-28 11:20:05.000000000 +0000
+@@ -150,20 +150,24 @@
+     buf->terminate(); // does not affect content size
+ 
+     // find the end of headers
+-    // TODO: Remove? httpReplyParseStep() should do similar checks
+     const size_t hdr_len = headersEnd(buf->content(), buf->contentSize());
+ 
++    // sanity check the start line to see if this is in fact an HTTP message
++    if (!sanityCheckStartLine(buf, hdr_len, error)) {
++        debugs(58,1, HERE << "first line of HTTP message is invalid");
++        // NP: sanityCheck sets *error
++        return false;
++    }
++
+     // TODO: move to httpReplyParseStep()
+     if (hdr_len > Config.maxReplyHeaderSize || (hdr_len <= 0 && (size_t)buf->contentSize() > Config.maxReplyHeaderSize)) {
+-        debugs(58, 1, "HttpMsg::parse: Too large reply header (" <<
+-               hdr_len << " > " << Config.maxReplyHeaderSize);
++        debugs(58, 1, "HttpMsg::parse: Too large reply header (" << hdr_len << " > " << Config.maxReplyHeaderSize);
+         *error = HTTP_HEADER_TOO_LARGE;
+         return false;
+     }
+ 
+     if (hdr_len <= 0) {
+-        debugs(58, 3, "HttpMsg::parse: failed to find end of headers " <<
+-               "(eof: " << eof << ") in '" << buf->content() << "'");
++        debugs(58, 3, "HttpMsg::parse: failed to find end of headers (eof: " << eof << ") in '" << buf->content() << "'");
+ 
+         if (eof) // iff we have seen the end, this is an error
+             *error = HTTP_INVALID_HEADER;
+@@ -171,30 +175,22 @@
+         return false;
+     }
+ 
+-    if (!sanityCheckStartLine(buf, error)) {
+-        debugs(58,1, HERE << "first line of HTTP message is invalid");
+-        *error = HTTP_INVALID_HEADER;
+-        return false;
+-    }
+-
+     const int res = httpMsgParseStep(buf->content(), buf->contentSize(), eof);
+ 
+     if (res < 0) { // error
+-        debugs(58, 3, "HttpMsg::parse: cannot parse isolated headers " <<
+-               "in '" << buf->content() << "'");
++        debugs(58, 3, "HttpMsg::parse: cannot parse isolated headers in '" << buf->content() << "'");
+         *error = HTTP_INVALID_HEADER;
+         return false;
+     }
+ 
+     if (res == 0) {
+-        debugs(58, 2, "HttpMsg::parse: strange, need more data near '" <<
+-               buf->content() << "'");
++        debugs(58, 2, "HttpMsg::parse: strange, need more data near '" << buf->content() << "'");
++        *error = HTTP_INVALID_HEADER;
+         return false; // but this should not happen due to headersEnd() above
+     }
+ 
+     assert(res > 0);
+-    debugs(58, 9, "HttpMsg::parse success (" << hdr_len << " bytes) " <<
+-           "near '" << buf->content() << "'");
++    debugs(58, 9, "HttpMsg::parse success (" << hdr_len << " bytes) near '" << buf->content() << "'");
+ 
+     if (hdr_sz != (int)hdr_len) {
+         debugs(58, 1, "internal HttpMsg::parse vs. headersEnd error: " <<
+@@ -371,9 +367,8 @@
+     packerClean(&p);
+ }
+ 
+-HttpMsg *
+-
+ // use HTTPMSGLOCK() instead of calling this directly
++HttpMsg *
+ HttpMsg::_lock()
+ {
+     lock_count++;
+diff -urNad squid3-3.0.STABLE8~/src/HttpMsg.h squid3-3.0.STABLE8/src/HttpMsg.h
+--- squid3-3.0.STABLE8~/src/HttpMsg.h	2008-07-18 10:02:53.000000000 +0000
++++ squid3-3.0.STABLE8/src/HttpMsg.h	2009-07-28 11:20:05.000000000 +0000
+@@ -91,7 +91,14 @@
+     void firstLineBuf(MemBuf&);
+ 
+ protected:
+-    virtual bool sanityCheckStartLine(MemBuf *buf, http_status *error) = 0;
++     /**
++      * Validate the message start line is syntactically correct.
++      * Set HTTP error status according to problems found.
++      *
++      * \retval true   Status line has no serious problems.
++      * \retval false  Status line has a serious problem. Correct response is indicated by error.
++      */
++    virtual bool sanityCheckStartLine(MemBuf *buf, const size_t hdr_len, http_status *error) = 0;
+ 
+     virtual void packFirstLineInto(Packer * p, bool full_uri) const = 0;
+ 
+diff -urNad squid3-3.0.STABLE8~/src/HttpReply.cc squid3-3.0.STABLE8/src/HttpReply.cc
+--- squid3-3.0.STABLE8~/src/HttpReply.cc	2008-07-18 10:02:53.000000000 +0000
++++ squid3-3.0.STABLE8/src/HttpReply.cc	2009-07-28 11:20:14.000000000 +0000
+@@ -434,14 +434,52 @@
+     return content_length;
+ }
+ 
+-bool HttpReply::sanityCheckStartLine(MemBuf *buf, http_status *error)
++/**
++ * Checks the first line of an HTTP Reply is valid.
++ * currently only checks "HTTP/" exists.
++ *
++ * NP: not all error cases are detected yet. Some are left for detection later in parse.
++ */
++bool
++HttpReply::sanityCheckStartLine(MemBuf *buf, const size_t hdr_len, http_status *error)
+ {
+-    if (buf->contentSize() >= protoPrefix.size() && protoPrefix.cmp(buf->content(), protoPrefix.size()) != 0) {
++    // content is long enough to possibly hold a reply
++    // 4 being magic size of a 3-digit number plus space delimiter
++    if ( buf->contentSize() < (protoPrefix.size() + 4) ) {
++        if (hdr_len > 0)
++            *error = HTTP_INVALID_HEADER;
++        return false;
++    }
++
++    // catch missing or mismatched protocol identifier
++    if (protoPrefix.cmp(buf->content(), protoPrefix.size()) != 0) {
+         debugs(58, 3, "HttpReply::sanityCheckStartLine: missing protocol prefix (" << protoPrefix.buf() << ") in '" << buf->content() << "'");
+         *error = HTTP_INVALID_HEADER;
+         return false;
+     }
+ 
++    // catch missing or negative status value (negative '-' is not a digit)
++    int pos = protoPrefix.size();
++
++    // skip arbitrary number of digits and a dot in the verion portion
++    while ( pos <= buf->contentSize() && (*(buf->content()+pos) == '.' || xisdigit(*(buf->content()+pos)) ) ) ++pos;
++
++    // catch missing version info
++    if (pos == protoPrefix.size()) {
++        debugs(58, 3, "HttpReply::sanityCheckStartLine: missing protocol version numbers (ie. " << protoPrefix << "/1.0) in '" << buf->content() << "'");
++        *error = HTTP_INVALID_HEADER;
++        return false;
++    }
++
++    // skip arbitrary number of spaces...
++    while (pos <= buf->contentSize() && (char)*(buf->content()+pos) == ' ') ++pos;
++
++    if (!xisdigit(*(buf->content()+pos))) {
++        debugs(58, 3, "HttpReply::sanityCheckStartLine: missing or invalid status number in '" << buf->content() << "'");
++        *error = HTTP_INVALID_HEADER;
++        return false;
++    }
++
+     return true;
+ }
+ 
+diff -urNad squid3-3.0.STABLE8~/src/HttpReply.h squid3-3.0.STABLE8/src/HttpReply.h
+--- squid3-3.0.STABLE8~/src/HttpReply.h	2008-07-18 10:02:53.000000000 +0000
++++ squid3-3.0.STABLE8/src/HttpReply.h	2009-07-28 11:20:05.000000000 +0000
+@@ -66,9 +66,9 @@
+     //virtual void unlock();  // only needed for debugging
+ 
+     // returns true on success
+-    // returns false and sets *error to zero when needs more data
++    // returns false and leaves *error unchanged when needs more data
+     // returns false and sets *error to a positive http_status code on error
+-    virtual bool sanityCheckStartLine(MemBuf *buf, http_status *error);
++    virtual bool sanityCheckStartLine(MemBuf *buf, const size_t hdr_len, http_status *error);
+ 
+     /* public, readable; never update these or their .hdr equivalents directly */
+     time_t date;
+diff -urNad squid3-3.0.STABLE8~/src/HttpRequest.cc squid3-3.0.STABLE8/src/HttpRequest.cc
+--- squid3-3.0.STABLE8~/src/HttpRequest.cc	2008-07-18 10:02:53.000000000 +0000
++++ squid3-3.0.STABLE8/src/HttpRequest.cc	2009-07-28 11:20:05.000000000 +0000
+@@ -142,17 +142,29 @@
+     init();
+ }
+ 
++/**
++ * Checks the first line of an HTTP request is valid
++ * currently just checks the request method is present.
++ *
++ * NP: Other errors are left for detection later in the parse.
++ */
+ bool
+-HttpRequest::sanityCheckStartLine(MemBuf *buf, http_status *error)
++HttpRequest::sanityCheckStartLine(MemBuf *buf, const size_t hdr_len, http_status *error)
+ {
+-    /*
+-     * Just see if the request buffer starts with a known
+-     * HTTP request method.  NOTE this whole function is somewhat
+-     * superfluous and could just go away.
+-     */
++    // content is long enough to possibly hold a reply
++    // 2 being magic size of a 1-byte request method plus space delimiter
++    if ( buf->contentSize() < 2 ) {
++        // this is ony a real error if the headers apparently complete.
++        if (hdr_len > 0) {
++            *error = HTTP_INVALID_HEADER;
++        }
++        return false;
++    }
+ 
++    /* See if the request buffer starts with a known HTTP request method. */
+     if (METHOD_NONE == HttpRequestMethod(buf->content())) {
+         debugs(73, 3, "HttpRequest::sanityCheckStartLine: did not find HTTP request method");
++        *error = HTTP_INVALID_HEADER;
+         return false;
+     }
+ 
+diff -urNad squid3-3.0.STABLE8~/src/HttpRequest.h squid3-3.0.STABLE8/src/HttpRequest.h
+--- squid3-3.0.STABLE8~/src/HttpRequest.h	2008-07-18 10:02:53.000000000 +0000
++++ squid3-3.0.STABLE8/src/HttpRequest.h	2009-07-28 11:20:05.000000000 +0000
+@@ -157,7 +157,7 @@
+ protected:
+     virtual void packFirstLineInto(Packer * p, bool full_uri) const;
+ 
+-    virtual bool sanityCheckStartLine(MemBuf *buf, http_status *error);
++    virtual bool sanityCheckStartLine(MemBuf *buf, const size_t hdr_len, http_status *error);
+ 
+     virtual void hdrCacheInit();
+ 
+diff -urNad squid3-3.0.STABLE8~/src/client_side.cc squid3-3.0.STABLE8/src/client_side.cc
+--- squid3-3.0.STABLE8~/src/client_side.cc	2008-07-18 10:02:54.000000000 +0000
++++ squid3-3.0.STABLE8/src/client_side.cc	2009-07-28 11:20:05.000000000 +0000
+@@ -1843,6 +1843,17 @@
+     /* pre-set these values to make aborting simpler */
+     *method_p = METHOD_NONE;
+ 
++    /* NP: don't be tempted to move this down or remove again.
++     * It's the only DDoS protection old-String has against long URL */
++    if ( hp->bufsiz <= 0) {
++        debugs(33, 5, "Incomplete request, waiting for end of request line");
++        return NULL;
++    }
++    else if ( (size_t)hp->bufsiz >= Config.maxRequestHeaderSize && headersEnd(hp->buf, Config.maxRequestHeaderSize) == 0) {
++        debugs(33, 5, "parseHttpRequest: Too large request");
++        return parseHttpRequestAbort(conn, "error:request-too-large");
++    }
++
+     /* Attempt to parse the first line; this'll define the method, url, version and header begin */
+     r = HttpParserParseReqLine(hp);
+ 
+diff -urNad squid3-3.0.STABLE8~/src/http.cc squid3-3.0.STABLE8/src/http.cc
+--- squid3-3.0.STABLE8~/src/http.cc	2008-07-18 10:02:54.000000000 +0000
++++ squid3-3.0.STABLE8/src/http.cc	2009-07-28 11:20:05.000000000 +0000
+@@ -75,7 +75,7 @@
+     surrogateNoStore = false;
+     fd = fwd->server_fd;
+     readBuf = new MemBuf;
+-    readBuf->init(4096, SQUID_TCP_SO_RCVBUF);
++    readBuf->init();
+     orig_request = HTTPMSGLOCK(fwd->request);
+ 
+     if (fwd->servers)
+diff -urNad squid3-3.0.STABLE8~/src/tests/stub_HttpReply.cc squid3-3.0.STABLE8/src/tests/stub_HttpReply.cc
+--- squid3-3.0.STABLE8~/src/tests/stub_HttpReply.cc	2008-07-18 10:02:54.000000000 +0000
++++ squid3-3.0.STABLE8/src/tests/stub_HttpReply.cc	2009-07-28 11:20:05.000000000 +0000
+@@ -76,7 +76,7 @@
+ }
+ 
+ bool
+-HttpReply::sanityCheckStartLine(MemBuf *buf, http_status *error)
++HttpReply::sanityCheckStartLine(MemBuf *buf, const size_t hdr_len, http_status *error)
+ {
+     fatal ("Not implemented");
+     return false;
+diff -urNad squid3-3.0.STABLE8~/src/tests/stub_HttpRequest.cc squid3-3.0.STABLE8/src/tests/stub_HttpRequest.cc
+--- squid3-3.0.STABLE8~/src/tests/stub_HttpRequest.cc	2008-07-18 10:02:54.000000000 +0000
++++ squid3-3.0.STABLE8/src/tests/stub_HttpRequest.cc	2009-07-28 11:20:05.000000000 +0000
+@@ -56,7 +56,7 @@
+ }
+ 
+ bool
+-HttpRequest::sanityCheckStartLine(MemBuf *buf, http_status *error)
++HttpRequest::sanityCheckStartLine(MemBuf *buf, const size_t hdr_len, http_status *error)
+ {
+     fatal("Not implemented");
+     return false;

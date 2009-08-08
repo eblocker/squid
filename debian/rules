@@ -31,6 +31,7 @@ DEB_CONFIGURE_EXTRA_FLAGS := --datadir=/usr/share/squid3 \
 		--enable-negotiate-auth-helpers="squid_kerb_auth" \
 		--enable-external-acl-helpers="ip_user,ldap_group,session,unix_group,wbinfo_group" \
 		--enable-arp-acl \
+		--enable-snmp \
 		--with-filedescriptors=65536 \
 		--with-large-files \
 		--with-default-user=proxy

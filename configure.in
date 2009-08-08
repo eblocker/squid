@@ -1,13 +1,13 @@
 dnl  Configuration input file for Squid
 dnl
 dnl
-AC_INIT(Squid Web Proxy, 3.0.STABLE16, http://www.squid-cache.org/bugs/, squid)
+AC_INIT(Squid Web Proxy, 3.0.STABLE18, http://www.squid-cache.org/bugs/, squid)
 AC_PREREQ(2.52)
 AM_CONFIG_HEADER(include/autoconf.h)
 AC_CONFIG_AUX_DIR(cfgaux)
 AC_CONFIG_SRCDIR([src/main.cc])
 AM_INIT_AUTOMAKE([tar-ustar])
-AC_REVISION($Revision: 1.488.2.3 $)dnl
+AC_REVISION($Revision$)dnl
 AC_PREFIX_DEFAULT(/usr/local/squid)
 AM_MAINTAINER_MODE
 
@@ -1902,13 +1902,16 @@ AC_PROG_LN_S
 AC_PATH_PROG(SH, sh, /bin/sh)
 AC_PATH_PROG(FALSE, false, /usr/bin/false)
 AC_PATH_PROG(TRUE, true, /usr/bin/true)
-AC_PATH_PROG(RM, rm, $FALSE)
 AC_PATH_PROG(MV, mv, $FALSE)
 AC_PATH_PROG(MKDIR, mkdir, $FALSE)
 AC_PATH_PROG(LN, ln, cp)
 AC_PATH_PROG(PERL, perl, none)
 dnl automake handles this AC_PATH_PROG(MAKEDEPEND, makedepend, $TRUE)
 AC_PATH_PROG(AR, ar, $FALSE)
+
+AC_PATH_PROG(RM, rm, $FALSE)
+dnl Libtool 2.2.6 requires: rm -f
+RM="$RM -f"
 
 if test "$ac_cv_path_PERL" = "none"; then
 	echo "Perl is required to compile Squid"
@@ -2651,8 +2654,6 @@ AC_CHECK_FUNCS(\
 	srand48 \
 	srandom \
 	statfs \
-	strsep \
-	strtoll \
 	sysconf \
 	syslog \
 	timegm \
@@ -2663,6 +2664,8 @@ AC_REPLACE_FUNCS(\
 	drand48 \
 	initgroups \
 	strerror \
+	strsep \
+	strtoll \
 	tempnam \
 )
 
@@ -2807,17 +2810,6 @@ if test "$ac_cv_func_strnstr" = "yes" ; then
   AC_DEFINE(HAVE_STRNSTR,1,[Yay! We have a working strnstr!])
 else
   AC_DEFINE(HAVE_STRNSTR,0,[Yay! A MacOS X brokenness. Its not good enough to know that strnstr() exists, because MacOSX 10.4 and earlier may have a buffer overrun.])
-fi
-
-
-AM_CONDITIONAL(NEED_OWN_STRSEP, false)
-if test "$ac_cv_func_strsep" = "no" ; then
-  AM_CONDITIONAL(NEED_OWN_STRSEP, true)
-fi
-
-AM_CONDITIONAL(NEED_OWN_STRTOLL, false)
-if test "$ac_cv_func_strtoll" = "no" ; then
-  AM_CONDITIONAL(NEED_OWN_STRTOLL, true)
 fi
 
 dnl

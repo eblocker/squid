@@ -637,10 +637,9 @@ clientReplyContext::processMiss()
         return;
     }
 
-    /*
-     * Deny loops when running in accelerator/transproxy mode.
-     */
-    if (http->flags.accel && r->flags.loopdetect) {
+    /// Deny loops for accelerator and interceptor. TODO: deny in all modes?
+    if (r->flags.loopdetect &&
+        (http->flags.accel || http->flags.transparent)) {
         http->al.http.code = HTTP_FORBIDDEN;
         err =
             clientBuildError(ERR_ACCESS_DENIED, HTTP_FORBIDDEN, NULL,
@@ -1294,7 +1293,7 @@ clientReplyContext::buildReplyHeader()
         LOCAL_ARRAY(char, bbuf, MAX_URL + 32);
         String strVia;
        	hdr->getList(HDR_VIA, &strVia);
-        snprintf(bbuf, sizeof(bbuf), "%d.%d %s",
+        snprintf(bbuf, MAX_URL + 32, "%d.%d %s",
                  reply->sline.version.major,
                  reply->sline.version.minor,
                  ThisCache);
@@ -1683,6 +1682,7 @@ clientReplyContext::processReplyAccess ()
     }
 
     if (http->isReplyBodyTooLarge(reply->content_length)) {
+        http->logType = LOG_TCP_DENIED_REPLY;
         ErrorState *err =
             clientBuildError(ERR_TOO_BIG, HTTP_FORBIDDEN, NULL,
                              http->getConn() != NULL ? &http->getConn()->peer.sin_addr : &no_addr,

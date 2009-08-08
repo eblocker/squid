@@ -1,3 +1,12 @@
+squid3 (3.0.STABLE16-2.1) unstable; urgency=high
+
+  * Non-maintainer upload by the Security Team.
+  * Fix multiple possible denial of service vectors in the processing of
+    requests or responses
+    (SQUID-2009-2; CVE-2009-2622; CVE-2009-2621; 12-SQUID-2009_2.dpatch).
+
+ -- Nico Golde <nion@debian.org>  Tue, 04 Aug 2009 21:56:36 +0200
+
 squid3 (3.0.STABLE16-2) unstable; urgency=low
 
   * debian/patches/13-signed-unsigned-fixes

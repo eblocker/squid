@@ -1,6 +1,10 @@
 squid3 (3.0.STABLE18-1) UNRELEASED; urgency=low
 
   * New upstream release
+    - Removed patches integrated upstream
+      + 12-gcc44-fixes
+      + 13-signed-unsigned-fixes
+      + SQUID-2009-2
 
  -- Luigi Gangitano <luigi@debian.org>  Sun, 09 Aug 2009 00:28:56 +0200
 

@@ -3,3 +3,4 @@
 10-mgr_active_requests
 11-SQUID-2009:1
 12-SQUID-2009_2
+13-http_assert_eof

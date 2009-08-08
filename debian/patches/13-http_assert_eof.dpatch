@@ -1,0 +1,24 @@
+#! /bin/sh /usr/share/dpatch/dpatch-run
+## 13-http-assert-eof.dpatch by Luigi Gangitano <luigi@debian.org>
+##
+## All lines beginning with `## DP:' are a description of the patch.
+## DP: No description.
+
+@DPATCH@
+diff -urNad squid3~/src/HttpMsg.cc squid3/src/HttpMsg.cc
+--- squid3~/src/HttpMsg.cc	2009-08-09 01:03:02.000000000 +0200
++++ squid3/src/HttpMsg.cc	2009-08-09 01:05:28.000000000 +0200
+@@ -154,8 +154,11 @@
+ 
+     // sanity check the start line to see if this is in fact an HTTP message
+     if (!sanityCheckStartLine(buf, hdr_len, error)) {
+-        debugs(58,1, HERE << "first line of HTTP message is invalid");
+-        // NP: sanityCheck sets *error
++        // NP: sanityCheck sets *error and sends debug warnings on syntax errors.
++        // if we have seen the connection close, this is an error too
++        if (eof && *error==HTTP_STATUS_NONE)
++            *error = HTTP_INVALID_HEADER;
++
+         return false;
+     }
+ 

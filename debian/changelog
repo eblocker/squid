@@ -1,4 +1,4 @@
-squid3 (3.0.STABLE18-1) UNRELEASED; urgency=low
+squid3 (3.0.STABLE18-1) unstable; urgency=high
 
   * New upstream release
     - Removed patches integrated upstream

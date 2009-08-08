@@ -23,13 +23,14 @@ DEB_CONFIGURE_EXTRA_FLAGS := --datadir=/usr/share/squid3 \
 		--enable-cache-digests \
 		--enable-underscores \
 		--enable-icap-client \
-        --enable-follow-x-forwarded-for \
+		--enable-follow-x-forwarded-for \
 		--enable-auth="basic,digest,ntlm,negotiate" \
 		--enable-basic-auth-helpers="LDAP,MSNT,NCSA,PAM,SASL,SMB,YP,getpwnam,multi-domain-NTLM" \
 		--enable-ntlm-auth-helpers="SMB" \
 		--enable-digest-auth-helpers="ldap,password" \
 		--enable-negotiate-auth-helpers="squid_kerb_auth" \
 		--enable-external-acl-helpers="ip_user,ldap_group,session,unix_group,wbinfo_group" \
+		--enable-arp-acl \
 		--with-filedescriptors=65536 \
 		--with-large-files \
 		--with-default-user=proxy

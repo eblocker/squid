@@ -5,9 +5,9 @@
 # Version:	@(#)squid3.rc  1.0  07-Jul-2006  luigi@debian.org
 #
 ### BEGIN INIT INFO
-# Provides:          squid
-# Required-Start:    $local_fs $network
-# Required-Stop:     $local_fs $network
+# Provides:          squid3
+# Required-Start:    $network $remote_fs $syslog
+# Required-Stop:     $network $remote_fs $syslog
 # Should-Start:      $named
 # Should-Stop:       $named
 # Default-Start:     2 3 4 5

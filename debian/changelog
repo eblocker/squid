@@ -1,6 +1,8 @@
 squid3 (3.1.0.13-1) UNRELEASED; urgency=low
 
   * New upstream release
+    - Fixes Follow-X-Forwarded-For support (Closes: #523943)
+    - Adds IPv6 support (Closes: #432351)
 
   * debian/rules
     - Removed obsolete configuration options

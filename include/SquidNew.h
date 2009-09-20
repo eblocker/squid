@@ -1,5 +1,5 @@
 /*
- * $Id: SquidNew.h,v 1.1 2003/07/07 22:44:28 robertc Exp $
+ * $Id$
  *
  * AUTHOR: Harvest Derived
  *
@@ -19,20 +19,21 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *  
+ *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *  
+ *
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
- *  
+ *
  */
-
 #ifndef SQUID_NEW_H
 #define SQUID_NEW_H
+
+#include "util.h"
 
 /* Any code using libstdc++ must have externally resolvable overloads
  * for void * operator new - which means in the .o for the binary,
@@ -41,6 +42,7 @@
  * for the extern version in squid
  */
 #include <new>
+
 _SQUID_EXTERNNEW_ void *operator new(size_t size) throw (std::bad_alloc)
 {
     return xmalloc(size);
@@ -57,4 +59,5 @@ _SQUID_EXTERNNEW_ void operator delete[] (void *address) throw()
 {
     xfree (address);
 }
+
 #endif /* SQUID_NEW_H */

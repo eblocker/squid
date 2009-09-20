@@ -1,6 +1,6 @@
 
 /*
- * $Id: multicast.cc,v 1.12 2007/04/28 22:26:37 hno Exp $
+ * $Id$
  *
  * DEBUG: section 7     Multicast
  * AUTHOR: Martin Hamilton
@@ -21,12 +21,12 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *  
+ *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *  
+ *
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
@@ -50,7 +50,7 @@ mcastSetTtl(int fd, int mcast_ttl)
 }
 
 void
-mcastJoinGroups(const ipcache_addrs * ia, void *datanotused)
+mcastJoinGroups(const ipcache_addrs *ia, const DnsLookupDetails &, void *datanotused)
 {
 #ifdef IP_MULTICAST_TTL
     int fd = theInIcpConnection;
@@ -66,15 +66,23 @@ mcastJoinGroups(const ipcache_addrs * ia, void *datanotused)
     }
 
     for (i = 0; i < (int) ia->count; i++) {
-        debugs(7, 10, "Listening for ICP requests on " << inet_ntoa(*(ia->in_addrs + i)));
-        mr.imr_multiaddr.s_addr = (ia->in_addrs + i)->s_addr;
+        debugs(7, 10, "Listening for ICP requests on " << ia->in_addrs[i] );
+
+#if USE_IPV6
+        if ( ! ia->in_addrs[i].IsIPv4() ) {
+            debugs(7, 10, "ERROR: IPv6 Multicast Listen has not been implemented!");
+            continue;
+        }
+#endif
+
+        ia->in_addrs[i].GetInAddr(mr.imr_multiaddr);
+
         mr.imr_interface.s_addr = INADDR_ANY;
         x = setsockopt(fd, IPPROTO_IP, IP_ADD_MEMBERSHIP,
-
                        (char *) &mr, sizeof(struct ip_mreq));
 
         if (x < 0)
-            debugs(7, 1, "comm_join_mcast_groups: FD " << fd << ", [" << inet_ntoa(*(ia->in_addrs + i)) << "]");
+            debugs(7, 1, "comm_join_mcast_groups: FD " << fd << ", IP=" << ia->in_addrs[i]);
 
         x = setsockopt(fd, IPPROTO_IP, IP_MULTICAST_LOOP, &c, 1);
 

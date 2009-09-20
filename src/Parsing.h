@@ -1,6 +1,6 @@
 
 /*
- * $Id: Parsing.h,v 1.4 2007/08/13 17:20:51 hno Exp $
+ * $Id$
  *
  * DEBUG: section 3     Configuration File Parsing
  * AUTHOR: Harvest Derived
@@ -21,12 +21,12 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *  
+ *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *  
+ *
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
@@ -42,7 +42,18 @@ extern double xatof(const char *token);
 extern int xatoi(const char *token);
 extern long xatol(const char *token);
 extern unsigned short xatos(const char *token);
+
+/**
+ * Parse a 64-bit integer value.
+ */
+extern int64_t GetInteger64(void);
+
+/**
+ * Parses an integer value.
+ * Uses a method that obeys hexadecimal 0xN syntax needed for certain bitmasks.
+ */
 extern int GetInteger(void);
+
 extern u_short GetShort(void);
 
 // on success, returns true and sets *p (if any) to the end of the integer

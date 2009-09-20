@@ -2,7 +2,6 @@ Special thanks go to people who have volunteered their time, effort,
 and ideas to make this software available.
 
     Adrian Chadd <adrian@creative.net.au>
-    Gonzalo Arana <gonzalo.arana@gmail.com>
     Alexander B. Demenshin <aldem@barnet.kharkov.ua>
     Alexander Lukyanov <lav@yar.ru>
     Alexey Veselovsky <alexey.veselovsky@eykontech.com>
@@ -17,7 +16,6 @@ and ideas to make this software available.
     Arjan de Vet <Arjan.deVet@adv.IAEhv.nl>
     Arthur Tumanyan <arthurtumanyan@yahoo.com>
     Assar Westerlund <assar@pdc.kth.se>
-    Automatic source maintenance <squidadm@squid-cache.org>
     Axel Westerhold <ml.awesterhold@dts.de>
     Benno Rice <benno@squid-cache.org>
     Bojan Smojver <bojan@rexursive.com>
@@ -28,12 +26,14 @@ and ideas to make this software available.
     Bruce Murphy <pack-squid@rattus.net>
     Carson Gaspar (carson@lehman.com, carson@cs.columbia.edu)
     Christos Tsantilas <chtsanti@users.sourceforge.net>
+    Constantin Rack
     Cord Beermann <cord@cc.fh-lippe.de>
     Daniel O'Callaghan <danny@miriworld.its.unimelb.EDU.AU>
     David Luyer <luyer@ucs.uwa.edu.au>
     Dmitry Kurochkin
     Doug Dixon <doug.dixon@gmail.com>
     Doug Urner <dlu@bsdi.com>
+    Dragutin Cirkovic <painkiller@gromnet.net>
     Duane Wessels <wessels@squid-cache.org>
     Ed Knowles <ed@fatboy.geog.unsw.edu.au>
     Edward Moy <moy@parc.xerox.com>
@@ -46,6 +46,7 @@ and ideas to make this software available.
     Finn Thain <fthain@telegraphics.com.au>
     Flavio Pescuma <flavio@marasystems.com>
     Francesco Chemolli <kinkie@squid-cache.org>
+    Francesco Salvestrini and Dustin J. Mitchell
     Francis Daly <francis@daoine.org>
     Francois Cami <fcami@winsoft.fr>
     Frank Balluffi
@@ -53,6 +54,7 @@ and ideas to make this software available.
     George Michaelson <ggm@connect.com.au>
     Georgy Salnikov <sge@nmr.nioch.nsc.ru>
     Gerben Wierda <Gerben_Wierda@RnA.nl>
+    Gilles Espinasse <g.esp@free.fr>
     Glen Gibb <grg@ridley.unimelb.edu.au>
     Glenn Chisholm <glenn@ircache.net>
     Golub Mikhail
@@ -80,6 +82,7 @@ and ideas to make this software available.
     Klaus Singvogel <kssingvo@suse.de>
     Kolics Bertold <bertold@tohotom.vein.hu>
     Kostas Anagnostakis <kanag@csi.forth.gr>
+    Laszlo Attilla Toth <panther@balabit.hu>
     Leeann Bent <lbent@cs.ucsd.edu>
     Luigi Gangitano <luigi@debian.org>
     Luke Howard <lukeh@vurt.schnet.edu.au>
@@ -90,7 +93,9 @@ and ideas to make this software available.
     Mark Nottingham <mnot@pobox.com>
     Mark Treacy <mark@aone.com.au>
     Markus Gyger <mgyger@itr.ch>
+    Markus <huaraz@moeller.plus.com>
     Markus Moeller <huaraz@moeller.plus.com>
+    Markus Moeller <markus_moeller@compuserve.com>
     Markus Stumpf <maex@Space.NET>
     Martin Hamilton <martin@mrrl.lut.ac.uk>
     Masashi Fujita <objectx@bandit.co.jp>
@@ -118,14 +123,17 @@ and ideas to make this software available.
     Pierangelo Masarati <ando@sys-net.it>
     Pierre-Louis BRENAC <brenacp@esiee.fr>
     Przemek Czerkas <pczerkas@mgmnet.pl>
-    Rafael Martinez <rmartine@fdi.ucm.es>
+    Rafael Martinez Torres <rmartine@fdi.ucm.es>
     Ralph Loader <loader@maths.ox.ac.uk>
     Reuben Farrelly <reuben@reub.net>
     Richard Huveneers <Richard.Huveneers@hekkihek.hacom.nl>
     Robert Collins <robertc@robertcollins.net>
+    Robert Dessa
+    Rodrigo Campos (rodrigo@geekbunker.org)
     Ron Gomes <rrg@ny.ubs.com>
     Russell Street <r.street@auckland.ac.nz>
     Russell Vincent <vincent@ucthpx.uct.ac.za>
+    Ryan Troll <ryan+@andrew.cmu.edu>
     Scott Schram <scott@schram.net>
     Sergio Rabellino <rabellino@di.unito.it>
     Shigechika Aikawa <shige@luck.imasy.or.jp>
@@ -133,6 +141,7 @@ and ideas to make this software available.
     Steve Bennett <S.Bennett@lancaster.ac.uk>
     Steven Wilton <swilton@q-net.net.au>
     Stewart Forster <slf@connect.com.au>
+    Svenx <svensven@gmail.com>
     Taavi Talvik <taavi@uninet.ee>
     Taketo Kabe <kabe@shiratori.riec.tohoku.ac.jp>
     Thomas-Martin Seck <tmseck@netcologne.de>

@@ -1,6 +1,6 @@
 
 /*
- * $Id: comm_epoll.cc,v 1.17.2.1 2008/02/25 03:45:24 amosjeffries Exp $
+ * $Id$
  *
  * DEBUG: section 5     Socket Functions
  *
@@ -63,13 +63,16 @@
 
 #define DEBUG_EPOLL 0
 
+#if HAVE_SYS_EPOLL_H
 #include <sys/epoll.h>
+#endif
 
 static int kdpfd;
 static int max_poll_time = 1000;
 
 static struct epoll_event *pevents;
 
+static void commEPollRegisterWithCacheManager(void);
 
 
 /* XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX */
@@ -97,11 +100,13 @@ comm_select_init(void)
     if (kdpfd < 0) {
         fatalf("comm_select_init: epoll_create(): %s\n",xstrerror());
     }
+
+    commEPollRegisterWithCacheManager();
 }
 
 static const char* epolltype_atoi(int x)
 {
-    switch(x) {
+    switch (x) {
 
     case EPOLL_CTL_ADD:
         return "EPOLL_CTL_ADD";
@@ -133,13 +138,13 @@ commSetSelect(int fd, unsigned int type, PF * handler,
 
     struct epoll_event ev;
     assert(fd >= 0);
-    debugs(5, DEBUG_EPOLL ? 0 : 8, "commSetSelect(FD " << fd << ",type=" << type << 
-           ",handler=" << handler << ",client_data=" << client_data << 
+    debugs(5, DEBUG_EPOLL ? 0 : 8, "commSetSelect(FD " << fd << ",type=" << type <<
+           ",handler=" << handler << ",client_data=" << client_data <<
            ",timeout=" << timeout << ")");
 
     if (RUNNING_ON_VALGRIND) {
-	/* Keep valgrind happy.. complains about uninitialized bytes otherwise */
-	memset(&ev, 0, sizeof(ev));
+        /* Keep valgrind happy.. complains about uninitialized bytes otherwise */
+        memset(&ev, 0, sizeof(ev));
     }
     ev.events = 0;
     ev.data.fd = fd;
@@ -153,11 +158,11 @@ commSetSelect(int fd, unsigned int type, PF * handler,
 
     if (type & COMM_SELECT_READ) {
         if (handler) {
-	    // Hack to keep the events flowing if there is data immediately ready
-	    if (F->flags.read_pending)
-		ev.events |= EPOLLOUT;
+            // Hack to keep the events flowing if there is data immediately ready
+            if (F->flags.read_pending)
+                ev.events |= EPOLLOUT;
             ev.events |= EPOLLIN;
-	}
+        }
 
         F->read_handler = handler;
 
@@ -194,7 +199,7 @@ commSetSelect(int fd, unsigned int type, PF * handler,
         F->epoll_state = ev.events;
 
         if (epoll_ctl(kdpfd, epoll_ctl_type, fd, &ev) < 0) {
-            debugs(5, DEBUG_EPOLL ? 0 : 8, "commSetSelect: epoll_ctl(," << epolltype_atoi(epoll_ctl_type) << 
+            debugs(5, DEBUG_EPOLL ? 0 : 8, "commSetSelect: epoll_ctl(," << epolltype_atoi(epoll_ctl_type) <<
                    ",,): failed on FD " << fd << ": " << xstrerror());
         }
     }
@@ -214,19 +219,20 @@ commResetSelect(int fd)
 
 static void commIncomingStats(StoreEntry * sentry);
 
-void
-commEPollRegisterWithCacheManager(CacheManager& manager)
+static void
+commEPollRegisterWithCacheManager(void)
 {
-    manager.registerAction("comm_epoll_incoming",
-                           "comm_incoming() stats",
-                           commIncomingStats, 0, 1);
+    CacheManager::GetInstance()->
+    registerAction("comm_epoll_incoming",
+                   "comm_incoming() stats",
+                   commIncomingStats, 0, 1);
 }
 
 static void
 commIncomingStats(StoreEntry * sentry)
 {
     StatCounters *f = &statCounter;
-    storeAppendPrintf(sentry, "Total number of epoll(2) loops: %d\n", statCounter.select_loops);
+    storeAppendPrintf(sentry, "Total number of epoll(2) loops: %ld\n", statCounter.select_loops);
     storeAppendPrintf(sentry, "Histogram of returned filedescriptors\n");
     statHistDump(&f->select_fds_hist, sentry, statHistIntDumper);
 }
@@ -259,7 +265,7 @@ comm_select(int msec)
 
     for (;;) {
         num = epoll_wait(kdpfd, pevents, SQUID_MAXFD, msec);
-        statCounter.select_loops++;
+        ++statCounter.select_loops;
 
         if (num >= 0)
             break;
@@ -287,9 +293,9 @@ comm_select(int msec)
     for (i = 0, cevents = pevents; i < num; i++, cevents++) {
         fd = cevents->data.fd;
         F = &fd_table[fd];
-        debugs(5, DEBUG_EPOLL ? 0 : 8, "comm_select(): got FD " << fd << " events=" << 
-              std::hex << cevents->events << " monitoring=" << F->epoll_state << 
-              " F->read_handler=" << F->read_handler << " F->write_handler=" << F->write_handler);
+        debugs(5, DEBUG_EPOLL ? 0 : 8, "comm_select(): got FD " << fd << " events=" <<
+               std::hex << cevents->events << " monitoring=" << F->epoll_state <<
+               " F->read_handler=" << F->read_handler << " F->write_handler=" << F->write_handler);
 
         // TODO: add EPOLLPRI??
 

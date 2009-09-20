@@ -1,5 +1,5 @@
 /*
- * $Id: rfc1035.h,v 1.18 2007/09/20 11:58:21 amosjeffries Exp $
+ * $Id$
  *
  * AUTHOR: Duane Wessels
  *
@@ -19,22 +19,22 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *  
+ *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *  
+ *
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
- *  
+ *
  */
-
 #ifndef SQUID_RFC1035_H
 #define SQUID_RFC1035_H
 
 #include "config.h"
+
 #if HAVE_SYS_TYPES_H
 #include <sys/types.h>
 #endif
@@ -45,8 +45,19 @@
 #include <arpa/inet.h>
 #endif
 
-/* rfc1035 - DNS */
-#define RFC1035_MAXHOSTNAMESZ 256
+#include "rfc2181.h"
+
+/**
+ \par RFC 1035 Section 3.1:
+ *  To simplify implementations, the total length of a domain name (i.e.,
+ *  label octets and label length octets) is restricted to 255 octets or
+ *  less.
+ *\par
+ *  Clarified by RFC 2181 Section 11. (RFC2181_MAXHOSTNAMELEN)
+ */
+#define RFC1035_MAXHOSTNAMESZ RFC2181_MAXHOSTNAMELEN
+
+
 typedef struct _rfc1035_rr rfc1035_rr;
 struct _rfc1035_rr {
     char name[RFC1035_MAXHOSTNAMESZ];
@@ -56,12 +67,14 @@ struct _rfc1035_rr {
     unsigned short rdlength;
     char *rdata;
 };
+
 typedef struct _rfc1035_query rfc1035_query;
 struct _rfc1035_query {
     char name[RFC1035_MAXHOSTNAMESZ];
     unsigned short qtype;
     unsigned short qclass;
 };
+
 typedef struct _rfc1035_message rfc1035_message;
 struct _rfc1035_message {
     unsigned short id;
@@ -81,21 +94,22 @@ struct _rfc1035_message {
 };
 
 SQUIDCEXTERN ssize_t rfc1035BuildAQuery(const char *hostname,
-    char *buf,
-    size_t sz,
-    unsigned short qid,
-    rfc1035_query * query);
+                                        char *buf,
+                                        size_t sz,
+                                        unsigned short qid,
+                                        rfc1035_query * query);
 SQUIDCEXTERN ssize_t rfc1035BuildPTRQuery(const struct in_addr,
-    char *buf,
-    size_t sz,
-    unsigned short qid,
-    rfc1035_query * query);
+        char *buf,
+        size_t sz,
+        unsigned short qid,
+        rfc1035_query * query);
 SQUIDCEXTERN void rfc1035SetQueryID(char *, unsigned short qid);
 SQUIDCEXTERN int rfc1035MessageUnpack(const char *buf,
-    size_t sz,
-    rfc1035_message ** answer);
+                                      size_t sz,
+                                      rfc1035_message ** answer);
 SQUIDCEXTERN int rfc1035QueryCompare(const rfc1035_query *, const rfc1035_query *);
-SQUIDCEXTERN void rfc1035MessageDestroy(rfc1035_message * message);
+SQUIDCEXTERN void rfc1035RRDestroy(rfc1035_rr ** rr, int n);
+SQUIDCEXTERN void rfc1035MessageDestroy(rfc1035_message ** message);
 SQUIDCEXTERN int rfc1035_errno;
 SQUIDCEXTERN const char *rfc1035_error_message;
 
@@ -105,18 +119,18 @@ SQUIDCEXTERN const char *rfc1035_error_message;
 #define RFC1035_CLASS_IN 1
 
 
-    /* Child Library RFC3596 Depends on some otherwise internal functions */
+/* Child Library RFC3596 Depends on some otherwise internal functions */
 SQUIDCEXTERN int rfc1035HeaderPack(char *buf,
-    size_t sz,
-    rfc1035_message * hdr);
+                                   size_t sz,
+                                   rfc1035_message * hdr);
 SQUIDCEXTERN int rfc1035HeaderUnpack(const char *buf,
-    size_t sz,
-    unsigned int *off,
-    rfc1035_message * h);
+                                     size_t sz,
+                                     unsigned int *off,
+                                     rfc1035_message * h);
 SQUIDCEXTERN int rfc1035QuestionPack(char *buf,
-     size_t sz,
-    const char *name,
-    const unsigned short type,
-    const unsigned short _class);
+                                     size_t sz,
+                                     const char *name,
+                                     const unsigned short type,
+                                     const unsigned short _class);
 
 #endif /* SQUID_RFC1035_H */

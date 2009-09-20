@@ -17,7 +17,7 @@
 #
 #  Makefile for the Squid Object Cache server
 #
-#  $Id: Makefile.am,v 1.20 2007/01/04 20:52:57 hno Exp $
+#  $Id$
 #
 VPATH = @srcdir@
 pkgdatadir = $(datadir)/@PACKAGE@
@@ -37,19 +37,20 @@ PRE_UNINSTALL = :
 POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
-EXTRA_PROGRAMS = mem_node_test$(EXEEXT) membanger$(EXEEXT) \
-	splay$(EXEEXT) tcp-banger2$(EXEEXT) rfc1738$(EXEEXT)
+DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in \
+	$(top_srcdir)/src/Common.am
+check_PROGRAMS = debug$(EXEEXT) $(am__EXEEXT_2) MemPoolTest$(EXEEXT) \
+	mem_node_test$(EXEEXT) mem_hdr_test$(EXEEXT) refcount$(EXEEXT) \
+	rfc1738$(EXEEXT) splay$(EXEEXT) StackTest$(EXEEXT) \
+	syntheticoperators$(EXEEXT) VirtualDeleteOperator$(EXEEXT)
 TESTS = debug$(EXEEXT) syntheticoperators$(EXEEXT) \
 	VirtualDeleteOperator$(EXEEXT) StackTest$(EXEEXT) \
 	rfc1738$(EXEEXT) refcount$(EXEEXT) splay$(EXEEXT) \
 	MemPoolTest$(EXEEXT) mem_node_test$(EXEEXT) \
 	mem_hdr_test$(EXEEXT) $(am__EXEEXT_2)
-check_PROGRAMS = debug$(EXEEXT) $(am__EXEEXT_2) MemPoolTest$(EXEEXT) \
-	mem_node_test$(EXEEXT) mem_hdr_test$(EXEEXT) refcount$(EXEEXT) \
-	rfc1738$(EXEEXT) splay$(EXEEXT) StackTest$(EXEEXT) \
-	syntheticoperators$(EXEEXT) VirtualDeleteOperator$(EXEEXT)
+EXTRA_PROGRAMS = mem_node_test$(EXEEXT) membanger$(EXEEXT) \
+	splay$(EXEEXT) tcp-banger2$(EXEEXT) rfc1738$(EXEEXT)
 subdir = test-suite
-DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/acinclude.m4 \
 	$(top_srcdir)/configure.in
@@ -63,31 +64,32 @@ am__EXEEXT_1 = ESIExpressions$(EXEEXT)
 am__objects_1 = test_tools.$(OBJEXT)
 am_ESIExpressions_OBJECTS = ESIExpressions.$(OBJEXT) $(am__objects_1)
 ESIExpressions_OBJECTS = $(am_ESIExpressions_OBJECTS)
-am__DEPENDENCIES_1 = $(top_builddir)/src/globals.o \
-	$(top_builddir)/src/time.o
-ESIExpressions_DEPENDENCIES = $(top_builddir)/src/ESIExpression.o \
+am__DEPENDENCIES_1 = $(top_builddir)/compat/libcompat.la \
+	$(top_builddir)/src/globals.o $(top_builddir)/src/time.o
+ESIExpressions_DEPENDENCIES = $(top_builddir)/src/esi/Expression.o \
 	$(am__DEPENDENCIES_1)
 am_MemPoolTest_OBJECTS = MemPoolTest.$(OBJEXT)
 MemPoolTest_OBJECTS = $(am_MemPoolTest_OBJECTS)
 MemPoolTest_LDADD = $(LDADD)
-MemPoolTest_DEPENDENCIES = $(top_builddir)/src/globals.o \
-	$(top_builddir)/src/time.o
+MemPoolTest_DEPENDENCIES = $(top_builddir)/compat/libcompat.la \
+	$(top_builddir)/src/globals.o $(top_builddir)/src/time.o
 am_StackTest_OBJECTS = StackTest.$(OBJEXT) $(am__objects_1)
 StackTest_OBJECTS = $(am_StackTest_OBJECTS)
 StackTest_LDADD = $(LDADD)
-StackTest_DEPENDENCIES = $(top_builddir)/src/globals.o \
-	$(top_builddir)/src/time.o
+StackTest_DEPENDENCIES = $(top_builddir)/compat/libcompat.la \
+	$(top_builddir)/src/globals.o $(top_builddir)/src/time.o
 am_VirtualDeleteOperator_OBJECTS = VirtualDeleteOperator.$(OBJEXT) \
 	$(am__objects_1)
 VirtualDeleteOperator_OBJECTS = $(am_VirtualDeleteOperator_OBJECTS)
 VirtualDeleteOperator_LDADD = $(LDADD)
-VirtualDeleteOperator_DEPENDENCIES = $(top_builddir)/src/globals.o \
-	$(top_builddir)/src/time.o
+VirtualDeleteOperator_DEPENDENCIES =  \
+	$(top_builddir)/compat/libcompat.la \
+	$(top_builddir)/src/globals.o $(top_builddir)/src/time.o
 am_debug_OBJECTS = debug.$(OBJEXT) $(am__objects_1)
 debug_OBJECTS = $(am_debug_OBJECTS)
 debug_LDADD = $(LDADD)
-debug_DEPENDENCIES = $(top_builddir)/src/globals.o \
-	$(top_builddir)/src/time.o
+debug_DEPENDENCIES = $(top_builddir)/compat/libcompat.la \
+	$(top_builddir)/src/globals.o $(top_builddir)/src/time.o
 am_mem_hdr_test_OBJECTS = mem_hdr_test.$(OBJEXT) $(am__objects_1)
 mem_hdr_test_OBJECTS = $(am_mem_hdr_test_OBJECTS)
 mem_hdr_test_DEPENDENCIES = $(top_builddir)/src/stmem.o \
@@ -99,33 +101,33 @@ mem_node_test_DEPENDENCIES = $(top_builddir)/src/mem_node.o \
 membanger_SOURCES = membanger.c
 membanger_OBJECTS = membanger.$(OBJEXT)
 membanger_LDADD = $(LDADD)
-membanger_DEPENDENCIES = $(top_builddir)/src/globals.o \
-	$(top_builddir)/src/time.o
+membanger_DEPENDENCIES = $(top_builddir)/compat/libcompat.la \
+	$(top_builddir)/src/globals.o $(top_builddir)/src/time.o
 am_refcount_OBJECTS = refcount.$(OBJEXT)
 refcount_OBJECTS = $(am_refcount_OBJECTS)
 refcount_LDADD = $(LDADD)
-refcount_DEPENDENCIES = $(top_builddir)/src/globals.o \
-	$(top_builddir)/src/time.o
+refcount_DEPENDENCIES = $(top_builddir)/compat/libcompat.la \
+	$(top_builddir)/src/globals.o $(top_builddir)/src/time.o
 am_rfc1738_OBJECTS = rfc1738.$(OBJEXT)
 rfc1738_OBJECTS = $(am_rfc1738_OBJECTS)
 rfc1738_LDADD = $(LDADD)
-rfc1738_DEPENDENCIES = $(top_builddir)/src/globals.o \
-	$(top_builddir)/src/time.o
+rfc1738_DEPENDENCIES = $(top_builddir)/compat/libcompat.la \
+	$(top_builddir)/src/globals.o $(top_builddir)/src/time.o
 am_splay_OBJECTS = splay.$(OBJEXT)
 splay_OBJECTS = $(am_splay_OBJECTS)
 splay_LDADD = $(LDADD)
-splay_DEPENDENCIES = $(top_builddir)/src/globals.o \
-	$(top_builddir)/src/time.o
+splay_DEPENDENCIES = $(top_builddir)/compat/libcompat.la \
+	$(top_builddir)/src/globals.o $(top_builddir)/src/time.o
 am_syntheticoperators_OBJECTS = syntheticoperators.$(OBJEXT) \
 	$(am__objects_1)
 syntheticoperators_OBJECTS = $(am_syntheticoperators_OBJECTS)
 syntheticoperators_LDADD = $(LDADD)
-syntheticoperators_DEPENDENCIES = $(top_builddir)/src/globals.o \
-	$(top_builddir)/src/time.o
+syntheticoperators_DEPENDENCIES = $(top_builddir)/compat/libcompat.la \
+	$(top_builddir)/src/globals.o $(top_builddir)/src/time.o
 tcp_banger2_SOURCES = tcp-banger2.c
 tcp_banger2_OBJECTS = tcp-banger2.$(OBJEXT)
 tcp_banger2_DEPENDENCIES =
-DEFAULT_INCLUDES = -I.@am__isrc@ -I$(top_builddir)/include
+DEFAULT_INCLUDES = 
 depcomp = $(SHELL) $(top_srcdir)/cfgaux/depcomp
 am__depfiles_maybe = depfiles
 COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
@@ -162,14 +164,13 @@ ETAGS = etags
 CTAGS = ctags
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
 ACLOCAL = @ACLOCAL@
+ADAPTATION_LIBS = @ADAPTATION_LIBS@
 ALLOCA = @ALLOCA@
 AMTAR = @AMTAR@
 AR = @AR@
 AR_R = @AR_R@
-AUTH_LIBS = @AUTH_LIBS@
-AUTH_LINKOBJS = @AUTH_LINKOBJS@
+AUTH_LIBS_TO_BUILD = @AUTH_LIBS_TO_BUILD@
 AUTH_MODULES = @AUTH_MODULES@
-AUTH_OBJS = @AUTH_OBJS@
 AUTOCONF = @AUTOCONF@
 AUTOHEADER = @AUTOHEADER@
 AUTOMAKE = @AUTOMAKE@
@@ -191,21 +192,24 @@ CXXCPP = @CXXCPP@
 CXXDEPMODE = @CXXDEPMODE@
 CXXFLAGS = @CXXFLAGS@
 CYGPATH_W = @CYGPATH_W@
+DEFAULT_LOG_DIR = @DEFAULT_LOG_DIR@
+DEFAULT_PIDFILE = @DEFAULT_PIDFILE@
 DEFS = @DEFS@
 DEPDIR = @DEPDIR@
 DIGEST_AUTH_HELPERS = @DIGEST_AUTH_HELPERS@
 DISK_LIBS = @DISK_LIBS@
 DISK_LINKOBJS = @DISK_LINKOBJS@
+DISK_MODULES = @DISK_MODULES@
 DISK_PROGRAMS = @DISK_PROGRAMS@
 DSYMUTIL = @DSYMUTIL@
+ECAPLIB = @ECAPLIB@
+ECAP_LIBS = @ECAP_LIBS@
 ECHO = @ECHO@
 ECHO_C = @ECHO_C@
 ECHO_N = @ECHO_N@
 ECHO_T = @ECHO_T@
 EGREP = @EGREP@
 EPOLL_LIBS = @EPOLL_LIBS@
-ERR_DEFAULT_LANGUAGE = @ERR_DEFAULT_LANGUAGE@
-ERR_LANGUAGES = @ERR_LANGUAGES@
 EXEEXT = @EXEEXT@
 EXTERNAL_ACL_HELPERS = @EXTERNAL_ACL_HELPERS@
 F77 = @F77@
@@ -213,17 +217,16 @@ FALSE = @FALSE@
 FFLAGS = @FFLAGS@
 GREP = @GREP@
 ICAP_LIBS = @ICAP_LIBS@
+INCLTDL = @INCLTDL@
 INSTALL = @INSTALL@
 INSTALL_DATA = @INSTALL_DATA@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
 INSTALL_SCRIPT = @INSTALL_SCRIPT@
 INSTALL_STRIP_PROGRAM = @INSTALL_STRIP_PROGRAM@
-KRB5INCS = @KRB5INCS@
-KRB5LIBS = @KRB5LIBS@
 LDFLAGS = @LDFLAGS@
 LIBADD_DL = @LIBADD_DL@
+LIBLTDL = @LIBLTDL@
 LIBOBJS = @LIBOBJS@
-LIBREGEX = @LIBREGEX@
 LIBS = @LIBS@
 LIBSASL = @LIBSASL@
 LIBTOOL = @LIBTOOL@
@@ -252,6 +255,7 @@ PACKAGE_TARNAME = @PACKAGE_TARNAME@
 PACKAGE_VERSION = @PACKAGE_VERSION@
 PATH_SEPARATOR = @PATH_SEPARATOR@
 PERL = @PERL@
+PO2HTML = @PO2HTML@
 RANLIB = @RANLIB@
 REGEXLIB = @REGEXLIB@
 REPL_LIBS = @REPL_LIBS@
@@ -269,9 +273,8 @@ SQUID_CPPUNIT_LA = @SQUID_CPPUNIT_LA@
 SQUID_CPPUNIT_LIBS = @SQUID_CPPUNIT_LIBS@
 SQUID_CXXFLAGS = @SQUID_CXXFLAGS@
 SSLLIB = @SSLLIB@
-STORE_LIBS = @STORE_LIBS@
-STORE_LINKOBJS = @STORE_LINKOBJS@
-STORE_OBJS = @STORE_OBJS@
+STORE_LIBS_TO_ADD = @STORE_LIBS_TO_ADD@
+STORE_LIBS_TO_BUILD = @STORE_LIBS_TO_BUILD@
 STORE_TESTS = @STORE_TESTS@
 STRIP = @STRIP@
 TRUE = @TRUE@
@@ -286,7 +289,6 @@ abs_top_srcdir = @abs_top_srcdir@
 ac_ct_CC = @ac_ct_CC@
 ac_ct_CXX = @ac_ct_CXX@
 ac_ct_F77 = @ac_ct_F77@
-ac_krb5_config = @ac_krb5_config@
 am__include = @am__include@
 am__leading_dot = @am__leading_dot@
 am__quote = @am__quote@
@@ -334,21 +336,29 @@ target_alias = @target_alias@
 top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
-AUTOMAKE_OPTIONS = subdir-objects
 AM_CFLAGS = @SQUID_CFLAGS@
 AM_CXXFLAGS = @SQUID_CXXFLAGS@
-INCLUDES = -I. -I$(srcdir) -I$(top_builddir)/include -I$(top_srcdir)/include -I$(top_srcdir)/src
+CLEANFILES = 
+INCLUDES = -I$(top_srcdir) -I$(top_srcdir)/include -I$(top_srcdir)/src \
+	-I$(top_builddir)/include @SQUID_CPPUNIT_INC@ -I$(srcdir)
+AUTOMAKE_OPTIONS = subdir-objects
+LDADD = \
+	$(top_builddir)/compat/libcompat.la \
+	-L$(top_builddir)/lib -lmiscutil \
+	$(top_builddir)/src/globals.o \
+	$(top_builddir)/src/time.o
+
+EXTRA_DIST = testheaders.sh
 ESI_ALL_TESTS = \
 	ESIExpressions
 
 @USE_ESI_FALSE@ESI_TESTS = 
 @USE_ESI_TRUE@ESI_TESTS = $(ESI_ALL_TESTS)
-LDADD = $(top_builddir)/src/globals.o $(top_builddir)/src/time.o -L$(top_builddir)/lib -lmiscutil
 tcp_banger2_LDADD = -L$(top_builddir)/lib -lmiscutil
 DEBUG_SOURCE = test_tools.cc
 debug_SOURCES = debug.cc $(DEBUG_SOURCE)
 ESIExpressions_SOURCES = ESIExpressions.cc $(DEBUG_SOURCE)
-ESIExpressions_LDADD = $(top_builddir)/src/ESIExpression.o \
+ESIExpressions_LDADD = $(top_builddir)/src/esi/Expression.o \
 		$(LDADD)
 
 mem_node_test_SOURCES = mem_node_test.cc
@@ -368,7 +378,7 @@ all: all-am
 
 .SUFFIXES:
 .SUFFIXES: .c .cc .lo .o .obj
-$(srcdir)/Makefile.in: @MAINTAINER_MODE_TRUE@ $(srcdir)/Makefile.am  $(am__configure_deps)
+$(srcdir)/Makefile.in: @MAINTAINER_MODE_TRUE@ $(srcdir)/Makefile.am $(top_srcdir)/src/Common.am $(am__configure_deps)
 	@for dep in $?; do \
 	  case '$(am__configure_deps)' in \
 	    *$$dep*) \
@@ -688,6 +698,7 @@ install-strip:
 mostlyclean-generic:
 
 clean-generic:
+	-test -z "$(CLEANFILES)" || rm -f $(CLEANFILES)
 
 distclean-generic:
 	-test -z "$(CONFIG_CLEAN_FILES)" || rm -f $(CONFIG_CLEAN_FILES)
@@ -770,6 +781,8 @@ uninstall-am:
 	mostlyclean-generic mostlyclean-libtool pdf pdf-am ps ps-am \
 	tags uninstall uninstall-am
 
+
+$(OBJS): $(top_srcdir)/include/version.h $(top_builddir)/include/autoconf.h
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.
 .NOEXPORT:

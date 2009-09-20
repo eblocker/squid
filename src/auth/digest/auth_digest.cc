@@ -1,6 +1,5 @@
-
 /*
- * $Id: auth_digest.cc,v 1.59.2.1 2008/02/25 03:39:02 amosjeffries Exp $
+ * $Id$
  *
  * DEBUG: section 29    Authenticator
  * AUTHOR: Robert Collins
@@ -21,12 +20,12 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *  
+ *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *  
+ *
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
@@ -41,13 +40,14 @@
 #include "squid.h"
 #include "rfc2617.h"
 #include "auth_digest.h"
-#include "authenticate.h"
+#include "auth/Gadgets.h"
 #include "event.h"
 #include "CacheManager.h"
 #include "Store.h"
 #include "HttpRequest.h"
 #include "HttpReply.h"
 #include "wordlist.h"
+#include "SquidTime.h"
 /* TODO don't include this */
 #include "digestScheme.h"
 
@@ -116,9 +116,9 @@ authenticateDigestNonceNew(void)
      * The contents of the nonce are implementation dependent. The quality
      * of the implementation depends on a good choice. A nonce might, for
      * example, be constructed as the base 64 encoding of
-     * 
+     *
      * time-stamp H(time-stamp ":" ETag ":" private-key)
-     * 
+     *
      * where time-stamp is a server-generated time or other non-repeating
      * value, ETag is the value of the HTTP ETag header associated with
      * the requested entity, and private-key is data known only to the
@@ -135,7 +135,7 @@ authenticateDigestNonceNew(void)
      * user often go through different proxies in the farm. Also, IP
      * address spoofing is not that hard.)
      * ====
-     * 
+     *
      * Now for my reasoning:
      * We will not accept a unrecognised nonce->we have all recognisable
      * nonces stored. If we send out unique base64 encodings we guarantee
@@ -331,7 +331,7 @@ authenticateDigestNonceFindNonce(const char *nonceb64)
     if (nonceb64 == NULL)
         return NULL;
 
-        debugs(29, 9, "authDigestNonceFindNonce:looking for nonceb64 '" << nonceb64 << "' in the nonce cache.");
+    debugs(29, 9, "authDigestNonceFindNonce:looking for nonceb64 '" << nonceb64 << "' in the nonce cache.");
 
     nonce = static_cast < digest_nonce_h * >(hash_lookup(digest_nonce_cache, nonceb64));
 
@@ -456,12 +456,12 @@ authDigestNoncePurge(digest_nonce_h * nonce)
 }
 
 /* USER related functions */
-static auth_user_t *
+static AuthUser *
 authDigestUserFindUsername(const char *username)
 {
-    auth_user_hash_pointer *usernamehash;
-    auth_user_t *auth_user;
-    debugs(29, 9, "authDigestUserFindUsername: Looking for user '" << username << "'");
+    AuthUserHashPointer *usernamehash;
+    AuthUser *auth_user;
+    debugs(29, 9, HERE << "Looking for user '" << username << "'");
 
     if (username && (usernamehash = static_cast < auth_user_hash_pointer * >(hash_lookup(proxy_auth_username_cache, username)))) {
         while ((usernamehash->user()->auth_type != AUTH_DIGEST) &&
@@ -483,11 +483,9 @@ authDigestUserFindUsername(const char *username)
 static void
 authDigestUserShutdown(void)
 {
-    /*
-     * Future work: the auth framework could flush it's cache 
-     */
-    auth_user_hash_pointer *usernamehash;
-    auth_user_t *auth_user;
+    /** \todo Future work: the auth framework could flush it's cache */
+    AuthUserHashPointer *usernamehash;
+    AuthUser *auth_user;
     hash_first(proxy_auth_username_cache);
 
     while ((usernamehash = ((auth_user_hash_pointer *) hash_next(proxy_auth_username_cache)))) {
@@ -498,11 +496,11 @@ authDigestUserShutdown(void)
     }
 }
 
-/* delete the digest request structure. Does NOT delete related structures */
+/** delete the digest request structure. Does NOT delete related structures */
 void
 digestScheme::done()
 {
-    /* TODO: this should be a Config call. */
+    /** \todo this should be a Config call. */
 
     if (digestauthenticators)
         helperShutdown(digestauthenticators);
@@ -570,12 +568,12 @@ AuthDigestUserRequest::authenticated() const
     return 0;
 }
 
-/* log a digest user in
+/** log a digest user in
  */
 void
-AuthDigestUserRequest::authenticate(HttpRequest * request, ConnStateData::Pointer conn, http_hdr_type type)
+AuthDigestUserRequest::authenticate(HttpRequest * request, ConnStateData * conn, http_hdr_type type)
 {
-    auth_user_t *auth_user;
+    AuthUser *auth_user;
     AuthDigestUserRequest *digest_request;
     digest_user_h *digest_user;
 
@@ -617,7 +615,7 @@ AuthDigestUserRequest::authenticate(HttpRequest * request, ConnStateData::Pointe
                   digest_user->HA1, SESSIONKEY);
     DigestCalcResponse(SESSIONKEY, authenticateDigestNonceNonceb64(digest_request->nonce),
                        digest_request->nc, digest_request->cnonce, digest_request->qop,
-                       RequestMethodStr[request->method], digest_request->uri, HA2, Response);
+                       RequestMethodStr(request->method), digest_request->uri, HA2, Response);
 
     debugs(29, 9, "\nResponse = '" << digest_request->response << "'\nsquid is = '" << Response << "'");
 
@@ -638,7 +636,7 @@ AuthDigestUserRequest::authenticate(HttpRequest * request, ConnStateData::Pointe
              */
             DigestCalcResponse(SESSIONKEY, authenticateDigestNonceNonceb64(digest_request->nonce),
                                digest_request->nc, digest_request->cnonce, digest_request->qop,
-                               RequestMethodStr[METHOD_GET], digest_request->uri, HA2, Response);
+                               RequestMethodStr(METHOD_GET), digest_request->uri, HA2, Response);
 
             if (strcasecmp(digest_request->response, Response)) {
                 credentials(Failed);
@@ -647,17 +645,17 @@ AuthDigestUserRequest::authenticate(HttpRequest * request, ConnStateData::Pointe
             } else {
                 const char *useragent = request->header.getStr(HDR_USER_AGENT);
 
-                static struct IN_ADDR last_broken_addr;
+                static IpAddress last_broken_addr;
                 static int seen_broken_client = 0;
 
                 if (!seen_broken_client) {
-                    last_broken_addr = no_addr;
+                    last_broken_addr.SetNoAddr();
                     seen_broken_client = 1;
                 }
 
-                if (memcmp(&last_broken_addr, &request->client_addr, sizeof(last_broken_addr)) != 0) {
+                if (last_broken_addr != request->client_addr) {
                     debugs(29, 1, "\nDigest POST bug detected from " <<
-                           inet_ntoa(request->client_addr) << " using '" <<
+                           request->client_addr << " using '" <<
                            (useragent ? useragent : "-") <<
                            "'. Please upgrade browser. See Bug #630 for details.");
 
@@ -708,8 +706,8 @@ AuthDigestUserRequest::module_direction()
 
     case Failed:
 
-         /* send new challenge */
-         return 1;
+        /* send new challenge */
+        return 1;
     }
 
     return -2;
@@ -847,7 +845,7 @@ authenticateDigestHandleReply(void *data, char *reply)
 
     if (reply && (strncasecmp(reply, "ERR", 3) == 0)) {
         digest_request->credentials(AuthDigestUserRequest::Failed);
-	digest_request->flags.invalid_password = 1;
+        digest_request->flags.invalid_password = 1;
 
         if (t && *t)
             digest_request->setDenyMessage(t);
@@ -890,11 +888,12 @@ AuthDigestConfig::init(AuthConfig * scheme)
 }
 
 void
-AuthDigestConfig::registerWithCacheManager(CacheManager & manager)
+AuthDigestConfig::registerWithCacheManager(void)
 {
-    manager.registerAction("digestauthenticator",
-                           "Digest User Authenticator Stats",
-                           authenticateDigestStats, 0, 1);
+    CacheManager::GetInstance()->
+    registerAction("digestauthenticator",
+                   "Digest User Authenticator Stats",
+                   authenticateDigestStats, 0, 1);
 }
 
 /* free any allocated configuration details */
@@ -950,6 +949,8 @@ AuthDigestConfig::parse(AuthConfig * scheme, int n_configured, char *param_str)
         parse_onoff(&CheckNonceCount);
     } else if (strcasecmp(param_str, "post_workaround") == 0) {
         parse_onoff(&PostWorkaround);
+    } else if (strcasecmp(param_str, "utf8") == 0) {
+        parse_onoff(&utf8);
     } else {
         debugs(29, 0, "unrecognised digest auth scheme parameter '" << param_str << "'");
     }
@@ -1002,7 +1003,7 @@ authDigestNonceUserUnlink(digest_nonce_h * nonce)
     }
 
     /* this reference to user was not locked because freeeing the user frees
-     * the nonce too. 
+     * the nonce too.
      */
     nonce->user = NULL;
 }
@@ -1294,7 +1295,7 @@ AuthDigestConfig::decode(char const *proxy_auth)
     /* find the user */
     digest_user_h *digest_user;
 
-    auth_user_t *auth_user;
+    AuthUser *auth_user;
 
     if ((auth_user = authDigestUserFindUsername(username)) == NULL) {
         /* the user doesn't exist in the username cache yet */
@@ -1365,7 +1366,13 @@ AuthDigestUserRequest::module_start(RH * handler, void *data)
     r->data = cbdataReference(data);
     r->auth_user_request = this;
     AUTHUSERREQUESTLOCK(r->auth_user_request, "r");
-    snprintf(buf, 8192, "\"%s\":\"%s\"\n", digest_user->username(), realm);
+    if (digestConfig.utf8) {
+        char user[1024];
+        latin1_to_utf8(user, sizeof(user), digest_user->username());
+        snprintf(buf, 8192, "\"%s\":\"%s\"\n", user, realm);
+    } else {
+        snprintf(buf, 8192, "\"%s\":\"%s\"\n", digest_user->username(), realm);
+    }
 
     helperSubmit(digestauthenticators, buf, authenticateDigestHandleReply, r);
 }
@@ -1373,28 +1380,24 @@ AuthDigestUserRequest::module_start(RH * handler, void *data)
 DigestUser::DigestUser (AuthConfig *config) : AuthUser (config), HA1created (0)
 {}
 
-auth_user_t *
+AuthUser *
 AuthDigestUserRequest::authUser() const
 {
     return const_cast<AuthUser *>(user());
 }
 
 void
-AuthDigestUserRequest::authUser(auth_user_t *aUser)
+AuthDigestUserRequest::authUser(AuthUser *aUser)
 {
-    assert (!authUser());
+    assert(!authUser());
     user(aUser);
-
-    user()->lock()
-
-    ;
+    user()->lock();
 }
 
 AuthDigestUserRequest::CredentialsState
 AuthDigestUserRequest::credentials() const
 {
     return credentials_ok;
-
 }
 
 void
@@ -1410,7 +1413,7 @@ AuthDigestUserRequest::AuthDigestUserRequest() : nonceb64(NULL) ,cnonce(NULL) ,r
         credentials_ok (Unchecked)
 {}
 
-/* delete the digest request structure. Does NOT delete related structures */
+/** delete the digest request structure. Does NOT delete related structures */
 AuthDigestUserRequest::~AuthDigestUserRequest()
 {
     safe_free (nonceb64);

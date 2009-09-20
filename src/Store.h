@@ -1,6 +1,5 @@
-
 /*
- * $Id: Store.h,v 1.40.2.1 2008/02/25 23:08:50 amosjeffries Exp $
+ * $Id$
  *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
@@ -19,25 +18,26 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *  
+ *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *  
+ *
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
  *
  */
-
 #ifndef SQUID_STORE_H
 #define SQUID_STORE_H
 
+/**
+ \defgroup StoreAPI  Store API
+ \ingroup FileSystems
+ */
+
 #include "squid.h"
-
-#include <ostream>
-
 #include "StoreIOBuffer.h"
 #include "Range.h"
 #include "RefCount.h"
@@ -46,17 +46,23 @@
 #include "RemovalPolicy.h"
 
 #if USE_SQUID_ESI
-#include "ESIElement.h"
+#include "esi/Element.h"
 #endif
 
+#if HAVE_OSTREAM
+#include <ostream>
+#endif
+
+
+class AsyncCall;
 class StoreClient;
-
 class MemObject;
-
 class Store;
-
 class StoreSearch;
 
+/**
+ \ingroup StoreAPI
+ */
 class StoreEntry : public hash_link
 {
 
@@ -67,7 +73,7 @@ public:
     virtual const char *getMD5Text() const;
     StoreEntry();
     StoreEntry(const char *url, const char *log_url);
-    virtual ~StoreEntry(){}
+    virtual ~StoreEntry() {}
 
     virtual HttpReply const *getReply() const;
     virtual void write (StoreIOBuffer);
@@ -89,7 +95,7 @@ public:
     void expireNow();
     void releaseRequest();
     void negativeCache();
-    void cacheNegatively();		/* argh, why both? */
+    void cacheNegatively();		/** \todo argh, why both? */
     void invokeHandlers();
     void purgeMem();
     void swapOut();
@@ -113,11 +119,12 @@ public:
     void destroyMemObject();
     int checkTooSmall();
 
-    void delayAwareRead(int fd, char *buf, int len, IOCB *handler, void *data);
+    void delayAwareRead(int fd, char *buf, int len, AsyncCall::Pointer callback);
 
     void setNoDelay (bool const);
     bool modifiedSince(HttpRequest * request) const;
-    /* what store does this entry belong too ? */
+
+    /** What store does this entry belong too ? */
     virtual RefCount<Store> store() const;
 
     MemObject *mem_obj;
@@ -132,35 +139,29 @@ public:
     u_short flags;
     /* END OF ON-DISK STORE_META_STD */
 
-sfileno swap_filen:
-    25;
+    sfileno swap_filen:25;
 
-sdirno swap_dirn:
-    7;
+    sdirno swap_dirn:7;
+
     u_short lock_count;		/* Assume < 65536! */
 
-mem_status_t mem_status:
-    3;
+    mem_status_t mem_status:3;
 
-ping_status_t ping_status:
-    3;
+    ping_status_t ping_status:3;
 
-store_status_t store_status:
-    3;
+    store_status_t store_status:3;
 
-swap_status_t swap_status:
-    3;
+    swap_status_t swap_status:3;
 
 public:
     static size_t inUseCount();
-    static void getPublicByRequestMethod(StoreClient * aClient, HttpRequest * request, const method_t method);
+    static void getPublicByRequestMethod(StoreClient * aClient, HttpRequest * request, const HttpRequestMethod& method);
     static void getPublicByRequest(StoreClient * aClient, HttpRequest * request);
-    static void getPublic(StoreClient * aClient, const char *uri, const method_t method);
+    static void getPublic(StoreClient * aClient, const char *uri, const HttpRequestMethod& method);
 
-    virtual bool isNull()
-    {
+    virtual bool isNull() {
         return false;
-    }
+    };
 
     void *operator new(size_t byteCount);
     void operator delete(void *address);
@@ -169,21 +170,19 @@ public:
 
     ESIElement::Pointer cachedESITree;
 #endif
-    /* append bytes to the buffer */
+    /** append bytes to the buffer */
     virtual void append(char const *, int len);
-    /* disable sending content to the clients */
+    /** disable sending content to the clients */
     virtual void buffer();
-    /* flush any buffered content */
+    /** flush any buffered content */
     virtual void flush();
-    /* reduce the memory lock count on the entry */
+    /** reduce the memory lock count on the entry */
     virtual int unlock();
-    /* increate the memory lock count on the entry */
+    /** increate the memory lock count on the entry */
     virtual int64_t objectLen() const;
     virtual int64_t contentLen() const;
 
-    virtual void lock()
-
-        ;
+    virtual void lock();
     virtual void release();
 
 private:
@@ -192,29 +191,29 @@ private:
     bool validLength() const;
 };
 
+/// \ingroup StoreAPI
 class NullStoreEntry:public StoreEntry
 {
 
 public:
     static NullStoreEntry *getInstance();
-    bool isNull()
-    {
+    bool isNull() {
         return true;
     }
 
     const char *getMD5Text() const;
     _SQUID_INLINE_ HttpReply const *getReply() const;
-    void write (StoreIOBuffer){}
+    void write (StoreIOBuffer) {}
 
     bool isEmpty () const {return true;}
 
     virtual size_t bytesWanted(Range<size_t> const aRange) const { assert (aRange.size());return aRange.end - 1;}
 
     void operator delete(void *address);
-    void complete(){}
+    void complete() {}
 
 private:
-    store_client_t storeClientType() const{return STORE_MEM_CLIENT;}
+    store_client_t storeClientType() const {return STORE_MEM_CLIENT;}
 
     char const *getSerialisedMetaData();
     bool swapoutPossible() {return false;}
@@ -225,16 +224,19 @@ private:
     static NullStoreEntry _instance;
 };
 
+/// \ingroup StoreAPI
 typedef void (*STOREGETCLIENT) (StoreEntry *, void *cbdata);
 
 
-/* Abstract base class that will replace the whole store and swapdir interface. */
-
+/**
+ \ingroup StoreAPI
+ * Abstract base class that will replace the whole store and swapdir interface.
+ */
 class Store : public RefCountable
 {
 
 public:
-    /* The root store */
+    /** The root store */
     static _SQUID_INLINE_ Store &Root();
     static void Root(Store *);
     static void Root(RefCount<Store>);
@@ -243,19 +245,22 @@ public:
 
     virtual ~Store() {}
 
-    /* Handle pending callbacks - called by the event loop. */
+    /** Handle pending callbacks - called by the event loop. */
     virtual int callback() = 0;
-    /* create the resources needed for this store to operate */
+
+    /** create the resources needed for this store to operate */
     virtual void create();
-    /* notify this store that its disk is full. TODO XXX move into a protected api call
-     * between store files and their stores, rather than a top level api call
+
+    /**
+     * Notify this store that its disk is full.
+     \todo XXX move into a protected api call between store files and their stores, rather than a top level api call
      */
     virtual void diskFull();
-    /* Retrieve a store entry from the store */
 
+    /** Retrieve a store entry from the store */
     virtual StoreEntry * get(const cache_key *) = 0;
 
-    /* TODO: implement the async version */
+    /** \todo imeplement the async version */
     virtual void get(String const key , STOREGETCLIENT callback, void *cbdata) = 0;
 
     /* prepare the store for use. The store need not be usable immediately,
@@ -264,19 +269,25 @@ public:
      */
     virtual void init() = 0;
 
-    /* the maximum size the store will support in normal use. Inaccuracy is permitted,
-     * but may throw estimates for memory etc out of whack. */
+    /**
+     * The maximum size the store will support in normal use. Inaccuracy is permitted,
+     * but may throw estimates for memory etc out of whack.
+     */
     virtual size_t maxSize() const = 0;
 
-    /* The minimum size the store will shrink to via normal housekeeping */
+    /** The minimum size the store will shrink to via normal housekeeping */
     virtual size_t minSize() const = 0;
 
-    /* TODO: make these calls asynchronous */
-    virtual void stat(StoreEntry &) const = 0; /* output stats to the provided store entry */
+    /**
+     * Output stats to the provided store entry.
+     \todo make these calls asynchronous
+     */
+    virtual void stat(StoreEntry &) const = 0;
 
-    virtual void sync();	/* Sync the store prior to shutdown */
+    /** Sync the store prior to shutdown */
+    virtual void sync();
 
-    /* remove a Store entry from the store */
+    /** remove a Store entry from the store */
     virtual void unlink (StoreEntry &);
 
     /* search in the store */
@@ -296,37 +307,74 @@ private:
     static RefCount<Store> CurrentRoot;
 };
 
+/// \ingroup StoreAPI
 typedef RefCount<Store> StorePointer;
 
+/// \ingroup StoreAPI
 SQUIDCEXTERN size_t storeEntryInUse();
+
+/// \ingroup StoreAPI
 SQUIDCEXTERN const char *storeEntryFlags(const StoreEntry *);
+
+/// \ingroup StoreAPI
 extern void storeEntryReplaceObject(StoreEntry *, HttpReply *);
 
-SQUIDCEXTERN StoreEntry *storeGetPublic(const char *uri, const method_t method);
+/// \ingroup StoreAPI
+SQUIDCEXTERN StoreEntry *storeGetPublic(const char *uri, const HttpRequestMethod& method);
+
+/// \ingroup StoreAPI
 SQUIDCEXTERN StoreEntry *storeGetPublicByRequest(HttpRequest * request);
-SQUIDCEXTERN StoreEntry *storeGetPublicByRequestMethod(HttpRequest * request, const method_t method);
-SQUIDCEXTERN StoreEntry *storeCreateEntry(const char *, const char *, request_flags, method_t);
+
+/// \ingroup StoreAPI
+SQUIDCEXTERN StoreEntry *storeGetPublicByRequestMethod(HttpRequest * request, const HttpRequestMethod& method);
+
+/// \ingroup StoreAPI
+SQUIDCEXTERN StoreEntry *storeCreateEntry(const char *, const char *, request_flags, const HttpRequestMethod&);
+
+/// \ingroup StoreAPI
 SQUIDCEXTERN void storeInit(void);
-extern void storeRegisterWithCacheManager(CacheManager & manager);
+
+/// \ingroup StoreAPI
 SQUIDCEXTERN void storeConfigure(void);
+
+/// \ingroup StoreAPI
 SQUIDCEXTERN void storeFreeMemory(void);
+
+/// \ingroup StoreAPI
 SQUIDCEXTERN int expiresMoreThan(time_t, time_t);
-#if STDC_HEADERS
-SQUIDCEXTERN void
-storeAppendPrintf(StoreEntry *, const char *,...) PRINTF_FORMAT_ARG2;
-#else
-SQUIDCEXTERN void storeAppendPrintf();
-#endif
+
+/// \ingroup StoreAPI
+SQUIDCEXTERN void storeAppendPrintf(StoreEntry *, const char *,...) PRINTF_FORMAT_ARG2;
+
+/// \ingroup StoreAPI
 SQUIDCEXTERN void storeAppendVPrintf(StoreEntry *, const char *, va_list ap);
+
+/// \ingroup StoreAPI
 SQUIDCEXTERN int storeTooManyDiskFilesOpen(void);
+
+class SwapDir;
+/// \ingroup StoreAPI
 SQUIDCEXTERN void storeHeapPositionUpdate(StoreEntry *, SwapDir *);
+
+/// \ingroup StoreAPI
 SQUIDCEXTERN void storeSwapFileNumberSet(StoreEntry * e, sfileno filn);
+
+/// \ingroup StoreAPI
 SQUIDCEXTERN void storeFsInit(void);
+
+/// \ingroup StoreAPI
 SQUIDCEXTERN void storeFsDone(void);
+
+/// \ingroup StoreAPI
 SQUIDCEXTERN void storeReplAdd(const char *, REMOVALPOLICYCREATE *);
+
+/// \ingroup StoreAPI
 extern FREE destroyStoreEntry;
 
-/* should be a subclass of Packer perhaps ? */
+/**
+ \ingroup StoreAPI
+ \todo should be a subclass of Packer perhaps ?
+ */
 SQUIDCEXTERN void packerToStoreInit(Packer * p, StoreEntry * e);
 
 #ifdef _USE_INLINE_

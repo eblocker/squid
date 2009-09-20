@@ -1,5 +1,17 @@
-#if ICAP_CLIENT
-#include "ICAP/ICAPServiceRep.h"
+#ifndef SQUID_CLIENTREQUESTCONTEXT_H
+#define SQUID_CLIENTREQUESTCONTEXT_H
+
+class ACLChecklist;
+class ClientHttpRequest;
+
+#include "config.h"
+/* for RefCountable */
+#include "RefCount.h"
+/* for CBDATA_CLASS() */
+#include "cbdata.h"
+
+#if USE_ADAPTATION
+#include "adaptation/forward.h"
 #endif
 
 class ClientRequestContext : public RefCountable
@@ -19,10 +31,10 @@ public:
     void clientRedirectDone(char *result);
     void checkNoCache();
     void checkNoCacheDone(int answer);
-#if ICAP_CLIENT
+#if USE_ADAPTATION
 
-    void icapAccessCheck();
-    void icapAclCheckDone(ICAPServiceRep::Pointer service);
+    void adaptationAccessCheck();
+    void adaptationAclCheckDone(Adaptation::ServiceGroupPointer g);
 #endif
 
     ClientHttpRequest *http;
@@ -30,9 +42,9 @@ public:
     int redirect_state;
 
     bool http_access_done;
-#if ICAP_CLIENT
+#if USE_ADAPTATION
 
-    bool icap_acl_check_done;
+    bool adaptation_acl_check_done;
 #endif
 
     bool redirect_done;
@@ -44,3 +56,4 @@ private:
     CBDATA_CLASS(ClientRequestContext);
 };
 
+#endif /* SQUID_CLIENTREQUESTCONTEXT_H */

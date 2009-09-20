@@ -20,12 +20,12 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *  
+ *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *  
+ *
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
@@ -85,7 +85,10 @@ void
 IdleConnList::removeFD(int fd)
 {
     int index = findFDIndex(fd);
-    assert(index >= 0);
+    if (index < 0) {
+        debugs(48, 0, "IdleConnList::removeFD: FD " << fd << " NOT FOUND!");
+        return;
+    }
     debugs(48, 3, "IdleConnList::removeFD: found FD " << fd << " at index " << index);
 
     for (; index < nfds - 1; index++)
@@ -174,21 +177,21 @@ IdleConnList::timeout(int fd, void *data)
 /* ========== PconnPool PRIVATE FUNCTIONS ============================================ */
 
 const char *
-
-PconnPool::key(const char *host, u_short port, const char *domain, struct IN_ADDR *client_address)
+PconnPool::key(const char *host, u_short port, const char *domain, IpAddress &client_address)
 {
     LOCAL_ARRAY(char, buf, SQUIDHOSTNAMELEN * 3 + 10);
+    char ntoabuf[MAX_IPSTRLEN];
 
-    if (domain && client_address)
-        snprintf(buf, SQUIDHOSTNAMELEN * 3 + 10, "%s:%d-%s/%s", host, (int) port, inet_ntoa(*client_address), domain);
-    else if (domain && (!client_address))
+    if (domain && !client_address.IsAnyAddr())
+        snprintf(buf, SQUIDHOSTNAMELEN * 3 + 10, "%s:%d-%s/%s", host, (int) port, client_address.NtoA(ntoabuf,MAX_IPSTRLEN), domain);
+    else if (domain && client_address.IsAnyAddr())
         snprintf(buf, SQUIDHOSTNAMELEN * 3 + 10, "%s:%d/%s", host, (int) port, domain);
-    else if ((!domain) && client_address)
-        snprintf(buf, SQUIDHOSTNAMELEN * 3 + 10, "%s:%d-%s", host, (int) port, inet_ntoa(*client_address));
+    else if ((!domain) && !client_address.IsAnyAddr())
+        snprintf(buf, SQUIDHOSTNAMELEN * 3 + 10, "%s:%d-%s", host, (int) port, client_address.NtoA(ntoabuf,MAX_IPSTRLEN));
     else
         snprintf(buf, SQUIDHOSTNAMELEN * 3 + 10, "%s:%d", host, (int) port);
 
-    debugs(48,6,"PconnPool::key(" << (host?host:"(no host!)") << "," << port << "," << (domain?domain:"(no domain)") << "," << (client_address?inet_ntoa(*client_address):"(no client IP)") << "is {" << buf << "}" );
+    debugs(48,6,"PconnPool::key(" << (host?host:"(no host!)") << "," << port << "," << (domain?domain:"(no domain)") << "," << client_address << "is {" << buf << "}" );
     return buf;
 }
 
@@ -245,20 +248,17 @@ PconnPool::~PconnPool()
 }
 
 void
-
-PconnPool::push(int fd, const char *host, u_short port, const char *domain, struct IN_ADDR *client_address)
+PconnPool::push(int fd, const char *host, u_short port, const char *domain, IpAddress &client_address)
 {
     IdleConnList *list;
     const char *aKey;
     LOCAL_ARRAY(char, desc, FD_DESC_SZ);
 
-    if (fdUsageHigh())
-    {
+    if (fdUsageHigh()) {
         debugs(48, 3, "PconnPool::push: Not many unused FDs");
         comm_close(fd);
         return;
-    } else if (shutting_down)
-    {
+    } else if (shutting_down) {
         comm_close(fd);
         debugs(48, 3, "PconnPool::push: Squid is shutting down. Refusing to do anything");
         return;
@@ -268,8 +268,7 @@ PconnPool::push(int fd, const char *host, u_short port, const char *domain, stru
 
     list = (IdleConnList *) hash_lookup(table, aKey);
 
-    if (list == NULL)
-    {
+    if (list == NULL) {
         list = new IdleConnList(aKey, this);
         debugs(48, 3, "PconnPool::push: new IdleConnList for {" << hashKeyStr(&list->hash) << "}" );
         hash_join(table, &list->hash);
@@ -294,7 +293,7 @@ PconnPool::push(int fd, const char *host, u_short port, const char *domain, stru
  * transactions create persistent connections but are not retriable.
  */
 int
-PconnPool::pop(const char *host, u_short port, const char *domain, struct in_addr *client_address, bool isRetriable)
+PconnPool::pop(const char *host, u_short port, const char *domain, IpAddress &client_address, bool isRetriable)
 {
     const char * aKey = key(host, port, domain, client_address);
 
@@ -302,14 +301,13 @@ PconnPool::pop(const char *host, u_short port, const char *domain, struct in_add
     if (list == NULL) {
         debugs(48, 3, "PconnPool::pop: lookup for key {" << aKey << "} failed.");
         return -1;
-    } else { 
+    } else {
         debugs(48, 3, "PconnPool::pop: found " << hashKeyStr(&list->hash) << (isRetriable?"(to use)":"(to kill)") );
     }
 
     int fd = list->findUseableFD(); // search from the end. skip pending reads.
 
-    if (fd >= 0)
-    {
+    if (fd >= 0) {
         list->clearHandlers(fd);
         list->removeFD(fd);	/* might delete list */
 
@@ -348,6 +346,7 @@ PconnModule::PconnModule() : pools(NULL), poolCount(0)
     pools = (PconnPool **) xcalloc(MAX_NUM_PCONN_POOLS, sizeof(*pools));
     pconn_fds_pool = memPoolCreate("pconn_fds", PCONN_FDS_SZ * sizeof(int));
     debugs(48, 0, "persistent connection module initialized");
+    registerWithCacheManager();
 }
 
 PconnModule *
@@ -360,17 +359,18 @@ PconnModule::GetInstance()
 }
 
 void
-PconnModule::registerWithCacheManager(CacheManager & manager)
+PconnModule::registerWithCacheManager(void)
 {
-    manager.registerAction("pconn",
-                           "Persistent Connection Utilization Histograms",
-                           DumpWrapper, 0, 1);
+    CacheManager::GetInstance()->
+    registerAction("pconn",
+                   "Persistent Connection Utilization Histograms",
+                   DumpWrapper, 0, 1);
 }
 
 void
 
 PconnModule::add
-    (PconnPool *aPool)
+(PconnPool *aPool)
 {
     assert(poolCount < MAX_NUM_PCONN_POOLS);
     *(pools+poolCount) = aPool;

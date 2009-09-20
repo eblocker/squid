@@ -1,6 +1,6 @@
 
 /*
- * $Id: enums.h,v 1.258.2.2 2008/02/24 11:29:55 amosjeffries Exp $
+ * $Id$
  *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
@@ -19,12 +19,12 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *  
+ *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *  
+ *
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
@@ -69,6 +69,7 @@ typedef enum {
     ERR_WRITE_ERROR,
     ERR_SHUTTING_DOWN,
     ERR_CONNECT_FAIL,
+    ERR_SECURE_CONNECT_FAIL,
     ERR_INVALID_REQ,
     ERR_UNSUP_REQ,
     ERR_INVALID_URL,
@@ -97,6 +98,7 @@ typedef enum {
     ERR_ESI,                    /* Failure to perform ESI processing */
     ERR_INVALID_RESP,
     ERR_ICAP_FAILURE,
+    ERR_UNSUP_HTTPVERSION,     /* HTTP version is not supported */
     ERR_MAX
 } err_type;
 
@@ -172,15 +174,15 @@ typedef enum {
     CD_PARENT_HIT,
     CD_SIBLING_HIT,
 #endif
-#if USE_CARP
     CARP,
-#endif
     ANY_OLD_PARENT,
     USERHASH_PARENT,
     SOURCEHASH_PARENT,
-    HIER_MAX
+    HIER_MAX,
+    PINNED
 } hier_code;
 
+/// \ingroup ServerProtocolICPAPI
 typedef enum {
     ICP_INVALID,
     ICP_QUERY,
@@ -214,22 +216,22 @@ typedef enum _mem_status_t {
     IN_MEMORY
 } mem_status_t;
 
-enum {
+typedef enum {
     PING_NONE,
     PING_WAITING,
     PING_DONE
-};
+} ping_status_t;
 
-enum {
+typedef enum {
     STORE_OK,
     STORE_PENDING
-};
+} store_status_t;
 
-enum {
+typedef enum {
     SWAPOUT_NONE,
     SWAPOUT_WRITING,
     SWAPOUT_DONE
-};
+} swap_status_t;
 
 typedef enum {
     STORE_NON_CLIENT,
@@ -337,7 +339,7 @@ typedef enum {
     STREAM_NONE,		/* No particular status */
     STREAM_COMPLETE,		/* All data has been flushed, no more reads allowed */
     /* an unpredicted end has occured, no more
-     * reads occured, but no need to tell 
+     * reads occured, but no need to tell
      * downstream that an error occured
      */
     STREAM_UNPLANNED_COMPLETE,
@@ -347,12 +349,6 @@ typedef enum {
      */
     STREAM_FAILED
 } clientStream_status_t;
-
-typedef enum {
-    ACCESS_DENIED,
-    ACCESS_ALLOWED,
-    ACCESS_REQ_PROXY_AUTH
-} allow_t;
 
 typedef enum {
     AUTH_ACL_CHALLENGE = -2,
@@ -374,8 +370,17 @@ typedef enum {
 typedef enum {
     S_HELPER_UNKNOWN,
     S_HELPER_RESERVE,
-    S_HELPER_RELEASE
+    S_HELPER_RELEASE,
+    S_HELPER_DEFER
 } stateful_helper_callback_t;
+
+/* stateful helper reservation info */
+typedef enum {
+    S_HELPER_FREE,		/* available for requests */
+    S_HELPER_RESERVED,		/* in a reserved state - no active request, but state data in the helper shouldn't be disturbed */
+    S_HELPER_DEFERRED		/* available for requests, and at least one more will come from a previous caller with the server pointer */
+} stateful_helper_reserve_t;
+
 
 #if SQUID_SNMP
 enum {
@@ -419,26 +424,6 @@ typedef enum {
 #endif
     MEM_MAX
 } mem_type;
-
-/*
- * NOTE!  We must preserve the order of this list!
- */
-enum {
-    STORE_META_VOID,		/* should not come up */
-    STORE_META_KEY_URL,		/* key w/ keytype */
-    STORE_META_KEY_SHA,
-    STORE_META_KEY_MD5,
-    STORE_META_URL,		/* the url , if not in the header */
-    STORE_META_STD,		/* standard metadata */
-    STORE_META_HITMETERING,	/* reserved for hit metering */
-    STORE_META_VALID,
-    STORE_META_VARY_HEADERS,	/* Stores Vary request headers */
-    STORE_META_STD_LFS,         /* standard metadata in lfs format */
-    STORE_META_OBJSIZE,         /* object size, not impleemented, squid26 compatibility */
-    STORE_META_STOREURL,	/* the store url, if different to the normal URL */
-    STORE_META_VARY_ID,		/* Unique ID linking variants */
-    STORE_META_END
-};
 
 enum {
     STORE_LOG_CREATE,
@@ -548,6 +533,9 @@ typedef enum {
     CLF_CUSTOM,
     CLF_SQUID,
     CLF_COMMON,
+#if ICAP_CLIENT
+    CLF_ICAP_SQUID,
+#endif
     CLF_NONE
 } customlog_type;
 
@@ -556,5 +544,16 @@ enum {
     DISABLE_PMTU_ALWAYS,
     DISABLE_PMTU_TRANSPARENT
 };
+
+#if USE_HTCP
+/*
+ * This should be in htcp.h but because neighborsHtcpClear is defined in
+ * protos.h it has to be here.
+ */
+typedef enum {
+    HTCP_CLR_PURGE,
+    HTCP_CLR_INVALIDATION
+} htcp_clr_reason;
+#endif
 
 #endif /* SQUID_ENUMS_H */

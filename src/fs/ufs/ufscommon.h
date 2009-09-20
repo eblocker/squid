@@ -1,6 +1,5 @@
-
 /*
- * $Id: ufscommon.h,v 1.12 2007/08/13 17:20:57 hno Exp $
+ * $Id$
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
  * ----------------------------------------------------------
@@ -18,38 +17,33 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *  
+ *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *  
+ *
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
  *
  */
-
 #ifndef SQUID_UFSCOMMON_H
 #define SQUID_UFSCOMMON_H
 
-#include "squid.h"
-#include "event.h"
 
-#define DefaultLevelOneDirs     16
-#define DefaultLevelTwoDirs     256
-#define STORE_META_BUFSZ 4096
-
-/* Common UFS routines */
-#include "SwapDir.h"
-#include "StoreSearch.h"
+#define DefaultLevelOneDirs	16
+#define DefaultLevelTwoDirs	256
+#define STORE_META_BUFSZ	4096
 
 class UFSStrategy;
-
 class ConfigOptionVector;
-
 class DiskIOModule;
+class StoreSearch;
 
+#include "SwapDir.h"
+
+/// \ingroup UFS
 class UFSSwapDir : public SwapDir
 {
 
@@ -147,16 +141,18 @@ private:
 #include "RefCount.h"
 #include "DiskIO/IORequestor.h"
 
-/* UFS dir specific IO calls 
+/**
+ * UFS dir specific IO calls
  *
- * This should be whittled away - DiskIOModule should be providing the
- * entire needed api.
+ \todo This should be whittled away.
+ *     DiskIOModule should be providing the entire needed API.
  */
 
 class DiskIOStrategy;
 
 class DiskFile;
 
+/// \ingroup UFS
 class UFSStrategy
 {
 
@@ -184,23 +180,24 @@ public:
 
     virtual int callback();
 
-    /* Init per-instance logic */
+    /** Init per-instance logic */
     virtual void init();
 
-    /* cachemgr output on the IO instance stats */
+    /** cachemgr output on the IO instance stats */
     virtual void statfs(StoreEntry & sentry)const;
 
-    /* The io strategy in use */
+    /** The io strategy in use */
     DiskIOStrategy *io;
 protected:
 
     friend class UFSSwapDir;
 };
 
-/* Common ufs-store-dir logic */
+/** Common ufs-store-dir logic */
 
 class ReadRequest;
 
+/// \ingroup UFS
 class UFSStoreState : public StoreIOState, public IORequestor
 {
 
@@ -252,17 +249,16 @@ protected:
 
     };
 
-    /* These should be in the IO strategy */
+    /** \todo These should be in the IO strategy */
 
-    struct
-    {
-        /*
+    struct {
+        /**
          * DPW 2006-05-24
          * the write_draining flag is used to avoid recursion inside
          * the UFSStoreState::drainWriteQueue() method.
          */
         bool write_draining;
-        /*
+        /**
          * DPW 2006-05-24
          * The try_closing flag is set by UFSStoreState::tryClosing()
          * when UFSStoreState wants to close the file, but cannot
@@ -270,9 +266,7 @@ protected:
          * try to close again in the I/O callbacks.
          */
         bool try_closing;
-    }
-
-    flags;
+    } flags;
     link_list *pending_reads;
     link_list *pending_writes;
     void queueRead(char *, size_t, off_t, STRCB *, void *);
@@ -289,9 +283,13 @@ private:
     void doWrite();
 };
 
-MEMPROXY_CLASS_INLINE(UFSStoreState::_queued_read)
-MEMPROXY_CLASS_INLINE(UFSStoreState::_queued_write)
+MEMPROXY_CLASS_INLINE(UFSStoreState::_queued_read);
+MEMPROXY_CLASS_INLINE(UFSStoreState::_queued_write);
 
+
+#include "StoreSearch.h"
+
+/// \ingroup UFS
 class StoreSearchUFS : public StoreSearch
 {
 
@@ -299,13 +297,20 @@ public:
     StoreSearchUFS(RefCount<UFSSwapDir> sd);
     StoreSearchUFS(StoreSearchUFS const &);
     virtual ~StoreSearchUFS();
-    /* Iterator API - garh, wrong place */
-    /* callback the client when a new StoreEntry is available
-     * or an error occurs 
+
+    /** \todo Iterator API - garh, wrong place */
+    /**
+     * callback the client when a new StoreEntry is available
+     * or an error occurs
      */
     virtual void next(void (callback)(void *cbdata), void *cbdata);
-    /* return true if a new StoreEntry is immediately available */
+
+    /**
+     \retval true if a new StoreEntry is immediately available
+     \retval false if a new StoreEntry is NOT immediately available
+     */
     virtual bool next();
+
     virtual bool error() const;
     virtual bool isDone() const;
     virtual StoreEntry *currentItem();
@@ -315,37 +320,43 @@ public:
 
 private:
     CBDATA_CLASS2(StoreSearchUFS);
+    /// \bug (callback) should be hidden behind a proper human readable name
     void (callback)(void *cbdata);
     void *cbdata;
     StoreEntry * current;
     bool _done;
 };
 
+
 class StoreSwapLogData;
-class UFSSwapLogParser{
+
+/// \ingroup UFS
+class UFSSwapLogParser
+{
 
 public:
     FILE *log;
     int log_entries;
     int record_size;
-    
-    UFSSwapLogParser(FILE *fp):log(fp),log_entries(-1), record_size(0){
+
+    UFSSwapLogParser(FILE *fp):log(fp),log_entries(-1), record_size(0) {
     }
-    virtual ~UFSSwapLogParser(){};
-    
+    virtual ~UFSSwapLogParser() {};
+
     static UFSSwapLogParser *GetUFSSwapLogParser(FILE *fp);
-    
+
     virtual bool ReadRecord(StoreSwapLogData &swapData) = 0;
     int SwapLogEntries();
-    void Close()
-    {
-	if(log){ 
-	    fclose(log);
-	    log = NULL;
-	}
+    void Close() {
+        if (log) {
+            fclose(log);
+            log = NULL;
+        }
     }
 };
 
+
+/// \ingroup UFS
 class RebuildState : public RefCountable
 {
 
@@ -355,12 +366,17 @@ public:
     RebuildState(RefCount<UFSSwapDir> sd);
     ~RebuildState();
 
-    /* Iterator API - garh, wrong place */
-    /* callback the client when a new StoreEntry is available
-     * or an error occurs 
+    /** \todo Iterator API - garh, wrong place */
+    /**
+     * callback the client when a new StoreEntry is available
+     * or an error occurs
      */
     virtual void next(void (callback)(void *cbdata), void *cbdata);
-    /* return true if a new StoreEntry is immediately available */
+
+    /**
+     \retval true if a new StoreEntry is immediately available
+     \retval false if a new StoreEntry is NOT immediately available
+     */
     virtual bool next();
     virtual bool error() const;
     virtual bool isDone() const;
@@ -368,26 +384,17 @@ public:
 
     RefCount<UFSSwapDir> sd;
     int n_read;
-/*    FILE *log;*/
+    /*    FILE *log;*/
     UFSSwapLogParser *LogParser;
     int speed;
     int curlvl1;
     int curlvl2;
 
-    struct
-    {
-
-unsigned int need_to_validate:
-        1;
-
-unsigned int clean:
-        1;
-
-unsigned int init:
-        1;
-    }
-
-    flags;
+    struct {
+        unsigned int need_to_validate:1;
+        unsigned int clean:1;
+        unsigned int init:1;
+    } flags;
     int in_dir;
     int done;
     int fn;
@@ -410,6 +417,7 @@ private:
     StoreEntry *e;
     bool fromLog;
     bool _done;
+    /// \bug (callback) should be hidden behind a proper human readable name
     void (callback)(void *cbdata);
     void *cbdata;
 };

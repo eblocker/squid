@@ -1,6 +1,6 @@
 
 /*
- * $Id: HttpHeaderTools.cc,v 1.63 2007/09/28 00:22:37 hno Exp $
+ * $Id$
  *
  * DEBUG: section 66    HTTP Header Tools
  * AUTHOR: Alex Rousskov
@@ -21,12 +21,12 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *  
+ *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *  
+ *
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
@@ -36,7 +36,7 @@
 #include "squid.h"
 #include "HttpHeader.h"
 #include "HttpHdrContRange.h"
-#include "ACLChecklist.h"
+#include "acl/FilledChecklist.h"
 #include "MemBuf.h"
 
 static void httpHeaderPutStrvf(HttpHeader * hdr, http_hdr_type id, const char *fmt, va_list vargs);
@@ -86,7 +86,7 @@ httpHeaderMaskInit(HttpHeaderMask * mask, int value)
     memset(mask, value, sizeof(*mask));
 }
 
-/* calculates a bit mask of a given array; does not reset mask! */
+/** calculates a bit mask of a given array; does not reset mask! */
 void
 httpHeaderCalcMask(HttpHeaderMask * mask, http_hdr_type http_hdr_type_enums[], size_t count)
 {
@@ -103,27 +103,10 @@ httpHeaderCalcMask(HttpHeaderMask * mask, http_hdr_type http_hdr_type_enums[], s
 
 /* same as httpHeaderPutStr, but formats the string using snprintf first */
 void
-#if STDC_HEADERS
 httpHeaderPutStrf(HttpHeader * hdr, http_hdr_type id, const char *fmt,...)
-#else
-httpHeaderPutStrf(va_alist)
-va_dcl
-#endif
 {
-#if STDC_HEADERS
     va_list args;
     va_start(args, fmt);
-#else
-
-    va_list args;
-    HttpHeader *hdr = NULL;
-    http_hdr_type id = HDR_ENUM_END;
-    const char *fmt = NULL;
-    va_start(args);
-    hdr = va_arg(args, HttpHeader *);
-    id = va_arg(args, http_hdr_type);
-    fmt = va_arg(args, char *);
-#endif
 
     httpHeaderPutStrvf(hdr, id, fmt, args);
     va_end(args);
@@ -141,7 +124,7 @@ httpHeaderPutStrvf(HttpHeader * hdr, http_hdr_type id, const char *fmt, va_list 
 }
 
 
-/* wrapper arrounf PutContRange */
+/** wrapper arrounf PutContRange */
 void
 httpHeaderAddContRange(HttpHeader * hdr, HttpHdrRangeSpec spec, int64_t ent_len)
 {
@@ -153,7 +136,7 @@ httpHeaderAddContRange(HttpHeader * hdr, HttpHdrRangeSpec spec, int64_t ent_len)
 }
 
 
-/*
+/**
  * return true if a given directive is found in at least one of
  * the "connection" header-fields note: if HDR_PROXY_CONNECTION is
  * present we ignore HDR_CONNECTION.
@@ -182,7 +165,7 @@ httpHeaderHasConnDir(const HttpHeader * hdr, const char *directive)
     return res;
 }
 
-/* returns true iff "m" is a member of the list */
+/** returns true iff "m" is a member of the list */
 int
 strListIsMember(const String * list, const char *m, char del)
 {
@@ -201,14 +184,14 @@ strListIsMember(const String * list, const char *m, char del)
     return 0;
 }
 
-/* returns true iff "s" is a substring of a member of the list */
+/** returns true iff "s" is a substring of a member of the list */
 int
 strListIsSubstr(const String * list, const char *s, char del)
 {
     assert(list && del);
-    return list->pos(s) != 0;
+    return (list->find(s) != String::npos);
 
-    /*
+    /** \note
      * Note: the original code with a loop is broken because it uses strstr()
      * instead of strnstr(). If 's' contains a 'del', strListIsSubstr() may
      * return true when it should not. If 's' does not contain a 'del', the
@@ -217,7 +200,7 @@ strListIsSubstr(const String * list, const char *s, char del)
      */
 }
 
-/* appends an item to the list */
+/** appends an item to the list */
 void
 strListAdd(String * str, const char *item, char del)
 {
@@ -234,7 +217,7 @@ strListAdd(String * str, const char *item, char del)
     str->append(item, strlen(item));
 }
 
-/*
+/**
  * iterates through a 0-terminated string of items separated by 'del's.
  * white space around 'del' is considered to be a part of 'del'
  * like strtok, but preserves the source, and can iterate several strings at once
@@ -246,16 +229,10 @@ int
 strListGetItem(const String * str, char del, const char **item, int *ilen, const char **pos)
 {
     size_t len;
-
-    /* ',' is always enabled as field delimiter as this is required for
-     * processing merged header values properly, even if Cookie normally
-     * uses ';' as delimiter.
-     */
-    static char delim[3][8] =
-    {
-	"\"?,",
-	"\"\\",
-	" ?,\t\r\n"
+    static char delim[3][8] = {
+        "\"?,",
+        "\"\\",
+        " ?,\t\r\n"
     };
     int quoted = 0;
     assert(str && item && pos);
@@ -264,13 +241,13 @@ strListGetItem(const String * str, char del, const char **item, int *ilen, const
     delim[2][1] = del;
 
     if (!*pos) {
-        *pos = str->buf();
+        *pos = str->termedBuf();
 
         if (!*pos)
             return 0;
     }
 
-    /* skip leading whitespace and delimiters */
+    /* skip leading ws and delimiters */
     *pos += strspn(*pos, delim[2]);
 
     *item = *pos;		/* remember item's start */
@@ -278,15 +255,20 @@ strListGetItem(const String * str, char del, const char **item, int *ilen, const
     /* find next delimiter */
     do {
         *pos += strcspn(*pos, delim[quoted]);
+
+        if (**pos == del)
+            break;
+
         if (**pos == '"') {
             quoted = !quoted;
             *pos += 1;
-	} else if (quoted && **pos == '\\') {
+        }
+
+        if (quoted && **pos == '\\') {
             *pos += 1;
+
             if (**pos)
                 *pos += 1;
-	} else {
-	    break;		/* Delimiter found, marking the end of this value */
         }
     } while (**pos);
 
@@ -302,7 +284,7 @@ strListGetItem(const String * str, char del, const char **item, int *ilen, const
     return len > 0;
 }
 
-/* handy to printf prefixes of potentially very long buffers */
+/** handy to printf prefixes of potentially very long buffers */
 const char *
 getStringPrefix(const char *str, const char *end)
 {
@@ -313,7 +295,7 @@ getStringPrefix(const char *str, const char *end)
     return buf;
 }
 
-/*
+/**
  * parses an int field, complains if soemthing went wrong, returns true on
  * success
  */
@@ -337,13 +319,14 @@ httpHeaderParseOffset(const char *start, int64_t * value)
     errno = 0;
     int64_t res = strtoll(start, NULL, 10);
     if (!res && EINVAL == errno)	/* maybe not portable? */
-	return 0;
+        return 0;
     *value = res;
     return 1;
 }
 
 
-/* Parses a quoted-string field (RFC 2616 section 2.2), complains if
+/**
+ * Parses a quoted-string field (RFC 2616 section 2.2), complains if
  * something went wrong, returns non-zero on success.
  * start should point at the first ".
  * RC TODO: This is too looose. We should honour the BNF and exclude CTL's
@@ -374,9 +357,13 @@ httpHeaderParseQuotedString (const char *start, String *val)
     }
 }
 
-/*
- * httpHdrMangle checks the anonymizer (header_access) configuration.
- * Returns 1 if the header is allowed.
+/**
+ * Checks the anonymizer (header_access) configuration.
+ *
+ * \retval 0    Header is explicitly blocked for removal
+ * \retval 1    Header is explicitly allowed
+ * \retval 1    Header has been replaced, the current version can be used.
+ * \retval 1    Header has no access controls to test
  */
 static int
 httpHdrMangle(HttpHeaderEntry * e, HttpRequest * request, int req_or_rep)
@@ -385,7 +372,6 @@ httpHdrMangle(HttpHeaderEntry * e, HttpRequest * request, int req_or_rep)
 
     /* check with anonymizer tables */
     header_mangler *hm;
-    ACLChecklist *checklist;
     assert(e);
 
     if (ROR_REQUEST == req_or_rep) {
@@ -397,10 +383,15 @@ httpHdrMangle(HttpHeaderEntry * e, HttpRequest * request, int req_or_rep)
         hm = &Config.request_header_access[e->id];
     }
 
-    checklist = aclChecklistCreate(hm->access_list, request, NULL);
+    /* mangler or checklist went away. default allow */
+    if (!hm || !hm->access_list) {
+        return 1;
+    }
 
-    if (1 == checklist->fastCheck()) {
-        /* aclCheckFast returns 1 for allow. */
+    ACLFilledChecklist checklist(hm->access_list, request, NULL);
+
+    if (checklist.fastCheck()) {
+        /* aclCheckFast returns true for allow. */
         retval = 1;
     } else if (NULL == hm->replacement) {
         /* It was denied, and we don't have any replacement */
@@ -414,11 +405,10 @@ httpHdrMangle(HttpHeaderEntry * e, HttpRequest * request, int req_or_rep)
         retval = 1;
     }
 
-    delete checklist;
     return retval;
 }
 
-/* Mangles headers for a list of headers. */
+/** Mangles headers for a list of headers. */
 void
 httpHdrMangleList(HttpHeader * l, HttpRequest * request, int req_or_rep)
 {
@@ -434,7 +424,7 @@ httpHdrMangleList(HttpHeader * l, HttpRequest * request, int req_or_rep)
         l->refreshMask();
 }
 
-/*
+/**
  * return 1 if manglers are configured.  Used to set a flag
  * for optimization during request forwarding.
  */

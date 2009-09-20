@@ -1,6 +1,6 @@
 
 /*
- * $Id: ConfigParser.cc,v 1.3 2007/04/28 22:26:37 hno Exp $
+ * $Id$
  *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
@@ -19,12 +19,12 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *  
+ *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *  
+ *
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
@@ -53,69 +53,64 @@ ConfigParser::strtokFile(void)
     char *t, *fn;
     LOCAL_ARRAY(char, buf, 256);
 
-strtok_again:
+    do {
 
-    if (!fromFile) {
-        t = (strtok(NULL, w_space));
+        if (!fromFile) {
+            t = (strtok(NULL, w_space));
 
-        if (!t || *t == '#') {
-            return NULL;
-        } else if (*t == '\"' || *t == '\'') {
-            /* quote found, start reading from file */
-            fn = ++t;
+            if (!t || *t == '#') {
+                return NULL;
+            } else if (*t == '\"' || *t == '\'') {
+                /* quote found, start reading from file */
+                fn = ++t;
 
-            while (*t && *t != '\"' && *t != '\'')
-                t++;
+                while (*t && *t != '\"' && *t != '\'')
+                    t++;
 
-            *t = '\0';
+                *t = '\0';
 
-            if ((wordFile = fopen(fn, "r")) == NULL) {
-                debugs(28, 0, "strtokFile: " << fn << " not found");
-                return (NULL);
-            }
+                if ((wordFile = fopen(fn, "r")) == NULL) {
+                    debugs(28, 0, "strtokFile: " << fn << " not found");
+                    return (NULL);
+                }
 
 #ifdef _SQUID_WIN32_
-            setmode(fileno(wordFile), O_TEXT);
+                setmode(fileno(wordFile), O_TEXT);
 
 #endif
 
-            fromFile = 1;
+                fromFile = 1;
+            } else {
+                return t;
+            }
+        }
+
+        /* fromFile */
+        if (fgets(buf, 256, wordFile) == NULL) {
+            /* stop reading from file */
+            fclose(wordFile);
+            wordFile = NULL;
+            fromFile = 0;
+            return NULL;
         } else {
-            return t;
-        }
-    }
-
-    /* fromFile */
-    if (fgets(buf, 256, wordFile) == NULL) {
-        /* stop reading from file */
-        fclose(wordFile);
-        wordFile = NULL;
-        fromFile = 0;
-        goto strtok_again;
-    } else {
-        char *t2, *t3;
-        t = buf;
-        /* skip leading and trailing white space */
-        t += strspn(buf, w_space);
-        t2 = t + strcspn(t, w_space);
-        t3 = t2 + strspn(t2, w_space);
-
-        while (*t3 && *t3 != '#') {
-            t2 = t3 + strcspn(t3, w_space);
+            char *t2, *t3;
+            t = buf;
+            /* skip leading and trailing white space */
+            t += strspn(buf, w_space);
+            t2 = t + strcspn(t, w_space);
             t3 = t2 + strspn(t2, w_space);
+
+            while (*t3 && *t3 != '#') {
+                t2 = t3 + strcspn(t3, w_space);
+                t3 = t2 + strspn(t2, w_space);
+            }
+
+            *t2 = '\0';
         }
 
-        *t2 = '\0';
         /* skip comments */
-
-        if (*t == '#')
-            goto strtok_again;
-
         /* skip blank lines */
-        if (!*t)
-            goto strtok_again;
+    } while ( *t == '#' || !*t );
 
-        return t;
-    }
+    return t;
 }
-

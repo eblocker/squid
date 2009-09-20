@@ -1,7 +1,4 @@
-
 /*
- * $Id: ipc.cc,v 1.46 2007/06/10 10:43:17 hno Exp $
- *
  * DEBUG: section 54    Interprocess Communication
  * AUTHOR: Duane Wessels
  *
@@ -21,12 +18,12 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *  
+ *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *  
+ *
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
@@ -36,6 +33,7 @@
 #include "squid.h"
 #include "comm.h"
 #include "fde.h"
+#include "ip/IpAddress.h"
 
 static const char *hello_string = "hi there\n";
 #define HELLO_BUF_SZ 32
@@ -67,27 +65,25 @@ PutEnvironment()
 #if HAVE_PUTENV
     char *env_str;
     int tmp_s;
-    env_str = (char *)xcalloc((tmp_s = strlen(Config.debugOptions) + 32), 1);
-    snprintf(env_str, tmp_s, "SQUID_DEBUG=%s", Config.debugOptions);
+    env_str = (char *)xcalloc((tmp_s = strlen(Debug::debugOptions) + 32), 1);
+    snprintf(env_str, tmp_s, "SQUID_DEBUG=%s", Debug::debugOptions);
     putenv(env_str);
 #endif
 }
 
 pid_t
-ipcCreate(int type, const char *prog, const char *const args[], const char *name, int *rfd, int *wfd, void **hIpc)
+ipcCreate(int type, const char *prog, const char *const args[], const char *name, IpAddress &local_addr, int *rfd, int *wfd, void **hIpc)
 {
     pid_t pid;
-
-    struct sockaddr_in ChS;
-
-    struct sockaddr_in PaS;
+    IpAddress ChS;
+    IpAddress PaS;
+    struct addrinfo *AI = NULL;
     int crfd = -1;
     int prfd = -1;
     int cwfd = -1;
     int pwfd = -1;
     int fd;
     int t1, t2, t3;
-    socklen_t len;
     int x;
 
 #if USE_POLL && defined(_SQUID_OSF_)
@@ -108,26 +104,22 @@ ipcCreate(int type, const char *prog, const char *const args[], const char *name
         crfd = cwfd = comm_open(SOCK_STREAM,
                                 0,
                                 local_addr,
-                                0,
                                 COMM_NOCLOEXEC,
                                 name);
         prfd = pwfd = comm_open(SOCK_STREAM,
                                 0,			/* protocol */
                                 local_addr,
-                                0,			/* port */
                                 0,			/* blocking */
                                 name);
     } else if (type == IPC_UDP_SOCKET) {
         crfd = cwfd = comm_open(SOCK_DGRAM,
                                 0,
                                 local_addr,
-                                0,
                                 COMM_NOCLOEXEC,
                                 name);
         prfd = pwfd = comm_open(SOCK_DGRAM,
                                 0,
                                 local_addr,
-                                0,
                                 0,
                                 name);
     } else if (type == IPC_FIFO) {
@@ -144,10 +136,10 @@ ipcCreate(int type, const char *prog, const char *const args[], const char *name
             return -1;
         }
 
-        fdc_open(prfd = p2c[0], FD_PIPE, "IPC FIFO Parent Read");
-        fdc_open(cwfd = p2c[1], FD_PIPE, "IPC FIFO Child Write");
-        fdc_open(crfd = c2p[0], FD_PIPE, "IPC FIFO Child Read");
-        fdc_open(pwfd = c2p[1], FD_PIPE, "IPC FIFO Parent Write");
+        fd_open(prfd = p2c[0], FD_PIPE, "IPC FIFO Parent Read");
+        fd_open(cwfd = p2c[1], FD_PIPE, "IPC FIFO Child Write");
+        fd_open(crfd = c2p[0], FD_PIPE, "IPC FIFO Child Read");
+        fd_open(pwfd = c2p[1], FD_PIPE, "IPC FIFO Parent Write");
 #if HAVE_SOCKETPAIR && defined(AF_UNIX)
 
     } else if (type == IPC_UNIX_STREAM) {
@@ -163,8 +155,8 @@ ipcCreate(int type, const char *prog, const char *const args[], const char *name
         setsockopt(fds[0], SOL_SOCKET, SO_RCVBUF, (void *) &buflen, sizeof(buflen));
         setsockopt(fds[1], SOL_SOCKET, SO_SNDBUF, (void *) &buflen, sizeof(buflen));
         setsockopt(fds[1], SOL_SOCKET, SO_RCVBUF, (void *) &buflen, sizeof(buflen));
-        fdc_open(prfd = pwfd = fds[0], FD_PIPE, "IPC UNIX STREAM Parent");
-        fdc_open(crfd = cwfd = fds[1], FD_PIPE, "IPC UNIX STREAM Parent");
+        fd_open(prfd = pwfd = fds[0], FD_PIPE, "IPC UNIX STREAM Parent");
+        fd_open(crfd = cwfd = fds[1], FD_PIPE, "IPC UNIX STREAM Parent");
     } else if (type == IPC_UNIX_DGRAM) {
         int fds[2];
 
@@ -173,8 +165,8 @@ ipcCreate(int type, const char *prog, const char *const args[], const char *name
             return -1;
         }
 
-        fdc_open(prfd = pwfd = fds[0], FD_PIPE, "IPC UNIX DGRAM Parent");
-        fdc_open(crfd = cwfd = fds[1], FD_PIPE, "IPC UNIX DGRAM Parent");
+        fd_open(prfd = pwfd = fds[0], FD_PIPE, "IPC UNIX DGRAM Parent");
+        fd_open(crfd = cwfd = fds[1], FD_PIPE, "IPC UNIX DGRAM Parent");
 #endif
 
     } else {
@@ -197,25 +189,33 @@ ipcCreate(int type, const char *prog, const char *const args[], const char *name
     }
 
     if (type == IPC_TCP_SOCKET || type == IPC_UDP_SOCKET) {
-        len = sizeof(PaS);
-        memset(&PaS, '\0', len);
+        PaS.InitAddrInfo(AI);
 
-        if (getsockname(pwfd, (struct sockaddr *) &PaS, &len) < 0) {
+        if (getsockname(pwfd, AI->ai_addr, &AI->ai_addrlen) < 0) {
+            PaS.FreeAddrInfo(AI);
             debugs(54, 0, "ipcCreate: getsockname: " << xstrerror());
             return ipcCloseAllFD(prfd, pwfd, crfd, cwfd);
         }
 
-        debugs(54, 3, "ipcCreate: FD " << pwfd << " sockaddr " << inet_ntoa(PaS.sin_addr) << ":" << ntohs(PaS.sin_port));
+        PaS = *AI;
 
-        len = sizeof(ChS);
-        memset(&ChS, '\0', len);
+        debugs(54, 3, "ipcCreate: FD " << pwfd << " sockaddr " << PaS);
 
-        if (getsockname(crfd, (struct sockaddr *) &ChS, &len) < 0) {
+        PaS.FreeAddrInfo(AI);
+
+        ChS.InitAddrInfo(AI);
+
+        if (getsockname(crfd, AI->ai_addr, &AI->ai_addrlen) < 0) {
+            ChS.FreeAddrInfo(AI);
             debugs(54, 0, "ipcCreate: getsockname: " << xstrerror());
             return ipcCloseAllFD(prfd, pwfd, crfd, cwfd);
         }
 
-        debugs(54, 3, "ipcCreate: FD " << crfd << " sockaddr " << inet_ntoa(ChS.sin_addr) << ":" << ntohs(ChS.sin_port));
+        ChS = *AI;
+
+        ChS.FreeAddrInfo(AI);
+
+        debugs(54, 3, "ipcCreate: FD " << crfd << " sockaddr " << ChS );
 
     }
 
@@ -246,7 +246,7 @@ ipcCreate(int type, const char *prog, const char *const args[], const char *name
         cwfd = crfd = -1;
 
         if (type == IPC_TCP_SOCKET || type == IPC_UDP_SOCKET) {
-            if (comm_connect_addr(pwfd, &ChS) == COMM_ERROR)
+            if (comm_connect_addr(pwfd, ChS) == COMM_ERROR)
                 return ipcCloseAllFD(prfd, pwfd, crfd, cwfd);
         }
 
@@ -317,7 +317,7 @@ ipcCreate(int type, const char *prog, const char *const args[], const char *name
         close(crfd);
         cwfd = crfd = fd;
     } else if (type == IPC_UDP_SOCKET) {
-        if (comm_connect_addr(crfd, &PaS) == COMM_ERROR)
+        if (comm_connect_addr(crfd, PaS) == COMM_ERROR)
             return ipcCloseAllFD(prfd, pwfd, crfd, cwfd);
     }
 
@@ -339,7 +339,7 @@ ipcCreate(int type, const char *prog, const char *const args[], const char *name
 
     PutEnvironment();
     /*
-     * This double-dup stuff avoids problems when one of 
+     * This double-dup stuff avoids problems when one of
      *  crfd, cwfd, or debug_log are in the rage 0-2.
      */
 
@@ -383,7 +383,7 @@ ipcCreate(int type, const char *prog, const char *const args[], const char *name
 
 #if HAVE_SETSID
     if (opt_no_daemon)
-	setsid();
+        setsid();
 #endif
 
     execvp(prog, (char *const *) args);

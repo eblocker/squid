@@ -1,7 +1,4 @@
-
 /*
- * $Id: cf_gen.cc,v 1.62 2007/09/17 20:21:23 hno Exp $
- *
  * DEBUG: none          Generate squid.conf.default and cf_parser.h
  * AUTHOR: Max Okumoto
  *
@@ -21,12 +18,12 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *  
+ *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *  
+ *
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
@@ -48,13 +45,22 @@
  *			 administrator.
  *****************************************************************************/
 
-#include "squid.h"
-#include "SquidTime.h"
+//#include "squid.h"
+#include "config.h"
+//#include "SquidTime.h"
 #include "cf_gen_defines.h"
+#include "util.h"
+
+#if HAVE_STRING_H
+#include <string.h>
+#endif
+#if HAVE_STRING_H
+#include <ctype.h>
+#endif
 
 #define MAX_LINE	1024	/* longest configuration line */
 #define _PATH_PARSER		"cf_parser.h"
-#define _PATH_SQUID_CONF	"squid.conf.default"
+#define _PATH_SQUID_CONF	"squid.conf.documented"
 #define _PATH_CF_DEPEND		"cf.data.depend"
 
 enum State {
@@ -65,26 +71,19 @@ enum State {
     sEXIT
 };
 
-typedef struct Line
-{
+typedef struct Line {
     char *data;
 
     struct Line *next;
-}
+} Line;
 
-Line;
-
-typedef struct EntryAlias
-{
+typedef struct EntryAlias {
 
     struct EntryAlias *next;
     char *name;
-}
+} EntryAlias;
 
-EntryAlias;
-
-typedef struct Entry
-{
+typedef struct Entry {
     char *name;
     EntryAlias *alias;
     char *type;
@@ -98,19 +97,15 @@ typedef struct Entry
     int array_flag;
 
     struct Entry *next;
-}
+} Entry;
 
-Entry;
-
-typedef struct TypeDep
-{
+typedef struct TypeDep {
     char *name;
 
     TypeDep *next;
 } TypeDep;
 
-typedef struct Type
-{
+typedef struct Type {
     char *name;
     TypeDep *depend;
 
@@ -144,21 +139,21 @@ checkDepend(const char *directive, const char *name, const Type *types, const En
 {
     const Type *type;
     for (type = types; type; type = type->next) {
-	const TypeDep *dep;
-	if (strcmp(type->name, name) != 0)
-	    continue;
-	for (dep = type->depend; dep; dep = dep->next) {
-	    const Entry *entry;
-	    for (entry = entries; entry; entry = entry->next) {
-		if (strcmp(entry->name, dep->name) == 0)
-		    break;
-	    }
-	    if (!entry) {
-		fprintf(stderr, "ERROR: '%s' (%s) depends on '%s'\n", directive, name, dep->name);
-		exit(1);
-	    }
-	}
-	return;
+        const TypeDep *dep;
+        if (strcmp(type->name, name) != 0)
+            continue;
+        for (dep = type->depend; dep; dep = dep->next) {
+            const Entry *entry;
+            for (entry = entries; entry; entry = entry->next) {
+                if (strcmp(entry->name, dep->name) == 0)
+                    break;
+            }
+            if (!entry) {
+                fprintf(stderr, "ERROR: '%s' (%s) depends on '%s'\n", directive, name, dep->name);
+                exit(1);
+            }
+        }
+        return;
     }
     fprintf(stderr, "ERROR: Dependencies for cf.data type '%s' used in '%s' not defined\n", name, directive);
     exit(1);
@@ -198,20 +193,20 @@ main(int argc, char *argv[])
     }
 
     while ((NULL != fgets(buff, MAX_LINE, fp))) {
-	const char *type = strtok(buff, WS);
-	const char *dep;
-	if (!type || type[0] == '#')
-	    continue;
-	Type *t = (Type *)xcalloc(1, sizeof(*t));
-	t->name = xstrdup(type);
-	while ((dep = strtok(NULL, WS)) != NULL) {
-	    TypeDep *d = (TypeDep *)xcalloc(1, sizeof(*d));
-	    d->name = xstrdup(dep);
-	    d->next = t->depend;
-	    t->depend = d;
-	}
-	t->next = types;
-	types = t;
+        const char *type = strtok(buff, WS);
+        const char *dep;
+        if (!type || type[0] == '#')
+            continue;
+        Type *t = (Type *)xcalloc(1, sizeof(*t));
+        t->name = xstrdup(type);
+        while ((dep = strtok(NULL, WS)) != NULL) {
+            TypeDep *d = (TypeDep *)xcalloc(1, sizeof(*d));
+            d->name = xstrdup(dep);
+            d->next = t->depend;
+            t->depend = d;
+        }
+        t->next = types;
+        types = t;
     }
     fclose(fp);
 
@@ -330,7 +325,7 @@ main(int argc, char *argv[])
                     *(ptr + strlen(ptr) - 2) = '\0';
                 }
 
-		checkDepend(curr->name, ptr, types, entries);
+                checkDepend(curr->name, ptr, types, entries);
                 curr->type = xstrdup(ptr);
             } else if (!strncmp(buff, "IFDEF:", 6)) {
                 if ((ptr = strtok(buff + 6, WS)) == NULL) {
@@ -787,7 +782,7 @@ gen_conf(Entry * head, FILE * fp)
     for (entry = head; entry != NULL; entry = entry->next) {
         Line *line;
         int blank = 1;
-	int enabled = 1;
+        int enabled = 1;
 
         if (!strcmp(entry->name, "comment"))
             (void) 0;
@@ -802,7 +797,7 @@ gen_conf(Entry * head, FILE * fp)
         if (!defined(entry->ifdef)) {
             fprintf(fp, "# Note: This option is only available if Squid is rebuilt with the\n");
             fprintf(fp, "#       %s\n#\n", available_if(entry->ifdef));
-	    enabled = 0;
+            enabled = 0;
         }
 
         for (line = entry->doc; line != NULL; line = line->next) {
@@ -849,10 +844,10 @@ gen_conf(Entry * head, FILE * fp)
             fprintf(fp, "#\n");
 
         for (line = entry->nocomment; line != NULL; line = line->next) {
-	    if (!enabled && line->data[0] != '#')
-		fprintf(fp, "#%s\n", line->data);
-	    else
-		fprintf(fp, "%s\n", line->data);
+            if (!enabled && line->data[0] != '#')
+                fprintf(fp, "#%s\n", line->data);
+            else
+                fprintf(fp, "%s\n", line->data);
         }
 
         if (entry->doc != NULL) {

@@ -1,5 +1,5 @@
 /*
- * $Id: stat.cc,v 1.410.2.3 2008/03/01 10:45:34 amosjeffries Exp $
+ * $Id$
  *
  * DEBUG: section 18    Cache Manager Statistics
  * AUTHOR: Harvest Derived
@@ -20,12 +20,12 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *  
+ *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *  
+ *
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
@@ -35,7 +35,7 @@
 #include "squid.h"
 #include "event.h"
 #include "StoreClient.h"
-#include "AuthUserRequest.h"
+#include "auth/UserRequest.h"
 #include "CacheManager.h"
 #include "Store.h"
 #include "HttpRequest.h"
@@ -48,6 +48,7 @@
 #include "client_side_request.h"
 #include "client_side.h"
 #include "MemBuf.h"
+#include "SquidTime.h"
 
 /* these are included because they expose stats calls */
 /* TODO: provide a self registration mechanism for those classes
@@ -378,9 +379,7 @@ statObjectsStart(StoreEntry * sentry, STOBJFLT * filter)
     state->sentry = sentry;
     state->filter = filter;
 
-    sentry->lock()
-
-    ;
+    sentry->lock();
     state->theSearch = Store::Root().search(NULL, NULL);
 
     eventAdd("statObjects", statObjects, state, 0.0, 1);
@@ -431,8 +430,9 @@ info_get_mallstat(int size, int number, int oldnum, void *data)
 {
     StoreEntry *sentry = (StoreEntry *)data;
 
+// format: "%12s %15s %6s %12s\n","Alloc Size","Count","Delta","Alloc/sec"
     if (number > 0)
-        storeAppendPrintf(sentry, "%d\t %d\t %d\t %.1f\n", size, number, number - oldnum, xdiv((number - oldnum), xm_deltat));
+        storeAppendPrintf(sentry, "%12d %15d %6d %.1f\n", size, number, number - oldnum, xdiv((number - oldnum), xm_deltat));
 }
 
 #endif
@@ -478,8 +478,7 @@ info_get(StoreEntry * sentry)
     storeAppendPrintf(sentry, "Current Time:\t%s\n",
                       mkrfc1123(current_time.tv_sec));
 
-    storeAppendPrintf(sentry, "Connection information for %s:\n",
-                      appname);
+    storeAppendPrintf(sentry, "Connection information for %s:\n",APP_SHORTNAME);
 
     storeAppendPrintf(sentry, "\tNumber of clients accessing cache:\t%u\n",
                       statCounter.client_http.clients);
@@ -515,11 +514,10 @@ info_get(StoreEntry * sentry)
     storeAppendPrintf(sentry, "\tAverage ICP messages per minute since start:\t%.1f\n",
                       (statCounter.icp.pkts_sent + statCounter.icp.pkts_recv) / (runtime / 60.0));
 
-    storeAppendPrintf(sentry, "\tSelect loop called: %d times, %0.3f ms avg\n",
+    storeAppendPrintf(sentry, "\tSelect loop called: %ld times, %0.3f ms avg\n",
                       statCounter.select_loops, 1000.0 * runtime / statCounter.select_loops);
 
-    storeAppendPrintf(sentry, "Cache information for %s:\n",
-                      appname);
+    storeAppendPrintf(sentry, "Cache information for %s:\n",APP_SHORTNAME);
 
     storeAppendPrintf(sentry, "\tHits as %% of all requests:\t5min: %3.1f%%, 60min: %3.1f%%\n",
                       statRequestHitRatio(5),
@@ -541,10 +539,10 @@ info_get(StoreEntry * sentry)
                       store_swap_size);
 
     storeAppendPrintf(sentry, "\tStorage Swap capacity:\t%4.1f%% used, %4.1f%% free\n",
-                      dpercent(store_swap_size, Store::Root().maxSize()),  
+                      dpercent(store_swap_size, Store::Root().maxSize()),
                       dpercent((Store::Root().maxSize() - store_swap_size), Store::Root().maxSize()));
 
-   
+
     storeAppendPrintf(sentry, "\tStorage Mem size:\t%lu KB\n",
                       (unsigned long)mem_node::StoreMemSize() >> 10);
 
@@ -592,7 +590,7 @@ info_get(StoreEntry * sentry)
 
     cputime = rusage_cputime(&rusage);
 
-    storeAppendPrintf(sentry, "Resource usage for %s:\n", appname);
+    storeAppendPrintf(sentry, "Resource usage for %s:\n", APP_SHORTNAME);
 
     storeAppendPrintf(sentry, "\tUP Time:\t%.3f seconds\n", runtime);
 
@@ -624,8 +622,7 @@ info_get(StoreEntry * sentry)
 
     ms = mstats();
 
-    storeAppendPrintf(sentry, "Memory usage for %s via mstats():\n",
-                      appname);
+    storeAppendPrintf(sentry, "Memory usage for %s via mstats():\n",APP_SHORTNAME);
 
     storeAppendPrintf(sentry, "\tTotal space in arena:  %6d KB\n",
                       ms.bytes_total >> 10);
@@ -637,8 +634,7 @@ info_get(StoreEntry * sentry)
 
     mp = mallinfo();
 
-    storeAppendPrintf(sentry, "Memory usage for %s via mallinfo():\n",
-                      appname);
+    storeAppendPrintf(sentry, "Memory usage for %s via mallinfo():\n",APP_SHORTNAME);
 
     storeAppendPrintf(sentry, "\tTotal space in arena:  %6ld KB\n",
                       (long)mp.arena >> 10);
@@ -726,7 +722,7 @@ info_get(StoreEntry * sentry)
                           mp_stats.TheMeter->gb_freed.count);
     }
 
-    storeAppendPrintf(sentry, "File descriptor usage for %s:\n", appname);
+    storeAppendPrintf(sentry, "File descriptor usage for %s:\n", APP_SHORTNAME);
     storeAppendPrintf(sentry, "\tMaximum number of file descriptors:   %4d\n",
                       Squid_MaxFD);
     storeAppendPrintf(sentry, "\tLargest file desc currently in use:   %4d\n",
@@ -757,7 +753,7 @@ info_get(StoreEntry * sentry)
     xm_deltat = current_dtime - xm_time;
     xm_time = current_dtime;
     storeAppendPrintf(sentry, "\nMemory allocation statistics\n");
-    storeAppendPrintf(sentry, "Allocation Size\t Alloc Count\t Alloc Delta\t Allocs/sec \n");
+    storeAppendPrintf(sentry, "%12s %15s %6s %12s\n","Alloc Size","Count","Delta","Alloc/sec");
     malloc_statistics(info_get_mallstat, sentry);
 #endif
 }
@@ -768,46 +764,46 @@ service_times(StoreEntry * sentry)
     int p;
     storeAppendPrintf(sentry, "Service Time Percentiles            5 min    60 min:\n");
     for (p = 5; p < 100; p += 5) {
-       storeAppendPrintf(sentry, "\tHTTP Requests (All):  %2d%%  %8.5f %8.5f\n",
-	p,
-	statPctileSvc((double) p / 100.0, 5, PCTILE_HTTP) / 1000.0,
-	statPctileSvc((double) p / 100.0, 60, PCTILE_HTTP) / 1000.0);
+        storeAppendPrintf(sentry, "\tHTTP Requests (All):  %2d%%  %8.5f %8.5f\n",
+                          p,
+                          statPctileSvc((double) p / 100.0, 5, PCTILE_HTTP) / 1000.0,
+                          statPctileSvc((double) p / 100.0, 60, PCTILE_HTTP) / 1000.0);
     }
     for (p = 5; p < 100; p += 5) {
-       storeAppendPrintf(sentry, "\tCache Misses:         %2d%%  %8.5f %8.5f\n",
-	p,
-	statPctileSvc((double) p / 100.0, 5, PCTILE_MISS) / 1000.0,
-	statPctileSvc((double) p / 100.0, 60, PCTILE_MISS) / 1000.0);
+        storeAppendPrintf(sentry, "\tCache Misses:         %2d%%  %8.5f %8.5f\n",
+                          p,
+                          statPctileSvc((double) p / 100.0, 5, PCTILE_MISS) / 1000.0,
+                          statPctileSvc((double) p / 100.0, 60, PCTILE_MISS) / 1000.0);
     }
     for (p = 5; p < 100; p += 5) {
-       storeAppendPrintf(sentry, "\tCache Hits:           %2d%%  %8.5f %8.5f\n",
-	p,
-	statPctileSvc((double) p / 100.0, 5, PCTILE_HIT) / 1000.0,
-	statPctileSvc((double) p / 100.0, 60, PCTILE_HIT) / 1000.0);
+        storeAppendPrintf(sentry, "\tCache Hits:           %2d%%  %8.5f %8.5f\n",
+                          p,
+                          statPctileSvc((double) p / 100.0, 5, PCTILE_HIT) / 1000.0,
+                          statPctileSvc((double) p / 100.0, 60, PCTILE_HIT) / 1000.0);
     }
     for (p = 5; p < 100; p += 5) {
-       storeAppendPrintf(sentry, "\tNear Hits:            %2d%%  %8.5f %8.5f\n",
-	p,
-	statPctileSvc((double) p / 100.0, 5, PCTILE_NH) / 1000.0,
-	statPctileSvc((double) p / 100.0, 60, PCTILE_NH) / 1000.0);
+        storeAppendPrintf(sentry, "\tNear Hits:            %2d%%  %8.5f %8.5f\n",
+                          p,
+                          statPctileSvc((double) p / 100.0, 5, PCTILE_NH) / 1000.0,
+                          statPctileSvc((double) p / 100.0, 60, PCTILE_NH) / 1000.0);
     }
     for (p = 5; p < 100; p += 5) {
-       storeAppendPrintf(sentry, "\tNot-Modified Replies: %2d%%  %8.5f %8.5f\n",
-	p,
-	statPctileSvc((double) p / 100.0, 5, PCTILE_NM) / 1000.0,
-	statPctileSvc((double) p / 100.0, 60, PCTILE_NM) / 1000.0);
+        storeAppendPrintf(sentry, "\tNot-Modified Replies: %2d%%  %8.5f %8.5f\n",
+                          p,
+                          statPctileSvc((double) p / 100.0, 5, PCTILE_NM) / 1000.0,
+                          statPctileSvc((double) p / 100.0, 60, PCTILE_NM) / 1000.0);
     }
     for (p = 5; p < 100; p += 5) {
-       storeAppendPrintf(sentry, "\tDNS Lookups:          %2d%%  %8.5f %8.5f\n",
-	p,
-	statPctileSvc((double) p / 100.0, 5, PCTILE_DNS) / 1000.0,
-	statPctileSvc((double) p / 100.0, 60, PCTILE_DNS) / 1000.0);
+        storeAppendPrintf(sentry, "\tDNS Lookups:          %2d%%  %8.5f %8.5f\n",
+                          p,
+                          statPctileSvc((double) p / 100.0, 5, PCTILE_DNS) / 1000.0,
+                          statPctileSvc((double) p / 100.0, 60, PCTILE_DNS) / 1000.0);
     }
     for (p = 5; p < 100; p += 5) {
-       storeAppendPrintf(sentry, "\tICP Queries:          %2d%%  %8.5f %8.5f\n",
-	p,
-	statPctileSvc((double) p / 100.0, 5, PCTILE_ICP_QUERY) / 1000000.0,
-	statPctileSvc((double) p / 100.0, 60, PCTILE_ICP_QUERY) / 1000000.0);
+        storeAppendPrintf(sentry, "\tICP Queries:          %2d%%  %8.5f %8.5f\n",
+                          p,
+                          statPctileSvc((double) p / 100.0, 5, PCTILE_ICP_QUERY) / 1000000.0,
+                          statPctileSvc((double) p / 100.0, 60, PCTILE_ICP_QUERY) / 1000000.0);
     }
 }
 
@@ -1011,6 +1007,48 @@ statAvgDump(StoreEntry * sentry, int minutes, int hours)
     storeAppendPrintf(sentry, "cpu_usage = %f%%\n", dpercent(ct, dt));
 }
 
+static void
+statRegisterWithCacheManager(void)
+{
+    CacheManager *manager = CacheManager::GetInstance();
+    manager->registerAction("info", "General Runtime Information",
+                            info_get, 0, 1);
+    manager->registerAction("service_times", "Service Times (Percentiles)",
+                            service_times, 0, 1);
+    manager->registerAction("filedescriptors", "Process Filedescriptor Allocation",
+                            fde::DumpStats, 0, 1);
+    manager->registerAction("objects", "All Cache Objects", stat_objects_get, 0, 0);
+    manager->registerAction("vm_objects", "In-Memory and In-Transit Objects",
+                            stat_vmobjects_get, 0, 0);
+    manager->registerAction("io", "Server-side network read() size histograms",
+                            stat_io_get, 0, 1);
+    manager->registerAction("counters", "Traffic and Resource Counters",
+                            statCountersDump, 0, 1);
+    manager->registerAction("peer_select", "Peer Selection Algorithms",
+                            statPeerSelect, 0, 1);
+    manager->registerAction("digest_stats", "Cache Digest and ICP blob",
+                            statDigestBlob, 0, 1);
+    manager->registerAction("5min", "5 Minute Average of Counters",
+                            statAvg5min, 0, 1);
+    manager->registerAction("60min", "60 Minute Average of Counters",
+                            statAvg60min, 0, 1);
+    manager->registerAction("utilization", "Cache Utilization",
+                            statUtilization, 0, 1);
+    manager->registerAction("histograms", "Full Histogram Counts",
+                            statCountersHistograms, 0, 1);
+    manager->registerAction("active_requests",
+                            "Client-side Active Requests",
+                            statClientRequests, 0, 1);
+#if DEBUG_OPENFD
+    manager->registerAction("openfd_objects", "Objects with Swapout files open",
+                            statOpenfdObj, 0, 0);
+#endif
+#if STAT_GRAPHS
+    manager->registerAction("graph_variables", "Display cache metrics graphically",
+                            statGraphDump, 0, 1);
+#endif
+}
+
 
 void
 statInit(void)
@@ -1031,82 +1069,8 @@ statInit(void)
     ClientActiveRequests.head = NULL;
 
     ClientActiveRequests.tail = NULL;
-}
 
-void
-statRegisterWithCacheManager(CacheManager & manager)
-{
-    manager.registerAction("info",
-                           "General Runtime Information",
-                           info_get, 0, 1);
-
-    manager.registerAction("service_times",
-                           "Service Times (Percentiles)",
-                           service_times, 0, 1);
-
-    manager.registerAction("filedescriptors",
-                           "Process Filedescriptor Allocation",
-                           fde::DumpStats, 0, 1);
-
-    manager.registerAction("objects",
-                           "All Cache Objects",
-                           stat_objects_get, 0, 0);
-
-    manager.registerAction("vm_objects",
-                           "In-Memory and In-Transit Objects",
-                           stat_vmobjects_get, 0, 0);
-
-#if DEBUG_OPENFD
-
-    manager.registerAction("openfd_objects",
-                           "Objects with Swapout files open",
-                           statOpenfdObj, 0, 0);
-
-#endif
-
-    manager.registerAction("io",
-                           "Server-side network read() size histograms",
-                           stat_io_get, 0, 1);
-
-    manager.registerAction("counters",
-                           "Traffic and Resource Counters",
-                           statCountersDump, 0, 1);
-
-    manager.registerAction("peer_select",
-                           "Peer Selection Algorithms",
-                           statPeerSelect, 0, 1);
-
-    manager.registerAction("digest_stats",
-                           "Cache Digest and ICP blob",
-                           statDigestBlob, 0, 1);
-
-    manager.registerAction("5min",
-                           "5 Minute Average of Counters",
-                           statAvg5min, 0, 1);
-
-    manager.registerAction("60min",
-                           "60 Minute Average of Counters",
-                           statAvg60min, 0, 1);
-
-    manager.registerAction("utilization",
-                           "Cache Utilization",
-                           statUtilization, 0, 1);
-
-#if STAT_GRAPHS
-
-    manager.registerAction("graph_variables",
-                           "Display cache metrics graphically",
-                           statGraphDump, 0, 1);
-
-#endif
-
-    manager.registerAction("histograms",
-                           "Full Histogram Counts",
-                           statCountersHistograms, 0, 1);
-
-    manager.registerAction("active_requests",
-                           "Client-side Active Requests",
-                           statClientRequests, 0, 1);
+    statRegisterWithCacheManager();
 }
 
 static void
@@ -1403,7 +1367,7 @@ statCountersDump(StoreEntry * sentry)
                       f->unlink.requests);
     storeAppendPrintf(sentry, "page_faults = %d\n",
                       f->page_faults);
-    storeAppendPrintf(sentry, "select_loops = %d\n",
+    storeAppendPrintf(sentry, "select_loops = %ld\n",
                       f->select_loops);
     storeAppendPrintf(sentry, "cpu_time = %f\n",
                       f->cputime);
@@ -1644,13 +1608,14 @@ statClientRequests(StoreEntry * s)
     ClientHttpRequest *http;
     StoreEntry *e;
     int fd;
+    char buf[MAX_IPSTRLEN];
 
     for (i = ClientActiveRequests.head; i; i = i->next) {
         const char *p = NULL;
         http = static_cast<ClientHttpRequest *>(i->data);
         assert(http);
-        ConnStateData::Pointer conn = http->getConn();
-        storeAppendPrintf(s, "Connection: %p\n", conn.getRaw());
+        ConnStateData * conn = http->getConn();
+        storeAppendPrintf(s, "Connection: %p\n", conn);
 
         if (conn != NULL) {
             fd = conn->fd;
@@ -1660,11 +1625,11 @@ statClientRequests(StoreEntry * s)
             storeAppendPrintf(s, "\tin: buf %p, offset %ld, size %ld\n",
                               conn->in.buf, (long int) conn->in.notYetUsed, (long int) conn->in.allocatedSize);
             storeAppendPrintf(s, "\tpeer: %s:%d\n",
-                              inet_ntoa(conn->peer.sin_addr),
-                              ntohs(conn->peer.sin_port));
+                              conn->peer.NtoA(buf,MAX_IPSTRLEN),
+                              conn->peer.GetPort());
             storeAppendPrintf(s, "\tme: %s:%d\n",
-                              inet_ntoa(conn->me.sin_addr),
-                              ntohs(conn->me.sin_port));
+                              conn->me.NtoA(buf,MAX_IPSTRLEN),
+                              conn->me.GetPort());
             storeAppendPrintf(s, "\tnrequests: %d\n",
                               conn->nrequests);
         }
@@ -1683,14 +1648,14 @@ statClientRequests(StoreEntry * s)
 #endif
 
         storeAppendPrintf(s, "start %ld.%06d (%f seconds ago)\n",
-                          (long int) http->start.tv_sec,
-                          (int) http->start.tv_usec,
-                          tvSubDsec(http->start, current_time));
+                          (long int) http->start_time.tv_sec,
+                          (int) http->start_time.tv_usec,
+                          tvSubDsec(http->start_time, current_time));
 
         if (http->request->auth_user_request)
             p = http->request->auth_user_request->username();
-        else if (http->request->extacl_user.buf() != NULL) {
-            p = http->request->extacl_user.buf();
+        else if (http->request->extacl_user.defined()) {
+            p = http->request->extacl_user.termedBuf();
         }
 
         if (!p && (conn != NULL && conn->rfc931[0]))

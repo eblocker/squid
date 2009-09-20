@@ -1,5 +1,5 @@
 /*
- * $Id: logfile.cc,v 1.25 2007/11/13 23:25:34 rousskov Exp $
+ * $Id$
  *
  * DEBUG: section 50    Log file handling
  * AUTHOR: Duane Wessels
@@ -20,12 +20,12 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *  
+ *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *  
+ *
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
@@ -33,7 +33,6 @@
  */
 
 #include "squid.h"
-#include "authenticate.h"
 #include "fde.h"
 
 static void logfileWriteWrapper(Logfile * lf, const void *buf, size_t len);
@@ -45,8 +44,7 @@ static void logfileWriteWrapper(Logfile * lf, const void *buf, size_t len);
 #define LOG_AUTHPRIV LOG_AUTH
 #endif
 
-struct syslog_symbol_t
-{
+struct syslog_symbol_t {
     const char* name;
     int value;
 };
@@ -55,24 +53,24 @@ static int syslog_ntoa (const char* s)
 {
 #define syslog_symbol(a) #a, a
     static syslog_symbol_t _symbols[] = {
-                                            { syslog_symbol(LOG_AUTHPRIV) },
-                                            { syslog_symbol(LOG_DAEMON) },
-                                            { syslog_symbol(LOG_LOCAL0) },
-                                            { syslog_symbol(LOG_LOCAL1) },
-                                            { syslog_symbol(LOG_LOCAL2) },
-                                            { syslog_symbol(LOG_LOCAL3) },
-                                            { syslog_symbol(LOG_LOCAL4) },
-                                            { syslog_symbol(LOG_LOCAL5) },
-                                            { syslog_symbol(LOG_LOCAL6) },
-                                            { syslog_symbol(LOG_LOCAL7) },
-                                            { syslog_symbol(LOG_USER) },
-                                            { syslog_symbol(LOG_ERR) },
-                                            { syslog_symbol(LOG_WARNING) },
-                                            { syslog_symbol(LOG_NOTICE) },
-                                            { syslog_symbol(LOG_INFO) },
-                                            { syslog_symbol(LOG_DEBUG) },
-                                            { NULL, 0 }
-                                        };
+        { syslog_symbol(LOG_AUTHPRIV) },
+        { syslog_symbol(LOG_DAEMON) },
+        { syslog_symbol(LOG_LOCAL0) },
+        { syslog_symbol(LOG_LOCAL1) },
+        { syslog_symbol(LOG_LOCAL2) },
+        { syslog_symbol(LOG_LOCAL3) },
+        { syslog_symbol(LOG_LOCAL4) },
+        { syslog_symbol(LOG_LOCAL5) },
+        { syslog_symbol(LOG_LOCAL6) },
+        { syslog_symbol(LOG_LOCAL7) },
+        { syslog_symbol(LOG_USER) },
+        { syslog_symbol(LOG_ERR) },
+        { syslog_symbol(LOG_WARNING) },
+        { syslog_symbol(LOG_NOTICE) },
+        { syslog_symbol(LOG_INFO) },
+        { syslog_symbol(LOG_DEBUG) },
+        { NULL, 0 }
+    };
 
     for (syslog_symbol_t* p = _symbols; p->name != NULL; ++p)
         if (!strcmp(s, p->name) || !strcasecmp(s, p->name+4))
@@ -102,16 +100,16 @@ logfileOpen(const char *path, size_t bufsz, int fatal_flag)
 
         if (path[6] != '\0') {
             path += 7;
-	    char *priority = xstrdup(path);
-	    char *facility = (char *) strchr(priority, '.');
-	    if (!facility)
-		facility = (char *) strchr(priority, '|');
-	    if (facility) {
-		*facility++ = '\0';
-		lf->syslog_priority |= syslog_ntoa(facility);
-	    }
-	    lf->syslog_priority |= syslog_ntoa(priority);
-	    xfree(priority);
+            char *priority = xstrdup(path);
+            char *facility = (char *) strchr(priority, '.');
+            if (!facility)
+                facility = (char *) strchr(priority, '|');
+            if (facility) {
+                *facility++ = '\0';
+                lf->syslog_priority |= syslog_ntoa(facility);
+            }
+            lf->syslog_priority |= syslog_ntoa(priority);
+            xfree(priority);
             if (0 == (lf->syslog_priority & PRIORITY_MASK))
                 lf->syslog_priority |= LOG_INFO;
         }
@@ -255,27 +253,13 @@ logfileWrite(Logfile * lf, void *buf, size_t len)
 }
 
 void
-#if STDC_HEADERS
 logfilePrintf(Logfile * lf, const char *fmt,...)
-#else
-logfilePrintf(va_alist)
-va_dcl
-#endif
 {
     va_list args;
     char buf[8192];
     int s;
-#if STDC_HEADERS
 
     va_start(args, fmt);
-#else
-
-    Logfile *lf;
-    const char *fmt;
-    va_start(args);
-    lf = va_arg(args, Logfile *);
-    fmt = va_arg(args, char *);
-#endif
 
     s = vsnprintf(buf, 8192, fmt, args);
 

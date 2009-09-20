@@ -7,6 +7,10 @@
 #ifndef __DISKTHREADS_H__
 #define __DISKTHREADS_H__
 
+#include "config.h"
+#include "dlink.h"
+#include "typedefs.h"
+
 #ifdef AUFS_IO_THREADS
 #define NUMTHREADS AUFS_IO_THREADS
 #else
@@ -39,8 +43,7 @@ typedef enum _squidaio_request_type squidaio_request_type;
 
 typedef void AIOCB(int fd, void *cbdata, const char *buf, int aio_return, int aio_errno);
 
-struct squidaio_result_t
-{
+struct squidaio_result_t {
     int aio_return;
     int aio_errno;
     enum _squidaio_request_type result_type;
@@ -48,8 +51,7 @@ struct squidaio_result_t
     void *data;			/* Available to the caller */
 };
 
-struct squidaio_ctrl_t
-{
+struct squidaio_ctrl_t {
 
     struct squidaio_ctrl_t *next;
     int fd;
@@ -98,8 +100,7 @@ int aioQueueSize(void);
 
 class DiskThreadsIOStrategy;
 
-struct AIOCounts
-{
+struct AIOCounts {
     int open_start;
     int open_finish;
     int close_start;

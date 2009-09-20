@@ -1,6 +1,6 @@
 
 /*
- * $Id: store_io_ufs.cc,v 1.39 2007/07/24 16:15:32 rousskov Exp $
+ * $Id$
  *
  * DEBUG: section 79    Storage Manager UFS Interface
  * AUTHOR: Duane Wessels
@@ -21,12 +21,12 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *  
+ *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *  
+ *
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
@@ -345,9 +345,9 @@ UFSStoreState::readCompleted(const char *buf, int len, int errflag, RefCount<Rea
 void
 UFSStoreState::writeCompleted(int errflag, size_t len, RefCount<WriteRequest> writeRequest)
 {
-     debugs(79, 3, "UFSStoreState::writeCompleted: dirno " << swap_dirn << ", fileno " << 
-            std::setfill('0') << std::hex << std::uppercase << std::setw(8) << swap_filen << 
-            ", len " << len );
+    debugs(79, 3, "UFSStoreState::writeCompleted: dirno " << swap_dirn << ", fileno " <<
+           std::setfill('0') << std::hex << std::uppercase << std::setw(8) << swap_filen <<
+           ", len " << len );
     /*
      * DPW 2006-05-24
      * See doWrites() for why we don't update UFSStoreState::writing
@@ -492,7 +492,7 @@ UFSStoreState::drainWriteQueue()
      * drainWriteQueue().
      */
     if (flags.write_draining)
-	return;
+        return;
 
     if (!theFile->canWrite())
         return;
@@ -525,8 +525,8 @@ UFSStoreState::tryClosing()
            " ioInProgress = " << theFile->ioInProgress());
 
     if (theFile->ioInProgress()) {
-	debugs(79, 3, HERE << this <<
-	    " won't close since ioInProgress is true, bailing");
+        debugs(79, 3, HERE << this <<
+               " won't close since ioInProgress is true, bailing");
         flags.try_closing = true;
         return;
     }

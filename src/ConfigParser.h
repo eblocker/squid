@@ -1,6 +1,6 @@
 
 /*
- * $Id: ConfigParser.h,v 1.8 2007/05/29 13:31:36 amosjeffries Exp $
+ * $Id$
  *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
@@ -19,12 +19,12 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *  
+ *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *  
+ *
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
@@ -37,10 +37,6 @@
 #define SQUID_CONFIGPARSER_H
 
 #include "squid.h"
-
-/* forward decls */
-
-class CacheManager;
 
 /*
  * A configuration file Parser. Instances of this class track
@@ -66,6 +62,6 @@ public:
     static char * strtokFile();
 };
 
-extern int parseConfigFile(const char *file_name, CacheManager & manager);
+extern int parseConfigFile(const char *file_name);
 
 #endif /* SQUID_CONFIGPARSER_H */

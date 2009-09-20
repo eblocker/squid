@@ -9,7 +9,7 @@ datadir=/usr/share/squid3
 
 DEB_DH_INSTALL_SOURCEDIR := $(INSTALLDIR)
 DEB_INSTALL_DOCS_squid3-common := CONTRIBUTORS CREDITS QUICKSTART RELEASENOTES.html \
-						SPONSORS TODO
+						SPONSORS 
 
 DEB_CONFIGURE_EXTRA_FLAGS := --datadir=/usr/share/squid3 \
 		--sysconfdir=/etc/squid3 \

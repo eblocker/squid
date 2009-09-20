@@ -5,28 +5,28 @@
 ## DP: Default configuration file for debian
 
 @DPATCH@
-diff -urNad squid3~/src/cf.data.pre squid3/src/cf.data.pre
---- squid3~/src/cf.data.pre	2009-05-12 05:59:31.000000000 +0200
-+++ squid3/src/cf.data.pre	2009-05-12 06:46:45.000000000 +0200
-@@ -123,7 +123,7 @@
+diff -urNad experimental~/src/cf.data.pre experimental/src/cf.data.pre
+--- experimental~/src/cf.data.pre	2009-09-21 00:48:15.000000000 +0200
++++ experimental/src/cf.data.pre	2009-09-21 01:04:51.000000000 +0200
+@@ -122,7 +122,7 @@
  	If you want to use the traditional NCSA proxy authentication, set
  	this line to something like
  
 -	auth_param basic program @DEFAULT_PREFIX@/libexec/ncsa_auth @DEFAULT_PREFIX@/etc/passwd
 +	auth_param basic program @DEFAULT_PREFIX@/lib/squid3/ncsa_auth @DEFAULT_PREFIX@/etc/passwd
  
- 	"children" numberofchildren
- 	The number of authenticator processes to spawn. If you start too few
-@@ -185,7 +185,7 @@
+ 	"utf8" on|off
+ 	HTTP uses iso-latin-1 as characterset, while some authentication
+@@ -190,7 +190,7 @@
  	If you want to use a digest authenticator, set this line to
  	something like
  
 -	auth_param digest program @DEFAULT_PREFIX@/bin/digest_pw_auth @DEFAULT_PREFIX@/etc/digpass
 +	auth_param digest program @DEFAULT_PREFIX@/lib/squid3/digest_pw_auth @DEFAULT_PREFIX@/etc/digpass
  
- 	"children" numberofchildren
- 	The number of authenticator processes to spawn (no default).
-@@ -241,7 +241,7 @@
+ 	"utf8" on|off
+ 	HTTP uses iso-latin-1 as characterset, while some authentication
+@@ -252,7 +252,7 @@
  	of type proxy_auth.  By default, the NTLM authenticator_program
  	is not used.
  
@@ -35,7 +35,7 @@ diff -urNad squid3~/src/cf.data.pre squid3/src/cf.data.pre
  
  	"children" numberofchildren
  	The number of authenticator processes to spawn (no default).
-@@ -276,7 +276,7 @@
+@@ -287,7 +287,7 @@
  	The only supported program for this role is the ntlm_auth
  	program distributed as part of Samba, version 4 or later.
  
@@ -44,7 +44,7 @@ diff -urNad squid3~/src/cf.data.pre squid3/src/cf.data.pre
  
  	"children" numberofchildren
  	The number of authenticator processes to spawn (no default).
-@@ -637,9 +637,9 @@
+@@ -693,9 +693,9 @@
  # Example rule allowing access from your local networks.
  # Adapt to list your (internal) IP networks from where browsing
  # should be allowed
@@ -57,35 +57,16 @@ diff -urNad squid3~/src/cf.data.pre squid3/src/cf.data.pre
  #
  acl SSL_ports port 443
  acl Safe_ports port 80		# http
-@@ -700,7 +700,8 @@
+@@ -848,7 +848,7 @@
  # Example rule allowing access from your local networks.
  # Adapt localnet in the ACL section to list your (internal) IP networks
  # from where browsing should be allowed
 -http_access allow localnet
 +#http_access allow localnet
-+http_access allow localhost
+ http_access allow localhost
  
  # And finally deny all other access to this proxy
- http_access deny all
-@@ -739,7 +740,7 @@
- 
- NOCOMMENT_START
- #Allow ICP queries from local networks only
--icp_access allow localnet
-+#icp_access allow localnet
- icp_access deny all
- NOCOMMENT_END
- DOC_END
-@@ -764,7 +765,7 @@
- 
- NOCOMMENT_START
- #Allow HTCP queries from local networks only
--htcp_access allow localnet
-+#htcp_access allow localnet
- htcp_access deny all
- NOCOMMENT_END
- DOC_END
-@@ -2141,7 +2142,7 @@
+@@ -2656,7 +2656,7 @@
  
  NAME: logfile_rotate
  TYPE: int
@@ -94,17 +75,17 @@ diff -urNad squid3~/src/cf.data.pre squid3/src/cf.data.pre
  LOC: Config.Log.rotateNumber
  DOC_START
  	Specifies the number of logfile rotations to make when you
-@@ -2157,6 +2158,9 @@
- 	purposes, so -k rotate uses another signal.  It is best to get
- 	in the habit of using 'squid -k rotate' instead of 'kill -USR1
- 	<pid>'.
-+	
-+	Note2, for Debian/Linux the default of logfile_rotate is
-+	zero, since it includes external logfile-rotation methods.
+@@ -2675,6 +2675,9 @@
+ 
+ 	Note, from Squid-3.1 this option has no effect on the cache.log,
+ 	that log can be rotated separately by using debug_options
++
++ 	Note2, for Debian/Linux the default of logfile_rotate is
++ 	zero, since it includes external logfile-rotation methods.
  DOC_END
  
  NAME: emulate_httpd_log
-@@ -3340,7 +3344,7 @@
+@@ -4018,7 +4021,7 @@
  NAME: visible_hostname
  TYPE: string
  LOC: Config.visibleHostname

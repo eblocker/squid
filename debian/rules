@@ -31,7 +31,6 @@ DEB_CONFIGURE_EXTRA_FLAGS := --datadir=/usr/share/squid3 \
 		--enable-negotiate-auth-helpers="squid_kerb_auth" \
 		--enable-external-acl-helpers="ip_user,ldap_group,session,unix_group,wbinfo_group" \
 		--enable-arp-acl \
-		--enable-snmp \
 		--with-filedescriptors=65536 \
 		--with-large-files \
 		--with-default-user=proxy
@@ -41,7 +40,7 @@ DEB_HOST_ARCH_OS := $(shell dpkg-architecture -qDEB_HOST_ARCH_OS 2>/dev/null)
 ifeq ($(DEB_HOST_ARCH_OS), kfreebsd)
 		DEB_CONFIGURE_EXTRA_FLAGS += --enable-kqueue
 else
-		DEB_CONFIGURE_EXTRA_FLAGS += --enable-epoll --enable-linux-netfilter
+		DEB_CONFIGURE_EXTRA_FLAGS += --enable-linux-netfilter
 endif
 
 DEB_MAKE_CLEAN_TARGET = distclean

@@ -1,6 +1,6 @@
 
 /*
- * $Id: basicScheme.h,v 1.1 2004/08/30 03:29:00 robertc Exp $
+ * $Id$
  *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
@@ -19,12 +19,12 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *  
+ *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *  
+ *
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
@@ -34,15 +34,17 @@
 #ifndef SQUID_BASICSCHEME_H
 #define SQUID_BASICSCHEME_H
 
-#include "AuthScheme.h"
+#include "auth/Scheme.h"
 
+/// \ingroup AuthAPI
+/// \ingroup AuthSchemeAPI
 class basicScheme : public AuthScheme
 {
 
 public:
     static AuthScheme &GetInstance();
     basicScheme();
-    virtual ~basicScheme(){}
+    virtual ~basicScheme() {}
 
     /* per scheme */
     virtual char const *type () const;
@@ -53,7 +55,7 @@ public:
     basicScheme &operator=(basicScheme const &);
 
 private:
-    static basicScheme _instance;
+    static basicScheme *_instance;
 };
 
 #endif /* SQUID_BASICSCHEME_H */

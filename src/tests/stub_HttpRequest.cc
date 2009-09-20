@@ -1,5 +1,5 @@
 /*
- * $Id: stub_HttpRequest.cc,v 1.4 2007/08/13 17:20:58 hno Exp $
+ * $Id$
  *
  * DEBUG: section 28    Access Control
  * AUTHOR: Robert Collins
@@ -20,12 +20,12 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *  
+ *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *  
+ *
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
@@ -41,7 +41,7 @@ HttpRequest::HttpRequest() : HttpMsg(hoRequest)
     fatal("Not implemented");
 }
 
-HttpRequest::HttpRequest(method_t method, protocol_t protocol, const char *aUrlpath) : HttpMsg(hoRequest)
+HttpRequest::HttpRequest(const HttpRequestMethod& method, protocol_t protocol, const char *aUrlpath) : HttpMsg(hoRequest)
 {
     fatal("Not implemented");
 }
@@ -75,20 +75,34 @@ HttpRequest::reset()
 }
 
 bool
-HttpRequest::expectingBody(method_t unused, int64_t&) const
+HttpRequest::expectingBody(const HttpRequestMethod& unused, int64_t&) const
 {
     fatal("Not implemented");
     return false;
 }
 
 void
-HttpRequest::initHTTP(method_t aMethod, protocol_t aProtocol, const char *aUrlpath)
+HttpRequest::initHTTP(const HttpRequestMethod& aMethod, protocol_t aProtocol, const char *aUrlpath)
 {
     fatal("Not implemented");
 }
 
 bool
 HttpRequest::parseFirstLine(const char *start, const char *end)
+{
+    fatal("Not implemented");
+    return false;
+}
+
+HttpRequest *
+HttpRequest::clone() const
+{
+    fatal("Not implemented");
+    return NULL;
+}
+
+bool
+HttpRequest::inheritProperties(const HttpMsg *aMsg)
 {
     fatal("Not implemented");
     return false;

@@ -1,9 +1,10 @@
 /*
- * $Id: radix.h,v 1.18 2003/10/20 12:33:03 robertc Exp $
+ * $Id$
  */
-
 #ifndef SQUID_RADIX_H
 #define	SQUID_RADIX_H
+
+#include "config.h"
 
 /*
  * Copyright (c) 1988, 1989, 1993
@@ -45,8 +46,7 @@
  * Radix search tree node layout.
  */
 
-struct squid_radix_node
-{
+struct squid_radix_node {
 
     struct squid_radix_mask *rn_mklist;	/* list of masks contained in subtree */
 
@@ -65,9 +65,7 @@ struct squid_radix_node
             char *rn_Mask;	/* netmask, if present */
 
             struct squid_radix_node *rn_Dupedkey;
-        }
-
-        rn_leaf;
+        } rn_leaf;
 
         struct {		/* node only data: */
             int rn_Off;		/* where to start compare */
@@ -75,9 +73,7 @@ struct squid_radix_node
             struct squid_radix_node *rn_L;	/* progeny */
 
             struct squid_radix_node *rn_R;	/* progeny */
-        }
-
-        rn_node;
+        } rn_node;
     } rn_u;
 #ifdef RN_DEBUG
 
@@ -96,8 +92,7 @@ struct squid_radix_node
  * Annotations to tree concerning potential routes applying to subtrees.
  */
 
-struct squid_radix_mask
-{
+struct squid_radix_mask {
     short rm_b;			/* bit offset; -1-index(netmask) */
     char rm_unused;		/* cf. rn_bmask */
     unsigned char rm_flags;	/* cf. rn_flags */
@@ -111,8 +106,7 @@ struct squid_radix_mask
     int rm_refs;		/* # of references to this struct */
 };
 
-struct squid_radix_node_head
-{
+struct squid_radix_node_head {
 
     struct squid_radix_node *rnh_treetop;
     int rnh_addrsize;		/* permit, but not require fixed keys */

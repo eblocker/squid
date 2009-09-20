@@ -1,6 +1,6 @@
 
 /*
- * $Id: ProfStats.cc,v 1.10 2007/04/25 11:30:18 adrian Exp $
+ * $Id$
  *
  * DEBUG: section 81    CPU Profiling Routines
  * AUTHOR: Andres Kroonmaa
@@ -21,12 +21,12 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *  
+ *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *  
+ *
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
@@ -265,6 +265,16 @@ xprof_chk_overhead(int samples)
     }
 }
 
+static void
+xprofRegisterWithCacheManager(void)
+{
+    CacheManager::GetInstance()->
+    registerAction("cpu_profile", "CPU Profiling Stats", xprof_summary, 0, 1);
+}
+
+// FIXME:
+// this gets colled once per event. This doesn't seem to make much sense,
+// does it?
 static hrtime_t now;
 static void
 xprof_Init(void)
@@ -275,12 +285,8 @@ xprof_Init(void)
     xprof_delta = xprof_verystart = xprof_start_t = now;
 
     xprof_inited = 1;
-}
 
-void
-xprofRegisterWithCacheManager(CacheManager & manager)
-{
-    manager.registerAction("cpu_profile", "CPU Profiling Stats", xprof_summary, 0, 1);
+    xprofRegisterWithCacheManager(); //moved here so it's not double-init'ed
 }
 
 void

@@ -1,8 +1,4 @@
-
 /*
- * $Id: htcp.h,v 1.5 2003/08/10 11:00:43 robertc Exp $
- *
- *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
  * ----------------------------------------------------------
  *
@@ -19,12 +15,12 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *  
+ *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *  
+ *
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
@@ -35,8 +31,12 @@
 #define SQUID_HTCP_H
 
 #if USE_HTCP
+
 #include "HttpHeader.h"
 
+class IpAddress;
+
+/// \ingroup ServerProtocolHTCP
 class HtcpReplyData
 {
 
@@ -47,20 +47,21 @@ public:
     u_int32_t msg_id;
     double version;
 
-    struct
-    {
+    struct cto_t {
         /* cache-to-origin */
         double rtt;
         int samp;
         int hops;
-    }
-
-    cto;
+    } cto;
 };
 
+/// \bug redundant typedef
 typedef class HtcpReplyData htcpReplyData;
 
-SQUIDCEXTERN void neighborsHtcpReply(const cache_key *, htcpReplyData *, const struct sockaddr_in *);
+/// \ingroup ServerProtocolHTCP
+SQUIDCEXTERN void neighborsHtcpReply(const cache_key *, htcpReplyData *, const IpAddress &);
+
+/// \ingroup ServerProtocolHTCP
 SQUIDCEXTERN void htcpInit(void);
 
 /**
@@ -78,9 +79,15 @@ SQUIDCEXTERN void htcpInit(void);
  */
 SQUIDCEXTERN int htcpQuery(StoreEntry * e, HttpRequest * req, peer * p);
 
+/// \ingroup ServerProtocolHTCP
+SQUIDCEXTERN void htcpClear(StoreEntry * e, const char *uri, HttpRequest * req, const HttpRequestMethod &method, peer * p, htcp_clr_reason reason);
+
+/// \ingroup ServerProtocolHTCP
 SQUIDCEXTERN void htcpSocketShutdown(void);
+
+/// \ingroup ServerProtocolHTCP
 SQUIDCEXTERN void htcpSocketClose(void);
 
-#endif
+#endif /* USE_HTCP */
 
 #endif /* SQUID_HTCP_H */

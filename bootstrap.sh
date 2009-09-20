@@ -7,7 +7,7 @@
 # Autotool versions preferred. To override either edit the script
 # to match the versions you want to use, or set the variables on
 # the command line like "env acver=.. amver=... ./bootstrap.sh"
-acversions="${acver:-2.62 2.61 2.59 2.57 2.53 2.52}"
+acversions="${acver:-2.63 2.62 2.61}"
 amversions="${amver:-1.11 1.10 1.9}"
 ltversions="${ltver:-1.5 1.4}"
 
@@ -16,30 +16,7 @@ check_version()
   eval $2 --version 2>/dev/null | grep -i "$1.*$3" >/dev/null
 }
 
-show_version()
-{
-  tool=$1
-  found="NOT_FOUND"
-  shift
-  versions="$*"
-  for version in $versions; do
-    for variant in "" "-${version}" "`echo $version | sed -e 's/\.//g'`"; do
-      if check_version $tool ${tool}${variant} $version; then
-	found="${version}"
-	break
-      fi
-    done
-    if [ "x$found" != "xNOT_FOUND" ]; then
-      break
-    fi
-  done
-  if [ "x$found" = "xNOT_FOUND" ]; then
-    found="??"
-  fi
-  echo $found
-}
-
-find_variant()
+find_version()
 {
   tool=$1
   found="NOT_FOUND"
@@ -75,26 +52,69 @@ bootstrap() {
   fi
 }
 
-# Adjust paths of required autool packages
-amver=`find_variant automake ${amversions}`
-acver=`find_variant autoconf ${acversions}`
-ltver=`find_variant libtool ${ltversions}`
+bootstrap_libtoolize() {
+    ltver=$1
 
-# Produce debug output about what version actually found.
-amversion=`show_version automake ${amversions}`
-acversion=`show_version autoconf ${acversions}`
-ltversion=`show_version libtool ${ltversions}`
+    # TODO: when we have libtool2, tell libtoolize where to put its files
+    # instead of manualy moving files from ltdl to lib/libLtdl
+    if egrep -q '^[[:space:]]*AC_LIBLTDL_' configure.in
+    then
+	if libtoolize$ltver --help | grep -q -- --ltdl.=; then
+	    ltdl="--ltdl=lib/libLtdl"
+	else
+	    ltdl="--ltdl"
+	    copy_libltdl=1
+	fi
+    else
+        ltdl=""
+    fi
+
+    bootstrap libtoolize$ltver $ltdl --force --copy --automake
+
+    # customize generated libltdl, if any
+    if test -d libltdl && [ $copy_libltdl ]
+    then
+        src=libltdl
+
+        # do not bundle with the huge standard license text
+        rm -fv $src/COPYING.LIB
+        makefile=$src/Makefile.in
+        sed 's/COPYING.LIB/ /g' $makefile > $makefile.new;
+        chmod u+w $makefile
+        mv $makefile.new $makefile
+        chmod u-w $makefile
+
+        dest=lib/libLtdl
+        # move $src to $dest
+	if test -d $dest # already exists
+	then
+	    echo "Updating $dest from $src."
+            chmod u+w $dest/*
+            mv $src/* $dest/
+            rmdir $src
+	else
+	    echo "Creating $dest from $src."
+	    mv $src $dest
+        fi
+    fi
+}
+
+# Adjust paths of required autool packages
+amver=`find_version automake ${amversions}`
+acver=`find_version autoconf ${acversions}`
+ltver=`find_version libtool ${ltversions}`
 
 # Set environment variable to tell automake which autoconf to use.
 AUTOCONF="autoconf${acver}" ; export AUTOCONF
 
-echo "automake ($amversion) : automake$amver"
-echo "autoconf ($acversion) : autoconf$acver"
-echo "libtool  ($ltversion) : libtool$ltver"
+echo "automake : $amver"
+echo "autoconfg: $acver"
+echo "libtool  : $ltver"
 
 for dir in \
 	"" \
-	lib/libTrie
+	lib/libTrie \
+	helpers/negotiate_auth/squid_kerb_auth
 do
     if [ -z "$dir" ] || [ -d $dir ]; then
 	if (
@@ -109,7 +129,7 @@ do
 	    # Bootstrap the autotool subsystems
 	    bootstrap aclocal$amver
 	    bootstrap autoheader$acver
-	    bootstrap libtoolize$ltver --force --copy --automake
+	    bootstrap_libtoolize $ltver
 	    bootstrap automake$amver --foreign --add-missing --copy -f
 	    bootstrap autoconf$acver --force
 	fi ); then

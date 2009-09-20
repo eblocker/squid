@@ -1,6 +1,5 @@
-
 /*
- * $Id: tools.cc,v 1.279 2007/09/23 09:18:10 serassio Exp $
+ * $Id$
  *
  * DEBUG: section 21    Misc Functions
  * AUTHOR: Harvest Derived
@@ -21,12 +20,12 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *  
+ *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *  
+ *
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
@@ -34,11 +33,13 @@
  */
 
 #include "squid.h"
+#include "ProtoPort.h"
 #include "SwapDir.h"
 #include "fde.h"
 #include "MemBuf.h"
 #include "wordlist.h"
 #include "SquidTime.h"
+#include "ip/IpIntercept.h"
 
 #ifdef _SQUID_LINUX_
 #if HAVE_SYS_CAPABILITY_H
@@ -82,8 +83,6 @@ SQUIDCEXTERN int setresuid(uid_t, uid_t, uid_t);
 #endif /* _SQUID_LINUX */
 
 SQUIDCEXTERN void (*failure_notify) (const char *);
-
-MemAllocator *dlink_node_pool = NULL;
 
 void
 releaseServerSockets(void)
@@ -131,7 +130,7 @@ mail_warranty(void)
 
     char *filename;
 
-    if ((filename = tempnam(NULL, appname)) == NULL)
+    if ((filename = tempnam(NULL, APP_SHORTNAME)) == NULL)
         return;
 
     if ((fp = fopen(filename, "w")) == NULL)
@@ -142,7 +141,7 @@ mail_warranty(void)
     if (Config.EmailFrom)
         fprintf(fp, "From: %s\n", Config.EmailFrom);
     else
-        fprintf(fp, "From: %s@%s\n", appname, uniqueHostname());
+        fprintf(fp, "From: %s@%s\n", APP_SHORTNAME, uniqueHostname());
 
     fprintf(fp, "To: %s\n", Config.adminEmail);
 
@@ -152,7 +151,7 @@ mail_warranty(void)
 
     snprintf(command, 256, "%s %s < %s", Config.EmailProgram, Config.adminEmail, filename);
 
-    if(system(command)) {}		/* XXX should avoid system(3) */
+    if (system(command)) {}		/* XXX should avoid system(3) */
 
     unlink(filename);
 }
@@ -178,7 +177,7 @@ dumpMallocStats(void)
 
     mp = mallinfo();
 
-    fprintf(debug_log, "Memory usage for %s via mallinfo():\n", appname);
+    fprintf(debug_log, "Memory usage for "APP_SHORTNAME" via mallinfo():\n");
 
     fprintf(debug_log, "\ttotal space in arena:  %6ld KB\n",
             (long)mp.arena >> 10);
@@ -420,7 +419,7 @@ sigusr2_handle(int sig)
         state = 1;
     } else {
 #ifndef MEM_GEN_TRACE
-        Debug::parseOptions(Config.debugOptions);
+        Debug::parseOptions(Debug::debugOptions);
 #else
 
         log_trace_init("/tmp/squid.alloc");
@@ -445,7 +444,7 @@ fatal_common(const char *message)
 
     fprintf(debug_log, "FATAL: %s\n", message);
 
-    if (opt_debug_stderr > 0 && debug_log != stderr)
+    if (Debug::log_stderr > 0 && debug_log != stderr)
         fprintf(stderr, "FATAL: %s\n", message);
 
     fprintf(debug_log, "Squid Cache (Version %s): Terminated abnormally.\n",
@@ -494,23 +493,11 @@ fatal(const char *message)
 }
 
 /* printf-style interface for fatal */
-#if STDC_HEADERS
 void
 fatalf(const char *fmt,...)
 {
     va_list args;
     va_start(args, fmt);
-#else
-void
-fatalf(va_alist)
-va_dcl
-{
-    va_list args;
-    const char *fmt = NULL;
-    va_start(args);
-    fmt = va_arg(args, char *);
-#endif
-
     fatalvf(fmt, args);
     va_end(args);
 }
@@ -518,7 +505,8 @@ va_dcl
 
 /* used by fatalf */
 static void
-fatalvf(const char *fmt, va_list args) {
+fatalvf(const char *fmt, va_list args)
+{
     static char fatal_str[BUFSIZ];
     vsnprintf(fatal_str, sizeof(fatal_str), fmt, args);
     fatal(fatal_str);
@@ -526,7 +514,8 @@ fatalvf(const char *fmt, va_list args) {
 
 /* fatal with dumping core */
 void
-fatal_dump(const char *message) {
+fatal_dump(const char *message)
+{
     failure_notify = NULL;
     releaseServerSockets();
 
@@ -549,7 +538,8 @@ fatal_dump(const char *message) {
 }
 
 void
-debug_trap(const char *message) {
+debug_trap(const char *message)
+{
     if (!opt_catch_signals)
         fatal_dump(message);
 
@@ -557,7 +547,8 @@ debug_trap(const char *message) {
 }
 
 void
-sig_child(int sig) {
+sig_child(int sig)
+{
 #ifndef _SQUID_MSWIN_
 #ifdef _SQUID_NEXT_
     union wait status;
@@ -584,9 +575,7 @@ sig_child(int sig) {
 
     }
 
-    while (pid > 0 || (pid < 0 && errno == EINTR))
-
-        ;
+    while (pid > 0 || (pid < 0 && errno == EINTR));
     signal(sig, sig_child);
 
 #endif
@@ -598,10 +587,8 @@ getMyHostname(void)
 {
     LOCAL_ARRAY(char, host, SQUIDHOSTNAMELEN + 1);
     static int present = 0;
-
-    const struct hostent *h = NULL;
-
-    struct IN_ADDR sa;
+    struct addrinfo *AI = NULL;
+    IpAddress sa;
 
     if (Config.visibleHostname != NULL)
         return Config.visibleHostname;
@@ -611,59 +598,69 @@ getMyHostname(void)
 
     host[0] = '\0';
 
-    memcpy(&sa, &any_addr, sizeof(sa));
-
-    if (Config.Sockaddr.http && sa.s_addr == any_addr.s_addr)
-        memcpy(&sa, &Config.Sockaddr.http->s.sin_addr, sizeof(sa));
+    if (Config.Sockaddr.http && sa.IsAnyAddr())
+        sa = Config.Sockaddr.http->s;
 
 #if USE_SSL
 
-    if (Config.Sockaddr.https && sa.s_addr == any_addr.s_addr)
-        memcpy(&sa, &Config.Sockaddr.https->http.s.sin_addr, sizeof(sa));
+    if (Config.Sockaddr.https && sa.IsAnyAddr())
+        sa = Config.Sockaddr.https->http.s;
 
 #endif
+
     /*
      * If the first http_port address has a specific address, try a
      * reverse DNS lookup on it.
      */
-    if (sa.s_addr != any_addr.s_addr) {
-        h = gethostbyaddr((char *) &sa,
-                          sizeof(sa), AF_INET);
+    if ( !sa.IsAnyAddr() ) {
 
-        if (h != NULL) {
+        sa.GetAddrInfo(AI);
+        /* we are looking for a name. */
+        if (xgetnameinfo(AI->ai_addr, AI->ai_addrlen, host, SQUIDHOSTNAMELEN, NULL, 0, NI_NAMEREQD ) == 0) {
             /* DNS lookup successful */
             /* use the official name from DNS lookup */
-            xstrncpy(host, h->h_name, SQUIDHOSTNAMELEN);
-            debugs(50, 4, "getMyHostname: resolved " << inet_ntoa(sa) << " to '" << host << "'");
+            debugs(50, 4, "getMyHostname: resolved " << sa << " to '" << host << "'");
 
             present = 1;
 
+            sa.FreeAddrInfo(AI);
+
             if (strchr(host, '.'))
                 return host;
-
         }
 
-        debugs(50, 1, "WARNING: failed to resolve " << inet_ntoa(sa) << " to a fully qualified hostname");
-    }
-
-    /*
-     * Get the host name and store it in host to return
-     */
-    if (gethostname(host, SQUIDHOSTNAMELEN) < 0) {
-        debugs(50, 1, "WARNING: gethostname failed: " << xstrerror());
-    } else if ((h = gethostbyname(host)) == NULL) {
-        debugs(50, 1, "WARNING: gethostbyname failed for " << host);
+        sa.FreeAddrInfo(AI);
+        debugs(50, 1, "WARNING: failed to resolve " << sa << " to a fully qualified hostname");
     } else {
-        debugs(50, 6, "getMyHostname: '" << host << "' resolved into '" << h->h_name << "'");
-        /* DNS lookup successful */
-        /* use the official name from DNS lookup */
-        xstrncpy(host, h->h_name, SQUIDHOSTNAMELEN);
-        present = 1;
+        if (gethostname(host, SQUIDHOSTNAMELEN) < 0) {
+            debugs(50, 1, "WARNING: gethostname failed: " << xstrerror());
+        } else {
+            /* Verify that the hostname given resolves properly */
+            struct addrinfo hints;
+            memset(&hints, 0, sizeof(addrinfo));
+            hints.ai_flags = AI_CANONNAME;
 
-        if (strchr(host, '.'))
-            return host;
+            if (xgetaddrinfo(host, NULL, NULL, &AI) == 0) {
+                /* DNS lookup successful */
+                /* use the official name from DNS lookup */
+                debugs(50, 6, "getMyHostname: '" << host << "' has rDNS.");
+                present = 1;
+
+                /* AYJ: do we want to flag AI_ALL and cache the result anywhere. ie as our local host IPs? */
+                if (AI) {
+                    xfreeaddrinfo(AI);
+                    AI = NULL;
+                }
+
+                return host;
+            }
+
+            if (AI) xfreeaddrinfo(AI);
+            debugs(50, 1, "WARNING: '" << host << "' rDNS test failed: " << xstrerror());
+        }
     }
 
+    /* throw a fatal configuration error when the Host/IP given has bad DNS/rDNS. */
     if (opt_send_signal == -1)
         fatal("Could not determine fully qualified hostname.  Please set 'visible_hostname'\n");
     else
@@ -675,10 +672,11 @@ getMyHostname(void)
 const char *
 uniqueHostname(void)
 {
+    debugs(21, 3, HERE << " Config: '" << Config.uniqueHostname << "'");
     return Config.uniqueHostname ? Config.uniqueHostname : getMyHostname();
 }
 
-/* leave a privilegied section. (Give up any privilegies)
+/** leave a priviliged section. (Give up any privilegies)
  * Routines that need privilegies can rap themselves in enter_suid()
  * and leave_suid()
  * To give upp all posibilites to gain privilegies use no_suid()
@@ -842,7 +840,7 @@ readPidFile(void)
     int i;
 
     if (f == NULL || !strcmp(Config.pidFilename, "none")) {
-        fprintf(stderr, "%s: ERROR: No pid file name defined\n", appname);
+        fprintf(stderr, APP_SHORTNAME ": ERROR: No pid file name defined\n");
         exit(1);
     }
 
@@ -864,7 +862,7 @@ readPidFile(void)
         fclose(pid_fp);
     } else {
         if (errno != ENOENT) {
-            fprintf(stderr, "%s: ERROR: Could not read pid file\n", appname);
+            fprintf(stderr, APP_SHORTNAME ": ERROR: Could not read pid file\n");
             fprintf(stderr, "\t%s: %s\n", f, xstrerror());
             exit(1);
         }
@@ -1022,16 +1020,6 @@ squid_signal(int sig, SIGHDLR * func, int flags)
 #endif
 }
 
-struct IN_ADDR
-
-            inaddrFromHostent(const struct hostent *hp)
-{
-
-    struct IN_ADDR s;
-    xmemcpy(&s.s_addr, hp->h_addr, sizeof(s.s_addr));
-    return s;
-}
-
 double
 doubleAverage(double cur, double newD, int N, int max)
 {
@@ -1055,93 +1043,6 @@ logsFlush(void)
 {
     if (debug_log)
         fflush(debug_log);
-}
-
-dlink_node *
-dlinkNodeNew()
-{
-    if (dlink_node_pool == NULL)
-        dlink_node_pool = memPoolCreate("Dlink list nodes", sizeof(dlink_node));
-
-    /* where should we call delete dlink_node_pool;dlink_node_pool = NULL; */
-    return (dlink_node *)dlink_node_pool->alloc();
-}
-
-/* the node needs to be unlinked FIRST */
-void
-dlinkNodeDelete(dlink_node * m)
-{
-    if (m == NULL)
-        return;
-
-    dlink_node_pool->free(m);
-}
-
-void
-dlinkAdd(void *data, dlink_node * m, dlink_list * list)
-{
-    m->data = data;
-    m->prev = NULL;
-    m->next = list->head;
-
-    if (list->head)
-        list->head->prev = m;
-
-    list->head = m;
-
-    if (list->tail == NULL)
-        list->tail = m;
-}
-
-void
-dlinkAddAfter(void *data, dlink_node * m, dlink_node * n, dlink_list * list)
-{
-    m->data = data;
-    m->prev = n;
-    m->next = n->next;
-
-    if (n->next)
-        n->next->prev = m;
-    else {
-        assert(list->tail == n);
-        list->tail = m;
-    }
-
-    n->next = m;
-}
-
-void
-dlinkAddTail(void *data, dlink_node * m, dlink_list * list)
-{
-    m->data = data;
-    m->next = NULL;
-    m->prev = list->tail;
-
-    if (list->tail)
-        list->tail->next = m;
-
-    list->tail = m;
-
-    if (list->head == NULL)
-        list->head = m;
-}
-
-void
-dlinkDelete(dlink_node * m, dlink_list * list)
-{
-    if (m->next)
-        m->next->prev = m->prev;
-
-    if (m->prev)
-        m->prev->next = m->next;
-
-    if (m == list->head)
-        list->head = m->next;
-
-    if (m == list->tail)
-        list->tail = m->prev;
-
-    m->next = m->prev = NULL;
 }
 
 void
@@ -1240,18 +1141,21 @@ parseEtcHosts(void)
                 host = lt;
             }
 
-            if (ipcacheAddEntryFromHosts(host, addr) != 0)
-                goto skip;	/* invalid address, continuing is useless */
-
+            if (ipcacheAddEntryFromHosts(host, addr) != 0) {
+                /* invalid address, continuing is useless */
+                wordlistDestroy(&hosts);
+                hosts = NULL;
+                break;
+            }
             wordlistAdd(&hosts, host);
 
             lt = nt + 1;
         }
 
-        fqdncacheAddEntryFromHosts(addr, hosts);
-
-skip:
-        wordlistDestroy(&hosts);
+        if (hosts) {
+            fqdncacheAddEntryFromHosts(addr, hosts);
+            wordlistDestroy(&hosts);
+        }
     }
 
     fclose (fp);
@@ -1261,12 +1165,12 @@ int
 getMyPort(void)
 {
     if (Config.Sockaddr.http)
-        return ntohs(Config.Sockaddr.http->s.sin_port);
+        return Config.Sockaddr.http->s.GetPort();
 
 #if USE_SSL
 
     if (Config.Sockaddr.https)
-        return ntohs(Config.Sockaddr.https->http.s.sin_port);
+        return Config.Sockaddr.https->http.s.GetPort();
 
 #endif
 
@@ -1305,7 +1209,7 @@ strwordquote(MemBuf * mb, const char *str)
         mb->append(str, l);
         str += l;
 
-        switch(*str) {
+        switch (*str) {
 
         case '\n':
             mb->append("\\n", 2);
@@ -1338,25 +1242,18 @@ keepCapabilities(void)
 #if HAVE_PRCTL && defined(PR_SET_KEEPCAPS) && HAVE_SYS_CAPABILITY_H
 
     if (prctl(PR_SET_KEEPCAPS, 1, 0, 0, 0)) {
-        /* Silent failure unless TPROXY is required. Maybe not started as root */
-#if LINUX_TPROXY
-
-        if (need_linux_tproxy)
-            debugs(1, 1, "Error - tproxy support requires capability setting which has failed.  Continuing without tproxy support");
-
-        need_linux_tproxy = 0;
-
-#endif
-
+        IpInterceptor.StopTransparency("capability setting has failed.");
     }
-
 #endif
 }
 
 static void
 restoreCapabilities(int keep)
 {
-#if defined(_SQUID_LINUX_) && HAVE_SYS_CAPABILITY_H
+    /* NP: keep these two if-endif separate. Non-Linux work perfectly well without Linux syscap support. */
+#if defined(_SQUID_LINUX_)
+
+#if HAVE_SYS_CAPABILITY_H
 #ifndef _LINUX_CAPABILITY_VERSION_1
 #define _LINUX_CAPABILITY_VERSION_1 _LINUX_CAPABILITY_VERSION
 #endif
@@ -1366,54 +1263,47 @@ restoreCapabilities(int keep)
     head->version = _LINUX_CAPABILITY_VERSION_1;
 
     if (capget(head, cap) != 0) {
-        debugs(50, 1, "Can't get current capabilities");
-        goto nocap;
-    }
+        debugs(50, DBG_IMPORTANT, "Can't get current capabilities");
+    } else if (head->version != _LINUX_CAPABILITY_VERSION_1) {
+        debugs(50, DBG_IMPORTANT, "Invalid capability version " << head->version << " (expected " << _LINUX_CAPABILITY_VERSION_1 << ")");
+    } else {
 
-    if (head->version != _LINUX_CAPABILITY_VERSION_1) {
-        debugs(50, 1, "Invalid capability version " << head->version << " (expected " << _LINUX_CAPABILITY_VERSION_1 << ")");
-        goto nocap;
-    }
+        head->pid = 0;
 
-    head->pid = 0;
+        cap->inheritable = 0;
+        cap->effective = (1 << CAP_NET_BIND_SERVICE);
 
-    cap->inheritable = 0;
-    cap->effective = (1 << CAP_NET_BIND_SERVICE);
-#if LINUX_TPROXY
-
-    if (need_linux_tproxy)
-        cap->effective |= (1 << CAP_NET_ADMIN) | (1 << CAP_NET_BROADCAST);
-
+        if (IpInterceptor.TransparentActive()) {
+            cap->effective |= (1 << CAP_NET_ADMIN);
+#if LINUX_TPROXY2
+            cap->effective |= (1 << CAP_NET_BROADCAST);
 #endif
+        }
 
-    if (!keep)
-        cap->permitted &= cap->effective;
+        if (!keep)
+            cap->permitted &= cap->effective;
 
-    if (capset(head, cap) != 0) {
-        /* Silent failure unless TPROXY is required */
-#if LINUX_TPROXY
-
-        if (need_linux_tproxy)
-            debugs(50, 1, "Error enabling needed capabilities. Will continue without tproxy support");
-
-        need_linux_tproxy = 0;
-
-#endif
-
+        if (capset(head, cap) != 0) {
+            IpInterceptor.StopTransparency("Error enabling needed capabilities.");
+        }
     }
 
-nocap:
     xfree(head);
     xfree(cap);
+
 #else
-#if LINUX_TPROXY
+    IpInterceptor.StopTransparency("Missing needed capability support.");
+#endif /* HAVE_SYS_CAPABILITY_H */
 
-    if (need_linux_tproxy)
-        debugs(50, 1, "Missing needed capability support. Will continue without tproxy support");
+#endif /* !defined(_SQUID_LINUX_) */
+}
 
-    need_linux_tproxy = 0;
+void *
+xmemset(void *dst, int val, size_t sz)
+{
+    // do debugs output
+    debugs(63, 9, "memset: dst=" << dst << ", val=" << val << ", bytes=" << sz);
 
-#endif
-
-#endif
+    // call the system one to do the actual work ~safely.
+    return memset(dst, val, sz);
 }

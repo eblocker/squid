@@ -1,6 +1,6 @@
 
 /*
- * $Id: HttpStatusLine.cc,v 1.34 2007/05/29 13:31:38 amosjeffries Exp $
+ * $Id$
  *
  * DEBUG: section 57    HTTP Status-line
  * AUTHOR: Alex Rousskov
@@ -21,12 +21,12 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *  
+ *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *  
+ *
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
@@ -37,6 +37,7 @@
 #include "HttpStatusLine.h"
 
 /* local constants */
+/* AYJ: see bug 2469 - RFC2616 confirms stating 'SP characters' plural! */
 const char *HttpStatusLineFormat = "HTTP/%d.%d %3d %s\r\n";
 
 void
@@ -64,7 +65,7 @@ httpStatusLineSet(HttpStatusLine * sline, HttpVersion version, http_status statu
     sline->reason = reason;
 }
 
-/* parse a 0-terminating buffer and fill internal structures; returns true on success */
+/** write HTTP version and status structures into a Packer buffer for output as HTTP status line. */
 void
 httpStatusLinePackInto(const HttpStatusLine * sline, Packer * p)
 {

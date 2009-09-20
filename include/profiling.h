@@ -37,7 +37,7 @@ get_tick(void)
     uint32_t lo, hi;
     // Based on an example in Wikipedia
     /* We cannot use "=A", since this would use %rax on x86_64 */
-    asm volatile ("rdtsc" : "=a" (lo), "=d" (hi));
+asm volatile ("rdtsc" : "=a" (lo), "=d" (hi));
     return (hrtime_t)hi << 32 | lo;
 }
 
@@ -156,7 +156,7 @@ typedef enum {
     XPROF_InvokeHandlers,
     XPROF_HttpMsg_httpMsgParseStep,
     XPROF_EventDispatcher_dispatch,
-    XPROF_SignalDispatcher_dispatch,
+    XPROF_SignalEngine_checkEvents,
     XPROF_Temp1,
     XPROF_Temp2,
     XPROF_Temp3,
@@ -167,8 +167,7 @@ typedef enum {
     XPROF_HttpHeaderParse,
     XPROF_HttpHeaderClean,
     XPROF_StringInitBuf,
-    XPROF_StringInit,
-    XPROF_StringLimitInit,
+    XPROF_StringAllocAndFill,
     XPROF_StringClean,
     XPROF_StringReset,
     XPROF_StringAppend,
@@ -186,8 +185,7 @@ typedef struct _xprof_stats_node xprof_stats_node;
 
 typedef struct _xprof_stats_data xprof_stats_data;
 
-struct _xprof_stats_data
-{
+struct _xprof_stats_data {
     hrtime_t start;
     hrtime_t stop;
     hrtime_t delta;
@@ -198,8 +196,7 @@ struct _xprof_stats_data
     int64_t summ;
 };
 
-struct _xprof_stats_node
-{
+struct _xprof_stats_node {
     const char *name;
     xprof_stats_data accu;
     xprof_stats_data hist;
@@ -214,9 +211,6 @@ SQUIDCEXTERN TimersArray *xprof_Timers;
 SQUIDCEXTERN void xprof_start(xprof_type type, const char *timer);
 SQUIDCEXTERN void xprof_stop(xprof_type type, const char *timer);
 SQUIDCEXTERN void xprof_event(void *data);
-#if __cplusplus
-extern void xprofRegisterWithCacheManager(CacheManager & manager);
-#endif
 
 #define PROF_start(type) xprof_start(XPROF_##type, #type)
 #define PROF_stop(type) xprof_stop(XPROF_##type, #type)

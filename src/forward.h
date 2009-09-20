@@ -3,11 +3,11 @@
 
 /* forward decls */
 
-class CacheManager;
 class ErrorState;
 class HttpRequest;
 
 #include "comm.h"
+#include "ip/IpAddress.h"
 
 class FwdServer
 {
@@ -25,7 +25,6 @@ public:
     typedef RefCount<FwdState> Pointer;
     ~FwdState();
     static void initModule();
-    static void RegisterWithCacheManager(CacheManager & manager);
 
     static void fwdStart(int fd, StoreEntry *, HttpRequest *);
     void startComplete(FwdServer *);
@@ -38,14 +37,14 @@ public:
     bool reforwardableStatus(http_status s);
     void serverClosed(int fd);
     void connectStart();
-    void connectDone(int server_fd, comm_err_t status, int xerrno);
+    void connectDone(int server_fd, const DnsLookupDetails &dns, comm_err_t status, int xerrno);
     void connectTimeout(int fd);
     void initiateSSL();
     void negotiateSSL(int fd);
     bool checkRetry();
     bool checkRetriable();
     void dispatch();
-    void pconnPush(int fd, const peer *_peer, const HttpRequest *req, const char *domain, struct in_addr *client_addr);
+    void pconnPush(int fd, const peer *_peer, const HttpRequest *req, const char *domain, IpAddress &client_addr);
 
     bool dontRetry() { return flags.dont_retry; }
 
@@ -66,12 +65,13 @@ private:
     void updateHierarchyInfo();
     void completed();
     void retryOrBail();
+    static void RegisterWithCacheManager(void);
 
 #if WIP_FWD_LOG
 
-    void uninit
-    static void logRotate
-    void status()
+    void uninit                /**DOCS_NOSEMI*/
+    static void logRotate      /**DOCS_NOSEMI*/
+    void status()              /**DOCS_NOSEMI*/
 #endif
 
 public:
@@ -82,6 +82,7 @@ public:
     static void abort(void*);
 
 private:
+    CBDATA_CLASS2(FwdState);
     Pointer self;
     ErrorState *err;
     int client_fd;
@@ -93,26 +94,13 @@ private:
     http_status last_status;
 #endif
 
-    struct
-    {
+    struct {
+        unsigned int dont_retry:1;
+        unsigned int ftp_pasv_failed:1;
+        unsigned int forward_completed:1;
+    } flags;
 
-unsigned int dont_retry:
-        1;
-
-unsigned int ftp_pasv_failed:
-        1;
-
-unsigned int forward_completed:1;
-    }
-
-    flags;
-#if LINUX_NETFILTER
-    struct sockaddr_in src;
-#endif
-
-
-    // NP: keep this last. It plays with private/public
-    CBDATA_CLASS2(FwdState);
+    IpAddress src; /* Client address for this connection. Needed for transparent operations. */
 };
 
-#endif
+#endif /* SQUID_FORWARD_H */

@@ -1,42 +1,20 @@
-
 /*
- * $Id: test_tools.cc,v 1.10 2008/02/26 18:44:16 rousskov Exp $
- *
- * AUTHOR: Robert Collins
- *
- * SQUID Web Proxy Cache          http://www.squid-cache.org/
- * ----------------------------------------------------------
- *
- *  Squid is the result of efforts by numerous individuals from
- *  the Internet community; see the CONTRIBUTORS file for full
- *  details.   Many organizations have provided support for Squid's
- *  development; see the SPONSORS file for full details.  Squid is
- *  Copyrighted (C) 2001 by the Regents of the University of
- *  California; see the COPYRIGHT file for full details.  Squid
- *  incorporates software developed and/or copyrighted by other
- *  sources; see the CREDITS file for full details.
- *
- *  This program is free software; you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2 of the License, or
- *  (at your option) any later version.
- *  
- *  This program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
- *  
- *  You should have received a copy of the GNU General Public License
- *  along with this program; if not, write to the Free Software
- *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
- *
- * Copyright (c) 2003 Robert Collins <robertc@squid-cache.org>
+ * $Id$
  */
+
+// XXX: This file is made of large pieces of src/debug.cc and src/tools.cc
+// with only a few minor modifications. TODO: redesign or delete.
 
 #define _SQUID_EXTERNNEW_
 #include "squid.h"
-#include <iostream>
-#include <sstream>
+
+/* AYJ: the debug stuff here should really be in a stub_debug.cc file for tests to link */
+
+/* for correct pre-definitions of debug objects */
+/* and stream headers */
+#include "Debug.h"
+
+FILE *debug_log = NULL;
 
 void
 xassert(const char *msg, const char *file, int line)
@@ -52,40 +30,16 @@ static void
 _db_print_stderr(const char *format, va_list args);
 
 void
-#if STDC_HEADERS
 _db_print(const char *format,...)
 {
-#else
-_db_print(va_alist)
-va_dcl
-{
-    const char *format = NULL;
-#endif
-
     LOCAL_ARRAY(char, f, BUFSIZ);
     va_list args1;
-#if STDC_HEADERS
-
     va_list args2;
     va_list args3;
-#else
-#define args2 args1
-#define args3 args1
-#endif
-
-#if STDC_HEADERS
 
     va_start(args1, format);
-
     va_start(args2, format);
-
     va_start(args3, format);
-
-#else
-
-    format = va_arg(args1, const char *);
-
-#endif
 
     snprintf(f, BUFSIZ, "%s| %s",
              "stub time", //debugLogTime(squid_curtime),
@@ -94,18 +48,13 @@ va_dcl
     _db_print_stderr(f, args2);
 
     va_end(args1);
-
-#if STDC_HEADERS
-
     va_end(args2);
-
     va_end(args3);
-
-#endif
 }
 
 static void
-_db_print_stderr(const char *format, va_list args) {
+_db_print_stderr(const char *format, va_list args)
+{
     /* FIXME? */
     // if (opt_debug_stderr < Debug::level)
 
@@ -116,55 +65,49 @@ _db_print_stderr(const char *format, va_list args) {
 }
 
 void
-fatal_dump(const char *message) {
+fatal_dump(const char *message)
+{
     debug (0,0) ("Fatal: %s",message);
     exit (1);
 }
 
 void
-fatal(const char *message) {
+fatal(const char *message)
+{
     debug (0,0) ("Fatal: %s",message);
     exit (1);
 }
 
 /* used by fatalf */
 static void
-fatalvf(const char *fmt, va_list args) {
+fatalvf(const char *fmt, va_list args)
+{
     static char fatal_str[BUFSIZ];
     vsnprintf(fatal_str, sizeof(fatal_str), fmt, args);
     fatal(fatal_str);
 }
 
 /* printf-style interface for fatal */
-#if STDC_HEADERS
 void
-fatalf(const char *fmt,...) {
-    va_list args;
-    va_start(args, fmt);
-#else
-void
-fatalf(va_alist)
-va_dcl
+fatalf(const char *fmt,...)
 {
     va_list args;
-    const char *fmt = NULL;
-    va_start(args);
-    fmt = va_arg(args, char *);
-#endif
-
+    va_start(args, fmt);
     fatalvf(fmt, args);
     va_end(args);
 }
 
 void
-debug_trap(const char *message) {
+debug_trap(const char *message)
+{
     fatal(message);
 }
 
 int Debug::TheDepth = 0;
 
 std::ostream &
-Debug::getDebugOut() {
+Debug::getDebugOut()
+{
     assert(TheDepth >= 0);
     ++TheDepth;
     if (TheDepth > 1) {
@@ -181,7 +124,8 @@ Debug::getDebugOut() {
 }
 
 void
-Debug::finishDebug() {
+Debug::finishDebug()
+{
     assert(TheDepth >= 0);
     assert(CurrentDebug);
     if (TheDepth > 1) {
@@ -196,11 +140,12 @@ Debug::finishDebug() {
 }
 
 void
-Debug::xassert(const char *msg, const char *file, int line) {
-	
+Debug::xassert(const char *msg, const char *file, int line)
+{
+
     if (CurrentDebug) {
         *CurrentDebug << "assertion failed: " << file << ":" << line <<
-            ": \"" << msg << "\"";
+        ": \"" << msg << "\"";
     }
     abort();
 }
@@ -210,7 +155,8 @@ std::ostringstream *Debug::CurrentDebug (NULL);
 MemAllocator *dlink_node_pool = NULL;
 
 dlink_node *
-dlinkNodeNew() {
+dlinkNodeNew()
+{
     if (dlink_node_pool == NULL)
         dlink_node_pool = memPoolCreate("Dlink list nodes", sizeof(dlink_node));
 
@@ -220,7 +166,8 @@ dlinkNodeNew() {
 
 /* the node needs to be unlinked FIRST */
 void
-dlinkNodeDelete(dlink_node * m) {
+dlinkNodeDelete(dlink_node * m)
+{
     if (m == NULL)
         return;
 
@@ -228,7 +175,8 @@ dlinkNodeDelete(dlink_node * m) {
 }
 
 void
-dlinkAdd(void *data, dlink_node * m, dlink_list * list) {
+dlinkAdd(void *data, dlink_node * m, dlink_list * list)
+{
     m->data = data;
     m->prev = NULL;
     m->next = list->head;
@@ -243,7 +191,8 @@ dlinkAdd(void *data, dlink_node * m, dlink_list * list) {
 }
 
 void
-dlinkAddAfter(void *data, dlink_node * m, dlink_node * n, dlink_list * list) {
+dlinkAddAfter(void *data, dlink_node * m, dlink_node * n, dlink_list * list)
+{
     m->data = data;
     m->prev = n;
     m->next = n->next;
@@ -259,7 +208,8 @@ dlinkAddAfter(void *data, dlink_node * m, dlink_node * n, dlink_list * list) {
 }
 
 void
-dlinkAddTail(void *data, dlink_node * m, dlink_list * list) {
+dlinkAddTail(void *data, dlink_node * m, dlink_list * list)
+{
     m->data = data;
     m->next = NULL;
     m->prev = list->tail;
@@ -274,7 +224,8 @@ dlinkAddTail(void *data, dlink_node * m, dlink_list * list) {
 }
 
 void
-dlinkDelete(dlink_node * m, dlink_list * list) {
+dlinkDelete(dlink_node * m, dlink_list * list)
+{
     if (m->next)
         m->next->prev = m->prev;
 
@@ -291,7 +242,8 @@ dlinkDelete(dlink_node * m, dlink_list * list) {
 }
 
 Ctx
-ctx_enter(const char *descr) {
+ctx_enter(const char *descr)
+{
     return 0;
 }
 

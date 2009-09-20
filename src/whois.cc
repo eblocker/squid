@@ -1,6 +1,6 @@
 
 /*
- * $Id: whois.cc,v 1.45 2007/05/29 13:31:41 amosjeffries Exp $
+ * $Id$
  *
  * DEBUG: section 75    WHOIS protocol
  * AUTHOR: Duane Wessels, Kostas Anagnostakis
@@ -21,12 +21,12 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *  
+ *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *  
+ *
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
@@ -91,16 +91,15 @@ whoisStart(FwdState * fwd)
     p->fwd = fwd;
     p->dataWritten = false;
 
-    p->entry->lock()
-
-    ;
+    p->entry->lock();
     comm_add_close_handler(fd, whoisClose, p);
 
     l = p->request->urlpath.size() + 3;
 
     buf = (char *)xmalloc(l);
 
-    snprintf(buf, l, "%s\r\n", p->request->urlpath.buf() + 1);
+    String str_print=p->request->urlpath.substr(1,p->request->urlpath.size());
+    snprintf(buf, l, SQUIDSTRINGPH"\r\n", SQUIDSTRINGPRINT(str_print));
 
     comm_write(fd, buf, strlen(buf), whoisWriteComplete, p, NULL);
     comm_read(fd, p->buf, BUFSIZ, whoisReadReply, p);

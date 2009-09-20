@@ -1,6 +1,6 @@
 
 /*
- * $Id: DelaySpec.cc,v 1.4 2006/04/18 12:46:10 robertc Exp $
+ * $Id$
  *
  * DEBUG: section 77    Delay Pools
  * AUTHOR: Robert Collins <robertc@squid-cache.org>
@@ -23,12 +23,12 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *  
+ *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *  
+ *
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
@@ -57,35 +57,32 @@ DelaySpec::stats (StoreEntry * sentry, char const *label) const
     }
 
     storeAppendPrintf(sentry, "\t%s:\n", label);
-    storeAppendPrintf(sentry, "\t\tMax: %d\n", max_bytes);
+    storeAppendPrintf(sentry, "\t\tMax: %"PRId64"\n", max_bytes);
     storeAppendPrintf(sentry, "\t\tRestore: %d\n", restore_bps);
 }
 
 void
 DelaySpec::dump (StoreEntry *entry) const
 {
-    storeAppendPrintf(entry, " %d/%d", restore_bps, max_bytes);
+    storeAppendPrintf(entry, " %d/%"PRId64"", restore_bps, max_bytes);
 }
 
 void
 DelaySpec::parse()
 {
-    int i;
+    int r;
     char *token;
     token = strtok(NULL, "/");
 
     if (token == NULL)
         self_destruct();
 
-    if (sscanf(token, "%d", &i) != 1)
+    if (sscanf(token, "%d", &r) != 1)
         self_destruct();
 
-    restore_bps = i;
+    restore_bps = r;
 
-    i = GetInteger();
-
-    max_bytes = i;
+    max_bytes = GetInteger64();
 }
 
 #endif
-

@@ -1,19 +1,16 @@
 #
 #  Makefile for the Squid Object Cache server
 #
-#  $Id: Makefile.am,v 1.2 2006/05/11 12:25:39 hno Exp $
-#
 #  Uncomment and customize the following to suit your needs:
 #
 
+include $(top_srcdir)/src/Common.am
 
 AUTOMAKE_OPTIONS = subdir-objects
 
-INCLUDES        = -I. -I$(srcdir) -I$(top_builddir)/include -I$(top_srcdir)/include -I$(top_srcdir)/lib/libTrie/include
-INCLUDES	+= @SQUID_CPPUNIT_INC@
+## we need our local files too (but avoid -I. at all costs)
+INCLUDES += -I$(srcdir)
 
-TESTS=$(check_PROGRAMS)
-check_PROGRAMS=
 
 SUBDIRS		= 
 
@@ -23,16 +20,24 @@ bin_PROGRAMS = \
 libexec_PROGRAMS = \
 	cachemgr$(CGIEXT)
 
+man_MANS = \
+	squidclient.1
+
 DEFAULT_CACHEMGR_CONFIG = $(sysconfdir)/cachemgr.conf
 
 squidclient_SOURCES = squidclient.cc
 cachemgr__CGIEXT__SOURCES = cachemgr.cc
 cachemgr__CGIEXT__CXXFLAGS = -DDEFAULT_CACHEMGR_CONFIG=\"$(DEFAULT_CACHEMGR_CONFIG)\" $(AM_CXXFLAGS)
 
-LDADD = -L../lib -lmiscutil $(XTRA_LIBS)
+LDADD = \
+	../compat/libcompat.la \
+	../src/ip/libip.la \
+	-L../lib -lmiscutil \
+	$(XTRA_LIBS)
 
 EXTRA_DIST = \
-	cachemgr.conf
+	cachemgr.conf \
+	squidclient.1
 
 $(OBJS): $(top_srcdir)/include/version.h ../include/autoconf.h
 
@@ -46,12 +51,8 @@ install-data-local:
 	fi
 
 uninstall-local:
-
-# Don't automatically uninstall config files
-#	@if test -f $(DESTDIR)$(DEFAULT_CONFIG_FILE) ; then \
-#		echo "rm -f $(DESTDIR)$(DEFAULT_CONFIG_FILE)"; \
-#		$(RM) -f $(DESTDIR)$(DEFAULT_CONFIG_FILE); \
-#	fi
+	@$(SHELL) $(top_srcdir)/scripts/remove-cfg.sh "$(RM)" $(DESTDIR)$(DEFAULT_CACHEMGR_CONFIG)
+	$(RM) -f $(DESTDIR)$(DEFAULT_CACHEMGR_CONFIG).default
 
 DISTCLEANFILES = 
 

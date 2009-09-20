@@ -1,6 +1,4 @@
 #include "config.h"
-#include <stdexcept>
-
 #include "testUfs.h"
 #include "Store.h"
 #include "SwapDir.h"
@@ -11,6 +9,10 @@
 #include "HttpHeader.h"
 #include "HttpReply.h"
 #include "testStoreSupport.h"
+
+#if HAVE_STDEXCEPT
+#include <stdexcept>
+#endif
 
 #define TESTDIR "testUfs__testUfsSearch"
 
@@ -128,7 +130,7 @@ testUfs::testUfsSearch()
         loop.runOnce();
 
     /* cannot use loop.run(); as the loop will never idle: the store-dir
-     * clean() scheduled event prevents it 
+     * clean() scheduled event prevents it
      */
 
     /* nothing left to rebuild */
@@ -215,7 +217,7 @@ testUfs::testUfsSearch()
         throw std::runtime_error("Failed to clean test work directory");
 }
 
-/* The UFS store should always configure an IO engine even if none is 
+/* The UFS store should always configure an IO engine even if none is
  * supplied on the configuration line.
  */
 void

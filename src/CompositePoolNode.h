@@ -1,7 +1,4 @@
-
 /*
- * $Id: CompositePoolNode.h,v 1.8 2007/05/29 13:31:36 amosjeffries Exp $
- *
  * DEBUG: section 77    Delay Pools
  * AUTHOR: Robert Collins <robertc@squid-cache.org>
  * Based upon original delay pools code by
@@ -23,12 +20,12 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *  
+ *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *  
+ *
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
@@ -47,11 +44,13 @@
 #include "DelayPools.h"
 #include "DelayIdComposite.h"
 #include "CommRead.h"
+#include "ip/IpAddress.h"
 
 class StoreEntry;
 
 class AuthUserRequest;
 
+/// \ingroup DelayPoolsAPI
 class CompositePoolNode : public RefCountable, public Updateable
 {
 
@@ -59,7 +58,7 @@ public:
     typedef RefCount<CompositePoolNode> Pointer;
     void *operator new(size_t);
     void operator delete (void *);
-    virtual ~CompositePoolNode(){}
+    virtual ~CompositePoolNode() {}
 
     virtual void stats(StoreEntry * sentry) =0;
     virtual void dump(StoreEntry *entry) const =0;
@@ -70,13 +69,14 @@ public:
     virtual DelayIdComposite::Pointer id(CompositeSelectionDetails &) = 0;
     void delayRead(DeferredRead const &);
 
+    /// \ingroup DelayPoolsAPI
     class CompositeSelectionDetails
     {
 
     public:
         CompositeSelectionDetails() {}
 
-        struct IN_ADDR src_addr;
+        IpAddress src_addr;
         AuthUserRequest *user;
         String tag;
     };
@@ -86,5 +86,5 @@ protected:
     DeferredReadManager deferredReads;
 };
 
-#endif
+#endif /* DELAY_POOLS */
 #endif /* COMPOSITEPOOLNODE_H */

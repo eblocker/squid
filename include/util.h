@@ -1,5 +1,5 @@
 /*
- * $Id: util.h,v 1.78 2007/09/20 12:32:50 amosjeffries Exp $
+ * $Id$
  *
  * AUTHOR: Harvest Derived
  *
@@ -19,16 +19,16 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *  
+ *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *  
+ *
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
- *  
+ *
  */
 
 #ifndef SQUID_UTIL_H
@@ -45,16 +45,14 @@
 #if HAVE_SYS_TIME_H
 #include <sys/time.h>
 #endif
-
-#if !defined(SQUIDHOSTNAMELEN)
-#define SQUIDHOSTNAMELEN 256
+#if HAVE_ARPA_INET_H
+#include <arpa/inet.h>
 #endif
 
 #if defined(_SQUID_FREEBSD_)
 #define _etext etext
 #endif
 
-SQUIDCEXTERN const char *getfullhostname(void);
 SQUIDCEXTERN const char *mkhttpdlogtime(const time_t *);
 SQUIDCEXTERN const char *mkrfc1123(time_t);
 SQUIDCEXTERN char *uudecode(const char *);
@@ -75,7 +73,7 @@ SQUIDCEXTERN void Tolower(char *);
 SQUIDCEXTERN void xfree(void *);
 SQUIDCEXTERN void xxfree(const void *);
 #ifdef __cplusplus
-/* 
+/*
  * Any code using libstdc++ must have externally resolvable overloads
  * for void * operator new - which means in the .o for the binary,
  * or in a shared library. static libs don't propogate the symbol
@@ -84,7 +82,7 @@ SQUIDCEXTERN void xxfree(const void *);
  */
 #ifndef _SQUID_EXTERNNEW_
 #if defined(_SQUID_SGI_) && !defined(_GNUC_)
-/* 
+/*
  * The gcc compiler treats extern inline functions as being extern,
  * while the SGI MIPSpro compilers treat them as inline. To get equivalent
  * behavior, remove the inline keyword.
@@ -106,6 +104,9 @@ SQUIDCEXTERN char *rfc1738_escape(const char *);
 SQUIDCEXTERN char *rfc1738_escape_unescaped(const char *);
 SQUIDCEXTERN char *rfc1738_escape_part(const char *);
 SQUIDCEXTERN void rfc1738_unescape(char *);
+
+/* charset.c */
+SQUIDCEXTERN char *latin1_to_utf8(char *out, size_t size, const char *in);
 
 /* html.c */
 SQUIDCEXTERN char *html_quote(const char *);
@@ -129,8 +130,6 @@ extern size_t xmalloc_total;
 extern void xmalloc_find_leaks(void);
 #endif
 
-typedef struct IN_ADDR SIA;
-SQUIDCEXTERN int safe_inet_addr(const char *, SIA *);
 SQUIDCEXTERN time_t parse_iso3307_time(const char *buf);
 SQUIDCEXTERN char *base64_decode(const char *coded);
 SQUIDCEXTERN const char *base64_encode(const char *decoded);

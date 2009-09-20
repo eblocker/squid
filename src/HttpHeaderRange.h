@@ -1,6 +1,6 @@
 
 /*
- * $Id: HttpHeaderRange.h,v 1.11 2007/08/13 17:20:51 hno Exp $
+ * $Id$
  *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
@@ -19,12 +19,12 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *  
+ *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *  
+ *
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
@@ -63,13 +63,13 @@ public:
     int64_t length;
 };
 
-MEMPROXY_CLASS_INLINE(HttpHdrRangeSpec)
+MEMPROXY_CLASS_INLINE(HttpHdrRangeSpec);
 
-/* There may be more than one byte range specified in the request.
+/**
+ * There may be more than one byte range specified in the request.
  * This object holds all range specs in order of their appearence
  * in the request because we SHOULD preserve that order.
  */
-
 class HttpHdrRange
 {
 
@@ -113,10 +113,11 @@ private:
     int64_t clen;
 };
 
-MEMPROXY_CLASS_INLINE(HttpHdrRange)
+MEMPROXY_CLASS_INLINE(HttpHdrRange);
 
-/* data for iterating thru range specs */
-
+/**
+ * Data for iterating thru range specs
+ */
 class HttpHdrRangeIter
 {
 

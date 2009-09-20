@@ -1,5 +1,5 @@
 /*
- * $Id: strsep.c,v 1.1 2006/07/02 19:27:17 serassio Exp $
+ * $Id$
  */
 
 /* Copyright (C) 2004 Free Software Foundation, Inc.
@@ -33,26 +33,24 @@
 char *
 strsep (char **stringp, const char *delim)
 {
-  char *start = *stringp;
-  char *ptr;
+    char *start = *stringp;
+    char *ptr;
 
-  if (!start)
-    return NULL;
+    if (!start)
+        return NULL;
 
-  if (!*delim)
-    ptr = start + strlen (start);
-  else
-    {
-      ptr = strpbrk (start, delim);
-      if (!ptr)
-	{
-	  *stringp = NULL;
-	  return start;
-	}
+    if (!*delim)
+        ptr = start + strlen (start);
+    else {
+        ptr = strpbrk (start, delim);
+        if (!ptr) {
+            *stringp = NULL;
+            return start;
+        }
     }
 
-  *ptr = '\0';
-  *stringp = ptr + 1;
+    *ptr = '\0';
+    *stringp = ptr + 1;
 
-  return start;
+    return start;
 }

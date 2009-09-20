@@ -1,10 +1,18 @@
 #ifndef __ASYNC_IO_H__
 #define __ASYNC_IO_H__
+
+#include "config.h"
+
 #ifdef _SQUID_WIN32_
 #include "aio_win32.h"
 #else
+#if HAVE_AIO_H
 #include <aio.h>
 #endif
+#endif
+
+/* for FREE* */
+#include "typedefs.h"
 
 #define MAX_ASYNCOP		128
 
@@ -33,8 +41,7 @@ typedef struct _async_queue async_queue_t;
 
 class AIODiskFile;
 
-struct _async_queue_entry
-{
+struct _async_queue_entry {
     async_queue_entry_state_t aq_e_state;
     async_queue_entry_type_t aq_e_type;
 
@@ -48,8 +55,7 @@ struct _async_queue_entry
 
 /* An async queue */
 
-struct _async_queue
-{
+struct _async_queue {
     async_queue_state_t aq_state;
     async_queue_entry_t aq_queue[MAX_ASYNCOP];	/* queued ops */
     int aq_numpending;		/* Num of pending ops */

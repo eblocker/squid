@@ -1,6 +1,5 @@
-
 /*
- * $Id: Packer.h,v 1.2 2006/05/03 14:04:44 robertc Exp $
+ * $Id$
  *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
@@ -19,37 +18,35 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *  
+ *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *  
+ *
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
  *
  */
-
 #ifndef SQUID_PACKER_H
 #define SQUID_PACKER_H
 
+/* for SQUIDCEXTERN */
 #include "config.h"
 
 /* see Packer.cc for description */
-
 class Packer;
 
 /* a common objPackInto interface; used by debugObj */
 typedef void (*ObjPackMethod) (void *obj, Packer * p);
 
+#if HAVE_STDIO_H
+#include <stdio.h>
+#endif
 /* append/vprintf's for Packer */
 typedef void (*append_f) (void *, const char *buf, int size);
-#if STDC_HEADERS
 typedef void (*vprintf_f) (void *, const char *fmt, va_list args);
-#else
-typedef void (*vprintf_f) ();
-#endif
 
 
 class Packer
@@ -64,12 +61,7 @@ public:
 
 SQUIDCEXTERN void packerClean(Packer * p);
 SQUIDCEXTERN void packerAppend(Packer * p, const char *buf, int size);
-#if STDC_HEADERS
 SQUIDCEXTERN void
 packerPrintf(Packer * p, const char *fmt,...) PRINTF_FORMAT_ARG2;
-#else
-SQUIDCEXTERN void packerPrintf();
-#endif
-
 
 #endif /* SQUID_PACKER_H */

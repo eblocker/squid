@@ -1,5 +1,5 @@
 /*
- * $Id: splay.cc,v 1.8 2006/04/25 10:40:29 serassio Exp $
+ * $Id$
  *
  * based on ftp://ftp.cs.cmu.edu/user/sleator/splaying/top-down-splay.c
  * http://bobo.link.cs.cmu.edu/cgi-bin/splay/splay-cgi.pl
@@ -17,17 +17,21 @@
 #include <unistd.h>
 #endif
 
+#if 0
 #define assert(X) {if (!(X)) exit (1);}
 #include "splay.h"
 #undef assert
-#include "util.h"
+#else
+#include "splay.h"
+#endif
 
+#include "util.h"
 
 class intnode
 {
 
 public:
-    intnode() : i(0){}
+    intnode() : i(0) {}
 
     intnode (int anInt) : i (anInt) {}
 
@@ -160,8 +164,7 @@ main(int argc, char *argv[])
         /* intnode* */
         SplayNode<intnode *> *safeTop = NULL;
 
-        for ( int i = 0; i < 100; i++)
-        {
+        for ( int i = 0; i < 100; i++) {
             intnode *I;
             I = new intnode;
             I->i = squid_random();
@@ -180,8 +183,7 @@ main(int argc, char *argv[])
         /* intnode */
         SplayNode<intnode> *safeTop = NULL;
 
-        for (int i = 0; i < 100; i++)
-        {
+        for (int i = 0; i < 100; i++) {
             intnode I;
             I.i = squid_random();
             safeTop = safeTop->insert(I, compareintref);

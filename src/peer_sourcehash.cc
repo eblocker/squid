@@ -1,6 +1,6 @@
 
 /*
- * $Id: carp.cc,v 1.27 2008/01/14 12:13:49 hno Exp $
+ * $Id$
  *
  * DEBUG: section 39    Peer source hash based selection
  * AUTHOR: Henrik Nordstrom
@@ -22,12 +22,12 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *  
+ *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *  
+ *
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
@@ -44,6 +44,7 @@
 static int n_sourcehash_peers = 0;
 static peer **sourcehash_peers = NULL;
 static OBJH peerSourceHashCachemgr;
+static void peerSourceHashRegisterWithCacheManager(void);
 
 static int
 peerSortWeight(const void *a, const void *b)
@@ -86,6 +87,8 @@ peerSourceHashInit(void)
 
         W += p->weight;
     }
+
+    peerSourceHashRegisterWithCacheManager();
 
     if (n_sourcehash_peers == 0)
         return;
@@ -151,10 +154,12 @@ peerSourceHashInit(void)
     }
 }
 
-void
-peerSourceHashRegisterWithCacheManager(CacheManager & manager)
+static void
+peerSourceHashRegisterWithCacheManager(void)
 {
-    manager.registerAction("sourcehash", "peer sourcehash information", peerSourceHashCachemgr, 0, 1);
+    CacheManager::GetInstance()->
+    registerAction("sourcehash", "peer sourcehash information",
+                   peerSourceHashCachemgr, 0, 1);
 }
 
 peer *
@@ -169,11 +174,12 @@ peerSourceHashSelectParent(HttpRequest * request)
     double score;
     double high_score = 0;
     const char *key = NULL;
+    char ntoabuf[MAX_IPSTRLEN];
 
     if (n_sourcehash_peers == 0)
         return NULL;
 
-    key = inet_ntoa(request->client_addr);
+    key = request->client_addr.NtoA(ntoabuf, sizeof(ntoabuf));
 
     /* calculate hash key */
     debugs(39, 2, "peerSourceHashSelectParent: Calculating hash for " << key);
@@ -188,7 +194,7 @@ peerSourceHashSelectParent(HttpRequest * request)
         combined_hash += combined_hash * 0x62531965;
         combined_hash = ROTATE_LEFT(combined_hash, 21);
         score = combined_hash * tp->sourcehash.load_multiplier;
-        debugs(39, 3, "peerSourceHashSelectParent: " << tp->name << " combined_hash " << combined_hash  << 
+        debugs(39, 3, "peerSourceHashSelectParent: " << tp->name << " combined_hash " << combined_hash  <<
                " score " << std::setprecision(0) << score);
 
         if ((score > high_score) && peerHTTPOkay(tp, request)) {

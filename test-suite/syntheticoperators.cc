@@ -1,6 +1,6 @@
 
 /*
- * $Id: syntheticoperators.cc,v 1.1 2003/07/10 01:31:51 robertc Exp $
+ * $Id$
  *
  * AUTHOR: Robert Collins
  *
@@ -20,12 +20,12 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *  
+ *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *  
+ *
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
@@ -36,10 +36,14 @@
 #include "squid.h"
 #include "stmem.h"
 #include "mem_node.h"
-#include <iostream>
 
-class HasExplicit {
-  public:
+#if HAVE_IOSTREAM
+#include <iostream>
+#endif
+
+class HasExplicit
+{
+public:
     HasExplicit();
     ~HasExplicit();
     HasExplicit(HasExplicit const &);
@@ -47,7 +51,7 @@ class HasExplicit {
     static int const &Instances();
     static int const &Assignments();
     static void Assignments(int const &);
-  private:
+private:
     static void AddInstance();
     static void RemoveInstance();
     static void Assignment();
@@ -58,20 +62,24 @@ class HasExplicit {
 int HasExplicit::Instances_(0);
 int HasExplicit::Assignments_(0);
 
-HasExplicit::HasExplicit() {
+HasExplicit::HasExplicit()
+{
     AddInstance();
 }
 
-HasExplicit::~HasExplicit() {
+HasExplicit::~HasExplicit()
+{
     RemoveInstance();
 }
 
-HasExplicit::HasExplicit(HasExplicit const &) {
+HasExplicit::HasExplicit(HasExplicit const &)
+{
     AddInstance();
 }
 
 HasExplicit &
-HasExplicit::operator= (HasExplicit const &) {
+HasExplicit::operator= (HasExplicit const &)
+{
     Assignment();
     return *this;
 }
@@ -138,8 +146,9 @@ CheckHasExplicitWorks()
     assert (HasExplicit::Assignments() == 0);
 }
 
-class SyntheticOwnsExplicit {
-  public:
+class SyntheticOwnsExplicit
+{
+public:
     HasExplicit aMember;
 };
 

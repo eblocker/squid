@@ -1,6 +1,6 @@
 
 /*
- * $Id: carp.cc,v 1.26.4.1 2008/02/26 00:04:15 amosjeffries Exp $
+ * $Id$
  *
  * DEBUG: section 39    Cache Array Routing Protocol
  * AUTHOR: Henrik Nordstrom
@@ -22,12 +22,12 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *  
+ *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *  
+ *
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
@@ -37,8 +37,6 @@
 #include "squid.h"
 #include "CacheManager.h"
 #include "Store.h"
-
-#if USE_CARP
 
 #define ROTATE_LEFT(x, n) (((x) << (n)) | ((x) >> (32-(n))))
 
@@ -52,6 +50,13 @@ peerSortWeight(const void *a, const void *b)
     const peer *const *p1 = (const peer *const *)a;
     const peer *const *p2 = (const peer *const *)b;
     return (*p1)->weight - (*p2)->weight;
+}
+
+static void
+carpRegisterWithCacheManager(void)
+{
+    CacheManager::GetInstance()->
+    registerAction("carp", "CARP information", carpCachemgr, 0, 1);
 }
 
 void
@@ -72,6 +77,10 @@ carpInit(void)
 
     safe_free(carp_peers);
     n_carp_peers = 0;
+
+    /* initialize cache manager before we have a chance to leave the execution path */
+    carpRegisterWithCacheManager();
+
     /* find out which peers we have */
 
     for (p = Config.peers; p; p = p->next) {
@@ -152,12 +161,6 @@ carpInit(void)
     }
 }
 
-void
-carpRegisterWithCacheManager(CacheManager & manager)
-{
-    manager.registerAction("carp", "CARP information", carpCachemgr, 0, 1);
-}
-
 peer *
 carpSelectParent(HttpRequest * request)
 {
@@ -189,7 +192,7 @@ carpSelectParent(HttpRequest * request)
         combined_hash += combined_hash * 0x62531965;
         combined_hash = ROTATE_LEFT(combined_hash, 21);
         score = combined_hash * tp->carp.load_multiplier;
-        debugs(39, 3, "carpSelectParent: " << tp->name << " combined_hash " << combined_hash  << 
+        debugs(39, 3, "carpSelectParent: " << tp->name << " combined_hash " << combined_hash  <<
                " score " << std::setprecision(0) << score);
 
         if ((score > high_score) && peerHTTPOkay(tp, request)) {
@@ -227,5 +230,3 @@ carpCachemgr(StoreEntry * sentry)
                           sumfetches ? (double) p->stats.fetches / sumfetches : -1.0);
     }
 }
-
-#endif

@@ -7,6 +7,9 @@ squid3 (3.0.STABLE19-1) UNRELEASED; urgency=low
     - Fixed dependencies in init.d script, thanks to Petter Reinholdtsen
       (Closes: #546362)
 
+  * debian/control
+   - Bumped Standard-Version to 3.8.3, no change needed
+
  -- Luigi Gangitano <luigi@debian.org>  Sun, 20 Sep 2009 01:33:00 +0200
 
 squid3 (3.0.STABLE18-1) unstable; urgency=high

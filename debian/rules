@@ -25,8 +25,8 @@ DEB_CONFIGURE_EXTRA_FLAGS := --datadir=/usr/share/squid3 \
 		--enable-icap-client \
 		--enable-follow-x-forwarded-for \
 		--enable-auth="basic,digest,ntlm,negotiate" \
-		--enable-basic-auth-helpers="LDAP,MSNT,NCSA,PAM,SASL,SMB,YP,getpwnam,multi-domain-NTLM" \
-		--enable-ntlm-auth-helpers="SMB" \
+		--enable-basic-auth-helpers="LDAP,MSNT,NCSA,PAM,SASL,SMB,YP,DB,POP,getpwnam,squid_radius_auth,multi-domain-NTLM" \
+		--enable-ntlm-auth-helpers="smb_lm," \
 		--enable-digest-auth-helpers="ldap,password" \
 		--enable-negotiate-auth-helpers="squid_kerb_auth" \
 		--enable-external-acl-helpers="ip_user,ldap_group,session,unix_group,wbinfo_group" \

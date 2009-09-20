@@ -1,4 +1,4 @@
-squid3 (3.0.STABLE19-1) UNRELEASED; urgency=low
+squid3 (3.0.STABLE19-1) unstable; urgency=low
 
   * New upstream release
     - Fixes DoS in exthernal auth header parser (Ref: CVE-2009-2855)

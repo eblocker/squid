@@ -13,6 +13,9 @@ squid3 (3.1.0.13-1) UNRELEASED; urgency=low
   * debian/patches/02-makefile-defaults
     - Adapted to new upstream version
 
+  * debian/{squid.postinst,squid.rc,README.Debian,watch}
+    - Updated references to squid 3.1
+
  -- Luigi Gangitano <luigi@debian.org>  Mon, 21 Sep 2009 00:51:40 +0200
 
 squid3 (3.0.STABLE19-1) unstable; urgency=low

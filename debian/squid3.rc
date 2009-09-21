@@ -12,11 +12,11 @@
 # Should-Stop:       $named
 # Default-Start:     2 3 4 5
 # Default-Stop:      0 1 6
-# Short-Description: Squid HTTP Proxy version 3.0
+# Short-Description: Squid HTTP Proxy version 3.x
 ### END INIT INFO
 
 NAME=squid3
-DESC="Squid HTTP Proxy 3.0"
+DESC="Squid HTTP Proxy 3.x"
 DAEMON=/usr/sbin/squid3
 PIDFILE=/var/run/$NAME.pid
 CONFIG=/etc/squid3/squid.conf

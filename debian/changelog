@@ -1,4 +1,6 @@
-squid3 (3.1.0.13-1) UNRELEASED; urgency=low
+squid3 (3.1.0.13-1) experimental; urgency=low
+
+  * Upload to experimental
 
   * New upstream release
     - Fixes Follow-X-Forwarded-For support (Closes: #523943)
@@ -24,7 +26,7 @@ squid3 (3.1.0.13-1) UNRELEASED; urgency=low
   * debian/squid3-common.install
     - Install documented version of configuration file in /usr/share/doc/squid3
 
- -- Luigi Gangitano <luigi@debian.org>  Mon, 21 Sep 2009 00:51:40 +0200
+ -- Luigi Gangitano <luigi@debian.org>  Thu, 24 Sep 2009 14:51:06 +0200
 
 squid3 (3.0.STABLE19-1) unstable; urgency=low
 

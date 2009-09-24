@@ -1,5 +1,4 @@
 etc/squid3/squid.conf
-etc/squid3/squid.conf.documented /usr/share/doc/squid3
 etc/squid3/msntauth.conf
 etc/squid3/errorpage.css
 etc/logrotate.d

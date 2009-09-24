@@ -58,6 +58,9 @@ install/squid3::
 	mv $(INSTALLDIR)/usr/share/man/man8/squid_ldap_group.8 $(INSTALLDIR)/usr/share/man/man8/squid3_ldap_group.8
 	mv $(INSTALLDIR)/usr/share/man/man8/squid_session.8 $(INSTALLDIR)/usr/share/man/man8/squid3_session.8
 	mv $(INSTALLDIR)/usr/share/man/man8/squid_unix_group.8 $(INSTALLDIR)/usr/share/man/man8/squid3_unix_group.8
+	mv $(INSTALLDIR)/usr/share/man/man8/ncsa_auth.8 $(INSTALLDIR)/usr/share/man/man8/squid3_ncsa_auth.8
+	mv $(INSTALLDIR)/usr/share/man/man8/squid_db_auth.8 $(INSTALLDIR)/usr/share/man/man8/squid3_db_auth.8
+	mv $(INSTALLDIR)/usr/share/man/man8/squid_radius_auth.8 $(INSTALLDIR)/usr/share/man/man8/squid3_radius_auth.8
 	mv $(INSTALLDIR)/usr/share/man/man8/cachemgr.cgi.8 $(INSTALLDIR)/usr/share/man/man8/cachemgr3.cgi.8
 	install -m 755 -g root -d $(INSTALLDIR)/etc/init.d
 	install -m 755 -g root -d $(INSTALLDIR)/etc/logrotate.d

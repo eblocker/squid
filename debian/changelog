@@ -6,6 +6,7 @@ squid3 (3.1.0.13-1) UNRELEASED; urgency=low
 
   * debian/rules
     - Removed obsolete configuration options
+    - Enable db and radius basic authentication modules
 
   * debian/patches/01-cf.data.debian
     - Adapted to new upstream version
@@ -19,6 +20,7 @@ squid3 (3.1.0.13-1) UNRELEASED; urgency=low
   * debian/squid3.install
     - Install CSS file for error pages
     - Install documented version of configuration file in /usr/share/doc/squid3
+    - Install manual pages for new authentication modules
 
  -- Luigi Gangitano <luigi@debian.org>  Mon, 21 Sep 2009 00:51:40 +0200
 

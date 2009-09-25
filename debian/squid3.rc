@@ -20,7 +20,7 @@ DESC="Squid HTTP Proxy 3.x"
 DAEMON=/usr/sbin/squid3
 PIDFILE=/var/run/$NAME.pid
 CONFIG=/etc/squid3/squid.conf
-SQUID_ARGS="-D -YC -f $CONFIG"
+SQUID_ARGS="-YC -f $CONFIG"
 
 [ ! -f /etc/default/squid3 ] || . /etc/default/squid3
 

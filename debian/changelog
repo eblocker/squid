@@ -17,6 +17,9 @@ squid3 (3.1.0.13-2) UNRELEASED; urgency=low
   * debian/squid3.rc
     - Removed obsolete -D option 
 
+  * debian/patches/01-cf.data.debian
+    - Added ::1 to localhost definition in ACLs
+
  -- Luigi Gangitano <luigi@debian.org>  Fri, 25 Sep 2009 23:02:40 +0200
 
 squid3 (3.1.0.13-1) experimental; urgency=low

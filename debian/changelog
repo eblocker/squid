@@ -5,6 +5,10 @@ squid3 (3.1.0.13-2) UNRELEASED; urgency=low
   * debian/rules
     - Disable language files generation
 
+  * debian/rules
+    - Removed dependency on sharutils
+    - Added dependency on libcap2, will enable TPROXY support (Closes: 398970)
+
  -- Luigi Gangitano <luigi@debian.org>  Fri, 25 Sep 2009 23:02:40 +0200
 
 squid3 (3.1.0.13-1) experimental; urgency=low

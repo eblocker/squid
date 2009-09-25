@@ -45,7 +45,7 @@ Description: A full featured Web Proxy cache (HTTP proxy) - common files
  Squid version 3 is a major rewrite of Squid in C++ and introduces a number of
  new features including ICAP and ESI support.
  .
- This package contains common files (errors and icons)
+ This package contains common files (MIB and icons)
 
 Package: squidclient
 Architecture: any

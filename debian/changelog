@@ -6,9 +6,10 @@ squid3 (3.1.0.13-2) UNRELEASED; urgency=low
     - Disable language files generation
     - Do not clean libcppunit that is not shipped with squid anymore
 
-  * debian/rules
+  * debian/control
     - Removed dependency on sharutils
     - Added dependency on libcap2, will enable TPROXY support (Closes: 398970)
+    - Fixed squid3-common description, no more error pages
 
   * debian/squidclient.1
     - Removed man page integrated upstream

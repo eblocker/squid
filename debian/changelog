@@ -4,6 +4,7 @@ squid3 (3.1.0.13-2) UNRELEASED; urgency=low
 
   * debian/rules
     - Disable language files generation
+    - Do not clean libcppunit that is not shipped with squid anymore
 
   * debian/rules
     - Removed dependency on sharutils

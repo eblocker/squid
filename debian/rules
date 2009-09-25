@@ -78,4 +78,4 @@ install/squid3::
 	install -m 755 -g root -d $(INSTALLDIR)/usr/share/man/man1
 
 clean::
-	rm -f lib/cppunit-1.10.0/_configs.sed
+	# nothing to do

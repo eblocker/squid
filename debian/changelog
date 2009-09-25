@@ -9,6 +9,9 @@ squid3 (3.1.0.13-2) UNRELEASED; urgency=low
     - Removed dependency on sharutils
     - Added dependency on libcap2, will enable TPROXY support (Closes: 398970)
 
+  * debian/squidclient.1
+    - Removed man page integrated upstream
+
  -- Luigi Gangitano <luigi@debian.org>  Fri, 25 Sep 2009 23:02:40 +0200
 
 squid3 (3.1.0.13-1) experimental; urgency=low

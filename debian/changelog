@@ -1,3 +1,9 @@
+squid3 (3.1.0.13-2) UNRELEASED; urgency=low
+
+  * NOT RELEASED YET
+
+ -- Luigi Gangitano <luigi@debian.org>  Fri, 25 Sep 2009 23:02:40 +0200
+
 squid3 (3.1.0.13-1) experimental; urgency=low
 
   * Upload to experimental

@@ -1,4 +1,4 @@
-squid3 (3.1.0.14-1) UNRELEASED; urgency=low
+squid3 (3.1.0.14-1) experimental; urgency=low
 
   * New upstream release
     - Fixes FTBFS in GNU/kFreeBSD (Closes: #545965)
@@ -7,7 +7,7 @@ squid3 (3.1.0.14-1) UNRELEASED; urgency=low
   * debian/patches/01-cf.data.debian
     - Updated to match new upstream
 
- -- Luigi Gangitano <luigi@debian.org>  Tue, 29 Sep 2009 17:31:16 +0200
+ -- Luigi Gangitano <luigi@debian.org>  Tue, 29 Sep 2009 19:31:16 +0200
 
 squid3 (3.1.0.13-2) experimental; urgency=low
 

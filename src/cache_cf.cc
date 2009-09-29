@@ -430,6 +430,12 @@ configDoConfigure(void)
     memConfigure();
     /* Sanity checks */
 
+    if (Config.cacheSwap.swapDirs == NULL) {
+        /* Memory-only cache probably in effect. */
+        /* turn off the cache rebuild delays... */
+        StoreController::store_dirs_rebuilding = 0;
+    }
+
     if (Debug::rotateNumber < 0) {
         Debug::rotateNumber = Config.Log.rotateNumber;
     }
@@ -1648,7 +1654,7 @@ GetService(const char *proto)
         return 0; /* NEVER REACHED */
     }
     /** Returns either the service port number from /etc/services */
-    if( !isUnsignedNumeric(token, strlen(token)) )
+    if ( !isUnsignedNumeric(token, strlen(token)) )
         port = getservbyname(token, proto);
     if (port != NULL) {
         return ntohs((u_short)port->s_port);
@@ -1724,6 +1730,8 @@ parse_peer(peer ** head)
             p->options.background_ping = 1;
         } else if (!strcasecmp(token, "no-digest")) {
             p->options.no_digest = 1;
+        } else if (!strcasecmp(token, "no-tproxy")) {
+            p->options.no_tproxy = 1;
         } else if (!strcasecmp(token, "multicast-responder")) {
             p->options.mcast_responder = 1;
         } else if (!strncasecmp(token, "weight=", 7)) {
@@ -1889,7 +1897,7 @@ parse_peer(peer ** head)
         p->weight = 1;
 
     if (p->connect_fail_limit < 1)
-        p->connect_fail_limit = 1;
+        p->connect_fail_limit = 10;
 
     p->icp.version = ICP_VERSION_CURRENT;
 
@@ -2996,6 +3004,14 @@ parse_http_port_option(http_port_list * s, char *token)
         s->accel = 1;
     } else if (strcmp(token, "allow-direct") == 0) {
         s->allow_direct = 1;
+    } else if (strcmp(token, "ignore-cc") == 0) {
+        s->ignore_cc = 1;
+#if !HTTP_VIOLATIONS
+        if (!s->accel) {
+            debugs(3, DBG_CRITICAL, "FATAL: ignore-cc is only valid in accelerator mode");
+            self_destruct();
+        }
+#endif
     } else if (strcmp(token, "no-connection-auth") == 0) {
         s->connection_auth_disabled = true;
     } else if (strcmp(token, "connection-auth=off") == 0) {
@@ -3038,16 +3054,12 @@ parse_http_port_option(http_port_list * s, char *token)
         IpInterceptor.StartTransparency();
         /* Log information regarding the port modes under transparency. */
         debugs(3, DBG_IMPORTANT, "Starting IP Spoofing on port " << s->s);
-        debugs(3, DBG_IMPORTANT, "Disabling Authentication on port " << s->s << " (Ip spoofing enabled)");
+        debugs(3, DBG_IMPORTANT, "Disabling Authentication on port " << s->s << " (IP spoofing enabled)");
 
-#if USE_IPV6
-        /* INET6: until target TPROXY is known to work on IPv6 SOCKET, force wildcard to IPv4 */
-        debugs(3, DBG_IMPORTANT, "Disabling IPv6 on port " << s->s << " (interception enabled)");
-        if ( s->s.IsIPv6() && !s->s.SetIPv4() ) {
-            debugs(3, DBG_CRITICAL, "http(s)_port: IPv6 addresses cannot be transparent (protocol does not provide NAT)" << s->s );
+        if (!IpInterceptor.ProbeForTproxy(s->s)) {
+            debugs(3, DBG_CRITICAL, "FATAL: http(s)_port: TPROXY support in the system does not work.");
             self_destruct();
         }
-#endif
 
     } else if (strcmp(token, "ipv4") == 0) {
 #if USE_IPV6

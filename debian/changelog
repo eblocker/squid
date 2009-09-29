@@ -1,3 +1,9 @@
+squid3 (3.1.0.14-1) UNRELEASED; urgency=low
+
+  * New upstream release
+
+ -- Luigi Gangitano <luigi@debian.org>  Tue, 29 Sep 2009 17:31:16 +0200
+
 squid3 (3.1.0.13-2) experimental; urgency=low
 
   * debian/rules

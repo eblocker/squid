@@ -1329,6 +1329,7 @@ DIST_SUBDIRS = base acl fs repl auth ip icmp ident adaptation esi
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
 ACLOCAL = @ACLOCAL@
 ADAPTATION_LIBS = @ADAPTATION_LIBS@
+AIOLIB = @AIOLIB@
 ALLOCA = @ALLOCA@
 AMTAR = @AMTAR@
 AR = @AR@
@@ -1765,9 +1766,9 @@ nodist_squid_SOURCES = \
 
 squid_LDADD = $(COMMON_LIBS) icmp/libicmp.la icmp/libicmp-core.la \
 	../compat/libcompat.la -L../lib @XTRA_OBJS@ @DISK_LINKOBJS@ \
-	@REPL_OBJS@ @DISK_LIBS@ @CRYPTLIB@ @REGEXLIB@ @SNMPLIB@ \
-	${ADAPTATION_LIBS} ${ESI_LIBS} @SSLLIB@ -lmiscutil @XTRA_LIBS@ \
-	@EPOLL_LIBS@ @MINGW_LIBS@ $(am__append_4)
+	@REPL_OBJS@ @DISK_LIBS@ @AIOLIB@ @CRYPTLIB@ @REGEXLIB@ \
+	@SNMPLIB@ ${ADAPTATION_LIBS} ${ESI_LIBS} @SSLLIB@ -lmiscutil \
+	@XTRA_LIBS@ @EPOLL_LIBS@ @MINGW_LIBS@ $(am__append_4)
 squid_DEPENDENCIES = $(top_builddir)/lib/libmiscutil.a \
 	@DISK_LIBS@ \
 	@DISK_LINKOBJS@ \
@@ -2281,12 +2282,14 @@ nodist_tests_testDiskIO_SOURCES = \
 tests_testDiskIO_LDADD = \
 	$(SWAP_TEST_LDADD) \
 	@DISK_LIBS@ \
+	@AIOLIB@ \
 	$(COMMON_LIBS) \
 	SquidConfig.o
 
 tests_testDiskIO_LDFLAGS = $(LIBADD_DL)
 tests_testDiskIO_DEPENDENCIES = $(top_builddir)/lib/libmiscutil.a \
 	@DISK_LIBS@ \
+	@AIOLIB@ \
 	$(SWAP_TEST_DS) \
 	@SQUID_CPPUNIT_LA@
 
@@ -3029,6 +3032,7 @@ SWAP_TEST_LDADD = \
 	$(COMMON_LIBS) \
 	@REPL_OBJS@ \
 	@DISK_LIBS@ \
+	@AIOLIB@ \
 	-L../lib -lmiscutil \
 	acl/libapi.la \
 	@SQUID_CPPUNIT_LIBS@
@@ -3037,6 +3041,7 @@ SWAP_TEST_DS = \
 	$(top_builddir)/lib/libmiscutil.a \
 	repl_modules.o \
 	@DISK_LIBS@ \
+	@AIOLIB@ \
 	$(COMMON_LIBS) \
 	@REPL_OBJS@ \
 	@SQUID_CPPUNIT_LA@
@@ -4527,9 +4532,9 @@ install-data-local: install-sysconfDATA install-dataDATA
 	$(INSTALL_DATA) squid.conf.documented $(DESTDIR)$(DEFAULT_CONFIG_FILE).documented; \
 	$(mkinstalldirs) $(DESTDIR)$(DEFAULT_LOG_PREFIX)
 
-uninstall-local:
-	@$(SHELL) $(top_srcdir)/scripts/remove-cfg.sh "$(RM)" $(DESTDIR)$(DEFAULT_MIME_TABLE)
-	@$(SHELL) $(top_srcdir)/scripts/remove-cfg.sh "$(RM)" $(DESTDIR)$(DEFAULT_CONFIG_FILE)
+uninstall-local: squid.conf.default
+	@$(SHELL) $(top_srcdir)/scripts/remove-cfg.sh "$(RM)" $(DESTDIR)$(DEFAULT_MIME_TABLE) $(srcdir)/mime.conf.default
+	@$(SHELL) $(top_srcdir)/scripts/remove-cfg.sh "$(RM)" $(DESTDIR)$(DEFAULT_CONFIG_FILE) squid.conf.default
 
 test_tools.cc: $(top_srcdir)/test-suite/test_tools.cc
 	cp $(top_srcdir)/test-suite/test_tools.cc .

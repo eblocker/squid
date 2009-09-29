@@ -368,7 +368,7 @@ clientReplyContext::handleIMSReply(StoreIOBuffer result)
 
         // if client sent IMS
 
-        if (http->request->flags.ims) {
+        if (http->request->flags.ims && !old_entry->modifiedSince(http->request)) {
             // forward the 304 from origin
             debugs(88, 3, "handleIMSReply: origin replied 304, revalidating existing entry and forwarding 304 to client");
             sendClientUpstreamResponse();
@@ -652,7 +652,7 @@ clientReplyContext::processMiss()
 
     /// Deny loops for accelerator and interceptor. TODO: deny in all modes?
     if (r->flags.loopdetect &&
-        (http->flags.accel || http->flags.intercepted)) {
+            (http->flags.accel || http->flags.intercepted)) {
         http->al.http.code = HTTP_FORBIDDEN;
         err = clientBuildError(ERR_ACCESS_DENIED, HTTP_FORBIDDEN, NULL, http->getConn()->peer, http->request);
         createStoreEntry(r->method, request_flags());

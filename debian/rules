@@ -31,6 +31,7 @@ DEB_CONFIGURE_EXTRA_FLAGS := --datadir=/usr/share/squid3 \
 		--enable-negotiate-auth-helpers="squid_kerb_auth" \
 		--enable-external-acl-helpers="ip_user,ldap_group,session,unix_group,wbinfo_group" \
 		--enable-arp-acl \
+		--enable-esi \
 		--disable-translation \
 		--with-logdir=/var/log/squid3 \
 		--with-pidfile=/var/run/squid3.pid \

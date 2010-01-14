@@ -1,8 +1,8 @@
-dnl  Configuration input file for Squid
+
 dnl
 dnl  $Id$
 dnl
-AC_INIT([Squid Web Proxy],[3.1.0.14],[http://www.squid-cache.org/bugs/],[squid])
+AC_INIT([Squid Web Proxy],[3.1.0.15],[http://www.squid-cache.org/bugs/],[squid])
 AC_PREREQ(2.61)
 AC_CONFIG_HEADERS([include/autoconf.h])
 AC_CONFIG_AUX_DIR(cfgaux)
@@ -31,6 +31,17 @@ dnl Make the squid top srcdir available to sub-packages as --with-squid=PATH
 new_configure_args="$ac_configure_args --with-squid=$ac_abs_confdir"
 ac_configure_args="$new_configure_args"
 
+squid_disable_werror="no"
+AC_ARG_ENABLE(strict-error-checking,
+  AS_HELP_STRING([--disable-strict-error-checking],[By default squid is compiled
+                 with all possible static compiler error-checks enbled.
+                 This flag disables the behavior]),
+[ 
+  if test "${enableval}" = "no"
+  then
+    squid_disable_werror="yes"
+  fi
+])
 
 use_loadable_modules=1
 AC_MSG_CHECKING(whether to use loadable modules)
@@ -63,6 +74,11 @@ fi
 AC_LIBTOOL_DLOPEN
 if test $use_loadable_modules = yes;
 then
+    dnl Linux LTDL v3-v7 macros assume the autoconf 2.62 variable top_build_prefix is defined
+    dnl But from autoconf 2.64 its called ac_top_build_prefix and not automatically added to the Makefile
+    top_build_prefix=${ac_top_build_prefix}
+    AC_SUBST(top_build_prefix)
+
     AC_LIBLTDL_CONVENIENCE(lib/libLtdl)
 fi
 AC_PROG_LIBTOOL
@@ -171,9 +187,9 @@ AC_ARG_WITH(logdir,
 )
 AC_SUBST(DEFAULT_LOG_DIR)
 
-DEFAULT_PIDFILE="$localstatedir/squid.pid"
+DEFAULT_PIDFILE="$localstatedir/run/squid.pid"
 AC_ARG_WITH(pidfile,
-  AS_HELP_STRING([--with-pidfile=PATH],[Default location for squid PID file. default: $DEFAULT_PIDFILE]),
+  AS_HELP_STRING([--with-pidfile=PATH],[Default location for squid PID file. default: PREFIX/var/run/squid.pid]),
  [ case $withval in
    yes|no)
      AC_MSG_ERROR( --with-pidfile requires a file PATH. --with-pidfile=PATH )
@@ -259,10 +275,15 @@ dnl TODO: check if the problem will be present in any other newer MinGW release.
         SQUID_CFLAGS="-Wall -Wpointer-arith -Wwrite-strings -Wcomments"
 	;;
     *)
-        SQUID_CFLAGS="-Werror -Wall -Wpointer-arith -Wwrite-strings -Wmissing-prototypes -Wmissing-declarations -Wcomments"
+        SQUID_CFLAGS="-Wall -Wpointer-arith -Wwrite-strings -Wmissing-prototypes -Wmissing-declarations -Wcomments"
 	;;
     esac
-    SQUID_CXXFLAGS="-Werror -Wall -Wpointer-arith -Wwrite-strings -Wcomments"
+    SQUID_CXXFLAGS="-Wall -Wpointer-arith -Wwrite-strings -Wcomments"
+    if test "$squid_disable_werror" = "no"
+    then
+        SQUID_CFLAGS="$SQUID_CFLAGS -Werror"
+        SQUID_CXXFLAGS="$SQUID_CXXFLAGS -Werror"
+    fi
 else
     SQUID_CFLAGS=
     SQUID_CXXFLAGS=
@@ -469,6 +490,7 @@ FOUND_DISKIO_BLOCKING=
 FOUND_DISKIO_DISKDAEMON=
 FOUND_DISKIO_DISKTHREADS=
 DISK_LIBS=
+DISK_OS_LIBS=
 DISK_MODULES=
 DISK_LINKOBJS=
 for module in $MAYBE_DISK_MODULES none; do
@@ -543,7 +565,7 @@ for module in $MAYBE_DISK_MODULES none; do
 		*)
 			SQUID_CFLAGS="$SQUID_CFLAGS -D_REENTRANT"
 			SQUID_CXXFLAGS="$SQUID_CXXFLAGS -D_REENTRANT"
-			AC_CHECK_LIB(pthread, main,[DISK_LIBS="$DISK_LIBS -lpthread"],
+			AC_CHECK_LIB(pthread, main,[LIBPTHREADS="-lpthread"],
 				[ AC_MSG_NOTICE(pthread library required but cannot be found.)
 				  use_diskthreads="no"
 				])
@@ -556,7 +578,8 @@ for module in $MAYBE_DISK_MODULES none; do
 	if test "$use_diskthreads" = "yes" ; then
 	  AC_DEFINE(USE_DISKIO_DISKTHREADS, 1, [Whether pthreads support is needed. Automatic])
 	  AC_MSG_NOTICE([Enabling DiskThreads DiskIO module])
-	  DISK_LIBS="$DISK_LIBS $LIBPTHREADS libDiskThreads.a"
+	  DISK_LIBS="$DISK_LIBS libDiskThreads.a"
+	  DISK_OS_LIBS="$DISK_OS_LIBS $LIBPTHREADS"
 	  DISK_MODULES="$DISK_MODULES DiskThreads"
 	  DISK_LINKOBJS="$DISK_LINKOBJS DiskIO/DiskThreads/DiskThreadsDiskIOModule.o"
 	else
@@ -617,6 +640,7 @@ for module in $MAYBE_DISK_MODULES none; do
 		;;
 	    *)
 		AC_MSG_NOTICE([Enabling AIO DiskIO module])
+		DISK_OS_LIBS="$DISK_OS_LIBS $AIOLIB"
 		;;
 	  esac
 	else
@@ -648,7 +672,7 @@ AC_SUBST(DISK_MODULES)
 AC_SUBST(DISK_LIBS)
 AC_SUBST(DISK_PROGRAMS)
 AC_SUBST(DISK_LINKOBJS)
-AC_SUBST(AIOLIB)
+AC_SUBST(DISK_OS_LIBS)
 AM_CONDITIONAL([USE_AIOPS_WIN32], [test "$USE_AIOPS_WIN32" = 1])
 AM_CONDITIONAL([USE_AIO_WIN32], [test "$USE_AIO_WIN32" = 1])
 
@@ -826,34 +850,61 @@ AC_ARG_ENABLE(delay-pools,
 dnl disable generic/common adaptation support by default
 use_adaptation=no
 
-AM_CONDITIONAL(USE_ESI, false)
+use_esi=yes
 AC_ARG_ENABLE(esi,
-  AS_HELP_STRING([--enable-esi],[Enable ESI for accelerators. Requires libexpat.
-                  Enabling ESI will cause squid to follow the
-                  Edge Acceleration Specification (www.esi.org).
-                  This causes squid to IGNORE client Cache-Control headers.
-                  DO NOT use this in a squid configured as a web proxy, 
-                  ONLY use it in a squid configured for webserver acceleration.]),
+  AS_HELP_STRING([--enable-esi],[Enable ESI for accelerators. Benefits from expat or libxml2.
+                  Enabling ESI will cause squid reverse proxies to be capable of the
+                  Edge Acceleration Specification (www.esi.org).]),
 	      use_esi=$enableval, use_esi=no)
+HAVE_LIBEXPAT=0
+EXPATLIB=
+HAVE_LIBXML2=0
+XMLLIB=
 if test "$use_esi" = "yes" ; then
+  AC_MSG_NOTICE([Enabling ESI processor and Surrogate header support.])
   AC_DEFINE(USE_SQUID_ESI,1,[Compile the ESI processor and Surrogate header support])
-  AM_CONDITIONAL(USE_ESI, true)
 
-  dnl Perform configuration consistency checks for ESI
-  dnl ESI support requires libexpat
-  AC_CHECK_LIB([expat], [main],
-        [ESI_LIBS="-lexpat"],
-        [AC_MSG_FAILURE([ESI support requires libexpat library, but no usable library was found])]
-  )
-  AC_CHECK_LIB([xml2], [main],
-        [ESI_LIBS="-lxml2"],
-        [AC_MSG_FAILURE([ESI support requires libxml2 library, but no usable library was found])]
-  )
-  XTRA_LIBS="$XTRA_LIBS -lexpat -lxml2"
+  AC_ARG_WITH(expat, AS_HELP_STRING([--without-expat],[Do not use expat for ESI. Default: auto-detect]))
+  if test "$with_expat" != "no" ; then
+    AC_CHECK_LIB([expat], [main], [EXPATLIB="-lexpat"; HAVE_LIBEXPAT=1])
+    AC_CHECK_HEADERS([expat.h])
+    AC_DEFINE_UNQUOTED(HAVE_LIBEXPAT, $HAVE_LIBEXPAT, [Define to 1 if you have the expat library])
+    if test "$with_expat" = "yes" && test "$HAVE_LIBEXPAT" != "1" ; then
+      AC_MSG_ERROR([Required library expat is not able to be found.])
+    fi
+  fi
+
+  AC_ARG_WITH(libxml2, AS_HELP_STRING([--without-libxml2],[Do not use libxml2 for ESI. Default: auto-detect]))
+  if test "$with_libxml2" != "no" ; then
+    AC_CHECK_LIB([xml2], [main], [XMLLIB="-lxml2"; HAVE_LIBXML2=1])
+    dnl Find the main header and include path...
+    AC_CHECK_HEADERS([libxml/parser.h], [], [
+        SAVED_CPPFLAGS="$CPPFLAGS"
+        CPPFLAGS="-I/usr/include/libxml2 $CPPFLAGS"
+        unset ac_cv_header_libxml_parser_h
+        AC_CHECK_HEADERS([libxml/parser.h], [ac_cv_libxml2_include=yes], [])
+        CPPFLAGS="$SAVED_CPPFLAGS"
+        ])
+    if test "x$ac_cv_libxml2_include" = "xyes"; then
+        SQUID_CXXFLAGS="-I/usr/include/libxml2 $SQUID_CXXFLAGS"
+        CPPFLAGS="-I/usr/include/libxml2 $CPPFLAGS"
+    fi
+    dnl Now that we know where to look find the other headers...
+    AC_CHECK_HEADERS(libxml/HTMLparser.h libxml/HTMLtree.h)
+    AC_DEFINE_UNQUOTED(HAVE_LIBXML2, $HAVE_LIBXML2, [Define to 1 if you have the libxml2 library])
+    if test "$with_libxml2" = "yes" && test "$HAVE_LIBXML2" != "1" ; then
+      AC_MSG_ERROR([Required library libxml2 is not able to be found.])
+    fi
+  fi
 
 else
-  AC_DEFINE(USE_SQUID_ESI,0,[Compile the ESI processor and Surrogate header support])
+  AC_MSG_NOTICE([Disabling ESI processor and Surrogate header support.])
 fi
+AM_CONDITIONAL(USE_ESI, test "$use_esi" = "yes")
+AM_CONDITIONAL(HAVE_LIBEXPAT, test $HAVE_LIBEXPAT = 1)
+AC_SUBST(EXPATLIB)
+AM_CONDITIONAL(HAVE_LIBXML2, test $HAVE_LIBXML2 = 1)
+AC_SUBST(XMLLIB)
 
 AM_CONDITIONAL(USE_ICAP_CLIENT, false)
 AC_ARG_ENABLE(icap-client,
@@ -1472,7 +1523,7 @@ AC_ARG_ENABLE(linux-tproxy,
   AS_HELP_STRING([--enable-linux-tproxy],[Enable real Transparent Proxy support for Netfilter TPROXY 
                   (version 2).]),
 [ if test "$enableval" = "yes" ; then
-	AC_MSG_NOTICE(["Linux Netfilter/TPROXY v2 enabled])
+	AC_MSG_NOTICE([Linux Netfilter/TPROXY v2 enabled])
 	AC_DEFINE(LINUX_TPROXY2, 1, [Enable real Transparent Proxy support for Netfilter TPROXY v2.])
 	LINUX_TPROXY2="yes"
         if test -z "$LINUX_NETFILTER"; then
@@ -2074,6 +2125,7 @@ AC_PATH_PROG(TRUE, true, /usr/bin/true)
 AC_PATH_PROG(MV, mv, $FALSE)
 AC_PATH_PROG(MKDIR, mkdir, $FALSE)
 AC_PATH_PROG(LN, ln, cp)
+AC_PATH_PROG(CHMOD, chmod, $FALSE)
 
 AC_PATH_PROG(RM, rm, $FALSE)
 dnl Libtool 2.2.6 requires: rm -f
@@ -2238,17 +2290,6 @@ AC_CHECK_HEADERS( \
 	resolv.h \
 ,,,
 SQUID_BSDNET_INCLUDES)
-
-AC_CHECK_HEADERS([libxml/parser.h], [], [
-    	SAVED_CPPFLAGS="$CPPFLAGS"
-	CPPFLAGS="-I/usr/include/libxml2 $CPPFLAGS"
-	unset ac_cv_header_libxml_parser_h
-	AC_CHECK_HEADERS([libxml/parser.h], [ac_cv_libxml2_include=yes], [])
-	CPPFLAGS="$SAVED_CPPFLAGS"
-	])
-if test "x$ac_cv_libxml2_include" = "xyes"; then
-	SQUID_CXXFLAGS="-I/usr/include/libxml2 $SQUID_CXXFLAGS"
-fi
 
 AC_C_CONST
 AC_C_BIGENDIAN
@@ -2470,35 +2511,60 @@ AC_CHECK_TYPE(socklen_t,AC_DEFINE(HAVE_SOCKLEN_T,1,[socklen_t is defined by the 
 #endif])
 
 dnl Check for libcap header (assume its not broken unless 
-use_caps=yes
-AC_ARG_ENABLE(caps, AS_HELP_STRING([--disable-caps],[disable usage of Linux capabilities library to control privileges]),
-[ if test "x$enableval" = "xyes" ; then
-    AC_MSG_RESULT(forced yes)
+use_libcap=auto
+AC_ARG_WITH(libcap, AS_HELP_STRING([--without-libcap],[disable usage of Linux capabilities library to control privileges]),
+[ if test "x$withval" = "xyes" ; then
+    AC_MSG_RESULT(libcap forced enabled)
+    use_libcap=yes
   else
-    AC_MSG_RESULT(no)
-    use_caps=no
+    AC_MSG_RESULT(libcap forced disabled)
+    use_libcap=no
   fi
-],[AC_MSG_RESULT(yes)])
-if test "x$use_caps" = "xyes"; then
-  dnl Check for libcap1 breakage or libcap2 fixed (assume broken unless found working)
-  libcap_broken=1
-  AC_CHECK_HEADERS(sys/capability.h)
-  AC_CACHE_CHECK([for operational libcap2], $libcap_broken,
-    AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <sys/capability.h>]], [[
-                    capget(NULL, NULL);
-                    capset(NULL, NULL);
-                   ]])],[libcap_broken=0],[])
-  )
-  AC_DEFINE_UNQUOTED([LIBCAP_BROKEN],$libcap_broken,[if libcap2 is available and not clashing with libc])
+])
+if test "x$use_libcap" != "xno"; then
+  # cap_clear_flag is the most recent libcap function we require
+  AC_CHECK_LIB(cap, cap_clear_flag)
+  if test "x$ac_cv_lib_cap_cap_clear_flag" = xyes; then
+    use_libcap=yes
+  else
+    if test "x$use_libcap" = "xyes"; then
+      AC_MSG_ERROR([libcap forced enabled but not available or not usable, requires libcap-2.09 or later])
+    fi
+    use_libcap=no
+  fi
 fi
+
+if test "x$use_libcap" = "xyes"; then
+  AC_DEFINE(USE_LIBCAP, 1, [use libcap to set capabilities required for TPROXY])
+  dnl Check for libcap headader breakage.
+  AC_CHECK_HEADERS(sys/capability.h)
+  AC_CACHE_CHECK([for operational libcap2 headers], squid_cv_sys_capability_works,
+    AC_LINK_IFELSE([AC_LANG_PROGRAM([[
+#include <stdlib.h>
+#include <stddef.h>
+#include <sys/capability.h>
+]], [[
+capget(NULL, NULL);
+capset(NULL, NULL);
+                   ]])],[squid_cv_sys_capability_works=yes],[squid_cv_sys_capability_works=no])
+  )
+  if test x$squid_cv_sys_capability_works != xyes; then
+    AC_DEFINE([LIBCAP_BROKEN],1,[if libcap2 headers are broken and clashing with glibc])
+  fi
+fi
+
 
 AC_CHECK_TYPE(mtyp_t,AC_DEFINE(HAVE_MTYP_T,1,[mtyp_t is defined by the system headers]),,[#include <sys/types.h>
 #include <sys/ipc.h>
 #include <sys/msg.h>])
 
 dnl Check for needed libraries
-AC_CHECK_LIB(nsl, main)
-AC_CHECK_LIB(socket, main)
+AC_SEARCH_LIBS([gethostbyname],[nsl resolv bind])
+AC_SEARCH_LIBS([res_init],[resolv])
+AC_SEARCH_LIBS([bind],[socket])
+AC_SEARCH_LIBS([opcom_stack_trace],[opcom_stack])
+AC_SEARCH_LIBS([strlcpy], [bsd])
+AC_SEARCH_LIBS([yp_match], [nsl nss_nis nss_nisplus])
 dnl Check for Winsock only on MinGW, on Cygwin we must use emulated BSD socket API
 case "$host_os" in
   mingw|mingw32)
@@ -2568,19 +2634,7 @@ dnl end rip
 		esac
   fi
 
-AC_CHECK_LIB(bsd, main)
 AC_CHECK_LIB(regex, main, [REGEXLIB="-lregex"])
-AC_CHECK_LIB(bind, gethostbyname)
-if test $ac_cv_lib_bind_gethostbyname = "no" ; then
-    case "$host" in
-	i386-*-freebsd*)
-		AC_MSG_NOTICE([skipping libresolv checks for $host])
-		;;
-	*)
-		AC_CHECK_LIB(resolv, main)
-		;;
-    esac
-fi
 case "$host_os" in
 mingw|mingw32)
 	AC_MSG_NOTICE([Use MSVCRT for math functions.])
@@ -2633,6 +2687,7 @@ fi
 
 if test "$use_ipng" = "yes"; then
   AC_DEFINE(USE_IPV6,1,[Enable support for IPv6 ])
+  SET_IPV6_SETTINGS=""
   use_v4mapped=yes
 
 dnl Check for forced split-stack mode
@@ -2706,7 +2761,9 @@ else
   AC_DEFINE(USE_IPV6,0,[Enable support for IPv6])
   AC_DEFINE(IPV6_SPECIAL_SPLITSTACK,0,[Enable support for IPv6 on split-stack implementations])
   AC_DEFINE(IPV6_SPECIAL_V4MAPPED,0,[Enable v4-mapping through v6 sockets])
+  SET_IPV6_SETTINGS="\#IPv6 Not Available: "
 fi
+AC_SUBST(SET_IPV6_SETTINGS)
 
 dnl Check whether this OS defines ss_len as a member of sockaddr_storage
 AC_CACHE_CHECK([for ss_len field in struct sockaddr_storage],
@@ -3224,20 +3281,24 @@ fi
 if test "$LINUX_NETFILTER" = "no" ; then
     AC_MSG_WARN([Cannot find necessary Linux kernel (Netfilter) header files])
     AC_MSG_WARN([Linux Transparent and Intercepting Proxy support WILL NOT be enabled])
+    LINUX_TPROXY2="no"
+    AC_DEFINE(LINUX_TPROXY2, 0, [Enable real Transparent Proxy support for Netfilter TPROXY v2.])
     sleep 10
 fi
 dnl Netfilter TPROXY depends on libcap but the NAT parts can still work.
-if test "$LINUX_NETFILTER" = "yes" && test "$use_caps" != "yes" ; then
+if test "$LINUX_NETFILTER" = "yes" && test "$use_libcap" != "yes" ; then
     AC_MSG_WARN([Missing needed capabilities (libcap or libcap2) for TPROXY])
     AC_MSG_WARN([Linux Transparent Proxy support WILL NOT be enabled])
     AC_MSG_WARN([Reduced support to Interception Proxy])
+    LINUX_TPROXY2="no"
+    AC_DEFINE(LINUX_TPROXY2, 0, [Enable real Transparent Proxy support for Netfilter TPROXY v2.])
     sleep 10
 fi
 
 dnl Linux Netfilter/TPROXYv2 support requires some specific header files
 dnl Shamelessly copied from above
 if test "$LINUX_TPROXY2"; then
-  if test "$use_caps" = "yes"; then
+  if test "$use_libcap" = "yes"; then
     AC_MSG_CHECKING(if TPROXYv2 header files are installed)
     # hold on to your hats...
     if test "$ac_cv_header_linux_netfilter_ipv4_ip_tproxy_h" = "yes" && test "$LINUX_NETFILTER" = "yes"; then
@@ -3258,6 +3319,8 @@ if test "$LINUX_TPROXY2"; then
   else
     AC_MSG_WARN([Missing needed capabilities (libcap or libcap2) for TPROXY v2])
     AC_MSG_WARN([Linux Transparent Proxy support WILL NOT be enabled])
+    LINUX_TPROXY2="no"
+    AC_DEFINE(LINUX_TPROXY2, 0, [Enable real Transparent Proxy support for Netfilter TPROXY v2.])
     sleep 10
   fi
 fi

@@ -64,6 +64,7 @@ am_pinger_OBJECTS = IcmpPinger.$(OBJEXT) Icmp4.$(OBJEXT) \
 nodist_pinger_OBJECTS = debug.$(OBJEXT) globals.$(OBJEXT) \
 	time.$(OBJEXT) SquidConfig.$(OBJEXT) SquidNew.$(OBJEXT)
 pinger_OBJECTS = $(am_pinger_OBJECTS) $(nodist_pinger_OBJECTS)
+am__DEPENDENCIES_1 =
 pinger_LINK = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
 	--mode=link $(CXXLD) $(AM_CXXFLAGS) $(CXXFLAGS) \
 	$(pinger_LDFLAGS) $(LDFLAGS) -o $@
@@ -105,7 +106,6 @@ CTAGS = ctags
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
 ACLOCAL = @ACLOCAL@
 ADAPTATION_LIBS = @ADAPTATION_LIBS@
-AIOLIB = @AIOLIB@
 ALLOCA = @ALLOCA@
 AMTAR = @AMTAR@
 AR = @AR@
@@ -124,6 +124,7 @@ CC = @CC@
 CCDEPMODE = @CCDEPMODE@
 CFLAGS = @CFLAGS@
 CGIEXT = @CGIEXT@
+CHMOD = @CHMOD@
 CPP = @CPP@
 CPPFLAGS = @CPPFLAGS@
 CPPUNITCONFIG = @CPPUNITCONFIG@
@@ -144,6 +145,7 @@ DIGEST_AUTH_HELPERS = @DIGEST_AUTH_HELPERS@
 DISK_LIBS = @DISK_LIBS@
 DISK_LINKOBJS = @DISK_LINKOBJS@
 DISK_MODULES = @DISK_MODULES@
+DISK_OS_LIBS = @DISK_OS_LIBS@
 DISK_PROGRAMS = @DISK_PROGRAMS@
 DSYMUTIL = @DSYMUTIL@
 ECAPLIB = @ECAPLIB@
@@ -155,6 +157,7 @@ ECHO_T = @ECHO_T@
 EGREP = @EGREP@
 EPOLL_LIBS = @EPOLL_LIBS@
 EXEEXT = @EXEEXT@
+EXPATLIB = @EXPATLIB@
 EXTERNAL_ACL_HELPERS = @EXTERNAL_ACL_HELPERS@
 F77 = @F77@
 FALSE = @FALSE@
@@ -207,6 +210,7 @@ REPL_OBJS = @REPL_OBJS@
 REPL_POLICIES = @REPL_POLICIES@
 RM = @RM@
 SED = @SED@
+SET_IPV6_SETTINGS = @SET_IPV6_SETTINGS@
 SET_MAKE = @SET_MAKE@
 SH = @SH@
 SHELL = @SHELL@
@@ -224,6 +228,7 @@ STRIP = @STRIP@
 TRUE = @TRUE@
 VERSION = @VERSION@
 WIN32_PSAPI = @WIN32_PSAPI@
+XMLLIB = @XMLLIB@
 XTRA_LIBS = @XTRA_LIBS@
 XTRA_OBJS = @XTRA_OBJS@
 abs_builddir = @abs_builddir@
@@ -280,15 +285,15 @@ target_alias = @target_alias@
 top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
-AM_CFLAGS = @SQUID_CFLAGS@
-AM_CXXFLAGS = @SQUID_CXXFLAGS@
+AM_CFLAGS = $(SQUID_CFLAGS)
+AM_CXXFLAGS = $(SQUID_CXXFLAGS)
 CLEANFILES = testHeaders
 INCLUDES = \
 	-I$(top_srcdir) \
 	-I$(top_srcdir)/include \
 	-I$(top_srcdir)/src \
 	-I$(top_builddir)/include \
-	@SQUID_CPPUNIT_INC@
+	$(SQUID_CPPUNIT_INC)
 
 @ENABLE_PINGER_FALSE@PINGER = 
 
@@ -336,6 +341,7 @@ pinger_LDFLAGS = $(LIBADD_DL)
 pinger_LDADD = \
 	libicmp-core.la \
 	../ip/libip.la \
+	$(XTRA_LIBS) \
 	$(top_builddir)/lib/libmiscutil.a
 
 pinger_DEPENDENCIES = \
@@ -358,13 +364,14 @@ nodist_testIcmp_SOURCES = \
 
 testIcmp_LDFLAGS = $(LIBADD_DL)
 testIcmp_LDADD = \
-	@SQUID_CPPUNIT_LIBS@ \
-	@SQUID_CPPUNIT_LA@ \
+	$(SQUID_CPPUNIT_LIBS) \
+	$(SQUID_CPPUNIT_LA) \
+	$(XTRA_LIBS) \
 	libicmp-core.la \
 	../ip/libip.la \
 	$(top_builddir)/lib/libmiscutil.a
 
-testIcmp_DEPENDENCIES = @SQUID_CPPUNIT_LA@ \
+testIcmp_DEPENDENCIES = $(SQUID_CPPUNIT_LA) \
 	libicmp-core.la \
 	$(top_builddir)/lib/libmiscutil.a
 

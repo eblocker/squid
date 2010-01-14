@@ -41,15 +41,14 @@ DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in \
 	$(top_srcdir)/src/Common.am
 check_PROGRAMS = debug$(EXEEXT) $(am__EXEEXT_2) MemPoolTest$(EXEEXT) \
 	mem_node_test$(EXEEXT) mem_hdr_test$(EXEEXT) refcount$(EXEEXT) \
-	rfc1738$(EXEEXT) splay$(EXEEXT) StackTest$(EXEEXT) \
-	syntheticoperators$(EXEEXT) VirtualDeleteOperator$(EXEEXT)
+	splay$(EXEEXT) StackTest$(EXEEXT) syntheticoperators$(EXEEXT) \
+	VirtualDeleteOperator$(EXEEXT)
 TESTS = debug$(EXEEXT) syntheticoperators$(EXEEXT) \
 	VirtualDeleteOperator$(EXEEXT) StackTest$(EXEEXT) \
-	rfc1738$(EXEEXT) refcount$(EXEEXT) splay$(EXEEXT) \
-	MemPoolTest$(EXEEXT) mem_node_test$(EXEEXT) \
-	mem_hdr_test$(EXEEXT) $(am__EXEEXT_2)
+	refcount$(EXEEXT) splay$(EXEEXT) MemPoolTest$(EXEEXT) \
+	mem_node_test$(EXEEXT) mem_hdr_test$(EXEEXT) $(am__EXEEXT_2)
 EXTRA_PROGRAMS = mem_node_test$(EXEEXT) membanger$(EXEEXT) \
-	splay$(EXEEXT) tcp-banger2$(EXEEXT) rfc1738$(EXEEXT)
+	splay$(EXEEXT) tcp-banger2$(EXEEXT)
 subdir = test-suite
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/acinclude.m4 \
@@ -108,11 +107,6 @@ refcount_OBJECTS = $(am_refcount_OBJECTS)
 refcount_LDADD = $(LDADD)
 refcount_DEPENDENCIES = $(top_builddir)/compat/libcompat.la \
 	$(top_builddir)/src/globals.o $(top_builddir)/src/time.o
-am_rfc1738_OBJECTS = rfc1738.$(OBJEXT)
-rfc1738_OBJECTS = $(am_rfc1738_OBJECTS)
-rfc1738_LDADD = $(LDADD)
-rfc1738_DEPENDENCIES = $(top_builddir)/compat/libcompat.la \
-	$(top_builddir)/src/globals.o $(top_builddir)/src/time.o
 am_splay_OBJECTS = splay.$(OBJEXT)
 splay_OBJECTS = $(am_splay_OBJECTS)
 splay_LDADD = $(LDADD)
@@ -152,20 +146,17 @@ SOURCES = $(ESIExpressions_SOURCES) $(MemPoolTest_SOURCES) \
 	$(StackTest_SOURCES) $(VirtualDeleteOperator_SOURCES) \
 	$(debug_SOURCES) $(mem_hdr_test_SOURCES) \
 	$(mem_node_test_SOURCES) membanger.c $(refcount_SOURCES) \
-	$(rfc1738_SOURCES) $(splay_SOURCES) \
-	$(syntheticoperators_SOURCES) tcp-banger2.c
+	$(splay_SOURCES) $(syntheticoperators_SOURCES) tcp-banger2.c
 DIST_SOURCES = $(ESIExpressions_SOURCES) $(MemPoolTest_SOURCES) \
 	$(StackTest_SOURCES) $(VirtualDeleteOperator_SOURCES) \
 	$(debug_SOURCES) $(mem_hdr_test_SOURCES) \
 	$(mem_node_test_SOURCES) membanger.c $(refcount_SOURCES) \
-	$(rfc1738_SOURCES) $(splay_SOURCES) \
-	$(syntheticoperators_SOURCES) tcp-banger2.c
+	$(splay_SOURCES) $(syntheticoperators_SOURCES) tcp-banger2.c
 ETAGS = etags
 CTAGS = ctags
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
 ACLOCAL = @ACLOCAL@
 ADAPTATION_LIBS = @ADAPTATION_LIBS@
-AIOLIB = @AIOLIB@
 ALLOCA = @ALLOCA@
 AMTAR = @AMTAR@
 AR = @AR@
@@ -184,6 +175,7 @@ CC = @CC@
 CCDEPMODE = @CCDEPMODE@
 CFLAGS = @CFLAGS@
 CGIEXT = @CGIEXT@
+CHMOD = @CHMOD@
 CPP = @CPP@
 CPPFLAGS = @CPPFLAGS@
 CPPUNITCONFIG = @CPPUNITCONFIG@
@@ -201,6 +193,7 @@ DIGEST_AUTH_HELPERS = @DIGEST_AUTH_HELPERS@
 DISK_LIBS = @DISK_LIBS@
 DISK_LINKOBJS = @DISK_LINKOBJS@
 DISK_MODULES = @DISK_MODULES@
+DISK_OS_LIBS = @DISK_OS_LIBS@
 DISK_PROGRAMS = @DISK_PROGRAMS@
 DSYMUTIL = @DSYMUTIL@
 ECAPLIB = @ECAPLIB@
@@ -212,6 +205,7 @@ ECHO_T = @ECHO_T@
 EGREP = @EGREP@
 EPOLL_LIBS = @EPOLL_LIBS@
 EXEEXT = @EXEEXT@
+EXPATLIB = @EXPATLIB@
 EXTERNAL_ACL_HELPERS = @EXTERNAL_ACL_HELPERS@
 F77 = @F77@
 FALSE = @FALSE@
@@ -264,6 +258,7 @@ REPL_OBJS = @REPL_OBJS@
 REPL_POLICIES = @REPL_POLICIES@
 RM = @RM@
 SED = @SED@
+SET_IPV6_SETTINGS = @SET_IPV6_SETTINGS@
 SET_MAKE = @SET_MAKE@
 SH = @SH@
 SHELL = @SHELL@
@@ -281,6 +276,7 @@ STRIP = @STRIP@
 TRUE = @TRUE@
 VERSION = @VERSION@
 WIN32_PSAPI = @WIN32_PSAPI@
+XMLLIB = @XMLLIB@
 XTRA_LIBS = @XTRA_LIBS@
 XTRA_OBJS = @XTRA_OBJS@
 abs_builddir = @abs_builddir@
@@ -337,11 +333,11 @@ target_alias = @target_alias@
 top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
-AM_CFLAGS = @SQUID_CFLAGS@
-AM_CXXFLAGS = @SQUID_CXXFLAGS@
+AM_CFLAGS = $(SQUID_CFLAGS)
+AM_CXXFLAGS = $(SQUID_CXXFLAGS)
 CLEANFILES = 
 INCLUDES = -I$(top_srcdir) -I$(top_srcdir)/include -I$(top_srcdir)/src \
-	-I$(top_builddir)/include @SQUID_CPPUNIT_INC@ -I$(srcdir)
+	-I$(top_builddir)/include $(SQUID_CPPUNIT_INC) -I$(srcdir)
 AUTOMAKE_OPTIONS = subdir-objects
 LDADD = \
 	$(top_builddir)/compat/libcompat.la \
@@ -374,7 +370,6 @@ splay_SOURCES = splay.cc
 StackTest_SOURCES = StackTest.cc $(DEBUG_SOURCE)
 syntheticoperators_SOURCES = syntheticoperators.cc $(DEBUG_SOURCE)
 VirtualDeleteOperator_SOURCES = VirtualDeleteOperator.cc $(DEBUG_SOURCE)
-rfc1738_SOURCES = rfc1738.cc
 all: all-am
 
 .SUFFIXES:
@@ -442,9 +437,6 @@ membanger$(EXEEXT): $(membanger_OBJECTS) $(membanger_DEPENDENCIES)
 refcount$(EXEEXT): $(refcount_OBJECTS) $(refcount_DEPENDENCIES) 
 	@rm -f refcount$(EXEEXT)
 	$(CXXLINK) $(refcount_OBJECTS) $(refcount_LDADD) $(LIBS)
-rfc1738$(EXEEXT): $(rfc1738_OBJECTS) $(rfc1738_DEPENDENCIES) 
-	@rm -f rfc1738$(EXEEXT)
-	$(CXXLINK) $(rfc1738_OBJECTS) $(rfc1738_LDADD) $(LIBS)
 splay$(EXEEXT): $(splay_OBJECTS) $(splay_DEPENDENCIES) 
 	@rm -f splay$(EXEEXT)
 	$(CXXLINK) $(splay_OBJECTS) $(splay_LDADD) $(LIBS)
@@ -470,7 +462,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mem_node_test.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/membanger.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/refcount.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/rfc1738.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/splay.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/syntheticoperators.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/tcp-banger2.Po@am__quote@

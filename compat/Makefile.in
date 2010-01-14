@@ -38,7 +38,8 @@ build_triplet = @build@
 host_triplet = @host@
 DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in \
 	$(top_srcdir)/src/Common.am
-check_PROGRAMS =
+check_PROGRAMS = testPreCompiler$(EXEEXT)
+TESTS = testPreCompiler$(EXEEXT) testHeaders
 subdir = compat
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/acinclude.m4 \
@@ -52,6 +53,15 @@ LTLIBRARIES = $(noinst_LTLIBRARIES)
 libcompat_la_LIBADD =
 am_libcompat_la_OBJECTS = assert.lo compat.lo GnuRegex.lo
 libcompat_la_OBJECTS = $(am_libcompat_la_OBJECTS)
+am_testPreCompiler_OBJECTS = testPreCompiler.$(OBJEXT) \
+	testMain.$(OBJEXT)
+testPreCompiler_OBJECTS = $(am_testPreCompiler_OBJECTS)
+am__DEPENDENCIES_1 =
+testPreCompiler_DEPENDENCIES = $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1)
+testPreCompiler_LINK = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) \
+	$(LIBTOOLFLAGS) --mode=link $(CXXLD) $(AM_CXXFLAGS) \
+	$(CXXFLAGS) $(testPreCompiler_LDFLAGS) $(LDFLAGS) -o $@
 DEFAULT_INCLUDES = 
 depcomp = $(SHELL) $(top_srcdir)/cfgaux/depcomp
 am__depfiles_maybe = depfiles
@@ -73,14 +83,13 @@ CXXLD = $(CXX)
 CXXLINK = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
 	--mode=link $(CXXLD) $(AM_CXXFLAGS) $(CXXFLAGS) $(AM_LDFLAGS) \
 	$(LDFLAGS) -o $@
-SOURCES = $(libcompat_la_SOURCES)
-DIST_SOURCES = $(libcompat_la_SOURCES)
+SOURCES = $(libcompat_la_SOURCES) $(testPreCompiler_SOURCES)
+DIST_SOURCES = $(libcompat_la_SOURCES) $(testPreCompiler_SOURCES)
 ETAGS = etags
 CTAGS = ctags
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
 ACLOCAL = @ACLOCAL@
 ADAPTATION_LIBS = @ADAPTATION_LIBS@
-AIOLIB = @AIOLIB@
 ALLOCA = @ALLOCA@
 AMTAR = @AMTAR@
 AR = @AR@
@@ -99,6 +108,7 @@ CC = @CC@
 CCDEPMODE = @CCDEPMODE@
 CFLAGS = @CFLAGS@
 CGIEXT = @CGIEXT@
+CHMOD = @CHMOD@
 CPP = @CPP@
 CPPFLAGS = @CPPFLAGS@
 CPPUNITCONFIG = @CPPUNITCONFIG@
@@ -116,6 +126,7 @@ DIGEST_AUTH_HELPERS = @DIGEST_AUTH_HELPERS@
 DISK_LIBS = @DISK_LIBS@
 DISK_LINKOBJS = @DISK_LINKOBJS@
 DISK_MODULES = @DISK_MODULES@
+DISK_OS_LIBS = @DISK_OS_LIBS@
 DISK_PROGRAMS = @DISK_PROGRAMS@
 DSYMUTIL = @DSYMUTIL@
 ECAPLIB = @ECAPLIB@
@@ -127,6 +138,7 @@ ECHO_T = @ECHO_T@
 EGREP = @EGREP@
 EPOLL_LIBS = @EPOLL_LIBS@
 EXEEXT = @EXEEXT@
+EXPATLIB = @EXPATLIB@
 EXTERNAL_ACL_HELPERS = @EXTERNAL_ACL_HELPERS@
 F77 = @F77@
 FALSE = @FALSE@
@@ -179,6 +191,7 @@ REPL_OBJS = @REPL_OBJS@
 REPL_POLICIES = @REPL_POLICIES@
 RM = @RM@
 SED = @SED@
+SET_IPV6_SETTINGS = @SET_IPV6_SETTINGS@
 SET_MAKE = @SET_MAKE@
 SH = @SH@
 SHELL = @SHELL@
@@ -196,6 +209,7 @@ STRIP = @STRIP@
 TRUE = @TRUE@
 VERSION = @VERSION@
 WIN32_PSAPI = @WIN32_PSAPI@
+XMLLIB = @XMLLIB@
 XTRA_LIBS = @XTRA_LIBS@
 XTRA_OBJS = @XTRA_OBJS@
 abs_builddir = @abs_builddir@
@@ -252,19 +266,15 @@ target_alias = @target_alias@
 top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
-AM_CFLAGS = @SQUID_CFLAGS@
-AM_CXXFLAGS = @SQUID_CXXFLAGS@
+AM_CFLAGS = $(SQUID_CFLAGS)
+AM_CXXFLAGS = $(SQUID_CXXFLAGS)
 CLEANFILES = testHeaders
-
-# os/ subdir prevents us using src/TestHeaders.am
-#
-TESTS = testHeaders
 INCLUDES = \
 	-I$(top_srcdir) \
 	-I$(top_srcdir)/include \
 	-I$(top_srcdir)/src \
 	-I$(top_builddir)/include \
-	@SQUID_CPPUNIT_INC@
+	$(SQUID_CPPUNIT_INC)
 
 
 # Ideally this would be 100% inline functions and macro wrappers.
@@ -300,6 +310,13 @@ libcompat_la_SOURCES = \
 	GnuRegex.h \
 	GnuRegex.c
 
+testPreCompiler_SOURCES = \
+	testPreCompiler.h \
+	testPreCompiler.cc \
+	$(top_srcdir)/src/tests/testMain.cc
+
+testPreCompiler_LDADD = $(SQUID_CPPUNIT_LA) $(SQUID_CPPUNIT_LIBS)
+testPreCompiler_LDFLAGS = 
 all: all-am
 
 .SUFFIXES:
@@ -351,6 +368,9 @@ clean-checkPROGRAMS:
 	  echo " rm -f $$p $$f"; \
 	  rm -f $$p $$f ; \
 	done
+testPreCompiler$(EXEEXT): $(testPreCompiler_OBJECTS) $(testPreCompiler_DEPENDENCIES) 
+	@rm -f testPreCompiler$(EXEEXT)
+	$(testPreCompiler_LINK) $(testPreCompiler_OBJECTS) $(testPreCompiler_LDADD) $(LIBS)
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
@@ -361,6 +381,8 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/GnuRegex.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/assert.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/compat.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/testMain.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/testPreCompiler.Po@am__quote@
 
 .c.o:
 @am__fastdepCC_TRUE@	$(COMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
@@ -403,6 +425,20 @@ distclean-compile:
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='$<' object='$@' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(LTCXXCOMPILE) -c -o $@ $<
+
+testMain.o: $(top_srcdir)/src/tests/testMain.cc
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT testMain.o -MD -MP -MF $(DEPDIR)/testMain.Tpo -c -o testMain.o `test -f '$(top_srcdir)/src/tests/testMain.cc' || echo '$(srcdir)/'`$(top_srcdir)/src/tests/testMain.cc
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/testMain.Tpo $(DEPDIR)/testMain.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='$(top_srcdir)/src/tests/testMain.cc' object='testMain.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o testMain.o `test -f '$(top_srcdir)/src/tests/testMain.cc' || echo '$(srcdir)/'`$(top_srcdir)/src/tests/testMain.cc
+
+testMain.obj: $(top_srcdir)/src/tests/testMain.cc
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT testMain.obj -MD -MP -MF $(DEPDIR)/testMain.Tpo -c -o testMain.obj `if test -f '$(top_srcdir)/src/tests/testMain.cc'; then $(CYGPATH_W) '$(top_srcdir)/src/tests/testMain.cc'; else $(CYGPATH_W) '$(srcdir)/$(top_srcdir)/src/tests/testMain.cc'; fi`
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/testMain.Tpo $(DEPDIR)/testMain.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='$(top_srcdir)/src/tests/testMain.cc' object='testMain.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o testMain.obj `if test -f '$(top_srcdir)/src/tests/testMain.cc'; then $(CYGPATH_W) '$(top_srcdir)/src/tests/testMain.cc'; else $(CYGPATH_W) '$(srcdir)/$(top_srcdir)/src/tests/testMain.cc'; fi`
 
 mostlyclean-libtool:
 	-rm -f *.lo

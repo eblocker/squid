@@ -84,6 +84,8 @@ using namespace Squid;
 #include <getopt.h>
 #endif
 
+#include "squid_types.h"
+
 #include "util.h"
 #include "ip/IpAddress.h"
 
@@ -387,7 +389,7 @@ main(int argc, char *argv[])
             strcat(msg, buf);
         }
         if (put_fd > 0) {
-            snprintf(buf, BUFSIZ, "Content-length: %d\r\n", (int) sb.st_size);
+            snprintf(buf, BUFSIZ, "Content-length: %" PRId64 "\r\n", (int64_t) sb.st_size);
             strcat(msg, buf);
         }
         if (opt_noaccept == 0) {
@@ -518,13 +520,13 @@ main(int argc, char *argv[])
         iaddr.SetPort(port);
 
         if (client_comm_connect(conn, iaddr, ping ? &tv1 : NULL) < 0) {
-            char buf[MAX_IPSTRLEN];
-            iaddr.ToURL(buf, MAX_IPSTRLEN);
+            char hostnameBuf[MAX_IPSTRLEN];
+            iaddr.ToURL(hostnameBuf, MAX_IPSTRLEN);
             if (errno == 0) {
-                fprintf(stderr, "client: ERROR: Cannot connect to %s: Host unknown.\n", buf);
+                fprintf(stderr, "client: ERROR: Cannot connect to %s: Host unknown.\n", hostnameBuf);
             } else {
                 char tbuf[BUFSIZ];
-                snprintf(tbuf, BUFSIZ, "client: ERROR: Cannot connect to %s", buf);
+                snprintf(tbuf, BUFSIZ, "client: ERROR: Cannot connect to %s", hostnameBuf);
                 perror(tbuf);
             }
             exit(1);

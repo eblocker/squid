@@ -50,7 +50,8 @@ check_PROGRAMS = tests/testAuth$(EXEEXT) \
 	tests/testEvent$(EXEEXT) tests/testEventLoop$(EXEEXT) \
 	tests/test_http_range$(EXEEXT) tests/testHttpReply$(EXEEXT) \
 	tests/testHttpRequest$(EXEEXT) tests/testStore$(EXEEXT) \
-	tests/testString$(EXEEXT) tests/testURL$(EXEEXT) @STORE_TESTS@
+	tests/testString$(EXEEXT) tests/testURL$(EXEEXT) \
+	$(STORE_TESTS)
 @USE_ADAPTATION_TRUE@am__append_1 = adaptation
 @USE_ESI_TRUE@am__append_2 = esi
 EXTRA_PROGRAMS = DiskIO/DiskDaemon/diskd$(EXEEXT) unlinkd$(EXEEXT) \
@@ -60,10 +61,10 @@ EXTRA_PROGRAMS = DiskIO/DiskDaemon/diskd$(EXEEXT) unlinkd$(EXEEXT) \
 noinst_PROGRAMS = cf_gen$(EXEEXT) ufsdump$(EXEEXT)
 sbin_PROGRAMS = squid$(EXEEXT)
 bin_PROGRAMS =
-libexec_PROGRAMS = $(am__EXEEXT_1) @DISK_PROGRAMS@ $(am__EXEEXT_2)
+libexec_PROGRAMS = $(am__EXEEXT_1) $(DISK_PROGRAMS) $(am__EXEEXT_2)
 @USE_LOADABLE_MODULES_TRUE@am__append_3 = $(LOADABLE_MODULES_SOURCES)
 @USE_LOADABLE_MODULES_TRUE@am__append_4 = \
-@USE_LOADABLE_MODULES_TRUE@	@LIBLTDL@
+@USE_LOADABLE_MODULES_TRUE@	$(LIBLTDL)
 
 subdir = src
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
@@ -143,19 +144,23 @@ am_DiskIO_DiskDaemon_diskd_OBJECTS =  \
 	DiskIO/DiskDaemon/diskd.$(OBJEXT)
 DiskIO_DiskDaemon_diskd_OBJECTS =  \
 	$(am_DiskIO_DiskDaemon_diskd_OBJECTS)
+am__DEPENDENCIES_1 =
 DiskIO_DiskDaemon_diskd_DEPENDENCIES =  \
-	$(top_builddir)/lib/libmiscutil.a
+	$(top_builddir)/lib/libmiscutil.a $(am__DEPENDENCIES_1)
 am_cf_gen_OBJECTS = cf_gen.$(OBJEXT)
 cf_gen_OBJECTS = $(am_cf_gen_OBJECTS)
-cf_gen_DEPENDENCIES = ../compat/libcompat.la
+cf_gen_DEPENDENCIES = ../compat/libcompat.la $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1)
 am_dnsserver_OBJECTS = dnsserver.$(OBJEXT) SquidNew.$(OBJEXT)
 dnsserver_OBJECTS = $(am_dnsserver_OBJECTS)
 dnsserver_LDADD = $(LDADD)
-dnsserver_DEPENDENCIES = $(COMMON_LIBS)
+dnsserver_DEPENDENCIES = $(COMMON_LIBS) $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1)
 am_recv_announce_OBJECTS = recv-announce.$(OBJEXT) SquidNew.$(OBJEXT)
 recv_announce_OBJECTS = $(am_recv_announce_OBJECTS)
 recv_announce_LDADD = $(LDADD)
-recv_announce_DEPENDENCIES = $(COMMON_LIBS)
+recv_announce_DEPENDENCIES = $(COMMON_LIBS) $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1)
 am__squid_SOURCES_DIST = AclRegs.cc AuthReg.cc access_log.cc \
 	AccessLogEntry.h AsyncEngine.cc AsyncEngine.h cache_cf.cc \
 	ProtoPort.cc ProtoPort.h CacheDigest.cc cache_manager.cc \
@@ -318,9 +323,9 @@ am__objects_23 = DiskIO/DiskIOModules_gen.$(OBJEXT)
 nodist_squid_OBJECTS = $(am__objects_23) repl_modules.$(OBJEXT) \
 	globals.$(OBJEXT) string_arrays.$(OBJEXT)
 squid_OBJECTS = $(am_squid_OBJECTS) $(nodist_squid_OBJECTS)
-am__DEPENDENCIES_1 =
-@USE_ESI_TRUE@am__DEPENDENCIES_2 = esi/libesi.la \
-@USE_ESI_TRUE@	$(top_builddir)/lib/libTrie/src/libTrie.a
+@USE_ESI_TRUE@am__DEPENDENCIES_2 = $(ESI_LOCAL_LIBS) \
+@USE_ESI_TRUE@	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1)
+@USE_LOADABLE_MODULES_TRUE@am__DEPENDENCIES_3 = $(am__DEPENDENCIES_1)
 squid_LINK = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
 	--mode=link $(CXXLD) $(AM_CXXFLAGS) $(CXXFLAGS) \
 	$(squid_LDFLAGS) $(LDFLAGS) -o $@
@@ -551,7 +556,10 @@ am__objects_29 = $(am__objects_28) $(am__objects_23)
 nodist_tests_testCoss_OBJECTS = $(am__objects_29)
 tests_testCoss_OBJECTS = $(am_tests_testCoss_OBJECTS) \
 	$(nodist_tests_testCoss_OBJECTS)
-am__DEPENDENCIES_3 = $(COMMON_LIBS) acl/libapi.la
+am__DEPENDENCIES_4 = $(am__DEPENDENCIES_1) $(COMMON_LIBS) \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1) acl/libapi.la $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1)
 tests_testCoss_LINK = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) \
 	$(LIBTOOLFLAGS) --mode=link $(CXXLD) $(AM_CXXFLAGS) \
 	$(CXXFLAGS) $(tests_testCoss_LDFLAGS) $(LDFLAGS) -o $@
@@ -1231,7 +1239,8 @@ ufsdump_OBJECTS = $(am_ufsdump_OBJECTS) $(nodist_ufsdump_OBJECTS)
 am_unlinkd_OBJECTS = unlinkd_daemon.$(OBJEXT) SquidNew.$(OBJEXT)
 unlinkd_OBJECTS = $(am_unlinkd_OBJECTS)
 unlinkd_LDADD = $(LDADD)
-unlinkd_DEPENDENCIES = $(COMMON_LIBS)
+unlinkd_DEPENDENCIES = $(COMMON_LIBS) $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1)
 DEFAULT_INCLUDES = 
 depcomp = $(SHELL) $(top_srcdir)/cfgaux/depcomp
 am__depfiles_maybe = depfiles
@@ -1329,7 +1338,6 @@ DIST_SUBDIRS = base acl fs repl auth ip icmp ident adaptation esi
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
 ACLOCAL = @ACLOCAL@
 ADAPTATION_LIBS = @ADAPTATION_LIBS@
-AIOLIB = @AIOLIB@
 ALLOCA = @ALLOCA@
 AMTAR = @AMTAR@
 AR = @AR@
@@ -1348,6 +1356,7 @@ CC = @CC@
 CCDEPMODE = @CCDEPMODE@
 CFLAGS = @CFLAGS@
 CGIEXT = @CGIEXT@
+CHMOD = @CHMOD@
 CPP = @CPP@
 CPPFLAGS = @CPPFLAGS@
 CPPUNITCONFIG = @CPPUNITCONFIG@
@@ -1369,6 +1378,7 @@ DIGEST_AUTH_HELPERS = @DIGEST_AUTH_HELPERS@
 DISK_LIBS = @DISK_LIBS@
 DISK_LINKOBJS = @DISK_LINKOBJS@
 DISK_MODULES = @DISK_MODULES@
+DISK_OS_LIBS = @DISK_OS_LIBS@
 DISK_PROGRAMS = @DISK_PROGRAMS@
 DSYMUTIL = @DSYMUTIL@
 ECAPLIB = @ECAPLIB@
@@ -1380,6 +1390,7 @@ ECHO_T = @ECHO_T@
 EGREP = @EGREP@
 EPOLL_LIBS = @EPOLL_LIBS@
 EXEEXT = @EXEEXT@
+EXPATLIB = @EXPATLIB@
 EXTERNAL_ACL_HELPERS = @EXTERNAL_ACL_HELPERS@
 F77 = @F77@
 FALSE = @FALSE@
@@ -1432,6 +1443,7 @@ REPL_OBJS = @REPL_OBJS@
 REPL_POLICIES = @REPL_POLICIES@
 RM = @RM@
 SED = @SED@
+SET_IPV6_SETTINGS = @SET_IPV6_SETTINGS@
 SET_MAKE = @SET_MAKE@
 SH = @SH@
 SHELL = @SHELL@
@@ -1449,6 +1461,7 @@ STRIP = @STRIP@
 TRUE = @TRUE@
 VERSION = @VERSION@
 WIN32_PSAPI = @WIN32_PSAPI@
+XMLLIB = @XMLLIB@
 XTRA_LIBS = @XTRA_LIBS@
 XTRA_OBJS = @XTRA_OBJS@
 abs_builddir = @abs_builddir@
@@ -1505,16 +1518,17 @@ target_alias = @target_alias@
 top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
-AM_CFLAGS = @SQUID_CFLAGS@
-AM_CXXFLAGS = @SQUID_CXXFLAGS@
+AM_CFLAGS = $(SQUID_CFLAGS)
+AM_CXXFLAGS = $(SQUID_CXXFLAGS)
 CLEANFILES = cf_gen_defines.h cf.data cf_parser.h squid.conf.default \
 	squid.conf.documented globals.cc string_arrays.c \
 	repl_modules.cc DiskIO/DiskIOModules_gen.cc test_tools.cc *.a \
 	testHeaders
 TESTS = $(check_PROGRAMS) testHeaders
 INCLUDES = -I$(top_srcdir) -I$(top_srcdir)/include -I$(top_srcdir)/src \
-	-I$(top_builddir)/include @SQUID_CPPUNIT_INC@ \
-	-I$(top_srcdir)/lib -I$(top_builddir)/src
+	-I$(top_builddir)/include $(SQUID_CPPUNIT_INC) \
+	-I$(top_srcdir)/lib -I$(top_srcdir)/lib/libLtdl \
+	-I$(top_builddir)/src
 AUTOMAKE_OPTIONS = subdir-objects
 @USE_DNSSERVER_FALSE@DNSSOURCE = dns_internal.cc DnsLookupDetails.h \
 @USE_DNSSERVER_FALSE@	DnsLookupDetails.cc
@@ -1536,10 +1550,14 @@ LOADABLE_MODULES_SOURCES = \
 
 SUBDIRS = base acl fs repl auth ip icmp ident $(am__append_1) \
 	$(am__append_2)
-@USE_ESI_FALSE@ESI_LIBS = 
-@USE_ESI_TRUE@ESI_LIBS = \
+@USE_ESI_TRUE@ESI_LOCAL_LIBS = \
 @USE_ESI_TRUE@	esi/libesi.la \
 @USE_ESI_TRUE@	$(top_builddir)/lib/libTrie/src/libTrie.a
+
+@USE_ESI_FALSE@ESI_LIBS = 
+@USE_ESI_TRUE@ESI_LIBS = $(ESI_LOCAL_LIBS) \
+@USE_ESI_TRUE@	$(XMLLIB) \
+@USE_ESI_TRUE@	$(EXPATLIB)
 
 DELAY_POOL_ALL_SOURCE = \
 	CommonPool.h \
@@ -1602,7 +1620,7 @@ AIO_WIN32_ALL_SOURCES = \
 @USE_AIOPS_WIN32_FALSE@AIOPS_SOURCE = DiskIO/DiskThreads/aiops.cc
 @USE_AIOPS_WIN32_TRUE@AIOPS_SOURCE = DiskIO/DiskThreads/aiops_win32.cc
 EXTRA_LIBRARIES = libAIO.a libBlocking.a libDiskDaemon.a libDiskThreads.a
-noinst_LIBRARIES = @DISK_LIBS@
+noinst_LIBRARIES = $(DISK_LIBS)
 noinst_LTLIBRARIES = libsquid.la
 
 # libraries used by many targets
@@ -1623,9 +1641,9 @@ nodist_cf_gen_HEADER = cf_gen_defines.h
 cf_gen_LDADD = \
 	../compat/libcompat.la \
 	-L../lib -lmiscutil \
-	@XTRA_LIBS@ \
-	@EPOLL_LIBS@ \
-	@MINGW_LIBS@
+	$(EPOLL_LIBS) \
+	$(MINGW_LIBS) \
+	$(XTRA_LIBS)
 
 ACL_REGISTRATION_SOURCES = AclRegs.cc AuthReg.cc
 DISKIO_SOURCE = \
@@ -1765,17 +1783,18 @@ nodist_squid_SOURCES = \
 	string_arrays.c
 
 squid_LDADD = $(COMMON_LIBS) icmp/libicmp.la icmp/libicmp-core.la \
-	../compat/libcompat.la -L../lib @XTRA_OBJS@ @DISK_LINKOBJS@ \
-	@REPL_OBJS@ @DISK_LIBS@ @AIOLIB@ @CRYPTLIB@ @REGEXLIB@ \
-	@SNMPLIB@ ${ADAPTATION_LIBS} ${ESI_LIBS} @SSLLIB@ -lmiscutil \
-	@XTRA_LIBS@ @EPOLL_LIBS@ @MINGW_LIBS@ $(am__append_4)
+	../compat/libcompat.la -L../lib $(XTRA_OBJS) $(DISK_LINKOBJS) \
+	$(REPL_OBJS) $(DISK_LIBS) $(DISK_OS_LIBS) $(CRYPTLIB) \
+	$(REGEXLIB) $(SNMPLIB) ${ADAPTATION_LIBS} $(ESI_LIBS) \
+	$(SSLLIB) -lmiscutil $(EPOLL_LIBS) $(MINGW_LIBS) $(XTRA_LIBS) \
+	$(am__append_4)
 squid_DEPENDENCIES = $(top_builddir)/lib/libmiscutil.a \
-	@DISK_LIBS@ \
-	@DISK_LINKOBJS@ \
-	@REPL_OBJS@ \
-	@SNMPLIB@ \
+	$(DISK_LIBS) \
+	$(DISK_LINKOBJS) \
+	$(REPL_OBJS) \
+	$(SNMPLIB) \
 	${ADAPTATION_LIBS} \
-	${ESI_LIBS} \
+	$(ESI_LOCAL_LIBS) \
 	$(COMMON_LIBS)
 
 @USE_LOADABLE_MODULES_TRUE@squid_LDFLAGS = \
@@ -1819,22 +1838,22 @@ ufsdump_SOURCES = \
 
 ufsdump_LDADD = \
 	$(COMMON_LIBS) \
-	@XTRA_OBJS@ \
-	@REPL_OBJS@ \
-	@CRYPTLIB@ \
-	@REGEXLIB@ \
-	@SNMPLIB@ \
-	@SSLLIB@ \
+	$(XTRA_OBJS) \
+	$(REPL_OBJS) \
+	$(CRYPTLIB) \
+	$(REGEXLIB) \
+	$(SNMPLIB) \
+	$(SSLLIB) \
 	-L$(top_builddir)/lib -lmiscutil \
-	@XTRA_LIBS@ \
-	@EPOLL_LIBS@ \
-	@MINGW_LIBS@ 
+	$(EPOLL_LIBS) \
+	$(MINGW_LIBS) \
+	$(XTRA_LIBS)
 
 ufsdump_DEPENDENCIES = $(top_builddir)/lib/libmiscutil.a \
 	$(COMMON_LIBS) \
-	@DISK_LIBS@ \
-	@DISK_LINKOBJS@ \
-	@REPL_OBJS@
+	$(DISK_LIBS) \
+	$(DISK_LINKOBJS) \
+	$(REPL_OBJS)
 
 nodist_ufsdump_SOURCES = \
 	globals.cc
@@ -1854,7 +1873,13 @@ sysconf_DATA = \
 data_DATA = \
 	mib.txt
 
-LDADD = $(COMMON_LIBS) -L../lib -lmiscutil @XTRA_LIBS@ @EPOLL_LIBS@ @MINGW_LIBS@
+LDADD = $(COMMON_LIBS)\
+	-L../lib \
+	-lmiscutil \
+	$(EPOLL_LIBS) \
+	$(MINGW_LIBS) \
+	$(XTRA_LIBS)
+
 EXTRA_DIST = \
 	cf_gen_defines \
 	cf.data.pre \
@@ -1907,19 +1932,19 @@ libDiskThreads_a_SOURCES = \
 		DiskIO/DiskThreads/DiskThreadsIOStrategy.h
 
 DiskIO_DiskDaemon_diskd_SOURCES = DiskIO/DiskDaemon/diskd.cc 
-DiskIO_DiskDaemon_diskd_LDADD = $(top_builddir)/lib/libmiscutil.a @XTRA_LIBS@
-DEFAULT_HTTP_PORT = @CACHE_HTTP_PORT@
-DEFAULT_ICP_PORT = @CACHE_ICP_PORT@
+DiskIO_DiskDaemon_diskd_LDADD = $(top_builddir)/lib/libmiscutil.a $(XTRA_LIBS)
+DEFAULT_HTTP_PORT = $(CACHE_HTTP_PORT)
+DEFAULT_ICP_PORT = $(CACHE_ICP_PORT)
 DEFAULT_PREFIX = $(prefix)
 DEFAULT_CONFIG_DIR = $(sysconfdir)
 DEFAULT_CONFIG_FILE = $(DEFAULT_CONFIG_DIR)/squid.conf
 DEFAULT_MIME_TABLE = $(DEFAULT_CONFIG_DIR)/mime.conf
 DEFAULT_DNSSERVER = $(libexecdir)/`echo dnsserver | sed '$(transform);s/$$/$(EXEEXT)/'`
-DEFAULT_LOG_PREFIX = @DEFAULT_LOG_DIR@
+DEFAULT_LOG_PREFIX = $(DEFAULT_LOG_DIR)
 DEFAULT_CACHE_LOG = $(DEFAULT_LOG_PREFIX)/cache.log
 DEFAULT_ACCESS_LOG = $(DEFAULT_LOG_PREFIX)/access.log
 DEFAULT_STORE_LOG = $(DEFAULT_LOG_PREFIX)/store.log
-DEFAULT_PID_FILE = @DEFAULT_PIDFILE@
+DEFAULT_PID_FILE = $(DEFAULT_PIDFILE)
 DEFAULT_NETDB_FILE = $(DEFAULT_LOG_PREFIX)/netdb.state
 DEFAULT_SWAP_DIR = $(localstatedir)/cache
 DEFAULT_PINGER = $(libexecdir)/`echo pinger | sed '$(transform);s/$$/$(EXEEXT)/'`
@@ -1927,8 +1952,7 @@ DEFAULT_UNLINKD = $(libexecdir)/`echo unlinkd | sed '$(transform);s/$$/$(EXEEXT)
 DEFAULT_DISKD = $(libexecdir)/`echo diskd | sed '$(transform);s/$$/$(EXEEXT)/'`
 DEFAULT_ICON_DIR = $(datadir)/icons
 DEFAULT_ERROR_DIR = $(datadir)/errors
-DEFAULT_MIB_PATH = $(datadir)/mib.txt
-DEFAULT_HOSTS = @OPT_DEFAULT_HOSTS@
+DEFAULT_HOSTS = $(OPT_DEFAULT_HOSTS)
 
 # stock tools for unit tests - library independent versions of dlink_list 
 # etc.
@@ -1955,10 +1979,10 @@ TEST_CALL_SOURCES = \
 #	$(TESTSOURCES)
 #tests_testX_LDFLAGS = $(LIBADD_DL)
 #tests_testX_LDADD=\
-#	@SQUID_CPPUNIT_LIBS@ \
-#	@SQUID_CPPUNIT_LA@ \
+#	$(SQUID_CPPUNIT_LIBS) \
+#	$(SQUID_CPPUNIT_LA) \
 #	-L../lib -lmiscutil
-#tests_testX_DEPENDENCIES= @SQUID_CPPUNIT_LA@ \
+#tests_testX_DEPENDENCIES= $(SQUID_CPPUNIT_LA) \
 #	$(top_builddir)/lib/libmiscutil.a
 
 # - add other component .(h|cc) files needed to link and run tests
@@ -2011,11 +2035,12 @@ tests_testHttpReply_LDADD = \
 	acl/libstate.la \
 	auth/libauth.la \
 	ip/libip.la \
-	@SQUID_CPPUNIT_LIBS@ \
-	@SQUID_CPPUNIT_LA@ \
-	-L../lib -lmiscutil
+	$(SQUID_CPPUNIT_LIBS) \
+	$(SQUID_CPPUNIT_LA) \
+	-L../lib -lmiscutil \
+	$(XTRA_LIBS)
 
-tests_testHttpReply_DEPENDENCIES = @SQUID_CPPUNIT_LA@ \
+tests_testHttpReply_DEPENDENCIES = $(SQUID_CPPUNIT_LA) \
 	$(top_builddir)/lib/libmiscutil.a
 
 tests_testAuth_SOURCES = \
@@ -2048,13 +2073,14 @@ nodist_tests_testAuth_SOURCES = \
 tests_testAuth_LDADD = \
 	$(COMMON_LIBS) \
 	-L../lib -lmiscutil \
-	@REGEXLIB@ \
-	@SQUID_CPPUNIT_LIBS@ \
-	@SSLLIB@
+	$(REGEXLIB) \
+	$(SQUID_CPPUNIT_LIBS) \
+	$(SSLLIB) \
+	$(XTRA_LIBS)
 
 tests_testAuth_LDFLAGS = $(LIBADD_DL)
 tests_testAuth_DEPENDENCIES = $(top_builddir)/lib/libmiscutil.a \
-	@SQUID_CPPUNIT_LA@
+	$(SQUID_CPPUNIT_LA)
 
 tests_testACLMaxUserIP_SOURCES = \
 	cbdata.cc \
@@ -2095,13 +2121,14 @@ nodist_tests_testACLMaxUserIP_SOURCES = \
 tests_testACLMaxUserIP_LDADD = \
 	$(COMMON_LIBS) \
 	-L../lib -lmiscutil \
-	@REGEXLIB@ \
-	@SQUID_CPPUNIT_LIBS@ \
-	@SSLLIB@
+	$(REGEXLIB) \
+	$(SQUID_CPPUNIT_LIBS) \
+	$(SSLLIB) \
+	$(XTRA_LIBS)
 
 tests_testACLMaxUserIP_LDFLAGS = $(LIBADD_DL)
 tests_testACLMaxUserIP_DEPENDENCIES = \
-	@SQUID_CPPUNIT_LA@
+	$(SQUID_CPPUNIT_LA)
 
 tests_testBoilerplate_SOURCES = \
 	tests/testBoilerplate.cc \
@@ -2114,12 +2141,13 @@ nodist_tests_testBoilerplate_SOURCES = \
 
 tests_testBoilerplate_LDADD = \
 	-L../lib -lmiscutil \
-	@SQUID_CPPUNIT_LIBS@ \
-	@SSLLIB@
+	$(SQUID_CPPUNIT_LIBS) \
+	$(SSLLIB) \
+	$(XTRA_LIBS)
 
 tests_testBoilerplate_LDFLAGS = $(LIBADD_DL)
 tests_testBoilerplate_DEPENDENCIES = \
-	@SQUID_CPPUNIT_LA@
+	$(SQUID_CPPUNIT_LA)
 
 tests_testCacheManager_SOURCES = \
 	debug.cc \
@@ -2253,21 +2281,21 @@ nodist_tests_testCacheManager_SOURCES = \
 tests_testCacheManager_LDADD = \
 	$(COMMON_LIBS) \
 	icmp/libicmp.la icmp/libicmp-core.la \
-	@REPL_OBJS@ \
+	$(REPL_OBJS) \
 	${ADAPTATION_LIBS} \
-	${ESI_LIBS} \
-	@REGEXLIB@ \
-	@SNMPLIB@ \
+	$(ESI_LIBS) \
+	$(REGEXLIB) \
+	$(SNMPLIB) \
 	-L../lib -lmiscutil \
-	@SQUID_CPPUNIT_LIBS@ \
-	@SQUID_CPPUNIT_LA@ \
-	@SSLLIB@ \
-	@XTRA_LIBS@
+	$(SQUID_CPPUNIT_LIBS) \
+	$(SQUID_CPPUNIT_LA) \
+	$(SSLLIB) \
+	$(XTRA_LIBS)
 
 tests_testCacheManager_LDFLAGS = $(LIBADD_DL)
 tests_testCacheManager_DEPENDENCIES = $(top_builddir)/lib/libmiscutil.a \
-	@REPL_OBJS@ \
-	@SQUID_CPPUNIT_LA@
+	$(REPL_OBJS) \
+	$(SQUID_CPPUNIT_LA)
 
 tests_testDiskIO_SOURCES = \
 	$(SWAP_TEST_SOURCES) \
@@ -2281,17 +2309,17 @@ nodist_tests_testDiskIO_SOURCES = \
 
 tests_testDiskIO_LDADD = \
 	$(SWAP_TEST_LDADD) \
-	@DISK_LIBS@ \
-	@AIOLIB@ \
+	$(DISK_LIBS) \
+	$(DISK_OS_LIBS) \
 	$(COMMON_LIBS) \
-	SquidConfig.o
+	SquidConfig.o \
+	$(XTRA_LIBS)
 
 tests_testDiskIO_LDFLAGS = $(LIBADD_DL)
 tests_testDiskIO_DEPENDENCIES = $(top_builddir)/lib/libmiscutil.a \
-	@DISK_LIBS@ \
-	@AIOLIB@ \
+	$(DISK_LIBS) \
 	$(SWAP_TEST_DS) \
-	@SQUID_CPPUNIT_LA@
+	$(SQUID_CPPUNIT_LA)
 
 tests_testEvent_SOURCES = \
 	debug.cc \
@@ -2428,21 +2456,21 @@ nodist_tests_testEvent_SOURCES = \
 tests_testEvent_LDADD = \
 	$(COMMON_LIBS) \
 	icmp/libicmp.la icmp/libicmp-core.la \
-	@REPL_OBJS@ \
+	$(REPL_OBJS) \
 	${ADAPTATION_LIBS} \
-	${ESI_LIBS} \
-	@REGEXLIB@ \
-	@SNMPLIB@ \
+	$(ESI_LIBS) \
+	$(REGEXLIB) \
+	$(SNMPLIB) \
 	-L../lib -lmiscutil \
-	@SQUID_CPPUNIT_LIBS@ \
-	@SQUID_CPPUNIT_LA@ \
-	@SSLLIB@ \
-	@XTRA_LIBS@
+	$(SQUID_CPPUNIT_LIBS) \
+	$(SQUID_CPPUNIT_LA) \
+	$(SSLLIB) \
+	$(XTRA_LIBS)
 
 tests_testEvent_LDFLAGS = $(LIBADD_DL)
 tests_testEvent_DEPENDENCIES = $(top_builddir)/lib/libmiscutil.a \
-	@REPL_OBJS@ \
-	@SQUID_CPPUNIT_LA@
+	$(REPL_OBJS) \
+	$(SQUID_CPPUNIT_LA)
 
 tests_testEventLoop_SOURCES = \
 	debug.cc \
@@ -2578,21 +2606,21 @@ nodist_tests_testEventLoop_SOURCES = \
 tests_testEventLoop_LDADD = \
 	$(COMMON_LIBS) \
 	icmp/libicmp.la icmp/libicmp-core.la \
-	@REPL_OBJS@ \
+	$(REPL_OBJS) \
 	${ADAPTATION_LIBS} \
-	${ESI_LIBS} \
-	@REGEXLIB@ \
-	@SNMPLIB@ \
+	$(ESI_LIBS) \
+	$(REGEXLIB) \
+	$(SNMPLIB) \
 	-L../lib -lmiscutil \
-	@SQUID_CPPUNIT_LIBS@ \
-	@SQUID_CPPUNIT_LA@ \
-	@SSLLIB@ \
-	@XTRA_LIBS@
+	$(SQUID_CPPUNIT_LIBS) \
+	$(SQUID_CPPUNIT_LA) \
+	$(SSLLIB) \
+	$(XTRA_LIBS)
 
 tests_testEventLoop_LDFLAGS = $(LIBADD_DL)
 tests_testEventLoop_DEPENDENCIES = $(top_builddir)/lib/libmiscutil.a \
-	@REPL_OBJS@ \
-	@SQUID_CPPUNIT_LA@
+	$(REPL_OBJS) \
+	$(SQUID_CPPUNIT_LA)
 
 tests_test_http_range_SOURCES = \
 	tests/test_http_range.cc \
@@ -2724,20 +2752,20 @@ nodist_tests_test_http_range_SOURCES = \
 tests_test_http_range_LDADD = \
 	$(COMMON_LIBS) \
 	icmp/libicmp.la icmp/libicmp-core.la \
-	@REPL_OBJS@ \
+	$(REPL_OBJS) \
 	${ADAPTATION_LIBS} \
-	${ESI_LIBS} \
-	@REGEXLIB@ \
-	@SNMPLIB@ \
+	$(ESI_LIBS) \
+	$(REGEXLIB) \
+	$(SNMPLIB) \
 	-L../lib -lmiscutil \
-	@SQUID_CPPUNIT_LIBS@ \
-	@SQUID_CPPUNIT_LA@ \
-	@SSLLIB@ \
-	@XTRA_LIBS@
+	$(SQUID_CPPUNIT_LIBS) \
+	$(SQUID_CPPUNIT_LA) \
+	$(SSLLIB) \
+	$(XTRA_LIBS)
 
 tests_test_http_range_LDFLAGS = $(LIBADD_DL)
 tests_test_http_range_DEPENDENCIES = \
-	@SQUID_CPPUNIT_LA@
+	$(SQUID_CPPUNIT_LA)
 
 tests_testHttpRequest_SOURCES = \
 	debug.cc \
@@ -2873,21 +2901,21 @@ nodist_tests_testHttpRequest_SOURCES = \
 tests_testHttpRequest_LDADD = \
 	$(COMMON_LIBS) \
 	icmp/libicmp.la icmp/libicmp-core.la \
-	@REPL_OBJS@ \
+	$(REPL_OBJS) \
 	${ADAPTATION_LIBS} \
-	${ESI_LIBS} \
-	@REGEXLIB@ \
-	@SNMPLIB@ \
+	$(ESI_LIBS) \
+	$(REGEXLIB) \
+	$(SNMPLIB) \
 	-L../lib -lmiscutil \
-	@SQUID_CPPUNIT_LIBS@ \
-	@SQUID_CPPUNIT_LA@ \
-	@SSLLIB@ \
-	@XTRA_LIBS@
+	$(SQUID_CPPUNIT_LIBS) \
+	$(SQUID_CPPUNIT_LA) \
+	$(SSLLIB) \
+	$(XTRA_LIBS)
 
 tests_testHttpRequest_LDFLAGS = $(LIBADD_DL)
 tests_testHttpRequest_DEPENDENCIES = $(top_builddir)/lib/libmiscutil.a \
-	@REPL_OBJS@ \
-	@SQUID_CPPUNIT_LA@
+	$(REPL_OBJS) \
+	$(SQUID_CPPUNIT_LA)
 
 
 # TODO:mime.cc drags in HttpReply.cc
@@ -2960,13 +2988,14 @@ nodist_tests_testStore_SOURCES = \
 tests_testStore_LDADD = \
 	$(COMMON_LIBS) \
 	-L../lib -lmiscutil \
-	@REGEXLIB@ \
-	@SQUID_CPPUNIT_LIBS@ \
-	@SSLLIB@
+	$(REGEXLIB) \
+	$(SQUID_CPPUNIT_LIBS) \
+	$(SSLLIB) \
+	$(XTRA_LIBS)
 
 tests_testStore_LDFLAGS = $(LIBADD_DL)
 tests_testStore_DEPENDENCIES = $(top_builddir)/lib/libmiscutil.a \
-	@SQUID_CPPUNIT_LA@
+	$(SQUID_CPPUNIT_LA)
 
 tests_testString_SOURCES = \
 	ClientInfo.h \
@@ -2984,13 +3013,14 @@ nodist_tests_testString_SOURCES = \
 tests_testString_LDADD = \
 	$(COMMON_LIBS) \
 	-L../lib -lmiscutil \
-	@REGEXLIB@ \
-	@SQUID_CPPUNIT_LIBS@ \
-	@SSLLIB@
+	$(REGEXLIB) \
+	$(SQUID_CPPUNIT_LIBS) \
+	$(SSLLIB) \
+	$(XTRA_LIBS)
 
 tests_testString_LDFLAGS = $(LIBADD_DL)
 tests_testString_DEPENDENCIES = $(top_builddir)/lib/libmiscutil.a \
-	@SQUID_CPPUNIT_LA@
+	$(SQUID_CPPUNIT_LA)
 
 SWAP_TEST_SOURCES = \
 	tests/stub_internal.cc \
@@ -3028,23 +3058,23 @@ SWAP_TEST_GEN_SOURCES = \
 	$(DISKIO_GEN_SOURCE)
 
 SWAP_TEST_LDADD = \
-	@REGEXLIB@ \
+	$(REGEXLIB) \
 	$(COMMON_LIBS) \
-	@REPL_OBJS@ \
-	@DISK_LIBS@ \
-	@AIOLIB@ \
+	$(REPL_OBJS) \
+	$(DISK_LIBS) \
+	$(DISK_OS_LIBS) \
 	-L../lib -lmiscutil \
 	acl/libapi.la \
-	@SQUID_CPPUNIT_LIBS@
+	$(SQUID_CPPUNIT_LIBS) \
+	$(XTRA_LIBS)
 
 SWAP_TEST_DS = \
 	$(top_builddir)/lib/libmiscutil.a \
 	repl_modules.o \
-	@DISK_LIBS@ \
-	@AIOLIB@ \
+	$(DISK_LIBS) \
 	$(COMMON_LIBS) \
-	@REPL_OBJS@ \
-	@SQUID_CPPUNIT_LA@
+	$(REPL_OBJS) \
+	$(SQUID_CPPUNIT_LA)
 
 tests_testUfs_SOURCES = \
 	tests/testUfs.cc \
@@ -3059,7 +3089,8 @@ nodist_tests_testUfs_SOURCES = \
 tests_testUfs_LDADD = \
 	$(SWAP_TEST_LDADD) \
 	$(COMMON_LIBS) \
-	@SSLLIB@
+	$(SSLLIB) \
+	$(XTRA_LIBS)
 
 tests_testUfs_LDFLAGS = $(LIBADD_DL)
 tests_testUfs_DEPENDENCIES = \
@@ -3078,7 +3109,8 @@ nodist_tests_testCoss_SOURCES = \
 tests_testCoss_LDADD = \
 	libsquid.la \
 	$(SWAP_TEST_LDADD) \
-	@SSLLIB@
+	$(SSLLIB) \
+	$(XTRA_LIBS)
 
 tests_testCoss_LDFLAGS = $(LIBADD_DL)
 tests_testCoss_DEPENDENCIES = \
@@ -3095,7 +3127,8 @@ nodist_tests_testNull_SOURCES = \
 
 tests_testNull_LDADD = \
 	$(SWAP_TEST_LDADD) \
-	@SSLLIB@
+	$(SSLLIB) \
+	$(XTRA_LIBS)
 
 tests_testNull_LDFLAGS = $(LIBADD_DL)
 tests_testNull_DEPENDENCIES = \
@@ -3235,21 +3268,21 @@ nodist_tests_testURL_SOURCES = \
 tests_testURL_LDADD = \
 	$(COMMON_LIBS) \
 	icmp/libicmp.la icmp/libicmp-core.la \
-	@REGEXLIB@ \
-	@REPL_OBJS@ \
+	$(REGEXLIB) \
+	$(REPL_OBJS) \
 	${ADAPTATION_LIBS} \
-	${ESI_LIBS} \
-	@SNMPLIB@ \
+	$(ESI_LIBS) \
+	$(SNMPLIB) \
 	-L../lib -lmiscutil \
-	@SQUID_CPPUNIT_LIBS@ \
-	@SQUID_CPPUNIT_LA@ \
-	@SSLLIB@ \
-	@XTRA_LIBS@
+	$(SQUID_CPPUNIT_LIBS) \
+	$(SQUID_CPPUNIT_LA) \
+	$(SSLLIB) \
+	$(XTRA_LIBS)
 
 tests_testURL_LDFLAGS = $(LIBADD_DL)
 tests_testURL_DEPENDENCIES = $(top_builddir)/lib/libmiscutil.a \
-	@REPL_OBJS@ \
-	@SQUID_CPPUNIT_LA@
+	$(REPL_OBJS) \
+	$(SQUID_CPPUNIT_LA)
 
 all: $(BUILT_SOURCES)
 	$(MAKE) $(AM_MAKEFLAGS) all-recursive
@@ -4473,11 +4506,8 @@ test_cache_digest: test_cache_digest.o CacheDigest.o debug.o globals.o store_key
 cache_cf.o: cf_parser.h
 
 # squid.conf.default is built by cf_gen when making cf_parser.h
-squid.conf.documented: cf_parser.h
+squid.conf.default squid.conf.documented: cf_parser.h
 	true
-
-squid.conf.default: squid.conf.documented
-	$(EGREP) -v "^[#\ ]" squid.conf.documented | $(EGREP) . >squid.conf.default
 
 cf_parser.h: cf.data cf_gen$(EXEEXT)
 	./cf_gen cf.data $(srcdir)/cf.data.depend
@@ -4486,28 +4516,27 @@ cf_gen_defines.h: $(srcdir)/cf_gen_defines $(srcdir)/cf.data.pre
 	$(AWK) -f $(srcdir)/cf_gen_defines <$(srcdir)/cf.data.pre >cf_gen_defines.h
 
 cf.data: cf.data.pre Makefile
-	sed "\
-	s%@DEFAULT_HTTP_PORT@%$(DEFAULT_HTTP_PORT)%g;\
-	s%@DEFAULT_ICP_PORT@%$(DEFAULT_ICP_PORT)%g;\
-	s%@DEFAULT_CACHE_EFFECTIVE_USER@%${CACHE_EFFECTIVE_USER}%g;\
-	s%@DEFAULT_MIME_TABLE@%$(DEFAULT_MIME_TABLE)%g;\
-	s%@DEFAULT_DNSSERVER@%$(DEFAULT_DNSSERVER)%g;\
-	s%@DEFAULT_UNLINKD@%$(DEFAULT_UNLINKD)%g;\
-	s%@DEFAULT_PINGER@%$(DEFAULT_PINGER)%g;\
-	s%@DEFAULT_DISKD@%$(DEFAULT_DISKD)%g;\
-	s%@DEFAULT_CACHE_LOG@%$(DEFAULT_CACHE_LOG)%g;\
-	s%@DEFAULT_ACCESS_LOG@%$(DEFAULT_ACCESS_LOG)%g;\
-	s%@DEFAULT_STORE_LOG@%$(DEFAULT_STORE_LOG)%g;\
-	s%@DEFAULT_PID_FILE@%$(DEFAULT_PID_FILE)%g;\
-	s%@DEFAULT_NETDB_FILE@%$(DEFAULT_NETDB_FILE)%g;\
-	s%@DEFAULT_SWAP_DIR@%$(DEFAULT_SWAP_DIR)%g;\
-	s%@DEFAULT_ICON_DIR@%$(DEFAULT_ICON_DIR)%g;\
-	s%@DEFAULT_MIB_PATH@%$(DEFAULT_MIB_PATH)%g;\
-	s%@DEFAULT_ERROR_DIR@%$(DEFAULT_ERROR_DIR)%g;\
-	s%@DEFAULT_CONFIG_DIR@%$(DEFAULT_CONFIG_DIR)%g;\
-	s%@DEFAULT_PREFIX@%$(DEFAULT_PREFIX)%g;\
-	s%@DEFAULT_HOSTS@%$(DEFAULT_HOSTS)%g;\
-	s%@[V]ERSION@%$(VERSION)%g;"\
+	sed \
+	-e "s%[@]DEFAULT_HTTP_PORT[@]%$(DEFAULT_HTTP_PORT)%g" \
+	-e "s%[@]DEFAULT_ICP_PORT[@]%$(DEFAULT_ICP_PORT)%g" \
+	-e "s%[@]DEFAULT_CACHE_EFFECTIVE_USER[@]%${CACHE_EFFECTIVE_USER}%g" \
+	-e "s%[@]DEFAULT_MIME_TABLE[@]%$(DEFAULT_MIME_TABLE)%g" \
+	-e "s%[@]DEFAULT_DNSSERVER[@]%$(DEFAULT_DNSSERVER)%g" \
+	-e "s%[@]DEFAULT_UNLINKD[@]%$(DEFAULT_UNLINKD)%g" \
+	-e "s%[@]DEFAULT_PINGER[@]%$(DEFAULT_PINGER)%g" \
+	-e "s%[@]DEFAULT_DISKD[@]%$(DEFAULT_DISKD)%g" \
+	-e "s%[@]DEFAULT_CACHE_LOG[@]%$(DEFAULT_CACHE_LOG)%g" \
+	-e "s%[@]DEFAULT_ACCESS_LOG[@]%$(DEFAULT_ACCESS_LOG)%g" \
+	-e "s%[@]DEFAULT_STORE_LOG[@]%$(DEFAULT_STORE_LOG)%g" \
+	-e "s%[@]DEFAULT_PID_FILE[@]%$(DEFAULT_PID_FILE)%g" \
+	-e "s%[@]DEFAULT_NETDB_FILE[@]%$(DEFAULT_NETDB_FILE)%g" \
+	-e "s%[@]DEFAULT_SWAP_DIR[@]%$(DEFAULT_SWAP_DIR)%g" \
+	-e "s%[@]DEFAULT_ICON_DIR[@]%$(DEFAULT_ICON_DIR)%g" \
+	-e "s%[@]DEFAULT_CONFIG_DIR[@]%$(DEFAULT_CONFIG_DIR)%g" \
+	-e "s%[@]DEFAULT_PREFIX[@]%$(DEFAULT_PREFIX)%g" \
+	-e "s%[@]DEFAULT_HOSTS[@]%$(DEFAULT_HOSTS)%g" \
+	-e "s%[@]IPV6_ONLY_SETTING[@]%$(SET_IPV6_SETTINGS)%g" \
+	-e "s%[@]SQUID[@]%SQUID\ $(VERSION)%g" \
 	< $(srcdir)/cf.data.pre >$@
 
 repl_modules.cc: repl_modules.sh Makefile

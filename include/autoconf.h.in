@@ -155,6 +155,9 @@
 /* Define to 1 if you have the <execinfo.h> header file. */
 #undef HAVE_EXECINFO_H
 
+/* Define to 1 if you have the <expat.h> header file. */
+#undef HAVE_EXPAT_H
+
 /* Define to 1 if you have the `fchmod' function. */
 #undef HAVE_FCHMOD
 
@@ -284,17 +287,17 @@
 /* Define to 1 if you have the `kqueue' function. */
 #undef HAVE_KQUEUE
 
-/* Define to 1 if you have the `bind' library (-lbind). */
-#undef HAVE_LIBBIND
-
-/* Define to 1 if you have the `bsd' library (-lbsd). */
-#undef HAVE_LIBBSD
+/* Define to 1 if you have the `cap' library (-lcap). */
+#undef HAVE_LIBCAP
 
 /* Define to 1 if you have the <libc.h> header file. */
 #undef HAVE_LIBC_H
 
 /* Define to 1 if you have the `dl' library (-ldl). */
 #undef HAVE_LIBDL
+
+/* Define to 1 if you have the expat library */
+#undef HAVE_LIBEXPAT
 
 /* Define to 1 if you have the <libgen.h> header file. */
 #undef HAVE_LIBGEN_H
@@ -311,14 +314,14 @@
 /* Define to 1 if you have the `malloc' library (-lmalloc). */
 #undef HAVE_LIBMALLOC
 
-/* Define to 1 if you have the `nsl' library (-lnsl). */
-#undef HAVE_LIBNSL
+/* Define to 1 if you have the libxml2 library */
+#undef HAVE_LIBXML2
 
-/* Define to 1 if you have the `resolv' library (-lresolv). */
-#undef HAVE_LIBRESOLV
+/* Define to 1 if you have the <libxml/HTMLparser.h> header file. */
+#undef HAVE_LIBXML_HTMLPARSER_H
 
-/* Define to 1 if you have the `socket' library (-lsocket). */
-#undef HAVE_LIBSOCKET
+/* Define to 1 if you have the <libxml/HTMLtree.h> header file. */
+#undef HAVE_LIBXML_HTMLTREE_H
 
 /* Define to 1 if you have the <libxml/parser.h> header file. */
 #undef HAVE_LIBXML_PARSER_H
@@ -862,7 +865,7 @@
    with caution. */
 #undef KILL_PARENT_OPT
 
-/* if libcap2 is available and not clashing with libc */
+/* if libcap2 headers are broken and clashing with glibc */
 #undef LIBCAP_BROKEN
 
 /* If libresolv.a has been hacked to export _dns_ttl_ */
@@ -1062,6 +1065,9 @@
 
 /* Enable code for assisting in finding memory leaks. Hacker stuff only. */
 #undef USE_LEAKFINDER
+
+/* use libcap to set capabilities required for TPROXY */
+#undef USE_LIBCAP
 
 /* Support Loadable Modules */
 #undef USE_LOADABLE_MODULES

@@ -53,6 +53,7 @@
 #include "wordlist.h"
 #include "SquidTime.h"
 #include "URLScheme.h"
+#include "rfc1738.h"
 
 /**
  \defgroup ServerProtocolFTPInternal Server-Side FTP Internals
@@ -897,7 +898,7 @@ ftpListParseParts(const char *buf, struct _ftp_flags flags)
         p->type = 0;
 
         while (ct && *ct) {
-            time_t t;
+            time_t tm;
             int l = strcspn(ct, ",");
             char *tmp;
 
@@ -915,12 +916,12 @@ ftpListParseParts(const char *buf, struct _ftp_flags flags)
                 break;
 
             case 'm':
-                t = (time_t) strtol(ct + 1, &tmp, 0);
+                tm = (time_t) strtol(ct + 1, &tmp, 0);
 
                 if (tmp != ct + 1)
                     break;	/* not a valid integer */
 
-                p->date = xstrdup(ctime(&t));
+                p->date = xstrdup(ctime(&tm));
 
                 *(strstr(p->date, "\n")) = '\0';
 
@@ -1299,7 +1300,7 @@ FtpStateData::maybeReadVirginBody()
     if (data.read_pending)
         return;
 
-    int read_sz = replyBodySpace(data.readBuf->spaceSize());
+    const int read_sz = replyBodySpace(*data.readBuf, 0);
 
     debugs(11,9, HERE << "FTP may read up to " << read_sz << " bytes");
 
@@ -3923,10 +3924,10 @@ FtpStateData::printfReplyBody(const char *fmt, ...)
  * which should be sent to either StoreEntry, or to ICAP...
  */
 void
-FtpStateData::writeReplyBody(const char *data, size_t len)
+FtpStateData::writeReplyBody(const char *dataToWrite, size_t dataLength)
 {
-    debugs(9, 5, HERE << "writing " << len << " bytes to the reply");
-    addVirginReplyBody(data, len);
+    debugs(9, 5, HERE << "writing " << dataLength << " bytes to the reply");
+    addVirginReplyBody(dataToWrite, dataLength);
 }
 
 /**

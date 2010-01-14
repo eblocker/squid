@@ -53,8 +53,10 @@ am_testIpAddress_OBJECTS = testIpAddress.$(OBJEXT)
 nodist_testIpAddress_OBJECTS = testMain.$(OBJEXT)
 testIpAddress_OBJECTS = $(am_testIpAddress_OBJECTS) \
 	$(nodist_testIpAddress_OBJECTS)
+am__DEPENDENCIES_1 =
 testIpAddress_DEPENDENCIES = $(top_builddir)/compat/libcompat.la \
-	libip.la
+	libip.la $(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1)
 testIpAddress_LINK = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) \
 	$(LIBTOOLFLAGS) --mode=link $(CXXLD) $(AM_CXXFLAGS) \
 	$(CXXFLAGS) $(testIpAddress_LDFLAGS) $(LDFLAGS) -o $@
@@ -87,7 +89,6 @@ CTAGS = ctags
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
 ACLOCAL = @ACLOCAL@
 ADAPTATION_LIBS = @ADAPTATION_LIBS@
-AIOLIB = @AIOLIB@
 ALLOCA = @ALLOCA@
 AMTAR = @AMTAR@
 AR = @AR@
@@ -106,6 +107,7 @@ CC = @CC@
 CCDEPMODE = @CCDEPMODE@
 CFLAGS = @CFLAGS@
 CGIEXT = @CGIEXT@
+CHMOD = @CHMOD@
 CPP = @CPP@
 CPPFLAGS = @CPPFLAGS@
 CPPUNITCONFIG = @CPPUNITCONFIG@
@@ -123,6 +125,7 @@ DIGEST_AUTH_HELPERS = @DIGEST_AUTH_HELPERS@
 DISK_LIBS = @DISK_LIBS@
 DISK_LINKOBJS = @DISK_LINKOBJS@
 DISK_MODULES = @DISK_MODULES@
+DISK_OS_LIBS = @DISK_OS_LIBS@
 DISK_PROGRAMS = @DISK_PROGRAMS@
 DSYMUTIL = @DSYMUTIL@
 ECAPLIB = @ECAPLIB@
@@ -134,6 +137,7 @@ ECHO_T = @ECHO_T@
 EGREP = @EGREP@
 EPOLL_LIBS = @EPOLL_LIBS@
 EXEEXT = @EXEEXT@
+EXPATLIB = @EXPATLIB@
 EXTERNAL_ACL_HELPERS = @EXTERNAL_ACL_HELPERS@
 F77 = @F77@
 FALSE = @FALSE@
@@ -186,6 +190,7 @@ REPL_OBJS = @REPL_OBJS@
 REPL_POLICIES = @REPL_POLICIES@
 RM = @RM@
 SED = @SED@
+SET_IPV6_SETTINGS = @SET_IPV6_SETTINGS@
 SET_MAKE = @SET_MAKE@
 SH = @SH@
 SHELL = @SHELL@
@@ -203,6 +208,7 @@ STRIP = @STRIP@
 TRUE = @TRUE@
 VERSION = @VERSION@
 WIN32_PSAPI = @WIN32_PSAPI@
+XMLLIB = @XMLLIB@
 XTRA_LIBS = @XTRA_LIBS@
 XTRA_OBJS = @XTRA_OBJS@
 abs_builddir = @abs_builddir@
@@ -259,15 +265,15 @@ target_alias = @target_alias@
 top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
-AM_CFLAGS = @SQUID_CFLAGS@
-AM_CXXFLAGS = @SQUID_CXXFLAGS@
+AM_CFLAGS = $(SQUID_CFLAGS)
+AM_CXXFLAGS = $(SQUID_CXXFLAGS)
 CLEANFILES = testHeaders
 INCLUDES = \
 	-I$(top_srcdir) \
 	-I$(top_srcdir)/include \
 	-I$(top_srcdir)/src \
 	-I$(top_builddir)/include \
-	@SQUID_CPPUNIT_INC@
+	$(SQUID_CPPUNIT_INC)
 
 noinst_LTLIBRARIES = libip.la
 libip_la_SOURCES = \
@@ -289,8 +295,9 @@ testIpAddress_LDADD = \
 	$(top_builddir)/compat/libcompat.la \
 	libip.la \
 	-L$(top_builddir)/lib -lmiscutil \
-	@SQUID_CPPUNIT_LA@ \
-	@SQUID_CPPUNIT_LIBS@
+	$(XTRA_LIBS) \
+	$(SQUID_CPPUNIT_LA) \
+	$(SQUID_CPPUNIT_LIBS)
 
 testIpAddress_LDFLAGS = $(LIBADD_DL)
 all: all-am

@@ -55,6 +55,7 @@ libcoss_la_OBJECTS = $(am_libcoss_la_OBJECTS)
 libdiskd_la_LIBADD =
 am_libdiskd_la_OBJECTS = StoreFSdiskd.lo
 libdiskd_la_OBJECTS = $(am_libdiskd_la_OBJECTS)
+am__DEPENDENCIES_1 =
 am_libfs_la_OBJECTS = Module.lo
 libfs_la_OBJECTS = $(am_libfs_la_OBJECTS)
 libufs_la_LIBADD =
@@ -93,7 +94,6 @@ CTAGS = ctags
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
 ACLOCAL = @ACLOCAL@
 ADAPTATION_LIBS = @ADAPTATION_LIBS@
-AIOLIB = @AIOLIB@
 ALLOCA = @ALLOCA@
 AMTAR = @AMTAR@
 AR = @AR@
@@ -112,6 +112,7 @@ CC = @CC@
 CCDEPMODE = @CCDEPMODE@
 CFLAGS = @CFLAGS@
 CGIEXT = @CGIEXT@
+CHMOD = @CHMOD@
 CPP = @CPP@
 CPPFLAGS = @CPPFLAGS@
 CPPUNITCONFIG = @CPPUNITCONFIG@
@@ -129,6 +130,7 @@ DIGEST_AUTH_HELPERS = @DIGEST_AUTH_HELPERS@
 DISK_LIBS = @DISK_LIBS@
 DISK_LINKOBJS = @DISK_LINKOBJS@
 DISK_MODULES = @DISK_MODULES@
+DISK_OS_LIBS = @DISK_OS_LIBS@
 DISK_PROGRAMS = @DISK_PROGRAMS@
 DSYMUTIL = @DSYMUTIL@
 ECAPLIB = @ECAPLIB@
@@ -140,6 +142,7 @@ ECHO_T = @ECHO_T@
 EGREP = @EGREP@
 EPOLL_LIBS = @EPOLL_LIBS@
 EXEEXT = @EXEEXT@
+EXPATLIB = @EXPATLIB@
 EXTERNAL_ACL_HELPERS = @EXTERNAL_ACL_HELPERS@
 F77 = @F77@
 FALSE = @FALSE@
@@ -192,6 +195,7 @@ REPL_OBJS = @REPL_OBJS@
 REPL_POLICIES = @REPL_POLICIES@
 RM = @RM@
 SED = @SED@
+SET_IPV6_SETTINGS = @SET_IPV6_SETTINGS@
 SET_MAKE = @SET_MAKE@
 SH = @SH@
 SHELL = @SHELL@
@@ -209,6 +213,7 @@ STRIP = @STRIP@
 TRUE = @TRUE@
 VERSION = @VERSION@
 WIN32_PSAPI = @WIN32_PSAPI@
+XMLLIB = @XMLLIB@
 XTRA_LIBS = @XTRA_LIBS@
 XTRA_OBJS = @XTRA_OBJS@
 abs_builddir = @abs_builddir@
@@ -265,14 +270,14 @@ target_alias = @target_alias@
 top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
-AM_CFLAGS = @SQUID_CFLAGS@
-AM_CXXFLAGS = @SQUID_CXXFLAGS@
+AM_CFLAGS = $(SQUID_CFLAGS)
+AM_CXXFLAGS = $(SQUID_CXXFLAGS)
 CLEANFILES = testHeaders
 TESTS = testHeaders
 INCLUDES = -I$(top_srcdir) -I$(top_srcdir)/include -I$(top_srcdir)/src \
-	-I$(top_builddir)/include @SQUID_CPPUNIT_INC@ -I$(srcdir)
+	-I$(top_builddir)/include $(SQUID_CPPUNIT_INC) -I$(srcdir)
 EXTRA_LTLIBRARIES = libaufs.la libdiskd.la libcoss.la libufs.la
-noinst_LTLIBRARIES = @STORE_LIBS_TO_BUILD@ libfs.la
+noinst_LTLIBRARIES = $(STORE_LIBS_TO_BUILD) libfs.la
 
 # aufs is a "fake" legacy store
 libaufs_la_SOURCES = \
@@ -301,8 +306,8 @@ libufs_la_SOURCES = \
 	ufs/ufscommon.h 
 
 libfs_la_SOURCES = Module.cc Module.h
-libfs_la_LIBADD = @STORE_LIBS_TO_BUILD@
-libfs_la_DEPENDENCIES = @STORE_LIBS_TO_BUILD@
+libfs_la_LIBADD = $(STORE_LIBS_TO_BUILD)
+libfs_la_DEPENDENCIES = $(STORE_LIBS_TO_BUILD)
 EXTRA_DIST = \
 	coss/coss-notes.txt
 

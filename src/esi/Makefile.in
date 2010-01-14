@@ -35,6 +35,14 @@ host_triplet = @host@
 DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in \
 	$(top_srcdir)/src/Common.am $(top_srcdir)/src/TestHeaders.am
 check_PROGRAMS =
+@HAVE_LIBEXPAT_TRUE@am__append_1 = \
+@HAVE_LIBEXPAT_TRUE@	ExpatParser.cc \
+@HAVE_LIBEXPAT_TRUE@	ExpatParser.h
+
+@HAVE_LIBXML2_TRUE@am__append_2 = \
+@HAVE_LIBXML2_TRUE@	Libxml2Parser.cc \
+@HAVE_LIBXML2_TRUE@	Libxml2Parser.h
+
 subdir = src/esi
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/acinclude.m4 \
@@ -46,9 +54,19 @@ CONFIG_HEADER = $(top_builddir)/include/autoconf.h
 CONFIG_CLEAN_FILES =
 LTLIBRARIES = $(noinst_LTLIBRARIES)
 libesi_la_LIBADD =
-am_libesi_la_OBJECTS = Assign.lo Context.lo CustomParser.lo Esi.lo \
-	ExpatParser.lo Expression.lo Include.lo Libxml2Parser.lo \
-	Module.lo Parser.lo Segment.lo Sequence.lo VarState.lo
+am__libesi_la_SOURCES_DIST = Assign.cc Assign.h Attempt.h Context.cc \
+	Context.h CustomParser.cc CustomParser.h ExpatParser.cc \
+	ExpatParser.h Libxml2Parser.cc Libxml2Parser.h Element.h \
+	ElementList.h Esi.cc Esi.h Except.h Expression.cc Expression.h \
+	Include.cc Include.h Literal.h Module.cc Module.h Parser.cc \
+	Parser.h Segment.cc Segment.h Sequence.cc Sequence.h Var.h \
+	VarState.cc VarState.h
+@HAVE_LIBEXPAT_TRUE@am__objects_1 = ExpatParser.lo
+@HAVE_LIBXML2_TRUE@am__objects_2 = Libxml2Parser.lo
+am__objects_3 = CustomParser.lo $(am__objects_1) $(am__objects_2)
+am_libesi_la_OBJECTS = Assign.lo Context.lo $(am__objects_3) Esi.lo \
+	Expression.lo Include.lo Module.lo Parser.lo Segment.lo \
+	Sequence.lo VarState.lo
 libesi_la_OBJECTS = $(am_libesi_la_OBJECTS)
 DEFAULT_INCLUDES = 
 depcomp = $(SHELL) $(top_srcdir)/cfgaux/depcomp
@@ -72,13 +90,12 @@ LINK = $(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
 	--mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) $(AM_LDFLAGS) \
 	$(LDFLAGS) -o $@
 SOURCES = $(libesi_la_SOURCES)
-DIST_SOURCES = $(libesi_la_SOURCES)
+DIST_SOURCES = $(am__libesi_la_SOURCES_DIST)
 ETAGS = etags
 CTAGS = ctags
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
 ACLOCAL = @ACLOCAL@
 ADAPTATION_LIBS = @ADAPTATION_LIBS@
-AIOLIB = @AIOLIB@
 ALLOCA = @ALLOCA@
 AMTAR = @AMTAR@
 AR = @AR@
@@ -97,6 +114,7 @@ CC = @CC@
 CCDEPMODE = @CCDEPMODE@
 CFLAGS = @CFLAGS@
 CGIEXT = @CGIEXT@
+CHMOD = @CHMOD@
 CPP = @CPP@
 CPPFLAGS = @CPPFLAGS@
 CPPUNITCONFIG = @CPPUNITCONFIG@
@@ -114,6 +132,7 @@ DIGEST_AUTH_HELPERS = @DIGEST_AUTH_HELPERS@
 DISK_LIBS = @DISK_LIBS@
 DISK_LINKOBJS = @DISK_LINKOBJS@
 DISK_MODULES = @DISK_MODULES@
+DISK_OS_LIBS = @DISK_OS_LIBS@
 DISK_PROGRAMS = @DISK_PROGRAMS@
 DSYMUTIL = @DSYMUTIL@
 ECAPLIB = @ECAPLIB@
@@ -125,6 +144,7 @@ ECHO_T = @ECHO_T@
 EGREP = @EGREP@
 EPOLL_LIBS = @EPOLL_LIBS@
 EXEEXT = @EXEEXT@
+EXPATLIB = @EXPATLIB@
 EXTERNAL_ACL_HELPERS = @EXTERNAL_ACL_HELPERS@
 F77 = @F77@
 FALSE = @FALSE@
@@ -177,6 +197,7 @@ REPL_OBJS = @REPL_OBJS@
 REPL_POLICIES = @REPL_POLICIES@
 RM = @RM@
 SED = @SED@
+SET_IPV6_SETTINGS = @SET_IPV6_SETTINGS@
 SET_MAKE = @SET_MAKE@
 SH = @SH@
 SHELL = @SHELL@
@@ -194,6 +215,7 @@ STRIP = @STRIP@
 TRUE = @TRUE@
 VERSION = @VERSION@
 WIN32_PSAPI = @WIN32_PSAPI@
+XMLLIB = @XMLLIB@
 XTRA_LIBS = @XTRA_LIBS@
 XTRA_OBJS = @XTRA_OBJS@
 abs_builddir = @abs_builddir@
@@ -250,37 +272,34 @@ target_alias = @target_alias@
 top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
-AM_CFLAGS = @SQUID_CFLAGS@
-AM_CXXFLAGS = @SQUID_CXXFLAGS@
+AM_CFLAGS = $(SQUID_CFLAGS)
+AM_CXXFLAGS = $(SQUID_CXXFLAGS)
 CLEANFILES = testHeaders
 TESTS = testHeaders
 INCLUDES = -I$(top_srcdir) -I$(top_srcdir)/include -I$(top_srcdir)/src \
-	-I$(top_builddir)/include @SQUID_CPPUNIT_INC@ \
+	-I$(top_builddir)/include $(SQUID_CPPUNIT_INC) \
 	-I$(top_srcdir)/lib/libTrie/include \
 	-I$(top_builddir)/lib/libTrie/include
 noinst_LTLIBRARIES = libesi.la
+ESI_PARSER_SOURCES = CustomParser.cc CustomParser.h $(am__append_1) \
+	$(am__append_2)
 libesi_la_SOURCES = \
 	Assign.cc \
 	Assign.h \
 	Attempt.h \
 	Context.cc \
 	Context.h \
-	CustomParser.cc \
-	CustomParser.h \
+	$(ESI_PARSER_SOURCES) \
 	Element.h \
 	ElementList.h \
 	Esi.cc \
 	Esi.h \
 	Except.h \
-	ExpatParser.cc \
-	ExpatParser.h \
 	Expression.cc \
 	Expression.h \
 	Include.cc \
 	Include.h \
 	Literal.h \
-	Libxml2Parser.cc \
-	Libxml2Parser.h \
 	Module.cc \
 	Module.h \
 	Parser.cc \

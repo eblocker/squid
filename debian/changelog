@@ -1,6 +1,4 @@
-squid3 (3.0.STABLE8-3+lenny2) UNRELEASED; urgency=low
-
-  * NOT RELEASED YET
+squid3 (3.0.STABLE8-3+lenny2) stable-proposed-updates; urgency=high
 
   * debian/patches/13-http_assert_eof
     - Fix regression in latest security patch (Closes: #539160)

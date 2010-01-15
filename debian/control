@@ -8,8 +8,6 @@ Build-Depends: libldap2-dev, libpam0g-dev, libdb-dev, dpatch (>= 2.0.9), cdbs, l
 
 Package: squid3
 Architecture: any
-Section: web
-Priority: optional
 Depends: ${shlibs:Depends}, ${misc:Depends}, netbase, adduser, logrotate (>= 3.5.4-1), squid3-common (= ${source:Version}), lsb-base
 Suggests: squidclient, squid3-cgi, resolvconf (>= 0.40), smbclient
 Description: A full featured Web Proxy cache (HTTP proxy)
@@ -35,8 +33,6 @@ Description: A full featured Web Proxy cache (HTTP proxy) - Debug symbols
 
 Package: squid3-common
 Architecture: all
-Section: web
-Priority: optional
 Depends: ${misc:Depends}, squid-langpack
 Description: A full featured Web Proxy cache (HTTP proxy) - common files
  Squid is a high-performance proxy caching server for web clients, supporting
@@ -49,8 +45,6 @@ Description: A full featured Web Proxy cache (HTTP proxy) - common files
 
 Package: squidclient
 Architecture: any
-Section: web
-Priority: optional
 Depends: ${shlibs:Depends}, ${misc:Depends}
 Provides: squid3-client
 Conflicts: squid3-client
@@ -67,8 +61,6 @@ Description: A full featured Web Proxy cache (HTTP proxy) - control utility
 
 Package: squid3-cgi
 Architecture: any
-Section: web
-Priority: optional
 Depends: apache2 | httpd, ${shlibs:Depends}, ${misc:Depends}
 Description: A full featured Web Proxy cache (HTTP proxy) - control CGI
  Squid is a high-performance proxy caching server for web clients, supporting

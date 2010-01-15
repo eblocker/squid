@@ -10,6 +10,9 @@ squid3 (3.1.0.15-1) UNRELEASED; urgency=low
   * debian/README.source
     - Added directions on source handling
 
+  * debian/control
+    - Remove duplicated informations that can be inherited from source stanza
+
  -- Luigi Gangitano <luigi@debian.org>  Thu, 14 Jan 2010 22:44:13 +0100
 
 squid3 (3.1.0.14-2) experimental; urgency=low

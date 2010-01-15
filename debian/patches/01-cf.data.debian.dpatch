@@ -6,8 +6,8 @@
 
 @DPATCH@
 diff -urNad experimental~/src/cf.data.pre experimental/src/cf.data.pre
---- experimental~/src/cf.data.pre	2009-09-29 17:30:51.000000000 +0200
-+++ experimental/src/cf.data.pre	2009-09-29 18:57:10.000000000 +0200
+--- experimental~/src/cf.data.pre	2010-01-14 22:43:25.000000000 +0100
++++ experimental/src/cf.data.pre	2010-01-15 00:06:47.000000000 +0100
 @@ -122,7 +122,7 @@
  	If you want to use the traditional NCSA proxy authentication, set
  	this line to something like
@@ -44,27 +44,24 @@ diff -urNad experimental~/src/cf.data.pre experimental/src/cf.data.pre
  
  	"children" numberofchildren
  	The number of authenticator processes to spawn (no default).
-@@ -688,14 +688,16 @@
- #Recommended minimum configuration:
- acl manager proto cache_object
- acl localhost src 127.0.0.1/32
-+acl localhost src ::1
- acl to_localhost dst 127.0.0.0/8 0.0.0.0/32
-+acl to_localhost dst ::1
- #
+@@ -701,11 +701,11 @@
  # Example rule allowing access from your local networks.
  # Adapt to list your (internal) IP networks from where browsing
  # should be allowed
 -acl localnet src 10.0.0.0/8	# RFC1918 possible internal network
 -acl localnet src 172.16.0.0/12	# RFC1918 possible internal network
 -acl localnet src 192.168.0.0/16	# RFC1918 possible internal network
+-@IPV6_ONLY_SETTING@acl localnet src fc00::/7   # RFC 4193 local private network range
+-@IPV6_ONLY_SETTING@acl localnet src fe80::/10  # RFC 4291 link-local (directly plugged) machines
 +#acl localnet src 10.0.0.0/8	# RFC1918 possible internal network
 +#acl localnet src 172.16.0.0/12	# RFC1918 possible internal network
 +#acl localnet src 192.168.0.0/16	# RFC1918 possible internal network
- #
++@IPV6_ONLY_SETTING@#acl localnet src fc00::/7   # RFC 4193 local private network range
++@IPV6_ONLY_SETTING@#acl localnet src fe80::/10  # RFC 4291 link-local (directly plugged) machines
+ 
  acl SSL_ports port 443
  acl Safe_ports port 80		# http
-@@ -848,7 +850,7 @@
+@@ -864,7 +864,7 @@
  # Example rule allowing access from your local networks.
  # Adapt localnet in the ACL section to list your (internal) IP networks
  # from where browsing should be allowed
@@ -73,7 +70,7 @@ diff -urNad experimental~/src/cf.data.pre experimental/src/cf.data.pre
  http_access allow localhost
  
  # And finally deny all other access to this proxy
-@@ -2665,7 +2667,7 @@
+@@ -2681,7 +2681,7 @@
  
  NAME: logfile_rotate
  TYPE: int
@@ -82,7 +79,7 @@ diff -urNad experimental~/src/cf.data.pre experimental/src/cf.data.pre
  LOC: Config.Log.rotateNumber
  DOC_START
  	Specifies the number of logfile rotations to make when you
-@@ -2684,6 +2686,9 @@
+@@ -2700,6 +2700,9 @@
  
  	Note, from Squid-3.1 this option has no effect on the cache.log,
  	that log can be rotated separately by using debug_options
@@ -92,7 +89,7 @@ diff -urNad experimental~/src/cf.data.pre experimental/src/cf.data.pre
  DOC_END
  
  NAME: emulate_httpd_log
-@@ -4027,7 +4032,7 @@
+@@ -4045,7 +4048,7 @@
  NAME: visible_hostname
  TYPE: string
  LOC: Config.visibleHostname

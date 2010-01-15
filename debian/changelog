@@ -1,6 +1,8 @@
 squid3 (3.1.0.15-1) UNRELEASED; urgency=low
 
   * New upstream release
+    - Fixes assertion failures on malformed Content-Range response headers
+      (Closes: #541032)
 
   * debian/README.Debian
     - Fixed reference to RELEASENOTES.html (Closes: #561007)

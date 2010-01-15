@@ -1,4 +1,4 @@
-squid3 (3.1.0.15-1) UNRELEASED; urgency=low
+squid3 (3.1.0.15-1) experimental; urgency=low
 
   * New upstream release
     - Fixes assertion failures on malformed Content-Range response headers

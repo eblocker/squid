@@ -20,7 +20,7 @@ squid3 (3.0.STABLE8-3+lenny1) stable-security; urgency=high
   * Non-maintainer upload by the Security Team.
   * Fix multiple possible denial of service vectors in the processing of
     requests or responses
-    (SQUID-2009-2; CVE: TBA; 12-SQUID-2009_2.dpatch).
+    (SQUID-2009-2; CVE: CVE-2009-2621, CVE-2009-2622 ; 12-SQUID-2009_2.dpatch).
 
  -- Nico Golde <nion@debian.org>  Tue, 28 Jul 2009 11:26:45 +0000
 
@@ -30,7 +30,7 @@ squid3 (3.0.STABLE8-3) unstable; urgency=high
 
   * debian/patches/11-SQUID-2009-1
     - Added upstream patch fixing Denial of Service in request processing
-      (Ref: SQUID-2009-1, CVE: TBA)
+      (Ref: SQUID-2009-1, CVE: CVE-2009-0478)
 
  -- Luigi Gangitano <luigi@debian.org>  Fri, 06 Feb 2009 20:23:57 +0100
 

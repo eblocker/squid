@@ -1,6 +1,4 @@
-squid3 (3.0.STABLE8-3+lenny3) UNRELEASED; urgency=low
-
-  * NOT RELEASED YET
+squid3 (3.0.STABLE8-3+lenny3) stable-security; urgency=low
 
   * debian/patches/14-CVE-2009-2855
     - Fix DoS with separators different than commas in auth headers

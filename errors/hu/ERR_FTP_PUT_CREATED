@@ -1,1 +1,31 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd"> <html><head> <meta http-equiv="Content-Type" content="text/html; charset=utf-8"> <title>FTP PUT sikeresen megtörtént: az állományt létrehoztuk</title> <style type="text/css"><!--   %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  --></style> </head><body> <div id="titles"> <h1 id="ftpsuccess">Művelet sikeresen végrehajtva</h1> <h2>Az állományt létrehoztuk</h2> </div> <hr>  <br>  <hr> <div id="footer"> <p>Generated %T by %h (%s)</p> <!-- %c --> </div> </body></html> 
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+"http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta name="generator" content=
+"HTML Tidy for FreeBSD (vers 7 December 2008), see www.w3.org">
+<meta http-equiv="Content-Type" content=
+"text/html; charset=us-ascii">
+<title>FTP PUT sikeresen megt&Atilde;&para;rt&Atilde;&copy;nt: az
+&Atilde;&iexcl;llom&Atilde;&iexcl;nyt
+l&Atilde;&copy;trehoztuk</title>
+
+<style type="text/css">
+<!--   %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  -->
+</style>
+</head>
+<body>
+<div id="titles">
+<h1 id="ftpsuccess">M&Aring;&plusmn;velet sikeresen
+v&Atilde;&copy;grehajtva</h1>
+<h2>Az &Atilde;&iexcl;llom&Atilde;&iexcl;nyt
+l&Atilde;&copy;trehoztuk</h2>
+</div>
+<hr>
+<br>
+<hr>
+<div id="footer">
+<p>Generated %T by %h (%s)</p>
+<!-- %c --></div>
+</body>
+</html>

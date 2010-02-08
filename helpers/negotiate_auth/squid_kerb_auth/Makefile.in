@@ -57,31 +57,14 @@ am_negotiate_kerb_auth_test_OBJECTS =
 negotiate_kerb_auth_test_OBJECTS =  \
 	$(am_negotiate_kerb_auth_test_OBJECTS)
 negotiate_kerb_auth_test_LDADD = $(LDADD)
-am__squid_kerb_auth_SOURCES_DIST = squid_kerb_auth.c base64.c base64.h \
-	spnegohelp/derparse.c spnegohelp/derparse.h \
-	spnegohelp/spnego.c spnegohelp/spnego.h \
-	spnegohelp/spnegohelp.c spnegohelp/spnegohelp.h \
-	spnegohelp/spnegoparse.c spnegohelp/spnegoparse.h \
-	squid_compat.h
-am__objects_1 = derparse.$(OBJEXT) spnego.$(OBJEXT) \
-	spnegohelp.$(OBJEXT) spnegoparse.$(OBJEXT)
-@HAVE_SPNEGO_FALSE@am_squid_kerb_auth_OBJECTS =  \
-@HAVE_SPNEGO_FALSE@	squid_kerb_auth.$(OBJEXT) base64.$(OBJEXT) \
-@HAVE_SPNEGO_FALSE@	$(am__objects_1)
-@HAVE_SPNEGO_TRUE@am_squid_kerb_auth_OBJECTS =  \
-@HAVE_SPNEGO_TRUE@	squid_kerb_auth.$(OBJEXT) base64.$(OBJEXT)
+am_squid_kerb_auth_OBJECTS = squid_kerb_auth.$(OBJEXT) \
+	base64.$(OBJEXT)
 squid_kerb_auth_OBJECTS = $(am_squid_kerb_auth_OBJECTS)
 squid_kerb_auth_DEPENDENCIES =
 squid_kerb_auth_LINK = $(CCLD) $(AM_CFLAGS) $(CFLAGS) \
 	$(squid_kerb_auth_LDFLAGS) $(LDFLAGS) -o $@
-am__squid_kerb_auth_test_SOURCES_DIST = squid_kerb_auth_test.c \
-	base64.c base64.h squid_compat.h
-@HAVE_SPNEGO_FALSE@am_squid_kerb_auth_test_OBJECTS =  \
-@HAVE_SPNEGO_FALSE@	squid_kerb_auth_test.$(OBJEXT) \
-@HAVE_SPNEGO_FALSE@	base64.$(OBJEXT)
-@HAVE_SPNEGO_TRUE@am_squid_kerb_auth_test_OBJECTS =  \
-@HAVE_SPNEGO_TRUE@	squid_kerb_auth_test.$(OBJEXT) \
-@HAVE_SPNEGO_TRUE@	base64.$(OBJEXT)
+am_squid_kerb_auth_test_OBJECTS = squid_kerb_auth_test.$(OBJEXT) \
+	base64.$(OBJEXT)
 squid_kerb_auth_test_OBJECTS = $(am_squid_kerb_auth_test_OBJECTS)
 squid_kerb_auth_test_DEPENDENCIES =
 squid_kerb_auth_test_LINK = $(CCLD) $(AM_CFLAGS) $(CFLAGS) \
@@ -97,9 +80,8 @@ SOURCES = $(negotiate_kerb_auth_SOURCES) \
 	$(negotiate_kerb_auth_test_SOURCES) $(squid_kerb_auth_SOURCES) \
 	$(squid_kerb_auth_test_SOURCES)
 DIST_SOURCES = $(negotiate_kerb_auth_SOURCES) \
-	$(negotiate_kerb_auth_test_SOURCES) \
-	$(am__squid_kerb_auth_SOURCES_DIST) \
-	$(am__squid_kerb_auth_test_SOURCES_DIST)
+	$(negotiate_kerb_auth_test_SOURCES) $(squid_kerb_auth_SOURCES) \
+	$(squid_kerb_auth_test_SOURCES)
 RECURSIVE_TARGETS = all-recursive check-recursive dvi-recursive \
 	html-recursive info-recursive install-data-recursive \
 	install-dvi-recursive install-exec-recursive \
@@ -212,21 +194,8 @@ top_srcdir = @top_srcdir@
 EXTRA_DIST = configure README NEWS ChangeLog AUTHORS INSTALL \
 	$(SPNEGO_SOURCE)
 SUBDIRS = 
-SPNEGO_SOURCE = \
-	spnegohelp/derparse.c \
-	spnegohelp/derparse.h \
-	spnegohelp/spnego.c \
-	spnegohelp/spnego.h \
-	spnegohelp/spnegohelp.c \
-	spnegohelp/spnegohelp.h \
-	spnegohelp/spnegoparse.c \
-	spnegohelp/spnegoparse.h
-
-@HAVE_SPNEGO_FALSE@squid_kerb_auth_SOURCES = squid_kerb_auth.c base64.c base64.h $(SPNEGO_SOURCE) squid_compat.h
-@HAVE_SPNEGO_TRUE@squid_kerb_auth_SOURCES = squid_kerb_auth.c base64.c base64.h squid_compat.h
-@HAVE_SPNEGO_FALSE@squid_kerb_auth_test_SOURCES = squid_kerb_auth_test.c base64.c base64.h squid_compat.h
-@HAVE_SPNEGO_TRUE@squid_kerb_auth_test_SOURCES = squid_kerb_auth_test.c base64.c base64.h squid_compat.h
-@HAVE_SPNEGO_FALSE@INCLUDES = -Ispnegohelp 
+squid_kerb_auth_SOURCES = squid_kerb_auth.c base64.c base64.h squid_compat.h
+squid_kerb_auth_test_SOURCES = squid_kerb_auth_test.c base64.c base64.h squid_compat.h
 squid_kerb_auth_LDFLAGS = 
 squid_kerb_auth_LDADD = 
 squid_kerb_auth_test_LDFLAGS = 
@@ -325,10 +294,6 @@ distclean-compile:
 	-rm -f *.tab.c
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/base64.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/derparse.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/spnego.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/spnegohelp.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/spnegoparse.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/squid_kerb_auth.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/squid_kerb_auth_test.Po@am__quote@
 
@@ -345,62 +310,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='$<' object='$@' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(COMPILE) -c `$(CYGPATH_W) '$<'`
-
-derparse.o: spnegohelp/derparse.c
-@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT derparse.o -MD -MP -MF $(DEPDIR)/derparse.Tpo -c -o derparse.o `test -f 'spnegohelp/derparse.c' || echo '$(srcdir)/'`spnegohelp/derparse.c
-@am__fastdepCC_TRUE@	mv -f $(DEPDIR)/derparse.Tpo $(DEPDIR)/derparse.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='spnegohelp/derparse.c' object='derparse.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o derparse.o `test -f 'spnegohelp/derparse.c' || echo '$(srcdir)/'`spnegohelp/derparse.c
-
-derparse.obj: spnegohelp/derparse.c
-@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT derparse.obj -MD -MP -MF $(DEPDIR)/derparse.Tpo -c -o derparse.obj `if test -f 'spnegohelp/derparse.c'; then $(CYGPATH_W) 'spnegohelp/derparse.c'; else $(CYGPATH_W) '$(srcdir)/spnegohelp/derparse.c'; fi`
-@am__fastdepCC_TRUE@	mv -f $(DEPDIR)/derparse.Tpo $(DEPDIR)/derparse.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='spnegohelp/derparse.c' object='derparse.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o derparse.obj `if test -f 'spnegohelp/derparse.c'; then $(CYGPATH_W) 'spnegohelp/derparse.c'; else $(CYGPATH_W) '$(srcdir)/spnegohelp/derparse.c'; fi`
-
-spnego.o: spnegohelp/spnego.c
-@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT spnego.o -MD -MP -MF $(DEPDIR)/spnego.Tpo -c -o spnego.o `test -f 'spnegohelp/spnego.c' || echo '$(srcdir)/'`spnegohelp/spnego.c
-@am__fastdepCC_TRUE@	mv -f $(DEPDIR)/spnego.Tpo $(DEPDIR)/spnego.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='spnegohelp/spnego.c' object='spnego.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o spnego.o `test -f 'spnegohelp/spnego.c' || echo '$(srcdir)/'`spnegohelp/spnego.c
-
-spnego.obj: spnegohelp/spnego.c
-@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT spnego.obj -MD -MP -MF $(DEPDIR)/spnego.Tpo -c -o spnego.obj `if test -f 'spnegohelp/spnego.c'; then $(CYGPATH_W) 'spnegohelp/spnego.c'; else $(CYGPATH_W) '$(srcdir)/spnegohelp/spnego.c'; fi`
-@am__fastdepCC_TRUE@	mv -f $(DEPDIR)/spnego.Tpo $(DEPDIR)/spnego.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='spnegohelp/spnego.c' object='spnego.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o spnego.obj `if test -f 'spnegohelp/spnego.c'; then $(CYGPATH_W) 'spnegohelp/spnego.c'; else $(CYGPATH_W) '$(srcdir)/spnegohelp/spnego.c'; fi`
-
-spnegohelp.o: spnegohelp/spnegohelp.c
-@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT spnegohelp.o -MD -MP -MF $(DEPDIR)/spnegohelp.Tpo -c -o spnegohelp.o `test -f 'spnegohelp/spnegohelp.c' || echo '$(srcdir)/'`spnegohelp/spnegohelp.c
-@am__fastdepCC_TRUE@	mv -f $(DEPDIR)/spnegohelp.Tpo $(DEPDIR)/spnegohelp.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='spnegohelp/spnegohelp.c' object='spnegohelp.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o spnegohelp.o `test -f 'spnegohelp/spnegohelp.c' || echo '$(srcdir)/'`spnegohelp/spnegohelp.c
-
-spnegohelp.obj: spnegohelp/spnegohelp.c
-@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT spnegohelp.obj -MD -MP -MF $(DEPDIR)/spnegohelp.Tpo -c -o spnegohelp.obj `if test -f 'spnegohelp/spnegohelp.c'; then $(CYGPATH_W) 'spnegohelp/spnegohelp.c'; else $(CYGPATH_W) '$(srcdir)/spnegohelp/spnegohelp.c'; fi`
-@am__fastdepCC_TRUE@	mv -f $(DEPDIR)/spnegohelp.Tpo $(DEPDIR)/spnegohelp.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='spnegohelp/spnegohelp.c' object='spnegohelp.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o spnegohelp.obj `if test -f 'spnegohelp/spnegohelp.c'; then $(CYGPATH_W) 'spnegohelp/spnegohelp.c'; else $(CYGPATH_W) '$(srcdir)/spnegohelp/spnegohelp.c'; fi`
-
-spnegoparse.o: spnegohelp/spnegoparse.c
-@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT spnegoparse.o -MD -MP -MF $(DEPDIR)/spnegoparse.Tpo -c -o spnegoparse.o `test -f 'spnegohelp/spnegoparse.c' || echo '$(srcdir)/'`spnegohelp/spnegoparse.c
-@am__fastdepCC_TRUE@	mv -f $(DEPDIR)/spnegoparse.Tpo $(DEPDIR)/spnegoparse.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='spnegohelp/spnegoparse.c' object='spnegoparse.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o spnegoparse.o `test -f 'spnegohelp/spnegoparse.c' || echo '$(srcdir)/'`spnegohelp/spnegoparse.c
-
-spnegoparse.obj: spnegohelp/spnegoparse.c
-@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT spnegoparse.obj -MD -MP -MF $(DEPDIR)/spnegoparse.Tpo -c -o spnegoparse.obj `if test -f 'spnegohelp/spnegoparse.c'; then $(CYGPATH_W) 'spnegohelp/spnegoparse.c'; else $(CYGPATH_W) '$(srcdir)/spnegohelp/spnegoparse.c'; fi`
-@am__fastdepCC_TRUE@	mv -f $(DEPDIR)/spnegoparse.Tpo $(DEPDIR)/spnegoparse.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='spnegohelp/spnegoparse.c' object='spnegoparse.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o spnegoparse.obj `if test -f 'spnegohelp/spnegoparse.c'; then $(CYGPATH_W) 'spnegohelp/spnegoparse.c'; else $(CYGPATH_W) '$(srcdir)/spnegohelp/spnegoparse.c'; fi`
 
 # This directory's subdirectories are mostly independent; you can cd
 # into them and run `make' without going through this Makefile.

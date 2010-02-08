@@ -1,1 +1,39 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd"> <html><head> <meta http-equiv="Content-Type" content="text/html; charset=utf-8"> <title>ERROR: El URL solicitado no se ha podido conseguir</title> <style type="text/css"><!--   %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  --></style> </head><body> <div id="titles"> <h1>ERROR</h1> <h2>El URL solicitado no se ha podido conseguir</h2> </div> <hr>  <div id="content"> <p>Se encontró el siguiente error al intentar recuperar la dirección URL: <a href="%U">%U</a></p>  <blockquote id="error"> <p><b>Reenv&iacute;o denegado.</b></p> </blockquote>  <p>Este cach&eacute; no permite reenviar su petici&oacute;n porque trata de obligar a mantener una relaci&oacute;n de hermandad.  Quiz&aacute;s el cliente en %i es un cach&eacute; que ha sido mal configurado.</p>  <p>Su administrador del cach&eacute; es <a href="mailto:%w%W">%w</a>.</p>  <br> </div>  <hr> <div id="footer"> <p>Generado %T por %h (%s)</p> <!-- %c --> </div> </body></html> 
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN"
+"http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+<meta name="generator" content=
+"HTML Tidy for FreeBSD (vers 7 December 2008), see www.w3.org">
+<meta http-equiv="Content-Type" content=
+"text/html; charset=us-ascii">
+<title>ERROR: El URL solicitado no se ha podido conseguir</title>
+
+<style type="text/css">
+<!--   %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  -->
+</style>
+</head>
+<body>
+<div id="titles">
+<h1>ERROR</h1>
+<h2>El URL solicitado no se ha podido conseguir</h2>
+</div>
+<hr>
+<div id="content">
+<p>Se encontr&Atilde;&sup3; el siguiente error al intentar
+recuperar la direcci&Atilde;&sup3;n URL: <a href="%U">%U</a></p>
+<blockquote id="error">
+<p><b>Reenv&iacute;o denegado.</b></p>
+</blockquote>
+<p>Este cach&eacute; no permite reenviar su petici&oacute;n porque
+trata de obligar a mantener una relaci&oacute;n de hermandad.
+Quiz&aacute;s el cliente en %i es un cach&eacute; que ha sido mal
+configurado.</p>
+<p>Su administrador del cach&eacute; es <a href=
+"mailto:%w%W">%w</a>.</p>
+<br></div>
+<hr>
+<div id="footer">
+<p>Generado %T por %h (%s)</p>
+<!-- %c --></div>
+</body>
+</html>

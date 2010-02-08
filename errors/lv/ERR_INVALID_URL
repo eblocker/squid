@@ -1,1 +1,59 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd"> <html><head> <meta http-equiv="Content-Type" content="text/html; charset=utf-8"> <title>Kļūda: Nevar atvērt pieprasīto adresi.</title> <style type="text/css"><!--   %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  --></style> </head><body> <div id="titles"> <h1>ERROR</h1> <h2>The requested URL could not be retrieved</h2> </div> <hr>  <div id="content"> <p>Iestājusies sekojoša kļūda mēģinot atvērt adresi: <a href="%U">%U</a></p>  <blockquote id="error"> <p><b>Nepareizs URL</b></p> </blockquote>  <p>dažas nianses pieprasītajā adresē ir nekorektas.</p>  <p>Dažas iespējamās problēmas ir:</p> <ul> <li><p>Nav vai ir nekorekts pieejas protokols (jābūt <q>http://</q> vai kam līdzīgam)</p></li> <li><p>Nav saimniekdatora vārda</p></li> <li><p>Adresē ir divas atsoļa rakstzīmes, kas ir aizliegtas</p></li> <li><p>Neatļauts simbols adresē. Pasvītrojuma rakstzīme nav atļauta.</p></li> </ul>  <p>Jūsu kešatmiņas administrators ir <a href="mailto:%w%W">%w</a>.</p> <br> </div>  <hr> <div id="footer"> <p>Ģenerēts %T by %h (%s)</p> <!-- %c --> </div> </body></html> 
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN"
+"http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+<meta name="generator" content=
+"HTML Tidy for FreeBSD (vers 7 December 2008), see www.w3.org">
+<meta http-equiv="Content-Type" content=
+"text/html; charset=us-ascii">
+<title>K&Auml;&frac14;&Aring;&laquo;da: Nevar atv&Auml;&ldquo;rt
+piepras&Auml;&laquo;to adresi.</title>
+
+<style type="text/css">
+<!--   %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  -->
+</style>
+</head>
+<body>
+<div id="titles">
+<h1>ERROR</h1>
+<h2>The requested URL could not be retrieved</h2>
+</div>
+<hr>
+<div id="content">
+<p>Iest&Auml;jusies sekojo&Aring;&iexcl;a
+k&Auml;&frac14;&Aring;&laquo;da m&Auml;&ldquo;&Auml;&pound;inot
+atv&Auml;&ldquo;rt adresi: <a href="%U">%U</a></p>
+<blockquote id="error">
+<p><b>Nepareizs URL</b></p>
+</blockquote>
+<p>da&Aring;&frac34;as nianses piepras&Auml;&laquo;taj&Auml;
+adres&Auml;&ldquo; ir nekorektas.</p>
+<p>Da&Aring;&frac34;as iesp&Auml;&ldquo;jam&Auml;s
+probl&Auml;&ldquo;mas ir:</p>
+<ul>
+<li>
+<p>Nav vai ir nekorekts pieejas protokols (j&Auml;b&Aring;&laquo;t
+<q>http://</q> vai kam l&Auml;&laquo;dz&Auml;&laquo;gam)</p>
+</li>
+<li>
+<p>Nav saimniekdatora v&Auml;rda</p>
+</li>
+<li>
+<p>Adres&Auml;&ldquo; ir divas atso&Auml;&frac14;a
+rakstz&Auml;&laquo;mes, kas ir aizliegtas</p>
+</li>
+<li>
+<p>Neat&Auml;&frac14;auts simbols adres&Auml;&ldquo;.
+Pasv&Auml;&laquo;trojuma rakstz&Auml;&laquo;me nav
+at&Auml;&frac14;auta.</p>
+</li>
+</ul>
+<p>J&Aring;&laquo;su ke&Aring;&iexcl;atmi&Aring;&dagger;as
+administrators ir <a href="mailto:%w%W">%w</a>.</p>
+<br></div>
+<hr>
+<div id="footer">
+<p>&Auml;&cent;ener&Auml;&ldquo;ts %T by %h (%s)</p>
+<!-- %c --></div>
+</body>
+</html>

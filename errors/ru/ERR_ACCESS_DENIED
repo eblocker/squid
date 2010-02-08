@@ -1,1 +1,76 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd"> <html><head> <meta http-equiv="Content-Type" content="text/html; charset=utf-8"> <title>ОШИБКА: Запрошенный URL не может быть получен</title> <style type="text/css"><!--  %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  --></style> </head><body> <div id="titles"> <h1>ERROR</h1> <h2>The requested URL could not be retrieved</h2> </div> <hr>  <div id="content"> <p>При получении URL <a href="%U">%U</a> произошла следующая ошибка</p>  <blockquote id="error"> <p><b>Доступ запрещён.</b></p> </blockquote>  <p>Настройка контроля доступа не даёт возможности выполнить Ваш запрос в настоящее время. Пожалуйста, свяжитесь с Вашим администратором кэша, если Вы считаете это неправильным.</p>  <p>Администратор Вашего кэша: <a href="mailto:%w%W">%w</a>.</p> <br> </div>  <hr> <div id="footer"> <p>Создано %T на %h (%s)</p> <!-- %c --> </div> </body></html> 
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN"
+"http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+<meta name="generator" content=
+"HTML Tidy for FreeBSD (vers 7 December 2008), see www.w3.org">
+<meta http-equiv="Content-Type" content=
+"text/html; charset=us-ascii">
+<title>
+&ETH;&#382;&ETH;&uml;&ETH;&tilde;&ETH;&lsquo;&ETH;&scaron;&ETH;:
+&ETH;&mdash;&ETH;&deg;&ETH;&iquest;&Ntilde;&euro;&ETH;&frac34;&Ntilde;&circ;&ETH;&micro;&ETH;&frac12;&ETH;&frac12;&Ntilde;&lsaquo;&ETH;&sup1;
+URL &ETH;&frac12;&ETH;&micro;
+&ETH;&frac14;&ETH;&frac34;&ETH;&para;&ETH;&micro;&Ntilde;&sbquo;
+&ETH;&plusmn;&Ntilde;&lsaquo;&Ntilde;&sbquo;&Ntilde;&OElig;
+&ETH;&iquest;&ETH;&frac34;&ETH;&raquo;&Ntilde;&fnof;&Ntilde;&Dagger;&ETH;&micro;&ETH;&frac12;</title>
+
+<style type="text/css">
+<!--  %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  -->
+</style>
+</head>
+<body>
+<div id="titles">
+<h1>ERROR</h1>
+<h2>The requested URL could not be retrieved</h2>
+</div>
+<hr>
+<div id="content">
+<p>&ETH;&Yuml;&Ntilde;&euro;&ETH;&cedil;
+&ETH;&iquest;&ETH;&frac34;&ETH;&raquo;&Ntilde;&fnof;&Ntilde;&Dagger;&ETH;&micro;&ETH;&frac12;&ETH;&cedil;&ETH;&cedil;
+URL <a href="%U">%U</a>
+&ETH;&iquest;&Ntilde;&euro;&ETH;&frac34;&ETH;&cedil;&ETH;&middot;&ETH;&frac34;&Ntilde;&circ;&ETH;&raquo;&ETH;&deg;
+&Ntilde;&ETH;&raquo;&ETH;&micro;&ETH;&acute;&Ntilde;&fnof;&Ntilde;&#381;&Ntilde;&permil;&ETH;&deg;&Ntilde;
+&ETH;&frac34;&Ntilde;&circ;&ETH;&cedil;&ETH;&plusmn;&ETH;&ordm;&ETH;&deg;</p>
+<blockquote id="error">
+<p>
+<b>&ETH;&rdquo;&ETH;&frac34;&Ntilde;&Ntilde;&sbquo;&Ntilde;&fnof;&ETH;&iquest;
+&ETH;&middot;&ETH;&deg;&ETH;&iquest;&Ntilde;&euro;&ETH;&micro;&Ntilde;&permil;&Ntilde;&lsquo;&ETH;&frac12;.</b></p>
+</blockquote>
+<p>
+&ETH;&ETH;&deg;&Ntilde;&Ntilde;&sbquo;&Ntilde;&euro;&ETH;&frac34;&ETH;&sup1;&ETH;&ordm;&ETH;&deg;
+&ETH;&ordm;&ETH;&frac34;&ETH;&frac12;&Ntilde;&sbquo;&Ntilde;&euro;&ETH;&frac34;&ETH;&raquo;&Ntilde;
+&ETH;&acute;&ETH;&frac34;&Ntilde;&Ntilde;&sbquo;&Ntilde;&fnof;&ETH;&iquest;&ETH;&deg;
+&ETH;&frac12;&ETH;&micro;
+&ETH;&acute;&ETH;&deg;&Ntilde;&lsquo;&Ntilde;&sbquo;
+&ETH;&sup2;&ETH;&frac34;&ETH;&middot;&ETH;&frac14;&ETH;&frac34;&ETH;&para;&ETH;&frac12;&ETH;&frac34;&Ntilde;&Ntilde;&sbquo;&ETH;&cedil;
+&ETH;&sup2;&Ntilde;&lsaquo;&ETH;&iquest;&ETH;&frac34;&ETH;&raquo;&ETH;&frac12;&ETH;&cedil;&Ntilde;&sbquo;&Ntilde;&OElig;
+&ETH;&rsquo;&ETH;&deg;&Ntilde;&circ;
+&ETH;&middot;&ETH;&deg;&ETH;&iquest;&Ntilde;&euro;&ETH;&frac34;&Ntilde;
+&ETH;&sup2;
+&ETH;&frac12;&ETH;&deg;&Ntilde;&Ntilde;&sbquo;&ETH;&frac34;&Ntilde;&Ntilde;&permil;&ETH;&micro;&ETH;&micro;
+&ETH;&sup2;&Ntilde;&euro;&ETH;&micro;&ETH;&frac14;&Ntilde;.
+&ETH;&Yuml;&ETH;&frac34;&ETH;&para;&ETH;&deg;&ETH;&raquo;&Ntilde;&fnof;&ETH;&sup1;&Ntilde;&Ntilde;&sbquo;&ETH;&deg;,
+&Ntilde;&ETH;&sup2;&Ntilde;&ETH;&para;&ETH;&cedil;&Ntilde;&sbquo;&ETH;&micro;&Ntilde;&Ntilde;&OElig;
+&Ntilde;
+&ETH;&rsquo;&ETH;&deg;&Ntilde;&circ;&ETH;&cedil;&ETH;&frac14;
+&ETH;&deg;&ETH;&acute;&ETH;&frac14;&ETH;&cedil;&ETH;&frac12;&ETH;&cedil;&Ntilde;&Ntilde;&sbquo;&Ntilde;&euro;&ETH;&deg;&Ntilde;&sbquo;&ETH;&frac34;&Ntilde;&euro;&ETH;&frac34;&ETH;&frac14;
+&ETH;&ordm;&Ntilde;&Ntilde;&circ;&ETH;&deg;,
+&ETH;&micro;&Ntilde;&ETH;&raquo;&ETH;&cedil;
+&ETH;&rsquo;&Ntilde;&lsaquo;
+&Ntilde;&Ntilde;&Dagger;&ETH;&cedil;&Ntilde;&sbquo;&ETH;&deg;&ETH;&micro;&Ntilde;&sbquo;&ETH;&micro;
+&Ntilde;&Ntilde;&sbquo;&ETH;&frac34;
+&ETH;&frac12;&ETH;&micro;&ETH;&iquest;&Ntilde;&euro;&ETH;&deg;&ETH;&sup2;&ETH;&cedil;&ETH;&raquo;&Ntilde;&OElig;&ETH;&frac12;&Ntilde;&lsaquo;&ETH;&frac14;.</p>
+<p>
+&ETH;&ETH;&acute;&ETH;&frac14;&ETH;&cedil;&ETH;&frac12;&ETH;&cedil;&Ntilde;&Ntilde;&sbquo;&Ntilde;&euro;&ETH;&deg;&Ntilde;&sbquo;&ETH;&frac34;&Ntilde;&euro;
+&ETH;&rsquo;&ETH;&deg;&Ntilde;&circ;&ETH;&micro;&ETH;&sup3;&ETH;&frac34;
+&ETH;&ordm;&Ntilde;&Ntilde;&circ;&ETH;&deg;: <a href=
+"mailto:%w%W">%w</a>.</p>
+<br></div>
+<hr>
+<div id="footer">
+<p>
+&ETH;&iexcl;&ETH;&frac34;&ETH;&middot;&ETH;&acute;&ETH;&deg;&ETH;&frac12;&ETH;&frac34;
+%T &ETH;&frac12;&ETH;&deg; %h (%s)</p>
+<!-- %c --></div>
+</body>
+</html>

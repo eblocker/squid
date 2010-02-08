@@ -540,7 +540,7 @@ HttpStateData::cacheableReply()
         return 0;
 
     default:			/* Unknown status code */
-        debugs (11, 0, HERE << "HttpStateData::cacheableReply: unexpected http status code " << rep->sline.status);
+        debugs (11, DBG_IMPORTANT, "WARNING: Unexpected http status code " << rep->sline.status);
 
         return 0;
 
@@ -835,8 +835,9 @@ HttpStateData::haveParsedReplyHeaders()
 
         if (!vary) {
             entry->makePrivate();
+            if (!fwd->reforwardableStatus(rep->sline.status))
+                EBIT_CLR(entry->flags, ENTRY_FWD_HDR_WAIT);
             goto no_cache;
-
         }
 
         entry->mem_obj->vary_headers = xstrdup(vary);
@@ -1150,6 +1151,7 @@ HttpStateData::continueAfterParsingHeader()
             const http_status s = vrep->sline.status;
             const HttpVersion &v = vrep->sline.version;
             if (s == HTTP_INVALID_HEADER && v != HttpVersion(0,9)) {
+                debugs(11, DBG_IMPORTANT, "WARNING: HTTP: Invalid Response: Bad header encountered from " << entry->url() << " AKA " << orig_request->GetHost() << orig_request->urlpath.termedBuf() );
                 error = ERR_INVALID_RESP;
             } else if (s == HTTP_HEADER_TOO_LARGE) {
                 fwd->dontRetry(true);
@@ -1159,12 +1161,18 @@ HttpStateData::continueAfterParsingHeader()
             }
         } else {
             // parsed headers but got no reply
+            debugs(11, DBG_IMPORTANT, "WARNING: HTTP: Invalid Response: No reply at all for " << entry->url() << " AKA " << orig_request->GetHost() << orig_request->urlpath.termedBuf() );
             error = ERR_INVALID_RESP;
         }
     } else {
         assert(eof);
-        error = readBuf->hasContent() ?
-                ERR_INVALID_RESP : ERR_ZERO_SIZE_OBJECT;
+        if (readBuf->hasContent()) {
+            error = ERR_INVALID_RESP;
+            debugs(11, DBG_IMPORTANT, "WARNING: HTTP: Invalid Response: Headers did not parse at all for " << entry->url() << " AKA " << orig_request->GetHost() << orig_request->urlpath.termedBuf() );
+        } else {
+            error = ERR_ZERO_SIZE_OBJECT;
+            debugs(11, DBG_IMPORTANT, "WARNING: HTTP: Invalid Response: No object data received for " << entry->url() << " AKA " << orig_request->GetHost() << orig_request->urlpath.termedBuf() );
+        }
     }
 
     assert(error != ERR_NONE);

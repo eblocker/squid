@@ -1,1 +1,61 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd"> <html><head> <meta http-equiv="Content-Type" content="text/html; charset=utf-8"> <title>ՍԽԱԼ: Պահանջվող URL չի կարող առաքվել</title> <style type="text/css"><!--   %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  --></style> </head><body> <div id="titles"> <h1>ERROR</h1> <h2>The requested URL could not be retrieved</h2> </div> <hr>  <div id="content"> <p>The following error was encountered while trying to retrieve the URL: <a href="%U">%U</a></p>  <blockquote id="error"> <p><b>Վերահասցեագրումն արգելված է.</b></p> </blockquote>  <p>Այս քեշը անկարող է վերահասցեագրել Ձեր հարցումը sibling տիպի փոխհարաբերություններ հաստատելու պատճառով. Հավանական է,որ %i -ն սխալ սարքաբերված քեշ է.</p>  <p>Ձեր քեշի կառավարիչը <a href="mailto:%w%W">%w</a> է.</p>  <br> </div>  <hr> <div id="footer"> <p>Generated %T by %h (%s)</p> <!-- %c --> </div> </body></html> 
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN"
+"http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+<meta name="generator" content=
+"HTML Tidy for FreeBSD (vers 7 December 2008), see www.w3.org">
+<meta http-equiv="Content-Type" content=
+"text/html; charset=us-ascii">
+<title>&Otilde;&Ocirc;&frac12;&Ocirc;&plusmn;&Ocirc;&frac14;:
+&Otilde;&Scaron;&Otilde;&iexcl;&Otilde;&deg;&Otilde;&iexcl;&Otilde;&para;&Otilde;&raquo;&Otilde;&frac34;&Otilde;&cedil;&Otilde;&sup2;
+URL &Otilde;&sup1;&Otilde;&laquo;
+&Otilde;&macr;&Otilde;&iexcl;&Ouml;&euro;&Otilde;&cedil;&Otilde;&sup2;
+&Otilde;&iexcl;&Otilde;&frac14;&Otilde;&iexcl;&Ouml;&bdquo;&Otilde;&frac34;&Otilde;&yen;&Otilde;&not;</title>
+
+<style type="text/css">
+<!--   %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  -->
+</style>
+</head>
+<body>
+<div id="titles">
+<h1>ERROR</h1>
+<h2>The requested URL could not be retrieved</h2>
+</div>
+<hr>
+<div id="content">
+<p>The following error was encountered while trying to retrieve the
+URL: <a href="%U">%U</a></p>
+<blockquote id="error">
+<p>
+<b>&Otilde;&#381;&Otilde;&yen;&Ouml;&euro;&Otilde;&iexcl;&Otilde;&deg;&Otilde;&iexcl;&Otilde;&frac12;&Ouml;&Otilde;&yen;&Otilde;&iexcl;&Otilde;&pound;&Ouml;&euro;&Otilde;&cedil;&Ouml;&sbquo;&Otilde;&acute;&Otilde;&para;
+&Otilde;&iexcl;&Ouml;&euro;&Otilde;&pound;&Otilde;&yen;&Otilde;&not;&Otilde;&frac34;&Otilde;&iexcl;&Otilde;&reg;
+&Otilde;&sect;.</b></p>
+</blockquote>
+<p>&Ocirc;&plusmn;&Otilde;&micro;&Otilde;&frac12;
+&Ouml;&bdquo;&Otilde;&yen;&Otilde;&middot;&Otilde;&uml;
+&Otilde;&iexcl;&Otilde;&para;&Otilde;&macr;&Otilde;&iexcl;&Ouml;&euro;&Otilde;&cedil;&Otilde;&sup2;
+&Otilde;&sect;
+&Otilde;&frac34;&Otilde;&yen;&Ouml;&euro;&Otilde;&iexcl;&Otilde;&deg;&Otilde;&iexcl;&Otilde;&frac12;&Ouml;&Otilde;&yen;&Otilde;&iexcl;&Otilde;&pound;&Ouml;&euro;&Otilde;&yen;&Otilde;&not;
+&Otilde;&Otilde;&yen;&Ouml;&euro;
+&Otilde;&deg;&Otilde;&iexcl;&Ouml;&euro;&Ouml;&Otilde;&cedil;&Ouml;&sbquo;&Otilde;&acute;&Otilde;&uml;
+sibling
+&Otilde;&iquest;&Otilde;&laquo;&Otilde;&ordm;&Otilde;&laquo;
+&Ouml;&fnof;&Otilde;&cedil;&Otilde;&shy;&Otilde;&deg;&Otilde;&iexcl;&Ouml;&euro;&Otilde;&iexcl;&Otilde;&cent;&Otilde;&yen;&Ouml;&euro;&Otilde;&cedil;&Ouml;&sbquo;&Otilde;&copy;&Otilde;&micro;&Otilde;&cedil;&Ouml;&sbquo;&Otilde;&para;&Otilde;&para;&Otilde;&yen;&Ouml;&euro;
+&Otilde;&deg;&Otilde;&iexcl;&Otilde;&frac12;&Otilde;&iquest;&Otilde;&iexcl;&Otilde;&iquest;&Otilde;&yen;&Otilde;&not;&Otilde;&cedil;&Ouml;&sbquo;
+&Otilde;&ordm;&Otilde;&iexcl;&Otilde;&iquest;&Otilde;&sup3;&Otilde;&iexcl;&Otilde;&frac14;&Otilde;&cedil;&Otilde;&frac34;.
+&Otilde;&euro;&Otilde;&iexcl;&Otilde;&frac34;&Otilde;&iexcl;&Otilde;&para;&Otilde;&iexcl;&Otilde;&macr;&Otilde;&iexcl;&Otilde;&para;
+&Otilde;&sect;,&Otilde;&cedil;&Ouml;&euro; %i -&Otilde;&para;
+&Otilde;&frac12;&Otilde;&shy;&Otilde;&iexcl;&Otilde;&not;
+&Otilde;&frac12;&Otilde;&iexcl;&Ouml;&euro;&Ouml;&bdquo;&Otilde;&iexcl;&Otilde;&cent;&Otilde;&yen;&Ouml;&euro;&Otilde;&frac34;&Otilde;&iexcl;&Otilde;&reg;
+&Ouml;&bdquo;&Otilde;&yen;&Otilde;&middot; &Otilde;&sect;.</p>
+<p>&Otilde;&Otilde;&yen;&Ouml;&euro;
+&Ouml;&bdquo;&Otilde;&yen;&Otilde;&middot;&Otilde;&laquo;
+&Otilde;&macr;&Otilde;&iexcl;&Otilde;&frac14;&Otilde;&iexcl;&Otilde;&frac34;&Otilde;&iexcl;&Ouml;&euro;&Otilde;&laquo;&Otilde;&sup1;&Otilde;&uml;
+<a href="mailto:%w%W">%w</a> &Otilde;&sect;.</p>
+<br></div>
+<hr>
+<div id="footer">
+<p>Generated %T by %h (%s)</p>
+<!-- %c --></div>
+</body>
+</html>

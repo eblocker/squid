@@ -1,1 +1,47 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd"> <html><head> <meta http-equiv="Content-Type" content="text/html; charset=utf-8"> <title>錯誤: FTP upload failed</title> <style type="text/css"><!--   %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  --></style> </head><body> <div id="titles"> <h1>ERROR</h1> <h2>檔案傳輸上傳（PUT）失敗</h2> </div> <hr>  <div id="content"> <p>當嘗試上傳（PUT）下列位置時：<a href="%U">%U</a></p>  <p>Squid 伺服器替您送出下列檔案傳輸命令：</p> <blockquote id="data"> <pre>%f</pre> </blockquote>  <p>The server responded with:</p> <blockquote id="sysmsg"> <pre>%F</pre> </blockquote>  <p>This means that the FTP server may not have permission or space to store the file. Check the path, permissions, diskspace and try again.</p>  <p>Your cache administrator is <a href="mailto:%w%W">%w</a>.</p> <br> </div>  <hr> <div id="footer"> <p>Generated %T by %h (%s)</p> <!-- %c --> </div> </body></html> 
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN"
+"http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+<meta name="generator" content=
+"HTML Tidy for FreeBSD (vers 7 December 2008), see www.w3.org">
+<meta http-equiv="Content-Type" content=
+"text/html; charset=us-ascii">
+<title>&eacute;&OElig;&macr;&egrave;&ordf;&curren;: FTP upload
+failed</title>
+
+<style type="text/css">
+<!--   %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  -->
+</style>
+</head>
+<body>
+<div id="titles">
+<h1>ERROR</h1>
+<h2>
+&aelig;&ordf;&rdquo;&aelig;&iexcl;&circ;&aring;&sbquo;&sup3;&egrave;&frac14;&cedil;&auml;&cedil;&Scaron;&aring;&sbquo;&sup3;&iuml;&frac14;&circ;PUT&iuml;&frac14;&permil;&aring;&curren;&plusmn;&aelig;&bull;&mdash;</h2>
+</div>
+<hr>
+<div id="content">
+<p>
+&ccedil;&bull;&para;&aring;&tilde;&mdash;&egrave;&copy;&brvbar;&auml;&cedil;&Scaron;&aring;&sbquo;&sup3;&iuml;&frac14;&circ;PUT&iuml;&frac14;&permil;&auml;&cedil;&lsaquo;&aring;&circ;&mdash;&auml;&frac12;&ccedil;&frac12;&reg;&aelig;&trade;&sbquo;&iuml;&frac14;&scaron;<a href="%U">%U</a></p>
+<p>Squid
+&auml;&frac14;&ordm;&aelig;&oelig;&aring;&trade;&uml;&aelig;&rsaquo;&iquest;&aelig;&sbquo;&uml;&eacute;&euro;&aring;&Dagger;&ordm;&auml;&cedil;&lsaquo;&aring;&circ;&mdash;&aelig;&ordf;&rdquo;&aelig;&iexcl;&circ;&aring;&sbquo;&sup3;&egrave;&frac14;&cedil;&aring;&lsquo;&frac12;&auml;&raquo;&curren;&iuml;&frac14;&scaron;</p>
+<blockquote id="data">
+<pre>
+%f
+</pre></blockquote>
+<p>The server responded with:</p>
+<blockquote id="sysmsg">
+<pre>
+%F
+</pre></blockquote>
+<p>This means that the FTP server may not have permission or space
+to store the file. Check the path, permissions, diskspace and try
+again.</p>
+<p>Your cache administrator is <a href="mailto:%w%W">%w</a>.</p>
+<br></div>
+<hr>
+<div id="footer">
+<p>Generated %T by %h (%s)</p>
+<!-- %c --></div>
+</body>
+</html>

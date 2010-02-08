@@ -1,1 +1,45 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd"> <html><head> <meta http-equiv="Content-Type" content="text/html; charset=utf-8"> <title>错误: 您所请求的网址（URL）无法获取</title> <style type="text/css"><!--   %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  --></style> </head><body> <div id="titles"> <h1>ERROR</h1> <h2>The requested URL could not be retrieved</h2> </div> <hr>  <div id="content"> <p>当尝试取回该 URL 时遇到下面的错误：<a href="%U">%U</a></p>  <blockquote id="error"> <p><b>无 Wais 中继</b></p> </blockquote>  <p>本缓存服务器没有设定 WAIS 中继主机！如有疑问请与缓存服务器管理员联系。</p>  <p>缓存服务器的管理员 <a href="mailto:%w%W">%w</a>.</p> <br> </div>  <hr> <div id="footer"> <p>已由 %h (%s) 生成 %T</p> <!-- %c --> </div> </body></html> 
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN"
+"http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+<meta name="generator" content=
+"HTML Tidy for FreeBSD (vers 7 December 2008), see www.w3.org">
+<meta http-equiv="Content-Type" content=
+"text/html; charset=us-ascii">
+<title>&eacute;&rdquo;&trade;&egrave;&macr;&macr;:
+&aelig;&sbquo;&uml;&aelig;&permil;&euro;&egrave;&macr;&middot;&aelig;&plusmn;&sbquo;&ccedil;&scaron;&bdquo;&ccedil;&frac12;&lsquo;&aring;&euro;&iuml;&frac14;&circ;URL&iuml;&frac14;&permil;&aelig;&mdash;&nbsp;&aelig;&sup3;&bull;&egrave;&#381;&middot;&aring;&ndash;</title>
+
+<style type="text/css">
+<!--   %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  -->
+</style>
+</head>
+<body>
+<div id="titles">
+<h1>ERROR</h1>
+<h2>The requested URL could not be retrieved</h2>
+</div>
+<hr>
+<div id="content">
+<p>
+&aring;&frac12;&ldquo;&aring;&deg;&egrave;&macr;&bull;&aring;&ndash;&aring;&rsaquo;&#382;&egrave;&macr;&yen;
+URL
+&aelig;&mdash;&para;&eacute;&Dagger;&aring;&circ;&deg;&auml;&cedil;&lsaquo;&eacute;&cent;&ccedil;&scaron;&bdquo;&eacute;&rdquo;&trade;&egrave;&macr;&macr;&iuml;&frac14;&scaron;<a href="%U">%U</a></p>
+<blockquote id="error">
+<p><b>&aelig;&mdash;&nbsp; Wais
+&auml;&cedil;&shy;&ccedil;&raquo;&sect;</b></p>
+</blockquote>
+<p>
+&aelig;&oelig;&not;&ccedil;&frac14;&ldquo;&aring;&shy;&tilde;&aelig;&oelig;&aring;&Scaron;&iexcl;&aring;&trade;&uml;&aelig;&sup2;&iexcl;&aelig;&oelig;&permil;&egrave;&reg;&frac34;&aring;&reg;&scaron;
+WAIS
+&auml;&cedil;&shy;&ccedil;&raquo;&sect;&auml;&cedil;&raquo;&aelig;&oelig;&ordm;&iuml;&frac14;&aring;&brvbar;&sbquo;&aelig;&oelig;&permil;&ccedil;&ndash;&lsquo;&eacute;&mdash;&reg;&egrave;&macr;&middot;&auml;&cedil;&#381;&ccedil;&frac14;&ldquo;&aring;&shy;&tilde;&aelig;&oelig;&aring;&Scaron;&iexcl;&aring;&trade;&uml;&ccedil;&reg;&iexcl;&ccedil;&dagger;&aring;&lsquo;&tilde;&egrave;&rdquo;&ccedil;&sup3;&raquo;&atilde;&euro;&sbquo;</p>
+<p>
+&ccedil;&frac14;&ldquo;&aring;&shy;&tilde;&aelig;&oelig;&aring;&Scaron;&iexcl;&aring;&trade;&uml;&ccedil;&scaron;&bdquo;&ccedil;&reg;&iexcl;&ccedil;&dagger;&aring;&lsquo;&tilde;
+<a href="mailto:%w%W">%w</a>.</p>
+<br></div>
+<hr>
+<div id="footer">
+<p>&aring;&middot;&sup2;&ccedil;&rdquo;&plusmn; %h (%s)
+&ccedil;&rdquo;&Yuml;&aelig;&circ; %T</p>
+<!-- %c --></div>
+</body>
+</html>

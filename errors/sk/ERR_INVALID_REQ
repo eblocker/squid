@@ -1,1 +1,62 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd"> <html><head> <meta http-equiv="Content-Type" content="text/html; charset=utf-8"> <title>CHYBA: The requested URL could not be retrieved</title> <style type="text/css"><!--   %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  --></style> </head><body> <div id="titles"> <h1>ERROR</h1> <h2>The requested URL could not be retrieved</h2> </div> <hr>  <div id="content"> <p><b>Invalid Request</b> error was encountered while trying to process the request:</p>  <blockquote id="data"> <pre>%R</pre> </blockquote>  <p>Some possible problems are:</p> <ul> <li><p>Chýbajúca alebo neznáma metóda (POST, GET)</p></li> <li><p>Chýbajúce URL</p></li> <li><p>Chýbajúci identifikátor HTTP (HTTP/1.0)</p></li> <li><p>Požiadavka je príliš dlhá</p></li> <li><p>Chýbajúca položka Content-Length pre požiadavky POST or PUT</p></li> <li><p>Chybný znak v názve serveru; podtrhovník nie je povolený.</p></li> </ul>  <p>Vaším cache administrátorom je <a href="mailto:%w%W">%w</a>.</p> <br> </div>  <hr> <div id="footer"> <p>Generated %T by %h (%s)</p> <!-- %c --> </div> </body></html> 
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN"
+"http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+<meta name="generator" content=
+"HTML Tidy for FreeBSD (vers 7 December 2008), see www.w3.org">
+<meta http-equiv="Content-Type" content=
+"text/html; charset=us-ascii">
+<title>CHYBA: The requested URL could not be retrieved</title>
+
+<style type="text/css">
+<!--   %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  -->
+</style>
+</head>
+<body>
+<div id="titles">
+<h1>ERROR</h1>
+<h2>The requested URL could not be retrieved</h2>
+</div>
+<hr>
+<div id="content">
+<p><b>Invalid Request</b> error was encountered while trying to
+process the request:</p>
+<blockquote id="data">
+<pre>
+%R
+</pre></blockquote>
+<p>Some possible problems are:</p>
+<ul>
+<li>
+<p>Ch&Atilde;&frac12;baj&Atilde;&ordm;ca alebo
+nezn&Atilde;&iexcl;ma met&Atilde;&sup3;da (POST, GET)</p>
+</li>
+<li>
+<p>Ch&Atilde;&frac12;baj&Atilde;&ordm;ce URL</p>
+</li>
+<li>
+<p>Ch&Atilde;&frac12;baj&Atilde;&ordm;ci
+identifik&Atilde;&iexcl;tor HTTP (HTTP/1.0)</p>
+</li>
+<li>
+<p>Po&Aring;&frac34;iadavka je pr&Atilde;&shy;li&Aring;&iexcl;
+dlh&Atilde;&iexcl;</p>
+</li>
+<li>
+<p>Ch&Atilde;&frac12;baj&Atilde;&ordm;ca polo&Aring;&frac34;ka
+Content-Length pre po&Aring;&frac34;iadavky POST or PUT</p>
+</li>
+<li>
+<p>Chybn&Atilde;&frac12; znak v n&Atilde;&iexcl;zve serveru;
+podtrhovn&Atilde;&shy;k nie je povolen&Atilde;&frac12;.</p>
+</li>
+</ul>
+<p>Va&Aring;&iexcl;&Atilde;&shy;m cache
+administr&Atilde;&iexcl;torom je <a href="mailto:%w%W">%w</a>.</p>
+<br></div>
+<hr>
+<div id="footer">
+<p>Generated %T by %h (%s)</p>
+<!-- %c --></div>
+</body>
+</html>

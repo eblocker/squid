@@ -191,33 +191,35 @@ am__squid_SOURCES_DIST = AclRegs.cc AuthReg.cc access_log.cc \
 	ExternalACLEntry.h fd.cc fde.cc fde.h filemap.cc forward.cc \
 	forward.h fqdncache.cc ftp.cc Generic.h globals.h gopher.cc \
 	helper.cc helper.h HierarchyLogEntry.h htcp.cc htcp.h http.cc \
-	http.h HttpStatusLine.cc HttpStatusLine.h HttpHdrCc.cc \
-	HttpHdrRange.cc HttpHdrSc.cc HttpHdrSc.h HttpHdrScTarget.cc \
-	HttpHdrScTarget.h HttpHdrContRange.cc HttpHdrContRange.h \
-	HttpHeader.cc HttpHeader.h HttpHeaderMask.h HttpHeaderRange.h \
-	HttpHeaderTools.cc HttpBody.cc HttpMsg.cc HttpMsg.h \
-	HttpReply.cc HttpReply.h HttpRequest.cc HttpRequest.h \
-	HttpRequestMethod.cc HttpRequestMethod.h HttpVersion.h ICP.h \
-	icp_v2.cc icp_v3.cc int.cc internal.cc ipc.cc ipc_win32.cc \
-	ipcache.cc LeakFinder.cc list.cc logfile.cc main.cc mem.cc \
-	mem_node.cc mem_node.h Mem.h MemBuf.cc MemObject.cc \
-	MemObject.h mime.cc mime_header.cc multicast.cc neighbors.cc \
-	Packer.cc Packer.h Parsing.cc Parsing.h ProfStats.cc pconn.cc \
-	pconn.h PeerDigest.h peer_digest.cc peer_select.cc \
-	peer_sourcehash.cc peer_userhash.cc PeerSelectState.h \
-	PingData.h protos.h redirect.cc referer.cc refresh.cc \
-	RemovalPolicy.cc RemovalPolicy.h send-announce.cc snmp_core.cc \
-	snmp_agent.cc squid.h SquidNew.cc ssl_support.cc ssl_support.h \
-	stat.cc StatHist.cc String.cc stmem.cc stmem.h store.cc \
-	Store.h StoreFileSystem.cc StoreFileSystem.h StoreHashIndex.h \
-	store_io.cc StoreIOBuffer.h StoreIOState.cc StoreIOState.h \
-	store_client.cc StoreClient.h store_digest.cc store_dir.cc \
-	store_key_md5.cc store_log.cc store_rebuild.cc store_swapin.cc \
-	store_swapmeta.cc store_swapout.cc StoreMeta.cc StoreMeta.h \
-	StoreMetaMD5.cc StoreMetaMD5.h StoreMetaSTD.cc StoreMetaSTD.h \
-	StoreMetaSTDLFS.cc StoreMetaSTDLFS.h StoreMetaObjSize.h \
-	StoreMetaUnpacker.cc StoreMetaUnpacker.h StoreMetaURL.cc \
-	StoreMetaURL.h StoreMetaVary.cc StoreMetaVary.h StoreSearch.h \
+	http.h HttpStatusCode.h HttpStatusLine.cc HttpStatusLine.h \
+	HttpHdrCc.cc HttpHdrRange.cc HttpHdrSc.cc HttpHdrSc.h \
+	HttpHdrScTarget.cc HttpHdrScTarget.h HttpHdrContRange.cc \
+	HttpHdrContRange.h HttpHeader.cc HttpHeader.h HttpHeaderMask.h \
+	HttpHeaderRange.h HttpHeaderTools.cc HttpBody.cc HttpMsg.cc \
+	HttpMsg.h HttpReply.cc HttpReply.h HttpRequest.cc \
+	HttpRequest.h HttpRequestMethod.cc HttpRequestMethod.h \
+	HttpVersion.h ICP.h icp_v2.cc icp_v3.cc int.cc internal.cc \
+	ipc.cc ipc_win32.cc ipcache.cc LeakFinder.cc list.cc \
+	logfile.cc main.cc mem.cc mem_node.cc mem_node.h Mem.h \
+	MemBuf.cc MemObject.cc MemObject.h mime.cc mime_header.cc \
+	multicast.cc neighbors.cc Packer.cc Packer.h Parsing.cc \
+	Parsing.h ProfStats.cc pconn.cc pconn.h PeerDigest.h \
+	peer_digest.cc peer_select.cc peer_sourcehash.cc \
+	peer_userhash.cc PeerSelectState.h PingData.h protos.h \
+	redirect.cc referer.cc refresh.cc RemovalPolicy.cc \
+	RemovalPolicy.h send-announce.cc snmp_core.cc snmp_agent.cc \
+	squid.h SquidMath.h SquidMath.cc SquidNew.cc ssl_support.cc \
+	ssl_support.h stat.cc StatHist.cc String.cc stmem.cc stmem.h \
+	store.cc Store.h StoreFileSystem.cc StoreFileSystem.h \
+	StoreHashIndex.h store_io.cc StoreIOBuffer.h StoreIOState.cc \
+	StoreIOState.h store_client.cc StoreClient.h store_digest.cc \
+	store_dir.cc store_key_md5.cc store_log.cc store_rebuild.cc \
+	store_swapin.cc store_swapmeta.cc store_swapout.cc \
+	StoreMeta.cc StoreMeta.h StoreMetaMD5.cc StoreMetaMD5.h \
+	StoreMetaSTD.cc StoreMetaSTD.h StoreMetaSTDLFS.cc \
+	StoreMetaSTDLFS.h StoreMetaObjSize.h StoreMetaUnpacker.cc \
+	StoreMetaUnpacker.h StoreMetaURL.cc StoreMetaURL.h \
+	StoreMetaVary.cc StoreMetaVary.h StoreSearch.h \
 	StoreSwapLogData.cc StoreSwapLogData.h Server.cc Server.h \
 	structs.h SwapDir.cc SwapDir.h time.cc tools.cc tunnel.cc \
 	typedefs.h unlinkd.cc url.cc URL.h URLScheme.cc URLScheme.h \
@@ -286,24 +288,25 @@ am_squid_OBJECTS = $(am__objects_4) access_log.$(OBJEXT) \
 	peer_sourcehash.$(OBJEXT) peer_userhash.$(OBJEXT) \
 	redirect.$(OBJEXT) referer.$(OBJEXT) refresh.$(OBJEXT) \
 	RemovalPolicy.$(OBJEXT) send-announce.$(OBJEXT) \
-	$(am__objects_15) SquidNew.$(OBJEXT) $(am__objects_17) \
-	stat.$(OBJEXT) StatHist.$(OBJEXT) String.$(OBJEXT) \
-	stmem.$(OBJEXT) store.$(OBJEXT) StoreFileSystem.$(OBJEXT) \
-	store_io.$(OBJEXT) StoreIOState.$(OBJEXT) \
-	store_client.$(OBJEXT) store_digest.$(OBJEXT) \
-	store_dir.$(OBJEXT) store_key_md5.$(OBJEXT) \
-	store_log.$(OBJEXT) store_rebuild.$(OBJEXT) \
-	store_swapin.$(OBJEXT) store_swapmeta.$(OBJEXT) \
-	store_swapout.$(OBJEXT) StoreMeta.$(OBJEXT) \
-	StoreMetaMD5.$(OBJEXT) StoreMetaSTD.$(OBJEXT) \
-	StoreMetaSTDLFS.$(OBJEXT) StoreMetaUnpacker.$(OBJEXT) \
-	StoreMetaURL.$(OBJEXT) StoreMetaVary.$(OBJEXT) \
-	StoreSwapLogData.$(OBJEXT) Server.$(OBJEXT) SwapDir.$(OBJEXT) \
-	time.$(OBJEXT) tools.$(OBJEXT) tunnel.$(OBJEXT) \
-	$(am__objects_18) url.$(OBJEXT) URLScheme.$(OBJEXT) \
-	urn.$(OBJEXT) useragent.$(OBJEXT) wccp.$(OBJEXT) \
-	wccp2.$(OBJEXT) whois.$(OBJEXT) wordlist.$(OBJEXT) \
-	$(am__objects_19) $(am__objects_20) $(am__objects_22)
+	$(am__objects_15) SquidMath.$(OBJEXT) SquidNew.$(OBJEXT) \
+	$(am__objects_17) stat.$(OBJEXT) StatHist.$(OBJEXT) \
+	String.$(OBJEXT) stmem.$(OBJEXT) store.$(OBJEXT) \
+	StoreFileSystem.$(OBJEXT) store_io.$(OBJEXT) \
+	StoreIOState.$(OBJEXT) store_client.$(OBJEXT) \
+	store_digest.$(OBJEXT) store_dir.$(OBJEXT) \
+	store_key_md5.$(OBJEXT) store_log.$(OBJEXT) \
+	store_rebuild.$(OBJEXT) store_swapin.$(OBJEXT) \
+	store_swapmeta.$(OBJEXT) store_swapout.$(OBJEXT) \
+	StoreMeta.$(OBJEXT) StoreMetaMD5.$(OBJEXT) \
+	StoreMetaSTD.$(OBJEXT) StoreMetaSTDLFS.$(OBJEXT) \
+	StoreMetaUnpacker.$(OBJEXT) StoreMetaURL.$(OBJEXT) \
+	StoreMetaVary.$(OBJEXT) StoreSwapLogData.$(OBJEXT) \
+	Server.$(OBJEXT) SwapDir.$(OBJEXT) time.$(OBJEXT) \
+	tools.$(OBJEXT) tunnel.$(OBJEXT) $(am__objects_18) \
+	url.$(OBJEXT) URLScheme.$(OBJEXT) urn.$(OBJEXT) \
+	useragent.$(OBJEXT) wccp.$(OBJEXT) wccp2.$(OBJEXT) \
+	whois.$(OBJEXT) wordlist.$(OBJEXT) $(am__objects_19) \
+	$(am__objects_20) $(am__objects_22)
 am__EXTRA_squid_SOURCES_DIST = DiskIO/AIO/aio_win32.cc \
 	DiskIO/AIO/aio_win32.h ConfigOption.h CommonPool.h \
 	CompositePoolNode.h delay_pools.cc DelayId.cc DelayId.h \
@@ -413,16 +416,16 @@ am__tests_testCacheManager_SOURCES_DIST = debug.cc HttpRequest.cc \
 	peer_digest.cc peer_select.cc peer_sourcehash.cc \
 	peer_userhash.cc redirect.cc referer.cc refresh.cc \
 	RemovalPolicy.cc Server.cc snmp_core.cc snmp_agent.cc \
-	ssl_support.cc ssl_support.h stat.cc StatHist.cc stmem.cc \
-	store.cc store_client.cc store_digest.cc store_dir.cc \
-	store_io.cc store_key_md5.cc store_log.cc store_rebuild.cc \
-	store_swapin.cc store_swapmeta.cc store_swapout.cc \
-	StoreFileSystem.cc StoreIOState.cc StoreMeta.cc \
-	StoreMetaMD5.cc StoreMetaSTD.cc StoreMetaSTDLFS.cc \
-	StoreMetaUnpacker.cc StoreMetaURL.cc StoreMetaVary.cc \
-	StoreSwapLogData.cc event.cc tools.cc tunnel.cc SwapDir.cc \
-	url.cc URLScheme.cc urn.cc useragent.cc wccp2.cc whois.cc \
-	win32.cc wordlist.cc
+	ssl_support.cc ssl_support.h SquidMath.h SquidMath.cc stat.cc \
+	StatHist.cc stmem.cc store.cc store_client.cc store_digest.cc \
+	store_dir.cc store_io.cc store_key_md5.cc store_log.cc \
+	store_rebuild.cc store_swapin.cc store_swapmeta.cc \
+	store_swapout.cc StoreFileSystem.cc StoreIOState.cc \
+	StoreMeta.cc StoreMetaMD5.cc StoreMetaSTD.cc \
+	StoreMetaSTDLFS.cc StoreMetaUnpacker.cc StoreMetaURL.cc \
+	StoreMetaVary.cc StoreSwapLogData.cc event.cc tools.cc \
+	tunnel.cc SwapDir.cc url.cc URLScheme.cc urn.cc useragent.cc \
+	wccp2.cc whois.cc win32.cc wordlist.cc
 am_tests_testCacheManager_OBJECTS = debug.$(OBJEXT) \
 	HttpRequest.$(OBJEXT) HttpRequestMethod.$(OBJEXT) \
 	mem.$(OBJEXT) String.$(OBJEXT) \
@@ -454,9 +457,9 @@ am_tests_testCacheManager_OBJECTS = debug.$(OBJEXT) \
 	peer_select.$(OBJEXT) peer_sourcehash.$(OBJEXT) \
 	peer_userhash.$(OBJEXT) redirect.$(OBJEXT) referer.$(OBJEXT) \
 	refresh.$(OBJEXT) RemovalPolicy.$(OBJEXT) Server.$(OBJEXT) \
-	$(am__objects_15) $(am__objects_17) stat.$(OBJEXT) \
-	StatHist.$(OBJEXT) stmem.$(OBJEXT) store.$(OBJEXT) \
-	store_client.$(OBJEXT) store_digest.$(OBJEXT) \
+	$(am__objects_15) $(am__objects_17) SquidMath.$(OBJEXT) \
+	stat.$(OBJEXT) StatHist.$(OBJEXT) stmem.$(OBJEXT) \
+	store.$(OBJEXT) store_client.$(OBJEXT) store_digest.$(OBJEXT) \
 	store_dir.$(OBJEXT) store_io.$(OBJEXT) store_key_md5.$(OBJEXT) \
 	store_log.$(OBJEXT) store_rebuild.$(OBJEXT) \
 	store_swapin.$(OBJEXT) store_swapmeta.$(OBJEXT) \
@@ -600,7 +603,8 @@ am__tests_testDiskIO_SOURCES_DIST = tests/stub_internal.cc \
 am_tests_testDiskIO_OBJECTS = $(am__objects_27) \
 	tests/testDiskIO.$(OBJEXT) tests/testMain.$(OBJEXT) \
 	tests/stub_cache_manager.$(OBJEXT)
-nodist_tests_testDiskIO_OBJECTS = $(am__objects_29)
+nodist_tests_testDiskIO_OBJECTS = $(am__objects_29) \
+	SquidMath.$(OBJEXT)
 tests_testDiskIO_OBJECTS = $(am_tests_testDiskIO_OBJECTS) \
 	$(nodist_tests_testDiskIO_OBJECTS)
 tests_testDiskIO_LINK = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) \
@@ -636,15 +640,16 @@ am__tests_testEvent_SOURCES_DIST = debug.cc EventLoop.h EventLoop.cc \
 	Packer.cc Parsing.cc pconn.cc peer_digest.cc peer_select.cc \
 	peer_sourcehash.cc peer_userhash.cc redirect.cc referer.cc \
 	refresh.cc Server.cc snmp_core.cc snmp_agent.cc ssl_support.cc \
-	ssl_support.h stat.cc StatHist.cc stmem.cc store.cc \
-	store_client.cc store_digest.cc store_dir.cc store_io.cc \
-	store_key_md5.cc store_log.cc store_rebuild.cc store_swapin.cc \
-	store_swapmeta.cc store_swapout.cc StoreFileSystem.cc \
-	StoreIOState.cc StoreMeta.cc StoreMetaMD5.cc StoreMetaSTD.cc \
-	StoreMetaSTDLFS.cc StoreMetaUnpacker.cc StoreMetaURL.cc \
-	StoreMetaVary.cc StoreSwapLogData.cc event.cc tools.cc \
-	tunnel.cc SwapDir.cc url.cc URLScheme.cc urn.cc useragent.cc \
-	wccp2.cc whois.cc win32.cc wordlist.cc
+	ssl_support.h SquidMath.h SquidMath.cc stat.cc StatHist.cc \
+	stmem.cc store.cc store_client.cc store_digest.cc store_dir.cc \
+	store_io.cc store_key_md5.cc store_log.cc store_rebuild.cc \
+	store_swapin.cc store_swapmeta.cc store_swapout.cc \
+	StoreFileSystem.cc StoreIOState.cc StoreMeta.cc \
+	StoreMetaMD5.cc StoreMetaSTD.cc StoreMetaSTDLFS.cc \
+	StoreMetaUnpacker.cc StoreMetaURL.cc StoreMetaVary.cc \
+	StoreSwapLogData.cc event.cc tools.cc tunnel.cc SwapDir.cc \
+	url.cc URLScheme.cc urn.cc useragent.cc wccp2.cc whois.cc \
+	win32.cc wordlist.cc
 am_tests_testEvent_OBJECTS = debug.$(OBJEXT) EventLoop.$(OBJEXT) \
 	HttpRequest.$(OBJEXT) HttpRequestMethod.$(OBJEXT) \
 	mem.$(OBJEXT) RemovalPolicy.$(OBJEXT) String.$(OBJEXT) \
@@ -676,21 +681,22 @@ am_tests_testEvent_OBJECTS = debug.$(OBJEXT) EventLoop.$(OBJEXT) \
 	peer_select.$(OBJEXT) peer_sourcehash.$(OBJEXT) \
 	peer_userhash.$(OBJEXT) redirect.$(OBJEXT) referer.$(OBJEXT) \
 	refresh.$(OBJEXT) Server.$(OBJEXT) $(am__objects_15) \
-	$(am__objects_17) stat.$(OBJEXT) StatHist.$(OBJEXT) \
-	stmem.$(OBJEXT) store.$(OBJEXT) store_client.$(OBJEXT) \
-	store_digest.$(OBJEXT) store_dir.$(OBJEXT) store_io.$(OBJEXT) \
-	store_key_md5.$(OBJEXT) store_log.$(OBJEXT) \
-	store_rebuild.$(OBJEXT) store_swapin.$(OBJEXT) \
-	store_swapmeta.$(OBJEXT) store_swapout.$(OBJEXT) \
-	StoreFileSystem.$(OBJEXT) StoreIOState.$(OBJEXT) \
-	StoreMeta.$(OBJEXT) StoreMetaMD5.$(OBJEXT) \
-	StoreMetaSTD.$(OBJEXT) StoreMetaSTDLFS.$(OBJEXT) \
-	StoreMetaUnpacker.$(OBJEXT) StoreMetaURL.$(OBJEXT) \
-	StoreMetaVary.$(OBJEXT) StoreSwapLogData.$(OBJEXT) \
-	$(am__objects_24) tools.$(OBJEXT) tunnel.$(OBJEXT) \
-	SwapDir.$(OBJEXT) url.$(OBJEXT) URLScheme.$(OBJEXT) \
-	urn.$(OBJEXT) useragent.$(OBJEXT) wccp2.$(OBJEXT) \
-	whois.$(OBJEXT) $(am__objects_19) wordlist.$(OBJEXT)
+	$(am__objects_17) SquidMath.$(OBJEXT) stat.$(OBJEXT) \
+	StatHist.$(OBJEXT) stmem.$(OBJEXT) store.$(OBJEXT) \
+	store_client.$(OBJEXT) store_digest.$(OBJEXT) \
+	store_dir.$(OBJEXT) store_io.$(OBJEXT) store_key_md5.$(OBJEXT) \
+	store_log.$(OBJEXT) store_rebuild.$(OBJEXT) \
+	store_swapin.$(OBJEXT) store_swapmeta.$(OBJEXT) \
+	store_swapout.$(OBJEXT) StoreFileSystem.$(OBJEXT) \
+	StoreIOState.$(OBJEXT) StoreMeta.$(OBJEXT) \
+	StoreMetaMD5.$(OBJEXT) StoreMetaSTD.$(OBJEXT) \
+	StoreMetaSTDLFS.$(OBJEXT) StoreMetaUnpacker.$(OBJEXT) \
+	StoreMetaURL.$(OBJEXT) StoreMetaVary.$(OBJEXT) \
+	StoreSwapLogData.$(OBJEXT) $(am__objects_24) tools.$(OBJEXT) \
+	tunnel.$(OBJEXT) SwapDir.$(OBJEXT) url.$(OBJEXT) \
+	URLScheme.$(OBJEXT) urn.$(OBJEXT) useragent.$(OBJEXT) \
+	wccp2.$(OBJEXT) whois.$(OBJEXT) $(am__objects_19) \
+	wordlist.$(OBJEXT)
 nodist_tests_testEvent_OBJECTS = globals.$(OBJEXT) \
 	repl_modules.$(OBJEXT) string_arrays.$(OBJEXT)
 tests_testEvent_OBJECTS = $(am_tests_testEvent_OBJECTS) \
@@ -728,15 +734,16 @@ am__tests_testEventLoop_SOURCES_DIST = debug.cc EventLoop.h \
 	Packer.cc Parsing.cc pconn.cc peer_digest.cc peer_select.cc \
 	peer_sourcehash.cc peer_userhash.cc redirect.cc referer.cc \
 	refresh.cc Server.cc snmp_core.cc snmp_agent.cc ssl_support.cc \
-	ssl_support.h stat.cc StatHist.cc stmem.cc store.cc \
-	store_client.cc store_digest.cc store_dir.cc store_io.cc \
-	store_key_md5.cc store_log.cc store_rebuild.cc store_swapin.cc \
-	store_swapmeta.cc store_swapout.cc StoreFileSystem.cc \
-	StoreIOState.cc StoreMeta.cc StoreMetaMD5.cc StoreMetaSTD.cc \
-	StoreMetaSTDLFS.cc StoreMetaUnpacker.cc StoreMetaURL.cc \
-	StoreMetaVary.cc StoreSwapLogData.cc event.cc tools.cc \
-	tunnel.cc SwapDir.cc url.cc URLScheme.cc urn.cc useragent.cc \
-	wccp2.cc whois.cc win32.cc wordlist.cc
+	ssl_support.h SquidMath.h SquidMath.cc stat.cc StatHist.cc \
+	stmem.cc store.cc store_client.cc store_digest.cc store_dir.cc \
+	store_io.cc store_key_md5.cc store_log.cc store_rebuild.cc \
+	store_swapin.cc store_swapmeta.cc store_swapout.cc \
+	StoreFileSystem.cc StoreIOState.cc StoreMeta.cc \
+	StoreMetaMD5.cc StoreMetaSTD.cc StoreMetaSTDLFS.cc \
+	StoreMetaUnpacker.cc StoreMetaURL.cc StoreMetaVary.cc \
+	StoreSwapLogData.cc event.cc tools.cc tunnel.cc SwapDir.cc \
+	url.cc URLScheme.cc urn.cc useragent.cc wccp2.cc whois.cc \
+	win32.cc wordlist.cc
 am_tests_testEventLoop_OBJECTS = debug.$(OBJEXT) EventLoop.$(OBJEXT) \
 	HttpRequest.$(OBJEXT) HttpRequestMethod.$(OBJEXT) \
 	mem.$(OBJEXT) RemovalPolicy.$(OBJEXT) String.$(OBJEXT) \
@@ -768,21 +775,22 @@ am_tests_testEventLoop_OBJECTS = debug.$(OBJEXT) EventLoop.$(OBJEXT) \
 	peer_select.$(OBJEXT) peer_sourcehash.$(OBJEXT) \
 	peer_userhash.$(OBJEXT) redirect.$(OBJEXT) referer.$(OBJEXT) \
 	refresh.$(OBJEXT) Server.$(OBJEXT) $(am__objects_15) \
-	$(am__objects_17) stat.$(OBJEXT) StatHist.$(OBJEXT) \
-	stmem.$(OBJEXT) store.$(OBJEXT) store_client.$(OBJEXT) \
-	store_digest.$(OBJEXT) store_dir.$(OBJEXT) store_io.$(OBJEXT) \
-	store_key_md5.$(OBJEXT) store_log.$(OBJEXT) \
-	store_rebuild.$(OBJEXT) store_swapin.$(OBJEXT) \
-	store_swapmeta.$(OBJEXT) store_swapout.$(OBJEXT) \
-	StoreFileSystem.$(OBJEXT) StoreIOState.$(OBJEXT) \
-	StoreMeta.$(OBJEXT) StoreMetaMD5.$(OBJEXT) \
-	StoreMetaSTD.$(OBJEXT) StoreMetaSTDLFS.$(OBJEXT) \
-	StoreMetaUnpacker.$(OBJEXT) StoreMetaURL.$(OBJEXT) \
-	StoreMetaVary.$(OBJEXT) StoreSwapLogData.$(OBJEXT) \
-	$(am__objects_24) tools.$(OBJEXT) tunnel.$(OBJEXT) \
-	SwapDir.$(OBJEXT) url.$(OBJEXT) URLScheme.$(OBJEXT) \
-	urn.$(OBJEXT) useragent.$(OBJEXT) wccp2.$(OBJEXT) \
-	whois.$(OBJEXT) $(am__objects_19) wordlist.$(OBJEXT)
+	$(am__objects_17) SquidMath.$(OBJEXT) stat.$(OBJEXT) \
+	StatHist.$(OBJEXT) stmem.$(OBJEXT) store.$(OBJEXT) \
+	store_client.$(OBJEXT) store_digest.$(OBJEXT) \
+	store_dir.$(OBJEXT) store_io.$(OBJEXT) store_key_md5.$(OBJEXT) \
+	store_log.$(OBJEXT) store_rebuild.$(OBJEXT) \
+	store_swapin.$(OBJEXT) store_swapmeta.$(OBJEXT) \
+	store_swapout.$(OBJEXT) StoreFileSystem.$(OBJEXT) \
+	StoreIOState.$(OBJEXT) StoreMeta.$(OBJEXT) \
+	StoreMetaMD5.$(OBJEXT) StoreMetaSTD.$(OBJEXT) \
+	StoreMetaSTDLFS.$(OBJEXT) StoreMetaUnpacker.$(OBJEXT) \
+	StoreMetaURL.$(OBJEXT) StoreMetaVary.$(OBJEXT) \
+	StoreSwapLogData.$(OBJEXT) $(am__objects_24) tools.$(OBJEXT) \
+	tunnel.$(OBJEXT) SwapDir.$(OBJEXT) url.$(OBJEXT) \
+	URLScheme.$(OBJEXT) urn.$(OBJEXT) useragent.$(OBJEXT) \
+	wccp2.$(OBJEXT) whois.$(OBJEXT) $(am__objects_19) \
+	wordlist.$(OBJEXT)
 nodist_tests_testEventLoop_OBJECTS = globals.$(OBJEXT) \
 	repl_modules.$(OBJEXT) string_arrays.$(OBJEXT)
 tests_testEventLoop_OBJECTS = $(am_tests_testEventLoop_OBJECTS) \
@@ -837,16 +845,16 @@ am__tests_testHttpRequest_SOURCES_DIST = debug.cc HttpRequest.cc \
 	Packer.cc Parsing.cc pconn.cc peer_digest.cc peer_select.cc \
 	peer_sourcehash.cc peer_userhash.cc redirect.cc referer.cc \
 	refresh.cc RemovalPolicy.cc Server.cc snmp_core.cc \
-	snmp_agent.cc ssl_support.cc ssl_support.h stat.cc StatHist.cc \
-	stmem.cc store.cc store_client.cc store_digest.cc store_dir.cc \
-	store_io.cc store_key_md5.cc store_log.cc store_rebuild.cc \
-	store_swapin.cc store_swapmeta.cc store_swapout.cc \
-	StoreFileSystem.cc StoreIOState.cc StoreMeta.cc \
-	StoreMetaMD5.cc StoreMetaSTD.cc StoreMetaSTDLFS.cc \
-	StoreMetaUnpacker.cc StoreMetaURL.cc StoreMetaVary.cc \
-	StoreSwapLogData.cc event.cc tools.cc tunnel.cc SwapDir.cc \
-	url.cc URLScheme.cc urn.cc useragent.cc wccp2.cc whois.cc \
-	win32.cc wordlist.cc
+	snmp_agent.cc ssl_support.cc ssl_support.h SquidMath.h \
+	SquidMath.cc stat.cc StatHist.cc stmem.cc store.cc \
+	store_client.cc store_digest.cc store_dir.cc store_io.cc \
+	store_key_md5.cc store_log.cc store_rebuild.cc store_swapin.cc \
+	store_swapmeta.cc store_swapout.cc StoreFileSystem.cc \
+	StoreIOState.cc StoreMeta.cc StoreMetaMD5.cc StoreMetaSTD.cc \
+	StoreMetaSTDLFS.cc StoreMetaUnpacker.cc StoreMetaURL.cc \
+	StoreMetaVary.cc StoreSwapLogData.cc event.cc tools.cc \
+	tunnel.cc SwapDir.cc url.cc URLScheme.cc urn.cc useragent.cc \
+	wccp2.cc whois.cc win32.cc wordlist.cc
 am_tests_testHttpRequest_OBJECTS = debug.$(OBJEXT) \
 	HttpRequest.$(OBJEXT) HttpRequestMethod.$(OBJEXT) \
 	mem.$(OBJEXT) String.$(OBJEXT) tests/testHttpRequest.$(OBJEXT) \
@@ -878,9 +886,9 @@ am_tests_testHttpRequest_OBJECTS = debug.$(OBJEXT) \
 	peer_select.$(OBJEXT) peer_sourcehash.$(OBJEXT) \
 	peer_userhash.$(OBJEXT) redirect.$(OBJEXT) referer.$(OBJEXT) \
 	refresh.$(OBJEXT) RemovalPolicy.$(OBJEXT) Server.$(OBJEXT) \
-	$(am__objects_15) $(am__objects_17) stat.$(OBJEXT) \
-	StatHist.$(OBJEXT) stmem.$(OBJEXT) store.$(OBJEXT) \
-	store_client.$(OBJEXT) store_digest.$(OBJEXT) \
+	$(am__objects_15) $(am__objects_17) SquidMath.$(OBJEXT) \
+	stat.$(OBJEXT) StatHist.$(OBJEXT) stmem.$(OBJEXT) \
+	store.$(OBJEXT) store_client.$(OBJEXT) store_digest.$(OBJEXT) \
 	store_dir.$(OBJEXT) store_io.$(OBJEXT) store_key_md5.$(OBJEXT) \
 	store_log.$(OBJEXT) store_rebuild.$(OBJEXT) \
 	store_swapin.$(OBJEXT) store_swapmeta.$(OBJEXT) \
@@ -976,7 +984,7 @@ am_tests_testStore_OBJECTS = tests/stub_store_swapout.$(OBJEXT) \
 	tests/testStoreHashIndex.$(OBJEXT) tests/TestSwapDir.$(OBJEXT) \
 	tests/stub_fd.$(OBJEXT) tests/stub_HttpReply.$(OBJEXT) \
 	tests/stub_cache_manager.$(OBJEXT) $(am__objects_26)
-nodist_tests_testStore_OBJECTS = $(am__objects_28)
+nodist_tests_testStore_OBJECTS = $(am__objects_28) SquidMath.$(OBJEXT)
 tests_testStore_OBJECTS = $(am_tests_testStore_OBJECTS) \
 	$(nodist_tests_testStore_OBJECTS)
 tests_testStore_LINK = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) \
@@ -1021,15 +1029,15 @@ am__tests_testURL_SOURCES_DIST = debug.cc url.cc URLScheme.cc \
 	Packer.cc Parsing.cc pconn.cc peer_digest.cc peer_select.cc \
 	peer_sourcehash.cc peer_userhash.cc redirect.cc referer.cc \
 	refresh.cc Server.cc snmp_core.cc snmp_agent.cc ssl_support.cc \
-	ssl_support.h stat.cc StatHist.cc stmem.cc store.cc \
-	store_client.cc store_digest.cc store_dir.cc store_io.cc \
-	store_key_md5.cc store_log.cc store_rebuild.cc store_swapin.cc \
-	store_swapmeta.cc store_swapout.cc StoreFileSystem.cc \
-	StoreIOState.cc StoreMeta.cc StoreMetaMD5.cc StoreMetaSTD.cc \
-	StoreMetaSTDLFS.cc StoreMetaUnpacker.cc StoreMetaURL.cc \
-	StoreMetaVary.cc StoreSwapLogData.cc event.cc tools.cc \
-	tunnel.cc SwapDir.cc urn.cc useragent.cc wccp2.cc whois.cc \
-	win32.cc wordlist.cc
+	ssl_support.h SquidMath.h SquidMath.cc stat.cc StatHist.cc \
+	stmem.cc store.cc store_client.cc store_digest.cc store_dir.cc \
+	store_io.cc store_key_md5.cc store_log.cc store_rebuild.cc \
+	store_swapin.cc store_swapmeta.cc store_swapout.cc \
+	StoreFileSystem.cc StoreIOState.cc StoreMeta.cc \
+	StoreMetaMD5.cc StoreMetaSTD.cc StoreMetaSTDLFS.cc \
+	StoreMetaUnpacker.cc StoreMetaURL.cc StoreMetaVary.cc \
+	StoreSwapLogData.cc event.cc tools.cc tunnel.cc SwapDir.cc \
+	urn.cc useragent.cc wccp2.cc whois.cc win32.cc wordlist.cc
 am_tests_testURL_OBJECTS = debug.$(OBJEXT) url.$(OBJEXT) \
 	URLScheme.$(OBJEXT) HttpRequest.$(OBJEXT) \
 	HttpRequestMethod.$(OBJEXT) mem.$(OBJEXT) \
@@ -1063,20 +1071,21 @@ am_tests_testURL_OBJECTS = debug.$(OBJEXT) url.$(OBJEXT) \
 	peer_sourcehash.$(OBJEXT) peer_userhash.$(OBJEXT) \
 	redirect.$(OBJEXT) referer.$(OBJEXT) refresh.$(OBJEXT) \
 	Server.$(OBJEXT) $(am__objects_15) $(am__objects_17) \
-	stat.$(OBJEXT) StatHist.$(OBJEXT) stmem.$(OBJEXT) \
-	store.$(OBJEXT) store_client.$(OBJEXT) store_digest.$(OBJEXT) \
-	store_dir.$(OBJEXT) store_io.$(OBJEXT) store_key_md5.$(OBJEXT) \
-	store_log.$(OBJEXT) store_rebuild.$(OBJEXT) \
-	store_swapin.$(OBJEXT) store_swapmeta.$(OBJEXT) \
-	store_swapout.$(OBJEXT) StoreFileSystem.$(OBJEXT) \
-	StoreIOState.$(OBJEXT) StoreMeta.$(OBJEXT) \
-	StoreMetaMD5.$(OBJEXT) StoreMetaSTD.$(OBJEXT) \
-	StoreMetaSTDLFS.$(OBJEXT) StoreMetaUnpacker.$(OBJEXT) \
-	StoreMetaURL.$(OBJEXT) StoreMetaVary.$(OBJEXT) \
-	StoreSwapLogData.$(OBJEXT) $(am__objects_24) tools.$(OBJEXT) \
-	tunnel.$(OBJEXT) SwapDir.$(OBJEXT) urn.$(OBJEXT) \
-	useragent.$(OBJEXT) wccp2.$(OBJEXT) whois.$(OBJEXT) \
-	$(am__objects_19) wordlist.$(OBJEXT)
+	SquidMath.$(OBJEXT) stat.$(OBJEXT) StatHist.$(OBJEXT) \
+	stmem.$(OBJEXT) store.$(OBJEXT) store_client.$(OBJEXT) \
+	store_digest.$(OBJEXT) store_dir.$(OBJEXT) store_io.$(OBJEXT) \
+	store_key_md5.$(OBJEXT) store_log.$(OBJEXT) \
+	store_rebuild.$(OBJEXT) store_swapin.$(OBJEXT) \
+	store_swapmeta.$(OBJEXT) store_swapout.$(OBJEXT) \
+	StoreFileSystem.$(OBJEXT) StoreIOState.$(OBJEXT) \
+	StoreMeta.$(OBJEXT) StoreMetaMD5.$(OBJEXT) \
+	StoreMetaSTD.$(OBJEXT) StoreMetaSTDLFS.$(OBJEXT) \
+	StoreMetaUnpacker.$(OBJEXT) StoreMetaURL.$(OBJEXT) \
+	StoreMetaVary.$(OBJEXT) StoreSwapLogData.$(OBJEXT) \
+	$(am__objects_24) tools.$(OBJEXT) tunnel.$(OBJEXT) \
+	SwapDir.$(OBJEXT) urn.$(OBJEXT) useragent.$(OBJEXT) \
+	wccp2.$(OBJEXT) whois.$(OBJEXT) $(am__objects_19) \
+	wordlist.$(OBJEXT)
 nodist_tests_testURL_OBJECTS = globals.$(OBJEXT) \
 	repl_modules.$(OBJEXT) string_arrays.$(OBJEXT)
 tests_testURL_OBJECTS = $(am_tests_testURL_OBJECTS) \
@@ -1121,7 +1130,7 @@ am__tests_testUfs_SOURCES_DIST = tests/testUfs.cc tests/testMain.cc \
 am_tests_testUfs_OBJECTS = tests/testUfs.$(OBJEXT) \
 	tests/testMain.$(OBJEXT) tests/stub_cache_manager.$(OBJEXT) \
 	$(am__objects_27)
-nodist_tests_testUfs_OBJECTS = $(am__objects_29)
+nodist_tests_testUfs_OBJECTS = $(am__objects_29) SquidMath.$(OBJEXT)
 tests_testUfs_OBJECTS = $(am_tests_testUfs_OBJECTS) \
 	$(nodist_tests_testUfs_OBJECTS)
 tests_testUfs_LINK = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) \
@@ -1155,16 +1164,17 @@ am__tests_test_http_range_SOURCES_DIST = tests/test_http_range.cc \
 	peer_digest.cc peer_select.cc peer_sourcehash.cc \
 	peer_userhash.cc pconn.cc redirect.cc referer.cc refresh.cc \
 	RemovalPolicy.cc Server.cc snmp_core.cc snmp_agent.cc \
-	ssl_support.cc ssl_support.h stat.cc StatHist.cc stmem.cc \
-	store.cc store_client.cc store_digest.cc store_dir.cc \
-	store_key_md5.cc store_io.cc store_log.cc store_rebuild.cc \
-	store_swapin.cc store_swapmeta.cc store_swapout.cc \
-	StoreFileSystem.cc StoreIOState.cc StoreMeta.cc \
-	StoreMetaMD5.cc StoreMetaSTD.cc StoreMetaSTDLFS.cc \
-	StoreMetaUnpacker.cc StoreMetaURL.cc StoreMetaVary.cc \
-	StoreSwapLogData.cc String.cc SwapDir.cc event.cc time.cc \
-	tools.cc tunnel.cc url.cc URLScheme.cc urn.cc useragent.cc \
-	wccp2.cc whois.cc win32.cc wordlist.cc Packer.cc MemBuf.cc
+	ssl_support.cc ssl_support.h SquidMath.h SquidMath.cc stat.cc \
+	StatHist.cc stmem.cc store.cc store_client.cc store_digest.cc \
+	store_dir.cc store_key_md5.cc store_io.cc store_log.cc \
+	store_rebuild.cc store_swapin.cc store_swapmeta.cc \
+	store_swapout.cc StoreFileSystem.cc StoreIOState.cc \
+	StoreMeta.cc StoreMetaMD5.cc StoreMetaSTD.cc \
+	StoreMetaSTDLFS.cc StoreMetaUnpacker.cc StoreMetaURL.cc \
+	StoreMetaVary.cc StoreSwapLogData.cc String.cc SwapDir.cc \
+	event.cc time.cc tools.cc tunnel.cc url.cc URLScheme.cc urn.cc \
+	useragent.cc wccp2.cc whois.cc win32.cc wordlist.cc Packer.cc \
+	MemBuf.cc
 am_tests_test_http_range_OBJECTS = tests/test_http_range.$(OBJEXT) \
 	access_log.$(OBJEXT) BodyPipe.$(OBJEXT) cache_cf.$(OBJEXT) \
 	ProtoPort.$(OBJEXT) cache_manager.$(OBJEXT) \
@@ -1194,9 +1204,9 @@ am_tests_test_http_range_OBJECTS = tests/test_http_range.$(OBJEXT) \
 	peer_sourcehash.$(OBJEXT) peer_userhash.$(OBJEXT) \
 	pconn.$(OBJEXT) redirect.$(OBJEXT) referer.$(OBJEXT) \
 	refresh.$(OBJEXT) RemovalPolicy.$(OBJEXT) Server.$(OBJEXT) \
-	$(am__objects_15) $(am__objects_17) stat.$(OBJEXT) \
-	StatHist.$(OBJEXT) stmem.$(OBJEXT) store.$(OBJEXT) \
-	store_client.$(OBJEXT) store_digest.$(OBJEXT) \
+	$(am__objects_15) $(am__objects_17) SquidMath.$(OBJEXT) \
+	stat.$(OBJEXT) StatHist.$(OBJEXT) stmem.$(OBJEXT) \
+	store.$(OBJEXT) store_client.$(OBJEXT) store_digest.$(OBJEXT) \
 	store_dir.$(OBJEXT) store_key_md5.$(OBJEXT) store_io.$(OBJEXT) \
 	store_log.$(OBJEXT) store_rebuild.$(OBJEXT) \
 	store_swapin.$(OBJEXT) store_swapmeta.$(OBJEXT) \
@@ -1527,7 +1537,6 @@ CLEANFILES = cf_gen_defines.h cf.data cf_parser.h squid.conf.default \
 TESTS = $(check_PROGRAMS) testHeaders
 INCLUDES = -I$(top_srcdir) -I$(top_srcdir)/include -I$(top_srcdir)/src \
 	-I$(top_builddir)/include $(SQUID_CPPUNIT_INC) \
-	-I$(top_srcdir)/lib -I$(top_srcdir)/lib/libLtdl \
 	-I$(top_builddir)/src
 AUTOMAKE_OPTIONS = subdir-objects
 @USE_DNSSERVER_FALSE@DNSSOURCE = dns_internal.cc DnsLookupDetails.h \
@@ -1731,11 +1740,11 @@ squid_SOURCES = $(ACL_REGISTRATION_SOURCES) access_log.cc \
 	ExternalACLEntry.cc ExternalACLEntry.h fd.cc fde.cc fde.h \
 	filemap.cc forward.cc forward.h fqdncache.cc ftp.cc Generic.h \
 	globals.h gopher.cc helper.cc helper.h HierarchyLogEntry.h \
-	$(HTCPSOURCE) http.cc http.h HttpStatusLine.cc \
-	HttpStatusLine.h HttpHdrCc.cc HttpHdrRange.cc HttpHdrSc.cc \
-	HttpHdrSc.h HttpHdrScTarget.cc HttpHdrScTarget.h \
-	HttpHdrContRange.cc HttpHdrContRange.h HttpHeader.cc \
-	HttpHeader.h HttpHeaderMask.h HttpHeaderRange.h \
+	$(HTCPSOURCE) http.cc http.h HttpStatusCode.h \
+	HttpStatusLine.cc HttpStatusLine.h HttpHdrCc.cc \
+	HttpHdrRange.cc HttpHdrSc.cc HttpHdrSc.h HttpHdrScTarget.cc \
+	HttpHdrScTarget.h HttpHdrContRange.cc HttpHdrContRange.h \
+	HttpHeader.cc HttpHeader.h HttpHeaderMask.h HttpHeaderRange.h \
 	HttpHeaderTools.cc HttpBody.cc HttpMsg.cc HttpMsg.h \
 	HttpReply.cc HttpReply.h HttpRequest.cc HttpRequest.h \
 	HttpRequestMethod.cc HttpRequestMethod.h HttpVersion.h ICP.h \
@@ -1748,17 +1757,18 @@ squid_SOURCES = $(ACL_REGISTRATION_SOURCES) access_log.cc \
 	peer_sourcehash.cc peer_userhash.cc PeerSelectState.h \
 	PingData.h protos.h redirect.cc referer.cc refresh.cc \
 	RemovalPolicy.cc RemovalPolicy.h send-announce.cc \
-	$(SNMP_SOURCE) squid.h SquidNew.cc $(SSL_SOURCE) stat.cc \
-	StatHist.cc String.cc stmem.cc stmem.h store.cc Store.h \
-	StoreFileSystem.cc StoreFileSystem.h StoreHashIndex.h \
-	store_io.cc StoreIOBuffer.h StoreIOState.cc StoreIOState.h \
-	store_client.cc StoreClient.h store_digest.cc store_dir.cc \
-	store_key_md5.cc store_log.cc store_rebuild.cc store_swapin.cc \
-	store_swapmeta.cc store_swapout.cc StoreMeta.cc StoreMeta.h \
-	StoreMetaMD5.cc StoreMetaMD5.h StoreMetaSTD.cc StoreMetaSTD.h \
-	StoreMetaSTDLFS.cc StoreMetaSTDLFS.h StoreMetaObjSize.h \
-	StoreMetaUnpacker.cc StoreMetaUnpacker.h StoreMetaURL.cc \
-	StoreMetaURL.h StoreMetaVary.cc StoreMetaVary.h StoreSearch.h \
+	$(SNMP_SOURCE) squid.h SquidMath.h SquidMath.cc SquidNew.cc \
+	$(SSL_SOURCE) stat.cc StatHist.cc String.cc stmem.cc stmem.h \
+	store.cc Store.h StoreFileSystem.cc StoreFileSystem.h \
+	StoreHashIndex.h store_io.cc StoreIOBuffer.h StoreIOState.cc \
+	StoreIOState.h store_client.cc StoreClient.h store_digest.cc \
+	store_dir.cc store_key_md5.cc store_log.cc store_rebuild.cc \
+	store_swapin.cc store_swapmeta.cc store_swapout.cc \
+	StoreMeta.cc StoreMeta.h StoreMetaMD5.cc StoreMetaMD5.h \
+	StoreMetaSTD.cc StoreMetaSTD.h StoreMetaSTDLFS.cc \
+	StoreMetaSTDLFS.h StoreMetaObjSize.h StoreMetaUnpacker.cc \
+	StoreMetaUnpacker.h StoreMetaURL.cc StoreMetaURL.h \
+	StoreMetaVary.cc StoreMetaVary.h StoreSearch.h \
 	StoreSwapLogData.cc StoreSwapLogData.h Server.cc Server.h \
 	structs.h SwapDir.cc SwapDir.h time.cc tools.cc tunnel.cc \
 	typedefs.h $(UNLINKDSOURCE) url.cc URL.h URLScheme.cc \
@@ -2010,6 +2020,7 @@ tests_testHttpReply_SOURCES = \
 	HttpMsg.cc \
 	HttpReply.h \
 	HttpReply.cc \
+	HttpStatusCode.h \
 	HttpStatusLine.h \
 	HttpStatusLine.cc \
 	mem.cc \
@@ -2236,6 +2247,8 @@ tests_testCacheManager_SOURCES = \
 	Server.cc \
 	$(SNMP_SOURCE) \
 	$(SSL_SOURCE) \
+	SquidMath.h \
+	SquidMath.cc \
 	stat.cc \
 	StatHist.cc \
 	stmem.cc \
@@ -2305,7 +2318,9 @@ tests_testDiskIO_SOURCES = \
 	tests/stub_cache_manager.cc
 
 nodist_tests_testDiskIO_SOURCES = \
-	$(SWAP_TEST_GEN_SOURCES)
+	$(SWAP_TEST_GEN_SOURCES) \
+	SquidMath.cc \
+	SquidMath.h
 
 tests_testDiskIO_LDADD = \
 	$(SWAP_TEST_LDADD) \
@@ -2411,6 +2426,8 @@ tests_testEvent_SOURCES = \
 	Server.cc \
 	$(SNMP_SOURCE) \
 	$(SSL_SOURCE) \
+	SquidMath.h \
+	SquidMath.cc \
 	stat.cc \
 	StatHist.cc \
 	stmem.cc \
@@ -2561,6 +2578,8 @@ tests_testEventLoop_SOURCES = \
 	Server.cc \
 	$(SNMP_SOURCE) \
 	$(SSL_SOURCE) \
+	SquidMath.h \
+	SquidMath.cc \
 	stat.cc \
 	StatHist.cc \
 	stmem.cc \
@@ -2703,6 +2722,8 @@ tests_test_http_range_SOURCES = \
 	Server.cc \
 	$(SNMP_SOURCE) \
 	$(SSL_SOURCE) \
+	SquidMath.h \
+	SquidMath.cc \
 	stat.cc \
 	StatHist.cc \
 	stmem.cc \
@@ -2856,6 +2877,8 @@ tests_testHttpRequest_SOURCES = \
 	Server.cc \
 	$(SNMP_SOURCE) \
 	$(SSL_SOURCE) \
+	SquidMath.h \
+	SquidMath.cc \
 	stat.cc \
 	StatHist.cc \
 	stmem.cc \
@@ -2983,7 +3006,9 @@ tests_testStore_SOURCES = \
 	$(STORE_TEST_SOURCES)
 
 nodist_tests_testStore_SOURCES = \
-	$(STORE_TEST_GEN_SOURCES)
+	$(STORE_TEST_GEN_SOURCES) \
+	SquidMath.cc \
+	SquidMath.h
 
 tests_testStore_LDADD = \
 	$(COMMON_LIBS) \
@@ -3084,7 +3109,9 @@ tests_testUfs_SOURCES = \
 	$(SWAP_TEST_SOURCES)
 
 nodist_tests_testUfs_SOURCES = \
-	$(SWAP_TEST_GEN_SOURCES)
+	$(SWAP_TEST_GEN_SOURCES) \
+	SquidMath.cc \
+	SquidMath.h
 
 tests_testUfs_LDADD = \
 	$(SWAP_TEST_LDADD) \
@@ -3225,6 +3252,8 @@ tests_testURL_SOURCES = \
 	Server.cc \
 	$(SNMP_SOURCE) \
 	$(SSL_SOURCE) \
+	SquidMath.h \
+	SquidMath.cc \
 	stat.cc \
 	StatHist.cc \
 	stmem.cc \
@@ -3823,6 +3852,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/RemovalPolicy.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Server.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/SquidConfig.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/SquidMath.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/SquidNew.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/StatHist.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/StoreFileSystem.Po@am__quote@

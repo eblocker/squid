@@ -1,1 +1,52 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd"> <html><head> <meta http-equiv="Content-Type" content="text/html; charset=utf-8"> <title>Директория: %U</title> <style type="text/css"><!--   %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  --></style> </head><body> <div id="titles"> <h2>Directory: <a href="%U">%U</a>/</h2> </div> <hr>  <div id="content"> <p>Директория таркиби:</p>  <blockquote id="data"> <pre>%z</pre> </blockquote>  <table id="dirlisting" summary="Директория рўйхатланмоқда"> <tr> <th><a href="../"><img border="0" src="/squid-internal-static/icons/anthony-dirup.gif" alt="Асосий директория"></a></th> <th nowrap="nowrap"><a href="../">Асосий директория</a> (<a href="/">Root Directory</a>)</th> </tr>  %g  </table> </div>  <hr> <div id="footer"> <p>%h (%s) томонидан  %T яратилган</p> <!-- %c --> </div> </body></html> 
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+"http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta name="generator" content=
+"HTML Tidy for FreeBSD (vers 7 December 2008), see www.w3.org">
+<meta http-equiv="Content-Type" content=
+"text/html; charset=us-ascii">
+<title>
+&ETH;&rdquo;&ETH;&cedil;&Ntilde;&euro;&ETH;&micro;&ETH;&ordm;&Ntilde;&sbquo;&ETH;&frac34;&Ntilde;&euro;&ETH;&cedil;&Ntilde;:
+%U</title>
+
+<style type="text/css">
+<!--   %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  -->
+</style>
+</head>
+<body>
+<div id="titles">
+<h2>Directory: <a href="%U">%U</a>/</h2>
+</div>
+<hr>
+<div id="content">
+<p>
+&ETH;&rdquo;&ETH;&cedil;&Ntilde;&euro;&ETH;&micro;&ETH;&ordm;&Ntilde;&sbquo;&ETH;&frac34;&Ntilde;&euro;&ETH;&cedil;&Ntilde;
+&Ntilde;&sbquo;&ETH;&deg;&Ntilde;&euro;&ETH;&ordm;&ETH;&cedil;&ETH;&plusmn;&ETH;&cedil;:</p>
+<blockquote id="data">
+<pre>
+%z
+</pre></blockquote>
+%g
+<table id="dirlisting" summary=
+"&ETH;&rdquo;&ETH;&cedil;&Ntilde;&euro;&ETH;&micro;&ETH;&ordm;&Ntilde;&sbquo;&ETH;&frac34;&Ntilde;&euro;&ETH;&cedil;&Ntilde; &Ntilde;&euro;&Ntilde;&#382;&ETH;&sup1;&Ntilde;&hellip;&ETH;&deg;&Ntilde;&sbquo;&ETH;&raquo;&ETH;&deg;&ETH;&frac12;&ETH;&frac14;&ETH;&frac34;&Ograve;&rsaquo;&ETH;&acute;&ETH;&deg;">
+<tr>
+<th><a href="../"><img border="0" src=
+"/squid-internal-static/icons/anthony-dirup.gif" alt=
+"&ETH;&Ntilde;&ETH;&frac34;&Ntilde;&ETH;&cedil;&ETH;&sup1; &ETH;&acute;&ETH;&cedil;&Ntilde;&euro;&ETH;&micro;&ETH;&ordm;&Ntilde;&sbquo;&ETH;&frac34;&Ntilde;&euro;&ETH;&cedil;&Ntilde;"></a></th>
+<th nowrap="nowrap"><a href=
+"../">&ETH;&Ntilde;&ETH;&frac34;&Ntilde;&ETH;&cedil;&ETH;&sup1;
+&ETH;&acute;&ETH;&cedil;&Ntilde;&euro;&ETH;&micro;&ETH;&ordm;&Ntilde;&sbquo;&ETH;&frac34;&Ntilde;&euro;&ETH;&cedil;&Ntilde;</a>
+(<a href="/">Root Directory</a>)</th>
+</tr>
+</table>
+</div>
+<hr>
+<div id="footer">
+<p>%h (%s)
+&Ntilde;&sbquo;&ETH;&frac34;&ETH;&frac14;&ETH;&frac34;&ETH;&frac12;&ETH;&cedil;&ETH;&acute;&ETH;&deg;&ETH;&frac12;
+%T
+&Ntilde;&Ntilde;&euro;&ETH;&deg;&Ntilde;&sbquo;&ETH;&cedil;&ETH;&raquo;&ETH;&sup3;&ETH;&deg;&ETH;&frac12;</p>
+<!-- %c --></div>
+</body>
+</html>

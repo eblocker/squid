@@ -1,1 +1,47 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd"> <html><head> <meta http-equiv="Content-Type" content="text/html; charset=utf-8"> <title>HATA: Cache Manager Access Denied</title> <style type="text/css"><!--   %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  --></style> </head><body> <div id="titles"> <h1>ERROR</h1> <h2>Cache Manager Erişim Yasak.</h2> </div> <hr>  <div id="content"> <p>The following error was encountered while trying to retrieve the URL: <a href="%U">%U</a></p>  <blockquote id="error"> <p><b>Cache Yönetici girişi yasak.</b></p> </blockquote>  <p>Özür dilerim, istediğiniz %U adresine bu cache yönetici girişinden bağlanamazsınız.</p>  <p>Eğer sorun devam ediyor ise lütfen  <a href="mailto:%w%W">cache yöneticisi</a> ile bağlantıya geçin Eğer <em>yönetici</em> siz iseniz Squid Yardım Sayfalarında Cache Yöneticisi giriş arayüzü ile ilgili kısımları tekrar okuyun ve Cache sunucusunun hata mesajlarını kontrol edin.</p>  <br> </div>  <hr> <div id="footer"> <p>Generated %T by %h (%s)</p> <!-- %c --> </div> </body></html> 
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN"
+"http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+<meta name="generator" content=
+"HTML Tidy for FreeBSD (vers 7 December 2008), see www.w3.org">
+<meta http-equiv="Content-Type" content=
+"text/html; charset=us-ascii">
+<title>HATA: Cache Manager Access Denied</title>
+
+<style type="text/css">
+<!--   %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  -->
+</style>
+</head>
+<body>
+<div id="titles">
+<h1>ERROR</h1>
+<h2>Cache Manager Eri&Aring;&Yuml;im Yasak.</h2>
+</div>
+<hr>
+<div id="content">
+<p>The following error was encountered while trying to retrieve the
+URL: <a href="%U">%U</a></p>
+<blockquote id="error">
+<p><b>Cache Y&Atilde;&para;netici giri&Aring;&Yuml;i yasak.</b></p>
+</blockquote>
+<p>&Atilde;&ndash;z&Atilde;&frac14;r dilerim,
+istedi&Auml;&Yuml;iniz %U adresine bu cache y&Atilde;&para;netici
+giri&Aring;&Yuml;inden
+ba&Auml;&Yuml;lanamazs&Auml;&plusmn;n&Auml;&plusmn;z.</p>
+<p>E&Auml;&Yuml;er sorun devam ediyor ise l&Atilde;&frac14;tfen
+<a href="mailto:%w%W">cache y&Atilde;&para;neticisi</a> ile
+ba&Auml;&Yuml;lant&Auml;&plusmn;ya ge&Atilde;&sect;in
+E&Auml;&Yuml;er <em>y&Atilde;&para;netici</em> siz iseniz Squid
+Yard&Auml;&plusmn;m Sayfalar&Auml;&plusmn;nda Cache
+Y&Atilde;&para;neticisi giri&Aring;&Yuml;
+aray&Atilde;&frac14;z&Atilde;&frac14; ile ilgili
+k&Auml;&plusmn;s&Auml;&plusmn;mlar&Auml;&plusmn; tekrar okuyun ve
+Cache sunucusunun hata mesajlar&Auml;&plusmn;n&Auml;&plusmn;
+kontrol edin.</p>
+<br></div>
+<hr>
+<div id="footer">
+<p>Generated %T by %h (%s)</p>
+<!-- %c --></div>
+</body>
+</html>

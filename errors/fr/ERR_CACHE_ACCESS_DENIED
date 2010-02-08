@@ -1,1 +1,44 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd"> <html><head> <meta http-equiv="Content-Type" content="text/html; charset=utf-8"> <title>ERREUR: Cache Access Denied</title> <style type="text/css"><!--   %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  --></style> </head> <body> <div id="titles"> <h1>ERROR</h1> <h2>Cache Accès interdit.</h2> </div> <hr>  <div id="content"> <p>L'erreur suivante a été rencontrée en essayant d'accéder à l'URL : <a href="%U">%U</a></p>  <blockquote id="error"> <p><b>Accès au cache interdit.</b></p> </blockquote>  <p>Désolé, vous n'êtes actuellement pas autorisé à demander %U à ce cache tant que vous ne vous êtes pas identifié.</p>  <p>S'il vous plait, contacter l'<a href="mailto:%w%W">administrateur du cache</a> si vous avez des difficultés pour vous authentifier ou <a href="http://%h/cgi-bin/chpasswd.cgi">changez</a> votre mot de passe par défaut.</p>  <br> </div>  <hr>  <div id="footer"> <p>Générée le %T par %h (%s)</p> <!-- %c --> </div> </body></html> 
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN"
+"http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+<meta name="generator" content=
+"HTML Tidy for FreeBSD (vers 7 December 2008), see www.w3.org">
+<meta http-equiv="Content-Type" content=
+"text/html; charset=us-ascii">
+<title>ERREUR: Cache Access Denied</title>
+
+<style type="text/css">
+<!--   %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  -->
+</style>
+</head>
+<body>
+<div id="titles">
+<h1>ERROR</h1>
+<h2>Cache Acc&Atilde;&uml;s interdit.</h2>
+</div>
+<hr>
+<div id="content">
+<p>L'erreur suivante a &Atilde;&copy;t&Atilde;&copy;
+rencontr&Atilde;&copy;e en essayant d'acc&Atilde;&copy;der
+&Atilde;&nbsp; l'URL : <a href="%U">%U</a></p>
+<blockquote id="error">
+<p><b>Acc&Atilde;&uml;s au cache interdit.</b></p>
+</blockquote>
+<p>D&Atilde;&copy;sol&Atilde;&copy;, vous n'&Atilde;&ordf;tes
+actuellement pas autoris&Atilde;&copy; &Atilde;&nbsp; demander %U
+&Atilde;&nbsp; ce cache tant que vous ne vous &Atilde;&ordf;tes pas
+identifi&Atilde;&copy;.</p>
+<p>S'il vous plait, contacter l'<a href=
+"mailto:%w%W">administrateur du cache</a> si vous avez des
+difficult&Atilde;&copy;s pour vous authentifier ou <a href=
+"http://%h/cgi-bin/chpasswd.cgi">changez</a> votre mot de passe par
+d&Atilde;&copy;faut.</p>
+<br></div>
+<hr>
+<div id="footer">
+<p>G&Atilde;&copy;n&Atilde;&copy;r&Atilde;&copy;e le %T par %h
+(%s)</p>
+<!-- %c --></div>
+</body>
+</html>

@@ -1,1 +1,42 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd"> <html><head> <meta http-equiv="Content-Type" CONTENT="text/html; charset=utf-8"> <title>SƏHV: Sorğulanan URL ilə əlaqə yaradılmadı</title> <style type="text/css"><!--   %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  --></style> </head><body> <div id="titles"> <h1>ERROR</h1> <h2>The requested URL could not be retrieved</h2> </div> <hr>  <div id="content"> <p>The following error was encountered while trying to retrieve the URL: <a href="%U">%U</a></p>  <blockquote id="error"> <p><b>Connection to %I failed.</b></p> </blockquote>  <p id="sysmsg">Sistemdən gələn cavab: <i>%E</i></p>  <p>Hədəf server və ya şəbəkə cavab vermir. Xahiş edirik, sorğunu təkrarlayın.</p>  <p>Your cache administrator is <a href="mailto:%w%W">%w</a>.</p>  <br> </div>  <hr> <div id="footer"> <p>Generated %T by %h (%s)</p> <!-- %c --> </div> </body></html> 
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN"
+"http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+<meta name="generator" content=
+"HTML Tidy for FreeBSD (vers 7 December 2008), see www.w3.org">
+<meta http-equiv="Content-Type" content=
+"text/html; charset=us-ascii">
+<title>S&AElig;HV: Sor&Auml;&Yuml;ulanan URL il&Eacute;&trade;
+&Eacute;&trade;laq&Eacute;&trade;
+yarad&Auml;&plusmn;lmad&Auml;&plusmn;</title>
+
+<style type="text/css">
+<!--   %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  -->
+</style>
+</head>
+<body>
+<div id="titles">
+<h1>ERROR</h1>
+<h2>The requested URL could not be retrieved</h2>
+</div>
+<hr>
+<div id="content">
+<p>The following error was encountered while trying to retrieve the
+URL: <a href="%U">%U</a></p>
+<blockquote id="error">
+<p><b>Connection to %I failed.</b></p>
+</blockquote>
+<p id="sysmsg">Sistemd&Eacute;&trade;n
+g&Eacute;&trade;l&Eacute;&trade;n cavab: <i>%E</i></p>
+<p>H&Eacute;&trade;d&Eacute;&trade;f server v&Eacute;&trade; ya
+&Aring;&Yuml;&Eacute;&trade;b&Eacute;&trade;k&Eacute;&trade; cavab
+vermir. Xahi&Aring;&Yuml; edirik, sor&Auml;&Yuml;unu
+t&Eacute;&trade;krarlay&Auml;&plusmn;n.</p>
+<p>Your cache administrator is <a href="mailto:%w%W">%w</a>.</p>
+<br></div>
+<hr>
+<div id="footer">
+<p>Generated %T by %h (%s)</p>
+<!-- %c --></div>
+</body>
+</html>

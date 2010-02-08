@@ -1,1 +1,47 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd"> <html><head> <meta http-equiv="Content-Type" content="text/html; charset=utf-8"> <title>ERRO: A URL solicitada não pode ser recuperada</title> <style type="text/css"><!--   %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  --></style> </head><body> <div id="titles"> <h1>ERROR</h1> <h2>The requested URL could not be retrieved</h2> </div> <hr>  <div id="content"> <p>The following error was encountered while trying to retrieve the URL: <a href="%U">%U</a></p>  <blockquote id="error"> <p><b>A requisição ou resposta é muito grande.</b></p> </blockquote>  <p>Se você estiver fazendo uma requisição POST ou PUT, então o corpo de sua requisição (o que você está tentando enviar) é muito grande.</p> <p>If you are making a GET request, then the item you are trying to download is too large.</p> <p>Os limites foram estabelecidos pelo administrador deste cache. Por favor, entre em contato caso acredite que este cache está configurado incorretamente.</p>  <p>Your cache administrator is <a href="mailto:%w%W">%w</a>.</p> <br> </div>  <hr> <div id="footer"> <p>Generated %T by %h (%s)</p> <!-- %c --> </div> </body></html> 
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN"
+"http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+<meta name="generator" content=
+"HTML Tidy for FreeBSD (vers 7 December 2008), see www.w3.org">
+<meta http-equiv="Content-Type" content=
+"text/html; charset=us-ascii">
+<title>ERRO: A URL solicitada n&Atilde;&pound;o pode ser
+recuperada</title>
+
+<style type="text/css">
+<!--   %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  -->
+</style>
+</head>
+<body>
+<div id="titles">
+<h1>ERROR</h1>
+<h2>The requested URL could not be retrieved</h2>
+</div>
+<hr>
+<div id="content">
+<p>The following error was encountered while trying to retrieve the
+URL: <a href="%U">%U</a></p>
+<blockquote id="error">
+<p><b>A requisi&Atilde;&sect;&Atilde;&pound;o ou resposta
+&Atilde;&copy; muito grande.</b></p>
+</blockquote>
+<p>Se voc&Atilde;&ordf; estiver fazendo uma
+requisi&Atilde;&sect;&Atilde;&pound;o POST ou PUT,
+ent&Atilde;&pound;o o corpo de sua
+requisi&Atilde;&sect;&Atilde;&pound;o (o que voc&Atilde;&ordf;
+est&Atilde;&iexcl; tentando enviar) &Atilde;&copy; muito
+grande.</p>
+<p>If you are making a GET request, then the item you are trying to
+download is too large.</p>
+<p>Os limites foram estabelecidos pelo administrador deste cache.
+Por favor, entre em contato caso acredite que este cache
+est&Atilde;&iexcl; configurado incorretamente.</p>
+<p>Your cache administrator is <a href="mailto:%w%W">%w</a>.</p>
+<br></div>
+<hr>
+<div id="footer">
+<p>Generated %T by %h (%s)</p>
+<!-- %c --></div>
+</body>
+</html>

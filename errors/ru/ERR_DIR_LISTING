@@ -1,1 +1,53 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd"> <html><head> <meta http-equiv="Content-Type" content="text/html; charset=utf-8"> <title>Каталог: %U</title> <style type="text/css"><!--   %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  --></style> </head><body> <div id="titles"> <h2>Directory: <a href="%U">%U</a>/</h2> </div> <hr>  <div id="content"> <p>Содержимое каталога:</p>  <blockquote id="data"> <pre>%z</pre> </blockquote>  <table id="dirlisting" summary="Список файлов каталога"> <tr> <th><a href="../"><img border="0" src="/squid-internal-static/icons/anthony-dirup.gif" alt="Родительский каталог"></a></th> <th nowrap="nowrap"><a href="../">Родительская директория</a> (<a href="/">Корневая директория</a>)</th> </tr>  %g  </table> </div>  <hr> <div id="footer"> <p>Создано %T на %h (%s)</p> <!-- %c --> </div> </body></html> 
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+"http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta name="generator" content=
+"HTML Tidy for FreeBSD (vers 7 December 2008), see www.w3.org">
+<meta http-equiv="Content-Type" content=
+"text/html; charset=us-ascii">
+<title>
+&ETH;&scaron;&ETH;&deg;&Ntilde;&sbquo;&ETH;&deg;&ETH;&raquo;&ETH;&frac34;&ETH;&sup3;:
+%U</title>
+
+<style type="text/css">
+<!--   %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  -->
+</style>
+</head>
+<body>
+<div id="titles">
+<h2>Directory: <a href="%U">%U</a>/</h2>
+</div>
+<hr>
+<div id="content">
+<p>
+&ETH;&iexcl;&ETH;&frac34;&ETH;&acute;&ETH;&micro;&Ntilde;&euro;&ETH;&para;&ETH;&cedil;&ETH;&frac14;&ETH;&frac34;&ETH;&micro;
+&ETH;&ordm;&ETH;&deg;&Ntilde;&sbquo;&ETH;&deg;&ETH;&raquo;&ETH;&frac34;&ETH;&sup3;&ETH;&deg;:</p>
+<blockquote id="data">
+<pre>
+%z
+</pre></blockquote>
+%g
+<table id="dirlisting" summary=
+"&ETH;&iexcl;&ETH;&iquest;&ETH;&cedil;&Ntilde;&ETH;&frac34;&ETH;&ordm; &Ntilde;&bdquo;&ETH;&deg;&ETH;&sup1;&ETH;&raquo;&ETH;&frac34;&ETH;&sup2; &ETH;&ordm;&ETH;&deg;&Ntilde;&sbquo;&ETH;&deg;&ETH;&raquo;&ETH;&frac34;&ETH;&sup3;&ETH;&deg;">
+<tr>
+<th><a href="../"><img border="0" src=
+"/squid-internal-static/icons/anthony-dirup.gif" alt=
+"&ETH;&nbsp;&ETH;&frac34;&ETH;&acute;&ETH;&cedil;&Ntilde;&sbquo;&ETH;&micro;&ETH;&raquo;&Ntilde;&OElig;&Ntilde;&ETH;&ordm;&ETH;&cedil;&ETH;&sup1; &ETH;&ordm;&ETH;&deg;&Ntilde;&sbquo;&ETH;&deg;&ETH;&raquo;&ETH;&frac34;&ETH;&sup3;"></a></th>
+<th nowrap="nowrap"><a href=
+"../">&ETH;&nbsp;&ETH;&frac34;&ETH;&acute;&ETH;&cedil;&Ntilde;&sbquo;&ETH;&micro;&ETH;&raquo;&Ntilde;&OElig;&Ntilde;&ETH;&ordm;&ETH;&deg;&Ntilde;
+&ETH;&acute;&ETH;&cedil;&Ntilde;&euro;&ETH;&micro;&ETH;&ordm;&Ntilde;&sbquo;&ETH;&frac34;&Ntilde;&euro;&ETH;&cedil;&Ntilde;</a>
+(<a href=
+"/">&ETH;&scaron;&ETH;&frac34;&Ntilde;&euro;&ETH;&frac12;&ETH;&micro;&ETH;&sup2;&ETH;&deg;&Ntilde;
+&ETH;&acute;&ETH;&cedil;&Ntilde;&euro;&ETH;&micro;&ETH;&ordm;&Ntilde;&sbquo;&ETH;&frac34;&Ntilde;&euro;&ETH;&cedil;&Ntilde;</a>)</th>
+</tr>
+</table>
+</div>
+<hr>
+<div id="footer">
+<p>
+&ETH;&iexcl;&ETH;&frac34;&ETH;&middot;&ETH;&acute;&ETH;&deg;&ETH;&frac12;&ETH;&frac34;
+%T &ETH;&frac12;&ETH;&deg; %h (%s)</p>
+<!-- %c --></div>
+</body>
+</html>

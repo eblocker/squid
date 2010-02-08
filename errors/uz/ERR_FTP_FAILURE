@@ -1,1 +1,54 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd"> <html><head> <meta http-equiv="Content-Type" content="text/html; charset=utf-8"> <title>ХАТО: Сўралган URL топилмади</title> <style type="text/css"><!--   %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  --></style> </head><body> <div id="titles"> <h1>ERROR</h1> <h2>The requested URL could not be retrieved</h2> </div> <hr>  <div id="content"> <p>An FTP protocol error occurred while trying to retrieve the URL: <a href="%U">%U</a></p>  <p>Squid қуйидаги FTP буйруғини жўнатди:</p> <blockquote id="data"> <pre>%f</pre> </blockquote>  <p>The server responded with:</p> <blockquote id="error"> <pre>%F</pre> <pre>%g</pre> </blockquote>  <p>Your cache administrator is <a href="mailto:%w%W">%w</a>.</p> <br> </div>  <hr> <div id="footer"> <p>%h (%s) томонидан  %T яратилган</p> <!-- %c --> </div> </body></html> 
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN"
+"http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+<meta name="generator" content=
+"HTML Tidy for FreeBSD (vers 7 December 2008), see www.w3.org">
+<meta http-equiv="Content-Type" content=
+"text/html; charset=us-ascii">
+<title>&ETH;&yen;&ETH;&ETH;&cent;&ETH;&#382;:
+&ETH;&iexcl;&Ntilde;&#382;&Ntilde;&euro;&ETH;&deg;&ETH;&raquo;&ETH;&sup3;&ETH;&deg;&ETH;&frac12;
+URL
+&Ntilde;&sbquo;&ETH;&frac34;&ETH;&iquest;&ETH;&cedil;&ETH;&raquo;&ETH;&frac14;&ETH;&deg;&ETH;&acute;&ETH;&cedil;</title>
+
+<style type="text/css">
+<!--   %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  -->
+</style>
+</head>
+<body>
+<div id="titles">
+<h1>ERROR</h1>
+<h2>The requested URL could not be retrieved</h2>
+</div>
+<hr>
+<div id="content">
+<p>An FTP protocol error occurred while trying to retrieve the URL:
+<a href="%U">%U</a></p>
+<p>Squid
+&Ograve;&rsaquo;&Ntilde;&fnof;&ETH;&sup1;&ETH;&cedil;&ETH;&acute;&ETH;&deg;&ETH;&sup3;&ETH;&cedil;
+FTP
+&ETH;&plusmn;&Ntilde;&fnof;&ETH;&sup1;&Ntilde;&euro;&Ntilde;&fnof;&Ograve;&ldquo;&ETH;&cedil;&ETH;&frac12;&ETH;&cedil;
+&ETH;&para;&Ntilde;&#382;&ETH;&frac12;&ETH;&deg;&Ntilde;&sbquo;&ETH;&acute;&ETH;&cedil;:</p>
+<blockquote id="data">
+<pre>
+%f
+</pre></blockquote>
+<p>The server responded with:</p>
+<blockquote id="error">
+<pre>
+%F
+</pre>
+<pre>
+%g
+</pre></blockquote>
+<p>Your cache administrator is <a href="mailto:%w%W">%w</a>.</p>
+<br></div>
+<hr>
+<div id="footer">
+<p>%h (%s)
+&Ntilde;&sbquo;&ETH;&frac34;&ETH;&frac14;&ETH;&frac34;&ETH;&frac12;&ETH;&cedil;&ETH;&acute;&ETH;&deg;&ETH;&frac12;
+%T
+&Ntilde;&Ntilde;&euro;&ETH;&deg;&Ntilde;&sbquo;&ETH;&cedil;&ETH;&raquo;&ETH;&sup3;&ETH;&deg;&ETH;&frac12;</p>
+<!-- %c --></div>
+</body>
+</html>

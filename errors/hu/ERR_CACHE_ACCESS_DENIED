@@ -1,1 +1,44 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd"> <html><head> <meta http-equiv="Content-Type" content="text/html; charset=utf-8"> <title>HIBA: Cache Access Denied</title> <style type="text/css"><!--   %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  --></style> </head> <body> <div id="titles"> <h1>ERROR</h1> <h2>Cache Hozzáférés megtagadva.</h2> </div> <hr>  <div id="content"> <p>The following error was encountered while trying to retrieve the URL: <a href="%U">%U</a></p>  <blockquote id="error"> <p><b>Cache hozzáférés megtagadva.</b></p> </blockquote>  <p>Sajnos az alábbi URL-t nem töltheti le cache szerverünktől %U amíg nem jelentkezik be rendszerünkbe.</p>  <p>Kérjük, forduljon a <a href="mailto:%w%W">cache adminisztrátorhoz</a> amennyiben nem sikerül bejelentkeznie vagy <a ref="http://%h/cgi-bin/chpasswd.cgi">megváltoztatnia</a>eredetileg beállított jelszavát.</p>  <br> </div>  <hr>  <div id="footer"> <p>Generated %T by %h (%s)</p> <!-- %c --> </div> </body></html> 
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN"
+"http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+<meta name="generator" content=
+"HTML Tidy for FreeBSD (vers 7 December 2008), see www.w3.org">
+<meta http-equiv="Content-Type" content=
+"text/html; charset=us-ascii">
+<title>HIBA: Cache Access Denied</title>
+
+<style type="text/css">
+<!--   %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  -->
+</style>
+</head>
+<body>
+<div id="titles">
+<h1>ERROR</h1>
+<h2>Cache Hozz&Atilde;&iexcl;f&Atilde;&copy;r&Atilde;&copy;s
+megtagadva.</h2>
+</div>
+<hr>
+<div id="content">
+<p>The following error was encountered while trying to retrieve the
+URL: <a href="%U">%U</a></p>
+<blockquote id="error">
+<p><b>Cache hozz&Atilde;&iexcl;f&Atilde;&copy;r&Atilde;&copy;s
+megtagadva.</b></p>
+</blockquote>
+<p>Sajnos az al&Atilde;&iexcl;bbi URL-t nem t&Atilde;&para;ltheti
+le cache szerver&Atilde;&frac14;nkt&Aring;&lsquo;l %U
+am&Atilde;&shy;g nem jelentkezik be
+rendszer&Atilde;&frac14;nkbe.</p>
+<p>K&Atilde;&copy;rj&Atilde;&frac14;k, forduljon a <a href=
+"mailto:%w%W">cache adminisztr&Atilde;&iexcl;torhoz</a> amennyiben
+nem siker&Atilde;&frac14;l bejelentkeznie vagy <a ref=
+"http://%h/cgi-bin/chpasswd.cgi">megv&Atilde;&iexcl;ltoztatnia</a>eredetileg
+be&Atilde;&iexcl;ll&Atilde;&shy;tott jelszav&Atilde;&iexcl;t.</p>
+<br></div>
+<hr>
+<div id="footer">
+<p>Generated %T by %h (%s)</p>
+<!-- %c --></div>
+</body>
+</html>

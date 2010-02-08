@@ -217,21 +217,21 @@ acl_ip_data::DecodeMask(const char *asc, IpAddress &mask, int ctype)
     /* dotted notation */
     /* assignment returns true if asc contained an IP address as text */
     if ((mask = asc)) {
-#if USE_IPV6
         /* HACK: IPv4 netmasks don't cleanly map to IPv6 masks. */
-        debugs(28, DBG_IMPORTANT, "WARNING: Netmasks are deprecated. Please use CIDR masks instead.");
+        debugs(28, DBG_CRITICAL, "WARNING: Netmasks are deprecated. Please use CIDR masks instead.");
         if (mask.IsIPv4()) {
             /* locate what CIDR mask was _probably_ meant to be in its native protocol format. */
             /* this will completely crap out with a security fail-open if the admin is playing mask tricks */
             /* however, thats their fault, and we do warn. see bug 2601 for the effects if we don't do this. */
             unsigned int m = mask.GetCIDR();
+#if USE_IPV6
             debugs(28, DBG_CRITICAL, "WARNING: IPv4 netmasks are particularly nasty when used to compare IPv6 to IPv4 ranges.");
-            debugs(28, DBG_CRITICAL, "WARNING: For now we assume you meant to write /" << m);
+#endif
+            debugs(28, DBG_CRITICAL, "WARNING: For now we will assume you meant to write /" << m);
             /* reset the mask completely, and crop to the CIDR boundary back properly. */
             mask.SetNoAddr();
             return mask.ApplyMask(m,AF_INET);
         }
-#endif /* USE_IPV6 */
         return true;
     }
 
@@ -277,7 +277,7 @@ acl_ip_data::FactoryParse(const char *t)
     /* Detect some old broken strings equivalent to 'all'.
      * treat them nicely. But be loud until its fixed.  */
     if (strcasecmp(t, "0/0") == 0 || strcasecmp(t, "0.0.0.0/0") == 0 || strcasecmp(t, "0.0.0.0/0.0.0.0") == 0 ||
-            strcasecmp(t, "0.0.0.0") == 0 || strcasecmp(t, "0.0.0.0-0.0.0.0") == 0 || strcasecmp(t, "0.0.0.0-0.0.0.0/0") == 0) {
+            strcasecmp(t, "0.0.0.0-255.255.255.255") == 0 || strcasecmp(t, "0.0.0.0-0.0.0.0/0") == 0) {
 
         debugs(28,DBG_CRITICAL, "ERROR: '" << t << "' needs to be replaced by the term 'all'.");
         debugs(28,DBG_CRITICAL, "SECURITY NOTICE: Overriding config setting. Using 'all' instead.");

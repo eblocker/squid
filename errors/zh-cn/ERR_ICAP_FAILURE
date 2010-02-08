@@ -1,1 +1,60 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd"> <html><head> <meta http-equiv="Content-Type" content="text/html; charset=utf-8"> <title>错误: 您所请求的网址（URL）无法获取</title> <style type="text/css"><!--   %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  --></style> </head><body> <div id="titles"> <h1>ERROR</h1> <h2>The requested URL could not be retrieved</h2> </div> <hr>  <div id="content"> <p>当尝试取回该 URL 时遇到下面的错误：<a href="%U">%U</a></p>  <blockquote id="error"> <p><b>ICAP 协议错误。</b></p> </blockquote>  <p id="sysmsg">系统返回以下内容：<i>%E</i></p>  <p>这意味着 ICAP 通信的某些地方失败了。</p>  <p>可能的问题包括：</p> <ul> <li><p>无法到达 ICAP 服务器。</p></li> <li><p>收到来自 ICAP 服务器的一个非法响应。</p></li> </ul>  <br> </div>  <hr> <div id="footer"> <p>已由 %h (%s) 生成 %T</p> <!-- %c --> </div> </body></html> 
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN"
+"http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+<meta name="generator" content=
+"HTML Tidy for FreeBSD (vers 7 December 2008), see www.w3.org">
+<meta http-equiv="Content-Type" content=
+"text/html; charset=us-ascii">
+<title>&eacute;&rdquo;&trade;&egrave;&macr;&macr;:
+&aelig;&sbquo;&uml;&aelig;&permil;&euro;&egrave;&macr;&middot;&aelig;&plusmn;&sbquo;&ccedil;&scaron;&bdquo;&ccedil;&frac12;&lsquo;&aring;&euro;&iuml;&frac14;&circ;URL&iuml;&frac14;&permil;&aelig;&mdash;&nbsp;&aelig;&sup3;&bull;&egrave;&#381;&middot;&aring;&ndash;</title>
+
+<style type="text/css">
+<!--   %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  -->
+</style>
+</head>
+<body>
+<div id="titles">
+<h1>ERROR</h1>
+<h2>The requested URL could not be retrieved</h2>
+</div>
+<hr>
+<div id="content">
+<p>
+&aring;&frac12;&ldquo;&aring;&deg;&egrave;&macr;&bull;&aring;&ndash;&aring;&rsaquo;&#382;&egrave;&macr;&yen;
+URL
+&aelig;&mdash;&para;&eacute;&Dagger;&aring;&circ;&deg;&auml;&cedil;&lsaquo;&eacute;&cent;&ccedil;&scaron;&bdquo;&eacute;&rdquo;&trade;&egrave;&macr;&macr;&iuml;&frac14;&scaron;<a href="%U">%U</a></p>
+<blockquote id="error">
+<p><b>ICAP
+&aring;&egrave;&reg;&reg;&eacute;&rdquo;&trade;&egrave;&macr;&macr;&atilde;&euro;&sbquo;</b></p>
+</blockquote>
+<p id="sysmsg">
+&ccedil;&sup3;&raquo;&ccedil;&raquo;&Yuml;&egrave;&iquest;&rdquo;&aring;&rsaquo;&#382;&auml;&raquo;&yen;&auml;&cedil;&lsaquo;&aring;&dagger;&hellip;&aring;&reg;&sup1;&iuml;&frac14;&scaron;<i>%E</i></p>
+<p>
+&egrave;&iquest;&trade;&aelig;&bdquo;&aring;&lsquo;&sup3;&ccedil;&euro;
+ICAP
+&eacute;&euro;&scaron;&auml;&iquest;&iexcl;&ccedil;&scaron;&bdquo;&aelig;&Yuml;&auml;&ordm;&rsaquo;&aring;&oelig;&deg;&aelig;&ndash;&sup1;&aring;&curren;&plusmn;&egrave;&acute;&yen;&auml;&ordm;&dagger;&atilde;&euro;&sbquo;</p>
+<p>
+&aring;&macr;&egrave;&fnof;&frac12;&ccedil;&scaron;&bdquo;&eacute;&mdash;&reg;&eacute;&cent;&tilde;&aring;&OElig;&hellip;&aelig;&lsaquo;&not;&iuml;&frac14;&scaron;</p>
+<ul>
+<li>
+<p>
+&aelig;&mdash;&nbsp;&aelig;&sup3;&bull;&aring;&circ;&deg;&egrave;&frac34;&frac34;
+ICAP
+&aelig;&oelig;&aring;&Scaron;&iexcl;&aring;&trade;&uml;&atilde;&euro;&sbquo;</p>
+</li>
+<li>
+<p>
+&aelig;&rdquo;&para;&aring;&circ;&deg;&aelig;&yen;&egrave;&Dagger;&ordf;
+ICAP
+&aelig;&oelig;&aring;&Scaron;&iexcl;&aring;&trade;&uml;&ccedil;&scaron;&bdquo;&auml;&cedil;&euro;&auml;&cedil;&ordf;&eacute;&#382;&aelig;&sup3;&bull;&aring;&ldquo;&aring;&ordm;&rdquo;&atilde;&euro;&sbquo;</p>
+</li>
+</ul>
+<br></div>
+<hr>
+<div id="footer">
+<p>&aring;&middot;&sup2;&ccedil;&rdquo;&plusmn; %h (%s)
+&ccedil;&rdquo;&Yuml;&aelig;&circ; %T</p>
+<!-- %c --></div>
+</body>
+</html>

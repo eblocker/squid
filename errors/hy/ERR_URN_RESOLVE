@@ -1,1 +1,49 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd"> <html><head> <meta http-equiv="Content-Type" content="text/html; charset=utf-8"> <title>ՍԽԱԼ: The requested URN not be retrieved</title> <style type="text/css"><!--   %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  --></style> </head><body> <div id="titles"> <h1>ERROR</h1> <h2>Պահանջվող URN չի կարող առաքվել</h2> </div> <hr>  <div id="content"> <p>The following error was encountered while trying to retrieve the URN: <a href="%U">%U</a></p>  <blockquote id="error"> <p><b>Cannot Resolve URN</b></p> </blockquote>  <p>Չարժե շատ բան սպասել URN-ից %T -ի վրա :)</p>  <p>Ձեր քեշի կառավարիչը <a href="mailto:%w%W">%w</a> է.</p> <br> </div>  <hr> <div id="footer"> <p>Generated %T by %h (%s)</p> <!-- %c --> </div> </body></html> 
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN"
+"http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+<meta name="generator" content=
+"HTML Tidy for FreeBSD (vers 7 December 2008), see www.w3.org">
+<meta http-equiv="Content-Type" content=
+"text/html; charset=us-ascii">
+<title>&Otilde;&Ocirc;&frac12;&Ocirc;&plusmn;&Ocirc;&frac14;: The
+requested URN not be retrieved</title>
+
+<style type="text/css">
+<!--   %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  -->
+</style>
+</head>
+<body>
+<div id="titles">
+<h1>ERROR</h1>
+<h2>
+&Otilde;&Scaron;&Otilde;&iexcl;&Otilde;&deg;&Otilde;&iexcl;&Otilde;&para;&Otilde;&raquo;&Otilde;&frac34;&Otilde;&cedil;&Otilde;&sup2;
+URN &Otilde;&sup1;&Otilde;&laquo;
+&Otilde;&macr;&Otilde;&iexcl;&Ouml;&euro;&Otilde;&cedil;&Otilde;&sup2;
+&Otilde;&iexcl;&Otilde;&frac14;&Otilde;&iexcl;&Ouml;&bdquo;&Otilde;&frac34;&Otilde;&yen;&Otilde;&not;</h2>
+</div>
+<hr>
+<div id="content">
+<p>The following error was encountered while trying to retrieve the
+URN: <a href="%U">%U</a></p>
+<blockquote id="error">
+<p><b>Cannot Resolve URN</b></p>
+</blockquote>
+<p>
+&Otilde;&permil;&Otilde;&iexcl;&Ouml;&euro;&Otilde;&ordf;&Otilde;&yen;
+&Otilde;&middot;&Otilde;&iexcl;&Otilde;&iquest;
+&Otilde;&cent;&Otilde;&iexcl;&Otilde;&para;
+&Otilde;&frac12;&Otilde;&ordm;&Otilde;&iexcl;&Otilde;&frac12;&Otilde;&yen;&Otilde;&not;
+URN-&Otilde;&laquo;&Ouml; %T -&Otilde;&laquo;
+&Otilde;&frac34;&Ouml;&euro;&Otilde;&iexcl; :)</p>
+<p>&Otilde;&Otilde;&yen;&Ouml;&euro;
+&Ouml;&bdquo;&Otilde;&yen;&Otilde;&middot;&Otilde;&laquo;
+&Otilde;&macr;&Otilde;&iexcl;&Otilde;&frac14;&Otilde;&iexcl;&Otilde;&frac34;&Otilde;&iexcl;&Ouml;&euro;&Otilde;&laquo;&Otilde;&sup1;&Otilde;&uml;
+<a href="mailto:%w%W">%w</a> &Otilde;&sect;.</p>
+<br></div>
+<hr>
+<div id="footer">
+<p>Generated %T by %h (%s)</p>
+<!-- %c --></div>
+</body>
+</html>

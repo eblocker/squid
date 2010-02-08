@@ -42,8 +42,7 @@ DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in \
 	strsep.c strtoll.c tempnam.c
 check_PROGRAMS = tests/testAll$(EXEEXT)
 TESTS = tests/testAll$(EXEEXT) testHeaders
-@USE_LOADABLE_MODULES_TRUE@am__append_1 = libLtdl
-@USE_ESI_TRUE@am__append_2 = libTrie
+@USE_ESI_TRUE@am__append_1 = libTrie
 subdir = lib
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/acinclude.m4 \
@@ -134,7 +133,7 @@ RECURSIVE_CLEAN_TARGETS = mostlyclean-recursive clean-recursive	\
   distclean-recursive maintainer-clean-recursive
 ETAGS = etags
 CTAGS = ctags
-DIST_SUBDIRS = libLtdl libTrie
+DIST_SUBDIRS = libTrie
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
 ACLOCAL = @ACLOCAL@
 ADAPTATION_LIBS = @ADAPTATION_LIBS@
@@ -324,7 +323,7 @@ INCLUDES = \
 	-I$(top_builddir)/include \
 	$(SQUID_CPPUNIT_INC)
 
-SUBDIRS = $(am__append_1) $(am__append_2)
+SUBDIRS = $(am__append_1)
 @ENABLE_XPROF_STATS_FALSE@XPROF_STATS_SOURCE = 
 @ENABLE_XPROF_STATS_TRUE@XPROF_STATS_SOURCE = Profiler.c
 @ENABLE_WIN32SPECIFIC_FALSE@LIBSSPWIN32 = 

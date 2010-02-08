@@ -1,1 +1,47 @@
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd"> <html><head> <meta http-equiv="Content-Type" content="text/html; charset=utf-8"> <title>ERREUR: L'URL demandée n'a pu être chargée</title> <style type="text/css"><!--   %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  --></style> </head> <body> <div id="titles"> <h1>ERROR</h1> <h2>The requested URL could not be retrieved</h2> </div> <hr>  <div id="content"> <p>L'erreur suivante a été rencontrée en essayant d'accéder à l'URL : <a href="%U">%U</a></p>  <blockquote id="error"> <p><b>Impossible de relayer cette requête en ce moment.</b></p> </blockquote>  <p>Cette requête ne peut pas être transférée au serveur d'origine ou à tous les caches parent. La cause la plus fréquente pour cette erreur est que l'administrateur du cache n'a pas donné les droits à ce cache pour créer des connexions directe vers les serveurs d'origine, et tous les caches parents configurés sont actuellement innacessibles.</p>  <p>Votre administrateur de cache est <a href="mailto:%w">%w</a>.</p>  <br> </div>  <hr> <div id="footer"> <p>Générée le %T par %h (%s)</p> <!-- %c --> </div> </body></html> 
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+"http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+<meta name="generator" content=
+"HTML Tidy for FreeBSD (vers 7 December 2008), see www.w3.org">
+<meta http-equiv="Content-Type" content=
+"text/html; charset=us-ascii">
+<title>ERREUR: L'URL demand&Atilde;&copy;e n'a pu &Atilde;&ordf;tre
+charg&Atilde;&copy;e</title>
+
+<style type="text/css">
+<!--   %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  -->
+</style>
+</head>
+<body>
+<div id="titles">
+<h1>ERROR</h1>
+<h2>The requested URL could not be retrieved</h2>
+</div>
+<hr>
+<div id="content">
+<p>L'erreur suivante a &Atilde;&copy;t&Atilde;&copy;
+rencontr&Atilde;&copy;e en essayant d'acc&Atilde;&copy;der
+&Atilde;&nbsp; l'URL : <a href="%U">%U</a></p>
+<blockquote id="error">
+<p><b>Impossible de relayer cette requ&Atilde;&ordf;te en ce
+moment.</b></p>
+</blockquote>
+<p>Cette requ&Atilde;&ordf;te ne peut pas &Atilde;&ordf;tre
+transf&Atilde;&copy;r&Atilde;&copy;e au serveur d'origine ou
+&Atilde;&nbsp; tous les caches parent. La cause la plus
+fr&Atilde;&copy;quente pour cette erreur est que l'administrateur
+du cache n'a pas donn&Atilde;&copy; les droits &Atilde;&nbsp; ce
+cache pour cr&Atilde;&copy;er des connexions directe vers les
+serveurs d'origine, et tous les caches parents
+configur&Atilde;&copy;s sont actuellement innacessibles.</p>
+<p>Votre administrateur de cache est <a href=
+"mailto:%w">%w</a>.</p>
+<br></div>
+<hr>
+<div id="footer">
+<p>G&Atilde;&copy;n&Atilde;&copy;r&Atilde;&copy;e le %T par %h
+(%s)</p>
+<!-- %c --></div>
+</body>
+</html>

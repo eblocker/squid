@@ -1,1 +1,42 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd"> <html><head> <meta http-equiv="Content-Type" content="text/html; charset=utf-8"> <title>エラー: リクエストされた URL は取得できませんでした</title> <style type="text/css"><!--   %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  --></style> </head><body> <div id="titles"> <h1>ERROR</h1> <h2>The requested URL could not be retrieved</h2> </div> <hr>  <div id="content"> <p>The following error was encountered while trying to retrieve the URL: <a href="%U">%U</a></p>  <blockquote id="error"> <p><b>サポートされていないリクエスト/プロトコルです．</b></p> </blockquote>  <p>Squidはすべてのプロトコルに対して、すべてのリクエスト方式をサポートしているわけではありません。例えば、POSTをGopherのリクエストで行うことはできません。</p>  <p>Your cache administrator is <a href="mailto:%w%W">%w</a>.</p> <br> </div>  <hr> <div id="footer"> <p>%Tに%h (%s)が生成しました。</p> <!-- %c --> </div> </body></html> 
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN"
+"http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+<meta name="generator" content=
+"HTML Tidy for FreeBSD (vers 7 December 2008), see www.w3.org">
+<meta http-equiv="Content-Type" content=
+"text/html; charset=us-ascii">
+<title>
+&atilde;&sbquo;&uml;&atilde;&fnof;&copy;&atilde;&fnof;&frac14;:
+&atilde;&fnof;&ordf;&atilde;&sbquo;&macr;&atilde;&sbquo;&uml;&atilde;&sbquo;&sup1;&atilde;&fnof;&circ;&atilde;&bull;&atilde;&sbquo;&OElig;&atilde;&Yuml;
+URL
+&atilde;&macr;&aring;&ndash;&aring;&frac34;&mdash;&atilde;&sect;&atilde;&atilde;&frac34;&atilde;&rsaquo;&atilde;&sbquo;&ldquo;&atilde;&sect;&atilde;&mdash;&atilde;&Yuml;</title>
+
+<style type="text/css">
+<!--   %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  -->
+</style>
+</head>
+<body>
+<div id="titles">
+<h1>ERROR</h1>
+<h2>The requested URL could not be retrieved</h2>
+</div>
+<hr>
+<div id="content">
+<p>The following error was encountered while trying to retrieve the
+URL: <a href="%U">%U</a></p>
+<blockquote id="error">
+<p>
+<b>&atilde;&sbquo;&micro;&atilde;&fnof;&atilde;&fnof;&frac14;&atilde;&fnof;&circ;&atilde;&bull;&atilde;&sbquo;&OElig;&atilde;&brvbar;&atilde;&bdquo;&atilde;&ordf;&atilde;&bdquo;&atilde;&fnof;&ordf;&atilde;&sbquo;&macr;&atilde;&sbquo;&uml;&atilde;&sbquo;&sup1;&atilde;&fnof;&circ;/&atilde;&fnof;&mdash;&atilde;&fnof;&shy;&atilde;&fnof;&circ;&atilde;&sbquo;&sup3;&atilde;&fnof;&laquo;&atilde;&sect;&atilde;&trade;&iuml;&frac14;&#381;</b></p>
+</blockquote>
+<p>
+Squid&atilde;&macr;&atilde;&trade;&atilde;&sup1;&atilde;&brvbar;&atilde;&reg;&atilde;&fnof;&mdash;&atilde;&fnof;&shy;&atilde;&fnof;&circ;&atilde;&sbquo;&sup3;&atilde;&fnof;&laquo;&atilde;&laquo;&aring;&macr;&frac34;&atilde;&mdash;&atilde;&brvbar;&atilde;&euro;&atilde;&trade;&atilde;&sup1;&atilde;&brvbar;&atilde;&reg;&atilde;&fnof;&ordf;&atilde;&sbquo;&macr;&atilde;&sbquo;&uml;&atilde;&sbquo;&sup1;&atilde;&fnof;&circ;&aelig;&ndash;&sup1;&aring;&frac14;&atilde;&sbquo;&rsquo;&atilde;&sbquo;&micro;&atilde;&fnof;&atilde;&fnof;&frac14;&atilde;&fnof;&circ;&atilde;&mdash;&atilde;&brvbar;&atilde;&bdquo;&atilde;&sbquo;&lsaquo;&atilde;&sbquo;&atilde;&lsquo;&atilde;&sect;&atilde;&macr;&atilde;&sbquo;&atilde;&sbquo;&Scaron;&atilde;&frac34;&atilde;&rsaquo;&atilde;&sbquo;&ldquo;&atilde;&euro;&sbquo;&auml;&frac34;&lsaquo;&atilde;&circ;&atilde;&deg;&atilde;&euro;POST&atilde;&sbquo;&rsquo;Gopher&atilde;&reg;&atilde;&fnof;&ordf;&atilde;&sbquo;&macr;&atilde;&sbquo;&uml;&atilde;&sbquo;&sup1;&atilde;&fnof;&circ;&atilde;&sect;&egrave;&iexcl;&OElig;&atilde;&dagger;&atilde;&ldquo;&atilde;&uml;&atilde;&macr;&atilde;&sect;&atilde;&atilde;&frac34;&atilde;&rsaquo;&atilde;&sbquo;&ldquo;&atilde;&euro;&sbquo;</p>
+<p>Your cache administrator is <a href="mailto:%w%W">%w</a>.</p>
+<br></div>
+<hr>
+<div id="footer">
+<p>%T&atilde;&laquo;%h
+(%s)&atilde;&OElig;&ccedil;&rdquo;&Yuml;&aelig;&circ;&atilde;&mdash;&atilde;&frac34;&atilde;&mdash;&atilde;&Yuml;&atilde;&euro;&sbquo;</p>
+<!-- %c --></div>
+</body>
+</html>

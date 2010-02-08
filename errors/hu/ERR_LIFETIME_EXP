@@ -1,1 +1,44 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd"> <html><head> <meta http-equiv="Content-Type" content="text/html; charset=utf-8"> <title>HIBA: A kért URL nem tölthető le</title> <style type="text/css"><!--   %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  --></style> </head><body> <div id="titles"> <h1>ERROR</h1> <h2>The requested URL could not be retrieved</h2> </div> <hr>  <div id="content"> <p>The following error was encountered while trying to retrieve the URL: <a href="%U">%U</a></p>  <blockquote id="error"> <p><b>Kapcsolat maximális időtartama lejárt</b></p> </blockquote>  <p>A Squid megszakította a kérés kiszolgálását mivel a kérés feldolgozásának ideje a maximális kapcsolatfenntartás időtartamának értékét meghaladta.</p>  <p>Your cache administrator is <a href="mailto:%w%W">%w</a>.</p> <br> </div>  <hr> <div id="footer"> <p>Generated %T by %h (%s)</p> <!-- %c --> </div> </body></html> 
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN"
+"http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+<meta name="generator" content=
+"HTML Tidy for FreeBSD (vers 7 December 2008), see www.w3.org">
+<meta http-equiv="Content-Type" content=
+"text/html; charset=us-ascii">
+<title>HIBA: A k&Atilde;&copy;rt URL nem
+t&Atilde;&para;lthet&Aring;&lsquo; le</title>
+
+<style type="text/css">
+<!--   %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  -->
+</style>
+</head>
+<body>
+<div id="titles">
+<h1>ERROR</h1>
+<h2>The requested URL could not be retrieved</h2>
+</div>
+<hr>
+<div id="content">
+<p>The following error was encountered while trying to retrieve the
+URL: <a href="%U">%U</a></p>
+<blockquote id="error">
+<p><b>Kapcsolat maxim&Atilde;&iexcl;lis id&Aring;&lsquo;tartama
+lej&Atilde;&iexcl;rt</b></p>
+</blockquote>
+<p>A Squid megszak&Atilde;&shy;totta a
+k&Atilde;&copy;r&Atilde;&copy;s
+kiszolg&Atilde;&iexcl;l&Atilde;&iexcl;s&Atilde;&iexcl;t mivel a
+k&Atilde;&copy;r&Atilde;&copy;s
+feldolgoz&Atilde;&iexcl;s&Atilde;&iexcl;nak ideje a
+maxim&Atilde;&iexcl;lis kapcsolatfenntart&Atilde;&iexcl;s
+id&Aring;&lsquo;tartam&Atilde;&iexcl;nak
+&Atilde;&copy;rt&Atilde;&copy;k&Atilde;&copy;t meghaladta.</p>
+<p>Your cache administrator is <a href="mailto:%w%W">%w</a>.</p>
+<br></div>
+<hr>
+<div id="footer">
+<p>Generated %T by %h (%s)</p>
+<!-- %c --></div>
+</body>
+</html>

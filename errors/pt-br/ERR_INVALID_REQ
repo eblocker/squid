@@ -1,1 +1,64 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd"> <html><head> <meta http-equiv="Content-Type" content="text/html; charset=utf-8"> <title>ERRO: A URL requisitada não pôde ser recuperada</title> <style type="text/css"><!--   %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  --></style> </head><body> <div id="titles"> <h1>ERROR</h1> <h2>The requested URL could not be retrieved</h2> </div> <hr>  <div id="content"> <p><b>Requisição Inválida</b> erro encontrado ao tentar processar a requisição:</p>  <blockquote id="data"> <pre>%R</pre> </blockquote>  <p>Alguns dos possíveis problemas são:</p> <ul> <li><p>Método de requisição faltando ou desconhecido.</p></li> <li><p>URL faltando.</p></li> <li><p>Identificador HTTP faltando (HTTP/1.0).</p></li> <li><p>Requisição é muito grande.</p></li> <li><p>Content-Length faltando para requisições POST ou PUT.</p></li> <li><p>Caracter ilegal no nome de host; underscores não são permitidos.</p></li> </ul>  <p>Seu administrador do cache é <a href="mailto:%w%W">%w</a>.</p> <br> </div>  <hr> <div id="footer"> <p>Gerado %T por %h (%s)</p> <!-- %c --> </div> </body></html> 
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN"
+"http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+<meta name="generator" content=
+"HTML Tidy for FreeBSD (vers 7 December 2008), see www.w3.org">
+<meta http-equiv="Content-Type" content=
+"text/html; charset=us-ascii">
+<title>ERRO: A URL requisitada n&Atilde;&pound;o p&Atilde;&acute;de
+ser recuperada</title>
+
+<style type="text/css">
+<!--   %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  -->
+</style>
+</head>
+<body>
+<div id="titles">
+<h1>ERROR</h1>
+<h2>The requested URL could not be retrieved</h2>
+</div>
+<hr>
+<div id="content">
+<p><b>Requisi&Atilde;&sect;&Atilde;&pound;o
+Inv&Atilde;&iexcl;lida</b> erro encontrado ao tentar processar a
+requisi&Atilde;&sect;&Atilde;&pound;o:</p>
+<blockquote id="data">
+<pre>
+%R
+</pre></blockquote>
+<p>Alguns dos poss&Atilde;&shy;veis problemas
+s&Atilde;&pound;o:</p>
+<ul>
+<li>
+<p>M&Atilde;&copy;todo de requisi&Atilde;&sect;&Atilde;&pound;o
+faltando ou desconhecido.</p>
+</li>
+<li>
+<p>URL faltando.</p>
+</li>
+<li>
+<p>Identificador HTTP faltando (HTTP/1.0).</p>
+</li>
+<li>
+<p>Requisi&Atilde;&sect;&Atilde;&pound;o &Atilde;&copy; muito
+grande.</p>
+</li>
+<li>
+<p>Content-Length faltando para
+requisi&Atilde;&sect;&Atilde;&micro;es POST ou PUT.</p>
+</li>
+<li>
+<p>Caracter ilegal no nome de host; underscores n&Atilde;&pound;o
+s&Atilde;&pound;o permitidos.</p>
+</li>
+</ul>
+<p>Seu administrador do cache &Atilde;&copy; <a href=
+"mailto:%w%W">%w</a>.</p>
+<br></div>
+<hr>
+<div id="footer">
+<p>Gerado %T por %h (%s)</p>
+<!-- %c --></div>
+</body>
+</html>

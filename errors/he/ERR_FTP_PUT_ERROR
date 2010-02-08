@@ -1,1 +1,59 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd"> <html><head> <meta http-equiv="Content-Type" content="text/html; charset=utf-8"> <title>שגיאה: FTP upload failed</title> <style type="text/css"><!--   %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  --></style> </head><body> <div id="titles"> <h1>ERROR</h1> <h2>העלאת קובץ ל-FTP נכשלה</h2> </div> <hr>  <div id="content"> <p>שגיאה כאשר ניסיתי לשלוח את: <a href="%U">%U</a></p>  <p>השרת שלח את פקודת ה-FTP הבאה:</p> <blockquote id="data"> <pre>%f</pre> </blockquote>  <p>The server responded with:</p> <blockquote id="sysmsg"> <pre>%F</pre> </blockquote>  <p>This means that the FTP server may not have permission or space to store the file. Check the path, permissions, diskspace and try again.</p>  <p>מנהל השרת הוא <a href="mailto:%w%W">%w</a>. </p> <br> </div>  <hr> <div id="footer"> <p>Generated %T by %h (%s)</p> <!-- %c --> </div> </body></html> 
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN"
+"http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+<meta name="generator" content=
+"HTML Tidy for FreeBSD (vers 7 December 2008), see www.w3.org">
+<meta http-equiv="Content-Type" content=
+"text/html; charset=us-ascii">
+<title>
+&times;&copy;&times;&rsquo;&times;&trade;&times;&times;&rdquo;: FTP
+upload failed</title>
+
+<style type="text/css">
+<!--   %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  -->
+</style>
+</head>
+<body>
+<div id="titles">
+<h1>ERROR</h1>
+<h2>&times;&rdquo;&times;&cent;&times;&oelig;&times;&times;&ordf;
+&times;&sect;&times;&bull;&times;&lsquo;&times;&yen;
+&times;&oelig;-FTP
+&times;&nbsp;&times;&rsaquo;&times;&copy;&times;&oelig;&times;&rdquo;</h2>
+</div>
+<hr>
+<div id="content">
+<p>&times;&copy;&times;&rsquo;&times;&trade;&times;&times;&rdquo;
+&times;&rsaquo;&times;&times;&copy;&times;&uml;
+&times;&nbsp;&times;&trade;&times;&iexcl;&times;&trade;&times;&ordf;&times;&trade;
+&times;&oelig;&times;&copy;&times;&oelig;&times;&bull;&times;&mdash;
+&times;&times;&ordf;: <a href="%U">%U</a></p>
+<p>&times;&rdquo;&times;&copy;&times;&uml;&times;&ordf;
+&times;&copy;&times;&oelig;&times;&mdash; &times;&times;&ordf;
+&times;&curren;&times;&sect;&times;&bull;&times;&ldquo;&times;&ordf;
+&times;&rdquo;-FTP
+&times;&rdquo;&times;&lsquo;&times;&times;&rdquo;:</p>
+<blockquote id="data">
+<pre>
+%f
+</pre></blockquote>
+<p>The server responded with:</p>
+<blockquote id="sysmsg">
+<pre>
+%F
+</pre></blockquote>
+<p>This means that the FTP server may not have permission or space
+to store the file. Check the path, permissions, diskspace and try
+again.</p>
+<p>&times;&#382;&times;&nbsp;&times;&rdquo;&times;&oelig;
+&times;&rdquo;&times;&copy;&times;&uml;&times;&ordf;
+&times;&rdquo;&times;&bull;&times; <a href=
+"mailto:%w%W">%w</a>.</p>
+<br></div>
+<hr>
+<div id="footer">
+<p>Generated %T by %h (%s)</p>
+<!-- %c --></div>
+</body>
+</html>

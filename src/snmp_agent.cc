@@ -36,6 +36,7 @@
 #include "cache_snmp.h"
 #include "Store.h"
 #include "mem_node.h"
+#include "SquidMath.h"
 #include "SquidTime.h"
 
 /************************************************************************
@@ -52,8 +53,8 @@ variable_list *
 snmp_sysFn(variable_list * Var, snint * ErrP)
 {
     variable_list *Answer = NULL;
-    debugs(49, 5, "snmp_sysFn: Processing request:");
-    snmpDebugOid(5, Var->name, Var->name_length);
+    MemBuf tmp;
+    debugs(49, 5, "snmp_sysFn: Processing request:" << snmpDebugOid(Var->name, Var->name_length, tmp));
     *ErrP = SNMP_ERR_NOERROR;
 
     switch (Var->name[LEN_SQ_SYS]) {
@@ -371,7 +372,7 @@ snmp_prfSysFn(variable_list * Var, snint * ErrP)
     case PERF_SYS_CPUUSAGE:
         squid_getrusage(&rusage);
         Answer = snmp_var_new_integer(Var->name, Var->name_length,
-                                      (snint) dpercent(rusage_cputime(&rusage), tvSubDsec(squid_start, current_time)),
+                                      (snint) Math::doublePercent(rusage_cputime(&rusage), tvSubDsec(squid_start, current_time)),
                                       ASN_INTEGER);
         break;
 

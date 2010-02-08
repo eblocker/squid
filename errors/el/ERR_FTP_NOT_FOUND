@@ -1,1 +1,87 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd"> <html><head> <meta http-equiv="Content-Type" content="text/html; charset=utf-8"> <title>ΣΦΑΛΜΑ: The requested URL could not be retrieved</title> <style type="text/css"><!--   %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  --></style> </head><body> <div id="titles"> <h1>ERROR</h1> <h2>The requested URL could not be retrieved</h2> </div> <hr>  <div id="content"> <p>Η ακόλουθη διεύθυνση δεν βρέθηκε: <a href="%U">%U</a></p>  <p>Το Squid έστειλε τη ακόλουθη εντολή FTP:</p> <blockquote id="data"> <pre>%f</pre> </blockquote>  <p>The server responded with:</p> <blockquote id="sysmsg"> <pre>%F</pre> <pre>%g</pre> </blockquote>  <p>Αυτό μπορεί να συμβαίνει από μια διεύθυνση FTP με απόλυτή διαδρομή (το οποίο δεν είναι σύμφωνο με το RFC 1738). Αν αυτή είναι η αιτία, το αρχείο θα το βρείτε στο<a href="%B">%B</a>.</p>  <p>Ο διαχειριστής του μεσολαβητή σας είναι ο <a href="mailto:%w%W">%w</a>.</p> <br> </div>  <hr> <div id="footer"> <p>Generated %T by %h (%s)</p> <!-- %c --> </div> </body></html> 
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN"
+"http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+<meta name="generator" content=
+"HTML Tidy for FreeBSD (vers 7 December 2008), see www.w3.org">
+<meta http-equiv="Content-Type" content=
+"text/html; charset=us-ascii">
+<title>
+&Icirc;&pound;&Icirc;&brvbar;&Icirc;&lsquo;&Icirc;&rsaquo;&Icirc;&oelig;&Icirc;&lsquo;:
+The requested URL could not be retrieved</title>
+
+<style type="text/css">
+<!--   %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  -->
+</style>
+</head>
+<body>
+<div id="titles">
+<h1>ERROR</h1>
+<h2>The requested URL could not be retrieved</h2>
+</div>
+<hr>
+<div id="content">
+<p>&Icirc;&mdash;
+&Icirc;&plusmn;&Icirc;&ordm;&Iuml;&OElig;&Icirc;&raquo;&Icirc;&iquest;&Iuml;&hellip;&Icirc;&cedil;&Icirc;&middot;
+&Icirc;&acute;&Icirc;&sup1;&Icirc;&micro;&Iuml;&Icirc;&cedil;&Iuml;&hellip;&Icirc;&frac12;&Iuml;&fnof;&Icirc;&middot;
+&Icirc;&acute;&Icirc;&micro;&Icirc;&frac12;
+&Icirc;&sup2;&Iuml;&Icirc;&shy;&Icirc;&cedil;&Icirc;&middot;&Icirc;&ordm;&Icirc;&micro;:
+<a href="%U">%U</a></p>
+<p>&Icirc;&curren;&Icirc;&iquest; Squid
+&Icirc;&shy;&Iuml;&fnof;&Iuml;&bdquo;&Icirc;&micro;&Icirc;&sup1;&Icirc;&raquo;&Icirc;&micro;
+&Iuml;&bdquo;&Icirc;&middot;
+&Icirc;&plusmn;&Icirc;&ordm;&Iuml;&OElig;&Icirc;&raquo;&Icirc;&iquest;&Iuml;&hellip;&Icirc;&cedil;&Icirc;&middot;
+&Icirc;&micro;&Icirc;&frac12;&Iuml;&bdquo;&Icirc;&iquest;&Icirc;&raquo;&Icirc;&reg;
+FTP:</p>
+<blockquote id="data">
+<pre>
+%f
+</pre></blockquote>
+<p>The server responded with:</p>
+<blockquote id="sysmsg">
+<pre>
+%F
+</pre>
+<pre>
+%g
+</pre></blockquote>
+<p>&Icirc;&lsquo;&Iuml;&hellip;&Iuml;&bdquo;&Iuml;&OElig;
+&Icirc;&frac14;&Iuml;&euro;&Icirc;&iquest;&Iuml;&Icirc;&micro;&Icirc;&macr;
+&Icirc;&frac12;&Icirc;&plusmn;
+&Iuml;&fnof;&Iuml;&hellip;&Icirc;&frac14;&Icirc;&sup2;&Icirc;&plusmn;&Icirc;&macr;&Icirc;&frac12;&Icirc;&micro;&Icirc;&sup1;
+&Icirc;&plusmn;&Iuml;&euro;&Iuml;&OElig;
+&Icirc;&frac14;&Icirc;&sup1;&Icirc;&plusmn;
+&Icirc;&acute;&Icirc;&sup1;&Icirc;&micro;&Iuml;&Icirc;&cedil;&Iuml;&hellip;&Icirc;&frac12;&Iuml;&fnof;&Icirc;&middot;
+FTP &Icirc;&frac14;&Icirc;&micro;
+&Icirc;&plusmn;&Iuml;&euro;&Iuml;&OElig;&Icirc;&raquo;&Iuml;&hellip;&Iuml;&bdquo;&Icirc;&reg;
+&Icirc;&acute;&Icirc;&sup1;&Icirc;&plusmn;&Icirc;&acute;&Iuml;&Icirc;&iquest;&Icirc;&frac14;&Icirc;&reg;
+(&Iuml;&bdquo;&Icirc;&iquest;
+&Icirc;&iquest;&Iuml;&euro;&Icirc;&iquest;&Icirc;&macr;&Icirc;&iquest;
+&Icirc;&acute;&Icirc;&micro;&Icirc;&frac12;
+&Icirc;&micro;&Icirc;&macr;&Icirc;&frac12;&Icirc;&plusmn;&Icirc;&sup1;
+&Iuml;&fnof;&Iuml;&Icirc;&frac14;&Iuml;&dagger;&Iuml;&permil;&Icirc;&frac12;&Icirc;&iquest;
+&Icirc;&frac14;&Icirc;&micro; &Iuml;&bdquo;&Icirc;&iquest; RFC
+1738). &Icirc;&lsquo;&Icirc;&frac12;
+&Icirc;&plusmn;&Iuml;&hellip;&Iuml;&bdquo;&Icirc;&reg;
+&Icirc;&micro;&Icirc;&macr;&Icirc;&frac12;&Icirc;&plusmn;&Icirc;&sup1;
+&Icirc;&middot;
+&Icirc;&plusmn;&Icirc;&sup1;&Iuml;&bdquo;&Icirc;&macr;&Icirc;&plusmn;,
+&Iuml;&bdquo;&Icirc;&iquest;
+&Icirc;&plusmn;&Iuml;&Iuml;&Dagger;&Icirc;&micro;&Icirc;&macr;&Icirc;&iquest;
+&Icirc;&cedil;&Icirc;&plusmn; &Iuml;&bdquo;&Icirc;&iquest;
+&Icirc;&sup2;&Iuml;&Icirc;&micro;&Icirc;&macr;&Iuml;&bdquo;&Icirc;&micro;
+&Iuml;&fnof;&Iuml;&bdquo;&Icirc;&iquest;<a href="%B">%B</a>.</p>
+<p>&Icirc;&Yuml;
+&Icirc;&acute;&Icirc;&sup1;&Icirc;&plusmn;&Iuml;&Dagger;&Icirc;&micro;&Icirc;&sup1;&Iuml;&Icirc;&sup1;&Iuml;&fnof;&Iuml;&bdquo;&Icirc;&reg;&Iuml;&sbquo;
+&Iuml;&bdquo;&Icirc;&iquest;&Iuml;&hellip;
+&Icirc;&frac14;&Icirc;&micro;&Iuml;&fnof;&Icirc;&iquest;&Icirc;&raquo;&Icirc;&plusmn;&Icirc;&sup2;&Icirc;&middot;&Iuml;&bdquo;&Icirc;&reg;
+&Iuml;&fnof;&Icirc;&plusmn;&Iuml;&sbquo;
+&Icirc;&micro;&Icirc;&macr;&Icirc;&frac12;&Icirc;&plusmn;&Icirc;&sup1;
+&Icirc;&iquest; <a href="mailto:%w%W">%w</a>.</p>
+<br></div>
+<hr>
+<div id="footer">
+<p>Generated %T by %h (%s)</p>
+<!-- %c --></div>
+</body>
+</html>

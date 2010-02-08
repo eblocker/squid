@@ -1,1 +1,66 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd"> <html><head> <meta http-equiv="Content-Type" content="text/html; charset=utf-8"> <title>ΣΦΑΛΜΑ: Cache Access Denied</title> <style type="text/css"><!--   %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  --></style> </head> <body> <div id="titles"> <h1>ERROR</h1> <h2>Cache Απαγορεύεται η Πρόσβαση.</h2> </div> <hr>  <div id="content"> <p>The following error was encountered while trying to retrieve the URL: <a href="%U">%U</a></p>  <blockquote id="error"> <p><b>Απαγορεύεται η Πρόσβαση στο Μεσολαβητή.</b></p> </blockquote>  <p>Sorry, you are not currently allowed to request %U from this cache until you have authenticated yourself.</p>  <p>Επικοινωνήστε με τον <a href="mailto:%w%W">διαχειριστή του μεσολαβητή σας</a> αν αντιμετωπίζετε δυσκολία να πιστοποιήσετε τον λογαριασμό σας ή να <a href="http://%h/cgi-bin/chpasswd.cgi">αλλάξτε</a> τον κωδικό σας.</p>  <br> </div>  <hr>  <div id="footer"> <p>Generated %T by %h (%s)</p> <!-- %c --> </div> </body></html> 
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN"
+"http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+<meta name="generator" content=
+"HTML Tidy for FreeBSD (vers 7 December 2008), see www.w3.org">
+<meta http-equiv="Content-Type" content=
+"text/html; charset=us-ascii">
+<title>
+&Icirc;&pound;&Icirc;&brvbar;&Icirc;&lsquo;&Icirc;&rsaquo;&Icirc;&oelig;&Icirc;&lsquo;:
+Cache Access Denied</title>
+
+<style type="text/css">
+<!--   %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  -->
+</style>
+</head>
+<body>
+<div id="titles">
+<h1>ERROR</h1>
+<h2>Cache
+&Icirc;&lsquo;&Iuml;&euro;&Icirc;&plusmn;&Icirc;&sup3;&Icirc;&iquest;&Iuml;&Icirc;&micro;&Iuml;&Icirc;&micro;&Iuml;&bdquo;&Icirc;&plusmn;&Icirc;&sup1;
+&Icirc;&middot;
+&Icirc;&nbsp;&Iuml;&Iuml;&OElig;&Iuml;&fnof;&Icirc;&sup2;&Icirc;&plusmn;&Iuml;&fnof;&Icirc;&middot;.</h2>
+</div>
+<hr>
+<div id="content">
+<p>The following error was encountered while trying to retrieve the
+URL: <a href="%U">%U</a></p>
+<blockquote id="error">
+<p>
+<b>&Icirc;&lsquo;&Iuml;&euro;&Icirc;&plusmn;&Icirc;&sup3;&Icirc;&iquest;&Iuml;&Icirc;&micro;&Iuml;&Icirc;&micro;&Iuml;&bdquo;&Icirc;&plusmn;&Icirc;&sup1;
+&Icirc;&middot;
+&Icirc;&nbsp;&Iuml;&Iuml;&OElig;&Iuml;&fnof;&Icirc;&sup2;&Icirc;&plusmn;&Iuml;&fnof;&Icirc;&middot;
+&Iuml;&fnof;&Iuml;&bdquo;&Icirc;&iquest;
+&Icirc;&oelig;&Icirc;&micro;&Iuml;&fnof;&Icirc;&iquest;&Icirc;&raquo;&Icirc;&plusmn;&Icirc;&sup2;&Icirc;&middot;&Iuml;&bdquo;&Icirc;&reg;.</b></p>
+</blockquote>
+<p>Sorry, you are not currently allowed to request %U from this
+cache until you have authenticated yourself.</p>
+<p>
+&Icirc;&bull;&Iuml;&euro;&Icirc;&sup1;&Icirc;&ordm;&Icirc;&iquest;&Icirc;&sup1;&Icirc;&frac12;&Iuml;&permil;&Icirc;&frac12;&Icirc;&reg;&Iuml;&fnof;&Iuml;&bdquo;&Icirc;&micro;
+&Icirc;&frac14;&Icirc;&micro;
+&Iuml;&bdquo;&Icirc;&iquest;&Icirc;&frac12; <a href=
+"mailto:%w%W">&Icirc;&acute;&Icirc;&sup1;&Icirc;&plusmn;&Iuml;&Dagger;&Icirc;&micro;&Icirc;&sup1;&Iuml;&Icirc;&sup1;&Iuml;&fnof;&Iuml;&bdquo;&Icirc;&reg;
+&Iuml;&bdquo;&Icirc;&iquest;&Iuml;&hellip;
+&Icirc;&frac14;&Icirc;&micro;&Iuml;&fnof;&Icirc;&iquest;&Icirc;&raquo;&Icirc;&plusmn;&Icirc;&sup2;&Icirc;&middot;&Iuml;&bdquo;&Icirc;&reg;
+&Iuml;&fnof;&Icirc;&plusmn;&Iuml;&sbquo;</a>
+&Icirc;&plusmn;&Icirc;&frac12;
+&Icirc;&plusmn;&Icirc;&frac12;&Iuml;&bdquo;&Icirc;&sup1;&Icirc;&frac14;&Icirc;&micro;&Iuml;&bdquo;&Iuml;&permil;&Iuml;&euro;&Icirc;&macr;&Icirc;&para;&Icirc;&micro;&Iuml;&bdquo;&Icirc;&micro;
+&Icirc;&acute;&Iuml;&hellip;&Iuml;&fnof;&Icirc;&ordm;&Icirc;&iquest;&Icirc;&raquo;&Icirc;&macr;&Icirc;&plusmn;
+&Icirc;&frac12;&Icirc;&plusmn;
+&Iuml;&euro;&Icirc;&sup1;&Iuml;&fnof;&Iuml;&bdquo;&Icirc;&iquest;&Iuml;&euro;&Icirc;&iquest;&Icirc;&sup1;&Icirc;&reg;&Iuml;&fnof;&Icirc;&micro;&Iuml;&bdquo;&Icirc;&micro;
+&Iuml;&bdquo;&Icirc;&iquest;&Icirc;&frac12;
+&Icirc;&raquo;&Icirc;&iquest;&Icirc;&sup3;&Icirc;&plusmn;&Iuml;&Icirc;&sup1;&Icirc;&plusmn;&Iuml;&fnof;&Icirc;&frac14;&Iuml;&OElig;
+&Iuml;&fnof;&Icirc;&plusmn;&Iuml;&sbquo; &Icirc;&reg;
+&Icirc;&frac12;&Icirc;&plusmn; <a href=
+"http://%h/cgi-bin/chpasswd.cgi">&Icirc;&plusmn;&Icirc;&raquo;&Icirc;&raquo;&Icirc;&not;&Icirc;&frac34;&Iuml;&bdquo;&Icirc;&micro;</a>
+&Iuml;&bdquo;&Icirc;&iquest;&Icirc;&frac12;
+&Icirc;&ordm;&Iuml;&permil;&Icirc;&acute;&Icirc;&sup1;&Icirc;&ordm;&Iuml;&OElig;
+&Iuml;&fnof;&Icirc;&plusmn;&Iuml;&sbquo;.</p>
+<br></div>
+<hr>
+<div id="footer">
+<p>Generated %T by %h (%s)</p>
+<!-- %c --></div>
+</body>
+</html>

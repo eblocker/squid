@@ -717,8 +717,6 @@ CPP
 GREP
 EGREP
 ac_krb5_config
-HAVE_SPNEGO_TRUE
-HAVE_SPNEGO_FALSE
 LIBOBJS
 LTLIBOBJS'
 ac_subst_files=''
@@ -6375,125 +6373,6 @@ fi
   esac
 fi
 
-old_LIBS=$LIBS
-{ $as_echo "$as_me:$LINENO: checking for SPNEGO support" >&5
-$as_echo_n "checking for SPNEGO support... " >&6; }
-if test "${ac_cv_have_spnego+set}" = set; then
-  $as_echo_n "(cached) " >&6
-else
-
-  if test "$cross_compiling" = yes; then
-  { { $as_echo "$as_me:$LINENO: error: cannot run test program while cross compiling
-See \`config.log' for more details." >&5
-$as_echo "$as_me: error: cannot run test program while cross compiling
-See \`config.log' for more details." >&2;}
-   { (exit 1); exit 1; }; }
-else
-  cat >conftest.$ac_ext <<_ACEOF
-/* confdefs.h.  */
-_ACEOF
-cat confdefs.h >>conftest.$ac_ext
-cat >>conftest.$ac_ext <<_ACEOF
-/* end confdefs.h.  */
-
-#ifdef HAVE_HEIMDAL_KERBEROS
-#ifdef HAVE_GSSAPI_GSSAPI_H
-#include <gssapi/gssapi.h>
-#elif defined(HAVE_GSSAPI_H)
-#include <gssapi.h>
-#endif
-#else
-#ifdef HAVE_SEAM_KERBEROS
-#ifdef HAVE_GSSAPI_GSSAPI_H
-#include <gssapi/gssapi.h>
-#elif defined(HAVE_GSSAPI_H)
-#include <gssapi.h>
-#endif
-#ifdef HAVE_GSSAPI_GSSAPI_EXT_H
-#include <gssapi/gssapi_ext.h>
-#endif
-#else /*MIT*/
-#ifdef HAVE_GSSAPI_GSSAPI_H
-#include <gssapi/gssapi.h>
-#elif defined(HAVE_GSSAPI_H)
-#include <gssapi.h>
-#endif
-#ifdef HAVE_GSSAPI_GSSAPI_KRB5_H
-#include <gssapi/gssapi_krb5.h>
-#endif
-#ifdef HAVE_GSSAPI_GSSAPI_GENERIC_H
-#include <gssapi/gssapi_generic.h>
-#endif
-#endif
-#endif
-
-int main(int argc, char *argv[]) {
- OM_uint32 major_status,minor_status;
- gss_OID_set gss_mech_set;
- int i;
-
-static gss_OID_desc _gss_mech_spnego  = {6, (void *)"\x2b\x06\x01\x05\x05\x02"};
-gss_OID gss_mech_spnego = &_gss_mech_spnego;
-
- major_status = gss_indicate_mechs( &minor_status, &gss_mech_set);
-
- for (i=0;i<gss_mech_set->count;i++) {
-     if (!memcmp(gss_mech_set->elements[i].elements,gss_mech_spnego->elements,gss_mech_set->elements[i].length)) {
-        return 0;
-     }
- }
-
- return 1;
-}
-_ACEOF
-rm -f conftest$ac_exeext
-if { (ac_try="$ac_link"
-case "(($ac_try" in
-  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
-  *) ac_try_echo=$ac_try;;
-esac
-eval ac_try_echo="\"\$as_me:$LINENO: $ac_try_echo\""
-$as_echo "$ac_try_echo") >&5
-  (eval "$ac_link") 2>&5
-  ac_status=$?
-  $as_echo "$as_me:$LINENO: \$? = $ac_status" >&5
-  (exit $ac_status); } && { ac_try='./conftest$ac_exeext'
-  { (case "(($ac_try" in
-  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
-  *) ac_try_echo=$ac_try;;
-esac
-eval ac_try_echo="\"\$as_me:$LINENO: $ac_try_echo\""
-$as_echo "$ac_try_echo") >&5
-  (eval "$ac_try") 2>&5
-  ac_status=$?
-  $as_echo "$as_me:$LINENO: \$? = $ac_status" >&5
-  (exit $ac_status); }; }; then
-  ac_cv_have_spnego=yes
-else
-  $as_echo "$as_me: program exited with status $ac_status" >&5
-$as_echo "$as_me: failed program was:" >&5
-sed 's/^/| /' conftest.$ac_ext >&5
-
-( exit $ac_status )
-ac_cv_have_spnego=no
-fi
-rm -rf conftest.dSYM
-rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext conftest.$ac_objext conftest.$ac_ext
-fi
-
-
-fi
-{ $as_echo "$as_me:$LINENO: result: $ac_cv_have_spnego" >&5
-$as_echo "$ac_cv_have_spnego" >&6; }
-if test x"$ac_cv_have_spnego" = x"yes"; then
-
-cat >>confdefs.h <<\_ACEOF
-#define HAVE_SPNEGO 1
-_ACEOF
-
-fi
-LIBS=$old_LIBS
-
 
  { $as_echo "$as_me:$LINENO: checking whether byte ordering is bigendian" >&5
 $as_echo_n "checking whether byte ordering is bigendian... " >&6; }
@@ -7908,15 +7787,6 @@ echo "configure: ## $enable_arg has been selected"
 echo "configure: ##"
 echo "configure: ## -----------------------------##"
 
- if test x"$ac_cv_have_spnego" = x"yes" ; then
-  HAVE_SPNEGO_TRUE=
-  HAVE_SPNEGO_FALSE='#'
-else
-  HAVE_SPNEGO_TRUE='#'
-  HAVE_SPNEGO_FALSE=
-fi
-
-
 MY_CFLAGS="-Wall -Wextra -Werror -Wcomment -Wpointer-arith -Wcast-align -Wwrite-strings -Wstrict-prototypes -Wmissing-prototypes -Wmissing-declarations -Wdeclaration-after-statement -Wshadow"
 for ac_cv_my_cflag in $MY_CFLAGS; do
 echo "int main()
@@ -8041,13 +7911,6 @@ if test -z "${am__fastdepCC_TRUE}" && test -z "${am__fastdepCC_FALSE}"; then
   { { $as_echo "$as_me:$LINENO: error: conditional \"am__fastdepCC\" was never defined.
 Usually this means the macro was only invoked conditionally." >&5
 $as_echo "$as_me: error: conditional \"am__fastdepCC\" was never defined.
-Usually this means the macro was only invoked conditionally." >&2;}
-   { (exit 1); exit 1; }; }
-fi
-if test -z "${HAVE_SPNEGO_TRUE}" && test -z "${HAVE_SPNEGO_FALSE}"; then
-  { { $as_echo "$as_me:$LINENO: error: conditional \"HAVE_SPNEGO\" was never defined.
-Usually this means the macro was only invoked conditionally." >&5
-$as_echo "$as_me: error: conditional \"HAVE_SPNEGO\" was never defined.
 Usually this means the macro was only invoked conditionally." >&2;}
    { (exit 1); exit 1; }; }
 fi

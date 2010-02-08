@@ -1,1 +1,47 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd"> <html><head> <meta http-equiv="Content-Type" content="text/html; charset=utf-8"> <title>错误: 您所请求的网址（URL）无法获取</title> <style type="text/css"><!--   %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  --></style> </head><body> <div id="titles"> <h1>ERROR</h1> <h2>The requested URL could not be retrieved</h2> </div> <hr>  <div id="content"> <p>当尝试取回该 URL 时遇到下面的错误：<a href="%U">%U</a></p>  <blockquote id="error"> <p><b>请求的文件在本缓存服务器上未找到，而您设定了<q>only-if-cached</q>（只读取缓存）指令。</b></p> </blockquote>  <p>您送出了一个包含 <q>only-if-cached</q> （只读取缓存）缓存控制指令的连结请求。而所要的文件并未存在于本缓存服务器中，<em>或者</em>这个连结请求需要刷新文件而 <q>only-if-cached</q> 指令禁止这么做。</p>  <p>缓存服务器的管理员 <a href="mailto:%w%W">%w</a>.</p> <br> </div>  <hr> <div id="footer"> <p>已由 %h (%s) 生成 %T</p> <!-- %c --> </div> </body></html> 
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN"
+"http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+<meta name="generator" content=
+"HTML Tidy for FreeBSD (vers 7 December 2008), see www.w3.org">
+<meta http-equiv="Content-Type" content=
+"text/html; charset=us-ascii">
+<title>&eacute;&rdquo;&trade;&egrave;&macr;&macr;:
+&aelig;&sbquo;&uml;&aelig;&permil;&euro;&egrave;&macr;&middot;&aelig;&plusmn;&sbquo;&ccedil;&scaron;&bdquo;&ccedil;&frac12;&lsquo;&aring;&euro;&iuml;&frac14;&circ;URL&iuml;&frac14;&permil;&aelig;&mdash;&nbsp;&aelig;&sup3;&bull;&egrave;&#381;&middot;&aring;&ndash;</title>
+
+<style type="text/css">
+<!--   %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  -->
+</style>
+</head>
+<body>
+<div id="titles">
+<h1>ERROR</h1>
+<h2>The requested URL could not be retrieved</h2>
+</div>
+<hr>
+<div id="content">
+<p>
+&aring;&frac12;&ldquo;&aring;&deg;&egrave;&macr;&bull;&aring;&ndash;&aring;&rsaquo;&#382;&egrave;&macr;&yen;
+URL
+&aelig;&mdash;&para;&eacute;&Dagger;&aring;&circ;&deg;&auml;&cedil;&lsaquo;&eacute;&cent;&ccedil;&scaron;&bdquo;&eacute;&rdquo;&trade;&egrave;&macr;&macr;&iuml;&frac14;&scaron;<a href="%U">%U</a></p>
+<blockquote id="error">
+<p>
+<b>&egrave;&macr;&middot;&aelig;&plusmn;&sbquo;&ccedil;&scaron;&bdquo;&aelig;&ndash;&Dagger;&auml;&raquo;&para;&aring;&oelig;&uml;&aelig;&oelig;&not;&ccedil;&frac14;&ldquo;&aring;&shy;&tilde;&aelig;&oelig;&aring;&Scaron;&iexcl;&aring;&trade;&uml;&auml;&cedil;&Scaron;&aelig;&oelig;&ordf;&aelig;&permil;&frac34;&aring;&circ;&deg;&iuml;&frac14;&OElig;&egrave;&euro;&OElig;&aelig;&sbquo;&uml;&egrave;&reg;&frac34;&aring;&reg;&scaron;&auml;&ordm;&dagger;<q>only-if-cached</q>&iuml;&frac14;&circ;&aring;&ordf;&egrave;&macr;&raquo;&aring;&ndash;&ccedil;&frac14;&ldquo;&aring;&shy;&tilde;&iuml;&frac14;&permil;&aelig;&OElig;&Dagger;&auml;&raquo;&curren;&atilde;&euro;&sbquo;</b></p>
+</blockquote>
+<p>
+&aelig;&sbquo;&uml;&eacute;&euro;&aring;&Dagger;&ordm;&auml;&ordm;&dagger;&auml;&cedil;&euro;&auml;&cedil;&ordf;&aring;&OElig;&hellip;&aring;&laquo;
+<q>only-if-cached</q>
+&iuml;&frac14;&circ;&aring;&ordf;&egrave;&macr;&raquo;&aring;&ndash;&ccedil;&frac14;&ldquo;&aring;&shy;&tilde;&iuml;&frac14;&permil;&ccedil;&frac14;&ldquo;&aring;&shy;&tilde;&aelig;&#381;&sect;&aring;&circ;&para;&aelig;&OElig;&Dagger;&auml;&raquo;&curren;&ccedil;&scaron;&bdquo;&egrave;&iquest;&#382;&ccedil;&raquo;&ldquo;&egrave;&macr;&middot;&aelig;&plusmn;&sbquo;&atilde;&euro;&sbquo;&egrave;&euro;&OElig;&aelig;&permil;&euro;&egrave;&brvbar;&ccedil;&scaron;&bdquo;&aelig;&ndash;&Dagger;&auml;&raquo;&para;&aring;&sup1;&para;&aelig;&oelig;&ordf;&aring;&shy;&tilde;&aring;&oelig;&uml;&auml;&ordm;&#381;&aelig;&oelig;&not;&ccedil;&frac14;&ldquo;&aring;&shy;&tilde;&aelig;&oelig;&aring;&Scaron;&iexcl;&aring;&trade;&uml;&auml;&cedil;&shy;&iuml;&frac14;&OElig;<em>&aelig;&circ;&ndash;&egrave;&euro;&hellip;</em>&egrave;&iquest;&trade;&auml;&cedil;&ordf;&egrave;&iquest;&#382;&ccedil;&raquo;&ldquo;&egrave;&macr;&middot;&aelig;&plusmn;&sbquo;&eacute;&oelig;&euro;&egrave;&brvbar;&aring;&circ;&middot;&aelig;&ndash;&deg;&aelig;&ndash;&Dagger;&auml;&raquo;&para;&egrave;&euro;&OElig;
+<q>only-if-cached</q>
+&aelig;&OElig;&Dagger;&auml;&raquo;&curren;&ccedil;&brvbar;&aelig;&shy;&cent;&egrave;&iquest;&trade;&auml;&sup1;&circ;&aring;&scaron;&atilde;&euro;&sbquo;</p>
+<p>
+&ccedil;&frac14;&ldquo;&aring;&shy;&tilde;&aelig;&oelig;&aring;&Scaron;&iexcl;&aring;&trade;&uml;&ccedil;&scaron;&bdquo;&ccedil;&reg;&iexcl;&ccedil;&dagger;&aring;&lsquo;&tilde;
+<a href="mailto:%w%W">%w</a>.</p>
+<br></div>
+<hr>
+<div id="footer">
+<p>&aring;&middot;&sup2;&ccedil;&rdquo;&plusmn; %h (%s)
+&ccedil;&rdquo;&Yuml;&aelig;&circ; %T</p>
+<!-- %c --></div>
+</body>
+</html>

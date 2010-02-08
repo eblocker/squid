@@ -33,6 +33,7 @@ PRE_UNINSTALL = :
 POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
+@USE_LOADABLE_MODULES_TRUE@am__append_1 = libltdl
 subdir = .
 DIST_COMMON = README $(am__configure_deps) $(srcdir)/Makefile.am \
 	$(srcdir)/Makefile.in $(top_srcdir)/configure \
@@ -253,8 +254,9 @@ top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 AUTOMAKE_OPTIONS = dist-bzip2 subdir-objects 1.5 foreign
-DIST_SUBDIRS = compat lib snmplib scripts src icons errors contrib doc helpers test-suite tools
-SUBDIRS = compat lib @makesnmplib@ scripts src icons errors doc helpers test-suite tools
+DIST_SUBDIRS = compat lib libltdl snmplib scripts src icons errors contrib doc helpers test-suite tools
+SUBDIRS = compat lib @makesnmplib@ $(am__append_1) scripts src icons \
+	errors doc helpers test-suite tools
 DISTCLEANFILES = include/stamp-h include/stamp-h[0-9]*
 DEFAULT_PINGER = $(libexecdir)/`echo pinger | sed '$(transform);s/$$/$(EXEEXT)/'`
 EXTRA_DIST = \

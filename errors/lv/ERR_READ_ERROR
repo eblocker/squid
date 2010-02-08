@@ -1,1 +1,44 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd"> <html><head> <meta http-equiv="Content-Type" content="text/html; charset=utf-8"> <title>Kļūda: Nevar atvērt pieprasīto adresi.</title> <style type="text/css"><!--   %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  --></style> </head><body> <div id="titles"> <h1>ERROR</h1> <h2>The requested URL could not be retrieved</h2> </div> <hr>  <div id="content"> <p>Iestājusies sekojoša kļūda mēģinot atvērt adresi: <a href="%U">%U</a></p>  <blockquote id="error"> <p><b>Lasīšanas kļūda</b></p> </blockquote>  <p id="sysmsg">Sistēma atbildēja: <i>%E</i></p>  <p>Iestājusies kļūdas situācija saņemot datus no tīkla. Lūdzu atkārtojiet savu pieprasījumu.</p>  <p>Jūsu kešatmiņas administrators ir <a href="mailto:%w%W">%w</a>.</p> <br> </div>  <hr> <div id="footer"> <p>Ģenerēts %T by %h (%s)</p> <!-- %c --> </div> </body></html> 
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN"
+"http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+<meta name="generator" content=
+"HTML Tidy for FreeBSD (vers 7 December 2008), see www.w3.org">
+<meta http-equiv="Content-Type" content=
+"text/html; charset=us-ascii">
+<title>K&Auml;&frac14;&Aring;&laquo;da: Nevar atv&Auml;&ldquo;rt
+piepras&Auml;&laquo;to adresi.</title>
+
+<style type="text/css">
+<!--   %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  -->
+</style>
+</head>
+<body>
+<div id="titles">
+<h1>ERROR</h1>
+<h2>The requested URL could not be retrieved</h2>
+</div>
+<hr>
+<div id="content">
+<p>Iest&Auml;jusies sekojo&Aring;&iexcl;a
+k&Auml;&frac14;&Aring;&laquo;da m&Auml;&ldquo;&Auml;&pound;inot
+atv&Auml;&ldquo;rt adresi: <a href="%U">%U</a></p>
+<blockquote id="error">
+<p><b>Las&Auml;&laquo;&Aring;&iexcl;anas
+k&Auml;&frac14;&Aring;&laquo;da</b></p>
+</blockquote>
+<p id="sysmsg">Sist&Auml;&ldquo;ma atbild&Auml;&ldquo;ja:
+<i>%E</i></p>
+<p>Iest&Auml;jusies k&Auml;&frac14;&Aring;&laquo;das situ&Auml;cija
+sa&Aring;&dagger;emot datus no t&Auml;&laquo;kla.
+L&Aring;&laquo;dzu atk&Auml;rtojiet savu
+piepras&Auml;&laquo;jumu.</p>
+<p>J&Aring;&laquo;su ke&Aring;&iexcl;atmi&Aring;&dagger;as
+administrators ir <a href="mailto:%w%W">%w</a>.</p>
+<br></div>
+<hr>
+<div id="footer">
+<p>&Auml;&cent;ener&Auml;&ldquo;ts %T by %h (%s)</p>
+<!-- %c --></div>
+</body>
+</html>

@@ -223,6 +223,7 @@ SQUIDCEXTERN const char *httpMakeVaryMark(HttpRequest * request, HttpReply const
 SQUIDCEXTERN int etagParseInit(ETag * etag, const char *str);
 SQUIDCEXTERN int etagIsEqual(const ETag * tag1, const ETag * tag2);
 
+#include "HttpStatusCode.h"
 SQUIDCEXTERN const char *httpStatusString(http_status status);
 
 /* Http Body */
@@ -278,13 +279,13 @@ SQUIDCEXTERN void httpHeaderStoreReport(StoreEntry * e);
 SQUIDCEXTERN void httpHdrMangleList(HttpHeader *, HttpRequest *, int req_or_rep);
 SQUIDCEXTERN int httpReqHdrManglersConfigured();
 
-#ifdef SQUID_SNMP
+#if SQUID_SNMP
 SQUIDCEXTERN PF snmpHandleUdp;
 SQUIDCEXTERN void snmpInit(void);
 SQUIDCEXTERN void snmpConnectionOpen(void);
 SQUIDCEXTERN void snmpConnectionShutdown(void);
 SQUIDCEXTERN void snmpConnectionClose(void);
-SQUIDCEXTERN void snmpDebugOid(int lvl, oid * Name, snint Len);
+SQUIDCEXTERN const char * snmpDebugOid(oid * Name, snint Len, MemBuf &outbuf);
 
 SQUIDCEXTERN void addr2oid(IpAddress &addr, oid *Dest);
 SQUIDCEXTERN void oid2addr(oid *Dest, IpAddress &addr, u_int code);
@@ -571,8 +572,6 @@ SQUIDCEXTERN void no_suid(void);
 SQUIDCEXTERN void writePidFile(void);
 SQUIDCEXTERN void setSocketShutdownLifetimes(int);
 SQUIDCEXTERN void setMaxFD(void);
-SQUIDCEXTERN int percent(int, int);
-SQUIDCEXTERN double dpercent(double, double);
 SQUIDCEXTERN void squid_signal(int sig, SIGHDLR *, int flags);
 SQUIDCEXTERN pid_t readPidFile(void);
 SQUIDCEXTERN void keepCapabilities(void);
@@ -580,8 +579,6 @@ SQUIDCEXTERN void keepCapabilities(void);
 /* AYJ debugs function to show locations being reset with memset() */
 SQUIDCEXTERN void *xmemset(void *dst, int, size_t);
 
-SQUIDCEXTERN int intAverage(int, int, int, int);
-SQUIDCEXTERN double doubleAverage(double, double, int, int);
 SQUIDCEXTERN void debug_trap(const char *);
 SQUIDCEXTERN void logsFlush(void);
 SQUIDCEXTERN const char *checkNullString(const char *p);

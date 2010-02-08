@@ -1,1 +1,70 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd"> <html><head> <meta http-equiv="Content-Type" content="text/html; charset=utf-8"> <title>에러: 요청된 URL을 가져올 수 없습니다.</title> <style type="text/css"><!--   %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  --></style> </head><body> <div id="titles"> <h1>ERROR</h1> <h2>The requested URL could not be retrieved</h2> </div> <hr>  <div id="content"> <p>다음 URL이 처리되지 못했습니다: <a href="%U">%U</a></p>  <p>Squid는 다음과 같은 FTP 명령어를 전송했고:</p> <blockquote id="data"> <pre>%f</pre> </blockquote>  <p>The server responded with:</p> <blockquote id="sysmsg"> <pre>%F</pre> <pre>%g</pre> </blockquote>  <p>FTP URL을 절대 경로로 지정하였을 때 (RFC 1738에 어긋납니다) 이러한 문제가 발생될 수 있습니다. 이 경우에는, 파일이 <a href="%B">%B</A>에 있을 수 있습니다.</p>  <p>Your cache administrator is <a href="mailto:%w%W">%w</a>.</p> <br> </div>  <hr> <div id="footer"> <p>Generated %T by %h (%s)</p> <!-- %c --> </div> </body></html> 
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN"
+"http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+<meta name="generator" content=
+"HTML Tidy for FreeBSD (vers 7 December 2008), see www.w3.org">
+<meta http-equiv="Content-Type" content=
+"text/html; charset=us-ascii">
+<title>&igrave;&mdash;&euml;&Yuml;&not;:
+&igrave;&scaron;&rdquo;&igrave;&sup2;&shy;&euml;&oelig;
+URL&igrave;&bdquo;
+&ecirc;&deg;&euro;&igrave;&nbsp;&cedil;&igrave;&tilde;&not;
+&igrave;&circ;&tilde;
+&igrave;&mdash;&dagger;&igrave;&Scaron;&micro;&euml;&lsaquo;&circ;&euml;&lsaquo;&curren;.</title>
+
+<style type="text/css">
+<!--   %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  -->
+</style>
+</head>
+<body>
+<div id="titles">
+<h1>ERROR</h1>
+<h2>The requested URL could not be retrieved</h2>
+</div>
+<hr>
+<div id="content">
+<p>&euml;&lsaquo;&curren;&igrave;&OElig; URL&igrave;&acute;
+&igrave;&sup2;&tilde;&euml;&brvbar;&not;&euml;&tilde;&igrave;&sect;&euro;
+&euml;&ordf;&raquo;&iacute;&ndash;&circ;&igrave;&Scaron;&micro;&euml;&lsaquo;&circ;&euml;&lsaquo;&curren;:
+<a href="%U">%U</a></p>
+<p>Squid&euml;&Scaron;&rdquo;
+&euml;&lsaquo;&curren;&igrave;&OElig;&ecirc;&sup3;&frac14;
+&ecirc;&deg;&trade;&igrave;&euro; FTP
+&euml;&ordf;&hellip;&euml;&nbsp;&sup1;&igrave;&ndash;&acute;&euml;&yen;&frac14;
+&igrave;&nbsp;&bdquo;&igrave;&dagger;&iexcl;&iacute;&ndash;&circ;&ecirc;&sup3;&nbsp;:</p>
+<blockquote id="data">
+<pre>
+%f
+</pre></blockquote>
+<p>The server responded with:</p>
+<blockquote id="sysmsg">
+<pre>
+%F
+</pre>
+<pre>
+%g
+</pre></blockquote>
+<p>FTP URL&igrave;&bdquo; &igrave;&nbsp;&circ;&euml;&OElig;&euro;
+&ecirc;&sup2;&frac12;&euml;&iexcl;&oelig;&euml;&iexcl;&oelig;
+&igrave;&sect;&euro;&igrave;&nbsp;&bull;&iacute;&bull;&tilde;&igrave;&tilde;&euro;&igrave;&bdquo;
+&euml;&bull;&OElig; (RFC 1738&igrave;&mdash;
+&igrave;&ndash;&acute;&ecirc;&cedil;&lsaquo;&euml;&sbquo;&copy;&euml;&lsaquo;&circ;&euml;&lsaquo;&curren;)
+&igrave;&acute;&euml;&Yuml;&not;&iacute;&bull;&oelig;
+&euml;&not;&cedil;&igrave;&nbsp;&oelig;&ecirc;&deg;&euro;
+&euml;&deg;&oelig;&igrave;&fnof;&euml;&nbsp; &igrave;&circ;&tilde;
+&igrave;&#382;&circ;&igrave;&Scaron;&micro;&euml;&lsaquo;&circ;&euml;&lsaquo;&curren;.
+&igrave;&acute;
+&ecirc;&sup2;&frac12;&igrave;&scaron;&deg;&igrave;&mdash;&euml;&Scaron;&rdquo;,
+&iacute;&OElig;&OElig;&igrave;&frac14;&igrave;&acute; <a href=
+"%B">%B</a>&igrave;&mdash; &igrave;&#382;&circ;&igrave;&bdquo;
+&igrave;&circ;&tilde;
+&igrave;&#382;&circ;&igrave;&Scaron;&micro;&euml;&lsaquo;&circ;&euml;&lsaquo;&curren;.</p>
+<p>Your cache administrator is <a href="mailto:%w%W">%w</a>.</p>
+<br></div>
+<hr>
+<div id="footer">
+<p>Generated %T by %h (%s)</p>
+<!-- %c --></div>
+</body>
+</html>

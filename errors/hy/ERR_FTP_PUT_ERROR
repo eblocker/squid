@@ -1,1 +1,53 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd"> <html><head> <meta http-equiv="Content-Type" content="text/html; charset=utf-8"> <title>ՍԽԱԼ: FTP upload failed</title> <style type="text/css"><!--   %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  --></style> </head><body> <div id="titles"> <h1>ERROR</h1> <h2>FTP upload գործողությունը խափանվեց</h2> </div> <hr>  <div id="content"> <p>While trying to PUT the following URL: <a href="%U">%U</a></p>  <p>Squid-ը ուղարկեց հետևյալ FTP հրամանը: </p> <blockquote id="data"> <pre>%f</pre> </blockquote>  <p>The server responded with:</p> <blockquote id="sysmsg"> <pre>%F</pre> </blockquote>  <p>This means that the FTP server may not have permission or space to store the file. Check the path, permissions, diskspace and try again.</p>  <p>Ձեր քեշի կառավարիչը <a href="mailto:%w%W">%w</a> է.</p> <br> </div>  <hr> <div id="footer"> <p>Generated %T by %h (%s)</p> <!-- %c --> </div> </body></html> 
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN"
+"http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+<meta name="generator" content=
+"HTML Tidy for FreeBSD (vers 7 December 2008), see www.w3.org">
+<meta http-equiv="Content-Type" content=
+"text/html; charset=us-ascii">
+<title>&Otilde;&Ocirc;&frac12;&Ocirc;&plusmn;&Ocirc;&frac14;: FTP
+upload failed</title>
+
+<style type="text/css">
+<!--   %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  -->
+</style>
+</head>
+<body>
+<div id="titles">
+<h1>ERROR</h1>
+<h2>FTP upload
+&Otilde;&pound;&Otilde;&cedil;&Ouml;&euro;&Otilde;&reg;&Otilde;&cedil;&Otilde;&sup2;&Otilde;&cedil;&Ouml;&sbquo;&Otilde;&copy;&Otilde;&micro;&Otilde;&cedil;&Ouml;&sbquo;&Otilde;&para;&Otilde;&uml;
+&Otilde;&shy;&Otilde;&iexcl;&Ouml;&fnof;&Otilde;&iexcl;&Otilde;&para;&Otilde;&frac34;&Otilde;&yen;&Ouml;</h2>
+</div>
+<hr>
+<div id="content">
+<p>While trying to PUT the following URL: <a href="%U">%U</a></p>
+<p>Squid-&Otilde;&uml;
+&Otilde;&cedil;&Ouml;&sbquo;&Otilde;&sup2;&Otilde;&iexcl;&Ouml;&euro;&Otilde;&macr;&Otilde;&yen;&Ouml;
+&Otilde;&deg;&Otilde;&yen;&Otilde;&iquest;&Ouml;&Dagger;&Otilde;&micro;&Otilde;&iexcl;&Otilde;&not;
+FTP
+&Otilde;&deg;&Ouml;&euro;&Otilde;&iexcl;&Otilde;&acute;&Otilde;&iexcl;&Otilde;&para;&Otilde;&uml;:</p>
+<blockquote id="data">
+<pre>
+%f
+</pre></blockquote>
+<p>The server responded with:</p>
+<blockquote id="sysmsg">
+<pre>
+%F
+</pre></blockquote>
+<p>This means that the FTP server may not have permission or space
+to store the file. Check the path, permissions, diskspace and try
+again.</p>
+<p>&Otilde;&Otilde;&yen;&Ouml;&euro;
+&Ouml;&bdquo;&Otilde;&yen;&Otilde;&middot;&Otilde;&laquo;
+&Otilde;&macr;&Otilde;&iexcl;&Otilde;&frac14;&Otilde;&iexcl;&Otilde;&frac34;&Otilde;&iexcl;&Ouml;&euro;&Otilde;&laquo;&Otilde;&sup1;&Otilde;&uml;
+<a href="mailto:%w%W">%w</a> &Otilde;&sect;.</p>
+<br></div>
+<hr>
+<div id="footer">
+<p>Generated %T by %h (%s)</p>
+<!-- %c --></div>
+</body>
+</html>

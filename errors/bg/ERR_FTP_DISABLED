@@ -1,1 +1,61 @@
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd"> <html><head> <meta http-equiv="Content-Type" content="text/html; charset=utf-8"> <title>ГРЕШКА: Заявеният адрес е недостъпен.</title> <style type="text/css"><!--   %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  --></style> </head><body> <div id="titles"> <h1>ERROR</h1> <h2>The requested URL could not be retrieved</h2> </div> <hr>  <div id="content"> <p>Възникна следната грешка при опит за достъп до: <a href="%U">%U</a></p>  <blockquote id="error"> <p><b>Протоколът FTP е забранен.</b></p> </blockquote>  <p>Този кеш сървър не поддържа FTP</p>  <p>Вашият кеш администратор е <a href="mailto:%w%W">%w</a>.</p>  <br> </div>  <hr> <div id="footer"> <p>Генерирано на %T от %h (%s)</p> <!-- %c --> </div> </body></html> 
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+"http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+<meta name="generator" content=
+"HTML Tidy for FreeBSD (vers 7 December 2008), see www.w3.org">
+<meta http-equiv="Content-Type" content=
+"text/html; charset=us-ascii">
+<title>
+&ETH;&ldquo;&ETH;&nbsp;&ETH;&bull;&ETH;&uml;&ETH;&scaron;&ETH;:
+&ETH;&mdash;&ETH;&deg;&Ntilde;&ETH;&sup2;&ETH;&micro;&ETH;&frac12;&ETH;&cedil;&Ntilde;&Ntilde;&sbquo;
+&ETH;&deg;&ETH;&acute;&Ntilde;&euro;&ETH;&micro;&Ntilde;
+&ETH;&micro;
+&ETH;&frac12;&ETH;&micro;&ETH;&acute;&ETH;&frac34;&Ntilde;&Ntilde;&sbquo;&Ntilde;&Scaron;&ETH;&iquest;&ETH;&micro;&ETH;&frac12;.</title>
+
+<style type="text/css">
+<!--   %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  -->
+</style>
+</head>
+<body>
+<div id="titles">
+<h1>ERROR</h1>
+<h2>The requested URL could not be retrieved</h2>
+</div>
+<hr>
+<div id="content">
+<p>
+&ETH;&rsquo;&Ntilde;&Scaron;&ETH;&middot;&ETH;&frac12;&ETH;&cedil;&ETH;&ordm;&ETH;&frac12;&ETH;&deg;
+&Ntilde;&ETH;&raquo;&ETH;&micro;&ETH;&acute;&ETH;&frac12;&ETH;&deg;&Ntilde;&sbquo;&ETH;&deg;
+&ETH;&sup3;&Ntilde;&euro;&ETH;&micro;&Ntilde;&circ;&ETH;&ordm;&ETH;&deg;
+&ETH;&iquest;&Ntilde;&euro;&ETH;&cedil;
+&ETH;&frac34;&ETH;&iquest;&ETH;&cedil;&Ntilde;&sbquo;
+&ETH;&middot;&ETH;&deg;
+&ETH;&acute;&ETH;&frac34;&Ntilde;&Ntilde;&sbquo;&Ntilde;&Scaron;&ETH;&iquest;
+&ETH;&acute;&ETH;&frac34;: <a href="%U">%U</a></p>
+<blockquote id="error">
+<p>
+<b>&ETH;&Yuml;&Ntilde;&euro;&ETH;&frac34;&Ntilde;&sbquo;&ETH;&frac34;&ETH;&ordm;&ETH;&frac34;&ETH;&raquo;&Ntilde;&Scaron;&Ntilde;&sbquo;
+FTP &ETH;&micro;
+&ETH;&middot;&ETH;&deg;&ETH;&plusmn;&Ntilde;&euro;&ETH;&deg;&ETH;&frac12;&ETH;&micro;&ETH;&frac12;.</b></p>
+</blockquote>
+<p>&ETH;&cent;&ETH;&frac34;&ETH;&middot;&ETH;&cedil;
+&ETH;&ordm;&ETH;&micro;&Ntilde;&circ;
+&Ntilde;&Ntilde;&Scaron;&Ntilde;&euro;&ETH;&sup2;&Ntilde;&Scaron;&Ntilde;&euro;
+&ETH;&frac12;&ETH;&micro;
+&ETH;&iquest;&ETH;&frac34;&ETH;&acute;&ETH;&acute;&Ntilde;&Scaron;&Ntilde;&euro;&ETH;&para;&ETH;&deg;
+FTP</p>
+<p>
+&ETH;&rsquo;&ETH;&deg;&Ntilde;&circ;&ETH;&cedil;&Ntilde;&Ntilde;&sbquo;
+&ETH;&ordm;&ETH;&micro;&Ntilde;&circ;
+&ETH;&deg;&ETH;&acute;&ETH;&frac14;&ETH;&cedil;&ETH;&frac12;&ETH;&cedil;&Ntilde;&Ntilde;&sbquo;&Ntilde;&euro;&ETH;&deg;&Ntilde;&sbquo;&ETH;&frac34;&Ntilde;&euro;
+&ETH;&micro; <a href="mailto:%w%W">%w</a>.</p>
+<br></div>
+<hr>
+<div id="footer">
+<p>
+&ETH;&ldquo;&ETH;&micro;&ETH;&frac12;&ETH;&micro;&Ntilde;&euro;&ETH;&cedil;&Ntilde;&euro;&ETH;&deg;&ETH;&frac12;&ETH;&frac34;
+&ETH;&frac12;&ETH;&deg; %T &ETH;&frac34;&Ntilde;&sbquo; %h (%s)</p>
+<!-- %c --></div>
+</body>
+</html>

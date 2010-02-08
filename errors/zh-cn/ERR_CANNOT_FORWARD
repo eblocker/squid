@@ -1,1 +1,44 @@
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd"> <html><head> <meta http-equiv="Content-Type" content="text/html; charset=utf-8"> <title>错误: 您所请求的网址（URL）无法获取</title> <style type="text/css"><!--   %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  --></style> </head> <body> <div id="titles"> <h1>ERROR</h1> <h2>The requested URL could not be retrieved</h2> </div> <hr>  <div id="content"> <p>当尝试取回该 URL 时遇到下面的错误：<a href="%U">%U</a></p>  <blockquote id="error"> <p><b>目前无法将您的请求进行转送操作</b></p> </blockquote>  <p>您的请求无法被转送到原始网络服务器或其他的上层缓存服务器，发生这个问题最可能的原因是缓存服务器管理员不允许本服务器与原始网络服务器直接连结，而 所有本服务器指定的上层缓存服务器都暂时无法连结。</p>  <p>缓存服务器的管理员 <a href="mailto:%w%W">%w</a>.</p>  <br> </div>  <hr> <div id="footer"> <p>已由 %h (%s) 生成 %T</p> <!-- %c --> </div> </body></html> 
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+"http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+<meta name="generator" content=
+"HTML Tidy for FreeBSD (vers 7 December 2008), see www.w3.org">
+<meta http-equiv="Content-Type" content=
+"text/html; charset=us-ascii">
+<title>&eacute;&rdquo;&trade;&egrave;&macr;&macr;:
+&aelig;&sbquo;&uml;&aelig;&permil;&euro;&egrave;&macr;&middot;&aelig;&plusmn;&sbquo;&ccedil;&scaron;&bdquo;&ccedil;&frac12;&lsquo;&aring;&euro;&iuml;&frac14;&circ;URL&iuml;&frac14;&permil;&aelig;&mdash;&nbsp;&aelig;&sup3;&bull;&egrave;&#381;&middot;&aring;&ndash;</title>
+
+<style type="text/css">
+<!--   %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  -->
+</style>
+</head>
+<body>
+<div id="titles">
+<h1>ERROR</h1>
+<h2>The requested URL could not be retrieved</h2>
+</div>
+<hr>
+<div id="content">
+<p>
+&aring;&frac12;&ldquo;&aring;&deg;&egrave;&macr;&bull;&aring;&ndash;&aring;&rsaquo;&#382;&egrave;&macr;&yen;
+URL
+&aelig;&mdash;&para;&eacute;&Dagger;&aring;&circ;&deg;&auml;&cedil;&lsaquo;&eacute;&cent;&ccedil;&scaron;&bdquo;&eacute;&rdquo;&trade;&egrave;&macr;&macr;&iuml;&frac14;&scaron;<a href="%U">%U</a></p>
+<blockquote id="error">
+<p>
+<b>&ccedil;&rsaquo;&reg;&aring;&permil;&aelig;&mdash;&nbsp;&aelig;&sup3;&bull;&aring;&deg;&dagger;&aelig;&sbquo;&uml;&ccedil;&scaron;&bdquo;&egrave;&macr;&middot;&aelig;&plusmn;&sbquo;&egrave;&iquest;&rsaquo;&egrave;&iexcl;&OElig;&egrave;&frac12;&not;&eacute;&euro;&aelig;&ldquo;&auml;&frac12;&oelig;</b></p>
+</blockquote>
+<p>
+&aelig;&sbquo;&uml;&ccedil;&scaron;&bdquo;&egrave;&macr;&middot;&aelig;&plusmn;&sbquo;&aelig;&mdash;&nbsp;&aelig;&sup3;&bull;&egrave;&cent;&laquo;&egrave;&frac12;&not;&eacute;&euro;&aring;&circ;&deg;&aring;&#381;&Yuml;&aring;&sect;&lsaquo;&ccedil;&frac12;&lsquo;&ccedil;&raquo;&oelig;&aelig;&oelig;&aring;&Scaron;&iexcl;&aring;&trade;&uml;&aelig;&circ;&ndash;&aring;&hellip;&para;&auml;&raquo;&ndash;&ccedil;&scaron;&bdquo;&auml;&cedil;&Scaron;&aring;&plusmn;&sbquo;&ccedil;&frac14;&ldquo;&aring;&shy;&tilde;&aelig;&oelig;&aring;&Scaron;&iexcl;&aring;&trade;&uml;&iuml;&frac14;&OElig;&aring;&lsquo;&ccedil;&rdquo;&Yuml;&egrave;&iquest;&trade;&auml;&cedil;&ordf;&eacute;&mdash;&reg;&eacute;&cent;&tilde;&aelig;&oelig;&euro;&aring;&macr;&egrave;&fnof;&frac12;&ccedil;&scaron;&bdquo;&aring;&#381;&Yuml;&aring;&rsaquo;&nbsp;&aelig;&tilde;&macr;&ccedil;&frac14;&ldquo;&aring;&shy;&tilde;&aelig;&oelig;&aring;&Scaron;&iexcl;&aring;&trade;&uml;&ccedil;&reg;&iexcl;&ccedil;&dagger;&aring;&lsquo;&tilde;&auml;&cedil;&aring;&hellip;&egrave;&reg;&cedil;&aelig;&oelig;&not;&aelig;&oelig;&aring;&Scaron;&iexcl;&aring;&trade;&uml;&auml;&cedil;&#381;&aring;&#381;&Yuml;&aring;&sect;&lsaquo;&ccedil;&frac12;&lsquo;&ccedil;&raquo;&oelig;&aelig;&oelig;&aring;&Scaron;&iexcl;&aring;&trade;&uml;&ccedil;&rsaquo;&acute;&aelig;&#381;&yen;&egrave;&iquest;&#382;&ccedil;&raquo;&ldquo;&iuml;&frac14;&OElig;&egrave;&euro;&OElig;
+&aelig;&permil;&euro;&aelig;&oelig;&permil;&aelig;&oelig;&not;&aelig;&oelig;&aring;&Scaron;&iexcl;&aring;&trade;&uml;&aelig;&OElig;&Dagger;&aring;&reg;&scaron;&ccedil;&scaron;&bdquo;&auml;&cedil;&Scaron;&aring;&plusmn;&sbquo;&ccedil;&frac14;&ldquo;&aring;&shy;&tilde;&aelig;&oelig;&aring;&Scaron;&iexcl;&aring;&trade;&uml;&eacute;&fnof;&frac12;&aelig;&scaron;&sbquo;&aelig;&mdash;&para;&aelig;&mdash;&nbsp;&aelig;&sup3;&bull;&egrave;&iquest;&#382;&ccedil;&raquo;&ldquo;&atilde;&euro;&sbquo;</p>
+<p>
+&ccedil;&frac14;&ldquo;&aring;&shy;&tilde;&aelig;&oelig;&aring;&Scaron;&iexcl;&aring;&trade;&uml;&ccedil;&scaron;&bdquo;&ccedil;&reg;&iexcl;&ccedil;&dagger;&aring;&lsquo;&tilde;
+<a href="mailto:%w%W">%w</a>.</p>
+<br></div>
+<hr>
+<div id="footer">
+<p>&aring;&middot;&sup2;&ccedil;&rdquo;&plusmn; %h (%s)
+&ccedil;&rdquo;&Yuml;&aelig;&circ; %T</p>
+<!-- %c --></div>
+</body>
+</html>

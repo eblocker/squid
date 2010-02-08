@@ -1,1 +1,57 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd"> <html><head> <meta http-equiv="Content-Type" content="text/html; charset=utf-8"> <title>에러: Cache Access Denied</title> <style type="text/css"><!--   %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  --></style> </head> <body> <div id="titles"> <h1>ERROR</h1> <h2>Cache 서버 이용 요구가 거절되었습니다.</h2> </div> <hr>  <div id="content"> <p>The following error was encountered while trying to retrieve the URL: <a href="%U">%U</a></p>  <blockquote id="error"> <p><b>캐쉬 이용 요청이 거절되었습니다.</b></p> </blockquote>  <p>죄송합니다. 이 캐쉬를 통해 다음 서비스를 받기 위해서는 %U 인증절차를 거쳐야 합니다.</p>  <p>Please contact the <a href="mailto:%w%W">cache administrator</a> if you have difficulties authenticating yourself or <a href="http://%h/cgi-bin/chpasswd.cgi">change</a> your default password.</p>  <br> </div>  <hr>  <div id="footer"> <p>Generated %T by %h (%s)</p> <!-- %c --> </div> </body></html> 
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN"
+"http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+<meta name="generator" content=
+"HTML Tidy for FreeBSD (vers 7 December 2008), see www.w3.org">
+<meta http-equiv="Content-Type" content=
+"text/html; charset=us-ascii">
+<title>&igrave;&mdash;&euml;&Yuml;&not;: Cache Access
+Denied</title>
+
+<style type="text/css">
+<!--   %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  -->
+</style>
+</head>
+<body>
+<div id="titles">
+<h1>ERROR</h1>
+<h2>Cache &igrave;&bdquo;&oelig;&euml;&sup2;&bdquo;
+&igrave;&acute;&igrave;&scaron;&copy;
+&igrave;&scaron;&rdquo;&ecirc;&micro;&not;&ecirc;&deg;&euro;
+&ecirc;&plusmn;&deg;&igrave;&nbsp;&circ;&euml;&tilde;&igrave;&mdash;&circ;&igrave;&Scaron;&micro;&euml;&lsaquo;&circ;&euml;&lsaquo;&curren;.</h2>
+</div>
+<hr>
+<div id="content">
+<p>The following error was encountered while trying to retrieve the
+URL: <a href="%U">%U</a></p>
+<blockquote id="error">
+<p><b>&igrave;&ordm;&igrave;&permil;&not;
+&igrave;&acute;&igrave;&scaron;&copy;
+&igrave;&scaron;&rdquo;&igrave;&sup2;&shy;&igrave;&acute;
+&ecirc;&plusmn;&deg;&igrave;&nbsp;&circ;&euml;&tilde;&igrave;&mdash;&circ;&igrave;&Scaron;&micro;&euml;&lsaquo;&circ;&euml;&lsaquo;&curren;.</b></p>
+</blockquote>
+<p>
+&igrave;&pound;&bdquo;&igrave;&dagger;&iexcl;&iacute;&bull;&copy;&euml;&lsaquo;&circ;&euml;&lsaquo;&curren;.
+&igrave;&acute;
+&igrave;&ordm;&igrave;&permil;&not;&euml;&yen;&frac14;
+&iacute;&dagger;&micro;&iacute;&bull;&acute;
+&euml;&lsaquo;&curren;&igrave;&OElig;
+&igrave;&bdquo;&oelig;&euml;&sup1;&bdquo;&igrave;&Scaron;&curren;&euml;&yen;&frac14;
+&euml;&deg;&rsaquo;&ecirc;&cedil;&deg;
+&igrave;&oelig;&bdquo;&iacute;&bull;&acute;&igrave;&bdquo;&oelig;&euml;&Scaron;&rdquo;
+%U
+&igrave;&cedil;&igrave;&brvbar;&igrave;&nbsp;&circ;&igrave;&deg;&uml;&euml;&yen;&frac14;
+&ecirc;&plusmn;&deg;&igrave;&sup3;&igrave;&bull;&frac14;
+&iacute;&bull;&copy;&euml;&lsaquo;&circ;&euml;&lsaquo;&curren;.</p>
+<p>Please contact the <a href="mailto:%w%W">cache administrator</a>
+if you have difficulties authenticating yourself or <a href=
+"http://%h/cgi-bin/chpasswd.cgi">change</a> your default
+password.</p>
+<br></div>
+<hr>
+<div id="footer">
+<p>Generated %T by %h (%s)</p>
+<!-- %c --></div>
+</body>
+</html>

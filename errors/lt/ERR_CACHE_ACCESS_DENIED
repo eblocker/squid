@@ -1,1 +1,40 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd"> <html><head> <meta http-equiv="Content-Type" content="text/html; charset=utf-8"> <title>KLAIDA: Cache Access Denied</title> <style type="text/css"><!--   %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  --></style> </head> <body> <div id="titles"> <h1>ERROR</h1> <h2>Cache Priėjimas draudžiamas.</h2> </div> <hr>  <div id="content"> <p>The following error was encountered while trying to retrieve the URL: <a href="%U">%U</a></p>  <blockquote id="error"> <p><b>Priėjimas prie kešo uždraustas.</b></p> </blockquote>  <p>Sorry, you are not currently allowed to request %U from this cache until you have authenticated yourself.</p>  <p>Prašome susisiekti su <a href="mailto:%w%W">proxy administratoriumi</a>, jei jums kils sunkumai prisistatant arba <a href="http://%h/cgi-bin/chpasswd.cgi">pakeisti</a> savo slaptažodį.</p>  <br> </div>  <hr>  <div id="footer"> <p>Generated %T by %h (%s)</p> <!-- %c --> </div> </body></html> 
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN"
+"http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+<meta name="generator" content=
+"HTML Tidy for FreeBSD (vers 7 December 2008), see www.w3.org">
+<meta http-equiv="Content-Type" content=
+"text/html; charset=us-ascii">
+<title>KLAIDA: Cache Access Denied</title>
+
+<style type="text/css">
+<!--   %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  -->
+</style>
+</head>
+<body>
+<div id="titles">
+<h1>ERROR</h1>
+<h2>Cache Pri&Auml;&mdash;jimas draud&Aring;&frac34;iamas.</h2>
+</div>
+<hr>
+<div id="content">
+<p>The following error was encountered while trying to retrieve the
+URL: <a href="%U">%U</a></p>
+<blockquote id="error">
+<p><b>Pri&Auml;&mdash;jimas prie ke&Aring;&iexcl;o
+u&Aring;&frac34;draustas.</b></p>
+</blockquote>
+<p>Sorry, you are not currently allowed to request %U from this
+cache until you have authenticated yourself.</p>
+<p>Pra&Aring;&iexcl;ome susisiekti su <a href="mailto:%w%W">proxy
+administratoriumi</a>, jei jums kils sunkumai prisistatant arba
+<a href="http://%h/cgi-bin/chpasswd.cgi">pakeisti</a> savo
+slapta&Aring;&frac34;od&Auml;&macr;.</p>
+<br></div>
+<hr>
+<div id="footer">
+<p>Generated %T by %h (%s)</p>
+<!-- %c --></div>
+</body>
+</html>

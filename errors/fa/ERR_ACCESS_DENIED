@@ -1,1 +1,65 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd"> <html><head> <meta http-equiv="Content-Type" content="text/html; charset=utf-8"> <title>خطا: The requested URL could not be retrieved</title> <style type="text/css"><!--  %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  --></style> </head><body> <div id="titles"> <h1>ERROR</h1> <h2>The requested URL could not be retrieved</h2> </div> <hr>  <div id="content"> <p>The following error was encountered while trying to retrieve the URL: <a href="%U">%U</a></p>  <blockquote id="error"> <p><b>دسترسی رد شد.</b></p> </blockquote>  <p>تنظیمات سطح دسترسی هم‌اکنون به شما اجازه این درخواست را نمی‌دهد. در صورتی که احساس می‌کنید باید دسترسی داشته باشید با تهیه‌کننده سرویس خود تماس بگیرید.</p>  <p>Your cache administrator is <a href="mailto:%w%W">%w</a>.</p> <br> </div>  <hr> <div id="footer"> <p>Generated %T by %h (%s)</p> <!-- %c --> </div> </body></html> 
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN"
+"http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+<meta name="generator" content=
+"HTML Tidy for FreeBSD (vers 7 December 2008), see www.w3.org">
+<meta http-equiv="Content-Type" content=
+"text/html; charset=us-ascii">
+<title>&Oslash;&reg;&Oslash;&middot;&Oslash;&sect;: The requested
+URL could not be retrieved</title>
+
+<style type="text/css">
+<!--  %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  -->
+</style>
+</head>
+<body>
+<div id="titles">
+<h1>ERROR</h1>
+<h2>The requested URL could not be retrieved</h2>
+</div>
+<hr>
+<div id="content">
+<p>The following error was encountered while trying to retrieve the
+URL: <a href="%U">%U</a></p>
+<blockquote id="error">
+<p>
+<b>&Oslash;&macr;&Oslash;&sup3;&Oslash;&ordf;&Oslash;&plusmn;&Oslash;&sup3;&Ucirc;&OElig;
+&Oslash;&plusmn;&Oslash;&macr;
+&Oslash;&acute;&Oslash;&macr;.</b></p>
+</blockquote>
+<p>
+&Oslash;&ordf;&Ugrave;&dagger;&Oslash;&cedil;&Ucirc;&OElig;&Ugrave;&hellip;&Oslash;&sect;&Oslash;&ordf;
+&Oslash;&sup3;&Oslash;&middot;&Oslash;&shy;
+&Oslash;&macr;&Oslash;&sup3;&Oslash;&ordf;&Oslash;&plusmn;&Oslash;&sup3;&Ucirc;&OElig;
+&Ugrave;&Dagger;&Ugrave;&hellip;&acirc;&euro;&OElig;&Oslash;&sect;&Uacute;&copy;&Ugrave;&dagger;&Ugrave;&circ;&Ugrave;&dagger;
+&Oslash;&uml;&Ugrave;&Dagger;
+&Oslash;&acute;&Ugrave;&hellip;&Oslash;&sect;
+&Oslash;&sect;&Oslash;&not;&Oslash;&sect;&Oslash;&sup2;&Ugrave;&Dagger;
+&Oslash;&sect;&Ucirc;&OElig;&Ugrave;&dagger;
+&Oslash;&macr;&Oslash;&plusmn;&Oslash;&reg;&Ugrave;&circ;&Oslash;&sect;&Oslash;&sup3;&Oslash;&ordf;
+&Oslash;&plusmn;&Oslash;&sect;
+&Ugrave;&dagger;&Ugrave;&hellip;&Ucirc;&OElig;&acirc;&euro;&OElig;&Oslash;&macr;&Ugrave;&Dagger;&Oslash;&macr;.
+&Oslash;&macr;&Oslash;&plusmn;
+&Oslash;&micro;&Ugrave;&circ;&Oslash;&plusmn;&Oslash;&ordf;&Ucirc;&OElig;
+&Uacute;&copy;&Ugrave;&Dagger;
+&Oslash;&sect;&Oslash;&shy;&Oslash;&sup3;&Oslash;&sect;&Oslash;&sup3;
+&Ugrave;&hellip;&Ucirc;&OElig;&acirc;&euro;&OElig;&Uacute;&copy;&Ugrave;&dagger;&Ucirc;&OElig;&Oslash;&macr;
+&Oslash;&uml;&Oslash;&sect;&Ucirc;&OElig;&Oslash;&macr;
+&Oslash;&macr;&Oslash;&sup3;&Oslash;&ordf;&Oslash;&plusmn;&Oslash;&sup3;&Ucirc;&OElig;
+&Oslash;&macr;&Oslash;&sect;&Oslash;&acute;&Oslash;&ordf;&Ugrave;&Dagger;
+&Oslash;&uml;&Oslash;&sect;&Oslash;&acute;&Ucirc;&OElig;&Oslash;&macr;
+&Oslash;&uml;&Oslash;&sect;
+&Oslash;&ordf;&Ugrave;&Dagger;&Ucirc;&OElig;&Ugrave;&Dagger;&acirc;&euro;&OElig;&Uacute;&copy;&Ugrave;&dagger;&Ugrave;&dagger;&Oslash;&macr;&Ugrave;&Dagger;
+&Oslash;&sup3;&Oslash;&plusmn;&Ugrave;&circ;&Ucirc;&OElig;&Oslash;&sup3;
+&Oslash;&reg;&Ugrave;&circ;&Oslash;&macr;
+&Oslash;&ordf;&Ugrave;&hellip;&Oslash;&sect;&Oslash;&sup3;
+&Oslash;&uml;&Uacute;&macr;&Ucirc;&OElig;&Oslash;&plusmn;&Ucirc;&OElig;&Oslash;&macr;.</p>
+<p>Your cache administrator is <a href="mailto:%w%W">%w</a>.</p>
+<br></div>
+<hr>
+<div id="footer">
+<p>Generated %T by %h (%s)</p>
+<!-- %c --></div>
+</body>
+</html>

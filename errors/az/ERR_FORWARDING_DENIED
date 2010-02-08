@@ -1,1 +1,45 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd"> <html><head> <meta http-equiv="Content-Type" content="text/html; charset=utf-8"> <title>SƏHV: Sorğulanan URL ilə əlaqə yaradılmadı</title> <style type="text/css"><!--   %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  --></style> </head><body> <div id="titles"> <h1>ERROR</h1> <h2>The requested URL could not be retrieved</h2> </div> <hr>  <div id="content"> <p>The following error was encountered while trying to retrieve the URL: <a href="%U">%U</a></p>  <blockquote id="error"> <p><b>Yönləndirmə qadağandır.</b></p> </blockquote>  <p>Sibling tipli əlaqə yaratmaq cəhdinə görə keş sorğunuzu yönləndirməyəcəkdir. Güman ki, %i müştərisi tələblərə uyğun olmayan keşdir.</p>  <p>Your cache administrator is <a href="mailto:%w%W">%w</a>.</p>  <br> </div>  <hr> <div id="footer"> <p>Generated %T by %h (%s)</p> <!-- %c --> </div> </body></html> 
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN"
+"http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+<meta name="generator" content=
+"HTML Tidy for FreeBSD (vers 7 December 2008), see www.w3.org">
+<meta http-equiv="Content-Type" content=
+"text/html; charset=us-ascii">
+<title>S&AElig;HV: Sor&Auml;&Yuml;ulanan URL il&Eacute;&trade;
+&Eacute;&trade;laq&Eacute;&trade;
+yarad&Auml;&plusmn;lmad&Auml;&plusmn;</title>
+
+<style type="text/css">
+<!--   %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  -->
+</style>
+</head>
+<body>
+<div id="titles">
+<h1>ERROR</h1>
+<h2>The requested URL could not be retrieved</h2>
+</div>
+<hr>
+<div id="content">
+<p>The following error was encountered while trying to retrieve the
+URL: <a href="%U">%U</a></p>
+<blockquote id="error">
+<p><b>Y&Atilde;&para;nl&Eacute;&trade;ndirm&Eacute;&trade;
+qada&Auml;&Yuml;and&Auml;&plusmn;r.</b></p>
+</blockquote>
+<p>Sibling tipli &Eacute;&trade;laq&Eacute;&trade; yaratmaq
+c&Eacute;&trade;hdin&Eacute;&trade; g&Atilde;&para;r&Eacute;&trade;
+ke&Aring;&Yuml; sor&Auml;&Yuml;unuzu
+y&Atilde;&para;nl&Eacute;&trade;ndirm&Eacute;&trade;y&Eacute;&trade;c&Eacute;&trade;kdir.
+G&Atilde;&frac14;man ki, %i
+m&Atilde;&frac14;&Aring;&Yuml;t&Eacute;&trade;risi
+t&Eacute;&trade;l&Eacute;&trade;bl&Eacute;&trade;r&Eacute;&trade;
+uy&Auml;&Yuml;un olmayan ke&Aring;&Yuml;dir.</p>
+<p>Your cache administrator is <a href="mailto:%w%W">%w</a>.</p>
+<br></div>
+<hr>
+<div id="footer">
+<p>Generated %T by %h (%s)</p>
+<!-- %c --></div>
+</body>
+</html>

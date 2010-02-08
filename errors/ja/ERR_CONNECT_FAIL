@@ -1,1 +1,45 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd"> <html><head> <meta http-equiv="Content-Type" CONTENT="text/html; charset=utf-8"> <title>エラー: リクエストされた URL は取得できませんでした</title> <style type="text/css"><!--   %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  --></style> </head><body> <div id="titles"> <h1>ERROR</h1> <h2>The requested URL could not be retrieved</h2> </div> <hr>  <div id="content"> <p>The following error was encountered while trying to retrieve the URL: <a href="%U">%U</a></p>  <blockquote id="error"> <p><b>%I への接続に失敗しました。</b></p> </blockquote>  <p id="sysmsg">システムが以下のエラーを返しました: <i>%E</i></p>  <p>接続先のホストもしくはネットワークが稼働していません．しばらく待ってからもう一度試して下さい．</p>  <p>Your cache administrator is <a href="mailto:%w%W">%w</a>.</p>  <br> </div>  <hr> <div id="footer"> <p>%Tに%h (%s)が生成しました。</p> <!-- %c --> </div> </body></html> 
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN"
+"http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+<meta name="generator" content=
+"HTML Tidy for FreeBSD (vers 7 December 2008), see www.w3.org">
+<meta http-equiv="Content-Type" content=
+"text/html; charset=us-ascii">
+<title>
+&atilde;&sbquo;&uml;&atilde;&fnof;&copy;&atilde;&fnof;&frac14;:
+&atilde;&fnof;&ordf;&atilde;&sbquo;&macr;&atilde;&sbquo;&uml;&atilde;&sbquo;&sup1;&atilde;&fnof;&circ;&atilde;&bull;&atilde;&sbquo;&OElig;&atilde;&Yuml;
+URL
+&atilde;&macr;&aring;&ndash;&aring;&frac34;&mdash;&atilde;&sect;&atilde;&atilde;&frac34;&atilde;&rsaquo;&atilde;&sbquo;&ldquo;&atilde;&sect;&atilde;&mdash;&atilde;&Yuml;</title>
+
+<style type="text/css">
+<!--   %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  -->
+</style>
+</head>
+<body>
+<div id="titles">
+<h1>ERROR</h1>
+<h2>The requested URL could not be retrieved</h2>
+</div>
+<hr>
+<div id="content">
+<p>The following error was encountered while trying to retrieve the
+URL: <a href="%U">%U</a></p>
+<blockquote id="error">
+<p><b>%I
+&atilde;&cedil;&atilde;&reg;&aelig;&#381;&yen;&ccedil;&para;&scaron;&atilde;&laquo;&aring;&curren;&plusmn;&aelig;&bull;&mdash;&atilde;&mdash;&atilde;&frac34;&atilde;&mdash;&atilde;&Yuml;&atilde;&euro;&sbquo;</b></p>
+</blockquote>
+<p id="sysmsg">
+&atilde;&sbquo;&middot;&atilde;&sbquo;&sup1;&atilde;&fnof;&dagger;&atilde;&fnof;&nbsp;&atilde;&OElig;&auml;&raquo;&yen;&auml;&cedil;&lsaquo;&atilde;&reg;&atilde;&sbquo;&uml;&atilde;&fnof;&copy;&atilde;&fnof;&frac14;&atilde;&sbquo;&rsquo;&egrave;&iquest;&rdquo;&atilde;&mdash;&atilde;&frac34;&atilde;&mdash;&atilde;&Yuml;:
+<i>%E</i></p>
+<p>
+&aelig;&#381;&yen;&ccedil;&para;&scaron;&aring;&hellip;&circ;&atilde;&reg;&atilde;&fnof;&rsaquo;&atilde;&sbquo;&sup1;&atilde;&fnof;&circ;&atilde;&sbquo;&sbquo;&atilde;&mdash;&atilde;&atilde;&macr;&atilde;&fnof;&atilde;&fnof;&fnof;&atilde;&fnof;&circ;&atilde;&fnof;&macr;&atilde;&fnof;&frac14;&atilde;&sbquo;&macr;&atilde;&OElig;&ccedil;&uml;&frac14;&aring;&fnof;&atilde;&mdash;&atilde;&brvbar;&atilde;&bdquo;&atilde;&frac34;&atilde;&rsaquo;&atilde;&sbquo;&ldquo;&iuml;&frac14;&#381;&atilde;&mdash;&atilde;&deg;&atilde;&sbquo;&permil;&atilde;&aring;&frac34;&hellip;&atilde;&pound;&atilde;&brvbar;&atilde;&lsaquo;&atilde;&sbquo;&permil;&atilde;&sbquo;&sbquo;&atilde;&dagger;&auml;&cedil;&euro;&aring;&ordm;&brvbar;&egrave;&copy;&brvbar;&atilde;&mdash;&atilde;&brvbar;&auml;&cedil;&lsaquo;&atilde;&bull;&atilde;&bdquo;&iuml;&frac14;&#381;</p>
+<p>Your cache administrator is <a href="mailto:%w%W">%w</a>.</p>
+<br></div>
+<hr>
+<div id="footer">
+<p>%T&atilde;&laquo;%h
+(%s)&atilde;&OElig;&ccedil;&rdquo;&Yuml;&aelig;&circ;&atilde;&mdash;&atilde;&frac34;&atilde;&mdash;&atilde;&Yuml;&atilde;&euro;&sbquo;</p>
+<!-- %c --></div>
+</body>
+</html>

@@ -1,1 +1,57 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd"> <html><head> <meta http-equiv="Content-Type" content="text/html; charset=utf-8"> <title>خطا: The requested URL could not be retrieved</title> <style type="text/css"><!--   %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  --></style> </head><body> <div id="titles"> <h1>ERROR</h1> <h2>The requested URL could not be retrieved</h2> </div> <hr>  <div id="content"> <p>یک خطا روی پروتکل FTP  در زمان اتصال به آدرس مورد نظر رخ داد.: <a href="%U">%U</a></p>  <p>Squid sent the following FTP command:</p> <blockquote id="data"> <pre>%f</pre> </blockquote>  <p>The server responded with:</p> <blockquote id="error"> <pre>%F</pre> <pre>%g</pre> </blockquote>  <p>Your cache administrator is <a href="mailto:%w%W">%w</a>.</p> <br> </div>  <hr> <div id="footer"> <p>Generated %T by %h (%s)</p> <!-- %c --> </div> </body></html> 
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN"
+"http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+<meta name="generator" content=
+"HTML Tidy for FreeBSD (vers 7 December 2008), see www.w3.org">
+<meta http-equiv="Content-Type" content=
+"text/html; charset=us-ascii">
+<title>&Oslash;&reg;&Oslash;&middot;&Oslash;&sect;: The requested
+URL could not be retrieved</title>
+
+<style type="text/css">
+<!--   %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  -->
+</style>
+</head>
+<body>
+<div id="titles">
+<h1>ERROR</h1>
+<h2>The requested URL could not be retrieved</h2>
+</div>
+<hr>
+<div id="content">
+<p>&Ucirc;&OElig;&Uacute;&copy;
+&Oslash;&reg;&Oslash;&middot;&Oslash;&sect;
+&Oslash;&plusmn;&Ugrave;&circ;&Ucirc;&OElig;
+&Ugrave;&frac34;&Oslash;&plusmn;&Ugrave;&circ;&Oslash;&ordf;&Uacute;&copy;&Ugrave;&bdquo;
+FTP &Oslash;&macr;&Oslash;&plusmn;
+&Oslash;&sup2;&Ugrave;&hellip;&Oslash;&sect;&Ugrave;&dagger;
+&Oslash;&sect;&Oslash;&ordf;&Oslash;&micro;&Oslash;&sect;&Ugrave;&bdquo;
+&Oslash;&uml;&Ugrave;&Dagger;
+&Oslash;&cent;&Oslash;&macr;&Oslash;&plusmn;&Oslash;&sup3;
+&Ugrave;&hellip;&Ugrave;&circ;&Oslash;&plusmn;&Oslash;&macr;
+&Ugrave;&dagger;&Oslash;&cedil;&Oslash;&plusmn;
+&Oslash;&plusmn;&Oslash;&reg;
+&Oslash;&macr;&Oslash;&sect;&Oslash;&macr;.: <a href=
+"%U">%U</a></p>
+<p>Squid sent the following FTP command:</p>
+<blockquote id="data">
+<pre>
+%f
+</pre></blockquote>
+<p>The server responded with:</p>
+<blockquote id="error">
+<pre>
+%F
+</pre>
+<pre>
+%g
+</pre></blockquote>
+<p>Your cache administrator is <a href="mailto:%w%W">%w</a>.</p>
+<br></div>
+<hr>
+<div id="footer">
+<p>Generated %T by %h (%s)</p>
+<!-- %c --></div>
+</body>
+</html>

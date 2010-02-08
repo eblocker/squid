@@ -540,6 +540,9 @@
 /* Define to 1 if you have the <sched.h> header file. */
 #undef HAVE_SCHED_H
 
+/* Define to 1 if you have the <security/pam_appl.h> header file. */
+#undef HAVE_SECURITY_PAM_APPL_H
+
 /* Define to 1 if you have the `select' function. */
 #undef HAVE_SELECT
 
@@ -860,9 +863,8 @@
 /* Enable v4-mapping through v6 sockets */
 #undef IPV6_SPECIAL_V4MAPPED
 
-/* A dangerous feature which causes Squid to kill its parent process
-   (presumably the RunCache script) upon receipt of SIGTERM or SIGINT. Use
-   with caution. */
+/* A dangerous feature which causes Squid to kill its parent process upon
+   receipt of SIGTERM or SIGINT. Use with caution. */
 #undef KILL_PARENT_OPT
 
 /* if libcap2 headers are broken and clashing with glibc */

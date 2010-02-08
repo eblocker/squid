@@ -1,1 +1,60 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd"> <html><head> <meta http-equiv="Content-Type" content="text/html; charset=utf-8"> <title>ПОМИЛКА: Запитаний URL не може бути отриманий.</title> <style type="text/css"><!--  %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  --></style> </head><body> <div id="titles"> <h1>ERROR</h1> <h2>The requested URL could not be retrieved</h2> </div> <hr>  <div id="content"> <p>Наступна помилка була отримана під час спроби отримання URL: <a href="%U">%U</a></p>  <blockquote id="error"> <p><b>Доступ Заборонено.</b></p> </blockquote>  <p>Access control configuration prevents your request from being allowed at this time.  Please contact your service provider if you feel this is incorrect.</p>  <p>Ваш адміністратор кешу цей чувак: <a href="mailto:%w%W">%w</a>.</p> <br> </div>  <hr> <div id="footer"> <p>Згенеровано %T за %h (%s)</p> <!-- %c --> </div> </body></html> 
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN"
+"http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+<meta name="generator" content=
+"HTML Tidy for FreeBSD (vers 7 December 2008), see www.w3.org">
+<meta http-equiv="Content-Type" content=
+"text/html; charset=us-ascii">
+<title>
+&ETH;&Yuml;&ETH;&#382;&ETH;&oelig;&ETH;&tilde;&ETH;&rsaquo;&ETH;&scaron;&ETH;:
+&ETH;&mdash;&ETH;&deg;&ETH;&iquest;&ETH;&cedil;&Ntilde;&sbquo;&ETH;&deg;&ETH;&frac12;&ETH;&cedil;&ETH;&sup1;
+URL &ETH;&frac12;&ETH;&micro;
+&ETH;&frac14;&ETH;&frac34;&ETH;&para;&ETH;&micro;
+&ETH;&plusmn;&Ntilde;&fnof;&Ntilde;&sbquo;&ETH;&cedil;
+&ETH;&frac34;&Ntilde;&sbquo;&Ntilde;&euro;&ETH;&cedil;&ETH;&frac14;&ETH;&deg;&ETH;&frac12;&ETH;&cedil;&ETH;&sup1;.</title>
+
+<style type="text/css">
+<!--  %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  -->
+</style>
+</head>
+<body>
+<div id="titles">
+<h1>ERROR</h1>
+<h2>The requested URL could not be retrieved</h2>
+</div>
+<hr>
+<div id="content">
+<p>
+&ETH;&ETH;&deg;&Ntilde;&Ntilde;&sbquo;&Ntilde;&fnof;&ETH;&iquest;&ETH;&frac12;&ETH;&deg;
+&ETH;&iquest;&ETH;&frac34;&ETH;&frac14;&ETH;&cedil;&ETH;&raquo;&ETH;&ordm;&ETH;&deg;
+&ETH;&plusmn;&Ntilde;&fnof;&ETH;&raquo;&ETH;&deg;
+&ETH;&frac34;&Ntilde;&sbquo;&Ntilde;&euro;&ETH;&cedil;&ETH;&frac14;&ETH;&deg;&ETH;&frac12;&ETH;&deg;
+&ETH;&iquest;&Ntilde;&ndash;&ETH;&acute;
+&Ntilde;&Dagger;&ETH;&deg;&Ntilde;
+&Ntilde;&ETH;&iquest;&Ntilde;&euro;&ETH;&frac34;&ETH;&plusmn;&ETH;&cedil;
+&ETH;&frac34;&Ntilde;&sbquo;&Ntilde;&euro;&ETH;&cedil;&ETH;&frac14;&ETH;&deg;&ETH;&frac12;&ETH;&frac12;&Ntilde;
+URL: <a href="%U">%U</a></p>
+<blockquote id="error">
+<p>
+<b>&ETH;&rdquo;&ETH;&frac34;&Ntilde;&Ntilde;&sbquo;&Ntilde;&fnof;&ETH;&iquest;
+&ETH;&mdash;&ETH;&deg;&ETH;&plusmn;&ETH;&frac34;&Ntilde;&euro;&ETH;&frac34;&ETH;&frac12;&ETH;&micro;&ETH;&frac12;&ETH;&frac34;.</b></p>
+</blockquote>
+<p>Access control configuration prevents your request from being
+allowed at this time. Please contact your service provider if you
+feel this is incorrect.</p>
+<p>&ETH;&rsquo;&ETH;&deg;&Ntilde;&circ;
+&ETH;&deg;&ETH;&acute;&ETH;&frac14;&Ntilde;&ndash;&ETH;&frac12;&Ntilde;&ndash;&Ntilde;&Ntilde;&sbquo;&Ntilde;&euro;&ETH;&deg;&Ntilde;&sbquo;&ETH;&frac34;&Ntilde;&euro;
+&ETH;&ordm;&ETH;&micro;&Ntilde;&circ;&Ntilde;&fnof;
+&Ntilde;&dagger;&ETH;&micro;&ETH;&sup1;
+&Ntilde;&Dagger;&Ntilde;&fnof;&ETH;&sup2;&ETH;&deg;&ETH;&ordm;:
+<a href="mailto:%w%W">%w</a>.</p>
+<br></div>
+<hr>
+<div id="footer">
+<p>
+&ETH;&mdash;&ETH;&sup3;&ETH;&micro;&ETH;&frac12;&ETH;&micro;&Ntilde;&euro;&ETH;&frac34;&ETH;&sup2;&ETH;&deg;&ETH;&frac12;&ETH;&frac34;
+%T &ETH;&middot;&ETH;&deg; %h (%s)</p>
+<!-- %c --></div>
+</body>
+</html>

@@ -1,1 +1,38 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd"> <html><head> <meta http-equiv="Content-Type" content="text/html; charset=utf-8"> <title>錯誤: 欲連結之網址（URL）無法正確的傳回</title> <style type="text/css"><!--   %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  --></style> </head><body> <div id="titles"> <h1>ERROR</h1> <h2>The requested URL could not be retrieved</h2> </div> <hr>  <div id="content"> <p>The following error was encountered while trying to retrieve the URL: <a href="%U">%U</a></p>  <blockquote id="error"> <p><b>轉送要求被拒</b></p> </blockquote>  <p>本快取伺服器將無法替您轉向您的連線要求，也許是因為您所使用的快取伺服器（%i）並未被本快取伺服器設定為准許進行存取。</p>  <p>Your cache administrator is <a href="mailto:%w%W">%w</a>.</p>  <br> </div>  <hr> <div id="footer"> <p>Generated %T by %h (%s)</p> <!-- %c --> </div> </body></html> 
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN"
+"http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+<meta name="generator" content=
+"HTML Tidy for FreeBSD (vers 7 December 2008), see www.w3.org">
+<meta http-equiv="Content-Type" content=
+"text/html; charset=us-ascii">
+<title>&eacute;&OElig;&macr;&egrave;&ordf;&curren;:
+&aelig;&not;&sup2;&eacute;&euro;&pound;&ccedil;&micro;&auml;&sup1;&lsaquo;&ccedil;&para;&sup2;&aring;&euro;&iuml;&frac14;&circ;URL&iuml;&frac14;&permil;&ccedil;&bdquo;&iexcl;&aelig;&sup3;&bull;&aelig;&shy;&pound;&ccedil;&cent;&ordm;&ccedil;&scaron;&bdquo;&aring;&sbquo;&sup3;&aring;&rsaquo;&#382;</title>
+
+<style type="text/css">
+<!--   %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  -->
+</style>
+</head>
+<body>
+<div id="titles">
+<h1>ERROR</h1>
+<h2>The requested URL could not be retrieved</h2>
+</div>
+<hr>
+<div id="content">
+<p>The following error was encountered while trying to retrieve the
+URL: <a href="%U">%U</a></p>
+<blockquote id="error">
+<p>
+<b>&egrave;&frac12;&permil;&eacute;&euro;&egrave;&brvbar;&aelig;&plusmn;&sbquo;&egrave;&cent;&laquo;&aelig;&lsaquo;&rsquo;</b></p>
+</blockquote>
+<p>
+&aelig;&oelig;&not;&aring;&iquest;&laquo;&aring;&ndash;&auml;&frac14;&ordm;&aelig;&oelig;&aring;&trade;&uml;&aring;&deg;&Dagger;&ccedil;&bdquo;&iexcl;&aelig;&sup3;&bull;&aelig;&rsaquo;&iquest;&aelig;&sbquo;&uml;&egrave;&frac12;&permil;&aring;&lsquo;&aelig;&sbquo;&uml;&ccedil;&scaron;&bdquo;&eacute;&euro;&pound;&ccedil;&middot;&scaron;&egrave;&brvbar;&aelig;&plusmn;&sbquo;&iuml;&frac14;&OElig;&auml;&sup1;&Yuml;&egrave;&uml;&plusmn;&aelig;&tilde;&macr;&aring;&rsaquo;&nbsp;&ccedil;&sbquo;&ordm;&aelig;&sbquo;&uml;&aelig;&permil;&euro;&auml;&frac12;&iquest;&ccedil;&rdquo;&uml;&ccedil;&scaron;&bdquo;&aring;&iquest;&laquo;&aring;&ndash;&auml;&frac14;&ordm;&aelig;&oelig;&aring;&trade;&uml;&iuml;&frac14;&circ;%i&iuml;&frac14;&permil;&auml;&cedil;&brvbar;&aelig;&oelig;&ordf;&egrave;&cent;&laquo;&aelig;&oelig;&not;&aring;&iquest;&laquo;&aring;&ndash;&auml;&frac14;&ordm;&aelig;&oelig;&aring;&trade;&uml;&egrave;&uml;&shy;&aring;&reg;&scaron;&ccedil;&sbquo;&ordm;&aring;&Dagger;&dagger;&egrave;&uml;&plusmn;&eacute;&euro;&sup2;&egrave;&iexcl;&OElig;&aring;&shy;&tilde;&aring;&ndash;&atilde;&euro;&sbquo;</p>
+<p>Your cache administrator is <a href="mailto:%w%W">%w</a>.</p>
+<br></div>
+<hr>
+<div id="footer">
+<p>Generated %T by %h (%s)</p>
+<!-- %c --></div>
+</body>
+</html>

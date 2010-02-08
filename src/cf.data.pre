@@ -523,11 +523,11 @@ DOC_START
 	acl aclname srcdomain   .foo.com ...
 	  # reverse lookup, from client IP [slow]
 	acl aclname dstdomain   .foo.com ...
-	  # Destination server from URL [slow]
+	  # Destination server from URL [fast]
 	acl aclname srcdom_regex [-i] \.foo\.com ...
 	  # regex matching client name [slow]
 	acl aclname dstdom_regex [-i] \.foo\.com ...
-	  # regex matching server [slow]
+	  # regex matching server [fast]
 	  #
 	  # For dstdomain and dstdom_regex a reverse lookup is tried if a IP
 	  # based URL is used and no match is found. The name "none" is used
@@ -750,10 +750,10 @@ DOC_START
 
 	The end result of this process is an IP address that we will
 	refer to as the indirect client address.  This address may
-	be treated as the client address for access control, delay
+	be treated as the client address for access control, ICAP, delay
 	pools and logging, depending on the acl_uses_indirect_client,
-	delay_pool_uses_indirect_client and log_uses_indirect_client
-	options.
+	icap_uses_indirect_client, delay_pool_uses_indirect_client and
+	log_uses_indirect_client options.
 
 	This clause only supports fast acl types.
 	See http://wiki.squid-cache.org/SquidFaq/SquidAcl for details.
@@ -790,7 +790,7 @@ DOC_END
 NAME: delay_pool_uses_indirect_client
 COMMENT: on|off
 TYPE: onoff
-IFDEF: FOLLOW_X_FORWARDED_FOR DELAY_POOLS
+IFDEF: FOLLOW_X_FORWARDED_FOR&&DELAY_POOLS
 DEFAULT: on
 LOC: Config.onoff.delay_pool_uses_indirect_client
 DOC_START
@@ -1093,7 +1093,7 @@ DOC_START
 
 	   tproxy	Support Linux TPROXY for spoofing outgoing
 			connections using the client IP address.
-			NP: disables authentication and IPv6 on the port.
+			NP: disables authentication and maybe IPv6 on the port.
 
 	   accel	Accelerator mode. Also needs at least one of
 			vhost / vport / defaultsite.
@@ -2408,8 +2408,10 @@ DOC_START
 
 	HTTP cache related format codes:
 
-		[http::]>h	Request header. Optional header name argument
+		[http::]>h	Original request header. Optional header name argument
 				on the format header[:[separator]element]
+		[http::]>ha	The HTTP request headers after adaptation and redirection. 
+				Optional header name argument as for >h
 		[http::]<h	Reply header. Optional header name argument
 				as for >h
 		[http::]un	User name
@@ -3561,6 +3563,19 @@ DOC_START
 Example:
  acl buggy_server url_regex ^http://....
  broken_posts allow buggy_server
+DOC_END
+
+NAME: icap_uses_indirect_client
+COMMENT: on|off
+TYPE: onoff
+IFDEF: FOLLOW_X_FORWARDED_FOR&&ICAP_CLIENT
+DEFAULT: on
+LOC: Adaptation::Icap::TheConfig.icap_uses_indirect_client
+DOC_START
+   Controls whether the indirect client address
+   (see follow_x_forwarded_for) instead of the
+   direct client address is passed to an ICAP
+   server as "X-Client-IP".
 DOC_END
 
 NAME: via
@@ -5467,6 +5482,24 @@ EXAMPLE:
 accept_filter httpready
 # Linux
 accept_filter data
+DOC_END
+
+NAME: client_ip_max_connections
+TYPE: int
+LOC: Config.client_ip_max_connections
+DEFAULT: -1
+DOC_START
+	Set an absolute limit on the number of connections a single
+	client IP can use. Any more than this and Squid will begin to drop
+	new connections from the client until it closes some links.
+
+	Note that this is a global limit. It affects all HTTP, HTCP, Gopher and FTP
+	connections from the client. For finer control use the ACL access controls.
+
+	Requires client_db to be enabled (the default).
+
+	WARNING: This may noticably slow down traffic received via external proxies
+	or NAT devices and cause them to rebound error messages back to their clients.
 DOC_END
 
 NAME: tcp_recv_bufsize

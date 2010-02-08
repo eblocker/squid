@@ -1,1 +1,49 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd"> <html><head> <meta http-equiv="Content-Type" content="text/html; charset=utf-8"> <title>HIBA: A kért URL nem tölthető le</title> <style type="text/css"><!--   %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  --></style> </head><body> <div id="titles"> <h1>ERROR</h1> <h2>The requested URL could not be retrieved</h2> </div> <hr>  <div id="content"> <p>The following error was encountered while trying to retrieve the URL: <a href="%U">%U</a></p>  <blockquote id="error"> <p><b>A kérés vagy a válasz túl nagy méretű.</b></p> </blockquote>  <p>If you are making a POST or PUT request, then the item you are trying to upload is too large.</p> <p>If you are making a GET request, then the item you are trying to download is too large.</p> <p>A cache-t működtető Internet szolgáltató vezette be ezeket a korlátozásokat. Kérjük, forduljon közvetlenül szolgáltatójához amennyiben a szerver helytelen beállításában látja a hiba okát.</p>  <p>Your cache administrator is <a href="mailto:%w%W">%w</a>.</p> <br> </div>  <hr> <div id="footer"> <p>Generated %T by %h (%s)</p> <!-- %c --> </div> </body></html> 
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN"
+"http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+<meta name="generator" content=
+"HTML Tidy for FreeBSD (vers 7 December 2008), see www.w3.org">
+<meta http-equiv="Content-Type" content=
+"text/html; charset=us-ascii">
+<title>HIBA: A k&Atilde;&copy;rt URL nem
+t&Atilde;&para;lthet&Aring;&lsquo; le</title>
+
+<style type="text/css">
+<!--   %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  -->
+</style>
+</head>
+<body>
+<div id="titles">
+<h1>ERROR</h1>
+<h2>The requested URL could not be retrieved</h2>
+</div>
+<hr>
+<div id="content">
+<p>The following error was encountered while trying to retrieve the
+URL: <a href="%U">%U</a></p>
+<blockquote id="error">
+<p><b>A k&Atilde;&copy;r&Atilde;&copy;s vagy a v&Atilde;&iexcl;lasz
+t&Atilde;&ordm;l nagy m&Atilde;&copy;ret&Aring;&plusmn;.</b></p>
+</blockquote>
+<p>If you are making a POST or PUT request, then the item you are
+trying to upload is too large.</p>
+<p>If you are making a GET request, then the item you are trying to
+download is too large.</p>
+<p>A cache-t m&Aring;&plusmn;k&Atilde;&para;dtet&Aring;&lsquo;
+Internet szolg&Atilde;&iexcl;ltat&Atilde;&sup3; vezette be ezeket a
+korl&Atilde;&iexcl;toz&Atilde;&iexcl;sokat.
+K&Atilde;&copy;rj&Atilde;&frac14;k, forduljon
+k&Atilde;&para;zvetlen&Atilde;&frac14;l
+szolg&Atilde;&iexcl;ltat&Atilde;&sup3;j&Atilde;&iexcl;hoz
+amennyiben a szerver helytelen
+be&Atilde;&iexcl;ll&Atilde;&shy;t&Atilde;&iexcl;s&Atilde;&iexcl;ban
+l&Atilde;&iexcl;tja a hiba ok&Atilde;&iexcl;t.</p>
+<p>Your cache administrator is <a href="mailto:%w%W">%w</a>.</p>
+<br></div>
+<hr>
+<div id="footer">
+<p>Generated %T by %h (%s)</p>
+<!-- %c --></div>
+</body>
+</html>

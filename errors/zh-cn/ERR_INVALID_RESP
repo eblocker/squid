@@ -1,1 +1,46 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd"> <html><head> <meta http-equiv="Content-Type" content="text/html; charset=utf-8"> <title>错误: 您所请求的网址（URL）无法获取</title> <style type="text/css"><!--   %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  --></style> </head><body> <div id="titles"> <h1>ERROR</h1> <h2>The requested URL could not be retrieved</h2> </div> <hr>  <div id="content"> <p><b>非法响应</b> 尝试处理请求时发生错误:</p>  <blockquote id="data"> <pre>%R</pre> </blockquote>  <p>无法理解联系的服务器所传回的 HTTP 响应消息或者它已经损坏。请联系网站运行人员。</p>  <p>如果需要，您的缓存管理员可以提供更多细节以助了解该问题的准确性质。</p>  <p>缓存服务器的管理员 <a href="mailto:%w%W">%w</a>.</p> <br> </div>  <hr> <div id="footer"> <p>已由 %h (%s) 生成 %T</p> <!-- %c --> </div> </body></html> 
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN"
+"http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+<meta name="generator" content=
+"HTML Tidy for FreeBSD (vers 7 December 2008), see www.w3.org">
+<meta http-equiv="Content-Type" content=
+"text/html; charset=us-ascii">
+<title>&eacute;&rdquo;&trade;&egrave;&macr;&macr;:
+&aelig;&sbquo;&uml;&aelig;&permil;&euro;&egrave;&macr;&middot;&aelig;&plusmn;&sbquo;&ccedil;&scaron;&bdquo;&ccedil;&frac12;&lsquo;&aring;&euro;&iuml;&frac14;&circ;URL&iuml;&frac14;&permil;&aelig;&mdash;&nbsp;&aelig;&sup3;&bull;&egrave;&#381;&middot;&aring;&ndash;</title>
+
+<style type="text/css">
+<!--   %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  -->
+</style>
+</head>
+<body>
+<div id="titles">
+<h1>ERROR</h1>
+<h2>The requested URL could not be retrieved</h2>
+</div>
+<hr>
+<div id="content">
+<p>
+<b>&eacute;&#382;&aelig;&sup3;&bull;&aring;&ldquo;&aring;&ordm;&rdquo;</b>
+&aring;&deg;&egrave;&macr;&bull;&aring;&curren;&bdquo;&ccedil;&dagger;&egrave;&macr;&middot;&aelig;&plusmn;&sbquo;&aelig;&mdash;&para;&aring;&lsquo;&ccedil;&rdquo;&Yuml;&eacute;&rdquo;&trade;&egrave;&macr;&macr;:</p>
+<blockquote id="data">
+<pre>
+%R
+</pre></blockquote>
+<p>
+&aelig;&mdash;&nbsp;&aelig;&sup3;&bull;&ccedil;&dagger;&egrave;&sect;&pound;&egrave;&rdquo;&ccedil;&sup3;&raquo;&ccedil;&scaron;&bdquo;&aelig;&oelig;&aring;&Scaron;&iexcl;&aring;&trade;&uml;&aelig;&permil;&euro;&auml;&frac14;&nbsp;&aring;&rsaquo;&#382;&ccedil;&scaron;&bdquo;
+HTTP
+&aring;&ldquo;&aring;&ordm;&rdquo;&aelig;&para;&circ;&aelig;&macr;&aelig;&circ;&ndash;&egrave;&euro;&hellip;&aring;&reg;&fnof;&aring;&middot;&sup2;&ccedil;&raquo;&aelig;&Yuml;&aring;&atilde;&euro;&sbquo;&egrave;&macr;&middot;&egrave;&rdquo;&ccedil;&sup3;&raquo;&ccedil;&frac12;&lsquo;&ccedil;&laquo;&trade;&egrave;&iquest;&egrave;&iexcl;&OElig;&auml;&ordm;&ordm;&aring;&lsquo;&tilde;&atilde;&euro;&sbquo;</p>
+<p>
+&aring;&brvbar;&sbquo;&aelig;&#382;&oelig;&eacute;&oelig;&euro;&egrave;&brvbar;&iuml;&frac14;&OElig;&aelig;&sbquo;&uml;&ccedil;&scaron;&bdquo;&ccedil;&frac14;&ldquo;&aring;&shy;&tilde;&ccedil;&reg;&iexcl;&ccedil;&dagger;&aring;&lsquo;&tilde;&aring;&macr;&auml;&raquo;&yen;&aelig;&auml;&frac34;&rsaquo;&aelig;&rsaquo;&acute;&aring;&curren;&scaron;&ccedil;&raquo;&dagger;&egrave;&Scaron;&sbquo;&auml;&raquo;&yen;&aring;&Scaron;&copy;&auml;&ordm;&dagger;&egrave;&sect;&pound;&egrave;&macr;&yen;&eacute;&mdash;&reg;&eacute;&cent;&tilde;&ccedil;&scaron;&bdquo;&aring;&Dagger;&dagger;&ccedil;&iexcl;&reg;&aelig;&euro;&sect;&egrave;&acute;&uml;&atilde;&euro;&sbquo;</p>
+<p>
+&ccedil;&frac14;&ldquo;&aring;&shy;&tilde;&aelig;&oelig;&aring;&Scaron;&iexcl;&aring;&trade;&uml;&ccedil;&scaron;&bdquo;&ccedil;&reg;&iexcl;&ccedil;&dagger;&aring;&lsquo;&tilde;
+<a href="mailto:%w%W">%w</a>.</p>
+<br></div>
+<hr>
+<div id="footer">
+<p>&aring;&middot;&sup2;&ccedil;&rdquo;&plusmn; %h (%s)
+&ccedil;&rdquo;&Yuml;&aelig;&circ; %T</p>
+<!-- %c --></div>
+</body>
+</html>

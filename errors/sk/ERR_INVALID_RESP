@@ -1,1 +1,43 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd"> <html><head> <meta http-equiv="Content-Type" content="text/html; charset=utf-8"> <title>CHYBA: The requested URL could not be retrieved</title> <style type="text/css"><!--   %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  --></style> </head><body> <div id="titles"> <h1>ERROR</h1> <h2>The requested URL could not be retrieved</h2> </div> <hr>  <div id="content"> <p><b>Invalid Response</b> error was encountered while trying to process the request:</p>  <blockquote id="data"> <pre>%R</pre> </blockquote>  <p>The HTTP Response message received from the contacted server could not be understood or was otherwise malformed. Please contact the site operator.</p>  <p>V prípade potreby Vám Váš cache administrátor môže poskytnúť detaily o presnej povahe problému.</p>  <p>Vaším cache administrátorom je <a href="mailto:%w%W">%w</a>.</p> <br> </div>  <hr> <div id="footer"> <p>Generated %T by %h (%s)</p> <!-- %c --> </div> </body></html> 
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN"
+"http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+<meta name="generator" content=
+"HTML Tidy for FreeBSD (vers 7 December 2008), see www.w3.org">
+<meta http-equiv="Content-Type" content=
+"text/html; charset=us-ascii">
+<title>CHYBA: The requested URL could not be retrieved</title>
+
+<style type="text/css">
+<!--   %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  -->
+</style>
+</head>
+<body>
+<div id="titles">
+<h1>ERROR</h1>
+<h2>The requested URL could not be retrieved</h2>
+</div>
+<hr>
+<div id="content">
+<p><b>Invalid Response</b> error was encountered while trying to
+process the request:</p>
+<blockquote id="data">
+<pre>
+%R
+</pre></blockquote>
+<p>The HTTP Response message received from the contacted server
+could not be understood or was otherwise malformed. Please contact
+the site operator.</p>
+<p>V pr&Atilde;&shy;pade potreby V&Atilde;&iexcl;m
+V&Atilde;&iexcl;&Aring;&iexcl; cache administr&Atilde;&iexcl;tor
+m&Atilde;&acute;&Aring;&frac34;e poskytn&Atilde;&ordm;&Aring;&yen;
+detaily o presnej povahe probl&Atilde;&copy;mu.</p>
+<p>Va&Aring;&iexcl;&Atilde;&shy;m cache
+administr&Atilde;&iexcl;torom je <a href="mailto:%w%W">%w</a>.</p>
+<br></div>
+<hr>
+<div id="footer">
+<p>Generated %T by %h (%s)</p>
+<!-- %c --></div>
+</body>
+</html>

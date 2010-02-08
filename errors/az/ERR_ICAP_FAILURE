@@ -1,1 +1,51 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd"> <html><head> <meta http-equiv="Content-Type" content="text/html; charset=utf-8"> <title>SƏHV: Sorğulanan URL ilə əlaqə yaradılmadı</title> <style type="text/css"><!--   %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  --></style> </head><body> <div id="titles"> <h1>ERROR</h1> <h2>The requested URL could not be retrieved</h2> </div> <hr>  <div id="content"> <p>The following error was encountered while trying to retrieve the URL: <a href="%U">%U</a></p>  <blockquote id="error"> <p><b>İCAP protokol s�^�hvi</b></p> </blockquote>  <p id="sysmsg">Sistemdən gələn cavab: <i>%E</i></p>  <p>This means that some aspect of the ICAP communication failed.</p>  <p>Mümkün probleml�^�rd�^�n b�^�zil�^�ri:</p> <ul> <li><p>The ICAP server is not reachable.</p></li> <li><p>An Illegal response was received from the ICAP server.</p></li> </ul>  <br> </div>  <hr> <div id="footer"> <p>Generated %T by %h (%s)</p> <!-- %c --> </div> </body></html> 
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN"
+"http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+<meta name="generator" content=
+"HTML Tidy for FreeBSD (vers 7 December 2008), see www.w3.org">
+<meta http-equiv="Content-Type" content=
+"text/html; charset=us-ascii">
+<title>S&AElig;HV: Sor&Auml;&Yuml;ulanan URL il&Eacute;&trade;
+&Eacute;&trade;laq&Eacute;&trade;
+yarad&Auml;&plusmn;lmad&Auml;&plusmn;</title>
+
+<style type="text/css">
+<!--   %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  -->
+</style>
+</head>
+<body>
+<div id="titles">
+<h1>ERROR</h1>
+<h2>The requested URL could not be retrieved</h2>
+</div>
+<hr>
+<div id="content">
+<p>The following error was encountered while trying to retrieve the
+URL: <a href="%U">%U</a></p>
+<blockquote id="error">
+<p><b>&Auml;&deg;CAP protokol
+s&iuml;&iquest;&frac12;^&iuml;&iquest;&frac12;hvi</b></p>
+</blockquote>
+<p id="sysmsg">Sistemd&Eacute;&trade;n
+g&Eacute;&trade;l&Eacute;&trade;n cavab: <i>%E</i></p>
+<p>This means that some aspect of the ICAP communication
+failed.</p>
+<p>M&Atilde;&frac14;mk&Atilde;&frac14;n
+probleml&iuml;&iquest;&frac12;^&iuml;&iquest;&frac12;rd&iuml;&iquest;&frac12;^&iuml;&iquest;&frac12;n
+b&iuml;&iquest;&frac12;^&iuml;&iquest;&frac12;zil&iuml;&iquest;&frac12;^&iuml;&iquest;&frac12;ri:</p>
+<ul>
+<li>
+<p>The ICAP server is not reachable.</p>
+</li>
+<li>
+<p>An Illegal response was received from the ICAP server.</p>
+</li>
+</ul>
+<br></div>
+<hr>
+<div id="footer">
+<p>Generated %T by %h (%s)</p>
+<!-- %c --></div>
+</body>
+</html>

@@ -1,1 +1,56 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd"> <html><head> <meta http-equiv="Content-Type" content="text/html; charset=utf-8"> <title>SƏHV: Sorğulanan URL ilə əlaqə yaradılmadı</title> <style type="text/css"><!--   %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  --></style> </head><body> <div id="titles"> <h1>ERROR</h1> <h2>The requested URL could not be retrieved</h2> </div> <hr>  <div id="content"> <p>The following error was encountered while trying to retrieve the URL: <a href="%U">%U</a></p>  <blockquote id="error"> <p><b>Sorğu və ya cavab həddən ziyadə böyükdür.</b></p> </blockquote>  <p>Əgər siz POST və ya PUT sorğusunu edirsinizsə, sizin göndərmək istədiniz fayl həddən ziyadə böyükdür.</p> <p>If you are making a GET request, then the item you are trying to download is too large.</p> <p>Bu limitlər sizin keşi idarə edən Internet xidməti provayderi tərəfindən təyin olunmuşdur. Əgər bunun səhv olduğunu düşünürsünüzsə onlarla əlaqə saxlayın.</p>  <p>Your cache administrator is <a href="mailto:%w%W">%w</a>.</p> <br> </div>  <hr> <div id="footer"> <p>Generated %T by %h (%s)</p> <!-- %c --> </div> </body></html> 
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN"
+"http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+<meta name="generator" content=
+"HTML Tidy for FreeBSD (vers 7 December 2008), see www.w3.org">
+<meta http-equiv="Content-Type" content=
+"text/html; charset=us-ascii">
+<title>S&AElig;HV: Sor&Auml;&Yuml;ulanan URL il&Eacute;&trade;
+&Eacute;&trade;laq&Eacute;&trade;
+yarad&Auml;&plusmn;lmad&Auml;&plusmn;</title>
+
+<style type="text/css">
+<!--   %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  -->
+</style>
+</head>
+<body>
+<div id="titles">
+<h1>ERROR</h1>
+<h2>The requested URL could not be retrieved</h2>
+</div>
+<hr>
+<div id="content">
+<p>The following error was encountered while trying to retrieve the
+URL: <a href="%U">%U</a></p>
+<blockquote id="error">
+<p><b>Sor&Auml;&Yuml;u v&Eacute;&trade; ya cavab
+h&Eacute;&trade;dd&Eacute;&trade;n ziyad&Eacute;&trade;
+b&Atilde;&para;y&Atilde;&frac14;kd&Atilde;&frac14;r.</b></p>
+</blockquote>
+<p>&AElig;g&Eacute;&trade;r siz POST v&Eacute;&trade; ya PUT
+sor&Auml;&Yuml;usunu edirsinizs&Eacute;&trade;, sizin
+g&Atilde;&para;nd&Eacute;&trade;rm&Eacute;&trade;k
+ist&Eacute;&trade;diniz fayl h&Eacute;&trade;dd&Eacute;&trade;n
+ziyad&Eacute;&trade;
+b&Atilde;&para;y&Atilde;&frac14;kd&Atilde;&frac14;r.</p>
+<p>If you are making a GET request, then the item you are trying to
+download is too large.</p>
+<p>Bu limitl&Eacute;&trade;r sizin ke&Aring;&Yuml;i
+idar&Eacute;&trade; ed&Eacute;&trade;n Internet
+xidm&Eacute;&trade;ti provayderi
+t&Eacute;&trade;r&Eacute;&trade;find&Eacute;&trade;n
+t&Eacute;&trade;yin olunmu&Aring;&Yuml;dur.
+&AElig;g&Eacute;&trade;r bunun s&Eacute;&trade;hv
+oldu&Auml;&Yuml;unu
+d&Atilde;&frac14;&Aring;&Yuml;&Atilde;&frac14;n&Atilde;&frac14;rs&Atilde;&frac14;n&Atilde;&frac14;zs&Eacute;&trade;
+onlarla &Eacute;&trade;laq&Eacute;&trade;
+saxlay&Auml;&plusmn;n.</p>
+<p>Your cache administrator is <a href="mailto:%w%W">%w</a>.</p>
+<br></div>
+<hr>
+<div id="footer">
+<p>Generated %T by %h (%s)</p>
+<!-- %c --></div>
+</body>
+</html>

@@ -1,1 +1,56 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd"> <html><head> <meta http-equiv="Content-Type" CONTENT="text/html; charset=utf-8"> <title>ΣΦΑΛΜΑ: The requested URL could not be retrieved</title> <style type="text/css"><!--   %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  --></style> </head><body> <div id="titles"> <h1>ERROR</h1> <h2>The requested URL could not be retrieved</h2> </div> <hr>  <div id="content"> <p>The following error was encountered while trying to retrieve the URL: <a href="%U">%U</a></p>  <blockquote id="error"> <p><b>Connection to %I failed.</b></p> </blockquote>  <p id="sysmsg">Το σύστημα ενημέρωσε ότι: <i>%E</i></p>  <p>Ο απομακρυσμένος υπολογιστής (ή δίκτυο) μάλλον δεν λειτουργεί. Δοκιμάστε αργότερα.</p>  <p>Ο διαχειριστής του μεσολαβητή σας είναι ο <a href="mailto:%w%W">%w</a>.</p>  <br> </div>  <hr> <div id="footer"> <p>Generated %T by %h (%s)</p> <!-- %c --> </div> </body></html> 
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN"
+"http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+<meta name="generator" content=
+"HTML Tidy for FreeBSD (vers 7 December 2008), see www.w3.org">
+<meta http-equiv="Content-Type" content=
+"text/html; charset=us-ascii">
+<title>
+&Icirc;&pound;&Icirc;&brvbar;&Icirc;&lsquo;&Icirc;&rsaquo;&Icirc;&oelig;&Icirc;&lsquo;:
+The requested URL could not be retrieved</title>
+
+<style type="text/css">
+<!--   %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  -->
+</style>
+</head>
+<body>
+<div id="titles">
+<h1>ERROR</h1>
+<h2>The requested URL could not be retrieved</h2>
+</div>
+<hr>
+<div id="content">
+<p>The following error was encountered while trying to retrieve the
+URL: <a href="%U">%U</a></p>
+<blockquote id="error">
+<p><b>Connection to %I failed.</b></p>
+</blockquote>
+<p id="sysmsg">&Icirc;&curren;&Icirc;&iquest;
+&Iuml;&fnof;&Iuml;&Iuml;&fnof;&Iuml;&bdquo;&Icirc;&middot;&Icirc;&frac14;&Icirc;&plusmn;
+&Icirc;&micro;&Icirc;&frac12;&Icirc;&middot;&Icirc;&frac14;&Icirc;&shy;&Iuml;&Iuml;&permil;&Iuml;&fnof;&Icirc;&micro;
+&Iuml;&OElig;&Iuml;&bdquo;&Icirc;&sup1;: <i>%E</i></p>
+<p>&Icirc;&Yuml;
+&Icirc;&plusmn;&Iuml;&euro;&Icirc;&iquest;&Icirc;&frac14;&Icirc;&plusmn;&Icirc;&ordm;&Iuml;&Iuml;&hellip;&Iuml;&fnof;&Icirc;&frac14;&Icirc;&shy;&Icirc;&frac12;&Icirc;&iquest;&Iuml;&sbquo;
+&Iuml;&hellip;&Iuml;&euro;&Icirc;&iquest;&Icirc;&raquo;&Icirc;&iquest;&Icirc;&sup3;&Icirc;&sup1;&Iuml;&fnof;&Iuml;&bdquo;&Icirc;&reg;&Iuml;&sbquo;
+(&Icirc;&reg;
+&Icirc;&acute;&Icirc;&macr;&Icirc;&ordm;&Iuml;&bdquo;&Iuml;&hellip;&Icirc;&iquest;)
+&Icirc;&frac14;&Icirc;&not;&Icirc;&raquo;&Icirc;&raquo;&Icirc;&iquest;&Icirc;&frac12;
+&Icirc;&acute;&Icirc;&micro;&Icirc;&frac12;
+&Icirc;&raquo;&Icirc;&micro;&Icirc;&sup1;&Iuml;&bdquo;&Icirc;&iquest;&Iuml;&hellip;&Iuml;&Icirc;&sup3;&Icirc;&micro;&Icirc;&macr;.
+&Icirc;&rdquo;&Icirc;&iquest;&Icirc;&ordm;&Icirc;&sup1;&Icirc;&frac14;&Icirc;&not;&Iuml;&fnof;&Iuml;&bdquo;&Icirc;&micro;
+&Icirc;&plusmn;&Iuml;&Icirc;&sup3;&Iuml;&OElig;&Iuml;&bdquo;&Icirc;&micro;&Iuml;&Icirc;&plusmn;.</p>
+<p>&Icirc;&Yuml;
+&Icirc;&acute;&Icirc;&sup1;&Icirc;&plusmn;&Iuml;&Dagger;&Icirc;&micro;&Icirc;&sup1;&Iuml;&Icirc;&sup1;&Iuml;&fnof;&Iuml;&bdquo;&Icirc;&reg;&Iuml;&sbquo;
+&Iuml;&bdquo;&Icirc;&iquest;&Iuml;&hellip;
+&Icirc;&frac14;&Icirc;&micro;&Iuml;&fnof;&Icirc;&iquest;&Icirc;&raquo;&Icirc;&plusmn;&Icirc;&sup2;&Icirc;&middot;&Iuml;&bdquo;&Icirc;&reg;
+&Iuml;&fnof;&Icirc;&plusmn;&Iuml;&sbquo;
+&Icirc;&micro;&Icirc;&macr;&Icirc;&frac12;&Icirc;&plusmn;&Icirc;&sup1;
+&Icirc;&iquest; <a href="mailto:%w%W">%w</a>.</p>
+<br></div>
+<hr>
+<div id="footer">
+<p>Generated %T by %h (%s)</p>
+<!-- %c --></div>
+</body>
+</html>

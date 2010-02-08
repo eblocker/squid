@@ -1,1 +1,63 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd"> <html><head> <meta http-equiv="Content-Type" content="text/html; charset=utf-8"> <title>HIBA: A kért URL nem tölthető le</title> <style type="text/css"><!--   %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  --></style> </head><body> <div id="titles"> <h1>ERROR</h1> <h2>The requested URL could not be retrieved</h2> </div> <hr>  <div id="content"> <p><b>Invalid Request</b> error was encountered while trying to process the request:</p>  <blockquote id="data"> <pre>%R</pre> </blockquote>  <p>Some possible problems are:</p> <ul> <li><p>Missing or unknown request method.</p></li> <li><p>Hiányzó URL</p></li> <li><p>Hiányzó HTTP azonosító (HTTP/1.0)</p></li> <li><p>A kérés vagy a válasz túl nagy méretű.</p></li> <li><p>Content-Length hiányzik a POST vagy PUT kérésből</p></li> <li><p>A szervernévben nem megengedett karakter található; az aláhúzás karakter például ilyen</p></li> </ul>  <p>Your cache administrator is <a href="mailto:%w%W">%w</a>.</p> <br> </div>  <hr> <div id="footer"> <p>Generated %T by %h (%s)</p> <!-- %c --> </div> </body></html> 
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN"
+"http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+<meta name="generator" content=
+"HTML Tidy for FreeBSD (vers 7 December 2008), see www.w3.org">
+<meta http-equiv="Content-Type" content=
+"text/html; charset=us-ascii">
+<title>HIBA: A k&Atilde;&copy;rt URL nem
+t&Atilde;&para;lthet&Aring;&lsquo; le</title>
+
+<style type="text/css">
+<!--   %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  -->
+</style>
+</head>
+<body>
+<div id="titles">
+<h1>ERROR</h1>
+<h2>The requested URL could not be retrieved</h2>
+</div>
+<hr>
+<div id="content">
+<p><b>Invalid Request</b> error was encountered while trying to
+process the request:</p>
+<blockquote id="data">
+<pre>
+%R
+</pre></blockquote>
+<p>Some possible problems are:</p>
+<ul>
+<li>
+<p>Missing or unknown request method.</p>
+</li>
+<li>
+<p>Hi&Atilde;&iexcl;nyz&Atilde;&sup3; URL</p>
+</li>
+<li>
+<p>Hi&Atilde;&iexcl;nyz&Atilde;&sup3; HTTP
+azonos&Atilde;&shy;t&Atilde;&sup3; (HTTP/1.0)</p>
+</li>
+<li>
+<p>A k&Atilde;&copy;r&Atilde;&copy;s vagy a v&Atilde;&iexcl;lasz
+t&Atilde;&ordm;l nagy m&Atilde;&copy;ret&Aring;&plusmn;.</p>
+</li>
+<li>
+<p>Content-Length hi&Atilde;&iexcl;nyzik a POST vagy PUT
+k&Atilde;&copy;r&Atilde;&copy;sb&Aring;&lsquo;l</p>
+</li>
+<li>
+<p>A szervern&Atilde;&copy;vben nem megengedett karakter
+tal&Atilde;&iexcl;lhat&Atilde;&sup3;; az
+al&Atilde;&iexcl;h&Atilde;&ordm;z&Atilde;&iexcl;s karakter
+p&Atilde;&copy;ld&Atilde;&iexcl;ul ilyen</p>
+</li>
+</ul>
+<p>Your cache administrator is <a href="mailto:%w%W">%w</a>.</p>
+<br></div>
+<hr>
+<div id="footer">
+<p>Generated %T by %h (%s)</p>
+<!-- %c --></div>
+</body>
+</html>

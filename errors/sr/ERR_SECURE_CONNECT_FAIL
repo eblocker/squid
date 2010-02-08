@@ -1,1 +1,42 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd"> <html><head> <meta http-equiv="Content-Type" content="text/html; charset=utf-8"> <title>GREŠKA: Tražena adresa (URL) ne može da se dovuèe</title> <style type="text/css"><!--   %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  --></style> </head><body> <div id="titles"> <h1>ERROR</h1> <h2>The requested URL could not be retrieved</h2> </div> <hr>  <div id="content"> <p>The following error was encountered while trying to retrieve the URL: <a href="%U">%U</a></p>  <blockquote id="error"> <p><b>Nije uspelo uspostavljanje sigune konekcije sa %I</b></p> </blockquote>  <p id="sysmsg">Sistem je dao povratnu informaciju: <i>%E</i></p>  <p>Ovaj proksi i udaljeni server nisu uspeli da se dogovore oko sigunosnih podešavanja za izvršavanje vašeg zahteva. Moguce je da je udaljeni server ne podržava sigune konekcije, ili da proksi nije zadovoljan sa pravilima sigunosti udaljenog servera.</p>  <p>Vaš keš/proksi administrator je: <a href="mailto:%w%W">%w</a>.</p> <br> </div>  <hr> <div id="footer"> <p>Generated %T by %h (%s)</p> <!-- %c --> </div> </body></html> 
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN"
+"http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+<meta name="generator" content=
+"HTML Tidy for FreeBSD (vers 7 December 2008), see www.w3.org">
+<meta http-equiv="Content-Type" content=
+"text/html; charset=us-ascii">
+<title>GRE&Aring;&nbsp;KA: Tra&Aring;&frac34;ena adresa (URL) ne
+mo&Aring;&frac34;e da se dovu&Atilde;&uml;e</title>
+
+<style type="text/css">
+<!--   %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  -->
+</style>
+</head>
+<body>
+<div id="titles">
+<h1>ERROR</h1>
+<h2>The requested URL could not be retrieved</h2>
+</div>
+<hr>
+<div id="content">
+<p>The following error was encountered while trying to retrieve the
+URL: <a href="%U">%U</a></p>
+<blockquote id="error">
+<p><b>Nije uspelo uspostavljanje sigune konekcije sa %I</b></p>
+</blockquote>
+<p id="sysmsg">Sistem je dao povratnu informaciju: <i>%E</i></p>
+<p>Ovaj proksi i udaljeni server nisu uspeli da se dogovore oko
+sigunosnih pode&Aring;&iexcl;avanja za izvr&Aring;&iexcl;avanje
+va&Aring;&iexcl;eg zahteva. Moguce je da je udaljeni server ne
+podr&Aring;&frac34;ava sigune konekcije, ili da proksi nije
+zadovoljan sa pravilima sigunosti udaljenog servera.</p>
+<p>Va&Aring;&iexcl; ke&Aring;&iexcl;/proksi administrator je:
+<a href="mailto:%w%W">%w</a>.</p>
+<br></div>
+<hr>
+<div id="footer">
+<p>Generated %T by %h (%s)</p>
+<!-- %c --></div>
+</body>
+</html>

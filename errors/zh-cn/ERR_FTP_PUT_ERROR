@@ -1,1 +1,54 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd"> <html><head> <meta http-equiv="Content-Type" content="text/html; charset=utf-8"> <title>错误: FTP upload failed</title> <style type="text/css"><!--   %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  --></style> </head><body> <div id="titles"> <h1>ERROR</h1> <h2>FTP PUT/上传失败</h2> </div> <hr>  <div id="content"> <p>当尝试上传（PUT）到以下位置时： <a href="%U">%U</a></p>  <p>本缓存服务器发出以下 FTP 命令：</p> <blockquote id="data"> <pre>%f</pre> </blockquote>  <p>服务器回应了：</p> <blockquote id="sysmsg"> <pre>%F</pre> </blockquote>  <p>这说明 FTP 服务器可能没有权限或空间存储该文件。请检查路径、权限、磁盘空间后重试。</p>  <p>缓存服务器的管理员 <a href="mailto:%w%W">%w</a>.</p> <br> </div>  <hr> <div id="footer"> <p>已由 %h (%s) 生成 %T</p> <!-- %c --> </div> </body></html> 
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN"
+"http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+<meta name="generator" content=
+"HTML Tidy for FreeBSD (vers 7 December 2008), see www.w3.org">
+<meta http-equiv="Content-Type" content=
+"text/html; charset=us-ascii">
+<title>&eacute;&rdquo;&trade;&egrave;&macr;&macr;: FTP upload
+failed</title>
+
+<style type="text/css">
+<!--   %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  -->
+</style>
+</head>
+<body>
+<div id="titles">
+<h1>ERROR</h1>
+<h2>FTP
+PUT/&auml;&cedil;&Scaron;&auml;&frac14;&nbsp;&aring;&curren;&plusmn;&egrave;&acute;&yen;</h2>
+</div>
+<hr>
+<div id="content">
+<p>
+&aring;&frac12;&ldquo;&aring;&deg;&egrave;&macr;&bull;&auml;&cedil;&Scaron;&auml;&frac14;&nbsp;&iuml;&frac14;&circ;PUT&iuml;&frac14;&permil;&aring;&circ;&deg;&auml;&raquo;&yen;&auml;&cedil;&lsaquo;&auml;&frac12;&ccedil;&frac12;&reg;&aelig;&mdash;&para;&iuml;&frac14;&scaron;
+<a href="%U">%U</a></p>
+<p>
+&aelig;&oelig;&not;&ccedil;&frac14;&ldquo;&aring;&shy;&tilde;&aelig;&oelig;&aring;&Scaron;&iexcl;&aring;&trade;&uml;&aring;&lsquo;&aring;&Dagger;&ordm;&auml;&raquo;&yen;&auml;&cedil;&lsaquo;
+FTP
+&aring;&lsquo;&frac12;&auml;&raquo;&curren;&iuml;&frac14;&scaron;</p>
+<blockquote id="data">
+<pre>
+%f
+</pre></blockquote>
+<p>
+&aelig;&oelig;&aring;&Scaron;&iexcl;&aring;&trade;&uml;&aring;&rsaquo;&#382;&aring;&ordm;&rdquo;&auml;&ordm;&dagger;&iuml;&frac14;&scaron;</p>
+<blockquote id="sysmsg">
+<pre>
+%F
+</pre></blockquote>
+<p>&egrave;&iquest;&trade;&egrave;&macr;&acute;&aelig;&tilde;&#381;
+FTP
+&aelig;&oelig;&aring;&Scaron;&iexcl;&aring;&trade;&uml;&aring;&macr;&egrave;&fnof;&frac12;&aelig;&sup2;&iexcl;&aelig;&oelig;&permil;&aelig;&fnof;&eacute;&trade;&aelig;&circ;&ndash;&ccedil;&copy;&ordm;&eacute;&mdash;&acute;&aring;&shy;&tilde;&aring;&sbquo;&uml;&egrave;&macr;&yen;&aelig;&ndash;&Dagger;&auml;&raquo;&para;&atilde;&euro;&sbquo;&egrave;&macr;&middot;&aelig;&pound;&euro;&aelig;&Yuml;&yen;&egrave;&middot;&macr;&aring;&frac34;&bdquo;&atilde;&euro;&aelig;&fnof;&eacute;&trade;&atilde;&euro;&ccedil;&pound;&ccedil;&rsaquo;&tilde;&ccedil;&copy;&ordm;&eacute;&mdash;&acute;&aring;&#381;&eacute;&Dagger;&egrave;&macr;&bull;&atilde;&euro;&sbquo;</p>
+<p>
+&ccedil;&frac14;&ldquo;&aring;&shy;&tilde;&aelig;&oelig;&aring;&Scaron;&iexcl;&aring;&trade;&uml;&ccedil;&scaron;&bdquo;&ccedil;&reg;&iexcl;&ccedil;&dagger;&aring;&lsquo;&tilde;
+<a href="mailto:%w%W">%w</a>.</p>
+<br></div>
+<hr>
+<div id="footer">
+<p>&aring;&middot;&sup2;&ccedil;&rdquo;&plusmn; %h (%s)
+&ccedil;&rdquo;&Yuml;&aelig;&circ; %T</p>
+<!-- %c --></div>
+</body>
+</html>

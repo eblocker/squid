@@ -1,1 +1,56 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd"> <html><head> <meta http-equiv="Content-Type" content="text/html; charset=utf-8"> <title>ΣΦΑΛΜΑ: The requested URL could not be retrieved</title> <style type="text/css"><!--   %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  --></style> </head><body> <div id="titles"> <h1>ERROR</h1> <h2>The requested URL could not be retrieved</h2> </div> <hr>  <div id="content"> <p>The following error was encountered while trying to retrieve the URL: <a href="%U">%U</a></p>  <blockquote id="error"> <p><b>Έληξε ο Χρόνος Σύνδεσής</b></p> </blockquote>  <p>Το Squid τερμάτισε την αίτηση επειδή ξεπέρασε τον μέγιστο χρόνο σύνδεσης.</p>  <p>Ο διαχειριστής του μεσολαβητή σας είναι ο <a href="mailto:%w%W">%w</a>.</p> <br> </div>  <hr> <div id="footer"> <p>Generated %T by %h (%s)</p> <!-- %c --> </div> </body></html> 
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN"
+"http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+<meta name="generator" content=
+"HTML Tidy for FreeBSD (vers 7 December 2008), see www.w3.org">
+<meta http-equiv="Content-Type" content=
+"text/html; charset=us-ascii">
+<title>
+&Icirc;&pound;&Icirc;&brvbar;&Icirc;&lsquo;&Icirc;&rsaquo;&Icirc;&oelig;&Icirc;&lsquo;:
+The requested URL could not be retrieved</title>
+
+<style type="text/css">
+<!--   %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  -->
+</style>
+</head>
+<body>
+<div id="titles">
+<h1>ERROR</h1>
+<h2>The requested URL could not be retrieved</h2>
+</div>
+<hr>
+<div id="content">
+<p>The following error was encountered while trying to retrieve the
+URL: <a href="%U">%U</a></p>
+<blockquote id="error">
+<p>
+<b>&Icirc;&circ;&Icirc;&raquo;&Icirc;&middot;&Icirc;&frac34;&Icirc;&micro;
+&Icirc;&iquest;
+&Icirc;&sect;&Iuml;&Iuml;&OElig;&Icirc;&frac12;&Icirc;&iquest;&Iuml;&sbquo;
+&Icirc;&pound;&Iuml;&Icirc;&frac12;&Icirc;&acute;&Icirc;&micro;&Iuml;&fnof;&Icirc;&reg;&Iuml;&sbquo;</b></p>
+</blockquote>
+<p>&Icirc;&curren;&Icirc;&iquest; Squid
+&Iuml;&bdquo;&Icirc;&micro;&Iuml;&Icirc;&frac14;&Icirc;&not;&Iuml;&bdquo;&Icirc;&sup1;&Iuml;&fnof;&Icirc;&micro;
+&Iuml;&bdquo;&Icirc;&middot;&Icirc;&frac12;
+&Icirc;&plusmn;&Icirc;&macr;&Iuml;&bdquo;&Icirc;&middot;&Iuml;&fnof;&Icirc;&middot;
+&Icirc;&micro;&Iuml;&euro;&Icirc;&micro;&Icirc;&sup1;&Icirc;&acute;&Icirc;&reg;
+&Icirc;&frac34;&Icirc;&micro;&Iuml;&euro;&Icirc;&shy;&Iuml;&Icirc;&plusmn;&Iuml;&fnof;&Icirc;&micro;
+&Iuml;&bdquo;&Icirc;&iquest;&Icirc;&frac12;
+&Icirc;&frac14;&Icirc;&shy;&Icirc;&sup3;&Icirc;&sup1;&Iuml;&fnof;&Iuml;&bdquo;&Icirc;&iquest;
+&Iuml;&Dagger;&Iuml;&Iuml;&OElig;&Icirc;&frac12;&Icirc;&iquest;
+&Iuml;&fnof;&Iuml;&Icirc;&frac12;&Icirc;&acute;&Icirc;&micro;&Iuml;&fnof;&Icirc;&middot;&Iuml;&sbquo;.</p>
+<p>&Icirc;&Yuml;
+&Icirc;&acute;&Icirc;&sup1;&Icirc;&plusmn;&Iuml;&Dagger;&Icirc;&micro;&Icirc;&sup1;&Iuml;&Icirc;&sup1;&Iuml;&fnof;&Iuml;&bdquo;&Icirc;&reg;&Iuml;&sbquo;
+&Iuml;&bdquo;&Icirc;&iquest;&Iuml;&hellip;
+&Icirc;&frac14;&Icirc;&micro;&Iuml;&fnof;&Icirc;&iquest;&Icirc;&raquo;&Icirc;&plusmn;&Icirc;&sup2;&Icirc;&middot;&Iuml;&bdquo;&Icirc;&reg;
+&Iuml;&fnof;&Icirc;&plusmn;&Iuml;&sbquo;
+&Icirc;&micro;&Icirc;&macr;&Icirc;&frac12;&Icirc;&plusmn;&Icirc;&sup1;
+&Icirc;&iquest; <a href="mailto:%w%W">%w</a>.</p>
+<br></div>
+<hr>
+<div id="footer">
+<p>Generated %T by %h (%s)</p>
+<!-- %c --></div>
+</body>
+</html>

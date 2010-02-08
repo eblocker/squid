@@ -1,1 +1,27 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd"> <html><head> <meta http-equiv="Content-Type" content="text/html; charset=utf-8"> <title>FTP PUT Erfolgreich: Datei erstellt</title> <style type="text/css"><!--   %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  --></style> </head><body> <div id="titles"> <h1 id="ftpsuccess">Operation Erfolgreich</h1> <h2>Datei erstellt</h2> </div> <hr>  <br>  <hr> <div id="footer"> <p>Erzeugt am %T von %h (%s)</p> <!-- %c --> </div> </body></html> 
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+"http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta name="generator" content=
+"HTML Tidy for FreeBSD (vers 7 December 2008), see www.w3.org">
+<meta http-equiv="Content-Type" content=
+"text/html; charset=us-ascii">
+<title>FTP PUT Erfolgreich: Datei erstellt</title>
+
+<style type="text/css">
+<!--   %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  -->
+</style>
+</head>
+<body>
+<div id="titles">
+<h1 id="ftpsuccess">Operation Erfolgreich</h1>
+<h2>Datei erstellt</h2>
+</div>
+<hr>
+<br>
+<hr>
+<div id="footer">
+<p>Erzeugt am %T von %h (%s)</p>
+<!-- %c --></div>
+</body>
+</html>

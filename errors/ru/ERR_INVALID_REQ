@@ -1,1 +1,97 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd"> <html><head> <meta http-equiv="Content-Type" content="text/html; charset=utf-8"> <title>ОШИБКА: Запрошенный URL не может быть получен</title> <style type="text/css"><!--   %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  --></style> </head><body> <div id="titles"> <h1>ERROR</h1> <h2>The requested URL could not be retrieved</h2> </div> <hr>  <div id="content"> <p>Обнаружен <b>недопустимый запрос</b>:</p>  <blockquote id="data"> <pre>%R</pre> </blockquote>  <p>Возможные проблемы:</p> <ul> <li><p>Отсутствует или неизвестен метод запроса.</p></li> <li><p>Отсутствует URL.</p></li> <li><p>Отсутствует идентификатор HTTP (HTTP/1.0).</p></li> <li><p>Запрос слишком велик.</p></li> <li><p>В запросе POST или PUT отсутствует заголовок Content-Length.</p></li> <li><p>Недопустимый символ в имени узла (hostname), подчёркивания запрещены.</p></li> </ul>  <p>Администратор Вашего кэша: <a href="mailto:%w%W">%w</a>.</p> <br> </div>  <hr> <div id="footer"> <p>Создано %T на %h (%s)</p> <!-- %c --> </div> </body></html> 
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN"
+"http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+<meta name="generator" content=
+"HTML Tidy for FreeBSD (vers 7 December 2008), see www.w3.org">
+<meta http-equiv="Content-Type" content=
+"text/html; charset=us-ascii">
+<title>
+&ETH;&#382;&ETH;&uml;&ETH;&tilde;&ETH;&lsquo;&ETH;&scaron;&ETH;:
+&ETH;&mdash;&ETH;&deg;&ETH;&iquest;&Ntilde;&euro;&ETH;&frac34;&Ntilde;&circ;&ETH;&micro;&ETH;&frac12;&ETH;&frac12;&Ntilde;&lsaquo;&ETH;&sup1;
+URL &ETH;&frac12;&ETH;&micro;
+&ETH;&frac14;&ETH;&frac34;&ETH;&para;&ETH;&micro;&Ntilde;&sbquo;
+&ETH;&plusmn;&Ntilde;&lsaquo;&Ntilde;&sbquo;&Ntilde;&OElig;
+&ETH;&iquest;&ETH;&frac34;&ETH;&raquo;&Ntilde;&fnof;&Ntilde;&Dagger;&ETH;&micro;&ETH;&frac12;</title>
+
+<style type="text/css">
+<!--   %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  -->
+</style>
+</head>
+<body>
+<div id="titles">
+<h1>ERROR</h1>
+<h2>The requested URL could not be retrieved</h2>
+</div>
+<hr>
+<div id="content">
+<p>
+&ETH;&#382;&ETH;&plusmn;&ETH;&frac12;&ETH;&deg;&Ntilde;&euro;&Ntilde;&fnof;&ETH;&para;&ETH;&micro;&ETH;&frac12;
+<b>&ETH;&frac12;&ETH;&micro;&ETH;&acute;&ETH;&frac34;&ETH;&iquest;&Ntilde;&fnof;&Ntilde;&Ntilde;&sbquo;&ETH;&cedil;&ETH;&frac14;&Ntilde;&lsaquo;&ETH;&sup1;
+&ETH;&middot;&ETH;&deg;&ETH;&iquest;&Ntilde;&euro;&ETH;&frac34;&Ntilde;</b>:</p>
+<blockquote id="data">
+<pre>
+%R
+</pre></blockquote>
+<p>
+&ETH;&rsquo;&ETH;&frac34;&ETH;&middot;&ETH;&frac14;&ETH;&frac34;&ETH;&para;&ETH;&frac12;&Ntilde;&lsaquo;&ETH;&micro;
+&ETH;&iquest;&Ntilde;&euro;&ETH;&frac34;&ETH;&plusmn;&ETH;&raquo;&ETH;&micro;&ETH;&frac14;&Ntilde;&lsaquo;:</p>
+<ul>
+<li>
+<p>
+&ETH;&#382;&Ntilde;&sbquo;&Ntilde;&Ntilde;&fnof;&Ntilde;&sbquo;&Ntilde;&Ntilde;&sbquo;&ETH;&sup2;&Ntilde;&fnof;&ETH;&micro;&Ntilde;&sbquo;
+&ETH;&cedil;&ETH;&raquo;&ETH;&cedil;
+&ETH;&frac12;&ETH;&micro;&ETH;&cedil;&ETH;&middot;&ETH;&sup2;&ETH;&micro;&Ntilde;&Ntilde;&sbquo;&ETH;&micro;&ETH;&frac12;
+&ETH;&frac14;&ETH;&micro;&Ntilde;&sbquo;&ETH;&frac34;&ETH;&acute;
+&ETH;&middot;&ETH;&deg;&ETH;&iquest;&Ntilde;&euro;&ETH;&frac34;&Ntilde;&ETH;&deg;.</p>
+</li>
+<li>
+<p>
+&ETH;&#382;&Ntilde;&sbquo;&Ntilde;&Ntilde;&fnof;&Ntilde;&sbquo;&Ntilde;&Ntilde;&sbquo;&ETH;&sup2;&Ntilde;&fnof;&ETH;&micro;&Ntilde;&sbquo;
+URL.</p>
+</li>
+<li>
+<p>
+&ETH;&#382;&Ntilde;&sbquo;&Ntilde;&Ntilde;&fnof;&Ntilde;&sbquo;&Ntilde;&Ntilde;&sbquo;&ETH;&sup2;&Ntilde;&fnof;&ETH;&micro;&Ntilde;&sbquo;
+&ETH;&cedil;&ETH;&acute;&ETH;&micro;&ETH;&frac12;&Ntilde;&sbquo;&ETH;&cedil;&Ntilde;&bdquo;&ETH;&cedil;&ETH;&ordm;&ETH;&deg;&Ntilde;&sbquo;&ETH;&frac34;&Ntilde;&euro;
+HTTP (HTTP/1.0).</p>
+</li>
+<li>
+<p>
+&ETH;&mdash;&ETH;&deg;&ETH;&iquest;&Ntilde;&euro;&ETH;&frac34;&Ntilde;
+&Ntilde;&ETH;&raquo;&ETH;&cedil;&Ntilde;&circ;&ETH;&ordm;&ETH;&frac34;&ETH;&frac14;
+&ETH;&sup2;&ETH;&micro;&ETH;&raquo;&ETH;&cedil;&ETH;&ordm;.</p>
+</li>
+<li>
+<p>&ETH;&rsquo;
+&ETH;&middot;&ETH;&deg;&ETH;&iquest;&Ntilde;&euro;&ETH;&frac34;&Ntilde;&ETH;&micro;
+POST &ETH;&cedil;&ETH;&raquo;&ETH;&cedil; PUT
+&ETH;&frac34;&Ntilde;&sbquo;&Ntilde;&Ntilde;&fnof;&Ntilde;&sbquo;&Ntilde;&Ntilde;&sbquo;&ETH;&sup2;&Ntilde;&fnof;&ETH;&micro;&Ntilde;&sbquo;
+&ETH;&middot;&ETH;&deg;&ETH;&sup3;&ETH;&frac34;&ETH;&raquo;&ETH;&frac34;&ETH;&sup2;&ETH;&frac34;&ETH;&ordm;
+Content-Length.</p>
+</li>
+<li>
+<p>
+&ETH;&ETH;&micro;&ETH;&acute;&ETH;&frac34;&ETH;&iquest;&Ntilde;&fnof;&Ntilde;&Ntilde;&sbquo;&ETH;&cedil;&ETH;&frac14;&Ntilde;&lsaquo;&ETH;&sup1;
+&Ntilde;&ETH;&cedil;&ETH;&frac14;&ETH;&sup2;&ETH;&frac34;&ETH;&raquo;
+&ETH;&sup2;
+&ETH;&cedil;&ETH;&frac14;&ETH;&micro;&ETH;&frac12;&ETH;&cedil;
+&Ntilde;&fnof;&ETH;&middot;&ETH;&raquo;&ETH;&deg; (hostname),
+&ETH;&iquest;&ETH;&frac34;&ETH;&acute;&Ntilde;&Dagger;&Ntilde;&lsquo;&Ntilde;&euro;&ETH;&ordm;&ETH;&cedil;&ETH;&sup2;&ETH;&deg;&ETH;&frac12;&ETH;&cedil;&Ntilde;
+&ETH;&middot;&ETH;&deg;&ETH;&iquest;&Ntilde;&euro;&ETH;&micro;&Ntilde;&permil;&ETH;&micro;&ETH;&frac12;&Ntilde;&lsaquo;.</p>
+</li>
+</ul>
+<p>
+&ETH;&ETH;&acute;&ETH;&frac14;&ETH;&cedil;&ETH;&frac12;&ETH;&cedil;&Ntilde;&Ntilde;&sbquo;&Ntilde;&euro;&ETH;&deg;&Ntilde;&sbquo;&ETH;&frac34;&Ntilde;&euro;
+&ETH;&rsquo;&ETH;&deg;&Ntilde;&circ;&ETH;&micro;&ETH;&sup3;&ETH;&frac34;
+&ETH;&ordm;&Ntilde;&Ntilde;&circ;&ETH;&deg;: <a href=
+"mailto:%w%W">%w</a>.</p>
+<br></div>
+<hr>
+<div id="footer">
+<p>
+&ETH;&iexcl;&ETH;&frac34;&ETH;&middot;&ETH;&acute;&ETH;&deg;&ETH;&frac12;&ETH;&frac34;
+%T &ETH;&frac12;&ETH;&deg; %h (%s)</p>
+<!-- %c --></div>
+</body>
+</html>

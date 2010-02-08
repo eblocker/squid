@@ -1,1 +1,47 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd"> <html><head> <meta http-equiv="Content-Type" content="text/html; charset=utf-8"> <title>ERREUR: L'URL demandée n'a pu être chargée</title> <style type="text/css"><!--   %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  --></style> </head><body> <div id="titles"> <h1>ERROR</h1> <h2>The requested URL could not be retrieved</h2> </div> <hr>  <div id="content"> <p>L'erreur suivante a été rencontrée en essayant d'accéder à l'URL : <a href="%U">%U</a></p>  <blockquote id="error"> <p><b>Délai de lecture dépassé</b></p> </blockquote>  <p id="sysmsg">Le système a retourné : <i>%E</i></p>  <p>Un délai critique s'est écoulé en attendant des données du réseau. Le réseau ou le serveur sont peut-être hors service ou défaillants. Veuillez réitérer votre requête.</p>  <p>Votre administrateur de cache est <a href="mailto:%w">%w</a>.</p> <br> </div>  <hr> <div id="footer"> <p>Générée le %T par %h (%s)</p> <!-- %c --> </div> </body></html> 
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN"
+"http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+<meta name="generator" content=
+"HTML Tidy for FreeBSD (vers 7 December 2008), see www.w3.org">
+<meta http-equiv="Content-Type" content=
+"text/html; charset=us-ascii">
+<title>ERREUR: L'URL demand&Atilde;&copy;e n'a pu &Atilde;&ordf;tre
+charg&Atilde;&copy;e</title>
+
+<style type="text/css">
+<!--   %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  -->
+</style>
+</head>
+<body>
+<div id="titles">
+<h1>ERROR</h1>
+<h2>The requested URL could not be retrieved</h2>
+</div>
+<hr>
+<div id="content">
+<p>L'erreur suivante a &Atilde;&copy;t&Atilde;&copy;
+rencontr&Atilde;&copy;e en essayant d'acc&Atilde;&copy;der
+&Atilde;&nbsp; l'URL : <a href="%U">%U</a></p>
+<blockquote id="error">
+<p><b>D&Atilde;&copy;lai de lecture
+d&Atilde;&copy;pass&Atilde;&copy;</b></p>
+</blockquote>
+<p id="sysmsg">Le syst&Atilde;&uml;me a retourn&Atilde;&copy; :
+<i>%E</i></p>
+<p>Un d&Atilde;&copy;lai critique s'est
+&Atilde;&copy;coul&Atilde;&copy; en attendant des
+donn&Atilde;&copy;es du r&Atilde;&copy;seau. Le r&Atilde;&copy;seau
+ou le serveur sont peut-&Atilde;&ordf;tre hors service ou
+d&Atilde;&copy;faillants. Veuillez
+r&Atilde;&copy;it&Atilde;&copy;rer votre requ&Atilde;&ordf;te.</p>
+<p>Votre administrateur de cache est <a href=
+"mailto:%w">%w</a>.</p>
+<br></div>
+<hr>
+<div id="footer">
+<p>G&Atilde;&copy;n&Atilde;&copy;r&Atilde;&copy;e le %T par %h
+(%s)</p>
+<!-- %c --></div>
+</body>
+</html>

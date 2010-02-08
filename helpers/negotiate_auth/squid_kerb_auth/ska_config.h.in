@@ -121,9 +121,6 @@
 /* Define to 1 if you have SEAM Kerberos */
 #undef HAVE_SEAM_KERBEROS
 
-/* Define to 1 if you have SPNEGO support */
-#undef HAVE_SPNEGO
-
 /* Define to 1 if you have SQUID */
 #undef HAVE_SQUID
 

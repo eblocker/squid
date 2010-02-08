@@ -1,1 +1,47 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd"> <html><head> <meta http-equiv="Content-Type" content="text/html; charset=utf-8"> <title>ERROR: ไม่สามารถเรียกดู URL ที่ได้รับการร้องขอ</title> <style type="text/css"><!--   %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  --></style> </head><body> <div id="titles"> <h1>ERROR</h1> <h2>ไม่รองรับ HTTP รุ่นนี้</h2> </div> <hr>  <div id="content"> <p>พบความผิดพลาดดังต่อไปนี้ระหว่างที่พยายามเรียกดู URL: <a href="%U">%U</a></p>  <blockquote id="error"> <p><b>Unsupported HTTP version</b></p> </blockquote>  <p>squid ไม่รับ HTTP รุ่นที่คุณพยายามเรียกใช้อยู่นี้</p>  <p>ผู้ดูแลระบบแคชของคุณคือ <a href="mailto:%w%W">%w</a></p> <br> </div>  <hr> <div id="footer"> <p>Generated %T by %h (%s)</p> <!-- %c --> </div> </body></html> 
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN"
+"http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+<meta name="generator" content=
+"HTML Tidy for FreeBSD (vers 7 December 2008), see www.w3.org">
+<meta http-equiv="Content-Type" content=
+"text/html; charset=us-ascii">
+<title>ERROR:
+&agrave;&sup1;&bdquo;&agrave;&cedil;&iexcl;&agrave;&sup1;&circ;&agrave;&cedil;&ordf;&agrave;&cedil;&sup2;&agrave;&cedil;&iexcl;&agrave;&cedil;&sup2;&agrave;&cedil;&pound;&agrave;&cedil;&ndash;&agrave;&sup1;&euro;&agrave;&cedil;&pound;&agrave;&cedil;&micro;&agrave;&cedil;&cent;&agrave;&cedil;&agrave;&cedil;&rdquo;&agrave;&cedil;&sup1;
+URL
+&agrave;&cedil;&mdash;&agrave;&cedil;&micro;&agrave;&sup1;&circ;&agrave;&sup1;&bdquo;&agrave;&cedil;&rdquo;&agrave;&sup1;&permil;&agrave;&cedil;&pound;&agrave;&cedil;&plusmn;&agrave;&cedil;&scaron;&agrave;&cedil;&agrave;&cedil;&sup2;&agrave;&cedil;&pound;&agrave;&cedil;&pound;&agrave;&sup1;&permil;&agrave;&cedil;&shy;&agrave;&cedil;&Dagger;&agrave;&cedil;&sbquo;&agrave;&cedil;&shy;</title>
+
+<style type="text/css">
+<!--   %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  -->
+</style>
+</head>
+<body>
+<div id="titles">
+<h1>ERROR</h1>
+<h2>
+&agrave;&sup1;&bdquo;&agrave;&cedil;&iexcl;&agrave;&sup1;&circ;&agrave;&cedil;&pound;&agrave;&cedil;&shy;&agrave;&cedil;&Dagger;&agrave;&cedil;&pound;&agrave;&cedil;&plusmn;&agrave;&cedil;&scaron;
+HTTP
+&agrave;&cedil;&pound;&agrave;&cedil;&cedil;&agrave;&sup1;&circ;&agrave;&cedil;&trade;&agrave;&cedil;&trade;&agrave;&cedil;&micro;&agrave;&sup1;&permil;</h2>
+</div>
+<hr>
+<div id="content">
+<p>
+&agrave;&cedil;&#382;&agrave;&cedil;&scaron;&agrave;&cedil;&bdquo;&agrave;&cedil;&sect;&agrave;&cedil;&sup2;&agrave;&cedil;&iexcl;&agrave;&cedil;&oelig;&agrave;&cedil;&acute;&agrave;&cedil;&rdquo;&agrave;&cedil;&#382;&agrave;&cedil;&yen;&agrave;&cedil;&sup2;&agrave;&cedil;&rdquo;&agrave;&cedil;&rdquo;&agrave;&cedil;&plusmn;&agrave;&cedil;&Dagger;&agrave;&cedil;&bull;&agrave;&sup1;&circ;&agrave;&cedil;&shy;&agrave;&sup1;&bdquo;&agrave;&cedil;&rsaquo;&agrave;&cedil;&trade;&agrave;&cedil;&micro;&agrave;&sup1;&permil;&agrave;&cedil;&pound;&agrave;&cedil;&deg;&agrave;&cedil;&laquo;&agrave;&cedil;&sect;&agrave;&sup1;&circ;&agrave;&cedil;&sup2;&agrave;&cedil;&Dagger;&agrave;&cedil;&mdash;&agrave;&cedil;&micro;&agrave;&sup1;&circ;&agrave;&cedil;&#382;&agrave;&cedil;&cent;&agrave;&cedil;&sup2;&agrave;&cedil;&cent;&agrave;&cedil;&sup2;&agrave;&cedil;&iexcl;&agrave;&sup1;&euro;&agrave;&cedil;&pound;&agrave;&cedil;&micro;&agrave;&cedil;&cent;&agrave;&cedil;&agrave;&cedil;&rdquo;&agrave;&cedil;&sup1;
+URL: <a href="%U">%U</a></p>
+<blockquote id="error">
+<p><b>Unsupported HTTP version</b></p>
+</blockquote>
+<p>squid
+&agrave;&sup1;&bdquo;&agrave;&cedil;&iexcl;&agrave;&sup1;&circ;&agrave;&cedil;&pound;&agrave;&cedil;&plusmn;&agrave;&cedil;&scaron;
+HTTP
+&agrave;&cedil;&pound;&agrave;&cedil;&cedil;&agrave;&sup1;&circ;&agrave;&cedil;&trade;&agrave;&cedil;&mdash;&agrave;&cedil;&micro;&agrave;&sup1;&circ;&agrave;&cedil;&bdquo;&agrave;&cedil;&cedil;&agrave;&cedil;&ldquo;&agrave;&cedil;&#382;&agrave;&cedil;&cent;&agrave;&cedil;&sup2;&agrave;&cedil;&cent;&agrave;&cedil;&sup2;&agrave;&cedil;&iexcl;&agrave;&sup1;&euro;&agrave;&cedil;&pound;&agrave;&cedil;&micro;&agrave;&cedil;&cent;&agrave;&cedil;&agrave;&sup1;&fnof;&agrave;&cedil;&Scaron;&agrave;&sup1;&permil;&agrave;&cedil;&shy;&agrave;&cedil;&cent;&agrave;&cedil;&sup1;&agrave;&sup1;&circ;&agrave;&cedil;&trade;&agrave;&cedil;&micro;&agrave;&sup1;&permil;</p>
+<p>
+&agrave;&cedil;&oelig;&agrave;&cedil;&sup1;&agrave;&sup1;&permil;&agrave;&cedil;&rdquo;&agrave;&cedil;&sup1;&agrave;&sup1;&agrave;&cedil;&yen;&agrave;&cedil;&pound;&agrave;&cedil;&deg;&agrave;&cedil;&scaron;&agrave;&cedil;&scaron;&agrave;&sup1;&agrave;&cedil;&bdquo;&agrave;&cedil;&Scaron;&agrave;&cedil;&sbquo;&agrave;&cedil;&shy;&agrave;&cedil;&Dagger;&agrave;&cedil;&bdquo;&agrave;&cedil;&cedil;&agrave;&cedil;&ldquo;&agrave;&cedil;&bdquo;&agrave;&cedil;&middot;&agrave;&cedil;&shy;
+<a href="mailto:%w%W">%w</a></p>
+<br></div>
+<hr>
+<div id="footer">
+<p>Generated %T by %h (%s)</p>
+<!-- %c --></div>
+</body>
+</html>

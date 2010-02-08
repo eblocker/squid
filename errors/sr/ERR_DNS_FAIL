@@ -1,1 +1,45 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd"> <html><head> <meta http-equiv="Content-Type" content="text/html; charset=utf-8"> <title>GREŠKA: Tražena adresa (URL) ne može da se dovuèe</title> <style type="text/css"><!--   %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  --></style> </head><body> <div id="titles"> <h1>ERROR</h1> <h2>The requested URL could not be retrieved</h2> </div> <hr>  <div id="content"> <p>The following error was encountered while trying to retrieve the URL: <a href="%U">%U</a></p>  <blockquote id="error"> <p><b>Nije moguæe odrediti IP adresu iz imena raèunara za <q>%H</q></b></p> </blockquote>  <p>DNS server je vratio informaciju:</p> <blockquote id="data"> <pre>%z</pre> </blockquote>  <p>što znaèi proksi server nije u stanju da identifikuje ime raèunara koje se nalazi u adresi (URL). Proverite da li je adresa ispravna.</p>  <p>Vaš keš/proksi administrator je: <a href="mailto:%w%W">%w</a>.</p> <br> </div>  <hr> <div id="footer"> <p>Generated %T by %h (%s)</p> <!-- %c --> </div> </body></html> 
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN"
+"http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+<meta name="generator" content=
+"HTML Tidy for FreeBSD (vers 7 December 2008), see www.w3.org">
+<meta http-equiv="Content-Type" content=
+"text/html; charset=us-ascii">
+<title>GRE&Aring;&nbsp;KA: Tra&Aring;&frac34;ena adresa (URL) ne
+mo&Aring;&frac34;e da se dovu&Atilde;&uml;e</title>
+
+<style type="text/css">
+<!--   %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  -->
+</style>
+</head>
+<body>
+<div id="titles">
+<h1>ERROR</h1>
+<h2>The requested URL could not be retrieved</h2>
+</div>
+<hr>
+<div id="content">
+<p>The following error was encountered while trying to retrieve the
+URL: <a href="%U">%U</a></p>
+<blockquote id="error">
+<p><b>Nije mogu&Atilde;&brvbar;e odrediti IP adresu iz imena
+ra&Atilde;&uml;unara za <q>%H</q></b></p>
+</blockquote>
+<p>DNS server je vratio informaciju:</p>
+<blockquote id="data">
+<pre>
+%z
+</pre></blockquote>
+<p>&Aring;&iexcl;to zna&Atilde;&uml;i proksi server nije u stanju
+da identifikuje ime ra&Atilde;&uml;unara koje se nalazi u adresi
+(URL). Proverite da li je adresa ispravna.</p>
+<p>Va&Aring;&iexcl; ke&Aring;&iexcl;/proksi administrator je:
+<a href="mailto:%w%W">%w</a>.</p>
+<br></div>
+<hr>
+<div id="footer">
+<p>Generated %T by %h (%s)</p>
+<!-- %c --></div>
+</body>
+</html>

@@ -1,1 +1,61 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd"> <html><head> <meta http-equiv="Content-Type" CONTENT="text/html; charset=utf-8"> <title>ХАТО: Сўралган URL топилмади</title> <style type="text/css"><!--   %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  --></style> </head><body> <div id="titles"> <h1>ERROR</h1> <h2>The requested URL could not be retrieved</h2> </div> <hr>  <div id="content"> <p>The following error was encountered while trying to retrieve the URL: <a href="%U">%U</a></p>  <blockquote id="error"> <p><b>%Iга уланиш муваффақиятсиз якунланди.</b></p> </blockquote>  <p id="sysmsg">Тизим қайтарди: <i>%E</i></p>  <p>Масофадаги ҳост ёки тармоқ ўчирилган бўлиши мумкин. Илтимос, суровингизни қайтадан киритиб, уриниб кўринг.</p>  <p>Your cache administrator is <a href="mailto:%w%W">%w</a>.</p>  <br> </div>  <hr> <div id="footer"> <p>%h (%s) томонидан  %T яратилган</p> <!-- %c --> </div> </body></html> 
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN"
+"http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+<meta name="generator" content=
+"HTML Tidy for FreeBSD (vers 7 December 2008), see www.w3.org">
+<meta http-equiv="Content-Type" content=
+"text/html; charset=us-ascii">
+<title>&ETH;&yen;&ETH;&ETH;&cent;&ETH;&#382;:
+&ETH;&iexcl;&Ntilde;&#382;&Ntilde;&euro;&ETH;&deg;&ETH;&raquo;&ETH;&sup3;&ETH;&deg;&ETH;&frac12;
+URL
+&Ntilde;&sbquo;&ETH;&frac34;&ETH;&iquest;&ETH;&cedil;&ETH;&raquo;&ETH;&frac14;&ETH;&deg;&ETH;&acute;&ETH;&cedil;</title>
+
+<style type="text/css">
+<!--   %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  -->
+</style>
+</head>
+<body>
+<div id="titles">
+<h1>ERROR</h1>
+<h2>The requested URL could not be retrieved</h2>
+</div>
+<hr>
+<div id="content">
+<p>The following error was encountered while trying to retrieve the
+URL: <a href="%U">%U</a></p>
+<blockquote id="error">
+<p><b>%I&ETH;&sup3;&ETH;&deg;
+&Ntilde;&fnof;&ETH;&raquo;&ETH;&deg;&ETH;&frac12;&ETH;&cedil;&Ntilde;&circ;
+&ETH;&frac14;&Ntilde;&fnof;&ETH;&sup2;&ETH;&deg;&Ntilde;&bdquo;&Ntilde;&bdquo;&ETH;&deg;&Ograve;&rsaquo;&ETH;&cedil;&Ntilde;&Ntilde;&sbquo;&Ntilde;&ETH;&cedil;&ETH;&middot;
+&Ntilde;&ETH;&ordm;&Ntilde;&fnof;&ETH;&frac12;&ETH;&raquo;&ETH;&deg;&ETH;&frac12;&ETH;&acute;&ETH;&cedil;.</b></p>
+</blockquote>
+<p id="sysmsg">
+&ETH;&cent;&ETH;&cedil;&ETH;&middot;&ETH;&cedil;&ETH;&frac14;
+&Ograve;&rsaquo;&ETH;&deg;&ETH;&sup1;&Ntilde;&sbquo;&ETH;&deg;&Ntilde;&euro;&ETH;&acute;&ETH;&cedil;:
+<i>%E</i></p>
+<p>
+&ETH;&oelig;&ETH;&deg;&Ntilde;&ETH;&frac34;&Ntilde;&bdquo;&ETH;&deg;&ETH;&acute;&ETH;&deg;&ETH;&sup3;&ETH;&cedil;
+&Ograve;&sup3;&ETH;&frac34;&Ntilde;&Ntilde;&sbquo;
+&Ntilde;&lsquo;&ETH;&ordm;&ETH;&cedil;
+&Ntilde;&sbquo;&ETH;&deg;&Ntilde;&euro;&ETH;&frac14;&ETH;&frac34;&Ograve;&rsaquo;
+&Ntilde;&#382;&Ntilde;&Dagger;&ETH;&cedil;&Ntilde;&euro;&ETH;&cedil;&ETH;&raquo;&ETH;&sup3;&ETH;&deg;&ETH;&frac12;
+&ETH;&plusmn;&Ntilde;&#382;&ETH;&raquo;&ETH;&cedil;&Ntilde;&circ;&ETH;&cedil;
+&ETH;&frac14;&Ntilde;&fnof;&ETH;&frac14;&ETH;&ordm;&ETH;&cedil;&ETH;&frac12;.
+&ETH;&tilde;&ETH;&raquo;&Ntilde;&sbquo;&ETH;&cedil;&ETH;&frac14;&ETH;&frac34;&Ntilde;,
+&Ntilde;&Ntilde;&fnof;&Ntilde;&euro;&ETH;&frac34;&ETH;&sup2;&ETH;&cedil;&ETH;&frac12;&ETH;&sup3;&ETH;&cedil;&ETH;&middot;&ETH;&frac12;&ETH;&cedil;
+&Ograve;&rsaquo;&ETH;&deg;&ETH;&sup1;&Ntilde;&sbquo;&ETH;&deg;&ETH;&acute;&ETH;&deg;&ETH;&frac12;
+&ETH;&ordm;&ETH;&cedil;&Ntilde;&euro;&ETH;&cedil;&Ntilde;&sbquo;&ETH;&cedil;&ETH;&plusmn;,
+&Ntilde;&fnof;&Ntilde;&euro;&ETH;&cedil;&ETH;&frac12;&ETH;&cedil;&ETH;&plusmn;
+&ETH;&ordm;&Ntilde;&#382;&Ntilde;&euro;&ETH;&cedil;&ETH;&frac12;&ETH;&sup3;.</p>
+<p>Your cache administrator is <a href="mailto:%w%W">%w</a>.</p>
+<br></div>
+<hr>
+<div id="footer">
+<p>%h (%s)
+&Ntilde;&sbquo;&ETH;&frac34;&ETH;&frac14;&ETH;&frac34;&ETH;&frac12;&ETH;&cedil;&ETH;&acute;&ETH;&deg;&ETH;&frac12;
+%T
+&Ntilde;&Ntilde;&euro;&ETH;&deg;&Ntilde;&sbquo;&ETH;&cedil;&ETH;&raquo;&ETH;&sup3;&ETH;&deg;&ETH;&frac12;</p>
+<!-- %c --></div>
+</body>
+</html>

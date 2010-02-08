@@ -1,1 +1,45 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd"> <html><head> <meta http-equiv="Content-Type" content="text/html; charset=utf-8"> <title>CHYBA: Požadovaný dokument je nedostupný</title> <style type="text/css"><!--   %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  --></style> </head><body> <div id="titles"> <h1>ERROR</h1> <h2>The requested URL could not be retrieved</h2> </div> <hr>  <div id="content"> <p>The following error was encountered while trying to retrieve the URL: <a href="%U">%U</a></p>  <blockquote id="error"> <p><b>Read Timeout</b></p> </blockquote>  <p id="sysmsg">Vzdálený systém odpověděl: <i>%E</i></p>  <p>Došlo k překročení časového limitu během čtení dat ze sítě. Síť nebo server mohou být mimo provoz nebo přetížené. Prosím zkuste požadavek zopakovat.</p>  <p>Your cache administrator is <a href="mailto:%w%W">%w</a>.</p> <br> </div>  <hr> <div id="footer"> <p>Generated %T by %h (%s)</p> <!-- %c --> </div> </body></html> 
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN"
+"http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+<meta name="generator" content=
+"HTML Tidy for FreeBSD (vers 7 December 2008), see www.w3.org">
+<meta http-equiv="Content-Type" content=
+"text/html; charset=us-ascii">
+<title>CHYBA: Po&Aring;&frac34;adovan&Atilde;&frac12; dokument je
+nedostupn&Atilde;&frac12;</title>
+
+<style type="text/css">
+<!--   %l  body :lang(fa) { direction: rtl; font-size: 100%; font-family: Tahoma, Roya, sans-serif; float: right; } :lang(he) { direction: rtl; float: right; }  -->
+</style>
+</head>
+<body>
+<div id="titles">
+<h1>ERROR</h1>
+<h2>The requested URL could not be retrieved</h2>
+</div>
+<hr>
+<div id="content">
+<p>The following error was encountered while trying to retrieve the
+URL: <a href="%U">%U</a></p>
+<blockquote id="error">
+<p><b>Read Timeout</b></p>
+</blockquote>
+<p id="sysmsg">Vzd&Atilde;&iexcl;len&Atilde;&frac12;
+syst&Atilde;&copy;m odpov&Auml;&rsaquo;d&Auml;&rsaquo;l:
+<i>%E</i></p>
+<p>Do&Aring;&iexcl;lo k p&Aring;&trade;ekro&Auml;en&Atilde;&shy;
+&Auml;asov&Atilde;&copy;ho limitu b&Auml;&rsaquo;hem
+&Auml;ten&Atilde;&shy; dat ze s&Atilde;&shy;t&Auml;&rsaquo;.
+S&Atilde;&shy;&Aring;&yen; nebo server mohou b&Atilde;&frac12;t
+mimo provoz nebo
+p&Aring;&trade;et&Atilde;&shy;&Aring;&frac34;en&Atilde;&copy;.
+Pros&Atilde;&shy;m zkuste po&Aring;&frac34;adavek zopakovat.</p>
+<p>Your cache administrator is <a href="mailto:%w%W">%w</a>.</p>
+<br></div>
+<hr>
+<div id="footer">
+<p>Generated %T by %h (%s)</p>
+<!-- %c --></div>
+</body>
+</html>

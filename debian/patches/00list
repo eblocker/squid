@@ -1,5 +1,6 @@
 01-cf.data.debian
 02-makefile-defaults
 04-m68k-ftbfs
-09-dos-cache-update
-10-dos-snmp-parser
+05-CVE-2009-0478
+14-CVE-2009-2855
+72-CVE-2010-0308

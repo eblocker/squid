@@ -1,18 +1,21 @@
-squid3 (3.0.PRE5-5etch2) stable-security; urgency=high
+squid3 (3.0.PRE5-5+etch2) oldstable-security; urgency=high
 
-  * debian/patches/10-dos-snmp-parser
-    - Added upsteam patch fixing DoS in SNMP parser library
-      (Ref: CVE-2004-0918, SQUID-2008:1)
+  * Non-maintainer upload by the security team
+  * Fix denial of service via invalid DNS header-only packets
+    Fixes: CVE-2010-0308
+  * Fix denial of service via crafted auth header with certain comma
+    delimiters
+    Fixes: CVE-2009-2855
 
- -- Luigi Gangitano <luigi@debian.org>  Sun, 06 Jul 2008 19:40:19 +0200
+ -- Steffen Joeris <white@debian.org>  Wed,  3 Feb 2010 13:49:19 +0000
 
-squid3 (3.0.PRE5-5etch1) stable-security; urgency=high
+squid3 (3.0.PRE5-5+etch1) oldstable-security; urgency=high
 
-  * debian/patches/09-dos-cache-update
-    - Added upstream patch fixing DoS in cache update reply processing
-      (Ref: CVE-2007-6239, SQUID-2007:2)
+  * Non-maintainer upload by the security team
+  * Fix DoS via an HTTP request with an invalid version number
+    Fixes: CVE-2009-0478
 
- -- Luigi Gangitano <luigi@debian.org>  Fri, 07 Dec 2007 21:10:47 +0100
+ -- Steffen Joeris <white@debian.org>  Mon,  2 Mar 2009 01:13:45 +0000
 
 squid3 (3.0.PRE5-5) unstable; urgency=low
 

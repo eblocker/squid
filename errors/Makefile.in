@@ -267,6 +267,7 @@ ERROR_TEMPLATES = \
 	templates/ERR_WRITE_ERROR
 
 TRANSLATE_LANGUAGES = \
+	af.lang \
 	ar.lang \
 	az.lang \
 	bg.lang \
@@ -312,6 +313,7 @@ EXTRA_DIST = \
 	$(ERROR_TEMPLATES) \
 	aliases alias-link.sh alias-upgrade errorpage.css TRANSLATORS COPYRIGHT
 
+NOTIDY = `$(PO2HTML) --help | grep -o "\-\-notidy"`
 all: all-am
 
 .SUFFIXES:
@@ -508,7 +510,7 @@ $(TRANSLATE_LANGUAGES): $(ERROR_TEMPLATES)
 	    echo -n "Translate '$$lang' ..."; \
 	    for f in $(ERROR_TEMPLATES); do \
 			page=`basename $$f`; \
-			$(PO2HTML) --progress=none -i $(top_srcdir)/errors/$$lang.po -t $(top_srcdir)/errors/$$f >$(top_builddir)/errors/$$lang/$$page || exit 1; \
+			$(PO2HTML) $(NOTIDY) --progress=none -i $(top_srcdir)/errors/$$lang.po -t $(top_srcdir)/errors/$$f >$(top_builddir)/errors/$$lang/$$page || exit 1; \
 		done; \
 		echo "done."; \
 	fi; \

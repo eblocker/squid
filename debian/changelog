@@ -2,6 +2,9 @@ squid3 (3.1.0.18-1) UNRELEASED; urgency=low
 
   * New upstream release
 
+  * debian/rules
+    - Fix wrong resolvconf directory (Closes: #565652)
+
  -- Luigi Gangitano <luigi@debian.org>  Mon, 15 Mar 2010 19:35:50 +0100
 
 squid3 (3.1.0.17-1) UNRELEASED; urgency=low

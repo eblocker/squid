@@ -539,8 +539,9 @@ HttpStateData::cacheableReply()
 
         return 0;
 
-    default:			/* Unknown status code */
-        debugs (11, DBG_IMPORTANT, "WARNING: Unexpected http status code " << rep->sline.status);
+    default:
+        /* RFC 2616 section 6.1.1: an unrecognized response MUST NOT be cached. */
+        debugs (11, 3, HERE << "Unknown HTTP status code " << rep->sline.status << ". Not cacheable.");
 
         return 0;
 
@@ -711,6 +712,26 @@ HttpStateData::processReplyHeader()
 
         header_bytes_read = headersEnd(readBuf->content(), readBuf->contentSize());
         readBuf->consume(header_bytes_read);
+    }
+
+    /* Skip 1xx messages for now. Advertised in Via as an internal 1.0 hop */
+    if (newrep->sline.protocol == PROTO_HTTP && newrep->sline.status >= 100 && newrep->sline.status < 200) {
+
+#if WHEN_HTTP11
+        /* When HTTP/1.1 check if the client is expecting a 1xx reply and maybe pass it on */
+        if (orig_request->header.has(HDR_EXPECT)) {
+            // TODO: pass to the client anyway?
+        }
+#endif
+        delete newrep;
+        debugs(11, 2, HERE << "1xx headers consume " << header_bytes_read << " bytes header.");
+        header_bytes_read = 0;
+        if (reply_bytes_read > 0)
+            debugs(11, 2, HERE << "1xx headers consume " << reply_bytes_read << " bytes reply.");
+        reply_bytes_read = 0;
+        ctx_exit(ctx);
+        processReplyHeader();
+        return;
     }
 
     flags.chunked = 0;
@@ -1908,7 +1929,7 @@ HttpStateData::buildRequestPrefix(HttpRequest * aRequest,
                                   http_state_flags stateFlags)
 {
     const int offset = mb->size;
-    HttpVersion httpver(1,0);
+    HttpVersion httpver(1,1);
     mb->Printf("%s %s HTTP/%d.%d\r\n",
                RequestMethodStr(aRequest->method),
                aRequest->urlpath.size() ? aRequest->urlpath.termedBuf() : "/",
@@ -2129,15 +2150,6 @@ HttpStateData::abortTransaction(const char *reason)
     fwd->handleUnregisteredServerEnd();
     deleteThis("HttpStateData::abortTransaction");
 }
-
-#if DEAD_CODE
-void
-httpBuildVersion(HttpVersion * version, unsigned int major, unsigned int minor)
-{
-    version->major = major;
-    version->minor = minor;
-}
-#endif
 
 HttpRequest *
 HttpStateData::originalRequest()

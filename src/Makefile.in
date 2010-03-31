@@ -57,8 +57,8 @@ check_PROGRAMS = tests/testAuth$(EXEEXT) \
 EXTRA_PROGRAMS = DiskIO/DiskDaemon/diskd$(EXEEXT) unlinkd$(EXEEXT) \
 	dnsserver$(EXEEXT) recv-announce$(EXEEXT) \
 	tests/testUfs$(EXEEXT) tests/testCoss$(EXEEXT) \
-	tests/testNull$(EXEEXT)
-noinst_PROGRAMS = cf_gen$(EXEEXT) ufsdump$(EXEEXT)
+	tests/testNull$(EXEEXT) ufsdump$(EXEEXT)
+noinst_PROGRAMS = cf_gen$(EXEEXT)
 sbin_PROGRAMS = squid$(EXEEXT)
 bin_PROGRAMS =
 libexec_PROGRAMS = $(am__EXEEXT_1) $(DISK_PROGRAMS) $(am__EXEEXT_2)

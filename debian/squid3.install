@@ -2,7 +2,7 @@ etc/squid3/squid.conf
 etc/squid3/msntauth.conf
 etc/squid3/errorpage.css
 etc/logrotate.d
-etc/resolvconf.d
+etc/resolvconf
 etc/init.d/squid3
 usr/lib/squid3
 usr/sbin/squid3

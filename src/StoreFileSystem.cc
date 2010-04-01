@@ -1,6 +1,6 @@
 
 /*
- * $Id: StoreFileSystem.cc,v 1.2 2006/05/29 00:15:01 robertc Exp $
+ * $Id$
  *
  * DEBUG: section 92    Storage File System
  * AUTHOR: Robert Collins
@@ -21,12 +21,12 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *  
+ *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *  
+ *
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
@@ -40,10 +40,10 @@
 Vector<StoreFileSystem*> *StoreFileSystem::_FileSystems = NULL;
 
 void
-StoreFileSystem::RegisterAllFsWithCacheManager(CacheManager & manager)
+StoreFileSystem::RegisterAllFsWithCacheManager(void)
 {
     for (iterator i = GetFileSystems().begin(); i != GetFileSystems().end(); ++i)
-        (*i)->registerWithCacheManager(manager);
+        (*i)->registerWithCacheManager();
 }
 
 void
@@ -98,5 +98,5 @@ StoreFileSystem::FreeAllFs()
 
 /* no filesystem is required to export statistics */
 void
-StoreFileSystem::registerWithCacheManager(CacheManager & manager)
+StoreFileSystem::registerWithCacheManager(void)
 {}

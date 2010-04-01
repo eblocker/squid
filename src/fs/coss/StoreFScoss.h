@@ -1,6 +1,5 @@
-#error COSS Support is not stable in 3.0. Please do not use.
 /*
- * $Id: StoreFScoss.h,v 1.3 2006/05/29 00:15:09 robertc Exp $
+ * $Id$
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
  * ----------------------------------------------------------
@@ -18,24 +17,29 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *  
+ *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *  
+ *
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
  *
  * Copyright (c) 2003, Robert Collins <robertc@squid-cache.org>
  */
-
 #ifndef SQUID_STOREFSCOSS_H
 #define SQUID_STOREFSCOSS_H
 
-#include "StoreFileSystem.h"
+class StoreEntry;
 
+/**
+ \defgroup COSS COSS Storage Filesystem
+ \ingroup FileSystems
+ */
+
+/// \ingroup COSS
 class CossStats
 {
 
@@ -43,21 +47,17 @@ public:
     void stat(StoreEntry * sentry);
     int stripes;
 
-    struct
-    {
+    struct {
         int alloc;
         int realloc;
         int collisions;
-    }
-
-    alloc;
+    } alloc;
     int disk_overflows;
     int stripe_overflows;
     int open_mem_hits;
     int open_mem_misses;
 
-    struct
-    {
+    struct {
         int ops;
         int success;
         int fail;
@@ -66,6 +66,12 @@ public:
     open, create, close, unlink, read, write, stripe_write;
 };
 
+
+class CacheManager;
+
+#include "StoreFileSystem.h"
+
+/// \ingroup COSS, FileSystems
 class StoreFScoss : public StoreFileSystem
 {
 
@@ -78,7 +84,7 @@ public:
     virtual char const *type() const;
     virtual SwapDir *createSwapDir();
     virtual void done();
-    virtual void registerWithCacheManager(CacheManager & manager);
+    virtual void registerWithCacheManager(void);
     virtual void setup();
     /* Not implemented */
     StoreFScoss (StoreFScoss const &);

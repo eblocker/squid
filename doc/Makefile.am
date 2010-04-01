@@ -1,7 +1,7 @@
 #
 #  Makefile for the Squid Object Cache server
 #
-#  $Id: Makefile.am,v 1.6 2006/06/02 16:31:45 serassio Exp $
+#  $Id$
 #
 #  Uncomment and customize the following to suit your needs:
 #
@@ -9,13 +9,13 @@
 DEFAULT_CONFIG_FILE = $(sysconfdir)/squid.conf
 DEFAULT_CACHEMGR_CONFIG = $(sysconfdir)/cachemgr.conf
 DEFAULT_MIME_TABLE      = $(sysconfdir)/mime.conf
-DEFAULT_ERROR_DIR       = $(datadir)/errors/@ERR_DEFAULT_LANGUAGE@
+DEFAULT_ERROR_DIR       = $(datadir)/errors
 
 SUBSTITUTE=sed "\
-	s%@DEFAULT_CONFIG_FILE@%$(DEFAULT_CONFIG_FILE)%g;\
-	s%@DEFAULT_CACHEMGR_CONFIG@%$(DEFAULT_CACHEMGR_CONFIG)%g;\
-	s%@DEFAULT_ERROR_DIR@%$(DEFAULT_ERROR_DIR)%g;\
-	s%@DEFAULT_MIME_TABLE@%$(DEFAULT_MIME_TABLE)%g;\
+	s%$(DEFAULT_CONFIG_FILE)%$(DEFAULT_CONFIG_FILE)%g;\
+	s%$(DEFAULT_CACHEMGR_CONFIG)%$(DEFAULT_CACHEMGR_CONFIG)%g;\
+	s%$(DEFAULT_ERROR_DIR)%$(DEFAULT_ERROR_DIR)%g;\
+	s%$(DEFAULT_MIME_TABLE)%$(DEFAULT_MIME_TABLE)%g;\
 	s%@""PACKAGE_STRING""@%$(PACKAGE_STRING)%g;\
 	"
 

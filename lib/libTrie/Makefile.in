@@ -15,7 +15,7 @@
 @SET_MAKE@
 
 #
-# $Id: Makefile.am,v 1.1 2003/03/10 04:56:24 robertc Exp $
+# $Id$
 #
 VPATH = @srcdir@
 pkgdatadir = $(datadir)/@PACKAGE@
@@ -82,9 +82,9 @@ AWK = @AWK@
 CC = @CC@
 CCDEPMODE = @CCDEPMODE@
 CFLAGS = @CFLAGS@
-CPP = @CPP@
 CPPFLAGS = @CPPFLAGS@
 CXX = @CXX@
+CXXCPP = @CXXCPP@
 CXXDEPMODE = @CXXDEPMODE@
 CXXFLAGS = @CXXFLAGS@
 CYGPATH_W = @CYGPATH_W@

@@ -1,8 +1,10 @@
 /*
- * $Id: initgroups.h,v 1.2 2004/11/06 22:09:19 hno Exp $
+ * $Id$
  */
 #ifndef SQUID_INITGROUPS_H
 #define SQUID_INITGROUPS_H
+
+#include "config.h"
 
 /* if you have configure you can use this */
 #if defined(HAVE_CONFIG_H)
@@ -14,4 +16,5 @@
 #endif
 
 SQUIDCEXTERN int initgroups(const char *user, gid_t group);
+
 #endif /* SQUID_INITGROPS_H */

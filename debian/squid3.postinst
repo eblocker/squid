@@ -35,7 +35,7 @@ case "$1" in
 		#
 		log_dir=/var/log/squid3
 		cache_dir=`grepconf2 cache_dir /var/spool/squid3`
-        usr=`grepconf cache_effective_user proxy`
+		usr=`grepconf cache_effective_user proxy`
 		grp=`grepconf cache_effective_group proxy`
 		
 		if [ "$(stat -c %U $cache_dir)" != "$usr" ] ||
@@ -55,7 +55,7 @@ case "$1" in
 		#
 		if [ -d "$cache_dir" -a ! -d "$cache_dir/00" ]
 		then
-			echo "Creating Squid HTTP proxy 3.0 spool directory structure"
+			echo "Creating Squid HTTP proxy 3.x spool directory structure"
 			squid3 -z
 		fi
 		;;

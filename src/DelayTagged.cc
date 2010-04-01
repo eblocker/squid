@@ -1,6 +1,6 @@
 
 /*
- * $Id: DelayTagged.cc,v 1.7 2007/05/29 13:31:36 amosjeffries Exp $
+ * $Id$
  *
  * DEBUG: section 77    Delay Pools
  * AUTHOR: Robert Collins <robertc@squid-cache.org>
@@ -21,12 +21,12 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *  
+ *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *  
+ *
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
@@ -40,7 +40,6 @@
 #if DELAY_POOLS
 #include "squid.h"
 #include "DelayTagged.h"
-#include "authenticate.h"
 #include "NullDelayId.h"
 #include "Store.h"
 
@@ -77,7 +76,7 @@ int
 DelayTaggedCmp(DelayTaggedBucket::Pointer const &left, DelayTaggedBucket::Pointer const &right)
 {
     /* for rate limiting, case insensitive */
-    return left->tag.caseCmp(right->tag.buf());
+    return left->tag.caseCmp(right->tag);
 }
 
 void
@@ -115,9 +114,8 @@ DelayTagged::dump(StoreEntry *entry) const
     spec.dump(entry);
 }
 
-struct DelayTaggedUpdater
-{
-    DelayTaggedUpdater (DelaySpec &_spec, int _incr):spec(_spec),incr(_incr){};
+struct DelayTaggedUpdater {
+    DelayTaggedUpdater (DelaySpec &_spec, int _incr):spec(_spec),incr(_incr) {};
 
     DelaySpec spec;
     int incr;
@@ -196,7 +194,7 @@ DelayTaggedBucket::~DelayTaggedBucket()
 void
 DelayTaggedBucket::stats (StoreEntry *entry) const
 {
-    storeAppendPrintf(entry, " %s:", tag.buf());
+    storeAppendPrintf(entry, " :" SQUIDSTRINGPH , SQUIDSTRINGPRINT(tag));
     theBucket.stats (entry);
 }
 

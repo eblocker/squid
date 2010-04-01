@@ -1,6 +1,6 @@
 
 /*
- * $Id: StoreSearch.h,v 1.1 2005/01/03 16:08:25 robertc Exp $
+ * $Id$
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
  * ----------------------------------------------------------
@@ -18,12 +18,12 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *  
+ *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *  
+ *
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
@@ -47,10 +47,10 @@ public:
     virtual ~StoreSearch() {}
 
     /* not ready yet
-    void asList(void (*) (List<StoreEntryPointer), void *cbdata);
+    void asList(void (*) (CbDataList<StoreEntryPointer), void *cbdata);
     */
     /* callback the client when a new StoreEntry is available
-     * or an error occurs 
+     * or an error occurs
      */
     virtual void next(void (callback)(void *cbdata), void *cbdata) = 0;
     /* return true if a new StoreEntry is immediately available

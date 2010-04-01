@@ -2,15 +2,19 @@
 ##
 ## Makefile for libsnmp.
 ## 
-AM_CFLAGS = @SQUID_CFLAGS@
-AM_CXXFLAGS = @SQUID_CXXFLAGS@
+AM_CFLAGS = $(SQUID_CFLAGS)
+AM_CXXFLAGS = $(SQUID_CXXFLAGS)
 noinst_LIBRARIES = libsnmp.a
 libsnmp_a_SOURCES  = asn1.c parse.c snmp_vars.c \
 	coexistance.c snmp_api.c snmp_error.c  \
 	mib.c snmp_api_error.c   \
 	snmp_msg.c \
 	snmp_pdu.c  snmplib_debug.c
-INCLUDES	= -I$(top_builddir)/include -I$(top_srcdir)/include
+
+INCLUDES = \
+	-I$(top_srcdir) \
+	-I$(top_builddir)/include \
+	-I$(top_srcdir)/include
 
 VERSION		= 3.4
 DEFS		= -DSQUID_SNMP=1

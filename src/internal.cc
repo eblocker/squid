@@ -1,6 +1,6 @@
 
 /*
- * $Id: internal.cc,v 1.47 2007/05/29 13:31:40 amosjeffries Exp $
+ * $Id$
  *
  * DEBUG: section 76    Internal Squid Object handling
  * AUTHOR: Duane, Alex, Henrik
@@ -21,12 +21,12 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *  
+ *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *  
+ *
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
@@ -41,17 +41,18 @@
 #include "MemBuf.h"
 #include "SquidTime.h"
 #include "wordlist.h"
+#include "icmp/net_db.h"
 
 /* called when we "miss" on an internal object;
- * generate known dynamic objects, 
+ * generate known dynamic objects,
  * return HTTP_NOT_FOUND for others
  */
 void
 internalStart(HttpRequest * request, StoreEntry * entry)
 {
     ErrorState *err;
-    const char *upath = request->urlpath.buf();
-    debugs(76, 3, "internalStart: " << inet_ntoa(request->client_addr) << " requesting '" << upath << "'");
+    const char *upath = request->urlpath.termedBuf();
+    debugs(76, 3, "internalStart: " << request->client_addr << " requesting '" << upath << "'");
 
     if (0 == strcmp(upath, "/squid-internal-dynamic/netdb")) {
         netdbBinaryExchange(entry);
@@ -60,18 +61,11 @@ internalStart(HttpRequest * request, StoreEntry * entry)
         const char *msgbuf = "This cache is currently building its digest.\n";
 #else
 
-        const char *msgbuf = "This cache does not suport Cache Digests.\n";
+        const char *msgbuf = "This cache does not support Cache Digests.\n";
 #endif
 
-        HttpVersion version(1, 0);
         HttpReply *reply = new HttpReply;
-        reply->setHeaders(version,
-                          HTTP_NOT_FOUND,
-                          "Not Found",
-                          "text/plain",
-                          strlen(msgbuf),
-                          squid_curtime,
-                          -2);
+        reply->setHeaders(HTTP_NOT_FOUND, "Not Found", "text/plain", strlen(msgbuf), squid_curtime, -2);
         entry->replaceHttpReply(reply);
         entry->append(msgbuf, strlen(msgbuf));
         entry->complete();
@@ -106,6 +100,15 @@ internalRemoteUri(const char *host, u_short port, const char *dir, const char *n
     /* convert host name to lower case */
     xstrncpy(lc_host, host, SQUIDHOSTNAMELEN);
     Tolower(lc_host);
+
+#if USE_IPV6
+    /* check for an IP address and format appropriately if found */
+    IpAddress test = lc_host;
+    if ( !test.IsAnyAddr() ) {
+        test.ToHostname(lc_host,SQUIDHOSTNAMELEN);
+    }
+#endif
+
     /*
      * append the domain in order to mirror the requests with appended
      * domains

@@ -1,6 +1,5 @@
-
 /*
- * $Id: snmp_agent.cc,v 1.96.4.1 2008/02/25 02:45:50 amosjeffries Exp $
+ * $Id$
  *
  * DEBUG: section 49    SNMP Interface
  * AUTHOR: Kostas Anagnostakis
@@ -21,36 +20,41 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *  
+ *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *  
+ *
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
  *
  */
 
-
 #include "squid.h"
 #include "cache_snmp.h"
 #include "Store.h"
 #include "mem_node.h"
+#include "SquidMath.h"
+#include "SquidTime.h"
 
 /************************************************************************
- 
+
  SQUID MIB Implementation
- 
+
  ************************************************************************/
+
+/*
+ * cacheSystem group
+ */
 
 variable_list *
 snmp_sysFn(variable_list * Var, snint * ErrP)
 {
     variable_list *Answer = NULL;
-    debugs(49, 5, "snmp_sysFn: Processing request:");
-    snmpDebugOid(5, Var->name, Var->name_length);
+    MemBuf tmp;
+    debugs(49, 5, "snmp_sysFn: Processing request:" << snmpDebugOid(Var->name, Var->name_length, tmp));
     *ErrP = SNMP_ERR_NOERROR;
 
     switch (Var->name[LEN_SQ_SYS]) {
@@ -81,6 +85,9 @@ snmp_sysFn(variable_list * Var, snint * ErrP)
     return Answer;
 }
 
+/*
+ * cacheConfig group
+ */
 variable_list *
 snmp_confFn(variable_list * Var, snint * ErrP)
 {
@@ -101,8 +108,8 @@ snmp_confFn(variable_list * Var, snint * ErrP)
     case CONF_VERSION:
         Answer = snmp_var_new(Var->name, Var->name_length);
         Answer->type = ASN_OCTET_STR;
-        Answer->val_len = strlen(appname);
-        Answer->val.string = (u_char *) xstrdup(appname);
+        Answer->val_len = strlen(APP_SHORTNAME);
+        Answer->val.string = (u_char *) xstrdup(APP_SHORTNAME);
         break;
 
     case CONF_VERSION_ID:
@@ -150,7 +157,7 @@ snmp_confFn(variable_list * Var, snint * ErrP)
     case CONF_LOG_FAC:
         Answer = snmp_var_new(Var->name, Var->name_length);
 
-        if (!(cp = Config.debugOptions))
+        if (!(cp = Debug::debugOptions))
             cp = "None";
 
         Answer->type = ASN_OCTET_STR;
@@ -183,29 +190,44 @@ snmp_confFn(variable_list * Var, snint * ErrP)
     return Answer;
 }
 
+
+/*
+ * cacheMesh group
+ *   - cachePeerTable
+ */
 variable_list *
 snmp_meshPtblFn(variable_list * Var, snint * ErrP)
 {
     variable_list *Answer = NULL;
 
-    struct IN_ADDR *laddr;
+    IpAddress laddr;
     char *cp = NULL;
     peer *p = NULL;
     int cnt = 0;
     debugs(49, 5, "snmp_meshPtblFn: peer " << Var->name[LEN_SQ_MESH + 3] << " requested!");
     *ErrP = SNMP_ERR_NOERROR;
-    laddr = oid2addr(&Var->name[LEN_SQ_MESH + 3]);
 
-    for (p = Config.peers; p != NULL; p = p->next, cnt++)
-        if (p->in_addr.sin_addr.s_addr == laddr->s_addr)
+    u_int index = Var->name[LEN_SQ_MESH + 3] ;
+    for (p = Config.peers; p != NULL; p = p->next, cnt++) {
+        if (p->index == index) {
+            laddr = p->in_addr ;
             break;
+        }
+    }
 
     if (p == NULL) {
         *ErrP = SNMP_ERR_NOSUCHNAME;
         return NULL;
     }
 
+
     switch (Var->name[LEN_SQ_MESH + 2]) {
+    case MESH_PTBL_INDEX: { // FIXME INET6: Should be visible?
+        Answer = snmp_var_new_integer(Var->name, Var->name_length,
+                                      (snint)p->index, SMI_INTEGER);
+    }
+    break;
+
 
     case MESH_PTBL_NAME:
         cp = p->host;
@@ -213,13 +235,28 @@ snmp_meshPtblFn(variable_list * Var, snint * ErrP)
         Answer->type = ASN_OCTET_STR;
         Answer->val_len = strlen(cp);
         Answer->val.string = (u_char *) xstrdup(cp);
+
         break;
 
-    case MESH_PTBL_IP:
+    case MESH_PTBL_ADDR_TYPE: {
+        int ival;
+        ival = laddr.IsIPv4() ? INETADDRESSTYPE_IPV4 : INETADDRESSTYPE_IPV6 ;
         Answer = snmp_var_new_integer(Var->name, Var->name_length,
-                                      (snint) p->in_addr.sin_addr.s_addr,
-                                      SMI_IPADDRESS);
-        break;
+                                      ival, SMI_INTEGER);
+    }
+    break;
+    case MESH_PTBL_ADDR: {
+        Answer = snmp_var_new(Var->name, Var->name_length);
+        // InetAddress doesn't have its own ASN.1 type,
+        // like IpAddr does (SMI_IPADDRESS)
+        // See: rfc4001.txt
+        Answer->type = ASN_OCTET_STR;
+        char host[MAX_IPSTRLEN];
+        laddr.NtoA(host,MAX_IPSTRLEN);
+        Answer->val_len = strlen(host);
+        Answer->val.string =  (u_char *) xstrdup(host);
+    }
+    break;
 
     case MESH_PTBL_HTTP:
         Answer = snmp_var_new_integer(Var->name, Var->name_length,
@@ -335,7 +372,7 @@ snmp_prfSysFn(variable_list * Var, snint * ErrP)
     case PERF_SYS_CPUUSAGE:
         squid_getrusage(&rusage);
         Answer = snmp_var_new_integer(Var->name, Var->name_length,
-                                      (snint) dpercent(rusage_cputime(&rusage), tvSubDsec(squid_start, current_time)),
+                                      (snint) Math::doublePercent(rusage_cputime(&rusage), tvSubDsec(squid_start, current_time)),
                                       ASN_INTEGER);
         break;
 
@@ -372,16 +409,16 @@ snmp_prfSysFn(variable_list * Var, snint * ErrP)
         break;
 
     case PERF_SYS_CURUSED_FD:
-	Answer = snmp_var_new_integer(Var->name, Var->name_length,
-				      (snint) Number_FD,
-				      SMI_GAUGE32);
-	break;
+        Answer = snmp_var_new_integer(Var->name, Var->name_length,
+                                      (snint) Number_FD,
+                                      SMI_GAUGE32);
+        break;
 
     case PERF_SYS_CURMAX_FD:
-	Answer = snmp_var_new_integer(Var->name, Var->name_length,
-				      (snint) Biggest_FD,
-				      SMI_GAUGE32);
-	break;
+        Answer = snmp_var_new_integer(Var->name, Var->name_length,
+                                      (snint) Biggest_FD,
+                                      SMI_GAUGE32);
+        break;
 
     case PERF_SYS_NUMOBJCNT:
         Answer = snmp_var_new_integer(Var->name, Var->name_length,
@@ -574,10 +611,10 @@ snmp_prfProtoFn(variable_list * Var, snint * ErrP)
             x = statByteHitRatio(minutes);
             break;
 
-	case PERF_MEDIAN_HTTP_NH:
-	    x = statHistDeltaMedian(&l->client_http.nh_svc_time,
-				    &f->client_http.nh_svc_time);
-	    break;
+        case PERF_MEDIAN_HTTP_NH:
+            x = statHistDeltaMedian(&l->client_http.nh_svc_time,
+                                    &f->client_http.nh_svc_time);
+            break;
 
         default:
             *ErrP = SNMP_ERR_NOSUCHNAME;

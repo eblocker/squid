@@ -7,13 +7,13 @@
 # Autotool versions preferred. To override either edit the script
 # to match the versions you want to use, or set the variables on
 # the command line like "env acver=.. amver=... ./bootstrap.sh"
-acversions="${acver:-2.62 2.61 2.59 2.57 2.53 2.52}"
+acversions="${acver:-2.63 2.62 2.61}"
 amversions="${amver:-1.11 1.10 1.9}"
-ltversions="${ltver:-1.5 1.4}"
+ltversions="${ltver:-2.2 1.5 1.4}"
 
 check_version()
 {
-  eval $2 --version 2>/dev/null | grep -i "$1.*$3" >/dev/null
+  eval $2 --version 2>/dev/null | grep -i "$1.* $3" >/dev/null
 }
 
 show_version()
@@ -75,6 +75,35 @@ bootstrap() {
   fi
 }
 
+bootstrap_libtoolize() {
+    ltver=$1
+
+    # TODO: when we have libtool2, tell libtoolize where to put its files
+    # instead of manualy moving files from ltdl to lib/libLtdl
+    if egrep -q '^[[:space:]]*AC_LIBLTDL_' configure.in
+    then
+	ltdl="--ltdl"
+    else
+        ltdl=""
+    fi
+
+    bootstrap libtoolize$ltver $ltdl --force --copy --automake
+
+    # customize generated libltdl, if any
+    if test -d libltdl
+    then
+        src=libltdl
+
+        # do not bundle with the huge standard license text
+        rm -f $src/COPYING.LIB
+        makefile=$src/Makefile.in
+        sed 's/COPYING.LIB/ /g' $makefile > $makefile.new;
+        chmod u+w $makefile
+        mv $makefile.new $makefile
+        chmod u-w $makefile
+    fi
+}
+
 # Adjust paths of required autool packages
 amver=`find_variant automake ${amversions}`
 acver=`find_variant autoconf ${acversions}`
@@ -94,7 +123,8 @@ echo "libtool  ($ltversion) : libtool$ltver"
 
 for dir in \
 	"" \
-	lib/libTrie
+	lib/libTrie \
+	helpers/negotiate_auth/squid_kerb_auth
 do
     if [ -z "$dir" ] || [ -d $dir ]; then
 	if (
@@ -109,7 +139,7 @@ do
 	    # Bootstrap the autotool subsystems
 	    bootstrap aclocal$amver
 	    bootstrap autoheader$acver
-	    bootstrap libtoolize$ltver --force --copy --automake
+	    bootstrap_libtoolize $ltver
 	    bootstrap automake$amver --foreign --add-missing --copy -f
 	    bootstrap autoconf$acver --force
 	fi ); then

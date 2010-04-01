@@ -1,6 +1,6 @@
 
 /*
- * $Id: unlinkd.cc,v 1.64 2007/04/30 16:56:09 wessels Exp $
+ * $Id$
  *
  * DEBUG: section 2     Unlink Daemon
  * AUTHOR: Duane Wessels
@@ -21,12 +21,12 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *  
+ *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *  
+ *
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
@@ -53,7 +53,7 @@ unlinkdUnlink(const char *path)
 {
     char buf[MAXPATHLEN];
     int l;
-    int x;
+    int bytes_written;
     static int queuelen = 0;
 
     if (unlinkd_wfd < 0) {
@@ -70,17 +70,17 @@ unlinkdUnlink(const char *path)
      */
     if (queuelen >= UNLINKD_QUEUE_LIMIT) {
 #if defined(USE_EPOLL) || defined(USE_KQUEUE)
-	/*
-	 * DPW 2007-04-23
-	 * We can't use fd_set when using epoll() or kqueue().  In
-	 * these cases we block for 10 ms.
-	 */
-	xusleep(10000);
+        /*
+         * DPW 2007-04-23
+         * We can't use fd_set when using epoll() or kqueue().  In
+         * these cases we block for 10 ms.
+         */
+        xusleep(10000);
 #else
-	/*
-	 * DPW 2007-04-23
-	 * When we can use select, block for up to 100 ms.
-	 */
+        /*
+         * DPW 2007-04-23
+         * When we can use select, block for up to 100 ms.
+         */
         struct timeval to;
         fd_set R;
         FD_ZERO(&R);
@@ -98,15 +98,15 @@ unlinkdUnlink(const char *path)
     * decrement the queue size by the number of newlines read.
     */
     if (queuelen > 0) {
-        int x;
+        int bytes_read;
         int i;
         char rbuf[512];
-        x = read(unlinkd_rfd, rbuf, 511);
+        bytes_read = read(unlinkd_rfd, rbuf, 511);
 
-        if (x > 0) {
-            rbuf[x] = '\0';
+        if (bytes_read > 0) {
+            rbuf[bytes_read] = '\0';
 
-            for (i = 0; i < x; i++)
+            for (i = 0; i < bytes_read; i++)
                 if ('\n' == rbuf[i])
                     queuelen--;
 
@@ -118,14 +118,14 @@ unlinkdUnlink(const char *path)
     assert(l < MAXPATHLEN);
     xstrncpy(buf, path, MAXPATHLEN);
     buf[l++] = '\n';
-    x = write(unlinkd_wfd, buf, l);
+    bytes_written = write(unlinkd_wfd, buf, l);
 
-    if (x < 0) {
+    if (bytes_written < 0) {
         debugs(2, 1, "unlinkdUnlink: write FD " << unlinkd_wfd << " failed: " << xstrerror());
         safeunlink(path, 0);
         return;
-    } else if (x != l) {
-        debugs(2, 1, "unlinkdUnlink: FD " << unlinkd_wfd << " only wrote " << x << " of " << l << " bytes");
+    } else if (bytes_written != l) {
+        debugs(2, 1, "unlinkdUnlink: FD " << unlinkd_wfd << " only wrote " << bytes_written << " of " << l << " bytes");
         safeunlink(path, 0);
         return;
     }
@@ -145,8 +145,7 @@ unlinkdClose(void)
 #ifdef _SQUID_MSWIN_
 {
 
-    if (unlinkd_wfd > -1)
-    {
+    if (unlinkd_wfd > -1) {
         debugs(2, 1, "Closing unlinkd pipe on FD " << unlinkd_wfd);
         shutdown(unlinkd_wfd, SD_BOTH);
         comm_close(unlinkd_wfd);
@@ -160,8 +159,7 @@ unlinkdClose(void)
     } else
         debugs(2, 0, "unlinkdClose: WARNING: unlinkd_wfd is " << unlinkd_wfd);
 
-    if (hIpc)
-    {
+    if (hIpc) {
         if (WaitForSingleObject(hIpc, 5000) != WAIT_OBJECT_0) {
             getCurrentTime();
             debugs(2, 1, "unlinkdClose: WARNING: (unlinkd," << pid << "d) didn't exit in 5 seconds");
@@ -194,23 +192,27 @@ void
 unlinkdInit(void)
 {
     const char *args[2];
+    IpAddress localhost;
 
     args[0] = "(unlinkd)";
     args[1] = NULL;
+    localhost.SetLocalhost();
+
     pid = ipcCreate(
 #if USE_POLL && defined(_SQUID_OSF_)
               /* pipes and poll() don't get along on DUNIX -DW */
               IPC_STREAM,
 #elif defined(_SQUID_MSWIN_)
-/* select() will fail on a pipe */
-IPC_TCP_SOCKET,
+              /* select() will fail on a pipe */
+              IPC_TCP_SOCKET,
 #else
-/* We currently need to use FIFO.. see below */
-IPC_FIFO,
+              /* We currently need to use FIFO.. see below */
+              IPC_FIFO,
 #endif
               Config.Program.unlinkd,
               args,
               "unlinkd",
+              localhost,
               &unlinkd_rfd,
               &unlinkd_wfd,
               &hIpc);

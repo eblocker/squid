@@ -1,6 +1,6 @@
 
 /*
- * $Id: DelayConfig.cc,v 1.8 2007/04/28 22:26:37 hno Exp $
+ * $Id$
  *
  * DEBUG: section 77    Delay Pools
  * AUTHOR: Robert Collins <robertc@squid-cache.org>
@@ -23,12 +23,12 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *  
+ *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *  
+ *
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
@@ -46,7 +46,8 @@
 #include "DelayPools.h"
 #include "DelayPool.h"
 #include "Store.h"
-#include "ACL.h"
+#include "acl/Acl.h"
+#include "acl/Gadgets.h"
 
 void
 DelayConfig::parsePoolCount()

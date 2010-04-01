@@ -1,6 +1,5 @@
-
 /*
- * $Id: DiskdIOStrategy.cc,v 1.11 2007/08/16 23:32:28 hno Exp $
+ * $Id$
  *
  * DEBUG: section 79    Squid-side DISKD I/O functions.
  * AUTHOR: Duane Wessels
@@ -21,12 +20,12 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *  
+ *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *  
+ *
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
@@ -158,6 +157,7 @@ DiskdIOStrategy::init()
     char skey1[32];
     char skey2[32];
     char skey3[32];
+    IpAddress localhost;
 
     ikey = (getpid() << 10) + (instanceID << 2);
     ikey &= 0x7fffffff;
@@ -184,10 +184,12 @@ DiskdIOStrategy::init()
     args[2] = skey2;
     args[3] = skey3;
     args[4] = NULL;
+    localhost.SetLocalhost();
     pid = ipcCreate(IPC_STREAM,
                     Config.Program.diskd,
                     args,
                     "diskd",
+                    localhost,
                     &rfd,
                     &wfd,
                     &hIpc);
@@ -302,7 +304,7 @@ DiskdIOStrategy::handle(diomsg * M)
          * - say when we have a error opening after
          *   a read was already queued
          */
-         debugs(79, 3, "storeDiskdHandle: Invalid callback_data " << M->callback_data);
+        debugs(79, 3, "storeDiskdHandle: Invalid callback_data " << M->callback_data);
         cbdataReferenceDone (M->callback_data);
         return;
     }
@@ -359,7 +361,7 @@ DiskdIOStrategy::send(int mtype, int id, DiskdFile *theFile, size_t size, off_t 
 }
 
 int
-DiskdIOStrategy::send(int mtype, int id, StoreIOState::Pointer sio, size_t size, off_t offset, ssize_t shm_offset)
+DiskdIOStrategy::send(int mtype, int id, RefCount<StoreIOState> sio, size_t size, off_t offset, ssize_t shm_offset)
 {
     diomsg M;
     M.callback_data = cbdataReference(sio.getRaw());
@@ -437,7 +439,7 @@ DiskdIOStrategy::getOptionTree() const
 }
 
 bool
-DiskdIOStrategy::optionQ1Parse(const char *name, const char *value, int reconfiguring)
+DiskdIOStrategy::optionQ1Parse(const char *name, const char *value, int isaReconfig)
 {
     if (strcmp(name, "Q1") != 0)
         return false;
@@ -446,7 +448,7 @@ DiskdIOStrategy::optionQ1Parse(const char *name, const char *value, int reconfig
 
     magic1 = atoi(value);
 
-    if (!reconfiguring)
+    if (!isaReconfig)
         return true;
 
     if (old_magic1 < magic1) {
@@ -476,7 +478,7 @@ DiskdIOStrategy::optionQ1Dump(StoreEntry * e) const
 }
 
 bool
-DiskdIOStrategy::optionQ2Parse(const char *name, const char *value, int reconfiguring)
+DiskdIOStrategy::optionQ2Parse(const char *name, const char *value, int isaReconfig)
 {
     if (strcmp(name, "Q2") != 0)
         return false;
@@ -485,7 +487,7 @@ DiskdIOStrategy::optionQ2Parse(const char *name, const char *value, int reconfig
 
     magic2 = atoi(value);
 
-    if (!reconfiguring)
+    if (!isaReconfig)
         return true;
 
     if (old_magic2 < magic2) {

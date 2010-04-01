@@ -15,7 +15,7 @@
 @SET_MAKE@
 
 #
-#  $Id: Makefile.am,v 1.30 2007/12/04 13:22:54 hno Exp $
+#  $Id$
 #
 
 VPATH = @srcdir@
@@ -36,11 +36,14 @@ PRE_UNINSTALL = :
 POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
+DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in \
+	$(top_srcdir)/src/Common.am drand48.c getaddrinfo.c \
+	getnameinfo.c inet_ntop.c inet_pton.c initgroups.c strerror.c \
+	strsep.c strtoll.c tempnam.c
 check_PROGRAMS = tests/testAll$(EXEEXT)
+TESTS = tests/testAll$(EXEEXT) testHeaders
+@USE_ESI_TRUE@am__append_1 = libTrie
 subdir = lib
-DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in drand48.c \
-	inet_ntoa.c initgroups.c strerror.c strsep.c strtoll.c \
-	tempnam.c
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/acinclude.m4 \
 	$(top_srcdir)/configure.in
@@ -52,48 +55,47 @@ CONFIG_CLEAN_FILES =
 LIBRARIES = $(noinst_LIBRARIES)
 ARFLAGS = cru
 libmiscutil_a_AR = $(AR) $(ARFLAGS)
-libmiscutil_a_DEPENDENCIES = libTrie/src/Trie.o libTrie/src/TrieNode.o \
-	@LIBOBJS@ $(am__empty)
-am__libmiscutil_a_SOURCES_DIST = MemPool.cc base64.c getfullhostname.c \
-	hash.c heap.c html_quote.c iso3307.c md5.c radix.c rfc1035.c \
-	rfc1123.c rfc1738.c rfc2617.c safe_inet_addr.c Splay.cc \
-	strnstr.cc stub_memaccount.c util.c uudecode.c assert.c \
+libmiscutil_a_DEPENDENCIES = $(LIBOBJS)
+am__libmiscutil_a_SOURCES_DIST = MemPool.cc base64.c charset.c \
+	getfullhostname.c hash.c heap.c html_quote.c iso3307.c md5.c \
+	radix.c rfc1035.c rfc1123.c rfc1738.c rfc2617.c rfc3596.c \
+	Splay.cc strnstr.cc stub_memaccount.c util.c uudecode.c \
 	xusleep.c Profiler.c win32lib.c
 @ENABLE_XPROF_STATS_TRUE@am__objects_1 = Profiler.$(OBJEXT)
 @ENABLE_WIN32SPECIFIC_TRUE@am__objects_2 = win32lib.$(OBJEXT)
 am_libmiscutil_a_OBJECTS = MemPool.$(OBJEXT) base64.$(OBJEXT) \
-	getfullhostname.$(OBJEXT) hash.$(OBJEXT) heap.$(OBJEXT) \
-	html_quote.$(OBJEXT) iso3307.$(OBJEXT) md5.$(OBJEXT) \
-	radix.$(OBJEXT) rfc1035.$(OBJEXT) rfc1123.$(OBJEXT) \
-	rfc1738.$(OBJEXT) rfc2617.$(OBJEXT) safe_inet_addr.$(OBJEXT) \
-	Splay.$(OBJEXT) strnstr.$(OBJEXT) stub_memaccount.$(OBJEXT) \
-	util.$(OBJEXT) uudecode.$(OBJEXT) assert.$(OBJEXT) \
+	charset.$(OBJEXT) getfullhostname.$(OBJEXT) hash.$(OBJEXT) \
+	heap.$(OBJEXT) html_quote.$(OBJEXT) iso3307.$(OBJEXT) \
+	md5.$(OBJEXT) radix.$(OBJEXT) rfc1035.$(OBJEXT) \
+	rfc1123.$(OBJEXT) rfc1738.$(OBJEXT) rfc2617.$(OBJEXT) \
+	rfc3596.$(OBJEXT) Splay.$(OBJEXT) strnstr.$(OBJEXT) \
+	stub_memaccount.$(OBJEXT) util.$(OBJEXT) uudecode.$(OBJEXT) \
 	xusleep.$(OBJEXT) $(am__objects_1) $(am__objects_2)
 libmiscutil_a_OBJECTS = $(am_libmiscutil_a_OBJECTS)
 libntlmauth_a_AR = $(AR) $(ARFLAGS)
-libntlmauth_a_DEPENDENCIES = @LIBOBJS@
+libntlmauth_a_DEPENDENCIES = $(LIBOBJS)
 am_libntlmauth_a_OBJECTS = ntlmauth.$(OBJEXT)
 libntlmauth_a_OBJECTS = $(am_libntlmauth_a_OBJECTS)
-libregex_a_AR = $(AR) $(ARFLAGS)
-libregex_a_LIBADD =
-am_libregex_a_OBJECTS = GNUregex.$(OBJEXT)
-libregex_a_OBJECTS = $(am_libregex_a_OBJECTS)
 libsspwin32_a_AR = $(AR) $(ARFLAGS)
-libsspwin32_a_LIBADD =
-am_libsspwin32_a_OBJECTS = sspwin32.$(OBJEXT)
+libsspwin32_a_DEPENDENCIES = $(LIBOBJS)
+am_libsspwin32_a_OBJECTS = base64.$(OBJEXT) sspwin32.$(OBJEXT)
 libsspwin32_a_OBJECTS = $(am_libsspwin32_a_OBJECTS)
-am__tests_testAll_SOURCES_DIST = tests/testArray.cc tests/testMain.cc \
-	tests/testArray.h Profiler.c win32lib.c util.c assert.c
-am_tests_testAll_OBJECTS = testArray.$(OBJEXT) testMain.$(OBJEXT) \
-	$(am__objects_1) $(am__objects_2) util.$(OBJEXT) \
-	assert.$(OBJEXT)
+am__tests_testAll_SOURCES_DIST = tests/testArray.h tests/testArray.cc \
+	tests/testRFC1035.h tests/testRFC1035.cc tests/testRFC1738.h \
+	tests/testRFC1738.cc tests/testMain.cc Profiler.c win32lib.c \
+	util.c
+am_tests_testAll_OBJECTS = testArray.$(OBJEXT) testRFC1035.$(OBJEXT) \
+	testRFC1738.$(OBJEXT) testMain.$(OBJEXT) $(am__objects_1) \
+	$(am__objects_2) util.$(OBJEXT)
 tests_testAll_OBJECTS = $(am_tests_testAll_OBJECTS)
-tests_testAll_DEPENDENCIES =
+am__DEPENDENCIES_1 =
+tests_testAll_DEPENDENCIES = $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1)
 tests_testAll_LINK = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) \
 	$(LIBTOOLFLAGS) --mode=link $(CXXLD) $(AM_CXXFLAGS) \
 	$(CXXFLAGS) $(tests_testAll_LDFLAGS) $(LDFLAGS) -o $@
 am__dirstamp = $(am__leading_dot)dirstamp
-DEFAULT_INCLUDES = -I.@am__isrc@ -I$(top_builddir)/include
+DEFAULT_INCLUDES = 
 depcomp = $(SHELL) $(top_srcdir)/cfgaux/depcomp
 am__depfiles_maybe = depfiles
 COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
@@ -115,12 +117,11 @@ CXXLINK = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
 	--mode=link $(CXXLD) $(AM_CXXFLAGS) $(CXXFLAGS) $(AM_LDFLAGS) \
 	$(LDFLAGS) -o $@
 SOURCES = $(libmiscutil_a_SOURCES) $(EXTRA_libmiscutil_a_SOURCES) \
-	$(libntlmauth_a_SOURCES) $(libregex_a_SOURCES) \
-	$(libsspwin32_a_SOURCES) $(tests_testAll_SOURCES)
+	$(libntlmauth_a_SOURCES) $(libsspwin32_a_SOURCES) \
+	$(tests_testAll_SOURCES)
 DIST_SOURCES = $(am__libmiscutil_a_SOURCES_DIST) \
 	$(EXTRA_libmiscutil_a_SOURCES) $(libntlmauth_a_SOURCES) \
-	$(libregex_a_SOURCES) $(libsspwin32_a_SOURCES) \
-	$(am__tests_testAll_SOURCES_DIST)
+	$(libsspwin32_a_SOURCES) $(am__tests_testAll_SOURCES_DIST)
 RECURSIVE_TARGETS = all-recursive check-recursive dvi-recursive \
 	html-recursive info-recursive install-data-recursive \
 	install-dvi-recursive install-exec-recursive \
@@ -132,16 +133,16 @@ RECURSIVE_CLEAN_TARGETS = mostlyclean-recursive clean-recursive	\
   distclean-recursive maintainer-clean-recursive
 ETAGS = etags
 CTAGS = ctags
+DIST_SUBDIRS = libTrie
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
 ACLOCAL = @ACLOCAL@
+ADAPTATION_LIBS = @ADAPTATION_LIBS@
 ALLOCA = @ALLOCA@
 AMTAR = @AMTAR@
 AR = @AR@
 AR_R = @AR_R@
-AUTH_LIBS = @AUTH_LIBS@
-AUTH_LINKOBJS = @AUTH_LINKOBJS@
+AUTH_LIBS_TO_BUILD = @AUTH_LIBS_TO_BUILD@
 AUTH_MODULES = @AUTH_MODULES@
-AUTH_OBJS = @AUTH_OBJS@
 AUTOCONF = @AUTOCONF@
 AUTOHEADER = @AUTOHEADER@
 AUTOMAKE = @AUTOMAKE@
@@ -154,6 +155,7 @@ CC = @CC@
 CCDEPMODE = @CCDEPMODE@
 CFLAGS = @CFLAGS@
 CGIEXT = @CGIEXT@
+CHMOD = @CHMOD@
 CPP = @CPP@
 CPPFLAGS = @CPPFLAGS@
 CPPUNITCONFIG = @CPPUNITCONFIG@
@@ -163,39 +165,43 @@ CXXCPP = @CXXCPP@
 CXXDEPMODE = @CXXDEPMODE@
 CXXFLAGS = @CXXFLAGS@
 CYGPATH_W = @CYGPATH_W@
+DEFAULT_LOG_DIR = @DEFAULT_LOG_DIR@
+DEFAULT_PIDFILE = @DEFAULT_PIDFILE@
 DEFS = @DEFS@
 DEPDIR = @DEPDIR@
 DIGEST_AUTH_HELPERS = @DIGEST_AUTH_HELPERS@
 DISK_LIBS = @DISK_LIBS@
 DISK_LINKOBJS = @DISK_LINKOBJS@
+DISK_MODULES = @DISK_MODULES@
+DISK_OS_LIBS = @DISK_OS_LIBS@
 DISK_PROGRAMS = @DISK_PROGRAMS@
 DSYMUTIL = @DSYMUTIL@
+ECAPLIB = @ECAPLIB@
+ECAP_LIBS = @ECAP_LIBS@
 ECHO = @ECHO@
 ECHO_C = @ECHO_C@
 ECHO_N = @ECHO_N@
 ECHO_T = @ECHO_T@
 EGREP = @EGREP@
 EPOLL_LIBS = @EPOLL_LIBS@
-ERR_DEFAULT_LANGUAGE = @ERR_DEFAULT_LANGUAGE@
-ERR_LANGUAGES = @ERR_LANGUAGES@
 EXEEXT = @EXEEXT@
+EXPATLIB = @EXPATLIB@
 EXTERNAL_ACL_HELPERS = @EXTERNAL_ACL_HELPERS@
 F77 = @F77@
 FALSE = @FALSE@
 FFLAGS = @FFLAGS@
 GREP = @GREP@
 ICAP_LIBS = @ICAP_LIBS@
+INCLTDL = @INCLTDL@
 INSTALL = @INSTALL@
 INSTALL_DATA = @INSTALL_DATA@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
 INSTALL_SCRIPT = @INSTALL_SCRIPT@
 INSTALL_STRIP_PROGRAM = @INSTALL_STRIP_PROGRAM@
-KRB5INCS = @KRB5INCS@
-KRB5LIBS = @KRB5LIBS@
 LDFLAGS = @LDFLAGS@
 LIBADD_DL = @LIBADD_DL@
+LIBLTDL = @LIBLTDL@
 LIBOBJS = @LIBOBJS@
-LIBREGEX = @LIBREGEX@
 LIBS = @LIBS@
 LIBSASL = @LIBSASL@
 LIBTOOL = @LIBTOOL@
@@ -224,6 +230,7 @@ PACKAGE_TARNAME = @PACKAGE_TARNAME@
 PACKAGE_VERSION = @PACKAGE_VERSION@
 PATH_SEPARATOR = @PATH_SEPARATOR@
 PERL = @PERL@
+PO2HTML = @PO2HTML@
 RANLIB = @RANLIB@
 REGEXLIB = @REGEXLIB@
 REPL_LIBS = @REPL_LIBS@
@@ -231,6 +238,7 @@ REPL_OBJS = @REPL_OBJS@
 REPL_POLICIES = @REPL_POLICIES@
 RM = @RM@
 SED = @SED@
+SET_IPV6_SETTINGS = @SET_IPV6_SETTINGS@
 SET_MAKE = @SET_MAKE@
 SH = @SH@
 SHELL = @SHELL@
@@ -241,14 +249,14 @@ SQUID_CPPUNIT_LA = @SQUID_CPPUNIT_LA@
 SQUID_CPPUNIT_LIBS = @SQUID_CPPUNIT_LIBS@
 SQUID_CXXFLAGS = @SQUID_CXXFLAGS@
 SSLLIB = @SSLLIB@
-STORE_LIBS = @STORE_LIBS@
-STORE_LINKOBJS = @STORE_LINKOBJS@
-STORE_OBJS = @STORE_OBJS@
+STORE_LIBS_TO_ADD = @STORE_LIBS_TO_ADD@
+STORE_LIBS_TO_BUILD = @STORE_LIBS_TO_BUILD@
 STORE_TESTS = @STORE_TESTS@
 STRIP = @STRIP@
 TRUE = @TRUE@
 VERSION = @VERSION@
 WIN32_PSAPI = @WIN32_PSAPI@
+XMLLIB = @XMLLIB@
 XTRA_LIBS = @XTRA_LIBS@
 XTRA_OBJS = @XTRA_OBJS@
 abs_builddir = @abs_builddir@
@@ -258,7 +266,6 @@ abs_top_srcdir = @abs_top_srcdir@
 ac_ct_CC = @ac_ct_CC@
 ac_ct_CXX = @ac_ct_CXX@
 ac_ct_F77 = @ac_ct_F77@
-ac_krb5_config = @ac_krb5_config@
 am__include = @am__include@
 am__leading_dot = @am__leading_dot@
 am__quote = @am__quote@
@@ -306,10 +313,17 @@ target_alias = @target_alias@
 top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
-DIST_SUBDIRS = libTrie
-SUBDIRS = libTrie
-AM_CFLAGS = @SQUID_CFLAGS@
-AM_CXXFLAGS = @SQUID_CXXFLAGS@
+AM_CFLAGS = $(SQUID_CFLAGS)
+AM_CXXFLAGS = $(SQUID_CXXFLAGS)
+CLEANFILES = testHeaders
+INCLUDES = \
+	-I$(top_srcdir) \
+	-I$(top_srcdir)/include \
+	-I$(top_srcdir)/src \
+	-I$(top_builddir)/include \
+	$(SQUID_CPPUNIT_INC)
+
+SUBDIRS = $(am__append_1)
 @ENABLE_XPROF_STATS_FALSE@XPROF_STATS_SOURCE = 
 @ENABLE_XPROF_STATS_TRUE@XPROF_STATS_SOURCE = Profiler.c
 @ENABLE_WIN32SPECIFIC_FALSE@LIBSSPWIN32 = 
@@ -317,14 +331,13 @@ AM_CXXFLAGS = @SQUID_CXXFLAGS@
 @ENABLE_WIN32SPECIFIC_FALSE@WIN32SRC = 
 @ENABLE_WIN32SPECIFIC_TRUE@WIN32SRC = win32lib.c
 EXTRA_LIBRARIES = \
-	libregex.a \
 	libsspwin32.a
 
 noinst_LIBRARIES = \
 	libmiscutil.a \
 	libntlmauth.a \
-	$(LIBSSPWIN32) \
-	@LIBREGEX@
+	$(LIBSSPWIN32)
+
 
 #
 # dirent.c, encrypt.c and getopt.c are needed for native Windows support.
@@ -340,6 +353,7 @@ EXTRA_libmiscutil_a_SOURCES = \
 libmiscutil_a_SOURCES = \
 	MemPool.cc \
 	base64.c \
+	charset.c \
 	getfullhostname.c \
 	hash.c \
 	heap.c \
@@ -351,50 +365,52 @@ libmiscutil_a_SOURCES = \
 	rfc1123.c \
 	rfc1738.c \
 	rfc2617.c \
-	safe_inet_addr.c \
+	rfc3596.c \
 	$(SNPRINTFSOURCE) \
 	Splay.cc \
 	strnstr.cc \
 	stub_memaccount.c \
 	util.c \
 	uudecode.c \
-	assert.c \
 	xusleep.c \
 	$(XPROF_STATS_SOURCE) \
 	$(WIN32SRC)
 
-libmiscutil_a_LIBADD = \
-	libTrie/src/Trie.o \
-	libTrie/src/TrieNode.o \
-	@LIBOBJS@
+libmiscutil_a_LIBADD = $(LIBOBJS)
 
 # $(top_srcdir)/include/version.h should be a dependency
-libregex_a_SOURCES = \
-	GNUregex.c
-
 libntlmauth_a_SOURCES = \
 	ntlmauth.c
 
 libntlmauth_a_LIBADD = \
-	@LIBOBJS@
+	$(LIBOBJS)
 
 libsspwin32_a_SOURCES = \
+	base64.c \
 	sspwin32.c
 
-INCLUDES = -I$(top_builddir)/include -I$(top_srcdir)/include @SQUID_CPPUNIT_INC@
-TESTS = $(check_PROGRAMS)
-tests_testAll_SOURCES = tests/testArray.cc tests/testMain.cc  tests/testArray.h \
+libsspwin32_a_LIBADD = \
+	$(LIBOBJS)
+
+tests_testAll_SOURCES = \
+	tests/testArray.h \
+	tests/testArray.cc \
+	tests/testRFC1035.h \
+	tests/testRFC1035.cc \
+	tests/testRFC1738.h \
+	tests/testRFC1738.cc \
+	tests/testMain.cc \
 	$(XPROF_STATS_SOURCE) \
 	$(WIN32SRC) \
-	util.c assert.c
+	util.c
 
-tests_testAll_LDADD = @SQUID_CPPUNIT_LA@ @SQUID_CPPUNIT_LIBS@
+tests_testAll_LDADD = $(SQUID_CPPUNIT_LA) $(SQUID_CPPUNIT_LIBS)
 tests_testAll_LDFLAGS = $(LIBADD_DL)
 all: all-recursive
 
 .SUFFIXES:
 .SUFFIXES: .c .cc .lo .o .obj
-$(srcdir)/Makefile.in: @MAINTAINER_MODE_TRUE@ $(srcdir)/Makefile.am  $(am__configure_deps)
+$(srcdir)/Makefile.in: @MAINTAINER_MODE_TRUE@ $(srcdir)/Makefile.am $(top_srcdir)/src/Common.am $(am__configure_deps)
 	@for dep in $?; do \
 	  case '$(am__configure_deps)' in \
 	    *$$dep*) \
@@ -434,10 +450,6 @@ libntlmauth.a: $(libntlmauth_a_OBJECTS) $(libntlmauth_a_DEPENDENCIES)
 	-rm -f libntlmauth.a
 	$(libntlmauth_a_AR) libntlmauth.a $(libntlmauth_a_OBJECTS) $(libntlmauth_a_LIBADD)
 	$(RANLIB) libntlmauth.a
-libregex.a: $(libregex_a_OBJECTS) $(libregex_a_DEPENDENCIES) 
-	-rm -f libregex.a
-	$(libregex_a_AR) libregex.a $(libregex_a_OBJECTS) $(libregex_a_LIBADD)
-	$(RANLIB) libregex.a
 libsspwin32.a: $(libsspwin32_a_OBJECTS) $(libsspwin32_a_DEPENDENCIES) 
 	-rm -f libsspwin32.a
 	$(libsspwin32_a_AR) libsspwin32.a $(libsspwin32_a_OBJECTS) $(libsspwin32_a_LIBADD)
@@ -463,18 +475,20 @@ distclean-compile:
 	-rm -f *.tab.c
 
 @AMDEP_TRUE@@am__include@ @am__quote@$(DEPDIR)/drand48.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@$(DEPDIR)/inet_ntoa.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@$(DEPDIR)/getaddrinfo.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@$(DEPDIR)/getnameinfo.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@$(DEPDIR)/inet_ntop.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@$(DEPDIR)/inet_pton.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@$(DEPDIR)/initgroups.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@$(DEPDIR)/strerror.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@$(DEPDIR)/strsep.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@$(DEPDIR)/strtoll.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@$(DEPDIR)/tempnam.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/GNUregex.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/MemPool.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Profiler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Splay.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/assert.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/base64.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/charset.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/dirent.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/encrypt.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/getfullhostname.Po@am__quote@
@@ -490,12 +504,14 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/rfc1123.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/rfc1738.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/rfc2617.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/safe_inet_addr.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/rfc3596.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sspwin32.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/strnstr.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/stub_memaccount.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/testArray.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/testMain.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/testRFC1035.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/testRFC1738.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/util.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/uudecode.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/win32lib.Po@am__quote@
@@ -556,6 +572,34 @@ testArray.obj: tests/testArray.cc
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='tests/testArray.cc' object='testArray.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o testArray.obj `if test -f 'tests/testArray.cc'; then $(CYGPATH_W) 'tests/testArray.cc'; else $(CYGPATH_W) '$(srcdir)/tests/testArray.cc'; fi`
+
+testRFC1035.o: tests/testRFC1035.cc
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT testRFC1035.o -MD -MP -MF $(DEPDIR)/testRFC1035.Tpo -c -o testRFC1035.o `test -f 'tests/testRFC1035.cc' || echo '$(srcdir)/'`tests/testRFC1035.cc
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/testRFC1035.Tpo $(DEPDIR)/testRFC1035.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='tests/testRFC1035.cc' object='testRFC1035.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o testRFC1035.o `test -f 'tests/testRFC1035.cc' || echo '$(srcdir)/'`tests/testRFC1035.cc
+
+testRFC1035.obj: tests/testRFC1035.cc
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT testRFC1035.obj -MD -MP -MF $(DEPDIR)/testRFC1035.Tpo -c -o testRFC1035.obj `if test -f 'tests/testRFC1035.cc'; then $(CYGPATH_W) 'tests/testRFC1035.cc'; else $(CYGPATH_W) '$(srcdir)/tests/testRFC1035.cc'; fi`
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/testRFC1035.Tpo $(DEPDIR)/testRFC1035.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='tests/testRFC1035.cc' object='testRFC1035.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o testRFC1035.obj `if test -f 'tests/testRFC1035.cc'; then $(CYGPATH_W) 'tests/testRFC1035.cc'; else $(CYGPATH_W) '$(srcdir)/tests/testRFC1035.cc'; fi`
+
+testRFC1738.o: tests/testRFC1738.cc
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT testRFC1738.o -MD -MP -MF $(DEPDIR)/testRFC1738.Tpo -c -o testRFC1738.o `test -f 'tests/testRFC1738.cc' || echo '$(srcdir)/'`tests/testRFC1738.cc
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/testRFC1738.Tpo $(DEPDIR)/testRFC1738.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='tests/testRFC1738.cc' object='testRFC1738.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o testRFC1738.o `test -f 'tests/testRFC1738.cc' || echo '$(srcdir)/'`tests/testRFC1738.cc
+
+testRFC1738.obj: tests/testRFC1738.cc
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT testRFC1738.obj -MD -MP -MF $(DEPDIR)/testRFC1738.Tpo -c -o testRFC1738.obj `if test -f 'tests/testRFC1738.cc'; then $(CYGPATH_W) 'tests/testRFC1738.cc'; else $(CYGPATH_W) '$(srcdir)/tests/testRFC1738.cc'; fi`
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/testRFC1738.Tpo $(DEPDIR)/testRFC1738.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='tests/testRFC1738.cc' object='testRFC1738.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o testRFC1738.obj `if test -f 'tests/testRFC1738.cc'; then $(CYGPATH_W) 'tests/testRFC1738.cc'; else $(CYGPATH_W) '$(srcdir)/tests/testRFC1738.cc'; fi`
 
 testMain.o: tests/testMain.cc
 @am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT testMain.o -MD -MP -MF $(DEPDIR)/testMain.Tpo -c -o testMain.o `test -f 'tests/testMain.cc' || echo '$(srcdir)/'`tests/testMain.cc
@@ -842,6 +886,7 @@ installcheck: installcheck-recursive
 mostlyclean-generic:
 
 clean-generic:
+	-test -z "$(CLEANFILES)" || rm -f $(CLEANFILES)
 
 distclean-generic:
 	-test -z "$(CONFIG_CLEAN_FILES)" || rm -f $(CONFIG_CLEAN_FILES)
@@ -929,8 +974,14 @@ uninstall-am:
 	uninstall uninstall-am
 
 
+$(OBJS): $(top_srcdir)/include/version.h $(top_builddir)/include/autoconf.h
+
 install: all
 install-strip: all
+
+testHeaders: $(top_srcdir)/include/*.h
+	$(SHELL) $(top_srcdir)/test-suite/testheaders.sh "$(CXXCOMPILE)" "$(top_srcdir)/include" || exit 1
+.PHONY: testHeaders
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.
 .NOEXPORT:

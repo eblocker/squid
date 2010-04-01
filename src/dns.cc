@@ -1,6 +1,6 @@
 
 /*
- * $Id: dns.cc,v 1.100 2007/04/28 22:26:37 hno Exp $
+ * $Id$
  *
  * DEBUG: section 34    Dnsserver interface
  * AUTHOR: Harvest Derived
@@ -21,12 +21,12 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *  
+ *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *  
+ *
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
@@ -55,10 +55,19 @@ dnsStats(StoreEntry * sentry)
     helperStats(sentry, dnsservers);
 }
 
+static void
+dnsRegisterWithCacheManager(void)
+{
+    CacheManager::GetInstance()->
+    registerAction("dns", "Dnsserver Statistics", dnsStats, 0, 1);
+}
+
 void
 dnsInit(void)
 {
     wordlist *w;
+
+    dnsRegisterWithCacheManager();
 
     if (!Config.Program.dnsserver)
         return;
@@ -83,14 +92,6 @@ dnsInit(void)
     }
 
     helperOpenServers(dnsservers);
-}
-
-void
-dnsRegisterWithCacheManager(CacheManager & manager)
-{
-    manager.registerAction("dns",
-                           "Dnsserver Statistics",
-                           dnsStats, 0, 1);
 }
 
 void
@@ -144,8 +145,8 @@ variable_list *
 snmp_netDnsFn(variable_list * Var, snint * ErrP)
 {
     variable_list *Answer = NULL;
-    debugs(49, 5, "snmp_netDnsFn: Processing request: " << Var->name[LEN_SQ_NET + 1]);
-    snmpDebugOid(5, Var->name, Var->name_length);
+    MemBuf tmp;
+    debugs(49, 5, "snmp_netDnsFn: Processing request: " << Var->name[LEN_SQ_NET + 1] << " " << snmpDebugOid(Var->name, Var->name_length, tmp));
     *ErrP = SNMP_ERR_NOERROR;
 
     switch (Var->name[LEN_SQ_NET + 1]) {

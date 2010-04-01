@@ -3,7 +3,7 @@ Section: web
 Priority: optional
 Maintainer: Luigi Gangitano <luigi@debian.org>
 Homepage: http://www.squid-cache.org
-Standards-Version: 3.8.3
+Standards-Version: 3.8.4
 Build-Depends: libldap2-dev, libpam0g-dev, libdb-dev, dpatch (>= 2.0.9), cdbs, libsasl2-dev, debhelper (>=5), libcppunit-dev, libkrb5-dev, comerr-dev, libcap2-dev, libexpat1-dev, libxml2-dev, autotools-dev
 
 Package: squid3

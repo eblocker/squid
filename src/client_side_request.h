@@ -1,6 +1,6 @@
 
 /*
- * $Id: client_side_request.h,v 1.32.2.1 2008/02/25 23:08:50 amosjeffries Exp $
+ * $Id$
  *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
@@ -19,12 +19,12 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *  
+ *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *  
+ *
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
@@ -41,16 +41,17 @@
 #include "client_side.h"
 #include "AccessLogEntry.h"
 #include "dlink.h"
+#include "base/AsyncJob.h"
 
-#if ICAP_CLIENT
-#include "ICAP/ICAPServiceRep.h"
-#include "ICAP/ICAPInitiator.h"
+#if USE_ADAPTATION
+#include "adaptation/forward.h"
+#include "adaptation/Initiator.h"
 
 class HttpMsg;
 #endif
 
 /* client_side_request.c - client side request related routines (pure logic) */
-extern int clientBeginRequest(method_t, char const *, CSCB *, CSD *, ClientStreamData, HttpHeader const *, char *, size_t);
+extern int clientBeginRequest(const HttpRequestMethod&, char const *, CSCB *, CSD *, ClientStreamData, HttpHeader const *, char *, size_t);
 
 class MemObject;
 
@@ -59,17 +60,19 @@ class ConnStateData;
 class ClientRequestContext;
 
 class ClientHttpRequest
-#if ICAP_CLIENT
-    : public ICAPInitiator, // to start ICAP transactions
-    public BodyConsumer     // to receive reply bodies in request satisf. mode
+#if USE_ADAPTATION
+        : public Adaptation::Initiator, // to start adaptation transactions
+        public BodyConsumer     // to receive reply bodies in request satisf. mode
 #endif
 {
 
 public:
     void *operator new (size_t);
     void operator delete (void *);
-
-    ClientHttpRequest(ConnStateData::Pointer);
+#if USE_ADAPTATION
+    void *toCbdata() { return this; }
+#endif
+    ClientHttpRequest(ConnStateData *);
     ~ClientHttpRequest();
     /* Not implemented - present to prevent synthetic operations */
     ClientHttpRequest(ClientHttpRequest const &);
@@ -90,97 +93,92 @@ public:
     _SQUID_INLINE_ StoreEntry *loggingEntry() const;
     void loggingEntry(StoreEntry *);
 
-    _SQUID_INLINE_ ConnStateData::Pointer getConn();
-    _SQUID_INLINE_ ConnStateData::Pointer const getConn() const;
-    _SQUID_INLINE_ void setConn(ConnStateData::Pointer);
+    _SQUID_INLINE_ ConnStateData * getConn();
+    _SQUID_INLINE_ ConnStateData * const getConn() const;
+    _SQUID_INLINE_ void setConn(ConnStateData *);
     HttpRequest *request;		/* Parsed URL ... */
     char *uri;
     char *log_uri;
 
-    struct
-    {
+    struct {
         int64_t offset;
         int64_t size;
         size_t headers_sz;
-    }
+    } out;
 
-    out;
     HttpHdrRangeIter range_iter;	/* data for iterating thru range specs */
     size_t req_sz;		/* raw request size on input, not current request size */
     log_type logType;
 
-    struct timeval start;
+    struct timeval start_time;
     AccessLogEntry al;
 
-    struct
-    {
+    struct {
+        unsigned int accel:1;
+        unsigned int intercepted:1;
+        unsigned int spoof_client_ip:1;
+        unsigned int internal:1;
+        unsigned int done_copying:1;
+        unsigned int purging:1;
+    } flags;
 
-unsigned int accel:
-        1;
-
-unsigned int transparent:
-        1;
-
-unsigned int internal:
-        1;
-
-unsigned int done_copying:
-        1;
-
-unsigned int purging:
-        1;
-    }
-
-    flags;
-
-    struct
-    {
+    struct {
         http_status status;
         char *location;
-    }
+    } redirect;
 
-    redirect;
     dlink_node active;
     dlink_list client_stream;
     int mRangeCLen();
 
-    int64_t maxReplyBodySize() const;
-    void maxReplyBodySize(int64_t size);
-    bool isReplyBodyTooLarge(int64_t len) const;
-
     ClientRequestContext *calloutContext;
     void doCallouts();
+
+#if USE_ADAPTATION
+    // AsyncJob virtual methods
+    virtual bool doneAll() const {
+        return Initiator::doneAll() &&
+               BodyConsumer::doneAll() && false;
+    }
+#endif
 
 private:
     CBDATA_CLASS(ClientHttpRequest);
     int64_t maxReplyBodySize_;
     StoreEntry *entry_;
     StoreEntry *loggingEntry_;
-    ConnStateData::Pointer conn_;
+    ConnStateData * conn_;
 
-#if ICAP_CLIENT
+#if USE_SSL
+public:
+    bool sslBumpNeeded() const;
+    void sslBumpStart();
+    void sslBumpEstablish(comm_err_t errflag);
+#endif
+
+#if USE_ADAPTATION
 
 public:
-    bool startIcap(ICAPServiceRep::Pointer);
+    void startAdaptation(const Adaptation::ServiceGroupPointer &g);
 
     // private but exposed for ClientRequestContext
-    void handleIcapFailure(bool bypassable = false);
+    void handleAdaptationFailure(bool bypassable = false);
 
 private:
-    // ICAPInitiator API, called by ICAPXaction
-    virtual void noteIcapAnswer(HttpMsg *message);
-    virtual void noteIcapQueryAbort(bool final);
+    // Adaptation::Initiator API
+    virtual void noteAdaptationAnswer(HttpMsg *message);
+    virtual void noteAdaptationQueryAbort(bool final);
 
     // BodyConsumer API, called by BodyPipe
-    virtual void noteMoreBodyDataAvailable(BodyPipe &);
-    virtual void noteBodyProductionEnded(BodyPipe &);
-    virtual void noteBodyProducerAborted(BodyPipe &);
+    virtual void noteMoreBodyDataAvailable(BodyPipe::Pointer);
+    virtual void noteBodyProductionEnded(BodyPipe::Pointer);
+    virtual void noteBodyProducerAborted(BodyPipe::Pointer);
 
     void endRequestSatisfaction();
 
 private:
-    ICAPInitiate *icapHeadSource;
-    BodyPipe::Pointer icapBodySource;
+    Adaptation::Initiate *virginHeadSource;
+    BodyPipe::Pointer adaptedBodySource;
 
     bool request_satisfaction_mode;
     int64_t request_satisfaction_offset;
@@ -189,7 +187,9 @@ private:
 
 /* client http based routines */
 SQUIDCEXTERN char *clientConstructTraceEcho(ClientHttpRequest *);
-SQUIDCEXTERN ACLChecklist *clientAclChecklistCreate(const acl_access * acl,ClientHttpRequest * http);
+
+class ACLFilledChecklist;
+SQUIDCEXTERN ACLFilledChecklist *clientAclChecklistCreate(const acl_access * acl,ClientHttpRequest * http);
 SQUIDCEXTERN int clientHttpRequestStatus(int fd, ClientHttpRequest const *http);
 SQUIDCEXTERN void clientAccessCheck(ClientHttpRequest *);
 

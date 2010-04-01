@@ -3,21 +3,15 @@
 #include "MemObject.h"
 #include "SwapDir.h"
 
-static struct
-{
+static struct {
 
-    struct
-    {
+    struct {
         int calls;
         int select_fail;
         int create_fail;
         int success;
-    }
-
-    create;
-}
-
-store_io_stats;
+    } create;
+} store_io_stats;
 
 OBJH storeIOStats;
 
@@ -82,7 +76,7 @@ void
 storeClose(StoreIOState::Pointer sio)
 {
     if (sio->flags.closing) {
-	debugs(20,3,HERE << "storeClose: flags.closing already set, bailing");
+        debugs(20,3,HERE << "storeClose: flags.closing already set, bailing");
         return;
     }
 

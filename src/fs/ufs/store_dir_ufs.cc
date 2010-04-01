@@ -1,6 +1,6 @@
 
 /*
- * $Id: store_dir_ufs.cc,v 1.87 2007/12/02 07:19:58 amosjeffries Exp $
+ * $Id$
  *
  * DEBUG: section 47    Store Directory Routines
  * AUTHOR: Duane Wessels
@@ -21,12 +21,12 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *  
+ *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *  
+ *
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
@@ -42,9 +42,10 @@
 #include "DiskIO/DiskIOStrategy.h"
 #include "DiskIO/DiskIOModule.h"
 #include "Parsing.h"
+#include "SquidMath.h"
 #include "SquidTime.h"
-
 #include "SwapDir.h"
+
 int UFSSwapDir::NumberOfUFSDirs = 0;
 int *UFSSwapDir::UFSDirToGlobalDirMapping = NULL;
 
@@ -103,11 +104,11 @@ UFSSwapDir::parseSizeL1L2()
 /*
  * storeUfsDirReconfigure
  *
- * This routine is called when the given swapdir needs reconfiguring 
+ * This routine is called when the given swapdir needs reconfiguring
  */
 
 void
-UFSSwapDir::reconfigure(int index, char *path)
+UFSSwapDir::reconfigure(int aIndex, char *aPath)
 {
     parseSizeL1L2();
     parseOptions(1);
@@ -143,7 +144,7 @@ UFSSwapDir::changeIO(DiskIOModule *module)
     IO->io = anIO;
     /* Change the IO Options */
 
-    if (currentIOOptions->options.size() > 2)
+    if (currentIOOptions && currentIOOptions->options.size() > 2)
         delete currentIOOptions->options.pop_back();
 
     /* TODO: factor out these 4 lines */
@@ -154,12 +155,12 @@ UFSSwapDir::changeIO(DiskIOModule *module)
 }
 
 bool
-UFSSwapDir::optionIOParse(char const *option, const char *value, int reconfiguring)
+UFSSwapDir::optionIOParse(char const *option, const char *value, int isaReconfig)
 {
     if (strcmp(option, "IOEngine") != 0)
         return false;
 
-    if (reconfiguring)
+    if (isaReconfig)
         /* silently ignore this */
         return true;
 
@@ -319,18 +320,18 @@ UFSSwapDir::statfs(StoreEntry & sentry) const
                       100.0 * cur_size / max_size);
     storeAppendPrintf(&sentry, "Filemap bits in use: %d of %d (%d%%)\n",
                       map->n_files_in_map, map->max_n_files,
-                      percent(map->n_files_in_map, map->max_n_files));
+                      Math::intPercent(map->n_files_in_map, map->max_n_files));
     x = storeDirGetUFSStats(path, &totl_kb, &free_kb, &totl_in, &free_in);
 
     if (0 == x) {
         storeAppendPrintf(&sentry, "Filesystem Space in use: %d/%d KB (%d%%)\n",
                           totl_kb - free_kb,
                           totl_kb,
-                          percent(totl_kb - free_kb, totl_kb));
+                          Math::intPercent(totl_kb - free_kb, totl_kb));
         storeAppendPrintf(&sentry, "Filesystem Inodes in use: %d/%d (%d%%)\n",
                           totl_in - free_in,
                           totl_in,
-                          percent(totl_in - free_in, totl_in));
+                          Math::intPercent(totl_in - free_in, totl_in));
     }
 
     storeAppendPrintf(&sentry, "Flags:");
@@ -396,8 +397,8 @@ UFSSwapDir::maintain()
     }
 
     walker->Done(walker);
-    debugs(47, (removed ? 2 : 3), "UFSSwapDir::maintain: " << path << 
-           " removed " << removed << "/" << max_remove << " f=" << 
+    debugs(47, (removed ? 2 : 3), "UFSSwapDir::maintain: " << path <<
+           " removed " << removed << "/" << max_remove << " f=" <<
            std::setprecision(4) << f << " max_scan=" << max_scan);
 }
 
@@ -431,15 +432,15 @@ UFSSwapDir::dereference(StoreEntry & e)
 }
 
 StoreIOState::Pointer
-UFSSwapDir::createStoreIO(StoreEntry &e, StoreIOState::STFNCB * file_callback, StoreIOState::STIOCB * callback, void *callback_data)
+UFSSwapDir::createStoreIO(StoreEntry &e, StoreIOState::STFNCB * file_callback, StoreIOState::STIOCB * aCallback, void *callback_data)
 {
-    return IO->create (this, &e, file_callback, callback, callback_data);
+    return IO->create (this, &e, file_callback, aCallback, callback_data);
 }
 
 StoreIOState::Pointer
-UFSSwapDir::openStoreIO(StoreEntry &e, StoreIOState::STFNCB * file_callback, StoreIOState::STIOCB * callback, void *callback_data)
+UFSSwapDir::openStoreIO(StoreEntry &e, StoreIOState::STFNCB * file_callback, StoreIOState::STIOCB * aCallback, void *callback_data)
 {
-    return IO->open (this, &e, file_callback, callback, callback_data);
+    return IO->open (this, &e, file_callback, aCallback, callback_data);
 }
 
 int
@@ -489,50 +490,50 @@ UFSSwapDir::swapSubDir(int subdirn)const
 }
 
 int
-UFSSwapDir::createDirectory(const char *path, int should_exist)
+UFSSwapDir::createDirectory(const char *aPath, int should_exist)
 {
     int created = 0;
 
     struct stat st;
     getCurrentTime();
 
-    if (0 == ::stat(path, &st)) {
+    if (0 == ::stat(aPath, &st)) {
         if (S_ISDIR(st.st_mode)) {
-            debugs(47, (should_exist ? 3 : 1), path << " exists");
+            debugs(47, (should_exist ? 3 : 1), aPath << " exists");
         } else {
-            fatalf("Swap directory %s is not a directory.", path);
+            fatalf("Swap directory %s is not a directory.", aPath);
         }
 
 #ifdef _SQUID_MSWIN_
 
-    } else if (0 == mkdir(path)) {
+    } else if (0 == mkdir(aPath)) {
 #else
 
-    } else if (0 == mkdir(path, 0755)) {
+    } else if (0 == mkdir(aPath, 0755)) {
 #endif
-        debugs(47, (should_exist ? 1 : 3), path << " created");
+        debugs(47, (should_exist ? 1 : 3), aPath << " created");
         created = 1;
     } else {
         fatalf("Failed to make swap directory %s: %s",
-               path, xstrerror());
+               aPath, xstrerror());
     }
 
     return created;
 }
 
 bool
-UFSSwapDir::pathIsDirectory(const char *path)const
+UFSSwapDir::pathIsDirectory(const char *aPath)const
 {
 
     struct stat sb;
 
-    if (::stat(path, &sb) < 0) {
-        debugs(47, 0, "" << path << ": " << xstrerror());
+    if (::stat(aPath, &sb) < 0) {
+        debugs(47, 0, "" << aPath << ": " << xstrerror());
         return false;
     }
 
     if (S_ISDIR(sb.st_mode) == 0) {
-        debugs(47, 0, "" << path << " is not a directory");
+        debugs(47, 0, "" << aPath << " is not a directory");
         return false;
     }
 
@@ -602,9 +603,7 @@ UFSSwapDir::logFile(char const *ext) const
         while (strlen(pathtmp) && pathtmp[strlen(pathtmp) - 1] == '.')
             pathtmp[strlen(pathtmp) - 1] = '\0';
 
-        for (pathtmp2 = pathtmp; *pathtmp2 == '.'; pathtmp2++)
-
-            ;
+        for (pathtmp2 = pathtmp; *pathtmp2 == '.'; pathtmp2++);
         snprintf(lpath, SQUID_MAXPATHLEN - 64, Config.Log.swap, pathtmp2);
 
         if (strncmp(lpath, Config.Log.swap, SQUID_MAXPATHLEN - 64) == 0) {
@@ -688,7 +687,7 @@ UFSSwapDir::addDiskRestore(const cache_key * key,
                            time_t lastref,
                            time_t lastmod,
                            u_int32_t refcount,
-                           u_int16_t flags,
+                           u_int16_t newFlags,
                            int clean)
 {
     StoreEntry *e = NULL;
@@ -709,7 +708,7 @@ UFSSwapDir::addDiskRestore(const cache_key * key,
     e->expires = expires;
     e->lastmod = lastmod;
     e->refcount = refcount;
-    e->flags = flags;
+    e->flags = newFlags;
     EBIT_SET(e->flags, ENTRY_CACHABLE);
     EBIT_CLR(e->flags, RELEASE_REQUEST);
     EBIT_CLR(e->flags, KEY_PRIVATE);
@@ -790,12 +789,12 @@ UFSSwapDir::openTmpSwapLog(int *clean_flag, int *zero_flag)
 
     /* open a write-only FD for the new log */
     fd = file_open(new_path, O_WRONLY | O_CREAT | O_TRUNC | O_BINARY);
-    
+
     if (fd < 0) {
         debugs(50, 1, "" << new_path << ": " << xstrerror());
         fatal("storeDirOpenTmpSwapLog: Failed to open swap log.");
     }
-    
+
     swaplog_fd = fd;
 
     head = new StoreSwapLogHeader;
@@ -897,7 +896,7 @@ UFSSwapDir::writeCleanStart()
         fchmod(state->fd, sb.st_mode);
 
 #endif
-    
+
 
     cleanLog = state;
     return 0;
@@ -1213,7 +1212,7 @@ UFSSwapDir::IsUFSDir(SwapDir * sd)
  * Does swapfile number 'fn' belong in cachedir #F0,
  * level1 dir #F1, level2 dir #F2?
  * XXX: this is broken - it assumes all cache dirs use the same
- * l1 and l2 scheme. -RBC 20021215. Partial fix is in place - 
+ * l1 and l2 scheme. -RBC 20021215. Partial fix is in place -
  * if not UFSSwapDir return 0;
  */
 int
@@ -1276,9 +1275,9 @@ UFSSwapDir::validFileno(sfileno filn, int flag) const
 void
 UFSSwapDir::unlinkFile(sfileno f)
 {
-     debugs(79, 3, "UFSSwapDir::unlinkFile: unlinking fileno " <<  std::setfill('0') << 
-            std::hex << std::uppercase << std::setw(8) << f << " '" << 
-            fullPath(f,NULL) << "'");
+    debugs(79, 3, "UFSSwapDir::unlinkFile: unlinking fileno " <<  std::setfill('0') <<
+           std::hex << std::uppercase << std::setw(8) << f << " '" <<
+           fullPath(f,NULL) << "'");
     /* commonUfsDirMapBitReset(this, f); */
     IO->unlinkFile(fullPath(f,NULL));
 }
@@ -1390,10 +1389,10 @@ StoreSearchUFS::~StoreSearchUFS()
 }
 
 void
-StoreSearchUFS::next(void (callback)(void *cbdata), void *cbdata)
+StoreSearchUFS::next(void (aCallback)(void *cbdata), void *aCallbackArgs)
 {
     next();
-    callback (cbdata);
+    aCallback(aCallbackArgs);
 }
 
 bool

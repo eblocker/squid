@@ -1,13 +1,15 @@
-#define SQUID_UNIT_TEST 1 
+#define SQUID_UNIT_TEST 1
 
 #include "squid.h"
-#include <sstream>
 #include <cppunit/TestAssert.h>
 
 #include "Mem.h"
 #include "testHttpRequestMethod.h"
 #include "HttpRequestMethod.h"
 
+#if HAVE_SSTREAM
+#include <sstream>
+#endif
 
 CPPUNIT_TEST_SUITE_REGISTRATION( testHttpRequestMethod );
 
@@ -19,25 +21,26 @@ void
 testHttpRequestMethod::testConstructCharStart()
 {
     /* parse an empty string -> METHOD_NONE */
-    CPPUNIT_ASSERT(METHOD_NONE == HttpRequestMethod(NULL));
+    CPPUNIT_ASSERT(HttpRequestMethod(NULL,NULL) == METHOD_NONE);
     /* parsing a literal should work */
-    CPPUNIT_ASSERT(METHOD_GET == HttpRequestMethod("GET", NULL));
+    CPPUNIT_ASSERT(HttpRequestMethod("GET", NULL) == METHOD_GET);
+    CPPUNIT_ASSERT(HttpRequestMethod("QWERTY", NULL) == METHOD_OTHER);
 }
 
 /*
- * We can also parse precise ranges of characters 
+ * We can also parse precise ranges of characters
  */
 void
 testHttpRequestMethod::testConstructCharStartEnd()
 {
     char const * buffer;
     /* parse an empty string -> METHOD_NONE */
-    CPPUNIT_ASSERT(METHOD_NONE == HttpRequestMethod(NULL, NULL));
+    CPPUNIT_ASSERT(HttpRequestMethod(NULL, NULL) == METHOD_NONE);
     /* parsing a literal should work */
-    CPPUNIT_ASSERT(METHOD_GET == HttpRequestMethod("GET", NULL));
+    CPPUNIT_ASSERT(HttpRequestMethod("GET", NULL) == METHOD_GET);
     /* parsing with an explicit end should work */
     buffer = "POSTPLUS";
-    CPPUNIT_ASSERT(METHOD_POST == HttpRequestMethod(buffer, buffer + 4));
+    CPPUNIT_ASSERT(HttpRequestMethod(buffer, buffer + 4) == METHOD_POST);
 }
 
 /*
@@ -79,9 +82,9 @@ testHttpRequestMethod::testConstructmethod_t()
  * we should be able to get a char const * version of the method.
  */
 void
-testHttpRequestMethod::testConst_str()
+testHttpRequestMethod::testImage()
 {
-    CPPUNIT_ASSERT_EQUAL(String("POST"), String(HttpRequestMethod("post").const_str()));
+    CPPUNIT_ASSERT_EQUAL(String("POST"), String(HttpRequestMethod("post",NULL).image()));
 }
 
 /*
@@ -93,8 +96,8 @@ testHttpRequestMethod::testEqualmethod_t()
 {
     CPPUNIT_ASSERT(HttpRequestMethod(METHOD_NONE) == METHOD_NONE);
     CPPUNIT_ASSERT(not (HttpRequestMethod(METHOD_POST) == METHOD_GET));
-    CPPUNIT_ASSERT(METHOD_GET == HttpRequestMethod(METHOD_GET));
-    CPPUNIT_ASSERT(not (METHOD_SEARCH == HttpRequestMethod(METHOD_TRACE)));
+    CPPUNIT_ASSERT(HttpRequestMethod(METHOD_GET) == METHOD_GET);
+    CPPUNIT_ASSERT(not (HttpRequestMethod(METHOD_TRACE) == METHOD_SEARCH));
 }
 
 /*
@@ -105,8 +108,8 @@ testHttpRequestMethod::testNotEqualmethod_t()
 {
     CPPUNIT_ASSERT(HttpRequestMethod(METHOD_NONE) != METHOD_GET);
     CPPUNIT_ASSERT(not (HttpRequestMethod(METHOD_POST) != METHOD_POST));
-    CPPUNIT_ASSERT(METHOD_NONE != HttpRequestMethod(METHOD_GET));
-    CPPUNIT_ASSERT(not (METHOD_SEARCH != HttpRequestMethod(METHOD_SEARCH)));
+    CPPUNIT_ASSERT(HttpRequestMethod(METHOD_GET) != METHOD_NONE);
+    CPPUNIT_ASSERT(not (HttpRequestMethod(METHOD_SEARCH) != METHOD_SEARCH));
 }
 
 /*
@@ -116,6 +119,6 @@ void
 testHttpRequestMethod::testStream()
 {
     std::ostringstream buffer;
-    buffer << HttpRequestMethod("get");
+    buffer << HttpRequestMethod("get",NULL);
     CPPUNIT_ASSERT_EQUAL(String("GET"), String(buffer.str().c_str()));
 }

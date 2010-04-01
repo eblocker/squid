@@ -1,6 +1,5 @@
-
 /*
- * $Id: event.cc,v 1.49 2007/07/30 15:05:42 hno Exp $
+ * $Id$
  *
  * DEBUG: section 41    Event Processing
  * AUTHOR: Henrik Nordstrom
@@ -21,12 +20,12 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *  
+ *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *  
+ *
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
@@ -36,6 +35,7 @@
 #include "event.h"
 #include "CacheManager.h"
 #include "Store.h"
+#include "SquidTime.h"
 
 /* The list of event processes */
 
@@ -43,8 +43,83 @@
 static OBJH eventDump;
 static const char *last_event_ran = NULL;
 
-ev_entry::ev_entry(char const * name, EVH * func, void * arg, double when, int weight, bool cbdata) : name(name), func(func), arg(cbdata ? cbdataReference(arg) : arg), when(when), weight(weight), cbdata(cbdata)
-{}
+// This AsyncCall dialer can be configured to check that the event cbdata is
+// valid before calling the event handler
+class EventDialer: public CallDialer
+{
+public:
+    typedef CallDialer Parent;
+
+    EventDialer(EVH *aHandler, void *anArg, bool lockedArg);
+    EventDialer(const EventDialer &d);
+    virtual ~EventDialer();
+
+    virtual void print(std::ostream &os) const;
+    virtual bool canDial(AsyncCall &call);
+
+    void dial(AsyncCall &) { theHandler(theArg); }
+
+private:
+    EVH *theHandler;
+    void *theArg;
+    bool isLockedArg;
+};
+
+EventDialer::EventDialer(EVH *aHandler, void *anArg, bool lockedArg):
+        theHandler(aHandler), theArg(anArg), isLockedArg(lockedArg)
+{
+    if (isLockedArg)
+        (void)cbdataReference(theArg);
+}
+
+EventDialer::EventDialer(const EventDialer &d):
+        theHandler(d.theHandler), theArg(d.theArg), isLockedArg(d.isLockedArg)
+{
+    if (isLockedArg)
+        (void)cbdataReference(theArg);
+}
+
+EventDialer::~EventDialer()
+{
+    if (isLockedArg)
+        cbdataReferenceDone(theArg);
+}
+
+bool
+EventDialer::canDial(AsyncCall &call)
+{
+    // TODO: add Parent::canDial() that always returns true
+    //if (!Parent::canDial())
+    //    return false;
+
+    if (isLockedArg && !cbdataReferenceValid(theArg))
+        return call.cancel("stale handler data");
+
+    return true;
+}
+
+void
+EventDialer::print(std::ostream &os) const
+{
+    os << '(';
+    if (theArg)
+        os << theArg << (isLockedArg ? "*?" : "");
+    os << ')';
+}
+
+
+ev_entry::ev_entry(char const * aName, EVH * aFunction, void * aArgument, double evWhen,
+                   int aWeight, bool haveArgument) : name(aName), func(aFunction),
+        arg(haveArgument ? cbdataReference(aArgument) : aArgument), when(evWhen), weight(aWeight),
+        cbdata(haveArgument)
+{
+}
+
+ev_entry::~ev_entry()
+{
+    if (cbdata)
+        cbdataReferenceDone(arg);
+}
 
 void
 eventAdd(const char *name, EVH * func, void *arg, double when, int weight, bool cbdata)
@@ -75,9 +150,10 @@ eventDelete(EVH * func, void *arg)
 }
 
 void
-eventInit(CacheManager &manager)
+eventInit(void)
 {
-    manager.registerAction("events", "Event Queue", eventDump, 0, 1);
+    CacheManager::GetInstance()->
+    registerAction("events", "Event Queue", eventDump, 0, 1);
 }
 
 static void
@@ -98,56 +174,9 @@ eventFind(EVH * func, void *arg)
     return EventScheduler::GetInstance()->find(func, arg);
 }
 
-EventDispatcher EventDispatcher::_instance;
+EventScheduler EventScheduler::_instance;
 
-EventDispatcher::EventDispatcher()
-{}
-
-void
-
-EventDispatcher::add
-    (ev_entry * event)
-{
-    queue.push_back(event);
-}
-
-bool
-EventDispatcher::dispatch()
-{
-    bool result = queue.size() != 0;
-
-    PROF_start(EventDispatcher_dispatch);
-    for (Vector<ev_entry *>::iterator i = queue.begin(); i != queue.end(); ++i) {
-        ev_entry * event = *i;
-        EVH *callback;
-        void *cbdata = event->arg;
-        callback = event->func;
-        event->func = NULL;
-
-        if (!event->cbdata || cbdataReferenceValidDone(event->arg, &cbdata)) {
-            /* XXX assumes ->name is static memory! */
-            last_event_ran = event->name;
-            debugs(41, 5, "EventDispatcher::dispatch: Running '" << event->name << "'");
-            callback(cbdata);
-        }
-
-        delete event;
-    }
-
-    queue.clean();
-    PROF_stop(EventDispatcher_dispatch);
-    return result;
-}
-
-EventDispatcher *
-EventDispatcher::GetInstance()
-{
-    return &_instance;
-}
-
-EventScheduler EventScheduler::_instance(EventDispatcher::GetInstance());
-
-EventScheduler::EventScheduler(EventDispatcher *dispatcher) : dispatcher(dispatcher), tasks(NULL)
+EventScheduler::EventScheduler(): tasks(NULL)
 {}
 
 EventScheduler::~EventScheduler()
@@ -170,28 +199,25 @@ EventScheduler::cancel(EVH * func, void *arg)
 
         *E = event->next;
 
-        if (event->cbdata)
-            cbdataReferenceDone(event->arg);
-
         delete event;
 
-	if (arg)
-	    return;
-	/*
-	 * DPW 2007-04-12
-	 * Since this method may now delete multiple events (when
-	 * arg is NULL) it no longer returns after a deletion and
-	 * we have a potential NULL pointer problem.  If we just
-	 * deleted the last event in the list then *E is now equal
-	 * to NULL.  We need to break here or else we'll get a NULL
-	 * pointer dereference in the last clause of the for loop.
-	 */
-	if (NULL == *E)
-	    break;
+        if (arg)
+            return;
+        /*
+         * DPW 2007-04-12
+         * Since this method may now delete multiple events (when
+         * arg is NULL) it no longer returns after a deletion and
+         * we have a potential NULL pointer problem.  If we just
+         * deleted the last event in the list then *E is now equal
+         * to NULL.  We need to break here or else we'll get a NULL
+         * pointer dereference in the last clause of the for loop.
+         */
+        if (NULL == *E)
+            break;
     }
 
     if (arg)
-	debug_trap("eventDelete: event not found");
+        debug_trap("eventDelete: event not found");
 }
 
 int
@@ -228,16 +254,22 @@ EventScheduler::checkEvents(int timeout)
         if (event->when > current_dtime)
             break;
 
-        dispatcher->add
-        (event);
+        /* XXX assumes event->name is static memory! */
+        AsyncCall::Pointer call = asyncCall(41,5, event->name,
+                                            EventDialer(event->func, event->arg, event->cbdata));
+        ScheduleCallHere(call);
+
+        last_event_ran = event->name; // XXX: move this to AsyncCallQueue
+        const bool heavy = event->weight &&
+                           (!event->cbdata || cbdataReferenceValid(event->arg));
 
         tasks = event->next;
+        delete event;
 
-        if (!event->cbdata || cbdataReferenceValid(event->arg))
-            if (event->weight)
-                /* this event is marked as being 'heavy', so dont dequeue any others.
-                 */
-                break;
+        // XXX: We may be called again during the same event loop iteration.
+        // Is there a point in breaking now?
+        if (heavy)
+            break; // do not dequeue events following a heavy event
     }
 
     PROF_stop(eventRun);
@@ -249,10 +281,6 @@ EventScheduler::clean()
 {
     while (ev_entry * event = tasks) {
         tasks = event->next;
-
-        if (event->cbdata)
-            cbdataReferenceDone(event->arg);
-
         delete event;
     }
 
@@ -268,14 +296,14 @@ EventScheduler::dump(StoreEntry * sentry)
     if (last_event_ran)
         storeAppendPrintf(sentry, "Last event to run: %s\n\n", last_event_ran);
 
-    storeAppendPrintf(sentry, "%s\t%s\t%s\t%s\n",
+    storeAppendPrintf(sentry, "%-25s\t%-15s\t%s\t%s\n",
                       "Operation",
                       "Next Execution",
                       "Weight",
                       "Callback Valid?");
 
     while (e != NULL) {
-        storeAppendPrintf(sentry, "%s\t%f seconds\t%d\t%s\n",
+        storeAppendPrintf(sentry, "%-25s\t%0.3f sec\t%5d\t %s\n",
                           e->name, e->when ? e->when - current_dtime : 0, e->weight,
                   (e->arg && e->cbdata) ? cbdataReferenceValid(e->arg) ? "yes" : "no" : "N/A");
         e = e->next;

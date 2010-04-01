@@ -1,5 +1,5 @@
 /*
- * $Id: debug.cc,v 1.109 2008/02/26 18:43:30 rousskov Exp $
+ * $Id$
  *
  * DEBUG: section 0     Debug Routines
  * AUTHOR: Harvest Derived
@@ -20,25 +20,39 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *  
+ *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *  
+ *
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
  *
  */
-
-#include "squid.h"
+#include "config.h"
 #include "Debug.h"
 #include "SquidTime.h"
+#include "util.h"
 
+/* for shutting_down flag in xassert() */
+#include "globals.h"
+
+/* cope with no squid.h */
+#ifndef MAXPATHLEN
+#define MAXPATHLEN 256
+#endif
+
+char *Debug::debugOptions = NULL;
+int Debug::override_X = 0;
+int Debug::log_stderr = -1;
+bool Debug::log_syslog = false;
 int Debug::Levels[MAX_DEBUG_SECTIONS];
 int Debug::level;
-
+char *Debug::cache_log = NULL;
+int Debug::rotateNumber = -1;
+FILE *debug_log = NULL;
 static char *debug_log_file = NULL;
 static int Ctx_Lock = 0;
 static const char *debugLogTime(void);
@@ -55,35 +69,21 @@ static void _db_print_file(const char *format, va_list args);
 #ifdef _SQUID_MSWIN_
 SQUIDCEXTERN LPCRITICAL_SECTION dbg_mutex;
 typedef BOOL (WINAPI * PFInitializeCriticalSectionAndSpinCount) (LPCRITICAL_SECTION, DWORD);
-
 #endif
 
 void
-#if STDC_HEADERS
 _db_print(const char *format,...)
 {
-#else
-_db_print(va_alist)
-va_dcl
-{
-    const char *format = NULL;
-#endif
-
-    LOCAL_ARRAY(char, f, BUFSIZ);
+    char f[BUFSIZ];
+    f[0]='\0';
     va_list args1;
-#if STDC_HEADERS
-
     va_list args2;
     va_list args3;
-#else
-#define args2 args1
-#define args3 args1
-#endif
+
 #ifdef _SQUID_MSWIN_
     /* Multiple WIN32 threads may call this simultaneously */
 
-    if (!dbg_mutex)
-    {
+    if (!dbg_mutex) {
         HMODULE krnl_lib = GetModuleHandle("Kernel32");
         PFInitializeCriticalSectionAndSpinCount InitializeCriticalSectionAndSpinCount = NULL;
 
@@ -112,57 +112,38 @@ va_dcl
 
     EnterCriticalSection(dbg_mutex);
 #endif
-    /* give a chance to context-based debugging to print current context */
 
+    /* give a chance to context-based debugging to print current context */
     if (!Ctx_Lock)
         ctx_print();
 
-#if STDC_HEADERS
-
     va_start(args1, format);
-
     va_start(args2, format);
-
     va_start(args3, format);
-
-#else
-
-    format = va_arg(args1, const char *);
-
-#endif
 
     snprintf(f, BUFSIZ, "%s| %s",
              debugLogTime(),
              format);
 
     _db_print_file(f, args1);
-
     _db_print_stderr(f, args2);
 
 #if HAVE_SYSLOG
-
     _db_print_syslog(format, args3);
-
 #endif
+
 #ifdef _SQUID_MSWIN_
-
     LeaveCriticalSection(dbg_mutex);
-
 #endif
 
     va_end(args1);
-
-#if STDC_HEADERS
-
     va_end(args2);
-
     va_end(args3);
-
-#endif
 }
 
 static void
-_db_print_file(const char *format, va_list args) {
+_db_print_file(const char *format, va_list args)
+{
     if (debug_log == NULL)
         return;
 
@@ -171,14 +152,13 @@ _db_print_file(const char *format, va_list args) {
         ctx_print();
 
     vfprintf(debug_log, format, args);
-
-    if (!Config.onoff.buffered_logs)
-        fflush(debug_log);
+    fflush(debug_log);
 }
 
 static void
-_db_print_stderr(const char *format, va_list args) {
-    if (opt_debug_stderr < Debug::level)
+_db_print_stderr(const char *format, va_list args)
+{
+    if (Debug::log_stderr < Debug::level)
         return;
 
     if (debug_log == stderr)
@@ -189,16 +169,17 @@ _db_print_stderr(const char *format, va_list args) {
 
 #if HAVE_SYSLOG
 static void
-_db_print_syslog(const char *format, va_list args) {
-    LOCAL_ARRAY(char, tmpbuf, BUFSIZ);
+_db_print_syslog(const char *format, va_list args)
+{
     /* level 0,1 go to syslog */
 
     if (Debug::level > 1)
         return;
 
-    if (0 == opt_syslog_enable)
+    if (!Debug::log_syslog)
         return;
 
+    char tmpbuf[BUFSIZ];
     tmpbuf[0] = '\0';
 
     vsnprintf(tmpbuf, BUFSIZ, format, args);
@@ -207,30 +188,31 @@ _db_print_syslog(const char *format, va_list args) {
 
     syslog(Debug::level == 0 ? LOG_WARNING : LOG_NOTICE, "%s", tmpbuf);
 }
-
 #endif /* HAVE_SYSLOG */
 
 static void
-debugArg(const char *arg) {
+debugArg(const char *arg)
+{
     int s = 0;
     int l = 0;
     int i;
 
-    if (!strncasecmp(arg, "ALL", 3)) {
+    if (!strncasecmp(arg, "rotate=", 7)) {
+        arg += 7;
+        Debug::rotateNumber = atoi(arg);
+        return;
+    } else if (!strncasecmp(arg, "ALL", 3)) {
         s = -1;
         arg += 4;
     } else {
         s = atoi(arg);
-
-        while (*arg && *arg++ != ',')
-
-            ;
+        while (*arg && *arg++ != ',');
     }
 
     l = atoi(arg);
     assert(s >= -1);
 
-    if(s >= MAX_DEBUG_SECTIONS)
+    if (s >= MAX_DEBUG_SECTIONS)
         s = MAX_DEBUG_SECTIONS-1;
 
     if (l < 0)
@@ -249,7 +231,8 @@ debugArg(const char *arg) {
 }
 
 static void
-debugOpenLog(const char *logfile) {
+debugOpenLog(const char *logfile)
+{
     if (logfile == NULL) {
         debug_log = stderr;
         return;
@@ -290,115 +273,117 @@ static struct syslog_facility_name {
 syslog_facility_names[] = {
 
 #ifdef LOG_AUTH
-                              {
-                                  "auth", LOG_AUTH
-                              },
+    {
+        "auth", LOG_AUTH
+    },
 #endif
 #ifdef LOG_AUTHPRIV
-                              {
-                                  "authpriv", LOG_AUTHPRIV
-                              },
+    {
+        "authpriv", LOG_AUTHPRIV
+    },
 #endif
 #ifdef LOG_CRON
-                              {
-                                  "cron", LOG_CRON
-                              },
+    {
+        "cron", LOG_CRON
+    },
 #endif
 #ifdef LOG_DAEMON
-                              {
-                                  "daemon", LOG_DAEMON
-                              },
+    {
+        "daemon", LOG_DAEMON
+    },
 #endif
 #ifdef LOG_FTP
-                              {
-                                  "ftp", LOG_FTP
-                              },
+    {
+        "ftp", LOG_FTP
+    },
 #endif
 #ifdef LOG_KERN
-                              {
-                                  "kern", LOG_KERN
-                              },
+    {
+        "kern", LOG_KERN
+    },
 #endif
 #ifdef LOG_LPR
-                              {
-                                  "lpr", LOG_LPR
-                              },
+    {
+        "lpr", LOG_LPR
+    },
 #endif
 #ifdef LOG_MAIL
-                              {
-                                  "mail", LOG_MAIL
-                              },
+    {
+        "mail", LOG_MAIL
+    },
 #endif
 #ifdef LOG_NEWS
-                              {
-                                  "news", LOG_NEWS
-                              },
+    {
+        "news", LOG_NEWS
+    },
 #endif
 #ifdef LOG_SYSLOG
-                              {
-                                  "syslog", LOG_SYSLOG
-                              },
+    {
+        "syslog", LOG_SYSLOG
+    },
 #endif
 #ifdef LOG_USER
-                              {
-                                  "user", LOG_USER
-                              },
+    {
+        "user", LOG_USER
+    },
 #endif
 #ifdef LOG_UUCP
-                              {
-                                  "uucp", LOG_UUCP
-                              },
+    {
+        "uucp", LOG_UUCP
+    },
 #endif
 #ifdef LOG_LOCAL0
-                              {
-                                  "local0", LOG_LOCAL0
-                              },
+    {
+        "local0", LOG_LOCAL0
+    },
 #endif
 #ifdef LOG_LOCAL1
-                              {
-                                  "local1", LOG_LOCAL1
-                              },
+    {
+        "local1", LOG_LOCAL1
+    },
 #endif
 #ifdef LOG_LOCAL2
-                              {
-                                  "local2", LOG_LOCAL2
-                              },
+    {
+        "local2", LOG_LOCAL2
+    },
 #endif
 #ifdef LOG_LOCAL3
-                              {
-                                  "local3", LOG_LOCAL3
-                              },
+    {
+        "local3", LOG_LOCAL3
+    },
 #endif
 #ifdef LOG_LOCAL4
-                              {
-                                  "local4", LOG_LOCAL4
-                              },
+    {
+        "local4", LOG_LOCAL4
+    },
 #endif
 #ifdef LOG_LOCAL5
-                              {
-                                  "local5", LOG_LOCAL5
-                              },
+    {
+        "local5", LOG_LOCAL5
+    },
 #endif
 #ifdef LOG_LOCAL6
-                              {
-                                  "local6", LOG_LOCAL6
-                              },
+    {
+        "local6", LOG_LOCAL6
+    },
 #endif
 #ifdef LOG_LOCAL7
-                              {
-                                  "local7", LOG_LOCAL7
-                              },
+    {
+        "local7", LOG_LOCAL7
+    },
 #endif
-                              {
-                                  NULL, 0
-                              }
-                          };
+    {
+        NULL, 0
+    }
+};
 
 #endif
 
 void
-_db_set_syslog(const char *facility) {
-    opt_syslog_enable = 1;
+_db_set_syslog(const char *facility)
+{
+    Debug::log_syslog = true;
+
 #ifdef LOG_LOCAL4
 #ifdef LOG_DAEMON
 
@@ -406,7 +391,7 @@ _db_set_syslog(const char *facility) {
 #else
 
     syslog_facility = LOG_LOCAL4;
-#endif
+#endif /* LOG_DAEMON */
 
     if (facility) {
 
@@ -427,18 +412,19 @@ _db_set_syslog(const char *facility) {
     if (facility)
         fprintf(stderr, "syslog facility type not supported on your system\n");
 
-#endif
+#endif /* LOG_LOCAL4 */
 }
 
 #endif
 
 void
-Debug::parseOptions(char const *options) {
+Debug::parseOptions(char const *options)
+{
     int i;
     char *p = NULL;
     char *s = NULL;
 
-    if(Config.onoff.debug_override_X) {
+    if (override_X) {
         debugs(0, 9, "command-line -X overrides: " << options);
         return;
     }
@@ -457,40 +443,41 @@ Debug::parseOptions(char const *options) {
 }
 
 void
-_db_init(const char *logfile, const char *options) {
+_db_init(const char *logfile, const char *options)
+{
     Debug::parseOptions(options);
 
     debugOpenLog(logfile);
 
 #if HAVE_SYSLOG && defined(LOG_LOCAL4)
 
-    if (opt_syslog_enable)
-        openlog(appname, LOG_PID | LOG_NDELAY | LOG_CONS, syslog_facility);
+    if (Debug::log_syslog)
+        openlog(APP_SHORTNAME, LOG_PID | LOG_NDELAY | LOG_CONS, syslog_facility);
 
 #endif /* HAVE_SYSLOG */
 
+    /* Pre-Init TZ env, see bug #2656 */
+    tzset();
 }
 
 void
-_db_rotate_log(void) {
-    int i;
-    LOCAL_ARRAY(char, from, MAXPATHLEN);
-    LOCAL_ARRAY(char, to, MAXPATHLEN);
-#ifdef S_ISREG
-
-    struct stat sb;
-#endif
-
+_db_rotate_log(void)
+{
     if (debug_log_file == NULL)
         return;
 
 #ifdef S_ISREG
-
+    struct stat sb;
     if (stat(debug_log_file, &sb) == 0)
         if (S_ISREG(sb.st_mode) == 0)
             return;
-
 #endif
+
+    char from[MAXPATHLEN];
+    from[0] = '\0';
+
+    char to[MAXPATHLEN];
+    to[0] = '\0';
 
     /*
      * NOTE: we cannot use xrename here without having it in a
@@ -498,17 +485,14 @@ _db_rotate_log(void) {
      * used everywhere debug.c is used.
      */
     /* Rotate numbers 0 through N up one */
-    for (i = Config.Log.rotateNumber; i > 1;) {
+    for (int i = Debug::rotateNumber; i > 1;) {
         i--;
         snprintf(from, MAXPATHLEN, "%s.%d", debug_log_file, i - 1);
         snprintf(to, MAXPATHLEN, "%s.%d", debug_log_file, i);
 #ifdef _SQUID_MSWIN_
-
         remove
-            (to);
-
+        (to);
 #endif
-
         rename(from, to);
     }
 
@@ -519,29 +503,26 @@ _db_rotate_log(void) {
 #ifdef _SQUID_MSWIN_
     if (debug_log != stderr)
         fclose(debug_log);
-
 #endif
     /* Rotate the current log to .0 */
-    if (Config.Log.rotateNumber > 0) {
+    if (Debug::rotateNumber > 0) {
         snprintf(to, MAXPATHLEN, "%s.%d", debug_log_file, 0);
 #ifdef _SQUID_MSWIN_
-
         remove
-            (to);
-
+        (to);
 #endif
-
         rename(debug_log_file, to);
     }
 
     /* Close and reopen the log.  It may have been renamed "manually"
      * before HUP'ing us. */
     if (debug_log != stderr)
-        debugOpenLog(Config.Log.log);
+        debugOpenLog(Debug::cache_log);
 }
 
 static const char *
-debugLogTime(void) {
+debugLogTime(void)
+{
 
     time_t t = getCurrentTime();
 
@@ -567,7 +548,8 @@ debugLogTime(void) {
 }
 
 void
-xassert(const char *msg, const char *file, int line) {
+xassert(const char *msg, const char *file, int line)
+{
     debugs(0, 0, "assertion failed: " << file << ":" << line << ": \"" << msg << "\"");
 
     if (!shutting_down)
@@ -579,15 +561,15 @@ xassert(const char *msg, const char *file, int line) {
  *
  * Rationale
  * ---------
- * 
+ *
  * When you have a long nested processing sequence, it is often impossible
  * for low level routines to know in what larger context they operate. If a
  * routine coredumps, one can restore the context using debugger trace.
  * However, in many case you do not want to coredump, but just want to report
  * a potential problem. A report maybe useless out of problem context.
- * 
+ *
  * To solve this potential problem, use the following approach:
- * 
+ *
  * int
  * top_level_foo(const char *url)
  * {
@@ -601,7 +583,7 @@ xassert(const char *msg, const char *file, int line) {
  *      // exit, clean after yourself
  *      ctx_exit(ctx);
  * }
- * 
+ *
  * void
  * bottom_level_boo(int status, void *data)
  * {
@@ -611,32 +593,32 @@ xassert(const char *msg, const char *file, int line) {
  *      debugs(13, 6, "DOS attack detected, data: " << data);
  *      ...
  * }
- * 
+ *
  * Current implementation is extremely simple but still very handy. It has a
  * negligible overhead (descriptions are not duplicated).
- * 
+ *
  * When the _first_ debug message for a given context is printed, it is
  * prepended with the current context description. Context is printed with
  * the same debugging level as the original message.
- * 
+ *
  * Note that we do not print context every type you do ctx_enter(). This
  * approach would produce too many useless messages.  For the same reason, a
  * context description is printed at most _once_ even if you have 10
  * debugging messages within one context.
- * 
+ *
  * Contexts can be nested, of course. You must use ctx_enter() to enter a
  * context (push it onto stack).  It is probably safe to exit several nested
  * contexts at _once_ by calling ctx_exit() at the top level (this will pop
  * all context till current one). However, as in any stack, you cannot start
  * in the middle.
- * 
- * Analysis: 
+ *
+ * Analysis:
  * i)   locate debugging message,
  * ii)  locate current context by going _upstream_ in your log file,
  * iii) hack away.
  *
  *
- * To-Do: 
+ * To-Do:
  * -----
  *
  *       decide if we want to dup() descriptions (adds overhead) but allows to
@@ -669,7 +651,8 @@ static const char *ctx_get_descr(Ctx ctx);
 
 
 Ctx
-ctx_enter(const char *descr) {
+ctx_enter(const char *descr)
+{
     Ctx_Current_Level++;
 
     if (Ctx_Current_Level <= CTX_MAX_LEVEL)
@@ -684,7 +667,8 @@ ctx_enter(const char *descr) {
 }
 
 void
-ctx_exit(Ctx ctx) {
+ctx_exit(Ctx ctx)
+{
     assert(ctx >= 0);
     Ctx_Current_Level = (ctx >= 0) ? ctx - 1 : -1;
 
@@ -697,7 +681,8 @@ ctx_exit(Ctx ctx) {
  * info for deducing the current execution stack
  */
 static void
-ctx_print(void) {
+ctx_print(void)
+{
     /* lock so _db_print will not call us recursively */
     Ctx_Lock++;
     /* ok, user saw [0,Ctx_Reported_Level] descriptions */
@@ -727,7 +712,8 @@ ctx_print(void) {
 
 /* checks for nulls and overflows */
 static const char *
-ctx_get_descr(Ctx ctx) {
+ctx_get_descr(Ctx ctx)
+{
     if (ctx < 0 || ctx > CTX_MAX_LEVEL)
         return "<lost>";
 
@@ -737,7 +723,8 @@ ctx_get_descr(Ctx ctx) {
 int Debug::TheDepth = 0;
 
 std::ostream &
-Debug::getDebugOut() {
+Debug::getDebugOut()
+{
     assert(TheDepth >= 0);
     ++TheDepth;
     if (TheDepth > 1) {
@@ -754,7 +741,8 @@ Debug::getDebugOut() {
 }
 
 void
-Debug::finishDebug() {
+Debug::finishDebug()
+{
     assert(TheDepth >= 0);
     assert(CurrentDebug);
     if (TheDepth > 1) {
@@ -771,11 +759,12 @@ Debug::finishDebug() {
 // Hack: replaces global ::xassert() to debug debugging assertions
 // Relies on assert macro calling xassert() without a specific scope.
 void
-Debug::xassert(const char *msg, const char *file, int line) {
-	
+Debug::xassert(const char *msg, const char *file, int line)
+{
+
     if (CurrentDebug) {
         *CurrentDebug << "assertion failed: " << file << ":" << line <<
-            ": \"" << msg << "\"";
+        ": \"" << msg << "\"";
     }
     abort();
 }

@@ -1,6 +1,6 @@
 
 /*
- * $Id: comm_kqueue.cc,v 1.17.2.1 2008/02/25 03:45:24 amosjeffries Exp $
+ * $Id$
  *
  * DEBUG: section 5     Socket Functions
  *
@@ -55,16 +55,18 @@
  */
 
 #include "squid.h"
+
+#if USE_KQUEUE
+
 #include "comm_kqueue.h"
 #include "CacheManager.h"
 #include "Store.h"
 #include "fde.h"
 #include "SquidTime.h"
 
-#ifdef USE_KQUEUE
-
+#if HAVE_SYS_EVENT_H
 #include <sys/event.h>
-
+#endif
 
 #define KE_LENGTH        128
 
@@ -91,6 +93,7 @@ static int kqmax;                /* max structs to buffer */
 static int kqoff;                /* offset into the buffer */
 static int max_poll_time = 1000;
 
+static void commKQueueRegisterWithCacheManager(void);
 
 /* XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX */
 /* Private functions */
@@ -132,7 +135,7 @@ kq_update_events(int fd, short filter, PF * handler)
 
         EV_SET(kep, (uintptr_t) fd, filter, kep_flags, 0, 0, 0);
 
-	/* Check if we've used the last one. If we have then submit them all */
+        /* Check if we've used the last one. If we have then submit them all */
         if (kqoff == kqmax - 1) {
             int ret;
 
@@ -177,6 +180,8 @@ comm_select_init(void)
     kqlst = (struct kevent *)xmalloc(sizeof(*kqlst) * kqmax);
     zero_timespec.tv_sec = 0;
     zero_timespec.tv_nsec = 0;
+
+    commKQueueRegisterWithCacheManager();
 }
 
 /*
@@ -215,10 +220,10 @@ commResetSelect(int fd)
 {
     fde *F = &fd_table[fd];
     if (F->read_handler) {
-	kq_update_events(fd, EVFILT_READ, (PF *)1);
+        kq_update_events(fd, EVFILT_READ, (PF *)1);
     }
     if (F->write_handler) {
-	kq_update_events(fd, EVFILT_WRITE, (PF *)1);
+        kq_update_events(fd, EVFILT_WRITE, (PF *)1);
     }
 }
 
@@ -255,7 +260,7 @@ comm_select(int msec)
 
     for (;;) {
         num = kevent(kq, kqlst, kqoff, ke, KE_LENGTH, &poll_time);
-        statCounter.select_loops++;
+        ++statCounter.select_loops;
         kqoff = 0;
 
         if (num >= 0)
@@ -293,7 +298,7 @@ comm_select(int msec)
 
             if ((hdl = F->read_handler) != NULL) {
                 F->read_handler = NULL;
-		F->flags.read_pending = 0;
+                F->flags.read_pending = 0;
                 hdl(fd, F->read_data);
             }
 
@@ -324,8 +329,8 @@ comm_quick_poll_required(void)
     max_poll_time = 10;
 }
 
-void
-commKQueueRegisterWithCacheManager(CacheManager & manager)
+static void
+commKQueueRegisterWithCacheManager(void)
 {
 }
 

@@ -1,6 +1,6 @@
 
 /*
- * $Id: HttpMsg.cc,v 1.44 2007/12/21 23:50:24 hno Exp $
+ * $Id$
  *
  * DEBUG: section 74    HTTP Message
  * AUTHOR: Alex Rousskov
@@ -21,12 +21,12 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *  
+ *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *  
+ *
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
@@ -243,7 +243,6 @@ HttpMsg::httpMsgParseStep(const char *buf, int len, int atEnd)
     const char **parse_end_ptr = &blk_end;
     assert(parse_start);
     assert(pstate < psParsed);
-    int retval;
 
     *parse_end_ptr = parse_start;
 
@@ -251,19 +250,19 @@ HttpMsg::httpMsgParseStep(const char *buf, int len, int atEnd)
 
     if (pstate == psReadyToParseStartLine) {
         if (!httpMsgIsolateStart(&parse_start, &blk_start, &blk_end)) {
-            retval = 0;
-	    goto finish;
-	}
+            PROF_stop(HttpMsg_httpMsgParseStep);
+            return 0;
+        }
 
         if (!parseFirstLine(blk_start, blk_end)) {
-            retval = httpMsgParseError();
-	    goto finish;
-	}
+            PROF_stop(HttpMsg_httpMsgParseStep);
+            return httpMsgParseError();
+        }
 
         *parse_end_ptr = parse_start;
 
         hdr_sz = *parse_end_ptr - buf;
-	parse_len = parse_len - hdr_sz;
+        parse_len = parse_len - hdr_sz;
 
         ++pstate;
     }
@@ -277,14 +276,16 @@ HttpMsg::httpMsgParseStep(const char *buf, int len, int atEnd)
         if (!httpMsgIsolateHeaders(&parse_start, parse_len, &blk_start, &blk_end)) {
             if (atEnd) {
                 blk_start = parse_start, blk_end = blk_start + strlen(blk_start);
-	    } else {
-		retval = 0;
-		goto finish;
+            } else {
+                PROF_stop(HttpMsg_httpMsgParseStep);
+                return 0;
             }
         }
 
-        if (!header.parse(blk_start, blk_end))
+        if (!header.parse(blk_start, blk_end)) {
+            PROF_stop(HttpMsg_httpMsgParseStep);
             return httpMsgParseError();
+        }
 
         hdrCacheInit();
 
@@ -294,10 +295,9 @@ HttpMsg::httpMsgParseStep(const char *buf, int len, int atEnd)
 
         ++pstate;
     }
-    retval = 1;
-finish:
+
     PROF_stop(HttpMsg_httpMsgParseStep);
-    return retval;
+    return 1;
 }
 
 /* handy: resets and returns -1 */
@@ -321,18 +321,13 @@ HttpMsg::setContentLength(int64_t clen)
 int
 httpMsgIsPersistent(HttpVersion const &http_ver, const HttpHeader * hdr)
 {
-#if WHEN_SQUID_IS_HTTP1_1
-
     if ((http_ver.major >= 1) && (http_ver.minor >= 1)) {
         /*
          * for modern versions of HTTP: persistent unless there is
          * a "Connection: close" header.
          */
         return !httpHeaderHasConnDir(hdr, "close");
-    } else
-#else
-    {
-#endif
+    } else {
         /*
          * Persistent connections in Netscape 3.x are allegedly broken,
          * return false if it is a browser connection.  If there is a
@@ -340,17 +335,17 @@ httpMsgIsPersistent(HttpVersion const &http_ver, const HttpHeader * hdr)
          */
         const char *agent = hdr->getStr(HDR_USER_AGENT);
 
-    if (agent && !hdr->has(HDR_VIA)) {
-        if (!strncasecmp(agent, "Mozilla/3.", 10))
-            return 0;
+        if (agent && !hdr->has(HDR_VIA)) {
+            if (!strncasecmp(agent, "Mozilla/3.", 10))
+                return 0;
 
-        if (!strncasecmp(agent, "Netscape/3.", 11))
-            return 0;
+            if (!strncasecmp(agent, "Netscape/3.", 11))
+                return 0;
+        }
+
+        /* for old versions of HTTP: persistent if has "keep-alive" */
+        return httpHeaderHasConnDir(hdr, "keep-alive");
     }
-
-    /* for old versions of HTTP: persistent if has "keep-alive" */
-    return httpHeaderHasConnDir(hdr, "keep-alive");
-}
 }
 
 void HttpMsg::packInto(Packer *p, bool full_uri) const
@@ -401,12 +396,12 @@ HttpMsg::_unlock()
 void
 HttpParserInit(HttpParser *hdr, const char *buf, int bufsiz)
 {
-	hdr->state = 1;
-	hdr->buf = buf;
-	hdr->bufsiz = bufsiz;
-	hdr->req_start = hdr->req_end = -1;
-	hdr->hdr_start = hdr->hdr_end = -1;
-        debugs(74, 5, "httpParseInit: Request buffer is " << buf);
+    hdr->state = 1;
+    hdr->buf = buf;
+    hdr->bufsiz = bufsiz;
+    hdr->req_start = hdr->req_end = -1;
+    hdr->hdr_start = hdr->hdr_end = -1;
+    debugs(74, 5, "httpParseInit: Request buffer is " << buf);
 }
 
 #if MSGDODEBUG
@@ -414,14 +409,14 @@ HttpParserInit(HttpParser *hdr, const char *buf, int bufsiz)
 int
 HttpParserReqSz(HttpParser *hp)
 {
-	assert(hp->state == 1);
-	assert(hp->req_start != -1);
-	assert(hp->req_end != -1);
-	return hp->req_end - hp->req_start + 1;
+    assert(hp->state == 1);
+    assert(hp->req_start != -1);
+    assert(hp->req_end != -1);
+    return hp->req_end - hp->req_start + 1;
 }
 
 
-/* 
+/*
  * This +1 makes it 'right' but won't make any sense if
  * there's a 0 byte header? This won't happen normally - a valid header
  * is at -least- a blank line (\n, or \r\n.)
@@ -429,36 +424,38 @@ HttpParserReqSz(HttpParser *hp)
 int
 HttpParserHdrSz(HttpParser *hp)
 {
-	assert(hp->state == 1);
-	assert(hp->hdr_start != -1);
-	assert(hp->hdr_end != -1);
-	return hp->hdr_end - hp->hdr_start + 1;
+    assert(hp->state == 1);
+    assert(hp->hdr_start != -1);
+    assert(hp->hdr_end != -1);
+    return hp->hdr_end - hp->hdr_start + 1;
 }
 
 const char *
 HttpParserHdrBuf(HttpParser *hp)
 {
-	assert(hp->state == 1);
-	assert(hp->hdr_start != -1);
-	assert(hp->hdr_end != -1);
-	return hp->buf + hp->hdr_start;
+    assert(hp->state == 1);
+    assert(hp->hdr_start != -1);
+    assert(hp->hdr_end != -1);
+    return hp->buf + hp->hdr_start;
 }
 
 int
 HttpParserRequestLen(HttpParser *hp)
 {
-	return hp->hdr_end - hp->req_start + 1;
+    return hp->hdr_end - hp->req_start + 1;
 }
 #endif
 
-/*
+/**
  * Attempt to parse the request line.
  *
- * This will set the values in hmsg that it determines. One may end up 
+ * This will set the values in hmsg that it determines. One may end up
  * with a partially-parsed buffer; the return value tells you whether
  * the values are valid or not.
  *
- * @return 1 if parsed correctly, 0 if more is needed, -1 if error
+ * \retval	1 if parsed correctly
+ * \retval	0 if more is needed
+ * \retval	-1 if error
  *
  * TODO:
  *   * have it indicate "error" and "not enough" as two separate conditions!
@@ -467,169 +464,172 @@ HttpParserRequestLen(HttpParser *hp)
 int
 HttpParserParseReqLine(HttpParser *hmsg)
 {
-	int i = 0;
-	int retcode = 0;
-	unsigned int maj = 0, min = 0;
-	int last_whitespace = -1, line_end = -1;
+    int i = 0;
+    int retcode = 0;
+    unsigned int maj = 0, min = 0;
+    int last_whitespace = -1, line_end = -1;
 
-        debugs(74, 5, "httpParserParseReqLine: parsing " << hmsg->buf);
+    debugs(74, 5, "httpParserParseReqLine: parsing " << hmsg->buf);
 
-	PROF_start(HttpParserParseReqLine);
-	/* Find \r\n - end of URL+Version (and the request) */
-	hmsg->req_end = -1;
-	for (i = 0; i < hmsg->bufsiz; i++) {
-		if (hmsg->buf[i] == '\n') {
-			hmsg->req_end = i;
-			break;
-		}
-		if (i < hmsg->bufsiz - 1 && hmsg->buf[i] == '\r' && hmsg->buf[i + 1] == '\n') {
-			hmsg->req_end = i + 1;
-			break;
-		}
-	}
-	if (hmsg->req_end == -1) {
-		retcode = 0;
-		goto finish;
-	}
-	assert(hmsg->buf[hmsg->req_end] == '\n');
-	/* Start at the beginning again */
-	i = 0;
+    PROF_start(HttpParserParseReqLine);
+    /* Find \r\n - end of URL+Version (and the request) */
+    hmsg->req_end = -1;
+    for (i = 0; i < hmsg->bufsiz; i++) {
+        if (hmsg->buf[i] == '\n') {
+            hmsg->req_end = i;
+            break;
+        }
+        if (i < hmsg->bufsiz - 1 && hmsg->buf[i] == '\r' && hmsg->buf[i + 1] == '\n') {
+            hmsg->req_end = i + 1;
+            break;
+        }
+    }
+    if (hmsg->req_end == -1) {
+        retcode = 0;
+        goto finish;
+    }
+    assert(hmsg->buf[hmsg->req_end] == '\n');
+    /* Start at the beginning again */
+    i = 0;
 
-	/* Find first non-whitespace - beginning of method */
-	for (; i < hmsg->req_end && (xisspace(hmsg->buf[i])); i++);
-	if (i >= hmsg->req_end) {
-		retcode = 0;
-		goto finish;
-	}
-	hmsg->m_start = i;
-	hmsg->req_start = i;
+    /* Find first non-whitespace - beginning of method */
+    for (; i < hmsg->req_end && (xisspace(hmsg->buf[i])); i++);
+    if (i >= hmsg->req_end) {
+        retcode = 0;
+        goto finish;
+    }
+    hmsg->m_start = i;
+    hmsg->req_start = i;
 
-	/* Find first whitespace - end of method */
-	for (; i < hmsg->req_end && (! xisspace(hmsg->buf[i])); i++);
-	if (i >= hmsg->req_end) {
-		retcode = 0;
-		goto finish;
-	}
-	hmsg->m_end = i - 1;
+    /* Find first whitespace - end of method */
+    for (; i < hmsg->req_end && (! xisspace(hmsg->buf[i])); i++);
+    if (i >= hmsg->req_end) {
+        retcode = 0;
+        goto finish;
+    }
+    hmsg->m_end = i - 1;
 
-	/* Find first non-whitespace - beginning of URL+Version */
-	for (; i < hmsg->req_end && (xisspace(hmsg->buf[i])); i++);
-	if (i >= hmsg->req_end) {
-		retcode = 0;
-		goto finish;
-	}
-	hmsg->u_start = i;
+    /* Find first non-whitespace - beginning of URL+Version */
+    for (; i < hmsg->req_end && (xisspace(hmsg->buf[i])); i++);
+    if (i >= hmsg->req_end) {
+        retcode = 0;
+        goto finish;
+    }
+    hmsg->u_start = i;
 
-	/* Find \r\n or \n - thats the end of the line. Keep track of the last whitespace! */
-	for (; i <= hmsg->req_end; i++) {
-		/* If \n - its end of line */
-		if (hmsg->buf[i] == '\n') {
-			line_end = i;
-			break;
-		}
-		/* XXX could be off-by-one wrong! */
-		if (hmsg->buf[i] == '\r' && (i + 1) <= hmsg->req_end && hmsg->buf[i+1] == '\n') {
-			line_end = i;
-			break;
-		}
-		/* If its a whitespace, note it as it'll delimit our version */
-		if (hmsg->buf[i] == ' ' || hmsg->buf[i] == '\t') {
-			last_whitespace = i;
-		}
-	}
-	if (i > hmsg->req_end) {
-		retcode = 0;
-		goto finish;
-	}
+    /* Find \r\n or \n - thats the end of the line. Keep track of the last whitespace! */
+    for (; i <= hmsg->req_end; i++) {
+        /* If \n - its end of line */
+        if (hmsg->buf[i] == '\n') {
+            line_end = i;
+            break;
+        }
+        /* XXX could be off-by-one wrong! */
+        if (hmsg->buf[i] == '\r' && (i + 1) <= hmsg->req_end && hmsg->buf[i+1] == '\n') {
+            line_end = i;
+            break;
+        }
+        /* If its a whitespace, note it as it'll delimit our version */
+        if (hmsg->buf[i] == ' ' || hmsg->buf[i] == '\t') {
+            last_whitespace = i;
+        }
+    }
+    if (i > hmsg->req_end) {
+        retcode = 0;
+        goto finish;
+    }
 
-	/* At this point we don't need the 'i' value; so we'll recycle it for version parsing */
+    /* At this point we don't need the 'i' value; so we'll recycle it for version parsing */
 
-	/* 
-	 * At this point: line_end points to the first eol char (\r or \n);
-	 * last_whitespace points to the last whitespace char in the URL.
-	 * We know we have a full buffer here!
-	 */
-	if (last_whitespace == -1) {
-		maj = 0; min = 9;
-		hmsg->u_end = line_end - 1;
-		assert(hmsg->u_end >= hmsg->u_start);
-	} else {
-		/* Find the first non-whitespace after last_whitespace */
-		/* XXX why <= vs < ? I do need to really re-audit all of this ..*/
-		for (i = last_whitespace; i <= hmsg->req_end && xisspace(hmsg->buf[i]); i++);
-		if (i > hmsg->req_end) {
-			retcode = 0;
-			goto finish;
-		}
+    /*
+     * At this point: line_end points to the first eol char (\r or \n);
+     * last_whitespace points to the last whitespace char in the URL.
+     * We know we have a full buffer here!
+     */
+    if (last_whitespace == -1) {
+        maj = 0;
+        min = 9;
+        hmsg->u_end = line_end - 1;
+        assert(hmsg->u_end >= hmsg->u_start);
+    } else {
+        /* Find the first non-whitespace after last_whitespace */
+        /* XXX why <= vs < ? I do need to really re-audit all of this ..*/
+        for (i = last_whitespace; i <= hmsg->req_end && xisspace(hmsg->buf[i]); i++);
+        if (i > hmsg->req_end) {
+            retcode = 0;
+            goto finish;
+        }
 
-		/* is it http/ ? if so, we try parsing. If not, the URL is the whole line; version is 0.9 */
-		if (i + 5 >= hmsg->req_end || (strncasecmp(&hmsg->buf[i], "HTTP/", 5) != 0)) {
-			maj = 0; min = 9;
-			hmsg->u_end = line_end - 1;
-			assert(hmsg->u_end >= hmsg->u_start);
-		} else {
-			/* Ok, lets try parsing! Yes, this needs refactoring! */
-			hmsg->v_start = i;
-			i += 5;
+        /* is it http/ ? if so, we try parsing. If not, the URL is the whole line; version is 0.9 */
+        if (i + 5 >= hmsg->req_end || (strncasecmp(&hmsg->buf[i], "HTTP/", 5) != 0)) {
+            maj = 0;
+            min = 9;
+            hmsg->u_end = line_end - 1;
+            assert(hmsg->u_end >= hmsg->u_start);
+        } else {
+            /* Ok, lets try parsing! Yes, this needs refactoring! */
+            hmsg->v_start = i;
+            i += 5;
 
-			/* next should be 1 or more digits */
-			maj = 0;
-			for (; i < hmsg->req_end && (isdigit(hmsg->buf[i])) && maj < 65536; i++) {
-				maj = maj * 10;
-				maj = maj + (hmsg->buf[i]) - '0';
-			}
-                        if (maj >= 65536) {
-                            retcode = -1;
-                            goto finish;
-                        }
-			if (i >= hmsg->req_end) {
-				retcode = 0;
-				goto finish;
-			}
+            /* next should be 1 or more digits */
+            maj = 0;
+            for (; i < hmsg->req_end && (isdigit(hmsg->buf[i])) && maj < 65536; i++) {
+                maj = maj * 10;
+                maj = maj + (hmsg->buf[i]) - '0';
+            }
+            if (maj >= 65536) {
+                retcode = -1;
+                goto finish;
+            }
+            if (i >= hmsg->req_end) {
+                retcode = 0;
+                goto finish;
+            }
 
-			/* next should be .; we -have- to have this as we have a whole line.. */
-			if (hmsg->buf[i] != '.') {
-				retcode = 0;
-				goto finish;
-			}
-			if (i + 1 >= hmsg->req_end) {
-				retcode = 0;
-				goto finish;
-			}
-	
-			/* next should be one or more digits */
-			i++;
-			min = 0;
-			for (; i < hmsg->req_end && (isdigit(hmsg->buf[i])) && min < 65536; i++) {
-				min = min * 10;
-				min = min + (hmsg->buf[i]) - '0';
-			}
-                        if (min >= 65536) {
-                            retcode = -1;
-                            goto finish;
-                        }
+            /* next should be .; we -have- to have this as we have a whole line.. */
+            if (hmsg->buf[i] != '.') {
+                retcode = 0;
+                goto finish;
+            }
+            if (i + 1 >= hmsg->req_end) {
+                retcode = 0;
+                goto finish;
+            }
 
-			/* Find whitespace, end of version */
-			hmsg->v_end = i;
-			hmsg->u_end = last_whitespace - 1;
-		}
-	}
+            /* next should be one or more digits */
+            i++;
+            min = 0;
+            for (; i < hmsg->req_end && (isdigit(hmsg->buf[i])) && min < 65536; i++) {
+                min = min * 10;
+                min = min + (hmsg->buf[i]) - '0';
+            }
 
-	/* 
-	 * Rightio - we have all the schtuff. Return true; we've got enough.
-	 */
-	retcode = 1;
+            if (min >= 65536) {
+                retcode = -1;
+                goto finish;
+            }
+
+            /* Find whitespace, end of version */
+            hmsg->v_end = i;
+            hmsg->u_end = last_whitespace - 1;
+        }
+    }
+
+    /*
+     * Rightio - we have all the schtuff. Return true; we've got enough.
+     */
+    retcode = 1;
 
 finish:
-	hmsg->v_maj = maj;
-	hmsg->v_min = min;
-	PROF_stop(HttpParserParseReqLine);
-        debugs(74, 5, "Parser: retval " << retcode << ": from " << hmsg->req_start <<
-               "->" << hmsg->req_end << ": method " << hmsg->m_start << "->" <<
-               hmsg->m_end << "; url " << hmsg->u_start << "->" << hmsg->u_end <<
-               "; version " << hmsg->v_start << "->" << hmsg->v_end << " (" << maj <<
-               "/" << min << ")");
+    hmsg->v_maj = maj;
+    hmsg->v_min = min;
+    PROF_stop(HttpParserParseReqLine);
+    debugs(74, 5, "Parser: retval " << retcode << ": from " << hmsg->req_start <<
+           "->" << hmsg->req_end << ": method " << hmsg->m_start << "->" <<
+           hmsg->m_end << "; url " << hmsg->u_start << "->" << hmsg->u_end <<
+           "; version " << hmsg->v_start << "->" << hmsg->v_end << " (" << maj <<
+           "/" << min << ")");
 
-	return retcode;
+    return retcode;
 }
 

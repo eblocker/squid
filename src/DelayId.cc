@@ -1,6 +1,6 @@
 
 /*
- * $Id: DelayId.cc,v 1.23.2.1 2008/02/10 10:43:09 serassio Exp $
+ * $Id$
  *
  * DEBUG: section 77    Delay Pools
  * AUTHOR: Robert Collins <robertc@squid-cache.org>
@@ -23,12 +23,12 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *  
+ *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *  
+ *
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
@@ -47,7 +47,7 @@
 #include "squid.h"
 #include "DelayId.h"
 #include "client_side_request.h"
-#include "ACLChecklist.h"
+#include "acl/FilledChecklist.h"
 #include "DelayPools.h"
 #include "DelayPool.h"
 #include "HttpRequest.h"
@@ -81,7 +81,7 @@ bool
 DelayId::operator == (DelayId const &rhs) const
 {
     /* Doesn't compare composites properly....
-     * only use to test against default ID's 
+     * only use to test against default ID's
      */
     return pool_ == rhs.pool_ && compositeId == rhs.compositeId;
 }
@@ -100,28 +100,34 @@ DelayId::DelayClient(ClientHttpRequest * http)
     assert(http);
     r = http->request;
 
-    if (r->client_addr.s_addr == INADDR_BROADCAST) {
-        debugs(77, 2, "delayClient: WARNING: Called with 'allones' address, ignoring");
+    if (r->client_addr.IsNoAddr()) {
+        debugs(77, 2, "delayClient: WARNING: Called with 'NO_ADDR' address, ignoring");
         return DelayId();
     }
 
     for (pool = 0; pool < DelayPools::pools(); pool++) {
-        ACLChecklist ch;
-        ch.src_addr = r->client_addr;
+
+        /* pools require explicit 'allow' to assign a client into them */
+        if (!DelayPools::delay_data[pool].access) {
+            debugs(77, DBG_IMPORTANT, "delay_pool " << pool <<
+                   " has no delay_access configured. This means that no clients will ever use it.");
+            continue;
+        }
+
+        ACLFilledChecklist ch(DelayPools::delay_data[pool].access, r, NULL);
+#if FOLLOW_X_FORWARDED_FOR
+        if (Config.onoff.delay_pool_uses_indirect_client)
+            ch.src_addr = r->indirect_client_addr;
+        else
+#endif /* FOLLOW_X_FORWARDED_FOR */
+            ch.src_addr = r->client_addr;
         ch.my_addr = r->my_addr;
-        ch.my_port = r->my_port;
 
         if (http->getConn() != NULL)
             ch.conn(http->getConn());
 
-        ch.request = HTTPMSGLOCK(r);
+        if (DelayPools::delay_data[pool].theComposite().getRaw() && ch.fastCheck()) {
 
-        ch.accessList = cbdataReference(DelayPools::delay_data[pool].access);
-
-        /* cbdataReferenceDone() happens in either fastCheck() or ~ACLCheckList */
-
-        if (DelayPools::delay_data[pool].theComposite().getRaw() &&
-                ch.fastCheck()) {
             DelayId result (pool + 1);
             CompositePoolNode::CompositeSelectionDetails details;
             details.src_addr = ch.src_addr;

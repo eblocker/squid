@@ -1,6 +1,5 @@
-
 /*
- * $Id: HttpStatusLine.h,v 1.4 2007/05/29 13:31:38 amosjeffries Exp $
+ * $Id$
  *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
@@ -19,32 +18,53 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *  
+ *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *  
+ *
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
  *
  * Copyright (c) 2003, Robert Collins <robertc@squid-cache.org>
  */
-
 #ifndef SQUID_HTTPSTATUSLINE_H
 #define SQUID_HTTPSTATUSLINE_H
 
-#include "HttpVersion.h"
+class Packer;
+class String;
 
+/* for SQUIDCEXTERN */
+#include "config.h"
+
+/* for http_status and protocol_t */
+#include "enums.h"
+
+#include "HttpVersion.h"
+#include "SquidString.h"
+
+/**
+ * Holds the values parsed from an HTTP reply status line.
+ *
+ * For example: HTTP/1.1 200 Okay
+ */
 class HttpStatusLine
 {
-
 public:
     /* public, read only */
-    HttpVersion version;
-    const char *reason;		/* points to a _constant_ string (default or supplied), never free()d */
-    http_status status;
+
+    /**
+     * By rights protocol name should be a constant "HTTP", with no need for this field to exist.
+     * However there are protocols which violate HTTP by sending their wn custom formats
+     * back with other protocol names (ICY streaming format being the current major problem)
+     */
+    protocol_t protocol;
+
+    HttpVersion version;     ///< breakdown of protocol version labels: 0.9 1.0 1.1
+    http_status status;      ///< status code. ie 200 404
+    const char *reason;	     ///< points to a _constant_ string (default or supplied), never free()d */
 };
 
 /* init/clean */

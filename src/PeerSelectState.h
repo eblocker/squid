@@ -1,7 +1,4 @@
-
 /*
- * $Id: PeerSelectState.h,v 1.2 2006/08/21 00:50:41 robertc Exp $
- *
  * AUTHOR: Robert Collins
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
@@ -20,12 +17,12 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *  
+ *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *  
+ *
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
@@ -38,6 +35,7 @@
 
 #include "cbdata.h"
 #include "PingData.h"
+#include "ip/IpAddress.h"
 
 class ps_state
 {
@@ -54,27 +52,22 @@ public:
     void *callback_data;
     FwdServer *servers;
     /*
-     * Why are these struct sockaddr_in instead of peer *?  Because a
+     * Why are these IpAddress instead of peer *?  Because a
      * peer structure can become invalid during the peer selection
      * phase, specifically after a reconfigure.  Thus we need to lookup
      * the peer * based on the address when we are finally ready to
      * reference the peer structure.
      */
 
-    struct sockaddr_in first_parent_miss;
+    IpAddress first_parent_miss;
 
-    struct sockaddr_in closest_parent_miss;
+    IpAddress closest_parent_miss;
     /*
-     * ->hit and ->secho can be peer* because they should only be
-     * accessed during the thread when they are set
+     * ->hit can be peer* because it should only be
+     * accessed during the thread when it is set
      */
     peer *hit;
     peer_t hit_type;
-#if ALLOW_SOURCE_PING
-
-    peer *secho;
-#endif
-
     ping_data ping;
     ACLChecklist *acl_checklist;
 private:

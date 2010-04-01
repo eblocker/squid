@@ -13,6 +13,8 @@ class testHttpRequest : public CPPUNIT_NS::TestFixture
     CPPUNIT_TEST_SUITE( testHttpRequest );
     CPPUNIT_TEST( testCreateFromUrlAndMethod );
     CPPUNIT_TEST( testCreateFromUrl );
+    CPPUNIT_TEST( testIPv6HostColonBug );
+    CPPUNIT_TEST( testSanityCheckStartLine );
     CPPUNIT_TEST_SUITE_END();
 
 public:
@@ -21,6 +23,8 @@ public:
 protected:
     void testCreateFromUrlAndMethod();
     void testCreateFromUrl();
+    void testIPv6HostColonBug();
+    void testSanityCheckStartLine();
 };
 
 #endif

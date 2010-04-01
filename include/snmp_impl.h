@@ -1,9 +1,10 @@
 /*
- * $Id: snmp_impl.h,v 1.15 2003/01/23 00:36:48 robertc Exp $
+ * $Id$
  */
-
 #ifndef SQUID_SNMP_IMPL_H
 #define SQUID_SNMP_IMPL_H
+
+#include "asn1.h"
 
 /*
  * Definitions for SNMP (RFC 1067) implementation.
@@ -15,13 +16,13 @@
 
                       All Rights Reserved
 
-Permission to use, copy, modify, and distribute this software and its 
-documentation for any purpose and without fee is hereby granted, 
+Permission to use, copy, modify, and distribute this software and its
+documentation for any purpose and without fee is hereby granted,
 provided that the above copyright notice appear in all copies and that
-both that copyright notice and this permission notice appear in 
+both that copyright notice and this permission notice appear in
 supporting documentation, and that the name of CMU not be
 used in advertising or publicity pertaining to distribution of the
-software without specific, written prior permission.  
+software without specific, written prior permission.
 
 CMU DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS SOFTWARE, INCLUDING
 ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS, IN NO EVENT SHALL
@@ -46,6 +47,8 @@ SOFTWARE.
 
 #define SID_MAX_LEN	64
 
+#if 0 /* defines performed globally by config.h */
+
 #ifndef NULL
 #define NULL 0
 #endif
@@ -56,6 +59,7 @@ SOFTWARE.
 #ifndef FALSE
 #define FALSE	0
 #endif
+#endif /* dead code. */
 
 #define READ	    1
 #define WRITE	    0

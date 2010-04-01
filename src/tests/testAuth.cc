@@ -2,10 +2,10 @@
 
 #include "squid.h"
 #include "testAuth.h"
-#include "authenticate.h"
-#include "AuthUserRequest.h"
-#include "AuthScheme.h"
-#include "AuthConfig.h"
+#include "auth/Gadgets.h"
+#include "auth/UserRequest.h"
+#include "auth/Scheme.h"
+#include "auth/Config.h"
 #include "Mem.h"
 
 CPPUNIT_TEST_SUITE_REGISTRATION( testAuth );
@@ -42,10 +42,10 @@ find_proxy_auth(char const *type)
 {
     char const * proxy_auths[][2]= { {"basic","Basic QWxhZGRpbjpvcGVuIHNlc2FtZQ=="},
 
-                                     {"digest", "Digest username=\"robertdig\", realm=\"Squid proxy-caching web server\", nonce=\"yy8rQXjEWwixXVBj\", uri=\"/images/bg8.gif\", response=\"f75a7d3edd48d93c681c75dc4fb58700\", qop=auth, nc=00000012, cnonce=\"e2216641961e228e\" "},
-                                     {"ntlm", "NTLM "},
-                                     {"negotiate", "Negotiate "}
-                                   };
+        {"digest", "Digest username=\"robertdig\", realm=\"Squid proxy-caching web server\", nonce=\"yy8rQXjEWwixXVBj\", uri=\"/images/bg8.gif\", response=\"f75a7d3edd48d93c681c75dc4fb58700\", qop=auth, nc=00000012, cnonce=\"e2216641961e228e\" "},
+        {"ntlm", "NTLM "},
+        {"negotiate", "Negotiate "}
+    };
 
     for (unsigned count = 0; count < 4 ; count++) {
         if (strcasecmp(type, proxy_auths[count][0]) == 0)
@@ -125,19 +125,20 @@ fake_auth_setup()
     }
 
     params[]={ {"digest", digest_parms, 2},
-               {"basic", basic_parms, 2},
-               {"ntlm", ntlm_parms, 1},
-               {"negotiate", negotiate_parms, 1}};
+        {"basic", basic_parms, 2},
+        {"ntlm", ntlm_parms, 1},
+        {"negotiate", negotiate_parms, 1}
+    };
 
     for (unsigned scheme=0; scheme < 4; scheme++) {
         AuthConfig *schemeConfig;
         schemeConfig = getConfig(params[scheme].name);
         if (schemeConfig != NULL)
-            setup_scheme (schemeConfig, params[scheme].params, 
-                params[scheme].paramlength);
-		else
-            fprintf(stderr,"Skipping unknown authentication scheme '%s'.\n", 
-                params[scheme].name);
+            setup_scheme(schemeConfig, params[scheme].params,
+                         params[scheme].paramlength);
+        else
+            fprintf(stderr,"Skipping unknown authentication scheme '%s'.\n",
+                    params[scheme].name);
     }
 
     authenticateInit(&config);
@@ -160,7 +161,9 @@ testAuthConfig::create()
     }
 }
 
+#if HAVE_IOSTREAM
 #include <iostream>
+#endif
 
 /* AuthUserRequest::scheme returns the correct scheme for all
  * authentication types

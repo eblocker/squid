@@ -1,6 +1,6 @@
 
 /*
- * $Id: store_dir.cc,v 1.163 2007/09/28 00:22:38 hno Exp $
+ * $Id$
  *
  * DEBUG: section 47    Store Directory Routines
  * AUTHOR: Duane Wessels
@@ -21,12 +21,12 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *  
+ *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *  
+ *
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
@@ -36,6 +36,7 @@
 #include "squid.h"
 #include "Store.h"
 #include "MemObject.h"
+#include "SquidMath.h"
 #include "SquidTime.h"
 #include "SwapDir.h"
 
@@ -226,7 +227,7 @@ storeDirSelectSwapDirRoundRobin(const StoreEntry * e)
  *
  * Note: We should modify this later on to prefer sticking objects
  * in the *tightest fit* swapdir to conserve space, along with the
- * actual swapdir usage. But for now, this hack will do while  
+ * actual swapdir usage. But for now, this hack will do while
  * testing, so you should order your swapdirs in the config file
  * from smallest maxobjsize to unlimited (-1) maxobjsize.
  *
@@ -324,10 +325,10 @@ storeDirSwapLog(const StoreEntry * e, int op)
 
     assert(op > SWAP_LOG_NOP && op < SWAP_LOG_MAX);
 
-    debugs(20, 3, "storeDirSwapLog: " << 
-           swap_log_op_str[op] << " " <<  
-           e->getMD5Text() << " " <<  
-           e->swap_dirn << " " << 
+    debugs(20, 3, "storeDirSwapLog: " <<
+           swap_log_op_str[op] << " " <<
+           e->getMD5Text() << " " <<
+           e->swap_dirn << " " <<
            std::hex << std::uppercase << std::setfill('0') << std::setw(8) << e->swap_filen);
 
     dynamic_cast<SwapDir *>(INDEXSD(e->swap_dirn))->logEntry(*e, op);
@@ -364,8 +365,8 @@ StoreController::stat(StoreEntry &output) const
     storeAppendPrintf(&output, "Current Store Swap Size: %8lu KB\n",
                       store_swap_size);
     storeAppendPrintf(&output, "Current Capacity       : %d%% used, %d%% free\n",
-                      percent((int) store_swap_size, (int) maxSize()),
-                      percent((int) (maxSize() - store_swap_size), (int) maxSize()));
+                      Math::intPercent((int) store_swap_size, (int) maxSize()),
+                      Math::intPercent((int) (maxSize() - store_swap_size), (int) maxSize()));
     /* FIXME Here we should output memory statistics */
 
     /* now the swapDir */
@@ -414,7 +415,7 @@ storeDirCloseSwapLogs(void)
 
 /*
  *  storeDirWriteCleanLogs
- * 
+ *
  *  Writes a "clean" swap log file from in-memory metadata.
  *  This is a rewrite of the original function to troll each
  *  StoreDir and write the logs, and flush at the end of
@@ -526,7 +527,7 @@ StoreController::sync(void)
 }
 
 /*
- * handle callbacks all avaliable fs'es 
+ * handle callbacks all avaliable fs'es
  */
 int
 StoreController::callback()
@@ -616,7 +617,7 @@ storeDirGetUFSStats(const char *path, int *totl_kb, int *free_kb, int *totl_in, 
 }
 
 void
-allocate_new_swapdir(_SquidConfig::_cacheSwap * swap)
+allocate_new_swapdir(SquidConfig::_cacheSwap * swap)
 {
     if (swap->swapDirs == NULL) {
         swap->n_allocated = 4;
@@ -634,7 +635,7 @@ allocate_new_swapdir(_SquidConfig::_cacheSwap * swap)
 }
 
 void
-free_cachedir(_SquidConfig::_cacheSwap * swap)
+free_cachedir(SquidConfig::_cacheSwap * swap)
 {
     int i;
     /* DON'T FREE THESE FOR RECONFIGURE */
@@ -645,7 +646,7 @@ free_cachedir(_SquidConfig::_cacheSwap * swap)
     for (i = 0; i < swap->n_configured; i++) {
         /* TODO XXX this lets the swapdir free resources asynchronously
         * swap->swapDirs[i]->deactivate();
-        * but there may be such a means already. 
+        * but there may be such a means already.
         * RBC 20041225
         */
         swap->swapDirs[i] = NULL;
@@ -694,7 +695,7 @@ StoreController::dereference(StoreEntry & e)
 StoreEntry *
 
 StoreController::get
-    (const cache_key *key)
+(const cache_key *key)
 {
 
     return swapDir->get
@@ -704,7 +705,7 @@ StoreController::get
 void
 
 StoreController::get
-    (String const key, STOREGETCLIENT callback, void *cbdata)
+(String const key, STOREGETCLIENT aCallback, void *aCallbackData)
 {
     fatal("not implemented");
 }
@@ -712,7 +713,7 @@ StoreController::get
 StoreHashIndex::StoreHashIndex()
 {
     if (store_table)
-	abort();
+        abort();
     assert (store_table == NULL);
 }
 
@@ -769,7 +770,7 @@ StoreHashIndex::create()
 StoreEntry *
 
 StoreHashIndex::get
-    (const cache_key *key)
+(const cache_key *key)
 {
     PROF_start(storeGet);
     debugs(20, 3, "storeGet: looking up " << storeKeyText(key));
@@ -781,7 +782,7 @@ StoreHashIndex::get
 void
 
 StoreHashIndex::get
-    (String const key, STOREGETCLIENT callback, void *cbdata)
+(String const key, STOREGETCLIENT aCallback, void *aCallbackData)
 {
     fatal("not implemented");
 }
@@ -813,7 +814,7 @@ StoreHashIndex::init()
          * driven by the StoreHashIndex, not by each store.
         *
         * That is, the HashIndex should perform a search of each dir it is
-        * indexing to do the hash insertions. The search is then able to 
+        * indexing to do the hash insertions. The search is then able to
         * decide 'from-memory', or 'from-clean-log' or 'from-dirty-log' or
         * 'from-no-log'.
         *
@@ -918,10 +919,10 @@ StoreSearchHashIndex::~StoreSearchHashIndex()
 {}
 
 void
-StoreSearchHashIndex::next(void (callback)(void *cbdata), void *cbdata)
+StoreSearchHashIndex::next(void (aCallback)(void *), void *aCallbackData)
 {
     next();
-    callback (cbdata);
+    aCallback (aCallbackData);
 }
 
 bool

@@ -1,6 +1,6 @@
 
 /*
- * $Id: store_io_ufs.cc,v 1.39 2007/07/24 16:15:32 rousskov Exp $
+ * $Id$
  *
  * DEBUG: section 79    Storage Manager UFS Interface
  * AUTHOR: Duane Wessels
@@ -21,12 +21,12 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *  
+ *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *  
+ *
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
@@ -65,9 +65,9 @@ UFSStrategy::~UFSStrategy ()
 }
 
 StoreIOState::Pointer
-UFSStrategy::createState(SwapDir *SD, StoreEntry *e, StoreIOState::STIOCB * callback, void *callback_data) const
+UFSStrategy::createState(SwapDir *SD, StoreEntry *e, StoreIOState::STIOCB * aCallback, void *callback_data) const
 {
-    return new UFSStoreState (SD, e, callback, callback_data);
+    return new UFSStoreState (SD, e, aCallback, callback_data);
 }
 
 DiskFile::Pointer
@@ -198,28 +198,28 @@ UFSStoreState::close()
 }
 
 void
-UFSStoreState::read_(char *buf, size_t size, off_t offset, STRCB * callback, void *callback_data)
+UFSStoreState::read_(char *buf, size_t size, off_t aOffset, STRCB * aCallback, void *aCallbackData)
 {
     assert(read.callback == NULL);
     assert(read.callback_data == NULL);
     assert(!reading);
     assert(!closing);
-    assert (callback);
+    assert (aCallback);
 
     if (!theFile->canRead()) {
         debugs(79, 3, "UFSStoreState::read_: queueing read because theFile can't read");
-        queueRead (buf, size, offset, callback, callback_data);
+        queueRead (buf, size, aOffset, aCallback, aCallbackData);
         return;
     }
 
-    read.callback = callback;
-    read.callback_data = cbdataReference(callback_data);
+    read.callback = aCallback;
+    read.callback_data = cbdataReference(aCallbackData);
     debugs(79, 3, "UFSStoreState::read_: dirno " << swap_dirn  << ", fileno "<<
            std::setfill('0') << std::hex << std::uppercase << std::setw(8) << swap_filen);
-    offset_ = offset;
+    offset_ = aOffset;
     read_buf = buf;
     reading = true;
-    theFile->read(new ReadRequest(buf,offset,size));
+    theFile->read(new ReadRequest(buf,aOffset,size));
 }
 
 
@@ -232,7 +232,7 @@ UFSStoreState::read_(char *buf, size_t size, off_t offset, STRCB * callback, voi
  * code simpler and always go through the pending_writes queue.
  */
 void
-UFSStoreState::write(char const *buf, size_t size, off_t offset, FREE * free_func)
+UFSStoreState::write(char const *buf, size_t size, off_t aOffset, FREE * free_func)
 {
     debugs(79, 3, "UFSStoreState::write: dirn " << swap_dirn  << ", fileno "<<
            std::setfill('0') << std::hex << std::uppercase << std::setw(8) << swap_filen);
@@ -244,7 +244,7 @@ UFSStoreState::write(char const *buf, size_t size, off_t offset, FREE * free_fun
         return;
     }
 
-    queueWrite(buf, size, offset, free_func);
+    queueWrite(buf, size, aOffset, free_func);
     drainWriteQueue();
 }
 
@@ -311,9 +311,9 @@ UFSStoreState::readCompleted(const char *buf, int len, int errflag, RefCount<Rea
     if (len > 0)
         offset_ += len;
 
-    STRCB *callback = read.callback;
+    STRCB *callback_ = read.callback;
 
-    assert(callback);
+    assert(callback_);
 
     read.callback = NULL;
 
@@ -335,7 +335,7 @@ UFSStoreState::readCompleted(const char *buf, int len, int errflag, RefCount<Rea
         if (len > 0 && read_buf != buf)
             memcpy(read_buf, buf, len);
 
-        callback(cbdata, read_buf, len, this);
+        callback_(cbdata, read_buf, len, this);
     }
 
     if (flags.try_closing || (theFile != NULL && theFile->error()) )
@@ -345,9 +345,9 @@ UFSStoreState::readCompleted(const char *buf, int len, int errflag, RefCount<Rea
 void
 UFSStoreState::writeCompleted(int errflag, size_t len, RefCount<WriteRequest> writeRequest)
 {
-     debugs(79, 3, "UFSStoreState::writeCompleted: dirno " << swap_dirn << ", fileno " << 
-            std::setfill('0') << std::hex << std::uppercase << std::setw(8) << swap_filen << 
-            ", len " << len );
+    debugs(79, 3, "UFSStoreState::writeCompleted: dirno " << swap_dirn << ", fileno " <<
+           std::setfill('0') << std::hex << std::uppercase << std::setw(8) << swap_filen <<
+           ", len " << len );
     /*
      * DPW 2006-05-24
      * See doWrites() for why we don't update UFSStoreState::writing
@@ -461,7 +461,7 @@ UFSStoreState::kickReadQueue()
 }
 
 void
-UFSStoreState::queueRead(char *buf, size_t size, off_t offset, STRCB *callback, void *callback_data)
+UFSStoreState::queueRead(char *buf, size_t size, off_t aOffset, STRCB *callback_, void *callback_data_)
 {
     debugs(79, 3, "UFSStoreState::queueRead: queueing read");
     assert(opening);
@@ -469,9 +469,9 @@ UFSStoreState::queueRead(char *buf, size_t size, off_t offset, STRCB *callback, 
     _queued_read *q = new _queued_read;
     q->buf = buf;
     q->size = size;
-    q->offset = offset;
-    q->callback = callback;
-    q->callback_data = cbdataReference(callback_data);
+    q->offset = aOffset;
+    q->callback = callback_;
+    q->callback_data = cbdataReference(callback_data_);
     linklistPush(&pending_reads, q);
 }
 
@@ -492,7 +492,7 @@ UFSStoreState::drainWriteQueue()
      * drainWriteQueue().
      */
     if (flags.write_draining)
-	return;
+        return;
 
     if (!theFile->canWrite())
         return;
@@ -525,8 +525,8 @@ UFSStoreState::tryClosing()
            " ioInProgress = " << theFile->ioInProgress());
 
     if (theFile->ioInProgress()) {
-	debugs(79, 3, HERE << this <<
-	    " won't close since ioInProgress is true, bailing");
+        debugs(79, 3, HERE << this <<
+               " won't close since ioInProgress is true, bailing");
         flags.try_closing = true;
         return;
     }
@@ -537,7 +537,7 @@ UFSStoreState::tryClosing()
 }
 
 void
-UFSStoreState::queueWrite(char const *buf, size_t size, off_t offset, FREE * free_func)
+UFSStoreState::queueWrite(char const *buf, size_t size, off_t aOffset, FREE * free_func)
 {
     debugs(79, 3, HERE << this << " UFSStoreState::queueWrite: queueing write of size " << size);
 
@@ -545,20 +545,20 @@ UFSStoreState::queueWrite(char const *buf, size_t size, off_t offset, FREE * fre
     q = new _queued_write;
     q->buf = buf;
     q->size = size;
-    q->offset = offset;
+    q->offset = aOffset;
     q->free_func = free_func;
     linklistPush(&pending_writes, q);
 }
 
 StoreIOState::Pointer
 UFSStrategy::open(SwapDir * SD, StoreEntry * e, StoreIOState::STFNCB * file_callback,
-                  StoreIOState::STIOCB * callback, void *callback_data)
+                  StoreIOState::STIOCB * aCallback, void *callback_data)
 {
     assert (((UFSSwapDir *)SD)->IO == this);
     debugs(79, 3, "UFSStrategy::open: fileno "<< std::setfill('0') << std::hex << std::uppercase << std::setw(8) << e->swap_filen);
 
     /* to consider: make createstate a private UFSStrategy call */
-    StoreIOState::Pointer sio = createState (SD, e, callback, callback_data);
+    StoreIOState::Pointer sio = createState (SD, e, aCallback, callback_data);
 
     sio->mode |= O_RDONLY;
 
@@ -587,7 +587,7 @@ UFSStrategy::open(SwapDir * SD, StoreEntry * e, StoreIOState::STFNCB * file_call
 
 StoreIOState::Pointer
 UFSStrategy::create(SwapDir * SD, StoreEntry * e, StoreIOState::STFNCB * file_callback,
-                    StoreIOState::STIOCB * callback, void *callback_data)
+                    StoreIOState::STIOCB * aCallback, void *callback_data)
 {
     assert (((UFSSwapDir *)SD)->IO == this);
     /* Allocate a number */
@@ -596,7 +596,7 @@ UFSStrategy::create(SwapDir * SD, StoreEntry * e, StoreIOState::STFNCB * file_ca
 
     /* Shouldn't we handle a 'bitmap full' error here? */
 
-    StoreIOState::Pointer sio = createState (SD, e, callback, callback_data);
+    StoreIOState::Pointer sio = createState (SD, e, aCallback, callback_data);
 
     sio->mode |= O_WRONLY | O_CREAT | O_TRUNC;
 

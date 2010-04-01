@@ -1,6 +1,5 @@
-
 /*
- * $Id: DelayVector.h,v 1.9 2003/08/04 22:14:40 robertc Exp $
+ * $Id$
  *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
@@ -19,12 +18,12 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *  
+ *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *  
+ *
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
@@ -32,12 +31,16 @@
  *
  * Copyright (c) 2003, Robert Collins <robertc@squid-cache.org>
  */
-
 #ifndef SQUID_DELAYVECTOR_H
 #define SQUID_DELAYVECTOR_H
 
+#include "config.h"
+
+#if DELAY_POOLS
+
 #include "CompositePoolNode.h"
 
+/// \ingroup DelayPoolsAPI
 class DelayVector : public CompositePoolNode
 {
 
@@ -57,7 +60,8 @@ public:
 
 private:
 
-class Id:public DelayIdComposite
+    /// \ingroup DelayPoolsInternal
+    class Id:public DelayIdComposite
     {
 
     public:
@@ -84,4 +88,5 @@ class Id:public DelayIdComposite
     typedef Vector<CompositePoolNode::Pointer>::const_iterator const_iterator;
 };
 
+#endif /* DELAY_POOLS */
 #endif /* SQUID_DELAYVECTOR_H */

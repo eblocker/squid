@@ -1,6 +1,4 @@
 #include "config.h"
-#include <stdexcept>
-
 #include "testUfs.h"
 #include "Store.h"
 #include "SwapDir.h"
@@ -11,6 +9,10 @@
 #include "HttpHeader.h"
 #include "HttpReply.h"
 #include "testStoreSupport.h"
+
+#if HAVE_STDEXCEPT
+#include <stdexcept>
+#endif
 
 #define TESTDIR "testUfs__testUfsSearch"
 
@@ -128,7 +130,7 @@ testUfs::testUfsSearch()
         loop.runOnce();
 
     /* cannot use loop.run(); as the loop will never idle: the store-dir
-     * clean() scheduled event prevents it 
+     * clean() scheduled event prevents it
      */
 
     /* nothing left to rebuild */
@@ -140,9 +142,8 @@ testUfs::testUfsSearch()
         request_flags flags;
         flags.cachable = 1;
         StoreEntry *pe = storeCreateEntry("dummy url", "dummy log url", flags, METHOD_GET);
-        HttpVersion version(1, 0);
         HttpReply *rep = (HttpReply *) pe->getReply();	// bypass const
-        rep->setHeaders(version, HTTP_OK, "dummy test object", "x-squid-internal/test", -1, -1, squid_curtime + 100000);
+        rep->setHeaders(HTTP_OK, "dummy test object", "x-squid-internal/test", -1, -1, squid_curtime + 100000);
 
         pe->setPublicKey();
 
@@ -215,7 +216,7 @@ testUfs::testUfsSearch()
         throw std::runtime_error("Failed to clean test work directory");
 }
 
-/* The UFS store should always configure an IO engine even if none is 
+/* The UFS store should always configure an IO engine even if none is
  * supplied on the configuration line.
  */
 void

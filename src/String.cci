@@ -1,6 +1,5 @@
-
 /*
- * $Id: String.cci,v 1.10.2.1 2008/02/27 10:47:59 amosjeffries Exp $
+ * $Id$
  *
  * DEBUG: section 67    String
  * AUTHOR: Duane Wessels
@@ -21,20 +20,29 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *  
+ *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *  
+ *
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
  *
  */
 
-#include "assert.h"
+#include "config.h"
 #include <cstring>
+
+#ifdef HAVE_STDINT_H
+#include <stdint.h> //for INT_MAX
+#else /* HAVE_STDINT_H */
+#ifndef INT_MAX
+#define INT_MAX 1<<31 //hack but a safe bet
+#endif /* INT_MAX */
+#endif /* HAVE_STDINT_H */
+
 
 String::String() : size_(0), len_(0), buf_ (NULL)
 {
@@ -43,35 +51,42 @@ String::String() : size_(0), len_(0), buf_ (NULL)
 #endif
 }
 
-int
+String::size_type
 String::size() const
 {
     return len_;
 }
 
+bool String::defined() const
+{
+    return buf_!=NULL;
+}
+
+bool String::undefined() const
+{
+    return buf_==NULL;
+}
+
 char const *
-String::buf() const
+String::rawBuf() const
 {
     return buf_;
 }
 
-const char *
-String::pos(char const *aString) const
+char const *
+String::termedBuf() const
 {
-    return strstr(buf(), aString);
+    return buf_;
 }
 
-const char *
-String::pos(char const ch) const
+char
+String::operator [](unsigned int aPos) const
 {
-    return strchr(buf(), ch);
+    assert(aPos < size_);
+
+    return buf_[aPos];
 }
 
-const char *
-String::rpos(char const ch) const
-{
-    return strrchr(buf(), (ch));
-}
 
 int
 String::cmp (char const *aString) const
@@ -87,11 +102,11 @@ String::cmp (char const *aString) const
     if (aString == NULL || aString[0] == '\0')
         return 1;
 
-    return strcmp(buf(), aString);
+    return strcmp(termedBuf(), aString);
 }
 
 int
-String::cmp (char const *aString, size_t count) const
+String::cmp (char const *aString, String::size_type count) const
 {
     /* always the same at length 0 */
 
@@ -107,7 +122,7 @@ String::cmp (char const *aString, size_t count) const
     if (aString == NULL || aString[0] == '\0')
         return 1;
 
-    return strncmp(buf(), aString, count);
+    return strncmp(termedBuf(), aString, count);
 }
 
 int
@@ -124,44 +139,53 @@ String::cmp (String const &aString) const
     if (aString.size() == 0)
         return 1;
 
-    return strcmp(buf(), aString.buf());
+    return strcmp(termedBuf(), aString.termedBuf());
 }
 
 int
 String::caseCmp(char const *aString) const
 {
-    return strcasecmp(buf(), aString);
+    return strcasecmp(termedBuf(), aString);
 }
 
 int
-String::caseCmp(char const *aString, size_t count) const
+String::caseCmp(char const *aString, String::size_type count) const
 {
-    return strncasecmp(buf(), aString, count);
+    return strncasecmp(termedBuf(), aString, count);
 }
+
+int
+String::caseCmp(const String &str) const
+{
+    return caseCmp(str.rawBuf(),str.size());
+}
+
 
 void
 String::set(char const *loc, char const ch)
 {
-    if(loc < buf_ || loc > (buf_ + size_) ) return;
+    if (loc < buf_ || loc > (buf_ + size_) ) return;
 
     buf_[loc-buf_] = ch;
 }
 
 void
-String::cut(size_t newLength)
+String::cut(String::size_type newLength)
 {
-    if(newLength < 0 || newLength > len_) return;
+    if (newLength < 0 || newLength > len_) return;
 
     len_ = newLength;
 
-    if(len_ == 0 && buf_ == NULL) return; // buf_ may be NULL on zero-length strings.
+    // buf_ may be NULL on zero-length strings.
+    if (len_ == 0 && buf_ == NULL) return;
+
     buf_[newLength] = '\0';
 }
 
 void
 String::cutPointer(char const *loc)
 {
-    if(loc < buf_ || loc > (buf_ + size_) ) return;
+    if (loc < buf_ || loc > (buf_ + size_) ) return;
 
     len_ = loc-buf_;
     buf_[len_] = '\0';
@@ -170,6 +194,6 @@ String::cutPointer(char const *loc)
 std::ostream &
 operator<<(std::ostream& os, String const &aString)
 {
-    os << aString.buf();
+    os.write(aString.rawBuf(),aString.size());
     return os;
 }

@@ -1,7 +1,7 @@
-#error COSS Support is not stable in 3.0. Please do not use.
+#error COSS Support is not stable yet in Squid-3. Please do not use.
 /*
- * $Id: store_dir_coss.cc,v 1.77 2007/11/15 16:47:36 wessels Exp $
- * vim: set et : 
+ * $Id$
+ * vim: set et :
  *
  * DEBUG: section 47    Store COSS Directory Routines
  * AUTHOR: Eric Stern
@@ -22,12 +22,12 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *  
+ *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *  
+ *
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
@@ -58,21 +58,15 @@ MemAllocator *coss_index_pool = NULL;
 
 typedef struct _RebuildState RebuildState;
 
-struct _RebuildState
-{
+struct _RebuildState {
     CossSwapDir *sd;
     int n_read;
     FILE *log;
     int speed;
 
-    struct
-    {
-
-unsigned int clean:
-        1;
-    }
-
-    flags;
+    struct {
+        unsigned int clean:1;
+    } flags;
 
     struct _store_rebuild_data counts;
 };
@@ -111,9 +105,7 @@ storeCossDirSwapLogFile(SwapDir * sd, const char *ext)
         while (strlen(pathtmp) && pathtmp[strlen(pathtmp) - 1] == '.')
             pathtmp[strlen(pathtmp) - 1] = '\0';
 
-        for (pathtmp2 = pathtmp; *pathtmp2 == '.'; pathtmp2++)
-
-            ;
+        for (pathtmp2 = pathtmp; *pathtmp2 == '.'; pathtmp2++);
         snprintf(path, SQUID_MAXPATHLEN - 64, Config.Log.swap, pathtmp2);
 
         if (strncmp(path, Config.Log.swap, SQUID_MAXPATHLEN - 64) == 0) {
@@ -451,7 +443,6 @@ storeCossRebuildFromSwapLog(void *data)
                 rb->counts.objcount--;
                 rb->counts.cancelcount++;
             }
-
             continue;
         } else {
             x = log(static_cast<double>(++rb->counts.bad_log_op)) / log(10.0);
@@ -758,7 +749,7 @@ CossSwapDir::writeCleanStart()
 
 /* RBC 20050101 - I think there is a race condition here,
  * *current can be freed as its not ref counted, if/when
- * the store overruns the log writer 
+ * the store overruns the log writer
  */
 const StoreEntry *
 CossCleanLog::nextEntry()
@@ -1014,7 +1005,7 @@ CossSwapDir::statfs(StoreEntry & sentry) const
     /* is this applicable? I Hope not .. */
     storeAppendPrintf(sentry, "Filemap bits in use: %d of %d (%d%%)\n",
                       SD->map->n_files_in_map, SD->map->max_n_files,
-                      percent(SD->map->n_files_in_map, SD->map->max_n_files));
+                      Math::intPercent(SD->map->n_files_in_map, SD->map->max_n_files));
 #endif
 
     //    storeAppendPrintf(&sentry, "Pending operations: %d out of %d\n", io->aq.aq_numpending, MAX_ASYNCOP);
@@ -1050,7 +1041,7 @@ CossSwapDir::parse(int anIndex, char *aPath)
 
     parseOptions(0);
 
-    if (NULL == io) 
+    if (NULL == io)
         changeIO(DiskIOModule::FindDefault());
 
     /* Enforce maxobjsize being set to something */
@@ -1184,7 +1175,7 @@ CossSwapDir::stripePath() const
     if (!stripe_path) {
         String result = path;
         result.append("/stripe");
-        const_cast<CossSwapDir *>(this)->stripe_path = xstrdup(result.buf());
+        const_cast<CossSwapDir *>(this)->stripe_path = xstrdup(result.termedBuf());
     }
 
     return stripe_path;

@@ -1,6 +1,6 @@
 
 /*
- * $Id: store.cc,v 1.618 2007/08/30 19:26:10 hno Exp $
+ * $Id$
  *
  * DEBUG: section 20    Storage Manager
  * AUTHOR: Harvest Derived
@@ -21,12 +21,12 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *  
+ *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *  
+ *
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
@@ -57,31 +57,27 @@ static STMCB storeWriteComplete;
 
 #define STORE_IN_MEM_BUCKETS            (229)
 
-const char *memStatusStr[] =
-    {
-        "NOT_IN_MEMORY",
-        "IN_MEMORY"
-    };
+const char *memStatusStr[] = {
+    "NOT_IN_MEMORY",
+    "IN_MEMORY"
+};
 
-const char *pingStatusStr[] =
-    {
-        "PING_NONE",
-        "PING_WAITING",
-        "PING_DONE"
-    };
+const char *pingStatusStr[] = {
+    "PING_NONE",
+    "PING_WAITING",
+    "PING_DONE"
+};
 
-const char *storeStatusStr[] =
-    {
-        "STORE_OK",
-        "STORE_PENDING"
-    };
+const char *storeStatusStr[] = {
+    "STORE_OK",
+    "STORE_PENDING"
+};
 
-const char *swapStatusStr[] =
-    {
-        "SWAPOUT_NONE",
-        "SWAPOUT_WRITING",
-        "SWAPOUT_DONE"
-    };
+const char *swapStatusStr[] = {
+    "SWAPOUT_NONE",
+    "SWAPOUT_WRITING",
+    "SWAPOUT_DONE"
+};
 
 extern OBJH storeIOStats;
 
@@ -92,8 +88,7 @@ extern OBJH storeIOStats;
 
 typedef struct _storerepl_entry storerepl_entry_t;
 
-struct _storerepl_entry
-{
+struct _storerepl_entry {
     const char *typestr;
     REMOVALPOLICYCREATE *create;
 };
@@ -224,16 +219,15 @@ StoreEntry::DeferReader(void *theContext, CommRead const &aRead)
     anEntry->delayAwareRead(aRead.fd,
                             aRead.buf,
                             aRead.len,
-                            aRead.callback.handler,
-                            aRead.callback.data);
+                            aRead.callback);
 }
 
 void
-StoreEntry::delayAwareRead(int fd, char *buf, int len, IOCB *handler, void *data)
+StoreEntry::delayAwareRead(int fd, char *buf, int len, AsyncCall::Pointer callback)
 {
     size_t amountToRead = bytesWanted(Range<size_t>(0, len));
     /* sketch: readdeferer* = getdeferer.
-     * ->deferRead (fd, buf, len, handler, data, DelayAwareRead, this)
+     * ->deferRead (fd, buf, len, callback, DelayAwareRead, this)
      */
 
     if (amountToRead == 0) {
@@ -244,14 +238,14 @@ StoreEntry::delayAwareRead(int fd, char *buf, int len, IOCB *handler, void *data
 
         if (!mem_obj->readAheadPolicyCanRead()) {
 #endif
-            mem_obj->delayRead(DeferredRead(DeferReader, this, CommRead(fd, buf, len, handler, data)));
+            mem_obj->delayRead(DeferredRead(DeferReader, this, CommRead(fd, buf, len, callback)));
             return;
 #if DELAY_POOLS
 
         }
 
         /* delay id limit */
-        mem_obj->mostBytesAllowed().delayRead(DeferredRead(DeferReader, this, CommRead(fd, buf, len, handler, data)));
+        mem_obj->mostBytesAllowed().delayRead(DeferredRead(DeferReader, this, CommRead(fd, buf, len, callback)));
 
         return;
 
@@ -259,7 +253,7 @@ StoreEntry::delayAwareRead(int fd, char *buf, int len, IOCB *handler, void *data
 
     }
 
-    comm_read(fd, buf, amountToRead, handler, data);
+    comm_read(fd, buf, amountToRead, callback);
 }
 
 size_t
@@ -361,10 +355,10 @@ StoreEntry::StoreEntry()
     swap_dirn = -1;
 }
 
-StoreEntry::StoreEntry(const char *url, const char *log_url)
+StoreEntry::StoreEntry(const char *aUrl, const char *aLogUrl)
 {
     debugs(20, 3, HERE << "new StoreEntry " << this);
-    mem_obj = new MemObject(url, log_url);
+    mem_obj = new MemObject(aUrl, aLogUrl);
 
     expires = lastmod = lastref = timestamp = -1;
 
@@ -520,7 +514,7 @@ StoreEntry::unlock()
 }
 
 void
-StoreEntry::getPublicByRequestMethod  (StoreClient *aClient, HttpRequest * request, const method_t method)
+StoreEntry::getPublicByRequestMethod  (StoreClient *aClient, HttpRequest * request, const HttpRequestMethod& method)
 {
     assert (aClient);
     StoreEntry *result = storeGetPublicByRequestMethod( request, method);
@@ -544,7 +538,7 @@ StoreEntry::getPublicByRequest (StoreClient *aClient, HttpRequest * request)
 }
 
 void
-StoreEntry::getPublic (StoreClient *aClient, const char *uri, const method_t method)
+StoreEntry::getPublic (StoreClient *aClient, const char *uri, const HttpRequestMethod& method)
 {
     assert (aClient);
     StoreEntry *result = storeGetPublic (uri, method);
@@ -556,13 +550,13 @@ StoreEntry::getPublic (StoreClient *aClient, const char *uri, const method_t met
 }
 
 StoreEntry *
-storeGetPublic(const char *uri, const method_t method)
+storeGetPublic(const char *uri, const HttpRequestMethod& method)
 {
     return Store::Root().get(storeKeyPublic(uri, method));
 }
 
 StoreEntry *
-storeGetPublicByRequestMethod(HttpRequest * req, const method_t method)
+storeGetPublicByRequestMethod(HttpRequest * req, const HttpRequestMethod& method)
 {
     return Store::Root().get(storeKeyPublicByRequestMethod(req, method));
 }
@@ -687,24 +681,23 @@ StoreEntry::setPublicKey()
             /* Create "vary" base object */
             String vary;
             StoreEntry *pe = storeCreateEntry(mem_obj->url, mem_obj->log_url, request->flags, request->method);
-            HttpVersion version(1, 0);
             /* We are allowed to do this typecast */
             HttpReply *rep = new HttpReply;
-            rep->setHeaders(version, HTTP_OK, "Internal marker object", "x-squid-internal/vary", -1, -1, squid_curtime + 100000);
+            rep->setHeaders(HTTP_OK, "Internal marker object", "x-squid-internal/vary", -1, -1, squid_curtime + 100000);
             vary = mem_obj->getReply()->header.getList(HDR_VARY);
 
             if (vary.size()) {
                 /* Again, we own this structure layout */
-                rep->header.putStr(HDR_VARY, vary.buf());
+                rep->header.putStr(HDR_VARY, vary.termedBuf());
                 vary.clean();
             }
 
 #if X_ACCELERATOR_VARY
             vary = mem_obj->getReply()->header.getList(HDR_X_ACCELERATOR_VARY);
 
-            if (vary.buf()) {
+            if (vary.defined()) {
                 /* Again, we own this structure layout */
-                rep->header.putStr(HDR_X_ACCELERATOR_VARY, vary.buf());
+                rep->header.putStr(HDR_X_ACCELERATOR_VARY, vary.termedBuf());
                 vary.clean();
             }
 
@@ -747,7 +740,7 @@ StoreEntry::setPublicKey()
 }
 
 StoreEntry *
-storeCreateEntry(const char *url, const char *log_url, request_flags flags, method_t method)
+storeCreateEntry(const char *url, const char *log_url, request_flags flags, const HttpRequestMethod& method)
 {
     StoreEntry *e = NULL;
     MemObject *mem = NULL;
@@ -816,8 +809,7 @@ StoreEntry::write (StoreIOBuffer writeBuffer)
     PROF_start(StoreEntry_write);
     assert(store_status == STORE_PENDING);
 
-    if (!writeBuffer.length)
-      {
+    if (!writeBuffer.length) {
         /* the headers are received already, but we have not received
          * any body data. There are BROKEN abuses of HTTP which require
          * the headers to be passed along before any body data - see
@@ -829,7 +821,7 @@ StoreEntry::write (StoreIOBuffer writeBuffer)
         PROF_stop(StoreEntry_write);
         invokeHandlers();
         return;
-      }
+    }
 
     debugs(20, 5, "storeWrite: writing " << writeBuffer.length << " bytes for '" << getMD5Text() << "'");
     PROF_stop(StoreEntry_write);
@@ -858,25 +850,10 @@ StoreEntry::append(char const *buf, int len)
 
 
 void
-#if STDC_HEADERS
 storeAppendPrintf(StoreEntry * e, const char *fmt,...)
-#else
-storeAppendPrintf(va_alist)
-va_dcl
-#endif
 {
-#if STDC_HEADERS
     va_list args;
     va_start(args, fmt);
-#else
-
-    va_list args;
-    StoreEntry *e = NULL;
-    const char *fmt = NULL;
-    va_start(args);
-    e = va_arg(args, StoreEntry *);
-    fmt = va_arg(args, char *);
-#endif
 
     storeAppendVPrintf(e, fmt, args);
     va_end(args);
@@ -892,11 +869,9 @@ storeAppendVPrintf(StoreEntry * e, const char *fmt, va_list vargs)
     e->append(buf, strlen(buf));
 }
 
-struct _store_check_cachable_hist
-{
+struct _store_check_cachable_hist {
 
-    struct
-    {
+    struct {
         int non_get;
         int not_entry_cachable;
         int wrong_content_length;
@@ -906,19 +881,12 @@ struct _store_check_cachable_hist
         int private_key;
         int too_many_open_files;
         int too_many_open_fds;
-    }
+    } no;
 
-    no;
-
-    struct
-    {
+    struct {
         int Default;
-    }
-
-    yes;
-}
-
-store_check_cachable_hist;
+    } yes;
+} store_check_cachable_hist;
 
 int
 storeTooManyDiskFilesOpen(void)
@@ -940,7 +908,7 @@ StoreEntry::checkTooSmall()
 
     if (STORE_OK == store_status)
         if (mem_obj->object_sz < 0 ||
-	    mem_obj->object_sz < Config.Store.minObjectSize)
+                mem_obj->object_sz < Config.Store.minObjectSize)
             return 1;
     if (getReply()->content_length > -1)
         if (getReply()->content_length < Config.Store.minObjectSize)
@@ -1093,9 +1061,7 @@ StoreEntry::abort()
     assert(mem_obj != NULL);
     debugs(20, 6, "storeAbort: " << getMD5Text());
 
-    lock()
-
-    ;         /* lock while aborting */
+    lock();         /* lock while aborting */
     negativeCache();
 
     releaseRequest();
@@ -1123,18 +1089,18 @@ StoreEntry::abort()
      * Should we check abort.data for validity?
      */
     if (mem_obj->abort.callback) {
-	if (!cbdataReferenceValid(mem_obj->abort.data))
-	    debugs(20,1,HERE << "queueing event when abort.data is not valid");
+        if (!cbdataReferenceValid(mem_obj->abort.data))
+            debugs(20,1,HERE << "queueing event when abort.data is not valid");
         eventAdd("mem_obj->abort.callback",
                  mem_obj->abort.callback,
                  mem_obj->abort.data,
                  0.0,
                  true);
-	unregisterAbort();
+        unregisterAbort();
     }
 
     /* XXX Should we reverse these two, so that there is no
-     * unneeded disk swapping triggered? 
+     * unneeded disk swapping triggered?
      */
     /* Notify the client side */
     invokeHandlers();
@@ -1193,8 +1159,8 @@ storeGetMemSpace(int size)
 
 
 /* thunk through to Store::Root().maintain(). Note that this would be better still
- * if registered against the root store itself, but that requires more complex 
- * update logic - bigger fish to fry first. Long term each store when 
+ * if registered against the root store itself, but that requires more complex
+ * update logic - bigger fish to fry first. Long term each store when
  * it becomes active will self register
  */
 void
@@ -1396,6 +1362,16 @@ StoreEntry::validLength() const
     return 0;
 }
 
+static void
+storeRegisterWithCacheManager(void)
+{
+    CacheManager *manager=CacheManager::GetInstance();
+    manager->registerAction("storedir", "Store Directory Stats", Store::Stats, 0, 1);
+    manager->registerAction("store_io", "Store IO Interface Stats", storeIOStats, 0, 1);
+    manager->registerAction("store_check_cachable_stats", "storeCheckCachable() Stats",
+                            storeCheckCachableStats, 0, 1);
+}
+
 void
 storeInit(void)
 {
@@ -1406,20 +1382,8 @@ storeInit(void)
     eventAdd("storeLateRelease", storeLateRelease, NULL, 1.0, 1);
     Store::Root().init();
     storeRebuildStart();
-}
 
-void
-storeRegisterWithCacheManager(CacheManager & manager)
-{
-    manager.registerAction("storedir",
-                           "Store Directory Stats",
-                           Store::Stats, 0, 1);
-    manager.registerAction("store_check_cachable_stats",
-                           "storeCheckCachable() Stats",
-                           storeCheckCachableStats, 0, 1);
-    manager.registerAction("store_io",
-                           "Store IO Interface Stats",
-                           storeIOStats, 0, 1);
+    storeRegisterWithCacheManager();
 }
 
 void
@@ -1429,7 +1393,7 @@ storeConfigure(void)
                                (float) Config.Swap.highWaterMark) / (float) 100);
     store_swap_low = (long) (((float) Store::Root().maxSize() *
                               (float) Config.Swap.lowWaterMark) / (float) 100);
-    store_pages_max = Config.memMaxSize / SM_PAGE_SIZE;
+    store_pages_max = Config.memMaxSize / sizeof(mem_node);
 }
 
 int
@@ -1459,10 +1423,21 @@ StoreEntry::checkNegativeHit() const
     return 1;
 }
 
+/**
+ * Set object for negative caching.
+ * Preserves any expiry information given by the server.
+ * In absence of proper expiry info it will set to expire immediately,
+ * or with HTTP-violations enabled the configured negative-TTL is observed
+ */
 void
 StoreEntry::negativeCache()
 {
-    expires = squid_curtime + Config.negativeTtl;
+    if (expires == 0)
+#if HTTP_VIOLATIONS
+        expires = squid_curtime + Config.negativeTtl;
+#else
+        expires = squid_curtime;
+#endif
     EBIT_SET(flags, ENTRY_NEGCACHED);
 }
 
@@ -1535,9 +1510,9 @@ StoreEntry::timestampsSet()
             served_date = squid_curtime - age;
 
     if (reply->expires > 0 && reply->date > -1)
-	expires = served_date + (reply->expires - reply->date);
+        expires = served_date + (reply->expires - reply->date);
     else
-	expires = reply->expires;
+        expires = reply->expires;
 
     lastmod = reply->last_modified;
 
@@ -1558,8 +1533,8 @@ StoreEntry::unregisterAbort()
 {
     assert(mem_obj);
     if (mem_obj->abort.callback) {
-	mem_obj->abort.callback = NULL;
-	cbdataReferenceDone(mem_obj->abort.data);
+        mem_obj->abort.callback = NULL;
+        cbdataReferenceDone(mem_obj->abort.data);
     }
 }
 
@@ -1633,12 +1608,12 @@ StoreEntry::url() const
 }
 
 void
-StoreEntry::createMemObject(const char *url, const char *log_url)
+StoreEntry::createMemObject(const char *aUrl, const char *aLogUrl)
 {
     if (mem_obj)
         return;
 
-    mem_obj = new MemObject(url, log_url);
+    mem_obj = new MemObject(aUrl, aLogUrl);
 }
 
 /* this just sets DELAY_SENDING */
@@ -1847,7 +1822,7 @@ StoreEntry::trimMemory()
      * objects.  We have to wait until the mem_status changes.
      */
     if (mem_status == IN_MEMORY)
-	return;
+        return;
 
     if (mem_obj->policyLowestOffsetToKeep() == 0)
         /* Nothing to do */

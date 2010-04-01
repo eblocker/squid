@@ -1,6 +1,5 @@
-
 /*
- * $Id: HierarchyLogEntry.h,v 1.1 2003/10/16 21:40:16 robertc Exp $
+ * $Id$
  *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
@@ -19,12 +18,12 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *  
+ *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *  
+ *
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
@@ -35,7 +34,11 @@
 #ifndef SQUID_HTTPHIERARCHYLOGENTRY_H
 #define SQUID_HTTPHIERARCHYLOGENTRY_H
 
+#include "rfc2181.h"
 #include "PingData.h"
+
+/** todo Cleanup: break hier_code type out. We don't need the rest. */
+#include "enums.h"
 
 class HierarchyLogEntry
 {
@@ -53,6 +56,12 @@ public:
     struct timeval peer_select_start;
 
     struct timeval store_complete_stop;
+
+    http_status peer_reply_status; ///< last HTTP status code received
+    timeval peer_http_request_sent; ///< last peer finished writing req
+    int64_t peer_response_time; ///< last peer response delay
+    timeval first_conn_start; ///< first connection use among all peers
+    int64_t total_response_time; ///< cumulative for all peers
 };
 
 extern void hierarchyNote(HierarchyLogEntry *, hier_code, const char *);

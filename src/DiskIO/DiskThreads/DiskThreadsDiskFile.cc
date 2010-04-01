@@ -1,6 +1,5 @@
-
 /*
- * $Id: DiskThreadsDiskFile.cc,v 1.10 2007/04/30 16:56:13 wessels Exp $
+ * $Id$
  *
  * DEBUG: section 79    Disk IO Routines
  * AUTHOR: Robert Collins
@@ -21,12 +20,12 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *  
+ *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *  
+ *
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
@@ -61,13 +60,13 @@ DiskThreadsDiskFile::operator new (size_t)
 }
 
 void
-DiskThreadsDiskFile::operator delete (void *address)
+DiskThreadsDiskFile::operator delete(void *address)
 {
     DiskThreadsDiskFile *t = static_cast<DiskThreadsDiskFile *>(address);
     cbdataFree(t);
 }
 
-DiskThreadsDiskFile::DiskThreadsDiskFile (char const *aPath, DiskThreadsIOStrategy *anIO):fd(-1), errorOccured (false), IO(anIO),
+DiskThreadsDiskFile::DiskThreadsDiskFile(char const *aPath, DiskThreadsIOStrategy *anIO):fd(-1), errorOccured (false), IO(anIO),
         inProgressIOs (0)
 {
     assert (aPath);
@@ -82,7 +81,7 @@ DiskThreadsDiskFile::~DiskThreadsDiskFile()
 }
 
 void
-DiskThreadsDiskFile::open (int flags, mode_t mode, IORequestor::Pointer callback)
+DiskThreadsDiskFile::open(int flags, mode_t mode, RefCount<IORequestor> callback)
 {
     statCounter.syscalls.disk.opens++;
 #if !ASYNC_OPEN
@@ -131,7 +130,7 @@ DiskThreadsDiskFile::read(ReadRequest * request)
 }
 
 void
-DiskThreadsDiskFile::create (int flags, mode_t mode, IORequestor::Pointer callback)
+DiskThreadsDiskFile::create(int flags, mode_t mode, RefCount<IORequestor> callback)
 {
     statCounter.syscalls.disk.opens++;
 #if !ASYNC_CREATE
@@ -221,7 +220,7 @@ void DiskThreadsDiskFile::doClose()
 }
 
 void
-DiskThreadsDiskFile::close ()
+DiskThreadsDiskFile::close()
 {
     debugs(79, 3, "DiskThreadsDiskFile::close: " << this << " closing for " << ioRequestor.getRaw());
 
@@ -267,7 +266,7 @@ DiskThreadsDiskFile::canWrite() const
 }
 
 bool
-DiskThreadsDiskFile::ioInProgress()const
+DiskThreadsDiskFile::ioInProgress() const
 {
     return inProgressIOs > 0;
 }
@@ -289,7 +288,7 @@ DiskThreadsDiskFile::ReadDone(int fd, const char *buf, int len, int errflag, voi
 }
 
 void
-DiskThreadsDiskFile::readDone(int rvfd, const char *buf, int len, int errflag, ReadRequest::Pointer request)
+DiskThreadsDiskFile::readDone(int rvfd, const char *buf, int len, int errflag, RefCount<ReadRequest> request)
 {
     debugs(79, 3, "DiskThreadsDiskFile::readDone: FD " << rvfd);
     assert (fd == rvfd);
@@ -339,7 +338,7 @@ WriteDone(int fd, int errflag, size_t len, void *my_data)
 }
 
 void
-DiskThreadsDiskFile::writeDone (int rvfd, int errflag, size_t len, WriteRequest::Pointer request)
+DiskThreadsDiskFile::writeDone(int rvfd, int errflag, size_t len, RefCount<WriteRequest> request)
 {
     assert (rvfd == fd);
     static int loop_detect = 0;
@@ -365,12 +364,14 @@ DiskThreadsDiskFile::writeDone (int rvfd, int errflag, size_t len, WriteRequest:
     --loop_detect;
 }
 
+/** \cond AUTODOCS-IGNORE */
 template <class RT>
 cbdata_type IoResult<RT>::CBDATA_IoResult = CBDATA_UNKNOWN;
+/** \endcond */
 
 template<class RT>
 void *
-IoResult<RT>::operator new (size_t)
+IoResult<RT>::operator new(size_t unused)
 {
     CBDATA_INIT_TYPE(IoResult);
     IoResult<RT> *result = cbdataAlloc(IoResult);
@@ -379,8 +380,7 @@ IoResult<RT>::operator new (size_t)
 
 template <class RT>
 void
-IoResult<RT>::operator delete (void *address)
+IoResult<RT>::operator delete(void *address)
 {
     cbdataFree(address);
 }
-

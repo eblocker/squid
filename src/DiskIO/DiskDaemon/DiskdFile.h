@@ -1,6 +1,5 @@
-
 /*
- * $Id: DiskdFile.h,v 1.2 2006/08/21 00:50:45 robertc Exp $
+ * $Id$
  *
  * DEBUG: section 79    Squid-side DISKD I/O functions.
  * AUTHOR: Duane Wessels
@@ -21,12 +20,12 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *  
+ *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *  
+ *
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
@@ -44,27 +43,30 @@ class DiskdIOStrategy;
 
 struct diomsg;
 
+/**
+ \ingroup diskd
+ */
 class DiskdFile : public DiskFile
 {
 
 public:
-    void * operator new (size_t);
-    void operator delete (void *);
-    DiskdFile (char const *path, DiskdIOStrategy *);
+    void * operator new(size_t);
+    void operator delete(void *);
+    DiskdFile(char const *path, DiskdIOStrategy *);
     ~DiskdFile();
-    virtual void open (int, mode_t, RefCount<IORequestor>);
-    virtual void create (int, mode_t, RefCount<IORequestor>);
+    virtual void open(int flags, mode_t aMode, RefCount<IORequestor> callback);
+    virtual void create(int flags, mode_t aMode, RefCount<IORequestor> callback);
     virtual void read(ReadRequest *);
     virtual void write(WriteRequest *);
-    virtual void close ();
+    virtual void close();
     virtual bool error() const;
     virtual bool canRead() const;
-    virtual bool ioInProgress()const;
+    virtual bool ioInProgress() const;
 
     /* Temporary */
     int getID() const {return id;}
 
-    void completed (diomsg *);
+    void completed(diomsg *);
 
 private:
     int id;

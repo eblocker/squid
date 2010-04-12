@@ -7,7 +7,7 @@
 @DPATCH@
 diff -urNad '--exclude=CVS' '--exclude=.svn' '--exclude=.git' '--exclude=.arch' '--exclude=.hg' '--exclude=_darcs' '--exclude=.bzr' squid3~/tools/Makefile.am squid3/tools/Makefile.am
 --- squid3~/tools/Makefile.am	2010-04-01 02:40:45.000000000 +0200
-+++ squid3/tools/Makefile.am	2010-04-12 13:28:15.000000000 +0200
++++ squid3/tools/Makefile.am	2010-04-12 15:03:47.000000000 +0200
 @@ -23,7 +23,7 @@
  man_MANS = \
  	squidclient.1
@@ -17,9 +17,17 @@ diff -urNad '--exclude=CVS' '--exclude=.svn' '--exclude=.git' '--exclude=.arch' 
  
  squidclient_SOURCES = squidclient.cc
  cachemgr__CGIEXT__SOURCES = cachemgr.cc
+@@ -42,6 +42,7 @@
+ $(OBJS): $(top_srcdir)/include/version.h ../include/autoconf.h
+ 
+ install-data-local:
++	test -z "/etc/squid" || $(MKDIR_P) "$(DESTDIR)/etc/squid"
+ 	$(INSTALL_DATA) $(srcdir)/cachemgr.conf $(DESTDIR)$(DEFAULT_CACHEMGR_CONFIG).default
+ 	@if test -f $(DESTDIR)$(DEFAULT_CACHEMGR_CONFIG) ; then \
+ 	        echo "$@ will not overwrite existing $(DESTDIR)$(DEFAULT_CACHEMGR_CONFIG)" ; \
 diff -urNad '--exclude=CVS' '--exclude=.svn' '--exclude=.git' '--exclude=.arch' '--exclude=.hg' '--exclude=_darcs' '--exclude=.bzr' squid3~/tools/Makefile.in squid3/tools/Makefile.in
 --- squid3~/tools/Makefile.in	2010-04-01 02:40:45.000000000 +0200
-+++ squid3/tools/Makefile.in	2010-04-12 13:33:41.000000000 +0200
++++ squid3/tools/Makefile.in	2010-04-12 15:04:32.000000000 +0200
 @@ -291,7 +291,7 @@
  man_MANS = \
  	squidclient.1
@@ -29,12 +37,11 @@ diff -urNad '--exclude=CVS' '--exclude=.svn' '--exclude=.git' '--exclude=.arch' 
  squidclient_SOURCES = squidclient.cc
  cachemgr__CGIEXT__SOURCES = cachemgr.cc
  cachemgr__CGIEXT__CXXFLAGS = -DDEFAULT_CACHEMGR_CONFIG=\"$(DEFAULT_CACHEMGR_CONFIG)\" $(AM_CXXFLAGS)
-@@ -760,7 +760,7 @@
- all-am: Makefile $(PROGRAMS) $(MANS)
- installdirs: installdirs-recursive
- installdirs-am:
--	for dir in "$(DESTDIR)$(bindir)" "$(DESTDIR)$(libexecdir)" "$(DESTDIR)$(man1dir)"; do \
-+	for dir in "$(DESTDIR)$(bindir)" "$(DESTDIR)$(libexecdir)" "$(DESTDIR)$(man1dir)" "$(DESTDIR)/etc/squid"; do \
- 	  test -z "$$dir" || $(MKDIR_P) "$$dir"; \
- 	done
- install: install-recursive
+@@ -879,6 +879,7 @@
+ $(OBJS): $(top_srcdir)/include/version.h ../include/autoconf.h
+ 
+ install-data-local:
++	test -z "/etc/squid" || $(MKDIR_P) "$(DESTDIR)/etc/squid"
+ 	$(INSTALL_DATA) $(srcdir)/cachemgr.conf $(DESTDIR)$(DEFAULT_CACHEMGR_CONFIG).default
+ 	@if test -f $(DESTDIR)$(DEFAULT_CACHEMGR_CONFIG) ; then \
+ 	        echo "$@ will not overwrite existing $(DESTDIR)$(DEFAULT_CACHEMGR_CONFIG)" ; \

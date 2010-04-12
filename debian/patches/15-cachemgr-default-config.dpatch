@@ -34,7 +34,7 @@ diff -urNad '--exclude=CVS' '--exclude=.svn' '--exclude=.git' '--exclude=.arch' 
  installdirs: installdirs-recursive
  installdirs-am:
 -	for dir in "$(DESTDIR)$(bindir)" "$(DESTDIR)$(libexecdir)" "$(DESTDIR)$(man1dir)"; do \
-+	for dir in "$(DESTDIR)$(bindir)" "$(DESTDIR)$(libexecdir)" "$(DESTDIR)$(man1dir)" "/etc/squid"; do \
++	for dir in "$(DESTDIR)$(bindir)" "$(DESTDIR)$(libexecdir)" "$(DESTDIR)$(man1dir)" "$(DESTDIR)/etc/squid"; do \
  	  test -z "$$dir" || $(MKDIR_P) "$$dir"; \
  	done
  install: install-recursive

@@ -52,7 +52,6 @@ DEB_MAKE_CLEAN_TARGET = distclean
 
 install/squid3::
 	install -m 755 -g root -d $(INSTALLDIR)/usr/lib/cgi-bin
-	mv $(INSTALLDIR)/usr/lib/squid3/cachemgr.cgi $(INSTALLDIR)/usr/lib/cgi-bin/cachemgr3.cgi
 	mv $(INSTALLDIR)/usr/sbin/squid $(INSTALLDIR)/usr/sbin/squid3
 	mv $(INSTALLDIR)/usr/share/man/man8/squid.8 $(INSTALLDIR)/usr/share/man/man8/squid3.8
 	mv $(INSTALLDIR)/usr/share/man/man8/pam_auth.8 $(INSTALLDIR)/usr/share/man/man8/squid3_pam_auth.8
@@ -63,7 +62,6 @@ install/squid3::
 	mv $(INSTALLDIR)/usr/share/man/man8/ncsa_auth.8 $(INSTALLDIR)/usr/share/man/man8/squid3_ncsa_auth.8
 	mv $(INSTALLDIR)/usr/share/man/man8/squid_db_auth.8 $(INSTALLDIR)/usr/share/man/man8/squid3_db_auth.8
 	mv $(INSTALLDIR)/usr/share/man/man8/squid_radius_auth.8 $(INSTALLDIR)/usr/share/man/man8/squid3_radius_auth.8
-	mv $(INSTALLDIR)/usr/share/man/man8/cachemgr.cgi.8 $(INSTALLDIR)/usr/share/man/man8/cachemgr3.cgi.8
 	install -m 755 -g root -d $(INSTALLDIR)/etc/init.d
 	install -m 755 -g root -d $(INSTALLDIR)/etc/logrotate.d
 	install -m 755 -g root -d $(INSTALLDIR)/etc/resolvconf

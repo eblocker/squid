@@ -9,7 +9,7 @@ Build-Depends: libldap2-dev, libpam0g-dev, libdb-dev, dpatch (>= 2.0.9), cdbs, l
 Package: squid3
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}, netbase, adduser, logrotate (>= 3.5.4-1), squid3-common (= ${source:Version}), lsb-base
-Suggests: squidclient, squid3-cgi, resolvconf (>= 0.40), smbclient
+Suggests: squidclient, squid-cgi, resolvconf (>= 0.40), smbclient
 Description: A full featured Web Proxy cache (HTTP proxy)
  Squid is a high-performance proxy caching server for web clients, supporting
  FTP, gopher, and HTTP data objects.
@@ -59,9 +59,12 @@ Description: A full featured Web Proxy cache (HTTP proxy) - control utility
  This package contains a small utility that can be used to get URLs from the 
  command line. It needs to talk to a `squid' proxy server.
 
-Package: squid3-cgi
+Package: squid-cgi
 Architecture: any
 Depends: apache2 | httpd, ${shlibs:Depends}, ${misc:Depends}
+Provides: squid3-cgi
+Conflicts: squid3-cgi
+Replaces: squid3-cgi
 Description: A full featured Web Proxy cache (HTTP proxy) - control CGI
  Squid is a high-performance proxy caching server for web clients, supporting
  FTP, gopher, and HTTP data objects.

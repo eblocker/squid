@@ -733,10 +733,10 @@ DEFS += -DDEFAULT_CONFIG_FILE=\"$(DEFAULT_CONFIG_FILE)\" -DDEFAULT_SQUID_DATA_DI
 snmp_core.o snmp_agent.o: ../snmplib/libsnmp.a $(top_srcdir)/include/cache_snmp.h
 
 globals.cc: globals.h mk-globals-c.pl
-	$(AWK) -f $(srcdir)/mk-globals-c.awk < $(srcdir)/globals.h > $@
+	$(AWK) -f $(srcdir)/mk-globals-c.awk < $(srcdir)/globals.h > $@ || ($(RM) -f $@ && exit 1)
 
 string_arrays.c: enums.h mk-string-arrays.pl
-	$(AWK) -f $(srcdir)/mk-string-arrays.awk < $(srcdir)/enums.h > $@
+	$(AWK) -f $(srcdir)/mk-string-arrays.awk < $(srcdir)/enums.h > $@ || ($(RM) -f $@ && exit 1)
 
 cache_diff: cache_diff.o debug.o globals.o store_key_md5.o
 	$(CC) -o $@ $(LDFLAGS) $@.o debug.o globals.o store_key_md5.o $(STD_APP_LIBS)
@@ -755,7 +755,7 @@ cf_parser.h: cf.data cf_gen$(EXEEXT)
 	./cf_gen cf.data $(srcdir)/cf.data.depend
 
 cf_gen_defines.h: $(srcdir)/cf_gen_defines $(srcdir)/cf.data.pre
-	$(AWK) -f $(srcdir)/cf_gen_defines <$(srcdir)/cf.data.pre >cf_gen_defines.h
+	$(AWK) -f $(srcdir)/cf_gen_defines <$(srcdir)/cf.data.pre >$@ || ($(RM) -f $@ && exit 1)
 
 
 ## FIXME: generate a sed command file from configure. Then this doesn't
@@ -804,7 +804,8 @@ install-data-local: install-sysconfDATA install-dataDATA
 	$(INSTALL_DATA) squid.conf.default $(DESTDIR)$(DEFAULT_CONFIG_FILE).default; \
 	echo "$(INSTALL_DATA) squid.conf.documented $(DESTDIR)$(DEFAULT_CONFIG_FILE).documented"; \
 	$(INSTALL_DATA) squid.conf.documented $(DESTDIR)$(DEFAULT_CONFIG_FILE).documented; \
-	$(mkinstalldirs) $(DESTDIR)$(DEFAULT_LOG_PREFIX)
+	$(mkinstalldirs) $(DESTDIR)$(DEFAULT_LOG_PREFIX); \
+	$(mkinstalldirs) $(DESTDIR)`dirname $(DEFAULT_PIDFILE)`
 
 uninstall-local: squid.conf.default
 	@$(SHELL) $(top_srcdir)/scripts/remove-cfg.sh "$(RM)" $(DESTDIR)$(DEFAULT_MIME_TABLE) $(srcdir)/mime.conf.default

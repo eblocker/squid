@@ -681,6 +681,7 @@ comm_set_v6only(int fd, int tos)
 void
 comm_set_transparent(int fd)
 {
+#if !LINUX_TPROXY2
 #if defined(IP_TRANSPARENT)
     int tos = 1;
     if (setsockopt(fd, SOL_IP, IP_TRANSPARENT, (char *) &tos, sizeof(int)) < 0) {
@@ -692,6 +693,7 @@ comm_set_transparent(int fd)
 #else
     debugs(50, DBG_CRITICAL, "WARNING: comm_open: setsockopt(IP_TRANSPARENT) not supported on this platform");
 #endif /* sockopt */
+#endif /* !LINUX_TPROXY2 */
 }
 
 /**
@@ -1517,7 +1519,7 @@ comm_reset_close(int fd)
     L.l_linger = 0;
 
     if (setsockopt(fd, SOL_SOCKET, SO_LINGER, (char *) &L, sizeof(L)) < 0)
-        debugs(50, 0, "commResetTCPClose: FD " << fd << ": " << xstrerror());
+        debugs(50, DBG_CRITICAL, "ERROR: Closing FD " << fd << " with TCP RST: " << xstrerror());
 
     comm_close(fd);
 }
@@ -2143,8 +2145,8 @@ commCloseAllSockets(void)
             debugs(5, 5, "commCloseAllSockets: FD " << fd << ": Calling timeout handler");
             ScheduleCallHere(callback);
         } else {
-            debugs(5, 5, "commCloseAllSockets: FD " << fd << ": calling comm_close()");
-            comm_close(fd);
+            debugs(5, 5, "commCloseAllSockets: FD " << fd << ": calling comm_reset_close()");
+            comm_reset_close(fd);
         }
     }
 }

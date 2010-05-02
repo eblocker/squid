@@ -268,7 +268,7 @@ CLEANFILES =
 INCLUDES = -I$(top_srcdir) -I$(top_srcdir)/include -I$(top_srcdir)/src \
 	-I$(top_builddir)/include $(SQUID_CPPUNIT_INC) -I$(srcdir)
 man_MANS = squid_radius_auth.8
-EXTRA_DIST = squid_radius_auth.8
+EXTRA_DIST = squid_radius_auth.8 config.test
 squid_radius_auth_SOURCES = \
 			squid_rad_auth.c \
 			radius.h \

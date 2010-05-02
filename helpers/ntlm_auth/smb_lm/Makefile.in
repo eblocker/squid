@@ -14,10 +14,6 @@
 
 @SET_MAKE@
 
-#
-#  Makefile for the Squid Object Cache server
-#
-
 VPATH = @srcdir@
 pkgdatadir = $(datadir)/@PACKAGE@
 pkglibdir = $(libdir)/@PACKAGE@
@@ -281,6 +277,7 @@ LDADD = \
 	$(CRYPTLIB) \
 	$(XTRA_LIBS)
 
+EXTRA_DIST = config.test
 all: all-recursive
 
 .SUFFIXES:

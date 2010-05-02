@@ -1,9 +1,8 @@
 #include "config.h"
-
 #include "testString.h"
-#include "SquidString.h"
-#include "Mem.h"
 #include "event.h"
+#include "Mem.h"
+#include "SquidString.h"
 
 CPPUNIT_TEST_SUITE_REGISTRATION( testString );
 
@@ -58,12 +57,4 @@ testString::testCmpNotEmptyDefault()
     CPPUNIT_ASSERT(right.cmp(left) < 0);
     CPPUNIT_ASSERT(right.cmp("foo") < 0);
     CPPUNIT_ASSERT(right.cmp("foo", 1) < 0);
-}
-
-void testString::testSubstr()
-{
-    String s("0123456789");
-    String check=s.substr(3,5);
-    String ref("34");
-    CPPUNIT_ASSERT(check == ref);
 }

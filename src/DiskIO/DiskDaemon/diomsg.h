@@ -7,8 +7,6 @@
 #ifndef __SQUID_DIOMSG_H__
 #define __SQUID_DIOMSG_H__
 
-#include "config.h"
-
 enum {
     _MQD_NOP,
     _MQD_OPEN,
@@ -21,7 +19,8 @@ enum {
 
 struct RefCountable_;
 
-struct diomsg {
+struct diomsg
+{
     mtyp_t mtype;
     int id;
     int seq_no;
@@ -35,4 +34,5 @@ struct diomsg {
     static const int msg_snd_rcv_sz;
 };
 
-#endif /* __SQUID_DIOMSG_H__ */
+
+#endif

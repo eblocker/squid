@@ -1,17 +1,9 @@
+#error COSS Support is not stable in 3.0. Please do not use.
 #ifndef __COSSSWAPDIR_H__
 #define __COSSSWAPDIR_H__
 
-class StoreEntry;
-class CossSwapDir;
-class CossMemBuf;
-class DiskIOStrategy;
-class DiskIOModule;
-class ConfigOptionVector;
-class DiskFile;
-
 #include "SwapDir.h"
-#include "DiskIO/IORequestor.h"
-
+#include "StoreSearch.h"
 
 #ifndef COSS_MEMBUF_SZ
 #define	COSS_MEMBUF_SZ	1048576
@@ -23,8 +15,19 @@ class DiskFile;
 #define COSS_ALLOC_ALLOCATE		1
 #define COSS_ALLOC_REALLOC		2
 
+class CossSwapDir;
 
-/// \ingroup COSS
+
+class CossMemBuf;
+
+class DiskIOStrategy;
+
+class DiskIOModule;
+
+class ConfigOptionVector;
+#include "DiskIO/DiskFile.h"
+#include "DiskIO/IORequestor.h"
+
 class CossSwapDir : public SwapDir, public IORequestor
 {
 
@@ -90,17 +93,10 @@ private:
     const char *stripe_path;
 };
 
-/// \ingroup COSS
 extern void storeCossAdd(CossSwapDir *, StoreEntry *);
-/// \ingroup COSS
 extern void storeCossRemove(CossSwapDir *, StoreEntry *);
-/// \ingroup COSS
 extern void storeCossStartMembuf(CossSwapDir * SD);
 
-
-#include "StoreSearch.h"
-
-/// \ingroup COSS
 class StoreSearchCoss : public StoreSearch
 {
 
@@ -110,7 +106,7 @@ public:
     ~StoreSearchCoss();
     /* Iterator API - garh, wrong place */
     /* callback the client when a new StoreEntry is available
-     * or an error occurs
+     * or an error occurs 
      */
     virtual void next(void (callback)(void *cbdata), void *cbdata);
     /* return true if a new StoreEntry is immediately available */

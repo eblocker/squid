@@ -1,5 +1,6 @@
+
 /*
- * $Id$
+ * $Id: Generic.h,v 1.7 2004/12/20 16:30:32 robertc Exp $
  *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
@@ -18,28 +19,25 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *
+ *  
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *
+ *  
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
  *
  */
+
 #ifndef SQUID_GENERIC_H
 #define SQUID_GENERIC_H
 
-#include "dlink.h"
-
-#if HAVE_OSTREAM
-#include <ostream>
-#endif
-
 template <class _Arg, class _Result>
-struct unary_function {
+
+struct unary_function
+{
     typedef _Arg argument_type;
     typedef _Result result_type;
 };
@@ -63,6 +61,7 @@ T& for_each(dlink_list const &collection, T& visitor)
 }
 
 template <class S>
+
 class Stack;
 
 template <class E, class T>
@@ -79,6 +78,7 @@ T& for_each(Stack<E> const &collection, T& visitor)
  */
 
 template <class C>
+
 class InstanceToSingletonAdapter : public C
 {
 
@@ -119,10 +119,13 @@ Visitor& for_each(InputIterator from, InputIterator to, Visitor& visitor)
 
 /* generic ostream printer */
 template <class Pointer>
-struct PointerPrinter {
+
+struct PointerPrinter
+{
     PointerPrinter(std::ostream &astream, std::string aDelimiter) : os(astream), delimiter (aDelimiter) {}
 
-    void operator () (Pointer aNode) {
+    void operator () (Pointer aNode)
+    {
         os << *aNode << delimiter;
     }
 

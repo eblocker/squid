@@ -14,6 +14,11 @@
 
 @SET_MAKE@
 
+#
+#  This file is a Makefile for compiling and installing Cache Manager. 
+#  Cache Manager is a manager program for Internet Object Cache.
+#
+
 VPATH = @srcdir@
 pkgdatadir = $(datadir)/@PACKAGE@
 pkglibdir = $(libdir)/@PACKAGE@
@@ -33,8 +38,8 @@ POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
 subdir = scripts
-DIST_COMMON = $(dist_noinst_SCRIPTS) $(srcdir)/Makefile.am \
-	$(srcdir)/Makefile.in
+DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in \
+	$(srcdir)/RunAccel.in $(srcdir)/RunCache.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/acinclude.m4 \
 	$(top_srcdir)/configure.in
@@ -42,19 +47,22 @@ am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
 mkinstalldirs = $(install_sh) -d
 CONFIG_HEADER = $(top_builddir)/include/autoconf.h
-CONFIG_CLEAN_FILES =
-SCRIPTS = $(dist_noinst_SCRIPTS)
+CONFIG_CLEAN_FILES = RunCache RunAccel
+am__installdirs = "$(DESTDIR)$(bindir)"
+binSCRIPT_INSTALL = $(INSTALL_SCRIPT)
+SCRIPTS = $(bin_SCRIPTS)
 SOURCES =
 DIST_SOURCES =
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
 ACLOCAL = @ACLOCAL@
-ADAPTATION_LIBS = @ADAPTATION_LIBS@
 ALLOCA = @ALLOCA@
 AMTAR = @AMTAR@
 AR = @AR@
 AR_R = @AR_R@
-AUTH_LIBS_TO_BUILD = @AUTH_LIBS_TO_BUILD@
+AUTH_LIBS = @AUTH_LIBS@
+AUTH_LINKOBJS = @AUTH_LINKOBJS@
 AUTH_MODULES = @AUTH_MODULES@
+AUTH_OBJS = @AUTH_OBJS@
 AUTOCONF = @AUTOCONF@
 AUTOHEADER = @AUTOHEADER@
 AUTOMAKE = @AUTOMAKE@
@@ -67,7 +75,6 @@ CC = @CC@
 CCDEPMODE = @CCDEPMODE@
 CFLAGS = @CFLAGS@
 CGIEXT = @CGIEXT@
-CHMOD = @CHMOD@
 CPP = @CPP@
 CPPFLAGS = @CPPFLAGS@
 CPPUNITCONFIG = @CPPUNITCONFIG@
@@ -77,43 +84,39 @@ CXXCPP = @CXXCPP@
 CXXDEPMODE = @CXXDEPMODE@
 CXXFLAGS = @CXXFLAGS@
 CYGPATH_W = @CYGPATH_W@
-DEFAULT_LOG_DIR = @DEFAULT_LOG_DIR@
-DEFAULT_PIDFILE = @DEFAULT_PIDFILE@
 DEFS = @DEFS@
 DEPDIR = @DEPDIR@
 DIGEST_AUTH_HELPERS = @DIGEST_AUTH_HELPERS@
 DISK_LIBS = @DISK_LIBS@
 DISK_LINKOBJS = @DISK_LINKOBJS@
-DISK_MODULES = @DISK_MODULES@
-DISK_OS_LIBS = @DISK_OS_LIBS@
 DISK_PROGRAMS = @DISK_PROGRAMS@
 DSYMUTIL = @DSYMUTIL@
-ECAPLIB = @ECAPLIB@
-ECAP_LIBS = @ECAP_LIBS@
 ECHO = @ECHO@
 ECHO_C = @ECHO_C@
 ECHO_N = @ECHO_N@
 ECHO_T = @ECHO_T@
 EGREP = @EGREP@
 EPOLL_LIBS = @EPOLL_LIBS@
+ERR_DEFAULT_LANGUAGE = @ERR_DEFAULT_LANGUAGE@
+ERR_LANGUAGES = @ERR_LANGUAGES@
 EXEEXT = @EXEEXT@
-EXPATLIB = @EXPATLIB@
 EXTERNAL_ACL_HELPERS = @EXTERNAL_ACL_HELPERS@
 F77 = @F77@
 FALSE = @FALSE@
 FFLAGS = @FFLAGS@
 GREP = @GREP@
 ICAP_LIBS = @ICAP_LIBS@
-INCLTDL = @INCLTDL@
 INSTALL = @INSTALL@
 INSTALL_DATA = @INSTALL_DATA@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
 INSTALL_SCRIPT = @INSTALL_SCRIPT@
 INSTALL_STRIP_PROGRAM = @INSTALL_STRIP_PROGRAM@
+KRB5INCS = @KRB5INCS@
+KRB5LIBS = @KRB5LIBS@
 LDFLAGS = @LDFLAGS@
 LIBADD_DL = @LIBADD_DL@
-LIBLTDL = @LIBLTDL@
 LIBOBJS = @LIBOBJS@
+LIBREGEX = @LIBREGEX@
 LIBS = @LIBS@
 LIBSASL = @LIBSASL@
 LIBTOOL = @LIBTOOL@
@@ -142,7 +145,6 @@ PACKAGE_TARNAME = @PACKAGE_TARNAME@
 PACKAGE_VERSION = @PACKAGE_VERSION@
 PATH_SEPARATOR = @PATH_SEPARATOR@
 PERL = @PERL@
-PO2HTML = @PO2HTML@
 RANLIB = @RANLIB@
 REGEXLIB = @REGEXLIB@
 REPL_LIBS = @REPL_LIBS@
@@ -150,7 +152,6 @@ REPL_OBJS = @REPL_OBJS@
 REPL_POLICIES = @REPL_POLICIES@
 RM = @RM@
 SED = @SED@
-SET_IPV6_SETTINGS = @SET_IPV6_SETTINGS@
 SET_MAKE = @SET_MAKE@
 SH = @SH@
 SHELL = @SHELL@
@@ -161,14 +162,14 @@ SQUID_CPPUNIT_LA = @SQUID_CPPUNIT_LA@
 SQUID_CPPUNIT_LIBS = @SQUID_CPPUNIT_LIBS@
 SQUID_CXXFLAGS = @SQUID_CXXFLAGS@
 SSLLIB = @SSLLIB@
-STORE_LIBS_TO_ADD = @STORE_LIBS_TO_ADD@
-STORE_LIBS_TO_BUILD = @STORE_LIBS_TO_BUILD@
+STORE_LIBS = @STORE_LIBS@
+STORE_LINKOBJS = @STORE_LINKOBJS@
+STORE_OBJS = @STORE_OBJS@
 STORE_TESTS = @STORE_TESTS@
 STRIP = @STRIP@
 TRUE = @TRUE@
 VERSION = @VERSION@
 WIN32_PSAPI = @WIN32_PSAPI@
-XMLLIB = @XMLLIB@
 XTRA_LIBS = @XTRA_LIBS@
 XTRA_OBJS = @XTRA_OBJS@
 abs_builddir = @abs_builddir@
@@ -178,6 +179,7 @@ abs_top_srcdir = @abs_top_srcdir@
 ac_ct_CC = @ac_ct_CC@
 ac_ct_CXX = @ac_ct_CXX@
 ac_ct_F77 = @ac_ct_F77@
+ac_krb5_config = @ac_krb5_config@
 am__include = @am__include@
 am__leading_dot = @am__leading_dot@
 am__quote = @am__quote@
@@ -225,12 +227,12 @@ target_alias = @target_alias@
 top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
+bin_SCRIPTS = RunCache RunAccel
 EXTRA_DIST = AnnounceCache.pl access-log-matrix.pl cache-compare.pl \
 		cachetrace.pl check_cache.pl convert.configure.to.os2 \
 		fileno-to-pathname.pl flag_truncs.pl icp-test.pl \
 		icpserver.pl tcp-banger.pl udp-banger.pl upgrade-1.0-store.pl
 
-dist_noinst_SCRIPTS = remove-cfg.sh
 all: all-am
 
 .SUFFIXES:
@@ -263,6 +265,29 @@ $(top_srcdir)/configure: @MAINTAINER_MODE_TRUE@ $(am__configure_deps)
 	cd $(top_builddir) && $(MAKE) $(AM_MAKEFLAGS) am--refresh
 $(ACLOCAL_M4): @MAINTAINER_MODE_TRUE@ $(am__aclocal_m4_deps)
 	cd $(top_builddir) && $(MAKE) $(AM_MAKEFLAGS) am--refresh
+RunCache: $(top_builddir)/config.status $(srcdir)/RunCache.in
+	cd $(top_builddir) && $(SHELL) ./config.status $(subdir)/$@
+RunAccel: $(top_builddir)/config.status $(srcdir)/RunAccel.in
+	cd $(top_builddir) && $(SHELL) ./config.status $(subdir)/$@
+install-binSCRIPTS: $(bin_SCRIPTS)
+	@$(NORMAL_INSTALL)
+	test -z "$(bindir)" || $(MKDIR_P) "$(DESTDIR)$(bindir)"
+	@list='$(bin_SCRIPTS)'; for p in $$list; do \
+	  if test -f "$$p"; then d=; else d="$(srcdir)/"; fi; \
+	  if test -f $$d$$p; then \
+	    f=`echo "$$p" | sed 's|^.*/||;$(transform)'`; \
+	    echo " $(binSCRIPT_INSTALL) '$$d$$p' '$(DESTDIR)$(bindir)/$$f'"; \
+	    $(binSCRIPT_INSTALL) "$$d$$p" "$(DESTDIR)$(bindir)/$$f"; \
+	  else :; fi; \
+	done
+
+uninstall-binSCRIPTS:
+	@$(NORMAL_UNINSTALL)
+	@list='$(bin_SCRIPTS)'; for p in $$list; do \
+	  f=`echo "$$p" | sed 's|^.*/||;$(transform)'`; \
+	  echo " rm -f '$(DESTDIR)$(bindir)/$$f'"; \
+	  rm -f "$(DESTDIR)$(bindir)/$$f"; \
+	done
 
 mostlyclean-libtool:
 	-rm -f *.lo
@@ -306,6 +331,9 @@ check-am: all-am
 check: check-am
 all-am: Makefile $(SCRIPTS)
 installdirs:
+	for dir in "$(DESTDIR)$(bindir)"; do \
+	  test -z "$$dir" || $(MKDIR_P) "$$dir"; \
+	done
 install: install-am
 install-exec: install-exec-am
 install-data: install-data-am
@@ -352,7 +380,7 @@ install-data-am:
 
 install-dvi: install-dvi-am
 
-install-exec-am:
+install-exec-am: install-binSCRIPTS
 
 install-html: install-html-am
 
@@ -382,20 +410,21 @@ ps: ps-am
 
 ps-am:
 
-uninstall-am:
+uninstall-am: uninstall-binSCRIPTS
 
 .MAKE: install-am install-strip
 
 .PHONY: all all-am check check-am clean clean-generic clean-libtool \
 	distclean distclean-generic distclean-libtool distdir dvi \
 	dvi-am html html-am info info-am install install-am \
-	install-data install-data-am install-dvi install-dvi-am \
-	install-exec install-exec-am install-html install-html-am \
-	install-info install-info-am install-man install-pdf \
-	install-pdf-am install-ps install-ps-am install-strip \
-	installcheck installcheck-am installdirs maintainer-clean \
-	maintainer-clean-generic mostlyclean mostlyclean-generic \
-	mostlyclean-libtool pdf pdf-am ps ps-am uninstall uninstall-am
+	install-binSCRIPTS install-data install-data-am install-dvi \
+	install-dvi-am install-exec install-exec-am install-html \
+	install-html-am install-info install-info-am install-man \
+	install-pdf install-pdf-am install-ps install-ps-am \
+	install-strip installcheck installcheck-am installdirs \
+	maintainer-clean maintainer-clean-generic mostlyclean \
+	mostlyclean-generic mostlyclean-libtool pdf pdf-am ps ps-am \
+	uninstall uninstall-am uninstall-binSCRIPTS
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.

@@ -91,8 +91,8 @@ void ChunkedCodingParser::parseChunkBody()
 {
     Must(theLeftBodySize > 0); // Should, really
 
-    const size_t availSize = min(theLeftBodySize, (uint64_t)theIn->contentSize());
-    const size_t safeSize = min(availSize, (size_t)theOut->potentialSpaceSize());
+    const size_t availSize = XMIN(theLeftBodySize, (uint64_t)theIn->contentSize());
+    const size_t safeSize = XMIN(availSize, (size_t)theOut->potentialSpaceSize());
 
     doNeedMoreData = availSize < theLeftBodySize;
     // and we may also need more space
@@ -192,15 +192,17 @@ bool ChunkedCodingParser::findCrlf(size_t &crlfBeg, size_t &crlfEnd)
         if (quoted) {
             if (c == '\\')
                 slashed = true;
-            else if (c == '"')
-                quoted = false;
+            else
+                if (c == '"')
+                    quoted = false;
 
             continue;
-        } else if (c == '"') {
-            quoted = true;
-            crOff = -1;
-            continue;
-        }
+        } else
+            if (c == '"') {
+                quoted = true;
+                crOff = -1;
+                continue;
+            }
 
         if (crOff < 0) { // looking for the first CR or LF
 

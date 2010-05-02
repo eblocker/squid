@@ -5,7 +5,7 @@
  * The following copyright and licence statement covers all changes made to the
  * reference implementation.
  *
- * Key changes to the reference implementation were:
+ * Key changes to the reference implementation were: 
  * alteration to a plain C layout.
  * Create CvtBin function
  * Allow CalcHA1 to make use of precaculated username:password:realm hash's
@@ -14,7 +14,7 @@
 
 
 /*
- * $Id$
+ * $Id: rfc2617.h,v 1.5 2003/01/23 00:36:47 robertc Exp $
  *
  * DEBUG:
  * AUTHOR: RFC 2617 & Robert Collins
@@ -46,10 +46,9 @@
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
  *
  */
+
 #ifndef SQUID_RFC2617_H
 #define SQUID_RFC2617_H
-
-#include "config.h"
 
 #define HASHLEN 16
 typedef char HASH[HASHLEN];

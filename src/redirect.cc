@@ -1,6 +1,6 @@
 
 /*
- * $Id$
+ * $Id: redirect.cc,v 1.122 2007/11/06 21:19:31 wessels Exp $
  *
  * DEBUG: section 61    Redirector
  * AUTHOR: Duane Wessels
@@ -21,12 +21,12 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *
+ *  
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *
+ *  
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
@@ -34,26 +34,28 @@
  */
 
 #include "squid.h"
-#include "auth/UserRequest.h"
+#include "AuthUserRequest.h"
 #include "CacheManager.h"
 #include "Store.h"
 #include "fde.h"
 #include "client_side_request.h"
-#include "acl/Checklist.h"
+#include "ACLChecklist.h"
 #include "HttpRequest.h"
 #include "client_side.h"
 #include "helper.h"
-#include "rfc1738.h"
 
-typedef struct {
+typedef struct
+{
     void *data;
     char *orig_url;
 
-    IpAddress client_addr;
+    struct IN_ADDR client_addr;
     const char *client_ident;
     const char *method_s;
     RH *handler;
-} redirectStateData;
+}
+
+redirectStateData;
 
 static HLPCB redirectHandleReply;
 static void redirectStateFree(redirectStateData * r);
@@ -111,12 +113,12 @@ redirectStats(StoreEntry * sentry)
 void
 redirectStart(ClientHttpRequest * http, RH * handler, void *data)
 {
-    ConnStateData * conn = http->getConn();
+    ConnStateData::Pointer conn = http->getConn();
     redirectStateData *r = NULL;
     const char *fqdn;
     char buf[8192];
-    char claddr[MAX_IPSTRLEN];
-    char myaddr[MAX_IPSTRLEN];
+    char claddr[20];
+    char myaddr[20];
     assert(http);
     assert(handler);
     debugs(61, 5, "redirectStart: '" << http->uri << "'");
@@ -130,16 +132,13 @@ redirectStart(ClientHttpRequest * http, RH * handler, void *data)
 
     r = cbdataAlloc(redirectStateData);
     r->orig_url = xstrdup(http->uri);
-    if (conn != NULL)
-        r->client_addr = conn->log_addr;
-    else
-        r->client_addr.SetNoAddr();
+    r->client_addr = conn != NULL ? conn->log_addr : no_addr;
     r->client_ident = NULL;
 
     if (http->request->auth_user_request)
         r->client_ident = http->request->auth_user_request->username();
-    else if (http->request->extacl_user.defined()) {
-        r->client_ident = http->request->extacl_user.termedBuf();
+    else if (http->request->extacl_user.size()) {
+        r->client_ident = http->request->extacl_user.buf();
     }
 
     if (!r->client_ident && (conn != NULL && conn->rfc931[0]))
@@ -155,7 +154,7 @@ redirectStart(ClientHttpRequest * http, RH * handler, void *data)
     if (!r->client_ident)
         r->client_ident = dash_str;
 
-    r->method_s = RequestMethodStr(http->request->method);
+    r->method_s = RequestMethodStr[http->request->method];
 
     r->handler = handler;
 
@@ -164,31 +163,24 @@ redirectStart(ClientHttpRequest * http, RH * handler, void *data)
     if ((fqdn = fqdncache_gethostbyaddr(r->client_addr, 0)) == NULL)
         fqdn = dash_str;
 
+    xstrncpy(claddr, inet_ntoa(r->client_addr), 20);
+    xstrncpy(myaddr, inet_ntoa(http->request->my_addr), 20);
     snprintf(buf, 8192, "%s %s/%s %s %s myip=%s myport=%d\n",
              r->orig_url,
-             r->client_addr.NtoA(claddr,MAX_IPSTRLEN),
+             claddr,
              fqdn,
              r->client_ident[0] ? rfc1738_escape(r->client_ident) : dash_str,
              r->method_s,
-             http->request->my_addr.NtoA(myaddr,MAX_IPSTRLEN),
-             http->request->my_addr.GetPort());
+	     myaddr,
+	     http->request->my_port);
 
     helperSubmit(redirectors, buf, redirectHandleReply, r);
-}
-
-static void
-redirectRegisterWithCacheManager(void)
-{
-    CacheManager::GetInstance()->
-    registerAction("redirector", "URL Redirector Stats", redirectStats, 0, 1);
 }
 
 void
 redirectInit(void)
 {
     static int init = 0;
-
-    redirectRegisterWithCacheManager();
 
     if (!Config.Program.redirect)
         return;
@@ -210,6 +202,14 @@ redirectInit(void)
         init = 1;
         CBDATA_INIT_TYPE(redirectStateData);
     }
+}
+
+void
+redirectRegisterWithCacheManager(CacheManager & manager)
+{
+    manager.registerAction("redirector",
+                           "URL Redirector Stats",
+                           redirectStats, 0, 1);
 }
 
 void

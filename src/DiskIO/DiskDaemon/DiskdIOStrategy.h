@@ -1,5 +1,6 @@
+
 /*
- * $Id$
+ * $Id: DiskdIOStrategy.h,v 1.4 2007/08/16 23:32:28 hno Exp $
  *
  * DEBUG: section 79    Squid-side DISKD I/O functions.
  * AUTHOR: Duane Wessels
@@ -20,12 +21,12 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *
+ *  
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *
+ *  
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
@@ -36,11 +37,16 @@
 #ifndef __STORE_DISKDIOSTRATEGY_H__
 #define __STORE_DISKDIOSTRATEGY_H__
 
-#include "config.h"
+/*
+ * magic2 is the point at which we start blocking on msgsnd/msgrcv.
+ * If a queue has magic2 (or more) messages away, then we read the
+ * queue until the level falls below magic2.  Recommended value
+ * is 75% of SHMBUFS. magic1 is the number of messages away which we
+ * stop allowing open/create for.
+ */
 
 struct diomsg;
 
-/// \ingroup diskd
 class SharedMemory
 {
 
@@ -69,7 +75,6 @@ class DiskdFile;
 
 class ReadRequest;
 
-/// \ingroup diskd
 class DiskdIOStrategy : public DiskIOStrategy
 {
 
@@ -84,9 +89,8 @@ public:
     virtual void sync();
     virtual int callback();
     virtual void statfs(StoreEntry & sentry)const;
-    int send(int mtype, int id, DiskdFile *theFile, size_t size, off_t offset, ssize_t shm_offset, RefCountable_ *requestor);
-
-    /** public for accessing return address's */
+    int send(int mtype, int id, DiskdFile *theFile, size_t size, off_t offset, ssize_t shm_offset, RefCountable_ *);
+    /* public for accessing return address's */
     SharedMemory shm;
 
 private:
@@ -101,21 +105,8 @@ private:
     int SEND(diomsg * M, int mtype, int id, size_t size, off_t offset, ssize_t shm_offset);
     void handle(diomsg * M);
     void unlinkDone(diomsg * M);
-
-    /**
-     * magic1 is the number of messages away which we
-     * stop allowing open/create for.
-     */
     int magic1;
-
-    /**
-     * magic2 is the point at which we start blocking on msgsnd/msgrcv.
-     * If a queue has magic2 (or more) messages away, then we read the
-     * queue until the level falls below magic2.  Recommended value
-     * is 75% of SHMBUFS.
-     */
     int magic2;
-
     int away;
     int smsgid;
     int rmsgid;
@@ -123,11 +114,11 @@ private:
     size_t instanceID;
 };
 
-/// \ingroup diskd
 #define SHMBUF_BLKSZ SM_PAGE_SIZE
 
-/// \ingroup diskd
-struct diskd_stats_t {
+
+struct diskd_stats_t
+{
     int open_fail_queue_len;
     int block_queue_len;
     int max_away;
@@ -137,7 +128,8 @@ struct diskd_stats_t {
     int recv_count;
     int sio_id;
 
-    struct {
+    struct
+    {
         int ops;
         int success;
         int fail;
@@ -146,7 +138,6 @@ struct diskd_stats_t {
     open, create, close, unlink, read, write;
 };
 
-/// \ingroup diskd
 extern diskd_stats_t diskd_stats;
 
 #endif

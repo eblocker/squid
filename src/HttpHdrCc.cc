@@ -1,6 +1,6 @@
 
 /*
- * $Id$
+ * $Id: HttpHdrCc.cc,v 1.31 2007/05/29 13:31:37 amosjeffries Exp $
  *
  * DEBUG: section 65    HTTP Cache Control Header
  * AUTHOR: Alex Rousskov
@@ -21,12 +21,12 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *
+ *  
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *
+ *  
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
@@ -38,21 +38,22 @@
 #include "HttpHeader.h"
 
 /* this table is used for parsing cache control header */
-static const HttpHeaderFieldAttrs CcAttrs[CC_ENUM_END] = {
-    {"public", (http_hdr_type)CC_PUBLIC},
+static const HttpHeaderFieldAttrs CcAttrs[CC_ENUM_END] =
+    {
+        {"public", (http_hdr_type)CC_PUBLIC},
 
-    {"private", (http_hdr_type)CC_PRIVATE},
-    {"no-cache", (http_hdr_type)CC_NO_CACHE},
-    {"no-store", (http_hdr_type)CC_NO_STORE},
-    {"no-transform", (http_hdr_type)CC_NO_TRANSFORM},
-    {"must-revalidate", (http_hdr_type)CC_MUST_REVALIDATE},
-    {"proxy-revalidate", (http_hdr_type)CC_PROXY_REVALIDATE},
-    {"only-if-cached", (http_hdr_type)CC_ONLY_IF_CACHED},
-    {"max-age", (http_hdr_type)CC_MAX_AGE},
-    {"s-maxage", (http_hdr_type)CC_S_MAXAGE},
-    {"max-stale", (http_hdr_type)CC_MAX_STALE},
-    {"Other,", (http_hdr_type)CC_OTHER}	/* ',' will protect from matches */
-};
+        {"private", (http_hdr_type)CC_PRIVATE},
+        {"no-cache", (http_hdr_type)CC_NO_CACHE},
+        {"no-store", (http_hdr_type)CC_NO_STORE},
+        {"no-transform", (http_hdr_type)CC_NO_TRANSFORM},
+        {"must-revalidate", (http_hdr_type)CC_MUST_REVALIDATE},
+        {"proxy-revalidate", (http_hdr_type)CC_PROXY_REVALIDATE},
+        {"only-if-cached", (http_hdr_type)CC_ONLY_IF_CACHED},
+        {"max-age", (http_hdr_type)CC_MAX_AGE},
+        {"s-maxage", (http_hdr_type)CC_S_MAXAGE},
+        {"max-stale", (http_hdr_type)CC_MAX_STALE},
+        {"Other,", (http_hdr_type)CC_OTHER}	/* ',' will protect from matches */
+    };
 
 HttpHeaderFieldInfo *CcFieldsInfo = NULL;
 
@@ -134,13 +135,13 @@ httpHdrCcParseInit(HttpHdrCc * cc, const String * str)
                 CcFieldsInfo, CC_ENUM_END);
 
         if (type < 0) {
-            debugs(65, 2, "hdr cc: unknown cache-directive: near '" << item << "' in '" << str << "'");
+            debugs(65, 2, "hdr cc: unknown cache-directive: near '" << item << "' in '" << str->buf() << "'");
             type = CC_OTHER;
         }
 
         if (EBIT_TEST(cc->mask, type)) {
             if (type != CC_OTHER)
-                debugs(65, 2, "hdr cc: ignoring duplicate cache-directive: near '" << item << "' in '" << str << "'");
+                debugs(65, 2, "hdr cc: ignoring duplicate cache-directive: near '" << item << "' in '" << str->buf() << "'");
 
             CcFieldsInfo[type].stat.repCount++;
 
@@ -205,7 +206,7 @@ httpHdrCcDestroy(HttpHdrCc * cc)
 {
     assert(cc);
 
-    if (cc->other.defined())
+    if (cc->other.buf())
         cc->other.clean();
 
     memFree(cc, MEM_HTTP_HDR_CC);
@@ -235,8 +236,7 @@ httpHdrCcPackInto(const HttpHdrCc * cc, Packer * p)
         if (EBIT_TEST(cc->mask, flag) && flag != CC_OTHER) {
 
             /* print option name */
-            packerPrintf(p, (pcount ? ", " SQUIDSTRINGPH : SQUIDSTRINGPH),
-                         SQUIDSTRINGPRINT(CcFieldsInfo[flag].name));
+            packerPrintf(p, (pcount ? ", %s" : "%s"), CcFieldsInfo[flag].name.buf());
 
             /* handle options with values */
 
@@ -253,9 +253,8 @@ httpHdrCcPackInto(const HttpHdrCc * cc, Packer * p)
         }
     }
 
-    if (cc->other.size() != 0)
-        packerPrintf(p, (pcount ? ", " SQUIDSTRINGPH : SQUIDSTRINGPH),
-                     SQUIDSTRINGPRINT(cc->other));
+    if (cc->other.size())
+        packerPrintf(p, (pcount ? ", %s" : "%s"), cc->other.buf());
 }
 
 /* negative max_age will clean old max_Age setting */
@@ -301,7 +300,7 @@ httpHdrCcStatDumper(StoreEntry * sentry, int idx, double val, double size, int c
     extern const HttpHeaderStat *dump_stat;	/* argh! */
     const int id = (int) val;
     const int valid_id = id >= 0 && id < CC_ENUM_END;
-    const char *name = valid_id ? CcFieldsInfo[id].name.termedBuf() : "INVALID";
+    const char *name = valid_id ? CcFieldsInfo[id].name.buf() : "INVALID";
 
     if (count || valid_id)
         storeAppendPrintf(sentry, "%2d\t %-20s\t %5d\t %6.2f\n",

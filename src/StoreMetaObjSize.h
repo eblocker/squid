@@ -1,5 +1,6 @@
+
 /*
- * $Id$
+ * $Id: StoreMetaObjSize.h,v 1.1 2007/09/19 08:54:51 hno Exp $
  *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
@@ -18,22 +19,22 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *
+ *  
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *
+ *  
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
  *
  */
+
 #ifndef SQUID_STOREMETAOBJSIZE_H
 #define SQUID_STOREMETAOBJSIZE_H
 
 #include "StoreMeta.h"
-#include "MemPool.h"
 
 class StoreMetaObjSize : public StoreMeta
 {
@@ -44,6 +45,6 @@ public:
     char getType() const {return STORE_META_OBJSIZE;}
 };
 
-MEMPROXY_CLASS_INLINE(StoreMetaObjSize);
+MEMPROXY_CLASS_INLINE(StoreMetaObjSize)
 
 #endif /* SQUID_STOREMETAOBJSIZE_H */

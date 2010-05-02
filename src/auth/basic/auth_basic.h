@@ -5,10 +5,10 @@
 
 #ifndef __AUTH_BASIC_H__
 #define __AUTH_BASIC_H__
-#include "auth/Gadgets.h"
-#include "auth/User.h"
-#include "auth/UserRequest.h"
-#include "auth/Config.h"
+#include "authenticate.h"
+#include "AuthUser.h"
+#include "AuthUserRequest.h"
+#include "AuthConfig.h"
 #include "helper.h"
 
 #define DefaultAuthenticateChildrenMax  32	/* 32 processes */
@@ -60,11 +60,14 @@ public:
     char *passwd;
     time_t credentials_checkedtime;
 
-    struct {
+    struct
+    {
 
 unsigned int credentials_ok:
         2;	/*0=unchecked,1=ok,2=failed */
-    } flags;
+    }
+
+    flags;
     BasicAuthQueueNode *auth_queue;
 
 private:
@@ -76,7 +79,7 @@ private:
     char const *httpAuthHeader;
 };
 
-MEMPROXY_CLASS_INLINE(BasicUser);
+MEMPROXY_CLASS_INLINE(BasicUser)
 
 typedef class BasicUser basic_data;
 
@@ -92,7 +95,7 @@ public:
     virtual ~AuthBasicUserRequest();
 
     virtual int authenticated() const;
-    virtual void authenticate(HttpRequest * request, ConnStateData *conn, http_hdr_type type);
+    virtual void authenticate(HttpRequest * request, ConnStateData::Pointer conn, http_hdr_type type);
     virtual int module_direction();
     virtual void module_start(RH *, void *);
     virtual AuthUser *user() {return _theUser;}
@@ -105,7 +108,7 @@ private:
     BasicUser *_theUser;
 };
 
-MEMPROXY_CLASS_INLINE(AuthBasicUserRequest);
+MEMPROXY_CLASS_INLINE(AuthBasicUserRequest)
 
 /* configuration runtime data */
 
@@ -123,7 +126,7 @@ public:
     virtual void fixHeader(AuthUserRequest *, HttpReply *, http_hdr_type, HttpRequest *);
     virtual void init(AuthConfig *);
     virtual void parse(AuthConfig *, int, char *);
-    virtual void registerWithCacheManager(void);
+    virtual void registerWithCacheManager(CacheManager & manager);
     virtual const char * type() const;
     int authenticateChildren;
     int authenticateConcurrency;
@@ -131,7 +134,6 @@ public:
     wordlist *authenticate;
     time_t credentialsTTL;
     int casesensitive;
-    int utf8;
 };
 
 #endif

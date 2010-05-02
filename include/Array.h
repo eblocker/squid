@@ -1,5 +1,5 @@
 /*
- * $Id$
+ * $Id: Array.h,v 1.25 2007/11/26 13:09:54 hno Exp $
  *
  * AUTHOR: Alex Rousskov
  *
@@ -19,33 +19,28 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *
+ *  
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *
+ *  
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
- *
+ *  
  */
+
 #ifndef SQUID_ARRAY_H
 #define SQUID_ARRAY_H
-
-/**
- \todo CLEANUP: this file should be called Vector.h at least, and probably be replaced by STL Vector<C>
- */
 
 #include "fatal.h"
 #include "util.h"
 
-/* users of this template also need assert() */
-#include "compat/assert.h"
-
 /* iterator support */
 
 template <class C>
+
 class VectorIteratorBase
 {
 
@@ -58,11 +53,13 @@ public:
     bool operator == (VectorIteratorBase const &rhs);
     VectorIteratorBase & operator ++();
     VectorIteratorBase operator ++(int);
-    typename C::value_type & operator *() const {
+    typename C::value_type & operator *() const
+    {
         return theVector->items[pos];
     }
 
-    typename C::value_type * operator -> () const {
+    typename C::value_type * operator -> () const
+    {
         return &theVector->items[pos];
     }
 
@@ -75,6 +72,7 @@ private:
 };
 
 template<class E>
+
 class Vector
 {
 
@@ -109,7 +107,6 @@ public:
     iterator end();
     const_iterator end () const;
     E& operator [] (unsigned i);
-    const E& operator [] (unsigned i) const;
 
     /* Do not change these, until the entry C struct is removed */
     size_t capacity;
@@ -121,7 +118,7 @@ template<class E>
 void *
 Vector<E>::operator new(size_t size)
 {
-    return xmalloc(size);
+    return xmalloc (size);
 }
 
 template<class E>
@@ -253,11 +250,11 @@ Vector<E>::prune(E item)
 {
     unsigned int n = 0;
     for (unsigned int i = 0; i < count; i++) {
-        if (items[i] != item) {
-            if (i != n)
-                items[n] = items[i];
-            n++;
-        }
+	if (items[i] != item) {
+	    if (i != n)
+		items[n] = items[i];
+	    n++;
+	}
     }
 
     count = n;
@@ -342,14 +339,6 @@ Vector<E>::end() const
 template<class E>
 E &
 Vector<E>::operator [] (unsigned i)
-{
-    assert (size() > i);
-    return items[i];
-}
-
-template<class E>
-const E &
-Vector<E>::operator [] (unsigned i) const
 {
     assert (size() > i);
     return items[i];

@@ -1,5 +1,6 @@
+
 /*
- * $Id$
+ * $Id: HttpHdrContRange.h,v 1.4 2007/08/13 17:20:51 hno Exp $
  *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
@@ -18,48 +19,45 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *
+ *  
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *
+ *  
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
  *
  */
+
 #ifndef SQUID_HTTPHDRCONTRANGE_H
 #define SQUID_HTTPHDRCONTRANGE_H
 
-class HttpHeader;
-
-/* for SQUIDCEXTERN */
-#include "config.h"
-
-/* for HttpHdrRangeSpec */
 #include "HttpHeaderRange.h"
 
-/** HTTP Content-Range: header field */
+/* http content-range header field */
+
 class HttpHdrContRange
 {
 
 public:
     HttpHdrRangeSpec spec;
-    int64_t elength;		/**< entity length, not content length */
+    int64_t elength;		/* entity length, not content length */
 };
 
-/** \todo CLEANUP: Move httpHdrContRange* functions into the class methods */
-
+/* Http Content Range Header Field */
 SQUIDCEXTERN HttpHdrContRange *httpHdrContRangeCreate(void);
 SQUIDCEXTERN HttpHdrContRange *httpHdrContRangeParseCreate(const char *crange_spec);
-/** returns true if range is valid; inits HttpHdrContRange */
+/* returns true if range is valid; inits HttpHdrContRange */
 SQUIDCEXTERN int httpHdrContRangeParseInit(HttpHdrContRange * crange, const char *crange_spec);
 SQUIDCEXTERN void httpHdrContRangeDestroy(HttpHdrContRange * crange);
 SQUIDCEXTERN HttpHdrContRange *httpHdrContRangeDup(const HttpHdrContRange * crange);
 SQUIDCEXTERN void httpHdrContRangePackInto(const HttpHdrContRange * crange, Packer * p);
-/** inits with given spec */
+/* inits with given spec */
 SQUIDCEXTERN void httpHdrContRangeSet(HttpHdrContRange *, HttpHdrRangeSpec, int64_t);
+;
 SQUIDCEXTERN void httpHeaderAddContRange(HttpHeader *, HttpHdrRangeSpec, int64_t);
+
 
 #endif /* SQUID_HTTPHDRCONTRANGE_H */

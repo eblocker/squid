@@ -1,6 +1,6 @@
 
 /*
- * $Id$
+ * $Id: DelayUser.cc,v 1.8 2007/04/28 22:26:37 hno Exp $
  *
  * DEBUG: section 77    Delay Pools
  * AUTHOR: Robert Collins <robertc@squid-cache.org>
@@ -21,12 +21,12 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *
+ *  
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *
+ *  
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
@@ -40,8 +40,8 @@
 #if DELAY_POOLS
 #include "squid.h"
 #include "DelayUser.h"
-#include "auth/UserRequest.h"
-#include "auth/User.h"
+#include "AuthUserRequest.h"
+#include "AuthUser.h"
 #include "NullDelayId.h"
 #include "Store.h"
 
@@ -77,10 +77,6 @@ static SplayNode<DelayUserBucket::Pointer>::SPLAYCMP DelayUserCmp;
 int
 DelayUserCmp(DelayUserBucket::Pointer const &left, DelayUserBucket::Pointer const &right)
 {
-    /* Verify for re-currance of Bug 2127. either of these missing will crash strcasecmp() */
-    assert(left->authUser->username() != NULL);
-    assert(right->authUser->username() != NULL);
-
     /* for rate limiting, case insensitive */
     return strcasecmp(left->authUser->username(), right->authUser->username());
 }
@@ -120,8 +116,9 @@ DelayUser::dump(StoreEntry *entry) const
     spec.dump(entry);
 }
 
-struct DelayUserUpdater {
-    DelayUserUpdater (DelaySpec &_spec, int _incr):spec(_spec),incr(_incr) {};
+struct DelayUserUpdater
+{
+    DelayUserUpdater (DelaySpec &_spec, int _incr):spec(_spec),incr(_incr){};
 
     DelaySpec spec;
     int incr;
@@ -151,10 +148,9 @@ DelayUser::parse()
 DelayIdComposite::Pointer
 DelayUser::id(CompositePoolNode::CompositeSelectionDetails &details)
 {
-    if (!details.user || !details.user->user() || !details.user->user()->username())
+    if (!details.user)
         return new NullDelayId;
 
-    debugs(77, 3, HERE << "Adding a slow-down for User '" << details.user->user()->username() << "'");
     return new Id(this, details.user->user());
 }
 
@@ -190,7 +186,9 @@ DelayUserBucket::DelayUserBucket(AuthUser *aUser) : authUser (aUser)
 {
     debugs(77, 3, "DelayUserBucket::DelayUserBucket");
 
-    authUser->lock();
+    authUser->lock()
+
+    ;
 }
 
 DelayUserBucket::~DelayUserBucket()

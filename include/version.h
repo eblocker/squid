@@ -1,5 +1,5 @@
 /*
- * $Id$
+ * $Id: version.h,v 1.134 2003/01/23 00:36:48 robertc Exp $
  *
  *  SQUID_VERSION - String for version id of this distribution
  */
@@ -9,12 +9,5 @@
  */
 
 #ifndef SQUID_RELEASE_TIME
-#define SQUID_RELEASE_TIME 1272797215
-#endif
-
-#ifndef APP_SHORTNAME
-#define APP_SHORTNAME "squid"
-#endif
-#ifndef APP_FULLNAME
-#define APP_FULLNAME  PACKAGE "/" VERSION
+#define SQUID_RELEASE_TIME 1252236563
 #endif

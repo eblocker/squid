@@ -1,3 +1,4 @@
+#error COSS Support is not stable in 3.0. Please do not use.
 #ifndef __COSS_H__
 #define __COSS_H__
 
@@ -7,20 +8,15 @@
 #define	COSS_MEMBUF_SZ	1048576
 #endif
 
-/** \note  swap_filen in sio/e are actually disk offsets too! */
+/* Note that swap_filen in sio/e are actually disk offsets too! */
 
-/** What we're doing in storeCossAllocate() */
+/* What we're doing in storeCossAllocate() */
 #define COSS_ALLOC_NOTIFY		0
-
-/** What we're doing in storeCossAllocate() */
 #define COSS_ALLOC_ALLOCATE		1
-
-/** What we're doing in storeCossAllocate() */
 #define COSS_ALLOC_REALLOC		2
 
 class CossSwapDir;
 
-/// \ingroup COSS
 class CossMemBuf
 {
 
@@ -35,27 +31,25 @@ public:
     int lockcount;
     char buffer[COSS_MEMBUF_SZ];
 
-    struct _cossmembuf_flags {
+    struct _cossmembuf_flags
+    {
         unsigned int full:1;
         unsigned int writing:1;
     } flags;
 };
 
-/// \ingroup COSS
-struct _cossindex {
-    /**
-     \note The dlink_node MUST be the first member of the structure.
-     *     This member is later pointer typecasted to coss_index_node *.
+struct _cossindex
+{
+    /* Note: the dlink_node MUST be the first member of the structure.
+     * This member is later pointer typecasted to coss_index_node *.
      */
     dlink_node node;
 };
 
 
 
-/**
- \ingroup COSS
- * Per-storeiostate info
- */
+/* Per-storeiostate info */
+
 class CossState : public StoreIOState
 {
 
@@ -70,10 +64,17 @@ public:
     size_t requestoffset;	/* in blocks */
     int64_t reqdiskoffset;	/* in blocks */
 
-    struct {
-        unsigned int reading:1;
-        unsigned int writing:1;
-    } flags;
+    struct
+    {
+
+unsigned int reading:
+        1;
+
+unsigned int writing:
+        1;
+    }
+
+    flags;
 
     CossMemBuf *locked_membuf;
     off_t st_size;
@@ -86,25 +87,17 @@ public:
     CossSwapDir *SD;
 };
 
-MEMPROXY_CLASS_INLINE(CossState);
+MEMPROXY_CLASS_INLINE(CossState)
 
-/// \ingroup COSS
 typedef struct _cossindex CossIndexNode;
 
-
-/**
- \ingroup COSS
- * Whether the coss system has been setup or not
- */
+/* Whether the coss system has been setup or not */
 extern int coss_initialised;
-/// \ingroup COSS
 extern MemAllocator *coss_membuf_pool;
-/// \ingroup COSS
 extern MemAllocator *coss_index_pool;
 
 #include "DiskIO/ReadRequest.h"
 
-/// \ingroup COSS
 class CossRead : public ReadRequest
 {
 
@@ -121,7 +114,6 @@ private:
 
 #include "DiskIO/WriteRequest.h"
 
-/// \ingroup COSS
 class CossWrite : public WriteRequest
 {
 

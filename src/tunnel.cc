@@ -1,6 +1,6 @@
 
 /*
- * $Id$
+ * $Id: tunnel.cc,v 1.175 2007/10/16 14:38:18 rousskov Exp $
  *
  * DEBUG: section 26    Secure Sockets Layer Proxy
  * AUTHOR: Duane Wessels
@@ -21,12 +21,12 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *
+ *  
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *
+ *  
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
@@ -39,7 +39,7 @@
 #include "fde.h"
 #include "comm.h"
 #include "client_side_request.h"
-#include "acl/FilledChecklist.h"
+#include "ACLChecklist.h"
 #if DELAY_POOLS
 #include "DelayId.h"
 #endif
@@ -71,7 +71,7 @@ public:
     {
 
     public:
-        Connection() : len (0),buf ((char *)xmalloc(SQUID_TCP_SO_RCVBUF)), size_ptr(NULL), fd_(-1) {}
+        Connection() : len (0),buf ((char *)xmalloc(SQUID_TCP_SO_RCVBUF)), size_ptr(NULL), fd_(-1){}
 
         ~Connection();
         int const & fd() const { return fd_;}
@@ -114,8 +114,6 @@ private:
     void writeServerDone(char *buf, size_t len, comm_err_t flag, int xerrno);
 };
 
-#define fd_closed(fd) (fd == -1 || fd_table[fd].closing())
-
 static const char *const conn_established = "HTTP/1.0 200 Connection established\r\n\r\n";
 
 static CNCB tunnelConnectDone;
@@ -138,12 +136,12 @@ tunnelServerClosed(int fd, void *data)
 
     if (tunnelState->noConnections()) {
         tunnelStateFree(tunnelState);
-        return;
+	return;
     }
-
+    
     if (!tunnelState->server.len) {
-        comm_close(tunnelState->client.fd());
-        return;
+	comm_close(tunnelState->client.fd());
+	return;
     }
 }
 
@@ -157,12 +155,12 @@ tunnelClientClosed(int fd, void *data)
 
     if (tunnelState->noConnections()) {
         tunnelStateFree(tunnelState);
-        return;
+	return;
     }
-
+    
     if (!tunnelState->client.len) {
-        comm_close(tunnelState->server.fd());
-        return;
+	comm_close(tunnelState->server.fd());
+	return;
     }
 }
 
@@ -237,7 +235,7 @@ TunnelStateData::readServer(char *buf, size_t len, comm_err_t errcode, int xerrn
 {
     /*
      * Bail out early on COMM_ERR_CLOSING
-     * - close handlers will tidy up for us
+     * - close handlers will tidy up for us 
      */
 
     if (errcode == COMM_ERR_CLOSING)
@@ -283,7 +281,7 @@ TunnelStateData::readClient(char *buf, size_t len, comm_err_t errcode, int xerrn
 {
     /*
      * Bail out early on COMM_ERR_CLOSING
-     * - close handlers will tidy up for us
+     * - close handlers will tidy up for us 
      */
 
     if (errcode == COMM_ERR_CLOSING)
@@ -303,21 +301,21 @@ void
 TunnelStateData::copy (size_t len, comm_err_t errcode, int xerrno, Connection &from, Connection &to, IOCB *completion)
 {
     /* I think this is to prevent free-while-in-a-callback behaviour
-     * - RBC 20030229
+     * - RBC 20030229 
      */
     cbdataInternalLock(this);	/* ??? should be locked by the caller... */
 
     /* Bump the server connection timeout on any activity */
-    if (!fd_closed(server.fd()))
-        commSetTimeout(server.fd(), Config.Timeout.read, tunnelTimeout, this);
+    if (server.fd() != -1)
+	commSetTimeout(server.fd(), Config.Timeout.read, tunnelTimeout, this);
 
     if (len < 0 || errcode)
         from.error (xerrno);
-    else if (len == 0 || fd_closed(to.fd())) {
+    else if (len == 0 || to.fd() == -1) {
         comm_close(from.fd());
         /* Only close the remote end if we've finished queueing data to it */
 
-        if (from.len == 0 && !fd_closed(to.fd()) ) {
+        if (from.len == 0 && to.fd() != -1) {
             comm_close(to.fd());
         }
     } else if (cbdataReferenceValid(this))
@@ -342,7 +340,7 @@ TunnelStateData::writeServerDone(char *buf, size_t len, comm_err_t flag, int xer
 {
     debugs(26, 3, "tunnelWriteServer: FD " << server.fd() << ", " << len << " bytes written");
 
-    if (flag == COMM_ERR_CLOSING)
+    if(flag == COMM_ERR_CLOSING)
         return;
 
     /* Error? */
@@ -363,7 +361,7 @@ TunnelStateData::writeServerDone(char *buf, size_t len, comm_err_t flag, int xer
     client.dataSent(len);
 
     /* If the other end has closed, so should we */
-    if (fd_closed(client.fd())) {
+    if (client.fd() == -1) {
         comm_close(server.fd());
         return;
     }
@@ -403,7 +401,7 @@ TunnelStateData::writeClientDone(char *buf, size_t len, comm_err_t flag, int xer
 {
     debugs(26, 3, "tunnelWriteClient: FD " << client.fd() << ", " << len << " bytes written");
 
-    if (flag == COMM_ERR_CLOSING)
+    if(flag == COMM_ERR_CLOSING)
         return;
 
     /* Error? */
@@ -423,7 +421,7 @@ TunnelStateData::writeClientDone(char *buf, size_t len, comm_err_t flag, int xer
     server.dataSent(len);
 
     /* If the other end has closed, so should we */
-    if (fd_closed(server.fd())) {
+    if (server.fd() == -1) {
         comm_close(client.fd());
         return;
     }
@@ -452,7 +450,7 @@ tunnelTimeout(int fd, void *data)
 void
 TunnelStateData::Connection::closeIfOpen()
 {
-    if (!fd_closed(fd()))
+    if (fd() != -1)
         comm_close(fd());
 }
 
@@ -481,7 +479,7 @@ tunnelConnectTimeout(int fd, void *data)
             hierarchyNote(&tunnelState->request->hier, tunnelState->servers->code,
                           tunnelState->host);
     } else
-        debugs(26, 1, "tunnelConnectTimeout(): tunnelState->servers is NULL");
+       debugs(26, 1, "tunnelConnectTimeout(): tunnelState->servers is NULL");
 
     err = errorCon(ERR_CONNECT_FAIL, HTTP_SERVICE_UNAVAILABLE, request);
 
@@ -542,10 +540,10 @@ tunnelErrorComplete(int fdnotused, void *data, size_t sizenotused)
     /* temporary lock to save our own feets (comm_close -> tunnelClientClosed -> Free) */
     cbdataInternalLock(tunnelState);
 
-    if (!fd_closed(tunnelState->client.fd()))
+    if (tunnelState->client.fd() > -1)
         comm_close(tunnelState->client.fd());
 
-    if (fd_closed(tunnelState->server.fd()))
+    if (tunnelState->server.fd() > -1)
         comm_close(tunnelState->server.fd());
 
     cbdataInternalUnlock(tunnelState);
@@ -553,13 +551,11 @@ tunnelErrorComplete(int fdnotused, void *data, size_t sizenotused)
 
 
 static void
-tunnelConnectDone(int fdnotused, const DnsLookupDetails &dns, comm_err_t status, int xerrno, void *data)
+tunnelConnectDone(int fdnotused, comm_err_t status, int xerrno, void *data)
 {
     TunnelStateData *tunnelState = (TunnelStateData *)data;
     HttpRequest *request = tunnelState->request;
     ErrorState *err = NULL;
-
-    request->recordLookup(dns);
 
     if (tunnelState->servers->_peer)
         hierarchyNote(&tunnelState->request->hier, tunnelState->servers->code,
@@ -575,7 +571,7 @@ tunnelConnectDone(int fdnotused, const DnsLookupDetails &dns, comm_err_t status,
         debugs(26, 4, "tunnelConnect: Unknown host: " << tunnelState->host);
         err = errorCon(ERR_DNS_FAIL, HTTP_NOT_FOUND, request);
         *tunnelState->status_ptr = HTTP_NOT_FOUND;
-        err->dnsError = dns.error;
+        err->dnsserver_msg = xstrdup(dns_error_message_safe());
         err->callback = tunnelErrorComplete;
         err->callback_data = tunnelState;
         errorSend(tunnelState->client.fd(), err);
@@ -613,19 +609,22 @@ tunnelStart(ClientHttpRequest * http, int64_t * size_ptr, int *status_ptr)
     HttpRequest *request = http->request;
     char *url = http->uri;
     /*
-     * client_addr.IsNoAddr()  indicates this is an "internal" request
+     * client_addr == no_addr indicates this is an "internal" request
      * from peer_digest.c, asn.c, netdb.c, etc and should always
      * be allowed.  yuck, I know.
      */
 
-    if (!request->client_addr.IsNoAddr() && Config.accessList.miss) {
+    if (request->client_addr.s_addr != no_addr.s_addr) {
         /*
          * Check if this host is allowed to fetch MISSES from us (miss_access)
-         * default is to allow.
          */
-        ACLFilledChecklist ch(Config.accessList.miss, request, NULL);
+        ACLChecklist ch;
         ch.src_addr = request->client_addr;
         ch.my_addr = request->my_addr;
+        ch.my_port = request->my_port;
+        ch.request = HTTPMSGLOCK(request);
+        ch.accessList = cbdataReference(Config.accessList.miss);
+        /* cbdataReferenceDone() happens in either fastCheck() or ~ACLCheckList */
         answer = ch.fastCheck();
 
         if (answer == 0) {
@@ -636,19 +635,15 @@ tunnelStart(ClientHttpRequest * http, int64_t * size_ptr, int *status_ptr)
         }
     }
 
-    debugs(26, 3, "tunnelStart: '" << RequestMethodStr(request->method) << " " << url << "'");
+    debugs(26, 3, "tunnelStart: '" << RequestMethodStr[request->method] << " " << url << "'");
     statCounter.server.all.requests++;
     statCounter.server.other.requests++;
     /* Create socket. */
-    IpAddress temp = getOutgoingAddr(request,NULL);
-    int flags = COMM_NONBLOCKING;
-    if (request->flags.spoof_client_ip) {
-        flags |= COMM_TRANSPARENT;
-    }
     sock = comm_openex(SOCK_STREAM,
                        IPPROTO_TCP,
-                       temp,
-                       flags,
+                       getOutgoingAddr(request),
+                       0,
+                       COMM_NONBLOCKING,
                        getOutgoingTOS(request),
                        url);
 
@@ -710,7 +705,7 @@ tunnelProxyConnected(int fd, void *data)
     flags.proxying = tunnelState->request->flags.proxying;
     MemBuf mb;
     mb.init();
-    mb.Printf("CONNECT %s HTTP/1.1\r\n", tunnelState->url);
+    mb.Printf("CONNECT %s HTTP/1.0\r\n", tunnelState->url);
     HttpStateData::httpBuildRequestHeader(tunnelState->request,
                                           tunnelState->request,
                                           NULL,			/* StoreEntry */
@@ -744,7 +739,7 @@ tunnelPeerSelectComplete(FwdServer * fs, void *data)
     }
 
     tunnelState->servers = fs;
-    tunnelState->host = fs->_peer ? fs->_peer->host : xstrdup(request->GetHost());
+    tunnelState->host = fs->_peer ? fs->_peer->host : request->host;
 
     if (fs->_peer == NULL) {
         tunnelState->port = request->port;
@@ -804,7 +799,7 @@ TunnelStateData::Connection::fd(int const newFD)
 bool
 TunnelStateData::noConnections() const
 {
-    return fd_closed(server.fd()) && fd_closed(client.fd());
+    return (server.fd() == -1) && (client.fd() == -1);
 }
 
 #if DELAY_POOLS

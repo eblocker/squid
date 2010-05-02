@@ -1,5 +1,6 @@
+
 /*
- * $Id$
+ * $Id: DelayUser.h,v 1.7 2003/08/04 22:14:40 robertc Exp $
  *
  * DEBUG: section 77    Delay Pools
  * AUTHOR: Robert Collins <robertc@squid-cache.org>
@@ -20,12 +21,12 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *
+ *  
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *
+ *  
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
@@ -33,15 +34,14 @@
  *
  * Copyright (c) 2003, Robert Collins <robertc@squid-cache.org>
  */
-#ifndef DELAYUSER_H
-#define DELAYUSER_H
 
 #include "config.h"
 
-#if DELAY_POOLS
+#ifndef DELAYUSER_H
+#define DELAYUSER_H
 
 #include "squid.h"
-#include "auth/Gadgets.h"
+#include "authenticate.h"
 #include "CompositePoolNode.h"
 #include "DelayIdComposite.h"
 #include "DelayBucket.h"
@@ -49,7 +49,6 @@
 #include "Array.h"
 #include "splay.h"
 
-/// \ingroup DelayPoolsAPI
 class DelayUserBucket : public RefCountable
 {
 
@@ -65,7 +64,6 @@ public:
     AuthUser *authUser;
 };
 
-/// \ingroup DelayPoolsAPI
 class DelayUser : public CompositePoolNode
 {
 
@@ -84,8 +82,7 @@ public:
 
 private:
 
-    /// \ingroup DelayPoolsInternal
-    class Id:public DelayIdComposite
+class Id:public DelayIdComposite
     {
 
     public:
@@ -107,5 +104,4 @@ private:
     Splay<DelayUserBucket::Pointer> buckets;
 };
 
-#endif /* DELAY_POOLS */
 #endif /* DELAYUSER_H */

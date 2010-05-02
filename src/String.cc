@@ -1,6 +1,6 @@
 
 /*
- * $Id$
+ * $Id: String.cc,v 1.26 2007/05/29 13:31:38 amosjeffries Exp $
  *
  * DEBUG: section 67    String
  * AUTHOR: Duane Wessels
@@ -21,12 +21,12 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *
+ *  
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *
+ *  
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
@@ -35,43 +35,33 @@
 
 #include "squid.h"
 #include "Store.h"
-#include "TextException.h"
 
-int
-String::psize() const
-{
-    Must(size() < INT_MAX);
-    return size();
-}
-
-
-// low-level buffer allocation,
-// does not free old buffer and does not adjust or look at len_
 void
-String::allocBuffer(String::size_type sz)
+String::initBuf(size_t sz)
 {
     PROF_start(StringInitBuf);
-    assert (undefined());
-    char *newBuffer = (char*)memAllocString(sz, &sz);
-    setBuffer(newBuffer, sz);
+    buf((char *)memAllocString(sz, &sz));
+    assert(sz < 65536);
+    size_ = sz;
     PROF_stop(StringInitBuf);
 }
 
-// low-level buffer assignment
-// does not free old buffer and does not adjust or look at len_
 void
-String::setBuffer(char *aBuf, String::size_type aSize)
+String::init(char const *str)
 {
-    assert(undefined());
-    assert(aSize < 65536);
-    buf_ = aBuf;
-    size_ = aSize;
+    assert(this);
+
+    PROF_start(StringInit);
+    if (str)
+        limitInit(str, strlen(str));
+    else
+        clean();
+    PROF_stop(StringInit);
 }
 
 String::String (char const *aString) : size_(0), len_(0), buf_(NULL)
 {
-    if (aString)
-        allocAndFill(aString, strlen(aString));
+    init (aString);
 #if DEBUGSTRINGS
 
     StringRegistry::Instance().add(this);
@@ -81,16 +71,19 @@ String::String (char const *aString) : size_(0), len_(0), buf_(NULL)
 String &
 String::operator =(char const *aString)
 {
-    reset(aString);
+    clean();
+    init (aString);
     return *this;
 }
 
 String &
 String::operator = (String const &old)
 {
-    clean(); // TODO: optimize to avoid cleaning the buffer we can use
-    if (old.size() > 0)
-        allocAndFill(old.rawBuf(), old.size());
+    clean ();
+
+    if (old.len_)
+        limitInit (old.buf(), old.len_);
+
     return *this;
 }
 
@@ -112,32 +105,21 @@ String::operator != (String const &that) const
     return true;
 }
 
-// public interface, makes sure that we clean the old buffer first
 void
 String::limitInit(const char *str, int len)
 {
-    clean(); // TODO: optimize to avoid cleaning the buffer we can use
-    allocAndFill(str, len);
-}
-
-// Allocates the buffer to fit the supplied string and fills it.
-// Does not clean.
-void
-String::allocAndFill(const char *str, int len)
-{
-    PROF_start(StringAllocAndFill);
+    PROF_start(StringLimitInit);
     assert(this && str);
-    allocBuffer(len + 1);
+    initBuf(len + 1);
     len_ = len;
     xmemcpy(buf_, str, len);
     buf_[len] = '\0';
-    PROF_stop(StringAllocAndFill);
+    PROF_stop(StringLimitInit);
 }
 
 String::String (String const &old) : size_(0), len_(0), buf_(NULL)
 {
-    if (old.size() > 0)
-        allocAndFill(old.rawBuf(), old.size());
+    init (old.buf());
 #if DEBUGSTRINGS
 
     StringRegistry::Instance().add(this);
@@ -150,8 +132,7 @@ String::clean()
     PROF_start(StringClean);
     assert(this);
 
-    /* TODO if mempools has already closed this will FAIL!! */
-    if (defined())
+    if (buf())
         memFreeString(size_, buf_);
 
     len_ = 0;
@@ -175,9 +156,8 @@ void
 String::reset(const char *str)
 {
     PROF_start(StringReset);
-    clean(); // TODO: optimize to avoid cleaning the buffer if we can reuse it
-    if (str)
-        allocAndFill(str, strlen(str));
+    clean();
+    init(str);
     PROF_stop(StringReset);
 }
 
@@ -192,14 +172,13 @@ String::append(const char *str, int len)
         strncat(buf_, str, len);
         len_ += len;
     } else {
-        // Create a temporary string and absorb it later.
         String snew;
         assert(len_ + len < 65536); // otherwise snew.len_ overflows below
         snew.len_ = len_ + len;
-        snew.allocBuffer(snew.len_ + 1);
+        snew.initBuf(snew.len_ + 1);
 
-        if (len_)
-            xmemcpy(snew.buf_, rawBuf(), len_);
+        if (buf_)
+            xmemcpy(snew.buf_, buf(), len_);
 
         if (len)
             xmemcpy(snew.buf_ + len_, str, len);
@@ -230,38 +209,33 @@ String::append (char chr)
 void
 String::append(String const &old)
 {
-    append (old.rawBuf(), old.len_);
+    append (old.buf(), old.len_);
 }
 
 void
 String::absorb(String &old)
 {
     clean();
-    setBuffer(old.buf_, old.size_);
+    size_ = old.size_;
+    buf (old.buf_);
     len_ = old.len_;
     old.size_ = 0;
     old.buf_ = NULL;
     old.len_ = 0;
 }
 
-String
-String::substr(String::size_type from, String::size_type to) const
+void
+String::buf(char *newBuf)
 {
-    Must(from >= 0 && from < size());
-    Must(to > 0 && to <= size());
-    Must(to > from);
-
-    String rv;
-    rv.limitInit(rawBuf()+from,to-from);
-    return rv;
+    assert (buf_ == NULL);
+    buf_ = newBuf;
 }
-
 
 #if DEBUGSTRINGS
 void
 String::stat(StoreEntry *entry) const
 {
-    storeAppendPrintf(entry, "%p : %d/%d \"%.*s\"\n",this,len_, size_, size(), rawBuf());
+    storeAppendPrintf(entry, "%p : %d/%d \"%s\"\n",this,len_, size_, buf());
 }
 
 StringRegistry &
@@ -277,18 +251,17 @@ ptrcmp(C const &lhs, C const &rhs)
     return lhs - rhs;
 }
 
-StringRegistry::StringRegistry()
+void
+StringRegistry::registerWithCacheManager(CacheManager & manager)
 {
-#if DEBUGSTRINGS
-    CacheManager::GetInstance()->registerAction("strings",
-            "Strings in use in squid", Stat, 0, 1);
-#endif
+    manager.registerAction("strings",
+                           "Strings in use in squid", Stat, 0, 1);
 }
 
 void
 
 StringRegistry::add
-(String const *entry)
+    (String const *entry)
 {
     entries.insert(entry, ptrcmp);
 }
@@ -296,14 +269,14 @@ StringRegistry::add
 void
 
 StringRegistry::remove
-(String const *entry)
+    (String const *entry)
 {
     entries.remove(entry, ptrcmp);
 }
 
 StringRegistry StringRegistry::Instance_;
 
-extern String::size_type memStringCount();
+extern size_t memStringCount();
 
 void
 StringRegistry::Stat(StoreEntry *entry)
@@ -435,62 +408,6 @@ checkNullString(const char *p)
 {
     return p ? p : "(NULL)";
 }
-
-const char *
-String::pos(char const *aString) const
-{
-    if (undefined())
-        return NULL;
-    return strstr(termedBuf(), aString);
-}
-
-const char *
-String::pos(char const ch) const
-{
-    if (undefined())
-        return NULL;
-    return strchr(termedBuf(), ch);
-}
-
-const char *
-String::rpos(char const ch) const
-{
-    if (undefined())
-        return NULL;
-    return strrchr(termedBuf(), (ch));
-}
-
-String::size_type
-String::find(char const ch) const
-{
-    const char *c;
-    c=pos(ch);
-    if (c==NULL)
-        return npos;
-    return c-rawBuf();
-}
-
-String::size_type
-String::find(char const *aString) const
-{
-    const char *c;
-    c=pos(aString);
-    if (c==NULL)
-        return npos;
-    return c-rawBuf();
-}
-
-String::size_type
-String::rfind(char const ch) const
-{
-    const char *c;
-    c=rpos(ch);
-    if (c==NULL)
-        return npos;
-    return c-rawBuf();
-}
-
-
 
 #ifndef _USE_INLINE_
 #include "String.cci"

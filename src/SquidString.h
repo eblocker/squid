@@ -1,5 +1,6 @@
+
 /*
- * $Id$
+ * $Id: SquidString.h,v 1.12.2.1 2008/02/27 10:47:59 amosjeffries Exp $
  *
  * DEBUG: section 67    String
  * AUTHOR: Duane Wessels
@@ -20,12 +21,12 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *
+ *  
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *
+ *  
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
@@ -37,16 +38,9 @@
 
 #include "config.h"
 
-#if HAVE_OSTREAM
-#include <ostream>
-#endif
+/* forward decls */
 
-/* squid string placeholder (for printf) */
-#ifndef SQUIDSTRINGPH
-#define SQUIDSTRINGPH "%.*s"
-#define SQUIDSTRINGPRINT(s) s.psize(),s.rawBuf()
-#endif /* SQUIDSTRINGPH */
-
+class CacheManager;
 
 #define DEBUGSTRINGS 0
 #if DEBUGSTRINGS
@@ -61,12 +55,12 @@ public:
     static StringRegistry &Instance();
 
     void add
-    (String const *);
+        (String const *);
 
-    StringRegistry();
+    void registerWithCacheManager(CacheManager & manager);
 
     void remove
-    (String const *);
+        (String const *);
 
 private:
     static OBJH Stat;
@@ -93,44 +87,17 @@ public:
     String (String const &);
     ~String();
 
-    typedef size_t size_type; //storage size intentionally unspecified
-    const static size_type npos = std::string::npos;
-
     String &operator =(char const *);
     String &operator =(String const &);
     bool operator ==(String const &) const;
     bool operator !=(String const &) const;
 
-    /**
-     * Retrieve a single character in the string.
-     \param pos	Position of character to retrieve.
-     */
-    _SQUID_INLINE_ char operator [](unsigned int pos) const;
-
-    _SQUID_INLINE_ size_type size() const;
-    /// variant of size() suited to be used for printf-alikes.
-    /// throws when size() > MAXINT
-    int psize() const;
-
-    /**
-     * \retval true the String has some contents
-     */
-    _SQUID_INLINE_ bool defined() const;
-    /**
-     * \retval true the String does not hold any contents
-     */
-    _SQUID_INLINE_ bool undefined() const;
-    /**
-     * Returns a raw pointer to the underlying backing store. The caller has been
-     * verified not to make any assumptions about null-termination
-     */
-    _SQUID_INLINE_ char const * rawBuf() const;
-    /**
-     * Returns a raw pointer to the underlying backing store.
-     * The caller requires it to be null-terminated.
-     */
-    _SQUID_INLINE_ char const * termedBuf() const;
-    void limitInit(const char *str, int len); // TODO: rename to assign()
+    _SQUID_INLINE_ int size() const;
+    _SQUID_INLINE_ char const * buf() const;
+    void buf(char *);
+    void init (char const *);
+    void initBuf(size_t sz);
+    void limitInit(const char *str, int len);
     void clean();
     void reset(char const *str);
     void append(char const *buf, int len);
@@ -138,45 +105,34 @@ public:
     void append(char const);
     void append (String const &);
     void absorb(String &old);
-    const char * pos(char const *aString) const;
-    const char * pos(char const ch) const;
-    ///offset from string start of the first occurrence of ch
-    /// returns String::npos if ch is not found
-    size_type find(char const ch) const;
-    size_type find(char const *aString) const;
-    const char * rpos(char const ch) const;
-    size_type rfind(char const ch) const;
+    _SQUID_INLINE_ const char * pos(char const *) const;
+    _SQUID_INLINE_ const char * pos(char const ch) const;
+    _SQUID_INLINE_ const char * rpos(char const ch) const;
     _SQUID_INLINE_ int cmp (char const *) const;
-    _SQUID_INLINE_ int cmp (char const *, size_type count) const;
+    _SQUID_INLINE_ int cmp (char const *, size_t count) const;
     _SQUID_INLINE_ int cmp (String const &) const;
     _SQUID_INLINE_ int caseCmp (char const *) const;
-    _SQUID_INLINE_ int caseCmp (char const *, size_type count) const;
-    _SQUID_INLINE_ int caseCmp (String const &) const;
-
-    String substr(size_type from, size_type to) const;
-
-    _SQUID_INLINE_ void cut(size_type newLength);
-
-#if DEBUGSTRINGS
-    void stat (StoreEntry *) const;
-#endif
-
-
-private:
-    void allocAndFill(const char *str, int len);
-    void allocBuffer(size_type sz);
-    void setBuffer(char *buf, size_type sz);
-
-    /* never reference these directly! */
-    size_type size_; /* buffer size; 64K limit */
-
-    size_type len_;  /* current length  */
-
-    char *buf_;
+    _SQUID_INLINE_ int caseCmp (char const *, size_t count) const;
 
     _SQUID_INLINE_ void set(char const *loc, char const ch);
+
+    _SQUID_INLINE_ void cut(size_t newLength);
+
     _SQUID_INLINE_ void cutPointer(char const *loc);
 
+#if DEBUGSTRINGS
+
+    void stat (StoreEntry *) const;
+
+#endif
+
+private:
+    /* never reference these directly! */
+    unsigned short int size_; /* buffer size; 64K limit */
+
+    unsigned short int len_;  /* current length  */
+
+    char *buf_;
 };
 
 _SQUID_INLINE_ std::ostream & operator<<(std::ostream& os, String const &aString);

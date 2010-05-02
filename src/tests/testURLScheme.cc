@@ -1,16 +1,13 @@
 #define SQUID_UNIT_TEST 1
 
 #include "squid.h"
-
+#include <sstream>
 #include <cppunit/TestAssert.h>
 
 #include "Mem.h"
 #include "testURLScheme.h"
 #include "URLScheme.h"
 
-#if HAVE_SSTREAM
-#include <sstream>
-#endif
 
 CPPUNIT_TEST_SUITE_REGISTRATION( testURLScheme );
 
@@ -29,7 +26,7 @@ testHttpRequestMethod::testConstructCharStart()
 }
 
 /*
- * We can also parse precise ranges of characters
+ * We can also parse precise ranges of characters 
  */
 void
 testHttpRequestMethod::testConstructCharStartEnd()
@@ -116,7 +113,7 @@ testURLScheme::testConst_str()
 }
 
 /*
- * a URLScheme replaces protocol_t, so we should be able to test for equality on
+ * a URLScheme replaces protocol_t, so we should be able to test for equality on 
  * either the left or right hand side seamlessly.
  */
 void

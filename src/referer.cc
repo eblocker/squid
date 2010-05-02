@@ -1,5 +1,6 @@
+
 /*
- * $Id$
+ * $Id: referer.cc,v 1.9 2007/04/28 22:26:37 hno Exp $
  *
  * DEBUG: section 40    Referer Logging
  * AUTHOR: Joe Ramey <ramey@csc.ti.com> (useragent)
@@ -21,12 +22,12 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *
+ *  
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *
+ *  
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
@@ -34,8 +35,6 @@
  */
 
 #include "squid.h"
-
-#include "SquidTime.h"
 
 #if USE_REFERER_LOG
 static Logfile *refererlog = NULL;

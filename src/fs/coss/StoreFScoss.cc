@@ -1,6 +1,6 @@
-#error COSS Support is not stable yet in Squid-3. Please do not use.
+#error COSS Support is not stable in 3.0. Please do not use.
 /*
- * $Id$
+ * $Id: StoreFScoss.cc,v 1.7 2006/09/03 21:05:21 hno Exp $
  *
  * DEBUG: section 47    Store Directory Routines
  * AUTHOR: Robert Collins
@@ -21,12 +21,12 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *
+ *  
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *
+ *  
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
@@ -52,7 +52,6 @@ StoreFScoss::GetInstance()
 StoreFScoss::StoreFScoss()
 {
     FsAdd(*this);
-    registerWithCacheManager();
 }
 
 char const *
@@ -85,9 +84,9 @@ StoreFScoss::setup()
 }
 
 void
-StoreFScoss::registerWithCacheManager()
+StoreFScoss::registerWithCacheManager(CacheManager & manager)
 {
-    CacheManager::GetInstance()->registerAction("coss", "COSS Stats", Stats, 0, 1);
+    manager.registerAction("coss", "COSS Stats", Stats, 0, 1);
 }
 
 void

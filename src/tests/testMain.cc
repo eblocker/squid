@@ -6,6 +6,7 @@
 #include <cppunit/TestResultCollector.h>
 #include <cppunit/TestRunner.h>
 
+
 int
 main( int argc, char* argv[] )
 {
@@ -33,3 +34,5 @@ main( int argc, char* argv[] )
 
     return result.wasSuccessful() ? 0 : 1;
 }
+
+

@@ -1,6 +1,6 @@
 
 /*
- * $Id$
+ * $Id: aio_win32.cc,v 1.3 2007/04/28 22:26:40 hno Exp $
  *
  * DEBUG: section 81    aio_xxx() POSIX emulation on Windows
  * AUTHOR: Guido Serassio <serassio@squid-cache.org>
@@ -21,12 +21,12 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *
+ *  
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *
+ *  
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
@@ -59,7 +59,8 @@ int aio_read(struct aiocb *aiocbp)
     /* Allocate an overlapped structure. */
     Overlapped = (LPOVERLAPPED) xcalloc(1, sizeof(OVERLAPPED));
 
-    if (!Overlapped) {
+    if (!Overlapped)
+    {
         errno = ENOMEM;
         return -1;
     }
@@ -98,14 +99,15 @@ int aio_read(struct aiocb *aiocbp)
                                    IoCompletionRoutine);
 
     /* Test to see if the I/O was queued successfully. */
-    if (!IoOperationStatus) {
+    if (!IoOperationStatus)
+    {
         errno = GetLastError();
         debugs(81,1, "aio_read: GetLastError=" << errno  );
         return -1;
     }
 
     /* The I/O queued successfully. Go back into the
-       alertable wait for I/O completion or for
+       alertable wait for I/O completion or for 
        more I/O requests. */
     return 0;
 }
@@ -119,7 +121,8 @@ int aio_read64(struct aiocb64 *aiocbp)
     /* Allocate an overlapped structure. */
     Overlapped = (LPOVERLAPPED) xcalloc(1, sizeof(OVERLAPPED));
 
-    if (!Overlapped) {
+    if (!Overlapped)
+    {
         errno = ENOMEM;
         return -1;
     }
@@ -150,14 +153,15 @@ int aio_read64(struct aiocb64 *aiocbp)
                                    IoCompletionRoutine);
 
     /* Test to see if the I/O was queued successfully. */
-    if (!IoOperationStatus) {
+    if (!IoOperationStatus)
+    {
         errno = GetLastError();
         debugs(81, 1, "aio_read: GetLastError=" << errno  );
         return -1;
     }
 
     /* The I/O queued successfully. Go back into the
-       alertable wait for I/O completion or for
+       alertable wait for I/O completion or for 
        more I/O requests. */
     return 0;
 }
@@ -171,7 +175,8 @@ int aio_write(struct aiocb *aiocbp)
     /* Allocate an overlapped structure. */
     Overlapped = (LPOVERLAPPED) xcalloc(1, sizeof(OVERLAPPED));
 
-    if (!Overlapped) {
+    if (!Overlapped)
+    {
         errno = ENOMEM;
         return -1;
     }
@@ -210,14 +215,15 @@ int aio_write(struct aiocb *aiocbp)
                                     IoCompletionRoutine);
 
     /* Test to see if the I/O was queued successfully. */
-    if (!IoOperationStatus) {
+    if (!IoOperationStatus)
+    {
         errno = GetLastError();
         debugs(81, 1, "aio_write: GetLastError=" << errno  );
         return -1;
     }
 
     /* The I/O queued successfully. Go back into the
-       alertable wait for I/O completion or for
+       alertable wait for I/O completion or for 
        more I/O requests. */
     return 0;
 }
@@ -231,7 +237,8 @@ int aio_write64(struct aiocb64 *aiocbp)
     /* Allocate an overlapped structure. */
     Overlapped = (LPOVERLAPPED) xcalloc(1, sizeof(OVERLAPPED));
 
-    if (!Overlapped) {
+    if (!Overlapped)
+    {
         errno = ENOMEM;
         return -1;
     }
@@ -262,14 +269,15 @@ int aio_write64(struct aiocb64 *aiocbp)
                                     IoCompletionRoutine);
 
     /* Test to see if the I/O was queued successfully. */
-    if (!IoOperationStatus) {
+    if (!IoOperationStatus)
+    {
         errno = GetLastError();
         debugs(81, 1, "aio_write: GetLastError=" << errno  );
         return -1;
     }
 
     /* The I/O queued successfully. Go back into the
-       alertable wait for I/O completion or for
+       alertable wait for I/O completion or for 
        more I/O requests. */
     return 0;
 }

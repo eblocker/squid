@@ -1,5 +1,6 @@
+
 /*
- * $Id$
+ * $Id: HttpHeader.h,v 1.24.2.1 2008/02/27 05:59:29 amosjeffries Exp $
  *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
@@ -18,12 +19,12 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *
+ *  
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *
+ *  
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
@@ -33,24 +34,17 @@
 #ifndef SQUID_HTTPHEADER_H
 #define SQUID_HTTPHEADER_H
 
+/* forward decls */
+
+class CacheManager;
 /* because we pass a spec by value */
 #include "HttpHeaderRange.h"
 /* HttpHeader holds a HttpHeaderMask */
 #include "HttpHeaderMask.h"
 
-
-/* class forward declarations */
-class HttpVersion;
-class HttpHdrContRange;
-class HttpHdrCc;
-class HttpHdrSc;
-class HttpHdrRange;
-class String;
-
-
 /* constant attributes of http header fields */
 
-/** recognized or "known" header fields; @?@ add more! */
+/* recognized or "known" header fields; @?@ add more! */
 typedef enum {
     HDR_BAD_HDR = -1,
     HDR_ACCEPT = 0,
@@ -76,7 +70,6 @@ typedef enum {
     HDR_DATE,
     HDR_ETAG,
     HDR_EXPIRES,
-    HDR_EXPECT,
     HDR_FROM,
     HDR_HOST,
     HDR_IF_MATCH,
@@ -94,10 +87,9 @@ typedef enum {
     HDR_PROXY_AUTHENTICATION_INFO,
     HDR_PROXY_AUTHORIZATION,
     HDR_PROXY_CONNECTION,
-    HDR_PROXY_SUPPORT,
     HDR_PUBLIC,
     HDR_RANGE,
-    HDR_REQUEST_RANGE,		/**< some clients use this, sigh */
+    HDR_REQUEST_RANGE,		/* some clients use this, sigh */
     HDR_REFERER,
     HDR_RETRY_AFTER,
     HDR_SERVER,
@@ -116,16 +108,13 @@ typedef enum {
     HDR_WWW_AUTHENTICATE,
     HDR_AUTHENTICATION_INFO,
     HDR_X_CACHE,
-    HDR_X_CACHE_LOOKUP,		/**< tmp hack, remove later */
+    HDR_X_CACHE_LOOKUP,		/* tmp hack, remove later */
     HDR_X_FORWARDED_FOR,
-    HDR_X_REQUEST_URI,		/**< appended if ADD_X_REQUEST_URI is #defined */
+    HDR_X_REQUEST_URI,		/* appended if ADD_X_REQUEST_URI is #defined */
     HDR_X_SQUID_ERROR,
     HDR_NEGOTIATE,
 #if X_ACCELERATOR_VARY
     HDR_X_ACCELERATOR_VARY,
-#endif
-#if USE_ADAPTATION
-    HDR_X_NEXT_SERVICES,
 #endif
     HDR_SURROGATE_CAPABILITY,
     HDR_SURROGATE_CONTROL,
@@ -134,9 +123,9 @@ typedef enum {
     HDR_ENUM_END
 } http_hdr_type;
 
-/** possible types for http header fields */
+/* possible types for http header fields */
 typedef enum {
-    ftInvalid = HDR_ENUM_END,	/**< to catch nasty errors with hdr_id<->fld_type clashes */
+    ftInvalid = HDR_ENUM_END,	/* to catch nasty errors with hdr_id<->fld_type clashes */
     ftInt,
     ftInt64,
     ftStr,
@@ -149,7 +138,7 @@ typedef enum {
     ftDate_1123_or_ETag
 } field_type;
 
-/** Possible owners of http header */
+/* possible owners of http header */
 typedef enum {
     hoNone =0,
 #if USE_HTCP
@@ -159,14 +148,22 @@ typedef enum {
     hoReply
 } http_hdr_owner_type;
 
-struct _HttpHeaderFieldAttrs {
+struct _HttpHeaderFieldAttrs
+{
     const char *name;
     http_hdr_type id;
     field_type type;
 };
 
+class HttpVersion;
 
-/** Iteration for headers; use HttpHeaderPos as opaque type, do not interpret */
+class HttpHdrContRange;
+
+class HttpHdrCc;
+
+class HttpHdrSc;
+
+/*iteration for headers; use HttpHeaderPos as opaque type, do not interpret */
 typedef ssize_t HttpHeaderPos;
 
 /* use this and only this to initialize HttpHeaderPos */
@@ -174,10 +171,8 @@ typedef ssize_t HttpHeaderPos;
 
 /* these two are defined in  structs.h */
 
-/// \todo CLEANUP: Kill this.
 typedef struct _TimeOrTag TimeOrTag;
 
-/// \todo CLEANUP: Kill this.
 typedef struct _ETag ETag;
 
 class HttpHeaderEntry
@@ -197,7 +192,7 @@ public:
     String value;
 };
 
-MEMPROXY_CLASS_INLINE(HttpHeaderEntry);
+MEMPROXY_CLASS_INLINE(HttpHeaderEntry)
 
 class HttpHeader
 {
@@ -255,26 +250,23 @@ public:
     int hasListMember(http_hdr_type id, const char *member, const char separator) const;
     int hasByNameListMember(const char *name, const char *member, const char separator) const;
     void removeHopByHopEntries();
-
-    /* protected, do not use these, use interface functions instead */
-    Vector<HttpHeaderEntry *> entries;		/**< parsed fields in raw format */
-    HttpHeaderMask mask;	/**< bit set <=> entry present */
-    http_hdr_owner_type owner;	/**< request or reply */
-    int len;			/**< length when packed, not counting terminating null-byte */
-
-protected:
-    /** \deprecated Public access replaced by removeHopByHopEntries() */
     void removeConnectionHeaderEntries();
+    /* protected, do not use these, use interface functions instead */
+    Vector<HttpHeaderEntry *> entries;		/* parsed fields in raw format */
+    HttpHeaderMask mask;	/* bit set <=> entry present */
+    http_hdr_owner_type owner;	/* request or reply */
+    int len;			/* length when packed, not counting terminating '\0' */
 
 private:
     HttpHeaderEntry *findLastEntry(http_hdr_type id) const;
-    /// Made it non-copyable. Our destructor is a bit nasty...
+    // Make it non-copyable. Our destructor is a bit nasty...
     HttpHeader(const HttpHeader &);
     //assignment is used by the reset method, can't block it..
     //const HttpHeader operator=(const HttpHeader &);
 };
 
 
+extern void httpHeaderRegisterWithCacheManager(CacheManager & manager);
 extern int httpHeaderParseQuotedString (const char *start, String *val);
 SQUIDCEXTERN int httpHeaderHasByNameListMember(const HttpHeader * hdr, const char *name, const char *member, const char separator);
 SQUIDCEXTERN void httpHeaderUpdate(HttpHeader * old, const HttpHeader * fresh, const HttpHeaderMask * denied_mask);

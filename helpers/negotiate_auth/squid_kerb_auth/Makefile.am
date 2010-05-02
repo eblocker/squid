@@ -1,23 +1,27 @@
-EXTRA_DIST = configure README NEWS ChangeLog AUTHORS INSTALL
-SUBDIRS = 
+#
+#  Makefile for the Squid Object Cache server
+#
+#  $Id: Makefile.am,v 1.1 2007/06/24 22:34:15 hno Exp $
+#
 
-libexec_PROGRAMS = squid_kerb_auth squid_kerb_auth_test negotiate_kerb_auth negotiate_kerb_auth_test
+libexec_PROGRAMS = squid_kerb_auth
 
-EXTRA_DIST += $(SPNEGO_SOURCE)
+SPNEGO = spnegohelp/derparse.c spnegohelp/derparse.h spnegohelp/Makefile spnegohelp/spnego.c spnegohelp/spnego.h spnegohelp/spnegohelp.c spnegohelp/spnegohelp.h spnegohelp/spnegoparse.c spnegohelp/spnegoparse.h
+SOURCE = squid_kerb_auth.c base64.c base64.h
+EXTRA_DIST = readme.txt do.sh
 
-squid_kerb_auth_SOURCES = squid_kerb_auth.c base64.c base64.h squid_compat.h
-squid_kerb_auth_test_SOURCES = squid_kerb_auth_test.c base64.c base64.h squid_compat.h
-squid_kerb_auth_LDFLAGS = 
-squid_kerb_auth_LDADD =
-squid_kerb_auth_test_LDFLAGS = 
-squid_kerb_auth_test_LDADD =
-negotiate_kerb_auth_SOURCES = 
-negotiate_kerb_auth_test_SOURCES = 
+if HAVE_SPNEGO
+squid_kerb_auth_SOURCES = $(SOURCE)
+else
+squid_kerb_auth_SOURCES = $(SOURCE) $(SPNEGO)
+endif
 
-negotiate_kerb_auth: squid_kerb_auth
-	cp squid_kerb_auth negotiate_kerb_auth
+INCLUDES = -I$(top_srcdir)/include $(KERBINCS) -I$(srcdir)/spnegohelp -I.
+#-I$(top_srcdir)/include -I$(top_srcdir)/src
+LDADD = $(KERBLIBS)
+#-L$(top_builddir)/lib -lmiscutil $(XTRA_LIBS)
 
-negotiate_kerb_auth_test: squid_kerb_auth_test
-	cp squid_kerb_auth_test negotiate_kerb_auth_test
-
+# MIT
+KERBINCS = @KRB5INCS@
+KERBLIBS = @KRB5LIBS@
 

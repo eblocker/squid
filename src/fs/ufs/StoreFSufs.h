@@ -1,5 +1,6 @@
+
 /*
- * $Id$
+ * $Id: StoreFSufs.h,v 1.5 2006/09/14 00:51:12 robertc Exp $
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
  * ----------------------------------------------------------
@@ -17,35 +18,29 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *
+ *  
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *
+ *  
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
  *
  * Copyright (c) 2003, Robert Collins <robertc@squid-cache.org>
  */
+
 #ifndef SQUID_STOREFSUFS_H
 #define SQUID_STOREFSUFS_H
 
-/**
- \defgroup UFS	UFS Storage Filesystem
- \ingroup FileSystems
- */
+#include "squid.h"
+#include "ufscommon.h"
+#include "DiskIO/DiskIOModule.h"
 
-class DiskIOModule;
 
-#include "StoreFileSystem.h"
-
-/**
- \ingroup UFS, FileSystems
- *
- * Core UFS class. This template provides compile time aliases for
- * ufs/aufs/diskd to ease configuration conversion - each becomes a
+/* core UFS class. This template provides compile time aliases for
+ * ufs/aufs/diskd to ease configuration conversion - each becomes a 
  * StoreFS module whose createSwapDir method parameterises the common
  * UFSSwapDir with an IO module instance.
  */
@@ -62,7 +57,7 @@ public:
     virtual SwapDir *createSwapDir();
     virtual void done();
     virtual void setup();
-    /** Not implemented */
+    /* Not implemented */
     StoreFSufs (StoreFSufs const &);
     StoreFSufs &operator=(StoreFSufs const &);
 

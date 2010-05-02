@@ -1,5 +1,6 @@
+
 /*
- * $Id$
+ * $Id: StoreEntryStream.h,v 1.5 2007/08/14 10:09:23 serassio Exp $
  *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
@@ -18,12 +19,12 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *
+ *  
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *
+ *  
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
@@ -35,9 +36,7 @@
 
 #include "Store.h"
 
-#if HAVE_OSTREAM
 #include <ostream>
-#endif
 
 /*
  * This class provides a streambuf interface for writing
@@ -49,13 +48,15 @@ class StoreEntryStreamBuf : public std::streambuf
 {
 
 public:
-    StoreEntryStreamBuf(StoreEntry *anEntry) : theEntry(anEntry) {
+    StoreEntryStreamBuf(StoreEntry *anEntry) : theEntry(anEntry)
+    {
 
         theEntry->lock();
         theEntry->buffer();
     }
 
-    ~StoreEntryStreamBuf() {
+    ~StoreEntryStreamBuf()
+    {
         theEntry->unlock();
     }
 
@@ -63,7 +64,8 @@ protected:
     /* flush the current buffer and the character that is overflowing
      * to the store entry.
      */
-    virtual int_type overflow(int_type aChar = traits_type::eof()) {
+    virtual int_type overflow(int_type aChar = traits_type::eof())
+    {
         std::streamsize pending(pptr() - pbase());
 
         if (pending && sync ())
@@ -81,7 +83,8 @@ protected:
     }
 
     /* push the buffer to the store */
-    virtual int sync() {
+    virtual int sync()
+    {
         std::streamsize pending(pptr() - pbase());
 
         if (pending)
@@ -95,7 +98,8 @@ protected:
     /* write multiple characters to the store entry
      * - this is an optimisation method.
      */
-    virtual std::streamsize xsputn(const char * chars, std::streamsize number) {
+    virtual std::streamsize xsputn(const char * chars, std::streamsize number)
+    {
         if (number)
             theEntry->append(chars, number);
 

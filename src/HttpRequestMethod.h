@@ -1,5 +1,6 @@
+
 /*
- * $Id$
+ * $Id: HttpRequestMethod.h,v 1.5 2007/11/13 23:09:23 rousskov Exp $
  *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
@@ -18,12 +19,12 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *
+ *  
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *
+ *  
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
@@ -33,9 +34,7 @@
 #ifndef SQUID_HTTPREQUESTMETHOD_H
 #define SQUID_HTTPREQUESTMETHOD_H
 
-#include "squid.h"
 #include <iosfwd>
-#include "SquidString.h"
 
 enum _method_t {
     METHOD_NONE,		/* 000 */
@@ -68,18 +67,43 @@ enum _method_t {
     METHOD_MKACTIVITY,
     METHOD_CHECKOUT,
     METHOD_MERGE,
-    METHOD_OTHER,
-    METHOD_ENUM_END  // MUST be last, (yuck) this is used as an array-initialization index constant!
+    METHOD_EXT00,
+    METHOD_EXT01,
+    METHOD_EXT02,
+    METHOD_EXT03,
+    METHOD_EXT04,
+    METHOD_EXT05,
+    METHOD_EXT06,
+    METHOD_EXT07,
+    METHOD_EXT08,
+    METHOD_EXT09,
+    METHOD_EXT10,
+    METHOD_EXT11,
+    METHOD_EXT12,
+    METHOD_EXT13,
+    METHOD_EXT14,
+    METHOD_EXT15,
+    METHOD_EXT16,
+    METHOD_EXT17,
+    METHOD_EXT18,
+    METHOD_EXT19,
+    METHOD_ENUM_END
 };
 
+typedef enum _method_t method_t;
 
-/**
- * This class represents an HTTP Request METHOD
- * - i.e. PUT, POST, GET etc.
- * It has a runtime extension facility to allow it to
+extern const char *RequestMethodStr[];
+
+/* forward decls */
+
+typedef struct _SquidConfig SquidConfig;
+
+
+/* This class represents an HTTP Request METHOD - i.e.
+ * PUT, POST, GET etc. It has a runtime extensionf acility to allow it to
  * efficiently support new methods
- \ingroup POD
  */
+
 class HttpRequestMethod
 {
 
@@ -87,88 +111,35 @@ public:
     static void AddExtension(const char *methodString);
     static void Configure(SquidConfig &Config);
 
-    HttpRequestMethod() : theMethod(METHOD_NONE), theImage() {}
+    HttpRequestMethod() : theMethod(METHOD_NONE) {}
 
-    HttpRequestMethod(_method_t const aMethod) : theMethod(aMethod), theImage() {}
+    HttpRequestMethod(method_t const aMethod) : theMethod(aMethod) {}
 
-    /**
-     \param begin    string to convert to request method.
-     \param end      end of the method string (relative to begin). Use NULL if this is unknown.
-     *
-     \note DO NOT give end a default (ie NULL). That will cause silent char* conversion clashes.
-     */
-    HttpRequestMethod(char const * begin, char const * end);
+    HttpRequestMethod(char const * begin, char const * end=0);
 
-    HttpRequestMethod & operator = (const HttpRequestMethod& aMethod) {
-        theMethod = aMethod.theMethod;
-        theImage = aMethod.theImage;
-        return *this;
-    }
+    operator method_t() const {return theMethod; }
 
-    HttpRequestMethod & operator = (_method_t const aMethod) {
+    HttpRequestMethod & operator = (method_t const aMethod)
+    {
         theMethod = aMethod;
-        theImage.clean();
         return *this;
     }
 
-    bool operator == (_method_t const & aMethod) const { return theMethod == aMethod; }
-    bool operator == (HttpRequestMethod const & aMethod) const {
-        return theMethod == aMethod.theMethod &&
-               (theMethod != METHOD_OTHER || theImage == aMethod.theImage);
-    }
+    bool operator != (method_t const & aMethod) { return theMethod != aMethod;}
 
-    bool operator != (_method_t const & aMethod) const { return theMethod != aMethod; }
-    bool operator != (HttpRequestMethod const & aMethod) const {
-        return !operator==(aMethod);
-    }
-
-    /** Iterate through all HTTP method IDs. */
-    HttpRequestMethod& operator++() {
-        // TODO: when this operator is used in more than one place,
-        // replace it with HttpRequestMethods::Iterator API
-        // XXX: this interface can create METHOD_OTHER without an image
-        assert(theMethod < METHOD_ENUM_END);
-        theMethod = (_method_t)(1 + (int)theMethod);
-        return *this;
-    }
-
-    /** Get an ID representation of the method.
-     \retval METHOD_NONE   the method is unset
-     \retval METHOD_OTHER  the method is not recognized and has no unique ID
-     \retval *             the method is on of the recognized HTTP methods.
-     */
-    _method_t const id() const { return theMethod; }
-
-    /** Get a char string representation of the method. */
-    char const* image() const;
-
-    bool isCacheble() const;
-    bool purgesOthers() const;
+    /* Get a char string representation of the method. */
+    char const *const_str() const { return RequestMethodStr[theMethod]; }
 
 private:
-    static const char *RequestMethodStr[];
+    method_t theMethod;
 
-    _method_t theMethod; ///< Method type
-    String theImage;     ///< Used for store METHOD_OTHER only
 };
 
 inline std::ostream &
 operator << (std::ostream &os, HttpRequestMethod const &method)
 {
-    os << method.image();
+    os << method.const_str();
     return os;
-}
-
-inline const char*
-RequestMethodStr(const _method_t m)
-{
-    return HttpRequestMethod(m).image();
-}
-
-inline const char*
-RequestMethodStr(const HttpRequestMethod& m)
-{
-    return m.image();
 }
 
 #endif /* SQUID_HTTPREQUESTMETHOD_H */

@@ -1,6 +1,6 @@
 
 /*
- * $Id$
+ * $Id: external_acl.cc,v 1.80 2007/05/29 13:31:39 amosjeffries Exp $
  *
  * DEBUG: section 82    External ACL
  * AUTHOR: Henrik Nordstrom, MARA Systems AB
@@ -28,12 +28,12 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *
+ *  
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *
+ *  
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
@@ -44,23 +44,20 @@
 #include "CacheManager.h"
 #include "ExternalACL.h"
 #include "ExternalACLEntry.h"
-#include "auth/UserRequest.h"
+#include "AuthUserRequest.h"
 #include "SquidTime.h"
 #include "Store.h"
 #include "fde.h"
-#include "acl/FilledChecklist.h"
-#include "acl/Acl.h"
+#include "ACLChecklist.h"
+#include "ACL.h"
 #if USE_IDENT
-#include "ident/AclIdent.h"
+#include "ACLIdent.h"
 #endif
 #include "client_side.h"
 #include "HttpRequest.h"
-#include "HttpReply.h"
-#include "auth/Acl.h"
-#include "auth/Gadgets.h"
+#include "authenticate.h"
 #include "helper.h"
 #include "MemBuf.h"
-#include "rfc1738.h"
 #include "URLScheme.h"
 #include "wordlist.h"
 
@@ -73,7 +70,7 @@
 
 typedef struct _external_acl_format external_acl_format;
 
-static char *makeExternalAclKey(ACLFilledChecklist * ch, external_acl_data * acl_data);
+static char *makeExternalAclKey(ACLChecklist * ch, external_acl_data * acl_data);
 static void external_acl_cache_delete(external_acl * def, external_acl_entry * entry);
 static int external_acl_entry_expired(external_acl * def, external_acl_entry * entry);
 static int external_acl_grace_expired(external_acl * def, external_acl_entry * entry);
@@ -91,7 +88,7 @@ public:
     external_acl *next;
 
     void add
-    (ExternalACLEntry *);
+        (ExternalACLEntry *);
 
     void trimCache();
 
@@ -125,16 +122,18 @@ public:
 
     bool require_auth;
 
-    enum {
+    enum
+    {
         QUOTE_METHOD_SHELL = 1,
         QUOTE_METHOD_URL
-    } quote;
+    }
 
-    IpAddress local_addr;
+    quote;
 };
 
-struct _external_acl_format {
-    enum format_type {
+struct _external_acl_format
+{
+    enum {
         EXT_ACL_UNKNOWN,
         EXT_ACL_LOGIN,
 #if USE_IDENT
@@ -150,17 +149,10 @@ struct _external_acl_format {
         EXT_ACL_PORT,
         EXT_ACL_PATH,
         EXT_ACL_METHOD,
-
-        EXT_ACL_HEADER_REQUEST,
-        EXT_ACL_HEADER_REQUEST_MEMBER,
-        EXT_ACL_HEADER_REQUEST_ID,
-        EXT_ACL_HEADER_REQUEST_ID_MEMBER,
-
-        EXT_ACL_HEADER_REPLY,
-        EXT_ACL_HEADER_REPLY_MEMBER,
-        EXT_ACL_HEADER_REPLY_ID,
-        EXT_ACL_HEADER_REPLY_ID_MEMBER,
-
+        EXT_ACL_HEADER,
+        EXT_ACL_HEADER_MEMBER,
+        EXT_ACL_HEADER_ID,
+        EXT_ACL_HEADER_ID_MEMBER,
 #if USE_SSL
         EXT_ACL_USER_CERT,
         EXT_ACL_CA_CERT,
@@ -216,66 +208,6 @@ free_external_acl(void *data)
         hashFreeMemory(p->cache);
 }
 
-/**
- * Parse the External ACL format %<{.*} and %>{.*} token(s) to pass a specific
- * request or reply header to external helper.
- *
- \param header   - the token being parsed (without the identifying prefix)
- \param type     - format enum identifier for this element, pulled from identifying prefix
- \param format   - structure to contain all the info about this format element.
- */
-void
-parse_header_token(external_acl_format *format, char *header, const _external_acl_format::format_type type)
-{
-    /* header format */
-    char *member, *end;
-
-    /** Cut away the closing brace */
-    end = strchr(header, '}');
-    if (end && strlen(end) == 1)
-        *end = '\0';
-    else
-        self_destruct();
-
-    member = strchr(header, ':');
-
-    if (member) {
-        /* Split in header and member */
-        *member++ = '\0';
-
-        if (!xisalnum(*member))
-            format->separator = *member++;
-        else
-            format->separator = ',';
-
-        format->member = xstrdup(member);
-
-        if (type == _external_acl_format::EXT_ACL_HEADER_REQUEST)
-            format->type = _external_acl_format::EXT_ACL_HEADER_REQUEST_MEMBER;
-        else
-            format->type = _external_acl_format::EXT_ACL_HEADER_REQUEST_MEMBER;
-    } else {
-        format->type = type;
-    }
-
-    format->header = xstrdup(header);
-    format->header_id = httpHeaderIdByNameDef(header, strlen(header));
-
-    if (format->header_id != -1) {
-        if (member) {
-            if (type == _external_acl_format::EXT_ACL_HEADER_REQUEST)
-                format->type = _external_acl_format::EXT_ACL_HEADER_REQUEST_ID_MEMBER;
-            else
-                format->type = _external_acl_format::EXT_ACL_HEADER_REPLY_ID_MEMBER;
-        } else {
-            if (type == _external_acl_format::EXT_ACL_HEADER_REQUEST)
-                format->type = _external_acl_format::EXT_ACL_HEADER_REQUEST_ID;
-            else
-                format->type = _external_acl_format::EXT_ACL_HEADER_REPLY_ID;
-        }
-    }
-}
-
 void
 parse_externalAclHelper(external_acl ** list)
 {
@@ -288,14 +220,9 @@ parse_externalAclHelper(external_acl ** list)
 
     a = cbdataAlloc(external_acl);
 
-    /* set defaults */
     a->ttl = DEFAULT_EXTERNAL_ACL_TTL;
     a->negative_ttl = -1;
     a->children = DEFAULT_EXTERNAL_ACL_CHILDREN;
-    a->cache_size = 256*1024;
-    a->local_addr.SetLocalhost();
-    a->quote = external_acl::QUOTE_METHOD_URL;
-
 
     token = strtok(NULL, w_space);
 
@@ -305,6 +232,8 @@ parse_externalAclHelper(external_acl ** list)
     a->name = xstrdup(token);
 
     token = strtok(NULL, w_space);
+
+    a->quote = external_acl::QUOTE_METHOD_URL;
 
     /* Parse options */
     while (token) {
@@ -328,19 +257,6 @@ parse_externalAclHelper(external_acl ** list)
             a->quote = external_acl::QUOTE_METHOD_URL;
         } else if (strcmp(token, "quote=shell") == 0) {
             a->quote = external_acl::QUOTE_METHOD_SHELL;
-
-            /* INET6: allow admin to configure some helpers explicitly to
-                      bind to IPv4/v6 localhost port. */
-        } else if (strcmp(token, "ipv4") == 0) {
-            if ( !a->local_addr.SetIPv4() ) {
-                debugs(3, 0, "WARNING: Error converting " << a->local_addr << " to IPv4 in " << a->name );
-            }
-        } else if (strcmp(token, "ipv6") == 0) {
-#if !USE_IPV6
-            debugs(3, 0, "WARNING: --enable-ipv6 required for external ACL helpers to use IPv6: " << a->name );
-#else
-            (void)0;
-#endif
         } else {
             break;
         }
@@ -365,13 +281,44 @@ parse_externalAclHelper(external_acl ** list)
         format = cbdataAlloc(external_acl_format);
 
         if (strncmp(token, "%{", 2) == 0) {
-            // deprecated. but assume the old configs all referred to request headers.
-            debugs(82, DBG_IMPORTANT, "WARNING: external_acl_type format %{...} is being replaced by %>{...} for : " << token);
-            parse_header_token(format, (token+2), _external_acl_format::EXT_ACL_HEADER_REQUEST);
-        } else if (strncmp(token, "%>{", 3) == 0) {
-            parse_header_token(format, (token+3), _external_acl_format::EXT_ACL_HEADER_REQUEST);
-        } else if (strncmp(token, "%<{", 3) == 0) {
-            parse_header_token(format, (token+3), _external_acl_format::EXT_ACL_HEADER_REPLY);
+            /* header format */
+            char *header, *member, *end;
+            header = token + 2;
+            end = strchr(header, '}');
+            /* cut away the closing brace */
+
+            if (end && strlen(end) == 1)
+                *end = '\0';
+            else
+                self_destruct();
+
+            member = strchr(header, ':');
+
+            if (member) {
+                /* Split in header and member */
+                *member++ = '\0';
+
+                if (!xisalnum(*member))
+                    format->separator = *member++;
+                else
+                    format->separator = ',';
+
+                format->member = xstrdup(member);
+
+                format->type = _external_acl_format::EXT_ACL_HEADER_MEMBER;
+            } else {
+                format->type = _external_acl_format::EXT_ACL_HEADER;
+            }
+
+            format->header = xstrdup(header);
+            format->header_id = httpHeaderIdByNameDef(header, strlen(header));
+
+            if (format->header_id != -1) {
+                if (member)
+                    format->type = _external_acl_format::EXT_ACL_HEADER_ID_MEMBER;
+                else
+                    format->type = _external_acl_format::EXT_ACL_HEADER_ID;
+            }
         } else if (strcmp(token, "%LOGIN") == 0) {
             format->type = _external_acl_format::EXT_ACL_LOGIN;
             a->require_auth = true;
@@ -459,11 +406,6 @@ dump_externalAclHelper(StoreEntry * sentry, const char *name, const external_acl
     for (node = list; node; node = node->next) {
         storeAppendPrintf(sentry, "%s %s", name, node->name);
 
-        if (!node->local_addr.IsIPv6())
-            storeAppendPrintf(sentry, " ipv4");
-        else
-            storeAppendPrintf(sentry, " ipv6");
-
         if (node->ttl != DEFAULT_EXTERNAL_ACL_TTL)
             storeAppendPrintf(sentry, " ttl=%d", node->ttl);
 
@@ -485,24 +427,16 @@ dump_externalAclHelper(StoreEntry * sentry, const char *name, const external_acl
         for (format = node->format; format; format = format->next) {
             switch (format->type) {
 
-            case _external_acl_format::EXT_ACL_HEADER_REQUEST:
-            case _external_acl_format::EXT_ACL_HEADER_REQUEST_ID:
-                storeAppendPrintf(sentry, " %%>{%s}", format->header);
+            case _external_acl_format::EXT_ACL_HEADER:
+
+            case _external_acl_format::EXT_ACL_HEADER_ID:
+                storeAppendPrintf(sentry, " %%{%s}", format->header);
                 break;
 
-            case _external_acl_format::EXT_ACL_HEADER_REQUEST_MEMBER:
-            case _external_acl_format::EXT_ACL_HEADER_REQUEST_ID_MEMBER:
-                storeAppendPrintf(sentry, " %%>{%s:%s}", format->header, format->member);
-                break;
+            case _external_acl_format::EXT_ACL_HEADER_MEMBER:
 
-            case _external_acl_format::EXT_ACL_HEADER_REPLY:
-            case _external_acl_format::EXT_ACL_HEADER_REPLY_ID:
-                storeAppendPrintf(sentry, " %%<{%s}", format->header);
-                break;
-
-            case _external_acl_format::EXT_ACL_HEADER_REPLY_MEMBER:
-            case _external_acl_format::EXT_ACL_HEADER_REPLY_ID_MEMBER:
-                storeAppendPrintf(sentry, " %%<{%s:%s}", format->header, format->member);
+            case _external_acl_format::EXT_ACL_HEADER_ID_MEMBER:
+                storeAppendPrintf(sentry, " %%{%s:%s}", format->header, format->member);
                 break;
 #define DUMP_EXT_ACL_TYPE(a) \
             case _external_acl_format::EXT_ACL_##a: \
@@ -546,7 +480,9 @@ dump_externalAclHelper(StoreEntry * sentry, const char *name, const external_acl
 
                 DUMP_EXT_ACL_TYPE(EXT_USER);
 
-            default:
+            case _external_acl_format::EXT_ACL_UNKNOWN:
+
+            case _external_acl_format::EXT_ACL_END:
                 fatal("unknown external_acl format error");
                 break;
             }
@@ -586,7 +522,7 @@ find_externalAclHelper(const char *name)
 void
 
 external_acl::add
-(ExternalACLEntry *anEntry)
+    (ExternalACLEntry *anEntry)
 {
     trimCache();
     assert (anEntry->def == NULL);
@@ -608,7 +544,8 @@ external_acl::trimCache()
  * external acl type
  */
 
-struct _external_acl_data {
+struct _external_acl_data
+{
     external_acl *def;
     wordlist *arguments;
 };
@@ -680,7 +617,9 @@ ACLExternal::~ACLExternal()
 }
 
 static int
-aclMatchExternal(external_acl_data *acl, ACLFilledChecklist *ch)
+aclMatchExternal(external_acl_data *acl, ACLChecklist * ch);
+static int
+aclMatchExternal(external_acl_data *acl, ACLChecklist * ch)
 {
     int result;
     external_acl_entry *entry;
@@ -706,7 +645,7 @@ aclMatchExternal(external_acl_data *acl, ACLFilledChecklist *ch)
             int ti;
             /* Make sure the user is authenticated */
 
-            if ((ti = AuthenticateAcl(ch)) != 1) {
+            if ((ti = ch->authenticated()) != 1) {
                 debugs(82, 2, "aclMatchExternal: " << acl->def->name << " user not authenticated (" << ti << ")");
                 return ti;
             }
@@ -754,7 +693,7 @@ aclMatchExternal(external_acl_data *acl, ACLFilledChecklist *ch)
 
     external_acl_cache_touch(acl->def, entry);
     result = entry->result;
-    external_acl_message = entry->message.termedBuf();
+    external_acl_message = entry->message.buf();
 
     debugs(82, 2, "aclMatchExternal: " << acl->def->name << " = " << result);
 
@@ -770,9 +709,6 @@ aclMatchExternal(external_acl_data *acl, ACLFilledChecklist *ch)
 
         if (entry->log.size())
             ch->request->extacl_log = entry->log;
-
-        if (entry->message.size())
-            ch->request->extacl_message = entry->message;
     }
 
     return result;
@@ -781,7 +717,7 @@ aclMatchExternal(external_acl_data *acl, ACLFilledChecklist *ch)
 int
 ACLExternal::match(ACLChecklist *checklist)
 {
-    return aclMatchExternal (data, Filled(checklist));
+    return aclMatchExternal (data, checklist);
 }
 
 wordlist *
@@ -815,7 +751,7 @@ external_acl_cache_touch(external_acl * def, external_acl_entry * entry)
 }
 
 static char *
-makeExternalAclKey(ACLFilledChecklist * ch, external_acl_data * acl_data)
+makeExternalAclKey(ACLChecklist * ch, external_acl_data * acl_data)
 {
     static MemBuf mb;
     char buf[256];
@@ -823,7 +759,6 @@ makeExternalAclKey(ACLFilledChecklist * ch, external_acl_data * acl_data)
     wordlist *arg;
     external_acl_format *format;
     HttpRequest *request = ch->request;
-    HttpReply *reply = ch->reply;
     mb.reset();
 
     for (format = acl_data->def->format; format; format = format->next) {
@@ -850,20 +785,20 @@ makeExternalAclKey(ACLFilledChecklist * ch, external_acl_data * acl_data)
 #endif
 
         case _external_acl_format::EXT_ACL_SRC:
-            str = ch->src_addr.NtoA(buf,sizeof(buf));
+            str = inet_ntoa(ch->src_addr);
             break;
 
         case _external_acl_format::EXT_ACL_SRCPORT:
-            snprintf(buf, sizeof(buf), "%d", request->client_addr.GetPort());
+            snprintf(buf, sizeof(buf), "%d", request->client_port);
             str = buf;
             break;
 
         case _external_acl_format::EXT_ACL_MYADDR:
-            str = request->my_addr.NtoA(buf, sizeof(buf));
+            str = inet_ntoa(request->my_addr);
             break;
 
         case _external_acl_format::EXT_ACL_MYPORT:
-            snprintf(buf, sizeof(buf), "%d", request->my_addr.GetPort());
+            snprintf(buf, sizeof(buf), "%d", request->my_port);
             str = buf;
             break;
 
@@ -872,7 +807,7 @@ makeExternalAclKey(ACLFilledChecklist * ch, external_acl_data * acl_data)
             break;
 
         case _external_acl_format::EXT_ACL_DST:
-            str = request->GetHost();
+            str = request->host;
             break;
 
         case _external_acl_format::EXT_ACL_PROTO:
@@ -885,59 +820,31 @@ makeExternalAclKey(ACLFilledChecklist * ch, external_acl_data * acl_data)
             break;
 
         case _external_acl_format::EXT_ACL_PATH:
-            str = request->urlpath.termedBuf();
+            str = request->urlpath.buf();
             break;
 
         case _external_acl_format::EXT_ACL_METHOD:
-            str = RequestMethodStr(request->method);
+            str = RequestMethodStr[request->method];
             break;
 
-        case _external_acl_format::EXT_ACL_HEADER_REQUEST:
+        case _external_acl_format::EXT_ACL_HEADER:
             sb = request->header.getByName(format->header);
-            str = sb.termedBuf();
+            str = sb.buf();
             break;
 
-        case _external_acl_format::EXT_ACL_HEADER_REQUEST_ID:
+        case _external_acl_format::EXT_ACL_HEADER_ID:
             sb = request->header.getStrOrList(format->header_id);
-            str = sb.termedBuf();
+            str = sb.buf();
             break;
 
-        case _external_acl_format::EXT_ACL_HEADER_REQUEST_MEMBER:
+        case _external_acl_format::EXT_ACL_HEADER_MEMBER:
             sb = request->header.getByNameListMember(format->header, format->member, format->separator);
-            str = sb.termedBuf();
+            str = sb.buf();
             break;
 
-        case _external_acl_format::EXT_ACL_HEADER_REQUEST_ID_MEMBER:
+        case _external_acl_format::EXT_ACL_HEADER_ID_MEMBER:
             sb = request->header.getListMember(format->header_id, format->member, format->separator);
-            str = sb.termedBuf();
-            break;
-
-        case _external_acl_format::EXT_ACL_HEADER_REPLY:
-            if (reply) {
-                sb = reply->header.getByName(format->header);
-                str = sb.termedBuf();
-            }
-            break;
-
-        case _external_acl_format::EXT_ACL_HEADER_REPLY_ID:
-            if (reply) {
-                sb = reply->header.getStrOrList(format->header_id);
-                str = sb.termedBuf();
-            }
-            break;
-
-        case _external_acl_format::EXT_ACL_HEADER_REPLY_MEMBER:
-            if (reply) {
-                sb = reply->header.getByNameListMember(format->header, format->member, format->separator);
-                str = sb.termedBuf();
-            }
-            break;
-
-        case _external_acl_format::EXT_ACL_HEADER_REPLY_ID_MEMBER:
-            if (reply) {
-                sb = reply->header.getListMember(format->header_id, format->member, format->separator);
-                str = sb.termedBuf();
-            }
+            str = sb.buf();
             break;
 #if USE_SSL
 
@@ -987,7 +894,7 @@ makeExternalAclKey(ACLFilledChecklist * ch, external_acl_data * acl_data)
 #endif
 
         case _external_acl_format::EXT_ACL_EXT_USER:
-            str = request->extacl_user.termedBuf();
+            str = request->extacl_user.buf();
             break;
 
         case _external_acl_format::EXT_ACL_UNKNOWN:
@@ -1098,7 +1005,8 @@ external_acl_cache_delete(external_acl * def, external_acl_entry * entry)
 
 typedef struct _externalAclState externalAclState;
 
-struct _externalAclState {
+struct _externalAclState
+{
     EAH *callback;
     void *callback_data;
     char *key;
@@ -1136,8 +1044,8 @@ free_externalAclState(void *data)
  *
  * Other keywords may be added to the protocol later
  *
- * value needs to be enclosed in quotes if it may contain whitespace, or
- * the whitespace escaped using \ (\ escaping obviously also applies to
+ * value needs to be enclosed in quotes if it may contain whitespace, or 
+ * the whitespace escaped using \ (\ escaping obviously also applies to  
  * any " characters)
  */
 
@@ -1220,7 +1128,7 @@ externalAclHandleReply(void *data, char *reply)
 }
 
 void
-ACLExternal::ExternalAclLookup(ACLChecklist *checklist, ACLExternal * me, EAH * callback, void *callback_data)
+ACLExternal::ExternalAclLookup(ACLChecklist * ch, ACLExternal * me, EAH * callback, void *callback_data)
 {
     MemBuf buf;
     external_acl_data *acl = me->data;
@@ -1230,12 +1138,11 @@ ACLExternal::ExternalAclLookup(ACLChecklist *checklist, ACLExternal * me, EAH * 
     externalAclState *oldstate = NULL;
     bool graceful = 0;
 
-    ACLFilledChecklist *ch = Filled(checklist);
     if (acl->def->require_auth) {
         int ti;
         /* Make sure the user is authenticated */
 
-        if ((ti = AuthenticateAcl(ch)) != 1) {
+        if ((ti = ch->authenticated()) != 1) {
             debugs(82, 1, "externalAclLookup: " << acl->def->name <<
                    " user authentication failure (" << ti << ", ch=" << ch << ")");
             callback(callback_data, NULL);
@@ -1337,8 +1244,8 @@ ACLExternal::ExternalAclLookup(ACLChecklist *checklist, ACLExternal * me, EAH * 
         if (entry != NULL) {
             debugs(82, 4, "externalAclLookup: entry = { date=" <<
                    (long unsigned int) entry->date << ", result=" <<
-                   entry->result << ", user=" << entry->user << " tag=" <<
-                   entry->tag << " log=" << entry->log << " }");
+                   entry->result << ", user=" << entry->user.buf() << " tag=" <<
+                   entry->tag.buf() << " log=" << entry->log.buf() << " }");
 
         }
 
@@ -1363,15 +1270,6 @@ externalAclStats(StoreEntry * sentry)
     }
 }
 
-static void
-externalAclRegisterWithCacheManager(void)
-{
-    CacheManager::GetInstance()->
-    registerAction("external_acl",
-                   "External ACL stats",
-                   externalAclStats, 0, 1);
-}
-
 void
 externalAclInit(void)
 {
@@ -1393,8 +1291,6 @@ externalAclInit(void)
 
         p->theHelper->ipc_type = IPC_TCP_SOCKET;
 
-        p->theHelper->addr = p->local_addr;
-
         helperOpenServers(p->theHelper);
     }
 
@@ -1402,8 +1298,14 @@ externalAclInit(void)
         firstTimeInit = 0;
         CBDATA_INIT_TYPE_FREECB(externalAclState, free_externalAclState);
     }
+}
 
-    externalAclRegisterWithCacheManager();
+void
+externalAclRegisterWithCacheManager(CacheManager & manager)
+{
+    manager.registerAction("external_acl",
+                           "External ACL stats",
+                           externalAclStats, 0, 1);
 }
 
 void
@@ -1439,7 +1341,7 @@ ExternalACLLookup::checkForAsync(ACLChecklist *checklist)const
 void
 ExternalACLLookup::LookupDone(void *data, void *result)
 {
-    ACLFilledChecklist *checklist = Filled(static_cast<ACLChecklist*>(data));
+    ACLChecklist *checklist = (ACLChecklist *)data;
     checklist->extacl_entry = cbdataReference((external_acl_entry *)result);
     checklist->asyncInProgress(false);
     checklist->changeState (ACLChecklist::NullState::Instance());

@@ -1,5 +1,6 @@
+
 /*
- * $Id$
+ * $Id: HttpReply.h,v 1.21 2007/08/13 17:20:51 hno Exp $
  *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
@@ -18,17 +19,18 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *
+ *  
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *
+ *  
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
  *
  */
+
 #ifndef SQUID_HTTPREPLY_H
 #define SQUID_HTTPREPLY_H
 
@@ -36,11 +38,8 @@
 #include "HttpStatusLine.h"
 
 extern void httpReplyInitModule(void);
-
-#if DEAD_CODE
-/** do everything in one call: init, set, pack, clean, return MemBuf */
+/* do everything in one call: init, set, pack, clean, return MemBuf */
 extern MemBuf *httpPackedReply(HttpVersion ver, http_status status, const char *ctype, int64_t clen, time_t lmt, time_t expires);
-#endif
 
 /* Sync changes here with HttpReply.cc */
 
@@ -58,21 +57,20 @@ public:
 
     virtual void reset();
 
-    /// \par use HTTPMSGLOCK() instead of calling this directly
-    virtual HttpReply *_lock() {
+    // use HTTPMSGLOCK() instead of calling this directly
+    virtual HttpReply *_lock()
+    {
         return static_cast<HttpReply*>(HttpMsg::_lock());
     };
 
     //virtual void unlock();  // only needed for debugging
 
-    /**
-     \retval true on success
-     \retval false and sets *error to zero when needs more data
-     \retval false and sets *error to a positive http_status code on error
-     */
+    // returns true on success
+    // returns false and leaves *error unchanged when needs more data
+    // returns false and sets *error to a positive http_status code on error
     virtual bool sanityCheckStartLine(MemBuf *buf, const size_t hdr_len, http_status *error);
 
-    /** \par public, readable; never update these or their .hdr equivalents directly */
+    /* public, readable; never update these or their .hdr equivalents directly */
     time_t date;
 
     time_t last_modified;
@@ -87,59 +85,50 @@ public:
 
     short int keep_alive;
 
-    /** \par public, writable, but use httpReply* interfaces when possible */
+    /* public, writable, but use httpReply* interfaces when possible */
     HttpStatusLine sline;
 
-    HttpBody body;		/**< for small constant memory-resident text bodies only */
+    HttpBody body;		/* for small constant memory-resident text bodies only */
 
-    String protoPrefix;         /**< e.g., "HTTP/"  */
+    String protoPrefix;       // e.g., "HTTP/"
 
     bool do_clean;
 
 public:
     virtual int httpMsgParseError();
 
-    virtual bool expectingBody(const HttpRequestMethod&, int64_t&) const;
-
-    virtual bool inheritProperties(const HttpMsg *aMsg);
+    virtual bool expectingBody(method_t, int64_t&) const;
 
     void updateOnNotModified(HttpReply const *other);
 
-    /** set commonly used info with one call */
-    void setHeaders(http_status status,
+    /* absorb: copy the contents of a new reply to the old one, destroy new one */
+    void absorb(HttpReply * new_rep);
+
+    /* set commonly used info with one call */
+    void setHeaders(HttpVersion ver, http_status status,
                     const char *reason, const char *ctype, int64_t clen, time_t lmt, time_t expires);
 
-    /** \return a ready to use mem buffer with a packed reply */
+    /* mem-pack: returns a ready to use mem buffer with a packed reply */
     MemBuf *pack();
 
-    /** construct a 304 reply and return it */
+    /* construct a 304 reply and return it */
     HttpReply *make304() const;
 
     void redirect(http_status, const char *);
 
-    int64_t bodySize(const HttpRequestMethod&) const;
-
-    /** Checks whether received body exceeds known maximum size.
-     * Requires a prior call to calcMaxBodySize().
-     */
-    bool receivedBodyTooLarge(HttpRequest&, int64_t receivedBodySize);
-
-    /** Checks whether expected body exceeds known maximum size.
-     * Requires a prior call to calcMaxBodySize().
-     */
-    bool expectedBodyTooLarge(HttpRequest& request);
+    int64_t bodySize(method_t) const;
 
     int validatorsMatch (HttpReply const *other) const;
 
     void packHeadersInto(Packer * p) const;
 
-    /** Clone this reply.
-     *  Could be done as a copy-contructor but we do not want to accidently copy a HttpReply..
-     */
+    /// Clone this reply.
+    /// Could be done as a copy-contructor but we do not want to
+    /// accidently copy a HttpReply..
     HttpReply *clone() const;
 
 private:
-    /** initialize */
+    /* initialize */
     void init();
 
     void clean();
@@ -149,18 +138,11 @@ private:
     void packInto(Packer * p);
 
     /* ez-routines */
-    /** \return construct 304 reply and pack it into a MemBuf */
+    /* construct 304 reply and pack it into MemBuf, return MemBuf */
     MemBuf *packed304Reply();
 
     /* header manipulation */
     time_t hdrExpirationTime();
-
-    /** Calculates and stores maximum body size if needed.
-     * Used by receivedBodyTooLarge() and expectedBodyTooLarge().
-     */
-    void calcMaxBodySize(HttpRequest& request);
-
-    mutable int64_t bodySizeMax; /**< cached result of calcMaxBodySize */
 
 protected:
     virtual void packFirstLineInto(Packer * p, bool) const;
@@ -170,6 +152,6 @@ protected:
     virtual void hdrCacheInit();
 };
 
-MEMPROXY_CLASS_INLINE(HttpReply);
+MEMPROXY_CLASS_INLINE(HttpReply)
 
 #endif /* SQUID_HTTPREPLY_H */

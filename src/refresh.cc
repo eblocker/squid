@@ -1,6 +1,6 @@
 
 /*
- * $Id$
+ * $Id: refresh.cc,v 1.76 2007/05/24 01:45:03 hno Exp $
  *
  * DEBUG: section 22    Refresh Calculation
  * AUTHOR: Harvest Derived
@@ -21,12 +21,12 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *
+ *  
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *
+ *  
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
@@ -58,12 +58,15 @@ typedef enum {
     rcCount
 } refreshCountsEnum;
 
-typedef struct {
+typedef struct
+{
     bool expires;
     bool min;
     bool lmfactor;
     bool max;
-} stale_flags;
+}
+
+stale_flags;
 
 /*
  * This enumerated list assigns specific values, ala HTTP/FTP status
@@ -89,7 +92,8 @@ enum {
     STALE_DEFAULT = 299
 };
 
-static struct RefreshCounts {
+static struct RefreshCounts
+{
     const char *proto;
     int total;
     int status[STALE_DEFAULT + 1];
@@ -139,15 +143,14 @@ refreshUncompiledPattern(const char *pat)
     return NULL;
 }
 
-/**
+/*
  * Calculate how stale the response is (or will be at the check_time).
  * Staleness calculation is based on the following: (1) response
  * expiration time, (2) age greater than configured maximum, (3)
  * last-modified factor, and (4) age less than configured minimum.
  *
- * \retval -1  If the response is fresh.
- * \retval >0  Otherwise return it's staleness.
- * \retval 0   NOTE return value of 0 means the response is stale.
+ * If the response is fresh, return -1.  Otherwise return its
+ * staleness.  NOTE return value of 0 means the response is stale.
  *
  * The 'stale_flags' structure is used to tell the calling function
  * _why_ this response is fresh or stale.  Its used, for example,
@@ -157,8 +160,8 @@ refreshUncompiledPattern(const char *pat)
 static int
 refreshStaleness(const StoreEntry * entry, time_t check_time, const time_t age, const refresh_t * R, stale_flags * sf)
 {
-    /** \par
-     * Check for an explicit expiration time (Expires: header).
+    /*
+     * Check for an explicit expiration time.
      */
     if (entry->expires > -1) {
         sf->expires = true;
@@ -186,8 +189,8 @@ refreshStaleness(const StoreEntry * entry, time_t check_time, const time_t age, 
         return (age - R->max);
     }
 
-    /** \par
-     * Try the last-modified factor algorithm:  refresh_pattern n% percentage of Last-Modified: age.
+    /*
+     * Try the last-modified factor algorithm.
      */
     if (entry->lastmod > -1 && entry->timestamp > entry->lastmod) {
         /*
@@ -206,8 +209,8 @@ refreshStaleness(const StoreEntry * entry, time_t check_time, const time_t age, 
         }
     }
 
-    /** \par
-     * Finally, if all else fails;  staleness is determined by the refresh_pattern
+    /*
+     * If we are here, staleness is determined by the refresh_pattern
      * configured minimum age.
      */
     if (age < R->min) {
@@ -220,9 +223,8 @@ refreshStaleness(const StoreEntry * entry, time_t check_time, const time_t age, 
     return (age - R->min);
 }
 
-/**
- * \retval 1 if the entry must be revalidated within delta seconds
- * \retval 0 otherwise
+/*  return 1 if the entry must be revalidated within delta seconds
+ *         0 otherwise
  *
  *  note: request maybe null (e.g. for cache digests build)
  */
@@ -246,7 +248,6 @@ refreshCheck(const StoreEntry * entry, HttpRequest * request, time_t delta)
     if (check_time > entry->timestamp)
         age = check_time - entry->timestamp;
 
-    // FIXME: what to do when age < 0 or counter overflow?
     assert(age >= 0);
 
     R = uri ? refreshLimits(uri) : refreshUncompiledPattern(".");
@@ -271,17 +272,13 @@ refreshCheck(const StoreEntry * entry, HttpRequest * request, time_t delta)
 
     debugs(22, 3, "\tentry->timestamp:\t" << mkrfc1123(entry->timestamp));
 
-    if (EBIT_TEST(entry->flags, ENTRY_REVALIDATE) && staleness > -1
-#if HTTP_VIOLATIONS
-            && !R->flags.ignore_must_revalidate
-#endif
-       ) {
+    if (EBIT_TEST(entry->flags, ENTRY_REVALIDATE) && staleness > -1) {
         debugs(22, 3, "refreshCheck: YES: Must revalidate stale response");
         return STALE_MUST_REVALIDATE;
     }
 
     /* request-specific checks */
-    if (request && !request->flags.ignore_cc) {
+    if (request) {
         HttpHdrCc *cc = request->cache_control;
 
         if (request->flags.ims && (R->flags.refresh_ims || Config.onoff.refresh_all_ims)) {
@@ -348,14 +345,14 @@ refreshCheck(const StoreEntry * entry, HttpRequest * request, time_t delta)
         if (sf.expires) {
             debugs(22, 3, "refreshCheck: returning FRESH_EXPIRES");
             return FRESH_EXPIRES;
-        }
+	}
 
         assert(!sf.max);
 
         if (sf.lmfactor) {
             debugs(22, 3, "refreshCheck: returning FRESH_LMFACTOR_RULE");
             return FRESH_LMFACTOR_RULE;
-        }
+	}
 
         assert(sf.min);
 
@@ -404,8 +401,8 @@ refreshIsCachable(const StoreEntry * entry)
     /*
      * Don't look at the request to avoid no-cache and other nuisances.
      * the object should have a mem_obj so the URL will be found there.
-     * minimum_expiry_time seconds delta (defaults to 60 seconds), to
-     * avoid objects which expire almost immediately, and which can't
+     * minimum_expiry_time seconds delta (defaults to 60 seconds), to 
+     * avoid objects which expire almost immediately, and which can't 
      * be refreshed.
      */
     int reason = refreshCheck(entry, NULL, Config.minimum_expiry_time);
@@ -578,13 +575,6 @@ refreshStats(StoreEntry * sentry)
         refreshCountsStats(sentry, &refreshCounts[i]);
 }
 
-static void
-refreshRegisterWithCacheManager(void)
-{
-    CacheManager::GetInstance()->
-    registerAction("refresh", "Refresh Algorithm Statistics", refreshStats, 0, 1);
-}
-
 void
 refreshInit(void)
 {
@@ -607,6 +597,14 @@ refreshInit(void)
     DefaultRefresh.min = REFRESH_DEFAULT_MIN;
     DefaultRefresh.pct = REFRESH_DEFAULT_PCT;
     DefaultRefresh.max = REFRESH_DEFAULT_MAX;
+}
 
-    refreshRegisterWithCacheManager();
+void
+refreshRegisterWithCacheManager(CacheManager & manager)
+{
+    manager.registerAction("refresh",
+                           "Refresh Algorithm Statistics",
+                           refreshStats,
+                           0,
+                           1);
 }

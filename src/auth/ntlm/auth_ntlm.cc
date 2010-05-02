@@ -1,5 +1,6 @@
+
 /*
- * $Id$
+ * $Id: auth_ntlm.cc,v 1.77 2007/09/01 03:51:23 amosjeffries Exp $
  *
  * DEBUG: section 29    NTLM Authenticator
  * AUTHOR: Robert Collins, Henrik Nordstrom, Francesco Chemolli
@@ -20,12 +21,12 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *
+ *  
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *
+ *  
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
@@ -39,7 +40,7 @@
 
 #include "squid.h"
 #include "auth_ntlm.h"
-#include "auth/Gadgets.h"
+#include "authenticate.h"
 #include "CacheManager.h"
 #include "Store.h"
 #include "client_side.h"
@@ -48,7 +49,9 @@
 /* TODO remove this include */
 #include "ntlmScheme.h"
 #include "wordlist.h"
-#include "SquidTime.h"
+
+static void
+authenticateNTLMReleaseServer(AuthUserRequest * auth_user_request);
 
 
 static void
@@ -195,12 +198,11 @@ AuthNTLMConfig::init(AuthConfig * scheme)
 }
 
 void
-AuthNTLMConfig::registerWithCacheManager(void)
+AuthNTLMConfig::registerWithCacheManager(CacheManager & manager)
 {
-    CacheManager::GetInstance()->
-    registerAction("ntlmauthenticator",
-                   "NTLM User Authenticator Stats",
-                   authenticateNTLMStats, 0, 1);
+    manager.registerAction("ntlmauthenticator",
+                           "NTLM User Authenticator Stats",
+                           authenticateNTLMStats, 0, 1);
 }
 
 bool
@@ -259,7 +261,7 @@ AuthNTLMUserRequest::module_direction()
 }
 
 void
-AuthNTLMConfig::fixHeader(AuthUserRequest *auth_user_request, HttpReply *rep, http_hdr_type hdrType, HttpRequest * request)
+AuthNTLMConfig::fixHeader(AuthUserRequest *auth_user_request, HttpReply *rep, http_hdr_type type, HttpRequest * request)
 {
     AuthNTLMUserRequest *ntlm_request;
 
@@ -268,15 +270,16 @@ AuthNTLMConfig::fixHeader(AuthUserRequest *auth_user_request, HttpReply *rep, ht
 
     /* Need keep-alive */
     if (!request->flags.proxy_keepalive && request->flags.must_keepalive)
-        return;
+	return;
 
     /* New request, no user details */
     if (auth_user_request == NULL) {
-        debugs(29, 9, "AuthNTLMConfig::fixHeader: Sending type:" << hdrType << " header: 'NTLM'");
-        httpHeaderPutStrf(&rep->header, hdrType, "NTLM");
+        debugs(29, 9, "AuthNTLMConfig::fixHeader: Sending type:" << type << " header: 'NTLM'");
+        httpHeaderPutStrf(&rep->header, type, "NTLM");
 
         if (!keep_alive) {
             /* drop the connection */
+            rep->header.delByName("keep-alive");
             request->flags.proxy_keepalive = 0;
         }
     } else {
@@ -289,6 +292,7 @@ AuthNTLMConfig::fixHeader(AuthUserRequest *auth_user_request, HttpReply *rep, ht
         case AUTHENTICATE_STATE_FAILED:
             /* here it makes sense to drop the connection, as auth is
              * tied to it, even if MAYBE the client could handle it - Kinkie */
+            rep->header.delByName("keep-alive");
             request->flags.proxy_keepalive = 0;
             /* fall through */
 
@@ -301,14 +305,14 @@ AuthNTLMConfig::fixHeader(AuthUserRequest *auth_user_request, HttpReply *rep, ht
         case AUTHENTICATE_STATE_NONE:
             /* semantic change: do not drop the connection.
              * 2.5 implementation used to keep it open - Kinkie */
-            debugs(29, 9, "AuthNTLMConfig::fixHeader: Sending type:" << hdrType << " header: 'NTLM'");
-            httpHeaderPutStrf(&rep->header, hdrType, "NTLM");
+            debugs(29, 9, "AuthNTLMConfig::fixHeader: Sending type:" << type << " header: 'NTLM'");
+            httpHeaderPutStrf(&rep->header, type, "NTLM");
             break;
 
         case AUTHENTICATE_STATE_IN_PROGRESS:
             /* we're waiting for a response from the client. Pass it the blob */
-            debugs(29, 9, "AuthNTLMConfig::fixHeader: Sending type:" << hdrType << " header: 'NTLM " << ntlm_request->server_blob << "'");
-            httpHeaderPutStrf(&rep->header, hdrType, "NTLM %s", ntlm_request->server_blob);
+            debugs(29, 9, "AuthNTLMConfig::fixHeader: Sending type:" << type << " header: 'NTLM " << ntlm_request->server_blob << "'");
+            httpHeaderPutStrf(&rep->header, type, "NTLM %s", ntlm_request->server_blob);
             safe_free(ntlm_request->server_blob);
             break;
 
@@ -405,7 +409,7 @@ authenticateNTLMHandleReply(void *data, void *lastserver, char *reply)
         /* see if this is an existing user with a different proxy_auth
          * string */
         auth_user_hash_pointer *usernamehash = static_cast<AuthUserHashPointer *>(hash_lookup(proxy_auth_username_cache, ntlm_user->username()));
-        AuthUser *local_auth_user = ntlm_request->user();
+	auth_user_t *local_auth_user = ntlm_request->user();
         while (usernamehash && (usernamehash->user()->auth_type != AUTH_NTLM || strcmp(usernamehash->user()->username(), ntlm_user->username()) != 0))
             usernamehash = static_cast<AuthUserHashPointer *>(usernamehash->next);
         if (usernamehash) {
@@ -424,14 +428,14 @@ authenticateNTLMHandleReply(void *data, void *lastserver, char *reply)
         /* set these to now because this is either a new login from an
          * existing user or a new user */
         local_auth_user->expiretime = current_time.tv_sec;
-        ntlm_request->releaseAuthServer();
-        ntlm_request->auth_state = AUTHENTICATE_STATE_DONE;
+        authenticateNTLMReleaseServer(ntlm_request);
+	ntlm_request->auth_state = AUTHENTICATE_STATE_DONE;
     } else if (strncasecmp(reply, "NA ", 3) == 0) {
         /* authentication failure (wrong password, etc.) */
         auth_user_request->denyMessage(blob);
         ntlm_request->auth_state = AUTHENTICATE_STATE_FAILED;
         safe_free(ntlm_request->server_blob);
-        ntlm_request->releaseAuthServer();
+        authenticateNTLMReleaseServer(ntlm_request);
         debugs(29, 4, "authenticateNTLMHandleReply: Failed validating user via NTLM. Error returned '" << blob << "'");
     } else if (strncasecmp(reply, "BH ", 3) == 0) {
         /* TODO kick off a refresh process. This can occur after a YR or after
@@ -442,7 +446,7 @@ authenticateNTLMHandleReply(void *data, void *lastserver, char *reply)
         auth_user_request->denyMessage(blob);
         ntlm_request->auth_state = AUTHENTICATE_STATE_FAILED;
         safe_free(ntlm_request->server_blob);
-        ntlm_request->releaseAuthServer();
+        authenticateNTLMReleaseServer(ntlm_request);
         debugs(29, 1, "authenticateNTLMHandleReply: Error validating user via NTLM. Error returned '" << reply << "'");
     } else {
         /* protocol error */
@@ -450,8 +454,8 @@ authenticateNTLMHandleReply(void *data, void *lastserver, char *reply)
     }
 
     if (ntlm_request->request) {
-        HTTPMSGUNLOCK(ntlm_request->request);
-        ntlm_request->request = NULL;
+	HTTPMSGUNLOCK(ntlm_request->request);
+	ntlm_request->request = NULL;
     }
     r->handler(r->data, NULL);
     cbdataReferenceDone(r->data);
@@ -472,7 +476,7 @@ AuthNTLMUserRequest::module_start(RH * handler, void *data)
     authenticateStateData *r = NULL;
     static char buf[8192];
     ntlm_user_t *ntlm_user;
-    AuthUser *auth_user = user();
+    auth_user_t *auth_user = user();
 
     assert(data);
     assert(handler);
@@ -507,19 +511,25 @@ AuthNTLMUserRequest::module_start(RH * handler, void *data)
     helperStatefulSubmit(ntlmauthenticators, buf, authenticateNTLMHandleReply, r, authserver);
 }
 
-/**
- * Atomic action: properly release the NTLM auth helpers which may have been reserved
- * for this request connections use.
- */
-void
-AuthNTLMUserRequest::releaseAuthServer()
+/* clear the NTLM helper of being reserved for future requests */
+static void
+authenticateNTLMReleaseServer(AuthUserRequest * auth_user_request)
 {
-    if (authserver) {
-        debugs(29, 6, HERE << "releasing NTLM auth server '" << authserver << "'");
-        helperStatefulReleaseServer(authserver);
-        authserver = NULL;
-    } else
-        debugs(29, 6, HERE << "No NTLM auth server to release.");
+    AuthNTLMUserRequest *ntlm_request;
+    assert(auth_user_request->user()->auth_type == AUTH_NTLM);
+    ntlm_request = dynamic_cast< AuthNTLMUserRequest *>(auth_user_request);
+    debugs(29, 9, "authenticateNTLMReleaseServer: releasing server '" << ntlm_request->authserver << "'");
+    /* is it possible for the server to be NULL? hno seems to think so.
+     * Let's see what happens, might segfault in helperStatefulReleaseServer
+     * if it does. I leave it like this not to cover possibly problematic
+     * code-paths. Kinkie */
+    /* DPW 2007-05-07
+     * yes, it is possible */
+    assert(ntlm_request != NULL);
+    if (ntlm_request->authserver) {
+	helperStatefulReleaseServer(ntlm_request->authserver);
+	ntlm_request->authserver = NULL;
+    }
 }
 
 /* clear any connection related authentication details */
@@ -535,8 +545,8 @@ AuthNTLMUserRequest::onConnectionClose(ConnStateData *conn)
         return;
     }
 
-    // unlock / un-reserve the helpers
-    releaseAuthServer();
+    if (authserver != NULL)
+        authenticateNTLMReleaseServer(this);
 
     /* unlock the connection based lock */
     debugs(29, 9, "AuthNTLMUserRequest::onConnectionClose: Unlocking auth_user from the connection '" << conn << "'.");
@@ -577,12 +587,12 @@ AuthNTLMUserRequest::authenticated() const
 }
 
 void
-AuthNTLMUserRequest::authenticate(HttpRequest * aRequest, ConnStateData * conn, http_hdr_type type)
+AuthNTLMUserRequest::authenticate(HttpRequest * request, ConnStateData::Pointer conn, http_hdr_type type)
 {
     const char *proxy_auth, *blob;
 
     /* TODO: rename this!! */
-    AuthUser *local_auth_user;
+    auth_user_t *local_auth_user;
     ntlm_user_t *ntlm_user;
 
     local_auth_user = user();
@@ -594,7 +604,7 @@ AuthNTLMUserRequest::authenticate(HttpRequest * aRequest, ConnStateData * conn, 
     /* Check that we are in the client side, where we can generate
      * auth challenges */
 
-    if (conn == NULL || !cbdataReferenceValid(conn)) {
+    if (conn.getRaw() == NULL) {
         auth_state = AUTHENTICATE_STATE_FAILED;
         debugs(29, 1, "AuthNTLMUserRequest::authenticate: attempt to perform authentication without a connection!");
         return;
@@ -611,13 +621,13 @@ AuthNTLMUserRequest::authenticate(HttpRequest * aRequest, ConnStateData * conn, 
     }
 
     /* get header */
-    proxy_auth = aRequest->header.getStr(type);
+    proxy_auth = request->header.getStr(type);
 
     /* locate second word */
     blob = proxy_auth;
 
     /* if proxy_auth is actually NULL, we'd better not manipulate it. */
-    if (blob) {
+    if(blob) {
         while (xisspace(*blob) && *blob)
             blob++;
 
@@ -639,9 +649,9 @@ AuthNTLMUserRequest::authenticate(HttpRequest * aRequest, ConnStateData * conn, 
         conn->auth_type = AUTH_NTLM;
         assert(conn->auth_user_request == NULL);
         conn->auth_user_request = this;
-        AUTHUSERREQUESTLOCK(conn->auth_user_request, "conn");
-        request = aRequest;
-        HTTPMSGLOCK(request);
+	AUTHUSERREQUESTLOCK(conn->auth_user_request, "conn");
+	this->request = request;
+	HTTPMSGLOCK(this->request);
         return;
 
         break;
@@ -661,18 +671,18 @@ AuthNTLMUserRequest::authenticate(HttpRequest * aRequest, ConnStateData * conn, 
 
         client_blob = xstrdup (blob);
 
-        if (request)
-            HTTPMSGUNLOCK(request);
-        request = aRequest;
-        HTTPMSGLOCK(request);
+	if (this->request)
+	    HTTPMSGUNLOCK(this->request);
+	this->request = request;
+	HTTPMSGLOCK(this->request);
         return;
 
         break;
 
     case AUTHENTICATE_STATE_DONE:
-        fatal("AuthNTLMUserRequest::authenticate: unexpect auth state DONE! Report a bug to the squid developers.\n");
+	fatal("AuthNTLMUserRequest::authenticate: unexpect auth state DONE! Report a bug to the squid developers.\n");
 
-        break;
+	break;
 
     case AUTHENTICATE_STATE_FAILED:
         /* we've failed somewhere in authentication */
@@ -687,7 +697,7 @@ AuthNTLMUserRequest::authenticate(HttpRequest * aRequest, ConnStateData * conn, 
 }
 
 AuthNTLMUserRequest::AuthNTLMUserRequest() :
-        /*conn(NULL),*/ auth_state(AUTHENTICATE_STATE_NONE),
+        conn(NULL), auth_state(AUTHENTICATE_STATE_NONE),
         _theUser(NULL)
 {
     waiting=0;
@@ -702,11 +712,14 @@ AuthNTLMUserRequest::~AuthNTLMUserRequest()
     safe_free(server_blob);
     safe_free(client_blob);
 
-    releaseAuthServer();
-
+    if (authserver != NULL) {
+        debugs(29, 9, "AuthNTLMUserRequest::~AuthNTLMUserRequest: releasing server '" << authserver << "'");
+        helperStatefulReleaseServer(authserver);
+        authserver = NULL;
+    }
     if (request) {
-        HTTPMSGUNLOCK(request);
-        request = NULL;
+	HTTPMSGUNLOCK(request);
+	request = NULL;
     }
 }
 
@@ -716,7 +729,7 @@ NTLMUser::deleteSelf() const
     delete this;
 }
 
-NTLMUser::NTLMUser (AuthConfig *aConfig) : AuthUser (aConfig)
+NTLMUser::NTLMUser (AuthConfig *config) : AuthUser (config)
 {
     proxy_auth_list.head = proxy_auth_list.tail = NULL;
 }
@@ -732,3 +745,4 @@ AuthNTLMUserRequest::connLastHeader()
 {
     return NULL;
 }
+

@@ -1,6 +1,6 @@
 
 /*
- * $Id$
+ * $Id: StoreClient.h,v 1.15 2007/08/13 17:20:51 hno Exp $
  *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
@@ -19,12 +19,12 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *
+ *  
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *
+ *  
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
@@ -82,11 +82,20 @@ public:
     StoreEntry *entry;		/* ptr to the parent StoreEntry, argh! */
     StoreIOState::Pointer swapin_sio;
 
-    struct {
-        unsigned int disk_io_pending:1;
-        unsigned int store_copying:1;
-        unsigned int copy_event_pending:1;
-    } flags;
+    struct
+    {
+
+unsigned int disk_io_pending:
+        1;
+
+unsigned int store_copying:
+        1;
+
+unsigned int copy_event_pending:
+        1;
+    }
+
+    flags;
 #if DELAY_POOLS
 
     DelayId delayId;
@@ -113,14 +122,17 @@ private:
 
 public:
 
-    struct Callback {
-        Callback ():callback_handler(NULL), callback_data(NULL) {}
+    struct Callback
+    {
+        Callback ():callback_handler(NULL), callback_data(NULL){}
 
         Callback (STCB *, void *);
         bool pending() const;
         STCB *callback_handler;
         void *callback_data;
-    } _callback;
+    }
+
+    _callback;
 };
 
 SQUIDCEXTERN void storeClientCopy(store_client *, StoreEntry *, StoreIOBuffer, STCB *, void *);

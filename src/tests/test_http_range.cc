@@ -1,5 +1,6 @@
+
 /*
- * $Id$
+ * $Id: test_http_range.cc,v 1.3 2007/05/29 13:31:48 amosjeffries Exp $
  *
  * DEBUG: section 64    HTTP Range Header
  * AUTHOR: Alex Rousskov
@@ -20,33 +21,24 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *
+ *  
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *
+ *  
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
  *
  */
-#include "config.h"
 
-#if 0
-//#include "Store.h"
-//#include "client_side_request.h"
-#endif
-
-/** \todo CLEANUP: This file shoudl be called something_stub.cc */
-
-#include "HttpHeaderRange.h"
-#include "HttpHeader.h"
+#include "squid.h"
 #include "Mem.h"
-
-#if 0
-#include "acl/Checklist.h"
-#endif
+//#include "Store.h"
+#include "HttpHeaderRange.h"
+//#include "client_side_request.h"
+#include "ACLChecklist.h"
 
 /* Stub routines */
 void

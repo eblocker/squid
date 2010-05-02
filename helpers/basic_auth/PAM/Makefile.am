@@ -1,22 +1,14 @@
 #
 #  Makefile for the Squid PAM authentication helper
 #
-#  $Id$
+#  $Id: Makefile.am,v 1.7 2003/08/03 20:38:02 robertc Exp $
 #
 #  Uncomment and customize the following to suit your needs:
 #
 
-include $(top_srcdir)/src/Common.am
+INCLUDES	= -I$(top_srcdir)/include
 
 man_MANS		= pam_auth.8
-EXTRA_DIST		= pam_auth.8 config.test
+EXTRA_DIST		= pam_auth.8
 libexec_PROGRAMS	= pam_auth
-
-## we need our local files too (but avoid -I. at all costs)
-INCLUDES += -I$(srcdir)
-
-LDADD = \
-	$(top_builddir)/compat/libcompat.la \
-	-L$(top_builddir)/lib -lmiscutil \
-	-lpam \
-	$(XTRA_LIBS)
+LDADD			= -L$(top_builddir)/lib -lmiscutil -lpam $(XTRA_LIBS)

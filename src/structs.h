@@ -1,4 +1,8 @@
+
 /*
+ * $Id: structs.h,v 1.568.2.1 2008/02/25 23:08:51 amosjeffries Exp $
+ *
+ *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
  * ----------------------------------------------------------
  *
@@ -15,37 +19,37 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *
+ *  
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *
+ *  
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
  *
  */
+
 #ifndef SQUID_STRUCTS_H
 #define SQUID_STRUCTS_H
 
 #include "config.h"
 #include "RefCount.h"
-#include "cbdata.h"
 
 /* needed for various structures still in structs.h */
 #include "dlink.h"
 /* needed for the global config */
 #include "HttpHeader.h"
 
-#define PEER_MULTICAST_SIBLINGS 1
-
-struct acl_name_list {
+struct _acl_name_list
+{
     char name[ACL_NAME_SZ];
     acl_name_list *next;
 };
 
-struct acl_deny_info_list {
+struct _acl_deny_info_list
+{
     err_type err_page_id;
     char *err_page_name;
     acl_name_list *acl_list;
@@ -55,16 +59,16 @@ struct acl_deny_info_list {
 
 class acl_access;
 
-struct _header_mangler {
+struct _header_mangler
+{
     acl_access *access_list;
     char *replacement;
 };
 
-class ACLChecklist;
-
 #if SQUID_SNMP
 
-struct _snmp_request_t {
+struct _snmp_request_t
+{
     u_char *buf;
     u_char *outbuf;
     int len;
@@ -72,7 +76,7 @@ struct _snmp_request_t {
     long reqid;
     int outlen;
 
-    IpAddress from;
+    struct sockaddr_in from;
 
     struct snmp_pdu *PDU;
     ACLChecklist *acl_checklist;
@@ -83,84 +87,145 @@ struct _snmp_request_t {
 
 #endif
 
-class ACLList;
 
-struct acl_address {
+struct _acl_address
+{
     acl_address *next;
     ACLList *aclList;
 
-    IpAddress addr;
+    struct IN_ADDR addr;
 };
 
-struct acl_tos {
+struct _acl_tos
+{
     acl_tos *next;
     ACLList *aclList;
     int tos;
 };
 
-struct acl_size_t {
+struct _acl_size_t
+{
     acl_size_t *next;
     ACLList *aclList;
     int64_t size;
 };
 
-struct ushortlist {
+struct _ushortlist
+{
     u_short i;
     ushortlist *next;
 };
 
-struct relist {
+struct _relist
+{
     char *pattern;
     regex_t regex;
     relist *next;
 };
 
+struct _sockaddr_in_list
+{
+
+    struct sockaddr_in s;
+    sockaddr_in_list *next;
+};
+
+struct _http_port_list
+{
+    http_port_list *next;
+
+    struct sockaddr_in s;
+    char *protocol;            /* protocol name */
+    char *name;                /* visible name */
+    char *defaultsite;         /* default web site */
+
+unsigned int transparent:
+    1; /* transparent proxy */
+
+unsigned int accel:
+    1; /* HTTP accelerator */
+
+unsigned int vhost:
+    1; /* uses host header */
+
+    int vport;                 /* virtual port support, -1 for dynamic, >0 static*/
+    int disable_pmtu_discovery;
+#if LINUX_TPROXY
+unsigned int tproxy:
+    1; /* spoof client ip using tproxy */
+#endif
+};
+
+
+#if USE_SSL
+
+struct _https_port_list
+{
+    http_port_list http;	/* must be first */
+    char *cert;
+    char *key;
+    int version;
+    char *cipher;
+    char *options;
+    char *clientca;
+    char *cafile;
+    char *capath;
+    char *crlfile;
+    char *dhfile;
+    char *sslflags;
+    char *sslcontext;
+    SSL_CTX *sslContext;
+};
+
+#endif
+
 #if DELAY_POOLS
 #include "DelayConfig.h"
-#endif
-
-#if USE_ICMP
-#include "icmp/IcmpConfig.h"
-#endif
-
-#if USE_ZPH_QOS
-#include "ip/QosConfig.h"
 #endif
 
 /* forward decl for SquidConfig, see RemovalPolicy.h */
 
 class RemovalPolicySettings;
+
+
 class external_acl;
+
 class Store;
 
-struct SquidConfig {
+struct _SquidConfig
+{
 
-    struct {
+    struct
+    {
         /* These should be for the Store::Root instance.
         * this needs pluggable parsing to be done smoothly.
         */
         int highWaterMark;
         int lowWaterMark;
-    } Swap;
+    }
+
+    Swap;
     size_t memMaxSize;
 
-    struct {
+    struct
+    {
         int64_t min;
         int pct;
         int64_t max;
-    } quickAbort;
+    }
+
+    quickAbort;
     int64_t readAheadGap;
     RemovalPolicySettings *replPolicy;
     RemovalPolicySettings *memPolicy;
-#if HTTP_VIOLATIONS
     time_t negativeTtl;
-#endif
     time_t negativeDnsTtl;
     time_t positiveDnsTtl;
     time_t shutdownLifetime;
     time_t backgroundPingRate;
 
-    struct {
+    struct
+    {
         time_t read;
         time_t lifetime;
         time_t connect;
@@ -175,21 +240,27 @@ struct SquidConfig {
         int icp_query_max;	/* msec */
         int icp_query_min;	/* msec */
         int mcast_icp_query;	/* msec */
+#if USE_IDENT
 
+        time_t ident;
+#endif
 #if !USE_DNSSERVERS
 
         time_t idns_retransmit;
         time_t idns_query;
 #endif
 
-    } Timeout;
+    }
+
+    Timeout;
     size_t maxRequestHeaderSize;
     int64_t maxRequestBodySize;
     int64_t maxChunkedRequestBodySize;
     size_t maxReplyHeaderSize;
     acl_size_t *ReplyBodySize;
 
-    struct {
+    struct
+    {
         u_short icp;
 #if USE_HTCP
 
@@ -199,55 +270,68 @@ struct SquidConfig {
 
         u_short snmp;
 #endif
-    } Port;
 
-    struct {
+    }
+
+    Port;
+
+    struct
+    {
         http_port_list *http;
 #if USE_SSL
 
         https_port_list *https;
 #endif
 
-    } Sockaddr;
+    }
+
+    Sockaddr;
 #if SQUID_SNMP
 
-    struct {
+    struct
+    {
         char *configFile;
         char *agentInfo;
-    } Snmp;
+    }
+
+    Snmp;
 #endif
 #if USE_WCCP
 
-    struct {
+    struct
+    {
 
-        IpAddress router;
+        struct IN_ADDR router;
 
-        IpAddress address;
+        struct IN_ADDR address;
         int version;
-    } Wccp;
+    }
+
+    Wccp;
 #endif
 #if USE_WCCPv2
 
-    struct {
-        IpAddress_list *router;
+    struct
+    {
+        sockaddr_in_list *router;
 
-        IpAddress address;
+        struct IN_ADDR address;
         int forwarding_method;
         int return_method;
         int assignment_method;
         int weight;
         int rebuildwait;
         void *info;
-    } Wccp2;
-#endif
+    }
 
-#if USE_ICMP
-    IcmpConfig pinger;
+    Wccp2;
 #endif
 
     char *as_whois_server;
 
-    struct {
+    struct
+    {
+        char *log;
         char *store;
         char *swap;
 #if USE_USERAGENT_LOG
@@ -267,12 +351,10 @@ struct SquidConfig {
 
         customlog *accesslogs;
 
-#if ICAP_CLIENT
-        customlog *icaplogs;
-#endif
-
         int rotateNumber;
-    } Log;
+    }
+
+    Log;
     char *adminEmail;
     char *EmailFrom;
     char *EmailProgram;
@@ -280,12 +362,17 @@ struct SquidConfig {
     char *visible_appname_string;
     char *effectiveGroup;
 
-    struct {
+    struct
+    {
 #if USE_DNSSERVERS
         char *dnsserver;
 #endif
 
         wordlist *redirect;
+#if USE_ICMP
+
+        char *pinger;
+#endif
 #if USE_UNLINKD
 
         char *unlinkd;
@@ -297,7 +384,9 @@ struct SquidConfig {
         char *ssl_password;
 #endif
 
-    } Program;
+    }
+
+    Program;
 #if USE_DNSSERVERS
 
     int dnsChildren;
@@ -309,16 +398,19 @@ struct SquidConfig {
     time_t authenticateTTL;
     time_t authenticateIpTTL;
 
-    struct {
+    struct
+    {
 #if USE_SQUID_ESI
         char *surrogate_id;
 #endif
 
-    } Accel;
+    }
+
+    Accel;
     char *appendDomain;
     size_t appendDomainLen;
+    char *debugOptions;
     char *pidFilename;
-    char *netdbFilename;
     char *mimeTablePathname;
     char *etcHostsPath;
     char *visibleHostname;
@@ -326,63 +418,83 @@ struct SquidConfig {
     wordlist *hostnameAliases;
     char *errHtmlText;
 
-    struct {
+    struct
+    {
         char *host;
         char *file;
         time_t period;
         u_short port;
-    } Announce;
+    }
 
-    struct {
+    Announce;
 
-        IpAddress udp_incoming;
+    struct
+    {
 
-        IpAddress udp_outgoing;
+        struct IN_ADDR udp_incoming;
+
+        struct IN_ADDR udp_outgoing;
 #if SQUID_SNMP
 
-        IpAddress snmp_incoming;
+        struct IN_ADDR snmp_incoming;
 
-        IpAddress snmp_outgoing;
+        struct IN_ADDR snmp_outgoing;
 #endif
-        /* FIXME INET6 : this should really be a CIDR value */
-        IpAddress client_netmask;
-    } Addrs;
+
+        struct IN_ADDR client_netmask;
+    }
+
+    Addrs;
     size_t tcpRcvBufsz;
     size_t udpMaxHitObjsz;
     wordlist *hierarchy_stoplist;
     wordlist *mcast_group_list;
+    wordlist *dns_testname_list;
     wordlist *dns_nameservers;
     peer *peers;
     int npeers;
 
-    struct {
+    struct
+    {
         int size;
         int low;
         int high;
-    } ipcache;
+    }
 
-    struct {
+    ipcache;
+
+    struct
+    {
         int size;
-    } fqdncache;
+    }
+
+    fqdncache;
     int minDirectHops;
     int minDirectRtt;
     cachemgr_passwd *passwd_list;
 
-    struct {
+    struct
+    {
         int objectsPerBucket;
         int64_t avgObjectSize;
         int64_t maxObjectSize;
         int64_t minObjectSize;
         size_t maxInMemObjSize;
-    } Store;
+    }
 
-    struct {
+    Store;
+
+    struct
+    {
         int high;
         int low;
         time_t period;
-    } Netdb;
+    }
 
-    struct {
+    Netdb;
+
+    struct
+    {
         int log_udp;
         int res_defnames;
         int anonymizer;
@@ -390,6 +502,11 @@ struct SquidConfig {
         int query_icmp;
         int icp_hit_stale;
         int buffered_logs;
+#if ALLOW_SOURCE_PING
+
+        int source_ping;
+#endif
+
         int common_log;
         int log_mime_hdrs;
         int log_fqdn;
@@ -401,7 +518,6 @@ struct SquidConfig {
 #if HTTP_VIOLATIONS
 
         int reload_into_ims;
-        int ignore_expect_100;
 #endif
 
         int offline;
@@ -423,8 +539,8 @@ struct SquidConfig {
         int ie_refresh;
         int vary_ignore_expire;
         int pipeline_prefetch;
-
 #if USE_SQUID_ESI
+
         int surrogate_is_remote;
 #endif
 
@@ -438,24 +554,17 @@ struct SquidConfig {
         int emailErrData;
         int httpd_suppress_version_string;
         int global_internal_static;
-        int dns_require_A;
-
-#if FOLLOW_X_FORWARDED_FOR
-        int acl_uses_indirect_client;
-        int delay_pool_uses_indirect_client;
-        int log_uses_indirect_client;
-#endif /* FOLLOW_X_FORWARDED_FOR */
-
+        int debug_override_X;
         int WIN32_IpAddrChangeMonitor;
-    } onoff;
+    }
 
-    int forward_max_tries;
+    onoff;
 
     class ACL *aclList;
 
-    struct {
+    struct
+    {
         acl_access *http;
-        acl_access *adapted_http;
         acl_access *icp;
         acl_access *miss;
         acl_access *NeverDirect;
@@ -467,9 +576,13 @@ struct SquidConfig {
 
         acl_access *snmp;
 #endif
-#if HTTP_VIOLATIONS
+
         acl_access *brokenPosts;
+#if USE_IDENT
+
+        acl_access *identLookup;
 #endif
+
         acl_access *redirector;
         acl_access *reply;
         acl_address *outgoing_address;
@@ -481,82 +594,88 @@ struct SquidConfig {
         acl_access *htcp_clr;
 #endif
 
-#if USE_SSL
-        acl_access *ssl_bump;
-#endif
-#if FOLLOW_X_FORWARDED_FOR
-        acl_access *followXFF;
-#endif /* FOLLOW_X_FORWARDED_FOR */
+    }
 
-#if ICAP_CLIENT
-        acl_access* icap;
-#endif
-    } accessList;
+    accessList;
     acl_deny_info_list *denyInfoList;
     authConfig authConfiguration;
 
-    struct {
+    struct
+    {
         size_t list_width;
         int list_wrap;
         char *anon_user;
         int passive;
-        int epsv_all;
-        int epsv;
         int sanitycheck;
         int telnet;
-    } Ftp;
+    }
+
+    Ftp;
     refresh_t *Refresh;
 
-    struct _cacheSwap {
+    struct _cacheSwap
+    {
         RefCount<class Store> *swapDirs;
         int n_allocated;
         int n_configured;
-    } cacheSwap;
+    }
 
-    struct {
+    cacheSwap;
+
+    struct
+    {
         char *directory;
         int use_short_names;
-    } icons;
-    char *errorDirectory;
-#if USE_ERR_LOCALES
-    char *errorDefaultLanguage;
-    int errorLogMissingLanguages;
-#endif
-    char *errorStylesheet;
+    }
 
-    struct {
+    icons;
+    char *errorDirectory;
+
+    struct
+    {
         int maxtries;
         int onerror;
-    } retry;
+    }
 
-    struct {
+    retry;
+
+    struct
+    {
         size_t limit;
-    } MemPools;
+    }
+
+    MemPools;
 #if DELAY_POOLS
 
     DelayConfig Delay;
 #endif
 
-    struct {
+    struct
+    {
         int icp_average;
         int dns_average;
         int http_average;
         int icp_min_poll;
         int dns_min_poll;
         int http_min_poll;
-    } comm_incoming;
+    }
+
+    comm_incoming;
     int max_open_disk_fds;
     int uri_whitespace;
     int64_t rangeOffsetLimit;
 #if MULTICAST_MISS_STREAM
 
-    struct {
+    struct
+    {
 
-        IpAddress addr;
+        struct IN_ADDR addr;
         int ttl;
         unsigned short port;
         char *encode_key;
-    } mcast_miss;
+    }
+
+    mcast_miss;
 #endif
 
     /* one access list per header type we know of */
@@ -567,41 +686,46 @@ struct SquidConfig {
     char *chroot_dir;
 #if USE_CACHE_DIGESTS
 
-    struct {
+    struct
+    {
         int bits_per_entry;
         time_t rebuild_period;
         time_t rewrite_period;
         size_t swapout_chunk_size;
         int rebuild_chunk_percentage;
-    } digest;
+    }
+
+    digest;
 #endif
 #if USE_SSL
 
-    struct {
+    struct
+    {
         int unclean_shutdown;
         char *ssl_engine;
-    } SSL;
+    }
+
+    SSL;
 #endif
 
     wordlist *ext_methods;
 
-    struct {
+    struct
+    {
         int high_rptm;
         int high_pf;
         size_t high_memory;
-    } warnings;
+    }
+
+    warnings;
     char *store_dir_select_algorithm;
     int sleep_after_fork;	/* microseconds */
     time_t minimum_expiry_time;	/* seconds */
     external_acl *externalAclHelperList;
-
-#if USE_ZPH_QOS
-    QosConfig zph;
-#endif
-
 #if USE_SSL
 
-    struct {
+    struct
+    {
         char *cert;
         char *key;
         int version;
@@ -611,41 +735,39 @@ struct SquidConfig {
         char *capath;
         char *crlfile;
         char *flags;
-        acl_access *cert_error;
         SSL_CTX *sslContext;
-    } ssl_client;
+    }
+
+    ssl_client;
 #endif
 
     char *accept_filter;
     int umask;
-
-#if USE_LOADABLE_MODULES
-    wordlist *loadable_module_names;
-#endif
-
-    int client_ip_max_connections;
 };
 
-SQUIDCEXTERN SquidConfig Config;
+struct _SquidConfig2
+{
 
-struct SquidConfig2 {
-    struct {
+    struct
+    {
         int enable_purge;
         int mangle_request_headers;
-    } onoff;
+    }
+
+    onoff;
     uid_t effectiveUserID;
     gid_t effectiveGroupID;
 };
 
-SQUIDCEXTERN SquidConfig2 Config2;
-
-struct _close_handler {
+struct _close_handler
+{
     PF *handler;
     void *data;
     close_handler *next;
 };
 
-struct _dread_ctrl {
+struct _dread_ctrl
+{
     int fd;
     off_t offset;
     int req_len;
@@ -655,7 +777,8 @@ struct _dread_ctrl {
     void *client_data;
 };
 
-struct _dwrite_q {
+struct _dwrite_q
+{
     off_t file_offset;
     char *buf;
     size_t len;
@@ -670,12 +793,14 @@ struct _dwrite_q {
  * Note: "str" points to memory in HttpHeaderEntry (for now)
  *       so ETags should be used as tmp variables only (for now) */
 
-struct _ETag {
+struct _ETag
+{
     const char *str;		/* quoted-string */
     int weak;			/* true if it is a weak validator */
 };
 
-struct _fde_disk {
+struct _fde_disk
+{
     DWCB *wrt_handle;
     void *wrt_handle_data;
     dwrite_q *write_q;
@@ -683,7 +808,8 @@ struct _fde_disk {
     off_t offset;
 };
 
-struct _fileMap {
+struct _fileMap
+{
     int max_n_files;
     int n_files_in_map;
     int toggle;
@@ -698,7 +824,8 @@ struct _fileMap {
 
 class MemBuf;
 
-struct _HttpBody {
+struct _HttpBody
+{
     /* private */
     MemBuf *mb;
 };
@@ -727,7 +854,8 @@ public:
 
 /* some fields can hold either time or etag specs (e.g. If-Range) */
 
-struct _TimeOrTag {
+struct _TimeOrTag
+{
     ETag tag;			/* entity tag */
     time_t time;
     int valid;			/* true if struct is usable */
@@ -739,7 +867,7 @@ class HttpHeaderFieldStat
 {
 
 public:
-    HttpHeaderFieldStat() : aliveCount(0), seenCount(0), parsCount(0), errCount(0), repCount(0) {}
+    HttpHeaderFieldStat() : aliveCount(0), seenCount(0), parsCount(0), errCount(0), repCount(0){}
 
     int aliveCount;		/* created but not destroyed (count) */
     int seenCount;		/* #fields we've seen */
@@ -754,7 +882,7 @@ class HttpHeaderFieldInfo
 {
 
 public:
-    HttpHeaderFieldInfo() : id (HDR_ACCEPT), type (ftInvalid) {}
+    HttpHeaderFieldInfo() : id (HDR_ACCEPT), type (ftInvalid){}
 
     http_hdr_type id;
     String name;
@@ -762,36 +890,64 @@ public:
     HttpHeaderFieldStat stat;
 };
 
-struct _http_state_flags {
-    unsigned int proxying:1;
-    unsigned int keepalive:1;
-    unsigned int only_if_cached:1;
-    unsigned int headers_parsed:1;
-    unsigned int front_end_https:2;
-    unsigned int originpeer:1;
-    unsigned int keepalive_broken:1;
-    unsigned int abuse_detected:1;
-    unsigned int request_sent:1;
-    unsigned int do_next_read:1;
-    unsigned int consume_body_data:1;
-    unsigned int chunked:1;
+struct _http_state_flags
+{
+
+unsigned int proxying:
+    1;
+
+unsigned int keepalive:
+    1;
+
+unsigned int only_if_cached:
+    1;
+
+unsigned int headers_parsed:
+    1;
+
+unsigned int front_end_https:
+    2;
+
+unsigned int originpeer:
+    1;
+
+unsigned int keepalive_broken:
+    1;
+
+unsigned int abuse_detected:
+    1;
+
+unsigned int request_sent:
+    1;
+
+unsigned int do_next_read:
+    1;
+
+unsigned int consume_body_data:
+    1;
+
+unsigned int chunked:1;
 };
 
-struct _ipcache_addrs {
-    IpAddress *in_addrs;
+struct _ipcache_addrs
+{
+
+    struct IN_ADDR *in_addrs;
     unsigned char *bad_mask;
     unsigned char count;
     unsigned char cur;
     unsigned char badcount;
 };
 
-struct _domain_ping {
+struct _domain_ping
+{
     char *domain;
     int do_ping;		/* boolean */
     domain_ping *next;
 };
 
-struct _domain_type {
+struct _domain_type
+{
     char *domain;
     peer_t type;
     domain_type *next;
@@ -801,7 +957,8 @@ struct _domain_type {
 
 /* statistics for cache digests and other hit "predictors" */
 
-struct _cd_guess_stats {
+struct _cd_guess_stats
+{
     /* public, read-only */
     int true_hits;
     int false_hits;
@@ -812,17 +969,16 @@ struct _cd_guess_stats {
 
 #endif
 
-class PeerDigest;
-
-struct peer {
-    u_int index;
+struct _peer
+{
     char *name;
     char *host;
     peer_t type;
 
-    IpAddress in_addr;
+    struct sockaddr_in in_addr;
 
-    struct {
+    struct
+    {
         int pings_sent;
         int pings_acked;
         int fetches;
@@ -837,20 +993,28 @@ struct peer {
         time_t last_connect_probe;
         int logged_state;	/* so we can print dead/revived msgs */
         int conn_open;		/* current opened connections */
-    } stats;
+    }
 
-    struct {
+    stats;
+
+    struct
+    {
         int version;
         int counts[ICP_END+1];
         u_short port;
-    } icp;
+    }
 
+    icp;
 #if USE_HTCP
-    struct {
+
+    struct
+    {
         double version;
         int counts[2];
         u_short port;
-    } htcp;
+    }
+
+    htcp;
 #endif
 
     u_short http_port;
@@ -858,54 +1022,85 @@ struct peer {
     domain_type *typelist;
     acl_access *access;
 
-    struct {
-        unsigned int proxy_only:1;
-        unsigned int no_query:1;
-        unsigned int background_ping:1;
-        unsigned int no_digest:1;
-        unsigned int default_parent:1;
-        unsigned int roundrobin:1;
-        unsigned int weighted_roundrobin:1;
-        unsigned int mcast_responder:1;
-        unsigned int closest_only:1;
+    struct
+    {
+
+unsigned int proxy_only:
+        1;
+
+unsigned int no_query:
+        1;
+
+unsigned int background_ping:
+        1;
+
+unsigned int no_digest:
+        1;
+
+unsigned int default_parent:
+        1;
+
+unsigned int roundrobin:
+        1;
+
+unsigned int weighted_roundrobin:
+        1;
+
+unsigned int mcast_responder:
+        1;
+
+unsigned int closest_only:
+        1;
 #if USE_HTCP
-        unsigned int htcp:1;
-        unsigned int htcp_oldsquid:1;
-        unsigned int htcp_no_clr:1;
-        unsigned int htcp_no_purge_clr:1;
-        unsigned int htcp_only_clr:1;
-        unsigned int htcp_forward_clr:1;
+
+unsigned int htcp:
+        1;
+
+unsigned int htcp_oldsquid:
+        1;
 #endif
-        unsigned int no_netdb_exchange:1;
+
+unsigned int no_netdb_exchange:
+        1;
 #if DELAY_POOLS
-        unsigned int no_delay:1;
+
+unsigned int no_delay:
+        1;
 #endif
         unsigned int allow_miss:1;
+#if USE_CARP
         unsigned int carp:1;
+#endif
         unsigned int userhash:1;
         unsigned int sourcehash:1;
         unsigned int originserver:1;
-        unsigned int no_tproxy:1;
-#if PEER_MULTICAST_SIBLINGS
-        unsigned int mcast_siblings:1;
-#endif
     } options;
 
     int weight;
     int basetime;
 
-    struct {
+    struct
+    {
         double avg_n_members;
         int n_times_counted;
         int n_replies_expected;
         int ttl;
         int id;
 
-        struct {
-            unsigned int count_event_pending:1;
-            unsigned int counting:1;
-        } flags;
-    } mcast;
+        struct
+        {
+
+unsigned int count_event_pending:
+            1;
+
+unsigned int counting:
+            1;
+        }
+
+        flags;
+    }
+
+    mcast;
 #if USE_CACHE_DIGESTS
 
     PeerDigest *digest;
@@ -914,25 +1109,32 @@ struct peer {
 
     int tcp_up;			/* 0 if a connect() fails */
 
-    IpAddress addresses[10];
+    struct IN_ADDR addresses[10];
     int n_addresses;
     int rr_count;
     peer *next;
     int test_fd;
+#if USE_CARP
 
-    struct {
+    struct
+    {
         unsigned int hash;
         double load_multiplier;
         double load_factor;	/* normalized weight value */
-    } carp;
+    }
 
-    struct {
+    carp;
+#endif
+
+    struct
+    {
         unsigned int hash;
         double load_multiplier;
         double load_factor;	/* normalized weight value */
     } userhash;
 
-    struct {
+    struct
+    {
         unsigned int hash;
         double load_multiplier;
         double load_factor;	/* normalized weight value */
@@ -940,7 +1142,6 @@ struct peer {
 
     char *login;		/* Proxy authorization */
     time_t connect_timeout;
-    int connect_fail_limit;
     int max_conn;
     char *domain;		/* Forced domain */
 #if USE_SSL
@@ -961,25 +1162,27 @@ struct peer {
 #endif
 
     int front_end_https;
-    int connection_auth;
 };
 
-struct _net_db_name {
+struct _net_db_name
+{
     hash_link hash;		/* must be first */
     net_db_name *next;
     netdbEntry *net_db_entry;
 };
 
-struct _net_db_peer {
+struct _net_db_peer
+{
     const char *peername;
     double hops;
     double rtt;
     time_t expires;
 };
 
-struct _netdbEntry {
+struct _netdbEntry
+{
     hash_link hash;		/* must be first */
-    char network[MAX_IPSTRLEN];
+    char network[16];
     int pings_sent;
     int pings_recv;
     double hops;
@@ -994,9 +1197,35 @@ struct _netdbEntry {
 };
 
 
-struct _iostats {
+#if USE_ICMP
 
-    struct {
+struct _pingerEchoData
+{
+
+    struct IN_ADDR to;
+    unsigned char opcode;
+    int psize;
+    char payload[PINGER_PAYLOAD_SZ];
+};
+
+struct _pingerReplyData
+{
+
+    struct IN_ADDR from;
+    unsigned char opcode;
+    int rtt;
+    int hops;
+    int psize;
+    char payload[PINGER_PAYLOAD_SZ];
+};
+
+#endif
+
+struct _iostats
+{
+
+    struct
+    {
         int reads;
         int reads_deferred;
         int read_hist[16];
@@ -1008,45 +1237,78 @@ struct _iostats {
 };
 
 
-struct request_flags {
-    request_flags(): range(0),nocache(0),ims(0),auth(0),cachable(0),hierarchical(0),loopdetect(0),proxy_keepalive(0),proxying(0),refresh(0),redirected(0),need_validation(0),accelerated(0),ignore_cc(0),intercepted(0),spoof_client_ip(0),internal(0),internalclient(0),must_keepalive(0),destinationIPLookedUp_(0) {
+struct request_flags
+{
+    request_flags():range(0),nocache(0),ims(0),auth(0),cachable(0),hierarchical(0),loopdetect(0),proxy_keepalive(0),proxying(0),refresh(0),redirected(0),need_validation(0),accelerated(0),transparent(0),internal(0),internalclient(0),must_keepalive(0),destinationIPLookedUp_(0)
+    {
 #if HTTP_VIOLATIONS
         nocache_hack = 0;
 #endif
-#if FOLLOW_X_FORWARDED_FOR
-        done_follow_x_forwarded_for = 0;
-#endif /* FOLLOW_X_FORWARDED_FOR */
+#if LINUX_TPROXY
+	tproxy = 0;
+#endif
+
     }
 
-    unsigned int range:1;
-    unsigned int nocache:1;
-    unsigned int ims:1;
-    unsigned int auth:1;
-    unsigned int cachable:1;
-    unsigned int hierarchical:1;
-    unsigned int loopdetect:1;
-    unsigned int proxy_keepalive:1;
+unsigned int range:
+    1;
+
+unsigned int nocache:
+    1;
+
+unsigned int ims:
+    1;
+
+unsigned int auth:
+    1;
+
+unsigned int cachable:
+    1;
+
+unsigned int hierarchical:
+    1;
+
+unsigned int loopdetect:
+    1;
+
+unsigned int proxy_keepalive:
+    1;
+
 unsigned int proxying:
     1;	/* this should be killed, also in httpstateflags */
-    unsigned int refresh:1;
-    unsigned int redirected:1;
-    unsigned int need_validation:1;
+
+unsigned int refresh:
+    1;
+
+unsigned int redirected:
+    1;
+
+unsigned int need_validation:
+    1;
 #if HTTP_VIOLATIONS
-    unsigned int nocache_hack:1;	/* for changing/ignoring no-cache requests */
+
+unsigned int nocache_hack:
+    1;	/* for changing/ignoring no-cache requests */
 #endif
-    unsigned int accelerated:1;
-    unsigned int ignore_cc:1;
-    unsigned int intercepted:1;  /**< transparently intercepted request */
-    unsigned int spoof_client_ip:1;  /**< spoof client ip if possible */
-    unsigned int internal:1;
-    unsigned int internalclient:1;
-    unsigned int must_keepalive:1;
-    unsigned int connection_auth:1; /** Request wants connection oriented auth */
-    unsigned int connection_auth_disabled:1; /** Connection oriented auth can not be supported */
-    unsigned int connection_proxy_auth:1; /** Request wants connection oriented auth */
-    unsigned int pinned:1;      /* Request sent on a pinned connection */
-    unsigned int auth_sent:1;   /* Authentication forwarded */
-    unsigned int no_direct:1;	/* Deny direct forwarding unless overriden by always_direct. Used in accelerator mode */
+
+unsigned int accelerated:
+    1;
+
+unsigned int transparent:
+    1;
+
+#if LINUX_TPROXY
+unsigned int tproxy:
+    1; /* spoof client ip using tproxy */
+#endif
+unsigned int internal:
+    1;
+
+unsigned int internalclient:
+    1;
+
+unsigned int must_keepalive:
+    1;
 
     // When adding new flags, please update cloneAdaptationImmune() as needed.
 
@@ -1060,28 +1322,31 @@ unsigned int proxying:
     // that are safe for a related (e.g., ICAP-adapted) request to inherit
     request_flags cloneAdaptationImmune() const;
 
-#if FOLLOW_X_FORWARDED_FOR
-    unsigned int done_follow_x_forwarded_for;
-#endif /* FOLLOW_X_FORWARDED_FOR */
 private:
 
-    unsigned int reset_tcp:1;
-    unsigned int destinationIPLookedUp_:1;
+unsigned int reset_tcp:
+    1;
+
+unsigned int destinationIPLookedUp_:
+    1;
 };
 
-struct _link_list {
+struct _link_list
+{
     void *ptr;
 
     struct _link_list *next;
 };
 
-struct _cachemgr_passwd {
+struct _cachemgr_passwd
+{
     char *passwd;
     wordlist *actions;
     cachemgr_passwd *next;
 };
 
-struct _refresh_t {
+struct _refresh_t
+{
     const char *pattern;
     regex_t compiled_pattern;
     time_t min;
@@ -1089,29 +1354,53 @@ struct _refresh_t {
     time_t max;
     refresh_t *next;
 
-    struct {
-        unsigned int icase:1;
-        unsigned int refresh_ims:1;
+    struct
+    {
+
+unsigned int icase:
+        1;
+
+unsigned int refresh_ims:
+        1;
 #if HTTP_VIOLATIONS
-        unsigned int override_expire:1;
-        unsigned int override_lastmod:1;
-        unsigned int reload_into_ims:1;
-        unsigned int ignore_reload:1;
-        unsigned int ignore_no_cache:1;
-        unsigned int ignore_no_store:1;
-        unsigned int ignore_must_revalidate:1;
-        unsigned int ignore_private:1;
-        unsigned int ignore_auth:1;
+
+unsigned int override_expire:
+        1;
+
+unsigned int override_lastmod:
+        1;
+
+unsigned int reload_into_ims:
+        1;
+
+unsigned int ignore_reload:
+        1;
+
+unsigned int ignore_no_cache:
+        1;
+
+unsigned int ignore_no_store:
+        1;
+
+unsigned int ignore_private:
+        1;
+
+unsigned int ignore_auth:
+        1;
 #endif
-    } flags;
+
+    }
+
+    flags;
 };
 
 /*
- * "very generic" histogram;
+ * "very generic" histogram; 
  * see important comments on hbase_f restrictions in StatHist.c
  */
 
-struct _StatHist {
+struct _StatHist
+{
     int *bins;
     int capacity;
     double min;
@@ -1122,13 +1411,15 @@ struct _StatHist {
 };
 
 /*
- * if you add a field to StatCounters,
+ * if you add a field to StatCounters, 
  * you MUST sync statCountersInitSpecial, statCountersClean, and statCountersCopy
  */
 
-struct _StatCounters {
+struct _StatCounters
+{
 
-    struct {
+    struct
+    {
         int clients;
         int requests;
         int hits;
@@ -1143,19 +1434,28 @@ struct _StatCounters {
         StatHist nh_svc_time;
         StatHist hit_svc_time;
         StatHist all_svc_time;
-    } client_http;
+    }
 
-    struct {
+    client_http;
 
-        struct {
+    struct
+    {
+
+        struct
+        {
             int requests;
             int errors;
             kb_t kbytes_in;
             kb_t kbytes_out;
-        } all , http, ftp, other;
-    } server;
+        }
 
-    struct {
+        all , http, ftp, other;
+    }
+
+    server;
+
+    struct
+    {
         int pkts_sent;
         int queries_sent;
         int replies_sent;
@@ -1176,22 +1476,34 @@ struct _StatCounters {
         StatHist reply_svc_time;
         int query_timeouts;
         int times_used;
-    } icp;
+    }
 
-    struct {
+    icp;
+
+    struct
+    {
         int pkts_sent;
         int pkts_recv;
-    } htcp;
+    }
 
-    struct {
+    htcp;
+
+    struct
+    {
         int requests;
-    } unlink;
+    }
 
-    struct {
+    unlink;
+
+    struct
+    {
         StatHist svc_time;
-    } dns;
+    }
 
-    struct {
+    dns;
+
+    struct
+    {
         int times_used;
         kb_t kbytes_sent;
         kb_t kbytes_recv;
@@ -1204,13 +1516,18 @@ struct _StatCounters {
 #endif
 
         StatHist on_xition_count;
-    } cd;
+    }
 
-    struct {
+    cd;
+
+    struct
+    {
         int times_used;
-    } netdb;
+    }
+
+    netdb;
     int page_faults;
-    unsigned long int select_loops;
+    int select_loops;
     int select_fds;
     double select_time;
     double cputime;
@@ -1221,17 +1538,23 @@ struct _StatCounters {
     StatHist comm_http_incoming;
     StatHist select_fds_hist;
 
-    struct {
-        struct {
+    struct
+    {
+
+        struct
+        {
             int opens;
             int closes;
             int reads;
             int writes;
             int seeks;
             int unlinks;
-        } disk;
+        }
 
-        struct {
+        disk;
+
+        struct
+        {
             int accepts;
             int sockets;
             int connects;
@@ -1241,21 +1564,29 @@ struct _StatCounters {
             int writes;
             int recvfroms;
             int sendtos;
-        } sock;
+        }
+
+        sock;
         int selects;
-    } syscalls;
+    }
+
+    syscalls;
     int aborted_requests;
 
-    struct {
+    struct
+    {
         int files_cleaned;
         int outs;
         int ins;
-    } swap;
+    }
+
+    swap;
 };
 
 /* per header statistics */
 
-struct _HttpHeaderStat {
+struct _HttpHeaderStat
+{
     const char *label;
     HttpHeaderMask *owner_mask;
 
@@ -1272,7 +1603,37 @@ struct _HttpHeaderStat {
 };
 
 
-struct _CacheDigest {
+struct _ClientInfo
+{
+    hash_link hash;		/* must be first */
+
+    struct IN_ADDR addr;
+
+    struct
+    {
+        int result_hist[LOG_TYPE_MAX];
+        int n_requests;
+        kb_t kbytes_in;
+        kb_t kbytes_out;
+        kb_t hit_kbytes_out;
+    }
+
+    Http, Icp;
+
+    struct
+    {
+        time_t time;
+        int n_req;
+        int n_denied;
+    }
+
+    cutoff;
+    int n_established;		/* number of current established connections */
+    time_t last_seen;
+};
+
+struct _CacheDigest
+{
     /* public, read-only */
     char *mask;			/* bit mask */
     int mask_size;		/* mask size in bytes */
@@ -1283,7 +1644,8 @@ struct _CacheDigest {
 };
 
 
-struct _store_rebuild_data {
+struct _store_rebuild_data
+{
     int objcount;		/* # objects successfully reloaded */
     int expcount;		/* # objects expired */
     int scancount;		/* # entries scanned or read from state file */
@@ -1296,30 +1658,34 @@ struct _store_rebuild_data {
     int zero_object_sz;
 };
 
-struct _Logfile {
+struct _Logfile
+{
     int fd;
     char path[MAXPATHLEN];
     char *buf;
     size_t bufsz;
     size_t offset;
 
-    struct {
+    struct
+    {
         unsigned int fatal;
         unsigned int syslog;
-    } flags;
+    }
+
+    flags;
 
     int syslog_priority;
 };
 
-class logformat_token;
-
-struct _logformat {
+struct _logformat
+{
     char *name;
     logformat_token *format;
     logformat *next;
 };
 
-struct _customlog {
+struct _customlog
+{
     char *filename;
     ACLList *aclList;
     logformat *logFormat;

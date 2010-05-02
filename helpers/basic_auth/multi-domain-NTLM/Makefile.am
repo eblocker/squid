@@ -1,7 +1,7 @@
 #
 #  Makefile for the Squid Object Cache server
 #
-#  $Id$
+#  $Id: Makefile.am,v 1.4 2003/01/23 00:35:49 robertc Exp $
 #
 #  Uncomment and customize the following to suit your needs:
 #
@@ -11,5 +11,4 @@ libexec_SCRIPTS	= \
 
 EXTRA_DIST = \
 	smb_auth.pl \
-	README.txt \
-	config.test
+	README.txt

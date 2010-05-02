@@ -1,5 +1,6 @@
+
 /*
- * $Id$
+ * $Id: fqdncache.cc,v 1.175 2007/10/13 00:02:28 hno Exp $
  *
  * DEBUG: section 35    FQDN Cache
  * AUTHOR: Harvest Derived
@@ -20,12 +21,12 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *
+ *  
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *
+ *  
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
@@ -40,59 +41,13 @@
 #include "Store.h"
 #include "wordlist.h"
 
-/**
- \defgroup FQDNCacheAPI FQDN Cache API
- \ingroup Components
- \section Introduction Introduction
- \par
- *  The FQDN cache is a built-in component of squid providing
- *  Hostname to IP-Number translation functionality and managing
- *  the involved data-structures. Efficiency concerns require
- *  mechanisms that allow non-blocking access to these mappings.
- *  The FQDN cache usually doesn't block on a request except for
- *  special cases where this is desired (see below).
- *
- \todo FQDN Cache should have its own API *.h file.
- */
-
-/**
- \defgroup FQDNCacheInternal FQDN Cache Internals
- \ingroup FQDNCacheAPI
- \par
- *  Internally, the execution flow is as follows:
- *  On a miss, fqdncache_nbgethostbyaddr() checks whether a request
- *  for this name is already pending, and if positive, it creates a
- *  new entry using fqdncacheAddEntry(). Then it calls
- *  fqdncacheAddPending() to add a request to the queue together
- *  with data and handler.  Else, ifqdncache_dnsDispatch() is called
- *  to directly create a DNS query or to fqdncacheEnqueue() if all
- *  no DNS port is free.
- *
- \par
- *  fqdncacheCallback() is called regularly to walk down the pending
- *  list and call handlers.
- *
- \par
- *  LRU clean-up is performed through fqdncache_purgelru() according
- *  to the fqdncache_high threshold.
- */
-
-/// \ingroup FQDNCacheInternal
 #define FQDN_LOW_WATER       90
-
-/// \ingroup FQDNCacheInternal
 #define FQDN_HIGH_WATER      95
 
-/**
- \ingroup FQDNCacheAPI
- * The data structure used for storing name-address mappings
- * is a small hashtable (static hash_table *fqdn_table),
- * where structures of type fqdncache_entry whose most
- * interesting members are:
- */
-class fqdncache_entry
+typedef struct _fqdncache_entry fqdncache_entry;
+
+struct _fqdncache_entry
 {
-public:
     hash_link hash;		/* must be first */
     time_t lastref;
     time_t expires;
@@ -106,24 +61,30 @@ public:
     dlink_node lru;
     unsigned short locks;
 
-    struct {
-        unsigned int negcached:1;
-        unsigned int fromhosts:1;
-    } flags;
+    struct
+    {
 
-    int age() const; ///< time passed since request_time or -1 if unknown
+unsigned int negcached:
+        1;
+
+unsigned int fromhosts:
+        1;
+    }
+
+    flags;
 };
 
-/// \ingroup FQDNCacheInternal
-static struct _fqdn_cache_stats {
+static struct
+{
     int requests;
     int replies;
     int hits;
     int misses;
     int negative_hits;
-} FqdncacheStats;
+}
 
-/// \ingroup FQDNCacheInternal
+FqdncacheStats;
+
 static dlink_list lru_list;
 
 #if USE_DNSSERVERS
@@ -135,7 +96,7 @@ static int fqdncacheParse(fqdncache_entry *, rfc1035_rr *, int, const char *erro
 #endif
 static void fqdncacheRelease(fqdncache_entry *);
 static fqdncache_entry *fqdncacheCreateEntry(const char *name);
-static void fqdncacheCallback(fqdncache_entry *, int wait);
+static void fqdncacheCallback(fqdncache_entry *);
 static fqdncache_entry *fqdncache_get(const char *);
 static FQDNH dummy_handler;
 static int fqdncacheExpiredEntry(const fqdncache_entry *);
@@ -144,26 +105,12 @@ static void fqdncacheUnlockEntry(fqdncache_entry * f);
 static FREE fqdncacheFreeEntry;
 static void fqdncacheAddEntry(fqdncache_entry * f);
 
-/// \ingroup FQDNCacheInternal
 static hash_table *fqdn_table = NULL;
 
-/// \ingroup FQDNCacheInternal
 static long fqdncache_low = 180;
-
-/// \ingroup FQDNCacheInternal
 static long fqdncache_high = 200;
 
-int
-fqdncache_entry::age() const
-{
-    return request_time.tv_sec ? tvSubMsec(request_time, current_time) : -1;
-}
-
-
-/**
- \ingroup FQDNCacheInternal
- * Removes the given fqdncache entry
- */
+/* removes the given fqdncache entry */
 static void
 fqdncacheRelease(fqdncache_entry * f)
 {
@@ -184,11 +131,7 @@ fqdncacheRelease(fqdncache_entry * f)
     memFree(f, MEM_FQDNCACHE_ENTRY);
 }
 
-/**
- \ingroup FQDNCacheInternal
- \param name	FQDN hash string.
- \retval Match for given name
- */
+/* return match for given name */
 static fqdncache_entry *
 fqdncache_get(const char *name)
 {
@@ -204,7 +147,6 @@ fqdncache_get(const char *name)
     return f;
 }
 
-/// \ingroup FQDNCacheInternal
 static int
 fqdncacheExpiredEntry(const fqdncache_entry * f)
 {
@@ -219,7 +161,6 @@ fqdncacheExpiredEntry(const fqdncache_entry * f)
     return 1;
 }
 
-/// \ingroup FQDNCacheAPI
 void
 fqdncache_purgelru(void *notused)
 {
@@ -248,7 +189,6 @@ fqdncache_purgelru(void *notused)
     debugs(35, 9, "fqdncache_purgelru: removed " << removed << " entries");
 }
 
-/// \ingroup FQDNCacheAPI
 static void
 purge_entries_fromhosts(void)
 {
@@ -274,11 +214,7 @@ purge_entries_fromhosts(void)
         fqdncacheRelease(i);
 }
 
-/**
- \ingroup FQDNCacheInternal
- *
- * Create blank fqdncache_entry
- */
+/* create blank fqdncache_entry */
 static fqdncache_entry *
 fqdncacheCreateEntry(const char *name)
 {
@@ -289,7 +225,6 @@ fqdncacheCreateEntry(const char *name)
     return f;
 }
 
-/// \ingroup FQDNCacheInternal
 static void
 fqdncacheAddEntry(fqdncache_entry * f)
 {
@@ -306,13 +241,9 @@ fqdncacheAddEntry(fqdncache_entry * f)
     f->lastref = squid_curtime;
 }
 
-/**
- \ingroup FQDNCacheInternal
- *
- * Walks down the pending list, calling handlers
- */
+/* walks down the pending list, calling handlers */
 static void
-fqdncacheCallback(fqdncache_entry * f, int wait)
+fqdncacheCallback(fqdncache_entry * f)
 {
     FQDNH *callback;
     void *cbdata;
@@ -328,14 +259,13 @@ fqdncacheCallback(fqdncache_entry * f, int wait)
     f->handler = NULL;
 
     if (cbdataReferenceValidDone(f->handlerData, &cbdata)) {
-        const DnsLookupDetails details(f->error_message, wait);
-        callback(f->name_count ? f->names[0] : NULL, details, cbdata);
+        dns_error_message = f->error_message;
+        callback(f->name_count ? f->names[0] : NULL, cbdata);
     }
 
     fqdncacheUnlockEntry(f);
 }
 
-/// \ingroup FQDNCacheInternal
 #if USE_DNSSERVERS
 static int
 fqdncacheParse(fqdncache_entry *f, const char *inbuf)
@@ -482,11 +412,6 @@ fqdncacheParse(fqdncache_entry *f, rfc1035_rr * answers, int nr, const char *err
 #endif
 
 
-/**
- \ingroup FQDNCacheAPI
- *
- * Callback for handling DNS results.
- */
 static void
 #if USE_DNSSERVERS
 fqdncacheHandleReply(void *data, char *reply)
@@ -498,11 +423,12 @@ fqdncacheHandleReply(void *data, rfc1035_rr * answers, int na, const char *error
     fqdncache_entry *f;
     static_cast<generic_cbdata *>(data)->unwrap(&f);
     n = ++FqdncacheStats.replies;
-    const int age = f->age();
-    statHistCount(&statCounter.dns.svc_time, age);
+    statHistCount(&statCounter.dns.svc_time,
+                  tvSubMsec(f->request_time, current_time));
 #if USE_DNSSERVERS
 
     fqdncacheParse(f, reply);
+    ;
 #else
 
     fqdncacheParse(f, answers, na, error_message);
@@ -510,47 +436,41 @@ fqdncacheHandleReply(void *data, rfc1035_rr * answers, int na, const char *error
 
     fqdncacheAddEntry(f);
 
-    fqdncacheCallback(f, age);
+    fqdncacheCallback(f);
 }
 
-/**
- \ingroup FQDNCacheAPI
- *
- \param addr		IP address of domain to resolve.
- \param handler		A pointer to the function to be called when
- *			the reply from the FQDN cache
- * 			(or the DNS if the FQDN cache misses)
- \param handlerData	Information that is passed to the handler
- * 			and does not affect the FQDN cache.
- */
 void
-fqdncache_nbgethostbyaddr(IpAddress &addr, FQDNH * handler, void *handlerData)
+
+fqdncache_nbgethostbyaddr(struct IN_ADDR addr, FQDNH * handler, void *handlerData)
 {
     fqdncache_entry *f = NULL;
-    char name[MAX_IPSTRLEN];
+    char *name = inet_ntoa(addr);
     generic_cbdata *c;
     assert(handler);
-    addr.NtoA(name,MAX_IPSTRLEN);
     debugs(35, 4, "fqdncache_nbgethostbyaddr: Name '" << name << "'.");
     FqdncacheStats.requests++;
 
-    if (name[0] == '\0') {
+    if (name == NULL || name[0] == '\0')
+    {
         debugs(35, 4, "fqdncache_nbgethostbyaddr: Invalid name!");
-        const DnsLookupDetails details("Invalid hostname", -1); // error, no lookup
-        handler(NULL, details, handlerData);
+        dns_error_message = "Invalid hostname";
+        handler(NULL, handlerData);
         return;
     }
 
     f = fqdncache_get(name);
 
-    if (NULL == f) {
+    if (NULL == f)
+    {
         /* miss */
         (void) 0;
-    } else if (fqdncacheExpiredEntry(f)) {
+    } else if (fqdncacheExpiredEntry(f))
+    {
         /* hit, but expired -- bummer */
         fqdncacheRelease(f);
         f = NULL;
-    } else {
+    } else
+    {
         /* hit */
         debugs(35, 4, "fqdncache_nbgethostbyaddr: HIT for '" << name << "'");
 
@@ -563,7 +483,7 @@ fqdncache_nbgethostbyaddr(IpAddress &addr, FQDNH * handler, void *handlerData)
 
         f->handlerData = cbdataReference(handlerData);
 
-        fqdncacheCallback(f, -1); // no lookup
+        fqdncacheCallback(f);
 
         return;
     }
@@ -579,32 +499,16 @@ fqdncache_nbgethostbyaddr(IpAddress &addr, FQDNH * handler, void *handlerData)
 
     dnsSubmit(hashKeyStr(&f->hash), fqdncacheHandleReply, c);
 #else
+
     idnsPTRLookup(addr, fqdncacheHandleReply, c);
 #endif
 }
 
-/// \ingroup FQDNCacheInternal
-static void
-fqdncacheRegisterWithCacheManager(void)
-{
-    CacheManager::GetInstance()->
-    registerAction("fqdncache", "FQDN Cache Stats and Contents",
-                   fqdnStats, 0, 1);
-
-}
-
-/**
- \ingroup FQDNCacheAPI
- *
- * Initialize the fqdncache.
- * Called after IP cache initialization.
- */
+/* initialize the fqdncache */
 void
 fqdncache_init(void)
 {
     int n;
-
-    fqdncacheRegisterWithCacheManager();
 
     if (fqdn_table)
         return;
@@ -629,65 +533,67 @@ fqdncache_init(void)
                 sizeof(fqdncache_entry), 0);
 }
 
-/**
- \ingroup FQDNCacheAPI
- *
- * Is different in that it only checks if an entry exists in
- * it's data-structures and does not by default contact the
- * DNS, unless this is requested, by setting the flags
- * to FQDN_LOOKUP_IF_MISS.
- *
- \param addr	address of the FQDN being resolved
- \param flags	values are NULL or FQDN_LOOKUP_IF_MISS. default is NULL.
- *
- */
-const char *
-fqdncache_gethostbyaddr(IpAddress &addr, int flags)
+void
+fqdncacheRegisterWithCacheManager(CacheManager & manager)
 {
-    char name[MAX_IPSTRLEN];
-    fqdncache_entry *f = NULL;
+    manager.registerAction("fqdncache",
+                           "FQDN Cache Stats and Contents",
+                           fqdnStats, 0, 1);
 
-    if (addr.IsAnyAddr() || addr.IsNoAddr()) {
+}
+
+const char *
+
+fqdncache_gethostbyaddr(struct IN_ADDR addr, int flags)
+{
+    char *name = inet_ntoa(addr);
+    fqdncache_entry *f = NULL;
+    struct in_addr ip;
+
+    if(!name) {
         return NULL;
     }
 
-    addr.NtoA(name,MAX_IPSTRLEN);
     FqdncacheStats.requests++;
     f = fqdncache_get(name);
 
-    if (NULL == f) {
+    if (NULL == f)
+    {
         (void) 0;
-    } else if (fqdncacheExpiredEntry(f)) {
+    } else if (fqdncacheExpiredEntry(f))
+    {
         fqdncacheRelease(f);
         f = NULL;
-    } else if (f->flags.negcached) {
+    } else if (f->flags.negcached)
+    {
         FqdncacheStats.negative_hits++;
-        // ignore f->error_message: the caller just checks FQDN cache presence
+        dns_error_message = f->error_message;
         return NULL;
-    } else {
+    } else
+    {
         FqdncacheStats.hits++;
         f->lastref = squid_curtime;
-        // ignore f->error_message: the caller just checks FQDN cache presence
+        dns_error_message = f->error_message;
         return f->names[0];
     }
 
-    /* no entry [any more] */
+    dns_error_message = NULL;
+
+    /* check if it's already a FQDN address in text form. */
+
+    if (!safe_inet_addr(name, &ip))
+        return name;
 
     FqdncacheStats.misses++;
 
-    if (flags & FQDN_LOOKUP_IF_MISS) {
+    if (flags & FQDN_LOOKUP_IF_MISS)
         fqdncache_nbgethostbyaddr(addr, dummy_handler, NULL);
-    }
 
     return NULL;
 }
 
 
-/**
- \ingroup FQDNCacheInternal
- *
- * Process objects list
- */
+/* process objects list */
 void
 fqdnStats(StoreEntry * sentry)
 {
@@ -717,14 +623,14 @@ fqdnStats(StoreEntry * sentry)
 
     storeAppendPrintf(sentry, "FQDN Cache Contents:\n\n");
 
-    storeAppendPrintf(sentry, "%-45.45s %3s %3s %3s %s\n",
+    storeAppendPrintf(sentry, "%-15.15s %3s %3s %3s %s\n",
                       "Address", "Flg", "TTL", "Cnt", "Hostnames");
 
     hash_first(fqdn_table);
 
     while ((f = (fqdncache_entry *) hash_next(fqdn_table))) {
         ttl = (f->flags.fromhosts ? -1 : (f->expires - squid_curtime));
-        storeAppendPrintf(sentry, "%-45.45s  %c%c %3.3d % 3d",
+        storeAppendPrintf(sentry, "%-15.15s  %c%c %3.3d % 3d",
                           hashKeyStr(&f->hash),
                           f->flags.negcached ? 'N' : ' ',
                           f->flags.fromhosts ? 'H' : ' ',
@@ -738,31 +644,27 @@ fqdnStats(StoreEntry * sentry)
     }
 }
 
-/// \ingroup FQDNCacheInternal
 static void
-dummy_handler(const char *, const DnsLookupDetails &, void *)
+dummy_handler(const char *bufnotused, void *datanotused)
 {
     return;
 }
 
-/// \ingroup FQDNCacheAPI
 const char *
-fqdnFromAddr(IpAddress &addr)
+
+fqdnFromAddr(struct IN_ADDR addr)
 {
     const char *n;
-    static char buf[MAX_IPSTRLEN];
+    static char buf[32];
 
     if (Config.onoff.log_fqdn && (n = fqdncache_gethostbyaddr(addr, 0)))
         return n;
 
-/// \todo Perhapse this should use toHostname() instead of straight NtoA.
-///       that would wrap the IPv6 properly when raw.
-    addr.NtoA(buf, MAX_IPSTRLEN);
+    xstrncpy(buf, inet_ntoa(addr), 32);
 
     return buf;
 }
 
-/// \ingroup FQDNCacheInternal
 static void
 fqdncacheLockEntry(fqdncache_entry * f)
 {
@@ -772,7 +674,6 @@ fqdncacheLockEntry(fqdncache_entry * f)
     }
 }
 
-/// \ingroup FQDNCacheInternal
 static void
 fqdncacheUnlockEntry(fqdncache_entry * f)
 {
@@ -783,7 +684,6 @@ fqdncacheUnlockEntry(fqdncache_entry * f)
         fqdncacheRelease(f);
 }
 
-/// \ingroup FQDNCacheInternal
 static void
 fqdncacheFreeEntry(void *data)
 {
@@ -800,7 +700,6 @@ fqdncacheFreeEntry(void *data)
     memFree(f, MEM_FQDNCACHE_ENTRY);
 }
 
-/// \ingroup FQDNCacheAPI
 void
 fqdncacheFreeMemory(void)
 {
@@ -809,13 +708,7 @@ fqdncacheFreeMemory(void)
     fqdn_table = NULL;
 }
 
-/**
- \ingroup FQDNCacheAPI
- *
- * Recalculate FQDN cache size upon reconfigure.
- * Is called to clear the FQDN cache's data structures,
- * cancel all pending requests.
- */
+/* Recalculate FQDN cache size upon reconfigure */
 void
 fqdncache_restart(void)
 {
@@ -826,16 +719,9 @@ fqdncache_restart(void)
     purge_entries_fromhosts();
 }
 
-/**
- \ingroup FQDNCacheAPI
- *
- * Adds a "static" entry from /etc/hosts.
- \par
- * The worldist is to be managed by the caller,
- * including pointed-to strings
- *
- \param addr		FQDN name to be added.
- \param hostnames	??
+/*
+ *  adds a "static" entry from /etc/hosts.  the worldist is to be
+ *  managed by the caller, including pointed-to strings
  */
 void
 fqdncacheAddEntryFromHosts(char *addr, wordlist * hostnames)
@@ -874,16 +760,16 @@ fqdncacheAddEntryFromHosts(char *addr, wordlist * hostnames)
 
 
 #ifdef SQUID_SNMP
-/**
- *  \ingroup FQDNCacheAPI
- * The function to return the FQDN statistics via SNMP
+/*
+ * The function to return the fqdn statistics via SNMP
  */
+
 variable_list *
 snmp_netFqdnFn(variable_list * Var, snint * ErrP)
 {
     variable_list *Answer = NULL;
-    MemBuf tmp;
-    debugs(49, 5, "snmp_netFqdnFn: Processing request:" << snmpDebugOid(Var->name, Var->name_length, tmp));
+    debugs(49, 5, "snmp_netFqdnFn: Processing request:");
+    snmpDebugOid(5, Var->name, Var->name_length);
     *ErrP = SNMP_ERR_NOERROR;
 
     switch (Var->name[LEN_SQ_NET + 1]) {
@@ -940,3 +826,14 @@ snmp_netFqdnFn(variable_list * Var, snint * ErrP)
 }
 
 #endif /*SQUID_SNMP */
+
+/// XXX: a hack to work around the missing DNS error info
+// see http://www.squid-cache.org/bugs/show_bug.cgi?id=2459
+const char *
+dns_error_message_safe()
+{
+    if (dns_error_message)
+		return dns_error_message;
+	debugs(35,1, "Internal error: lost DNS error info");
+	return "lost DNS error";
+}

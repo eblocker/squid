@@ -1,5 +1,6 @@
+
 /*
- * $Id$
+ * $Id: sspwin32.h,v 1.2 2006/09/09 15:29:59 serassio Exp $
  *
  * AUTHOR: Guido Serassio <serassio@squid-cache.org>
  * Based on previous work of Francesco Chemolli, Robert Collins and Andrew Doran
@@ -20,22 +21,20 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *
+ *  
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *
+ *  
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
  *
  */
+
 #ifndef _LIBSSPWIN32_H_
 #define _LIBSSPWIN32_H_
-
-#ifdef _SQUID_WIN32_
-
 #define SECURITY_WIN32
 #define NTLM_PACKAGE_NAME "NTLM"
 #define NEGOTIATE_PACKAGE_NAME "Negotiate"
@@ -47,7 +46,6 @@
 #include <tchar.h>
 #endif
 #include <windows.h>
-#include <ntsecapi.h>
 #include <security.h>
 #include <sspi.h>
 
@@ -76,7 +74,4 @@ const char * WINAPI SSP_MakeNegotiateBlob(PVOID, int, PBOOL, int *, char *);
 
 extern BOOL Use_Unicode;
 extern BOOL NTLM_LocalCall;
-
-#endif /* _SQUID_WIN32_ */
-
 #endif /* LIBSSPWIN32_H_ */

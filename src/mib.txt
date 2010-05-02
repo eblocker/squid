@@ -2,22 +2,21 @@
 
 SQUID-MIB DEFINITIONS ::= BEGIN
 --
--- $Id$
+-- $Id: mib.txt,v 1.31 2007/08/27 12:50:43 hno Exp $
 --
 
 IMPORTS
 	enterprises, Unsigned32, TimeTicks, Gauge32, Counter32,
-	MODULE-IDENTITY, OBJECT-TYPE, Integer32
+	MODULE-IDENTITY, OBJECT-TYPE
         	FROM SNMPv2-SMI
 
-	DisplayString, TEXTUAL-CONVENTION
-        	FROM SNMPv2-TC
+	DisplayString
+        	FROM SNMPv2-TC;
 
-	InetAddressType, InetAddress
-        	FROM INET-ADDRESS-MIB;
+nlanr OBJECT IDENTIFIER ::= { enterprises 3495 }
 
 squid MODULE-IDENTITY
-    LAST-UPDATED "200812240200Z"
+    LAST-UPDATED "9809220000Z"
     ORGANIZATION "National Laboratory for Applied Network Research"
     CONTACT-INFO
             "        Squid Developers
@@ -26,31 +25,20 @@ squid MODULE-IDENTITY
     DESCRIPTION
 		"Squid MIB defined for the management of the Squid
 		proxy server. See http://www.squid-cache.org/."
-
-    REVISION      "200812240200Z"
+	
+    REVISION      "9809220000Z"
     DESCRIPTION
-		"Corrected MIB strictness requirements. Mapped
-		valid port ranges"
-    
-    REVISION      "200712140000Z"
-    DESCRIPTION
-		"Added support for IPv6 Technology."
-
+		"Move to SMIv2. Prepare to split into proxy/squid."
     REVISION      "9901010000Z"
     DESCRIPTION
 		"Added objects and corrected asn.1 syntax and
 		descriptions."
-
-    REVISION      "9809220000Z"
-    DESCRIPTION
-		"Move to SMIv2. Prepare to split into proxy/squid."
-		
     ::= { nlanr 1 }
 
 --
 -- OID Assignments
 --
-	nlanr OBJECT IDENTIFIER ::= { enterprises 3495 }
+
 	cacheSystem	OBJECT IDENTIFIER ::= { squid 1 }
 	cacheConfig  	OBJECT IDENTIFIER ::= { squid 2 }
 	cachePerf	OBJECT IDENTIFIER ::= { squid 3 }
@@ -59,7 +47,7 @@ squid MODULE-IDENTITY
 
 
 --
--- cacheSystem group { squid 1 }
+-- cacheSystem group
 --
 
         cacheSysVMsize OBJECT-TYPE
@@ -87,7 +75,7 @@ squid MODULE-IDENTITY
 	::= { cacheSystem 3 }
 
 --
--- cacheConfig group { squid 2 }
+-- config group
 --
 -- Contains configuration information including peers etc.
 --
@@ -118,7 +106,7 @@ squid MODULE-IDENTITY
 
 	cacheLoggingFacility OBJECT-TYPE
 		SYNTAX DisplayString
-		MAX-ACCESS read-write
+		ACCESS read-write
 		STATUS current
 		DESCRIPTION
 			" Logging Facility. An informational string
@@ -174,7 +162,7 @@ squid MODULE-IDENTITY
 
 
 --
--- cachePerformance group { squid 3 }
+-- performance group { squid 3 }
 --
 
 	cacheSysPerf    OBJECT IDENTIFIER ::= { cachePerf 1 }
@@ -287,7 +275,6 @@ squid MODULE-IDENTITY
 		DESCRIPTION
 			" Highest file descriptors in use "
         ::= { cacheSysPerf 13 }
-
 	--
 	-- cacheProtoStats
 	--
@@ -426,7 +413,7 @@ squid MODULE-IDENTITY
 
 	cacheMedianSvcTable OBJECT-TYPE
                 SYNTAX SEQUENCE OF CacheMedianSvcEntry
-                MAX-ACCESS not-accessible
+                MAX-ACCESS read-only
                 STATUS current
                 DESCRIPTION
                         " CacheMedianSvcTable "
@@ -456,7 +443,7 @@ squid MODULE-IDENTITY
 	}
 
 	cacheMedianTime OBJECT-TYPE
-                SYNTAX Integer32 (1|5|60)
+                SYNTAX Integer32
                 MAX-ACCESS read-only
                 STATUS current
 		DESCRIPTION
@@ -544,7 +531,7 @@ squid MODULE-IDENTITY
         ::= { cacheMedianSvcEntry 11 }
 
 --
--- cacheNetwork group { squid 4 }
+-- cacheNetwork group
 --
 -- This material is probably best suited elsewhere, however for now it
 -- will reside here until the both the Proxy and Squid MIBs are implimented.
@@ -691,7 +678,7 @@ squid MODULE-IDENTITY
                 MAX-ACCESS read-only
                 STATUS current
 		DESCRIPTION
-			" Number of external DNS server requests "
+			" Number of external dnsserver requests "
         ::= { cacheDns 1 }
 
 	cacheDnsReplies OBJECT-TYPE
@@ -699,7 +686,7 @@ squid MODULE-IDENTITY
                 MAX-ACCESS read-only
                 STATUS current
 		DESCRIPTION
-			" Number of external DNS server replies "
+			" Number of external dnsserver replies "
         ::= { cacheDns 2 }
 
 	cacheDnsNumberServers OBJECT-TYPE
@@ -707,16 +694,16 @@ squid MODULE-IDENTITY
                 MAX-ACCESS read-only
                 STATUS current
 		DESCRIPTION
-			" Number of external DNS server processes "
+			" Number of external dnsserver processes "
         ::= { cacheDns 3 }
 	
 --
--- cacheMesh group { squid 5 }
+-- cacheMesh group
 --
 
 	cachePeerTable OBJECT-TYPE
 		SYNTAX SEQUENCE OF CachePeerEntry
-		MAX-ACCESS not-accessible
+		MAX-ACCESS read-only
 		STATUS current
 		DESCRIPTION
 			" This table contains an enumeration of
@@ -724,21 +711,19 @@ squid MODULE-IDENTITY
         ::= { cacheMesh 1 }
 
 	cachePeerEntry OBJECT-TYPE
-		SYNTAX CachePeerTableEntry
+		SYNTAX CachePeerEntry
 		MAX-ACCESS not-accessible
 		STATUS current
 		DESCRIPTION
-			" An entry in cachePeerTable (version 3) "
-		INDEX 	{ cachePeerIndex }
-	::= { cachePeerTable 3 }
+			" An entry in cachePeerTable "
+		INDEX 	{ cachePeerAddr }
+	::= { cachePeerTable 1 }
 
-	CachePeerTableEntry ::= SEQUENCE {
-	  cachePeerIndex	CachePeerTableIndex, 
+	CachePeerEntry ::= SEQUENCE {
 	  cachePeerName		DisplayString,
-	  cachePeerAddressType  InetAddressType,
-	  cachePeerAddress      InetAddress,
-	  cachePeerPortHttp 	ValidPort,
-	  cachePeerPortIcp	ValidPort,
+	  cachePeerAddr  	IpAddress,
+	  cachePeerPortHttp 	Integer32 (1..65535),
+	  cachePeerPortIcp	Integer32 (1..65535),
 	  cachePeerType 	Integer32,
 	  cachePeerState	Integer32,
 	  cachePeerPingsSent	Counter32,
@@ -749,38 +734,6 @@ squid MODULE-IDENTITY
 	  cachePeerKeepAlSent	Counter32,
 	  cachePeerKeepAlRecv	Counter32
 	}
-	
-	ValidPort ::= TEXTUAL-CONVENTION
-             DISPLAY-HINT "d"
-             STATUS       current
-             DESCRIPTION
-				"A integer value from 1 to 65535 to indicate 
-				the appropriate port number for the connection."
-			SYNTAX       Integer32 (1..65535)
-	
-	CachePeerTableIndex ::= TEXTUAL-CONVENTION
-             DISPLAY-HINT "d"
-             STATUS       current
-             DESCRIPTION
-               "A unique value, greater than zero for each
-               cache peer instance in the managed
-               system. It is recommended that values are assigned
-               contiguously starting from 1. The value for each
-               cache peer index must remain constant
-               at least from one re-initialization of the entity's
-               network management system to the next
-               re-initialization."
-             SYNTAX       Integer32 (1..2147483647)
-
-
-	cachePeerIndex OBJECT-TYPE
-		SYNTAX CachePeerIndex
-		MAX-ACCESS read-only
-		STATUS current
-		DESCRIPTION
-			   "A unique non-zero value identifying
-			     the particular cache Peer."
-	::= { cachePeerEntry 1 }
 
 	cachePeerName OBJECT-TYPE
 		SYNTAX DisplayString
@@ -789,68 +742,40 @@ squid MODULE-IDENTITY
 		DESCRIPTION
 			  " The FQDN name or internal alias for the
 		      	    peer cache "
-	::= { cachePeerEntry 2 }
+	::= { cachePeerEntry 1 }
 
-	cachePeerAddressType OBJECT-TYPE
-	SYNTAX      InetAddressType
-	MAX-ACCESS  read-only
-	STATUS      current
-	DESCRIPTION
-		"The type of Internet address by which the peer
-		cache is reachable."
-
-	::= { cachePeerEntry 3 }
-
-	cachePeerAddress OBJECT-TYPE
-	SYNTAX      InetAddress (SIZE (1..64))
-	MAX-ACCESS  read-only
-	STATUS      current
-	DESCRIPTION
-	"The Internet address for the peer cache.  The type of this
-	 address is determined by the value of the peerAddressType
-         object.  Note that implementations must limit themselves
-         to a single entry in this table per reachable peer.
-         The peerAddress may not be empty due to the SIZE
-         restriction.
-
-         If a row is created administratively by an SNMP
-         operation and the address type value is dns(16), then
-         the agent stores the DNS name internally.  A DNS name
-         lookup must be performed on the internally stored DNS
-         name whenever it is being used to contact the peer.
-
-         If a row is created by the managed entity itself and
-         the address type value is dns(16), then the agent
-         stores the IP address internally.  A DNS reverse lookup
-         must be performed on the internally stored IP address
-         whenever the value is retrieved via SNMP."
-	 ::= { cachePeerEntry 4 }
-
+	cachePeerAddr OBJECT-TYPE
+                SYNTAX IpAddress
+                MAX-ACCESS read-only
+                STATUS current
+		DESCRIPTION
+			" The IP Address of the peer cache "
+        ::= { cachePeerEntry 2 }
 
 	cachePeerPortHttp OBJECT-TYPE
-                SYNTAX ValidPort
+                SYNTAX Integer32
                 MAX-ACCESS read-only
                 STATUS current
 		DESCRIPTION
 			" The port the peer listens for HTTP requests "
-        ::= { cachePeerEntry 5 }
+        ::= { cachePeerEntry 3 }
 
 	cachePeerPortIcp OBJECT-TYPE
-                SYNTAX ValidPort
+                SYNTAX Integer32
                 MAX-ACCESS read-only
                 STATUS current
 		DESCRIPTION
 			" The port the peer listens for ICP requests
 			  should be 0 if not configured to send ICP requests "
-        ::= { cachePeerEntry 6 }
+        ::= { cachePeerEntry 4 }
 
 	cachePeerType OBJECT-TYPE
                 SYNTAX INTEGER
-                MAX-ACCESS read-only
+                MAX-ACCESS not-accessible
                 STATUS current
                 DESCRIPTION
                         " Peer Type "
-	::= { cachePeerEntry 7 }
+	::= { cachePeerEntry 5 }
 
 	cachePeerState OBJECT-TYPE
                 SYNTAX INTEGER
@@ -858,7 +783,7 @@ squid MODULE-IDENTITY
                 STATUS current
 		DESCRIPTION
 			" The operational state of this peer "
-        ::= { cachePeerEntry 8 }
+        ::= { cachePeerEntry 6 }
 
         cachePeerPingsSent OBJECT-TYPE
                 SYNTAX Counter32
@@ -866,7 +791,7 @@ squid MODULE-IDENTITY
                 STATUS current
 		DESCRIPTION
 			" Number of pings sent to peer "
-        ::= { cachePeerEntry 9 }
+        ::= { cachePeerEntry 7 }
 
         cachePeerPingsAcked OBJECT-TYPE
                 SYNTAX Counter32
@@ -874,7 +799,7 @@ squid MODULE-IDENTITY
                 STATUS current
 		DESCRIPTION
 			" Number of pings received from peer "
-        ::= {  cachePeerEntry 10 }
+        ::= {  cachePeerEntry 8 }
 
         cachePeerFetches OBJECT-TYPE
                 SYNTAX Counter32
@@ -882,7 +807,7 @@ squid MODULE-IDENTITY
                 STATUS current
 		DESCRIPTION
 			" Number of times this peer was selected  "
-        ::= { cachePeerEntry 11 }
+        ::= { cachePeerEntry 9 }
 
         cachePeerRtt OBJECT-TYPE
                 SYNTAX Integer32
@@ -890,7 +815,7 @@ squid MODULE-IDENTITY
                 STATUS current
 		DESCRIPTION
 			" Last known round-trip time to the peer (in ms) "
-        ::= { cachePeerEntry 12 }
+        ::= { cachePeerEntry 10 }
 
         cachePeerIgnored OBJECT-TYPE
                 SYNTAX Counter32
@@ -898,7 +823,7 @@ squid MODULE-IDENTITY
                 STATUS current
 		DESCRIPTION
 			" How many times this peer was ignored "
-        ::= { cachePeerEntry 13 }
+        ::= { cachePeerEntry 11 }
 
         cachePeerKeepAlSent OBJECT-TYPE
                 SYNTAX Counter32
@@ -906,7 +831,7 @@ squid MODULE-IDENTITY
                 STATUS current
 		DESCRIPTION
 			" Number of keepalives sent "
-        ::= { cachePeerEntry 14 }
+        ::= { cachePeerEntry 12 }
 
         cachePeerKeepAlRecv OBJECT-TYPE
                 SYNTAX Counter32
@@ -914,7 +839,7 @@ squid MODULE-IDENTITY
                 STATUS current
 		DESCRIPTION
 			" Number of keepalives received "
-        ::= { cachePeerEntry 15 }
+        ::= { cachePeerEntry 13 }
 
 ---
 --- Table of cache's clients, with statistics. Children caches can be identified
@@ -923,24 +848,23 @@ squid MODULE-IDENTITY
 
         cacheClientTable OBJECT-TYPE
            SYNTAX  SEQUENCE OF CacheClientEntry
-           MAX-ACCESS  not-accessible
-           STATUS  current
+           ACCESS  not-accessible
+           STATUS  mandatory
            DESCRIPTION
                     "A list of cache client entries."
        	::= { cacheMesh 2 }
 
 	cacheClientEntry OBJECT-TYPE
            SYNTAX CacheClientEntry
-           MAX-ACCESS  not-accessible
-           STATUS  current
+           ACCESS  not-accessible
+           STATUS  mandatory
            DESCRIPTION
-                    "An IP entry in cacheClientTable "
-	   INDEX { cacheClientAddress }
-	::= { cacheClientTable 2 }
+                    "An entry in cacheClientTable "
+	   INDEX { cacheClientAddr }
+	::= { cacheClientTable 1 }
 
 	CacheClientEntry ::= SEQUENCE {
-		cacheClientAddressType  InetAddressType,
-		cacheClientAddress      InetAddress,
+               	cacheClientAddr 	IpAddress,
                	cacheClientHttpRequests	Counter32,
                	cacheClientHttpKb 	Counter32,
                	cacheClientHttpHits 	Counter32,
@@ -951,38 +875,13 @@ squid MODULE-IDENTITY
                	cacheClientIcpHitKb	Counter32
 	}
 
-	cacheClientAddressType OBJECT-TYPE
-                SYNTAX InetAddressType
+	cacheClientAddr OBJECT-TYPE
+                SYNTAX IpAddress
                 MAX-ACCESS read-only
                 STATUS current
            	DESCRIPTION
                     "The client's IP address "
         ::= { cacheClientEntry 1 }
-
-	cacheClientAddress OBJECT-TYPE
-	SYNTAX      InetAddress (SIZE (1..64))
-	MAX-ACCESS  read-only
-	STATUS      current
-	DESCRIPTION
-	"The Internet address for the client.  The type of this
-	 address is determined by the value of the peerAddressType
-         object.  Note that implementations must limit themselves
-         to a single entry in this table per reachable peer.
-         The peerAddress may not be empty due to the SIZE
-         restriction.
-
-         If a row is created administratively by an SNMP
-         operation and the address type value is dns(16), then
-         the agent stores the DNS name internally.  A DNS name
-         lookup must be performed on the internally stored DNS
-         name whenever it is being used to contact the peer.
-
-         If a row is created by the managed entity itself and
-         the address type value is dns(16), then the agent
-         stores the IP address internally.  A DNS reverse lookup
-         must be performed on the internally stored IP address
-         whenever the value is retrieved via SNMP."
-	 ::= { cacheClientEntry 2 }
 
 	cacheClientHttpRequests OBJECT-TYPE
                 SYNTAX Counter32
@@ -990,7 +889,7 @@ squid MODULE-IDENTITY
                 STATUS current
            	DESCRIPTION
                     " Number of HTTP requests received from client "
-        ::= { cacheClientEntry 3 }
+        ::= { cacheClientEntry 2 }
 
 	cacheClientHttpKb OBJECT-TYPE
                 SYNTAX Counter32
@@ -998,7 +897,7 @@ squid MODULE-IDENTITY
                 STATUS current
            	DESCRIPTION
                     " Amount of total HTTP traffic to this client  "
-        ::= { cacheClientEntry 4 }
+        ::= { cacheClientEntry 3 }
 
         cacheClientHttpHits OBJECT-TYPE
                 SYNTAX Counter32
@@ -1006,7 +905,7 @@ squid MODULE-IDENTITY
                 STATUS current
            	DESCRIPTION
                     " Number of hits in response to this client's HTTP requests "
-        ::= { cacheClientEntry 5 }
+        ::= { cacheClientEntry 4 }
 
         cacheClientHTTPHitKb OBJECT-TYPE
                 SYNTAX Counter32
@@ -1014,7 +913,7 @@ squid MODULE-IDENTITY
                 STATUS current
            	DESCRIPTION
                     " Amount of HTTP hit traffic in KB "
-        ::= { cacheClientEntry 6 }
+        ::= { cacheClientEntry 5 }
 
 	cacheClientIcpRequests OBJECT-TYPE
                 SYNTAX Counter32
@@ -1022,7 +921,7 @@ squid MODULE-IDENTITY
                 STATUS current
            	DESCRIPTION
                     " Number of ICP requests received from client "
-        ::= { cacheClientEntry 7 }
+        ::= { cacheClientEntry 6 }
 
 	cacheClientIcpKb OBJECT-TYPE
                 SYNTAX Counter32
@@ -1030,7 +929,7 @@ squid MODULE-IDENTITY
                 STATUS current
            	DESCRIPTION
                     " Amount of total ICP traffic to this client (child) "
-        ::= { cacheClientEntry 8 }
+        ::= { cacheClientEntry 7 }
 
         cacheClientIcpHits OBJECT-TYPE
                 SYNTAX Counter32
@@ -1038,7 +937,7 @@ squid MODULE-IDENTITY
                 STATUS current
            	DESCRIPTION
                     " Number of hits in response to this client's ICP requests "
-        ::= { cacheClientEntry 9 }
+        ::= { cacheClientEntry 8 }
 
         cacheClientIcpHitKb OBJECT-TYPE
                 SYNTAX Counter32
@@ -1046,7 +945,7 @@ squid MODULE-IDENTITY
                 STATUS current
            	DESCRIPTION
                     " Amount of ICP hit traffic in KB "
-        ::= { cacheClientEntry 10 }
+        ::= { cacheClientEntry 9 }
 
 	-- end of cacheClientTable
 

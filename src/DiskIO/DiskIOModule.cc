@@ -1,4 +1,6 @@
+
 /*
+ * $Id: DiskIOModule.cc,v 1.3 2006/09/14 00:51:10 robertc Exp $
  *
  * DEBUG: section 92    Storage File System
  * AUTHOR: Robert Collins
@@ -19,12 +21,12 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *
+ *  
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *
+ *  
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
@@ -38,20 +40,24 @@
 Vector<DiskIOModule*> *DiskIOModule::_Modules = NULL;
 
 //DiskIOModule() : initialised (false) {}
-
 DiskIOModule::DiskIOModule()
 {
-    /** We cannot call ModuleAdd(*this)
-     * here as the virtual methods are not yet available.
-     * We leave that to PokeAllModules() later.
+    /* We cannot call
+     * ModuleAdd(*this);
+     * here as the virtual methods are not yet available
      */
+}
+
+void
+DiskIOModule::RegisterAllModulesWithCacheManager(CacheManager & manager)
+{
+    for (iterator i = GetModules().begin(); i != GetModules().end(); ++i)
+        (*i)->registerWithCacheManager(manager);
 }
 
 void
 DiskIOModule::SetupAllModules()
 {
-    DiskIOModule::PokeAllModules();
-
     for (iterator i = GetModules().begin(); i != GetModules().end(); ++i)
         /* Call the FS to set up capabilities and initialize the FS driver */
         (*i)->init();
@@ -85,8 +91,8 @@ DiskIOModule::GetModules()
     return *_Modules;
 }
 
-/**
- * Called when a graceful shutdown is to occur
+/*
+ * called when a graceful shutdown is to occur
  * of each fs module.
  */
 void
@@ -112,7 +118,7 @@ DiskIOModule::Find(char const *type)
 DiskIOModule *
 DiskIOModule::FindDefault()
 {
-    /** Best IO options are in order: */
+    /* Best IO options are in order: */
     DiskIOModule * result;
     result = Find("DiskThreads");
     if (NULL == result)
@@ -123,3 +129,8 @@ DiskIOModule::FindDefault()
         result = Find("Blocking");
     return result;
 }
+
+/* disk modules dont export anything by default */
+void
+DiskIOModule::registerWithCacheManager(CacheManager & manager)
+{}

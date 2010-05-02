@@ -1,6 +1,6 @@
 
 /*
- * $Id$
+ * $Id: WinSvc.cc,v 1.3.4.2 2008/02/17 19:28:18 serassio Exp $
  *
  * Windows support
  * AUTHOR: Guido Serassio <serassio@squid-cache.org>
@@ -22,12 +22,12 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *
+ *  
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *
+ *  
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
@@ -82,10 +82,12 @@ static int WIN32_argc;
 static char ** WIN32_argv;
 static char * WIN32_module_name;
 
-#define VENDOR "squid-cache.org"
+#define VENDOR "GNU"
 static char VENDORString[] = VENDOR;
-#define SOFTWARENAME PACKAGE_NAME
+#define SOFTWARENAME "Squid"
 static char SOFTWARENAMEString[] = SOFTWARENAME;
+#define WIN32_VERSION "3.0"
+static char WIN32_VERSIONString[] = WIN32_VERSION;
 #define SOFTWARE "SOFTWARE"
 static char SOFTWAREString[] = SOFTWARE;
 #define COMMANDLINE "CommandLine"
@@ -101,14 +103,15 @@ static SC_ACTION Squid_SCAction[] = { { SC_ACTION_RESTART, 60000 } };
 static char Squid_ServiceDescriptionString[] = SOFTWARENAME " " VERSION " WWW Proxy Server";
 static SERVICE_DESCRIPTION Squid_ServiceDescription = { Squid_ServiceDescriptionString };
 static SERVICE_FAILURE_ACTIONS Squid_ServiceFailureActions = { INFINITE, NULL, NULL, 1, Squid_SCAction };
-static char REGKEY[256]=SOFTWARE"\\"VENDOR"\\"SOFTWARENAME"\\";
+static char REGKEY[256]=SOFTWARE"\\"VENDOR"\\"SOFTWARENAME"\\"WIN32_VERSION"\\";
 static char *keys[] = {
-    SOFTWAREString,	    /* key[0] */
-    VENDORString,	    /* key[1] */
-    SOFTWARENAMEString,   /* key[2] */
-    NULL,	    /* key[3] */
-    NULL	    /* key[4] */
-};
+                          SOFTWAREString,	    /* key[0] */
+                          VENDORString,	    /* key[1] */
+                          SOFTWARENAMEString,   /* key[2] */
+                          WIN32_VERSIONString,  /* key[3] */
+                          NULL,	    /* key[4] */
+                          NULL	    /* key[5] */
+                      };
 #endif
 
 /* ====================================================================== */
@@ -315,72 +318,72 @@ GetOSVersion()
     osvi.dwOSVersionInfoSize = sizeof(OSVERSIONINFOEX);
 
     if (!(bOsVersionInfoEx = GetVersionEx((OSVERSIONINFO *) & osvi))) {
-        osvi.dwOSVersionInfoSize = sizeof(OSVERSIONINFO);
-        if (!GetVersionEx((OSVERSIONINFO *) & osvi))
-            goto GetVerError;
+	osvi.dwOSVersionInfoSize = sizeof(OSVERSIONINFO);
+	if (!GetVersionEx((OSVERSIONINFO *) & osvi))
+	    goto GetVerError;
     }
     switch (osvi.dwPlatformId) {
     case VER_PLATFORM_WIN32_NT:
-        if (osvi.dwMajorVersion <= 4) {
-            WIN32_OS_string = xstrdup("Windows NT");
-            return _WIN_OS_WINNT;
-        }
-        if ((osvi.dwMajorVersion == 5) && (osvi.dwMinorVersion == 0)) {
-            WIN32_OS_string = xstrdup("Windows 2000");
-            return _WIN_OS_WIN2K;
-        }
-        if ((osvi.dwMajorVersion == 5) && (osvi.dwMinorVersion == 1)) {
-            WIN32_OS_string = xstrdup("Windows XP");
-            return _WIN_OS_WINXP;
-        }
-        if ((osvi.dwMajorVersion == 5) && (osvi.dwMinorVersion == 2)) {
-            WIN32_OS_string = xstrdup("Windows Server 2003");
-            return _WIN_OS_WINNET;
-        }
-        if ((osvi.dwMajorVersion == 6) && (osvi.dwMinorVersion == 0)) {
-            if (osvi.wProductType == VER_NT_WORKSTATION)
-                WIN32_OS_string = xstrdup("Windows Vista");
-            else
-                WIN32_OS_string = xstrdup("Windows Server 2008");
-            return _WIN_OS_WINLON;
-        }
-        if ((osvi.dwMajorVersion == 6) && (osvi.dwMinorVersion == 1)) {
-            if (osvi.wProductType == VER_NT_WORKSTATION)
-                WIN32_OS_string = xstrdup("Windows 7");
-            else
-                WIN32_OS_string = xstrdup("Windows Server 2008 R2");
-            return _WIN_OS_WIN7;
-        }
-        if (((osvi.dwMajorVersion > 6)) || ((osvi.dwMajorVersion == 6) && (osvi.dwMinorVersion > 1))) {
-            if (osvi.wProductType == VER_NT_WORKSTATION)
-                WIN32_OS_string = xstrdup("Unknown Windows version, assuming Windows 7 capabilities");
-            else
-                WIN32_OS_string = xstrdup("Unknown Windows version, assuming Windows Server 2008 R2 capabilities");
-            return _WIN_OS_WIN7;
-        }
+	if (osvi.dwMajorVersion <= 4) {
+	    WIN32_OS_string = xstrdup("Windows NT");
+	    return _WIN_OS_WINNT;
+	}
+	if ((osvi.dwMajorVersion == 5) && (osvi.dwMinorVersion == 0)) {
+	    WIN32_OS_string = xstrdup("Windows 2000");
+	    return _WIN_OS_WIN2K;
+	}
+	if ((osvi.dwMajorVersion == 5) && (osvi.dwMinorVersion == 1)) {
+	    WIN32_OS_string = xstrdup("Windows XP");
+	    return _WIN_OS_WINXP;
+	}
+	if ((osvi.dwMajorVersion == 5) && (osvi.dwMinorVersion == 2)) {
+	    WIN32_OS_string = xstrdup("Windows Server 2003");
+	    return _WIN_OS_WINNET;
+	}
+	if ((osvi.dwMajorVersion == 6) && (osvi.dwMinorVersion == 0)) {
+	    if (osvi.wProductType == VER_NT_WORKSTATION)
+		WIN32_OS_string = xstrdup("Windows Vista");
+	    else
+		WIN32_OS_string = xstrdup("Windows Server 2008");
+	    return _WIN_OS_WINLON;
+	}
+	if ((osvi.dwMajorVersion == 6) && (osvi.dwMinorVersion == 1)) {
+	    if (osvi.wProductType == VER_NT_WORKSTATION)
+		WIN32_OS_string = xstrdup("Windows 7");
+	    else
+		WIN32_OS_string = xstrdup("Windows Server 2008 R2");
+	    return _WIN_OS_WIN7;
+	}
+	if (((osvi.dwMajorVersion > 6)) || ((osvi.dwMajorVersion == 6) && (osvi.dwMinorVersion > 1))) {
+	    if (osvi.wProductType == VER_NT_WORKSTATION)
+		WIN32_OS_string = xstrdup("Unknown Windows version, assuming Windows 7 capabilities");
+	    else
+		WIN32_OS_string = xstrdup("Unknown Windows version, assuming Windows Server 2008 R2 capabilities");
+	    return _WIN_OS_WIN7;
+	}
         break;
     case VER_PLATFORM_WIN32_WINDOWS:
-        if ((osvi.dwMajorVersion == 4) && (osvi.dwMinorVersion == 0)) {
-            WIN32_OS_string = xstrdup("Windows 95");
-            return _WIN_OS_WIN95;
-        }
-        if ((osvi.dwMajorVersion == 4) && (osvi.dwMinorVersion == 10)) {
-            WIN32_OS_string = xstrdup("Windows 98");
-            return _WIN_OS_WIN98;
-        }
-        if ((osvi.dwMajorVersion == 4) && (osvi.dwMinorVersion == 90)) {
-            WIN32_OS_string = xstrdup("Windows Me");
-            return _WIN_OS_WINME;
-        }
-        break;
+	if ((osvi.dwMajorVersion == 4) && (osvi.dwMinorVersion == 0)) {
+	    WIN32_OS_string = xstrdup("Windows 95");
+	    return _WIN_OS_WIN95;
+	}
+	if ((osvi.dwMajorVersion == 4) && (osvi.dwMinorVersion == 10)) {
+	    WIN32_OS_string = xstrdup("Windows 98");
+	    return _WIN_OS_WIN98;
+	}
+	if ((osvi.dwMajorVersion == 4) && (osvi.dwMinorVersion == 90)) {
+	    WIN32_OS_string = xstrdup("Windows Me");
+	    return _WIN_OS_WINME;
+	}
+	break;
     case VER_PLATFORM_WIN32s:
-        WIN32_OS_string = xstrdup("Windows 3.1 with WIN32S");
-        return _WIN_OS_WIN32S;
-        break;
+	WIN32_OS_string = xstrdup("Windows 3.1 with WIN32S");
+	return _WIN_OS_WIN32S;
+	break;
     default:
-        break;
+	break;
     }
-GetVerError:
+  GetVerError:
     WIN32_OS_string = xstrdup("Unknown Windows system");
     return _WIN_OS_UNKNOWN;
 }
@@ -408,8 +411,8 @@ WIN32_IpAddrChangeMonitorExit()
     DWORD status = ERROR_SUCCESS;
 
     if (NotifyAddrChange_thread != INVALID_HANDLE_VALUE) {
-        TerminateThread(NotifyAddrChange_thread, status);
-        CloseHandle(NotifyAddrChange_thread);
+	TerminateThread(NotifyAddrChange_thread, status);
+	CloseHandle(NotifyAddrChange_thread);
     }
 }
 #endif
@@ -451,17 +454,17 @@ WIN32_IpAddrChangeMonitor(LPVOID lpParam)
     PFNotifyAddrChange NotifyAddrChange;
 
     if ((IPHLPAPIHandle = GetModuleHandle("IPHLPAPI")) == NULL)
-        IPHLPAPIHandle = LoadLibrary("IPHLPAPI");
+	IPHLPAPIHandle = LoadLibrary("IPHLPAPI");
     NotifyAddrChange = (PFNotifyAddrChange) GetProcAddress(IPHLPAPIHandle, NOTIFYADDRCHANGE);
 
     while (1) {
-        Result = NotifyAddrChange(NULL, NULL);
-        if (Result != NO_ERROR) {
-            debugs(1, 1, "NotifyAddrChange error " << Result);
-            return 1;
-        }
-        debugs(1, 1, "Notification of IP address change received, requesting Squid reconfiguration ...");
-        reconfigure(SIGHUP);
+	Result = NotifyAddrChange(NULL, NULL);
+	if (Result != NO_ERROR) {
+	    debugs(1, 1, "NotifyAddrChange error " << Result);
+	    return 1;
+	}
+	debugs(1, 1, "Notification of IP address change received, requesting Squid reconfiguration ...");
+	reconfigure(SIGHUP);
     }
     return 0;
 }
@@ -473,14 +476,14 @@ WIN32_IpAddrChangeMonitorInit()
     DWORD threadID = 0, ThrdParam = 0;
 
     if ((WIN32_run_mode == _WIN_SQUID_RUN_MODE_SERVICE) && (Config.onoff.WIN32_IpAddrChangeMonitor)) {
-        NotifyAddrChange_thread = CreateThread(NULL, 0, WIN32_IpAddrChangeMonitor,
-                                               &ThrdParam, 0, &threadID);
-        if (NotifyAddrChange_thread == NULL) {
-            status = GetLastError();
-            NotifyAddrChange_thread = INVALID_HANDLE_VALUE;
-            debugs(1, 1, "Failed to start IP monitor thread.");
-        } else
-            debugs(1, 2, "Starting IP monitor thread [" << threadID << "] ...");
+	NotifyAddrChange_thread = CreateThread(NULL, 0, WIN32_IpAddrChangeMonitor,
+	    &ThrdParam, 0, &threadID);
+	if (NotifyAddrChange_thread == NULL) {
+	    status = GetLastError();
+	    NotifyAddrChange_thread = INVALID_HANDLE_VALUE;
+	    debugs(1, 1, "Failed to start IP monitor thread.");
+	} else
+	    debugs(1, 2, "Starting IP monitor thread [" << threadID << "] ...");
     }
     return status;
 }
@@ -537,7 +540,7 @@ int WIN32_Subsystem_Init(int * argc, char *** argv)
         safe_free(ConfigFile);
 
         /* get config file from Windows Registry */
-        if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, REGKEY, 0, KEY_QUERY_VALUE, &hndKey) == ERROR_SUCCESS) {
+	if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, REGKEY, 0, KEY_QUERY_VALUE, &hndKey) == ERROR_SUCCESS) {
             DWORD Type = 0;
             DWORD Size = 0;
             LONG Result;
@@ -900,7 +903,7 @@ WIN32_sendSignal(int WIN32_signal)
                              fdwAccess);		/* specify access     */
 
     if (schService == NULL) {
-        fprintf(stderr, "%s: ERROR: Could not open Service %s\n", APP_SHORTNAME,
+        fprintf(stderr, "%s: ERROR: Could not open Service %s\n", appname,
                 WIN32_Service_name);
         exit(1);
     } else {
@@ -910,7 +913,7 @@ WIN32_sendSignal(int WIN32_signal)
                             fdwControl,	/* control value to send  */
                             &ssStatus)) {	/* address of status info */
             fprintf(stderr, "%s: ERROR: Could not Control Service %s\n",
-                    APP_SHORTNAME, WIN32_Service_name);
+                    appname, WIN32_Service_name);
             exit(1);
         } else {
             /* Print the service status. */
@@ -934,9 +937,9 @@ WIN32_sendSignal(int WIN32_signal)
 int main(int argc, char **argv)
 {
     SERVICE_TABLE_ENTRY DispatchTable[] = {
-        {NULL, SquidWinSvcMain},
-        {NULL, NULL}
-    };
+                                              {NULL, SquidWinSvcMain},
+                                              {NULL, NULL}
+                                          };
     char *c;
     char stderr_path[256];
 

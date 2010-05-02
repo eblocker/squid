@@ -1,6 +1,6 @@
 
 /*
- * $Id$
+ * $Id: send-announce.cc,v 1.68 2007/04/28 22:26:37 hno Exp $
  *
  * DEBUG: section 27    Cache Announcer
  * AUTHOR: Duane Wessels
@@ -21,12 +21,12 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *
+ *  
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *
+ *  
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
@@ -55,12 +55,12 @@ start_announce(void *datanotused)
 }
 
 static void
-send_announce(const ipcache_addrs *ia, const DnsLookupDetails &, void *junk)
+send_announce(const ipcache_addrs * ia, void *junk)
 {
     LOCAL_ARRAY(char, tbuf, 256);
     LOCAL_ARRAY(char, sndbuf, BUFSIZ);
 
-    IpAddress S;
+    struct sockaddr_in S;
     char *host = Config.Announce.host;
     char *file = NULL;
     u_short port = Config.Announce.port;
@@ -109,10 +109,14 @@ send_announce(const ipcache_addrs *ia, const DnsLookupDetails &, void *junk)
         }
     }
 
-    S = ia->in_addrs[0];
-    S.SetPort(port);
+    memset(&S, '\0', sizeof(S));
+    S.sin_family = AF_INET;
+    S.sin_port = htons(port);
+    S.sin_addr = ia->in_addrs[0];
     assert(theOutIcpConnection > 0);
-    x = comm_udp_sendto(theOutIcpConnection, S, sndbuf, strlen(sndbuf) + 1);
+    x = comm_udp_sendto(theOutIcpConnection,
+                        &S, sizeof(S),
+                        sndbuf, strlen(sndbuf) + 1);
 
     if (x < 0)
         debugs(27, 1, "send_announce: FD " << theOutIcpConnection << ": " << xstrerror());

@@ -1,5 +1,6 @@
+
 /*
- * $Id$
+ * $Id: DiskFile.h,v 1.1 2004/12/20 16:30:38 robertc Exp $
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
  * ----------------------------------------------------------
@@ -17,12 +18,12 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *
+ *  
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *
+ *  
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
@@ -48,21 +49,20 @@ class DiskFile : public RefCountable
 
 public:
     typedef RefCount<DiskFile> Pointer;
-
-    virtual void open(int flags, mode_t mode, RefCount<IORequestor> callback) = 0;
-    virtual void create(int flags, mode_t mode, RefCount<IORequestor> callback) = 0;
+    virtual void open (int, mode_t, RefCount<IORequestor>) = 0;
+    virtual void create (int, mode_t, RefCount<IORequestor>) = 0;
     virtual void read(ReadRequest *) = 0;
     virtual void write(WriteRequest *) = 0;
-    virtual void close() = 0;
+    virtual void close () = 0;
     virtual bool canRead() const = 0;
     virtual bool canWrite() const {return true;}
 
-    /** During migration only */
+    /* During miogration only */
     virtual int getFD() const {return -1;}
 
     virtual bool error() const = 0;
 
-    /** Inform callers if there is IO in progress */
+    /* Inform callers if there is IO in progress */
     virtual bool ioInProgress() const = 0;
 };
 

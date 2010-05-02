@@ -1,6 +1,6 @@
 
 /*
- * $Id$
+ * $Id: HttpHdrSc.cc,v 1.6 2007/05/29 13:31:37 amosjeffries Exp $
  *
  * DEBUG: section 90    HTTP Cache Control Header
  * AUTHOR: Alex Rousskov
@@ -23,12 +23,12 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *
+ *  
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *
+ *  
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
@@ -41,14 +41,15 @@
 #include "HttpHdrSc.h"
 
 /* this table is used for parsing surrogate control header */
-static const HttpHeaderFieldAttrs ScAttrs[SC_ENUM_END] = {
-    {"no-store", (http_hdr_type)SC_NO_STORE},
+static const HttpHeaderFieldAttrs ScAttrs[SC_ENUM_END] =
+    {
+        {"no-store", (http_hdr_type)SC_NO_STORE},
 
-    {"no-store-remote", (http_hdr_type)SC_NO_STORE_REMOTE},
-    {"max-age", (http_hdr_type)SC_MAX_AGE},
-    {"content", (http_hdr_type)SC_CONTENT},
-    {"Other,", (http_hdr_type)SC_OTHER}	/* ',' will protect from matches */
-};
+        {"no-store-remote", (http_hdr_type)SC_NO_STORE_REMOTE},
+        {"max-age", (http_hdr_type)SC_MAX_AGE},
+        {"content", (http_hdr_type)SC_CONTENT},
+        {"Other,", (http_hdr_type)SC_OTHER}	/* ',' will protect from matches */
+    };
 
 HttpHeaderFieldInfo *ScFieldsInfo = NULL;
 
@@ -138,7 +139,7 @@ httpHdrScParseInit(HttpHdrSc * sc, const String * str)
                                   ScFieldsInfo, SC_ENUM_END);
 
         if (type < 0) {
-            debugs(90, 2, "hdr sc: unknown control-directive: near '" << item << "' in '" << str << "'");
+            debugs(90, 2, "hdr sc: unknown control-directive: near '" << item << "' in '" << str->buf() << "'");
             type = SC_OTHER;
         }
 
@@ -162,7 +163,7 @@ httpHdrScParseInit(HttpHdrSc * sc, const String * str)
 
         if (EBIT_TEST(sct->mask, type)) {
             if (type != SC_OTHER)
-                debugs(90, 2, "hdr sc: ignoring duplicate control-directive: near '" << item << "' in '" << str << "'");
+                debugs(90, 2, "hdr sc: ignoring duplicate control-directive: near '" << item << "' in '" << str->buf() << "'");
 
             ScFieldsInfo[type].stat.repCount++;
 
@@ -257,8 +258,7 @@ httpHdrScTargetPackInto(const HttpHdrScTarget * sc, Packer * p)
         if (EBIT_TEST(sc->mask, flag) && flag != SC_OTHER) {
 
             /* print option name */
-            packerPrintf(p, (pcount ? ", " SQUIDSTRINGPH : SQUIDSTRINGPH),
-                         SQUIDSTRINGPRINT(ScFieldsInfo[flag].name));
+            packerPrintf(p, (pcount ? ", %s" : "%s"), ScFieldsInfo[flag].name.buf());
 
             /* handle options with values */
 
@@ -266,14 +266,14 @@ httpHdrScTargetPackInto(const HttpHdrScTarget * sc, Packer * p)
                 packerPrintf(p, "=%d", (int) sc->max_age);
 
             if (flag == SC_CONTENT)
-                packerPrintf(p, "=\"" SQUIDSTRINGPH "\"", SQUIDSTRINGPRINT(sc->content));
+                packerPrintf(p, "=\"%s\"", sc->content.buf());
 
             pcount++;
         }
     }
 
     if (sc->target.size())
-        packerPrintf (p, ";" SQUIDSTRINGPH, SQUIDSTRINGPRINT(sc->target));
+        packerPrintf (p, ";%s", sc->target.buf());
 }
 
 void
@@ -340,7 +340,7 @@ httpHdrScTargetStatDumper(StoreEntry * sentry, int idx, double val, double size,
     extern const HttpHeaderStat *dump_stat;     /* argh! */
     const int id = (int) val;
     const int valid_id = id >= 0 && id < SC_ENUM_END;
-    const char *name = valid_id ? ScFieldsInfo[id].name.termedBuf() : "INVALID";
+    const char *name = valid_id ? ScFieldsInfo[id].name.buf() : "INVALID";
 
     if (count || valid_id)
         storeAppendPrintf(sentry, "%2d\t %-20s\t %5d\t %6.2f\n",
@@ -353,7 +353,7 @@ httpHdrScStatDumper(StoreEntry * sentry, int idx, double val, double size, int c
     extern const HttpHeaderStat *dump_stat;	/* argh! */
     const int id = (int) val;
     const int valid_id = id >= 0 && id < SC_ENUM_END;
-    const char *name = valid_id ? ScFieldsInfo[id].name.termedBuf() : "INVALID";
+    const char *name = valid_id ? ScFieldsInfo[id].name.buf() : "INVALID";
 
     if (count || valid_id)
         storeAppendPrintf(sentry, "%2d\t %-20s\t %5d\t %6.2f\n",
@@ -370,9 +370,9 @@ httpHdrScFindTarget (HttpHdrSc *sc, const char *target)
     while (node) {
         HttpHdrScTarget *sct = (HttpHdrScTarget *)node->data;
 
-        if (target && sct->target.defined() && !strcmp (target, sct->target.termedBuf()))
+        if (target && sct->target.buf() && !strcmp (target, sct->target.buf()))
             return sct;
-        else if (!target && sct->target.undefined())
+        else if (!target && !sct->target.buf())
             return sct;
 
         node = node->next;

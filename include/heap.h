@@ -1,5 +1,5 @@
 /*
- * $Id$
+ * $Id: heap.h,v 1.6 2003/01/23 00:36:47 robertc Exp $
  *
  * AUTHOR: John Dilley, Hewlett Packard
  *
@@ -19,16 +19,16 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *
+ *  
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *
+ *  
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
- *
+ *  
  */
 
 /****************************************************************************
@@ -40,11 +40,9 @@
  * the top of the heap (as in the smallest object key value).  Child nodes
  * are larger than their parent.
  ****************************************************************************/
+
 #ifndef	SQUID_HEAP_H
 #define	SQUID_HEAP_H
-
-/* Squid autoconf definitions */
-#include "config.h"
 
 /*
  * Function for generating heap keys.  The first argument will typically be
@@ -88,12 +86,12 @@ typedef struct _heap {
  * Public functions
  ****************************************************************************/
 
-/*
+/* 
  * Create and initialize a new heap.
  */
 SQUIDCEXTERN heap *new_heap(int init_size, heap_key_func gen_key);
 
-/*
+/* 
  * Delete a heap and clean up its memory.  Does not delete what the heap
  * nodes are pointing to!
  */
@@ -122,7 +120,7 @@ SQUIDCEXTERN heap_t heap_delete(heap *, heap_node * elm);
  */
 SQUIDCEXTERN heap_t heap_update(heap *, heap_node * elm, heap_t dat);
 
-/*
+/* 
  * Generate a heap key for a given data object.  Alternative macro form:
  */
 #ifdef	MACRO_DEBUG
@@ -132,14 +130,14 @@ SQUIDCEXTERN heap_key heap_gen_key(heap * hp, heap_t dat);
 #endif /* MACRO_DEBUG */
 
 
-/*
+/* 
  * Extract the minimum (root) element and maintain the heap property.
  * Returns the data pointed to by the root node, which the caller must
  * free as necessary.
  */
 SQUIDCEXTERN heap_t heap_extractmin(heap *);
 
-/*
+/* 
  * Extract the last leaf node (does not change the heap property).
  * Returns the data that had been in the heap which the caller must free if
  * necessary.  Note that the last node is guaranteed to be less than its
@@ -148,7 +146,7 @@ SQUIDCEXTERN heap_t heap_extractmin(heap *);
  */
 SQUIDCEXTERN heap_t heap_extractlast(heap * hp);
 
-/*
+/* 
  * Get the root key, the nth key, the root (smallest) element, or the nth
  * element.  None of these operations modify the heap.
  */
@@ -158,8 +156,8 @@ SQUIDCEXTERN heap_key heap_peepkey(heap *, int n);
 SQUIDCEXTERN heap_t heap_peepmin(heap *);
 SQUIDCEXTERN heap_t heap_peep(heap *, int n);
 
-/*
- * Is the heap empty?  How many nodes (data objects) are in it?
+/* 
+ * Is the heap empty?  How many nodes (data objects) are in it? 
  */
 #ifdef	MACRO_DEBUG
 SQUIDCEXTERN int heap_empty(heap *);
@@ -169,7 +167,7 @@ SQUIDCEXTERN int heap_nodes(heap *);
 #define	heap_empty(heap)	(((heap)->last <= 0) ? 1 : 0)
 #endif /* MACRO_DEBUG */
 
-/*
+/* 
  * Print the heap or a node in the heap.
  */
 SQUIDCEXTERN void heap_print(heap *);

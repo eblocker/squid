@@ -1,10 +1,10 @@
 
 /*
- * $Id$
- *
+ * $Id: client_side_request.cc,v 1.96 2007/11/15 23:33:05 wessels Exp $
+ * 
  * DEBUG: section 85    Client-side Request Routines
  * AUTHOR: Robert Collins (Originally Duane Wessels in client_side.c)
- *
+ * 
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
  * ----------------------------------------------------------
  *
@@ -36,7 +36,7 @@
 
 /*
  * General logic of request processing:
- *
+ * 
  * We run a series of tests to determine if access will be permitted, and to do
  * any redirection. Then we call into the result clientStream to retrieve data.
  * From that point on it's up to reply management.
@@ -45,11 +45,10 @@
 #include "squid.h"
 #include "clientStream.h"
 #include "client_side_request.h"
-#include "auth/UserRequest.h"
+#include "AuthUserRequest.h"
 #include "HttpRequest.h"
-#include "ProtoPort.h"
-#include "acl/FilledChecklist.h"
-#include "acl/Gadgets.h"
+#include "ACLChecklist.h"
+#include "ACL.h"
 #include "client_side.h"
 #include "client_side_reply.h"
 #include "Store.h"
@@ -58,31 +57,20 @@
 #include "ClientRequestContext.h"
 #include "SquidTime.h"
 #include "wordlist.h"
-#include "inet_pton.h"
-#include "fde.h"
 
-#if USE_ADAPTATION
-#include "adaptation/AccessCheck.h"
-#include "adaptation/Iterator.h"
-#include "adaptation/Service.h"
 #if ICAP_CLIENT
-#include "adaptation/icap/History.h"
+#include "ICAP/ICAPModXact.h"
+#include "ICAP/ICAPElements.h"
+#include "ICAP/ICAPConfig.h"
+static void icapAclCheckDoneWrapper(ICAPServiceRep::Pointer service, void *data);
+extern ICAPConfig TheICAPConfig;
 #endif
-//static void adaptationAclCheckDoneWrapper(Adaptation::ServicePointer service, void *data);
-#endif
-
-
 
 #if LINGERING_CLOSE
 #define comm_close comm_lingering_close
 #endif
 
 static const char *const crlf = "\r\n";
-
-#if FOLLOW_X_FORWARDED_FOR
-static void
-clientFollowXForwardedForCheck(int answer, void *data);
-#endif /* FOLLOW_X_FORWARDED_FOR */
 
 CBDATA_CLASS_INIT(ClientRequestContext);
 
@@ -154,16 +142,12 @@ ClientHttpRequest::operator delete (void *address)
     cbdataFree(t);
 }
 
-ClientHttpRequest::ClientHttpRequest(ConnStateData * aConn) :
-#if USE_ADAPTATION
-        AsyncJob("ClientHttpRequest"),
-#endif
-        loggingEntry_(NULL)
+ClientHttpRequest::ClientHttpRequest(ConnStateData::Pointer aConn) : loggingEntry_(NULL)
 {
-    start_time = current_time;
+    start = current_time;
     setConn(aConn);
     dlinkAdd(this, &active, &ClientActiveRequests);
-#if USE_ADAPTATION
+#if ICAP_CLIENT
     request_satisfaction_mode = false;
 #endif
 }
@@ -189,7 +173,7 @@ ClientHttpRequest::onlyIfCached()const
  * mode where we only return UDP_HIT or UDP_MISS_NOFETCH.  Neighbors
  * will only fetch HITs from us if they are using the ICP protocol.  We
  * stay in this mode for 5 minutes.
- *
+ * 
  * Duane W., Sept 16, 1996
  */
 
@@ -214,7 +198,6 @@ checkFailureRatio(err_type etype, hier_code hcode)
     case ERR_DNS_FAIL:
 
     case ERR_CONNECT_FAIL:
-    case ERR_SECURE_CONNECT_FAIL:
 
     case ERR_READ_ERROR:
         n_bad++;
@@ -253,7 +236,7 @@ ClientHttpRequest::~ClientHttpRequest()
     // because we did not initiate that pipe (ConnStateData did)
 
     /* the ICP check here was erroneous
-     * - StoreEntry::releaseRequest was always called if entry was valid
+     * - StoreEntry::releaseRequest was always called if entry was valid 
      */
     assert(logType < LOG_TYPE_MAX);
 
@@ -266,18 +249,15 @@ ClientHttpRequest::~ClientHttpRequest()
 
     freeResources();
 
-#if USE_ADAPTATION
-    announceInitiatorAbort(virginHeadSource);
+#if ICAP_CLIENT
+    announceInitiatorAbort(icapHeadSource);
 
-    if (adaptedBodySource != NULL)
-        stopConsumingFrom(adaptedBodySource);
+    if (icapBodySource != NULL)
+        stopConsumingFrom(icapBodySource);
 #endif
 
     if (calloutContext)
         delete calloutContext;
-
-    if (conn_)
-        cbdataReferenceDone(conn_);
 
     /* moving to the next connection is handled by the context free */
     dlinkDelete(&active, &ClientActiveRequests);
@@ -285,25 +265,22 @@ ClientHttpRequest::~ClientHttpRequest()
     PROF_stop(httpRequestFree);
 }
 
-/**
- * Create a request and kick it off
- *
- * \retval 0     success
- * \retval -1    failure
- *
+/* Create a request and kick it off */
+/*
  * TODO: Pass in the buffers to be used in the inital Read request, as they are
  * determined by the user
  */
-int
-clientBeginRequest(const HttpRequestMethod& method, char const *url, CSCB * streamcallback,
+int				/* returns nonzero on failure */
+clientBeginRequest(method_t method, char const *url, CSCB * streamcallback,
                    CSD * streamdetach, ClientStreamData streamdata, HttpHeader const *header,
                    char *tailbuf, size_t taillen)
 {
     size_t url_sz;
+    HttpVersion http_ver (1, 0);
     ClientHttpRequest *http = new ClientHttpRequest(NULL);
     HttpRequest *request;
     StoreIOBuffer tempBuffer;
-    http->start_time = current_time;
+    http->start = current_time;
     /* this is only used to adjust the connection offset in client_side.c */
     http->req_sz = 0;
     tempBuffer.length = taillen;
@@ -328,7 +305,7 @@ clientBeginRequest(const HttpRequestMethod& method, char const *url, CSCB * stre
     }
 
     /*
-     * now update the headers in request with our supplied headers. urlParse
+     * now update the headers in request with our supplied headers. urLParse
      * should return a blank header set, but we use Update to be sure of
      * correctness.
      */
@@ -357,18 +334,12 @@ clientBeginRequest(const HttpRequestMethod& method, char const *url, CSCB * stre
     /* Internally created requests cannot have bodies today */
     request->content_length = 0;
 
-    request->client_addr.SetNoAddr();
+    request->client_addr = no_addr;
 
-#if FOLLOW_X_FORWARDED_FOR
-    request->indirect_client_addr.SetNoAddr();
-#endif /* FOLLOW_X_FORWARDED_FOR */
+    request->my_addr = no_addr;	/* undefined for internal requests */
 
-    request->my_addr.SetNoAddr();	/* undefined for internal requests */
+    request->my_port = 0;
 
-    request->my_addr.SetPort(0);
-
-    /* Our version is HTTP/1.1 */
-    HttpVersion http_ver(1,1);
     request->http_ver = http_ver;
 
     http->request = HTTPMSGLOCK(request);
@@ -402,151 +373,13 @@ ClientRequestContext::httpStateIsValid()
     return false;
 }
 
-#if FOLLOW_X_FORWARDED_FOR
-/**
- * clientFollowXForwardedForCheck() checks the content of X-Forwarded-For:
- * against the followXFF ACL, or cleans up and passes control to
- * clientAccessCheck().
- *
- * The trust model here is a little ambiguous. So to clarify the logic:
- * - we may always use the direct client address as the client IP.
- * - these trust tests merey tell whether we trust given IP enough to believe the
- *   IP string which it appended to the X-Forwarded-For: header.
- * - if at any point we don't trust what an IP adds we stop looking.
- * - at that point the current contents of indirect_client_addr are the value set
- *   by the last previously trusted IP.
- * ++ indirect_client_addr contains the remote direct client from the trusted peers viewpoint.
- */
-static void
-clientFollowXForwardedForCheck(int answer, void *data)
-{
-    ClientRequestContext *calloutContext = (ClientRequestContext *) data;
-
-    if (!calloutContext->httpStateIsValid())
-        return;
-
-    ClientHttpRequest *http = calloutContext->http;
-    HttpRequest *request = http->request;
-
-    /*
-     * answer should be be ACCESS_ALLOWED or ACCESS_DENIED if we are
-     * called as a result of ACL checks, or -1 if we are called when
-     * there's nothing left to do.
-     */
-    if (answer == ACCESS_ALLOWED &&
-            request->x_forwarded_for_iterator.size () != 0) {
-
-        /*
-         * Remove the last comma-delimited element from the
-         * x_forwarded_for_iterator and use it to repeat the cycle.
-         */
-        const char *p;
-        const char *asciiaddr;
-        int l;
-        IpAddress addr;
-        p = request->x_forwarded_for_iterator.termedBuf();
-        l = request->x_forwarded_for_iterator.size();
-
-        /*
-        * XXX x_forwarded_for_iterator should really be a list of
-        * IP addresses, but it's a String instead.  We have to
-        * walk backwards through the String, biting off the last
-        * comma-delimited part each time.  As long as the data is in
-        * a String, we should probably implement and use a variant of
-        * strListGetItem() that walks backwards instead of forwards
-        * through a comma-separated list.  But we don't even do that;
-        * we just do the work in-line here.
-        */
-        /* skip trailing space and commas */
-        while (l > 0 && (p[l-1] == ',' || xisspace(p[l-1])))
-            l--;
-        request->x_forwarded_for_iterator.cut(l);
-        /* look for start of last item in list */
-        while (l > 0 && ! (p[l-1] == ',' || xisspace(p[l-1])))
-            l--;
-        asciiaddr = p+l;
-        if ((addr = asciiaddr)) {
-            request->indirect_client_addr = addr;
-            request->x_forwarded_for_iterator.cut(l);
-            calloutContext->acl_checklist = clientAclChecklistCreate(Config.accessList.followXFF, http);
-            if (!Config.onoff.acl_uses_indirect_client) {
-                /* override the default src_addr tested if we have to go deeper than one level into XFF */
-                Filled(calloutContext->acl_checklist)->src_addr = request->indirect_client_addr;
-            }
-            calloutContext->acl_checklist->nonBlockingCheck(clientFollowXForwardedForCheck, data);
-            return;
-        }
-    } /*if (answer == ACCESS_ALLOWED &&
-        request->x_forwarded_for_iterator.size () != 0)*/
-
-    /* clean up, and pass control to clientAccessCheck */
-    if (Config.onoff.log_uses_indirect_client) {
-        /*
-        * Ensure that the access log shows the indirect client
-        * instead of the direct client.
-        */
-        ConnStateData *conn = http->getConn();
-        conn->log_addr = request->indirect_client_addr;
-    }
-    request->x_forwarded_for_iterator.clean();
-    request->flags.done_follow_x_forwarded_for = 1;
-
-    if (answer != ACCESS_ALLOWED && answer != ACCESS_DENIED) {
-        debugs(28, DBG_CRITICAL, "ERROR: Processing X-Forwarded-For. Stopping at IP address: " << request->indirect_client_addr );
-    }
-
-    /* process actual access ACL as normal. */
-    calloutContext->clientAccessCheck();
-}
-#endif /* FOLLOW_X_FORWARDED_FOR */
-
 /* This is the entry point for external users of the client_side routines */
 void
 ClientRequestContext::clientAccessCheck()
 {
-#if FOLLOW_X_FORWARDED_FOR
-    if (!http->request->flags.done_follow_x_forwarded_for &&
-            Config.accessList.followXFF &&
-            http->request->header.has(HDR_X_FORWARDED_FOR)) {
-
-        /* we always trust the direct client address for actual use */
-        http->request->indirect_client_addr = http->request->client_addr;
-        http->request->indirect_client_addr.SetPort(0);
-
-        /* setup the XFF iterator for processing */
-        http->request->x_forwarded_for_iterator = http->request->header.getList(HDR_X_FORWARDED_FOR);
-
-        /* begin by checking to see if we trust direct client enough to walk XFF */
-        acl_checklist = clientAclChecklistCreate(Config.accessList.followXFF, http);
-        acl_checklist->nonBlockingCheck(clientFollowXForwardedForCheck, this);
-        return;
-    }
-#endif /* FOLLOW_X_FORWARDED_FOR */
-
-    if (Config.accessList.http) {
-        acl_checklist = clientAclChecklistCreate(Config.accessList.http, http);
-        acl_checklist->nonBlockingCheck(clientAccessCheckDoneWrapper, this);
-    } else {
-        debugs(0, DBG_CRITICAL, "No http_access configuration found. This will block ALL traffic");
-        clientAccessCheckDone(ACCESS_DENIED);
-    }
-}
-
-/**
- * Identical in operation to clientAccessCheck() but performed later using different configured ACL list.
- * The default here is to allow all. Since the earlier http_access should do a default deny all.
- * This check is just for a last-minute denial based on adapted request headers.
- */
-void
-ClientRequestContext::clientAccessCheck2()
-{
-    if (Config.accessList.adapted_http) {
-        acl_checklist = clientAclChecklistCreate(Config.accessList.adapted_http, http);
-        acl_checklist->nonBlockingCheck(clientAccessCheckDoneWrapper, this);
-    } else {
-        debugs(85, 2, HERE << "No adapted_http_access configuration.");
-        clientAccessCheckDone(ACCESS_ALLOWED);
-    }
+    acl_checklist =
+        clientAclChecklistCreate(Config.accessList.http, http);
+    acl_checklist->nonBlockingCheck(clientAccessCheckDoneWrapper, this);
 }
 
 void
@@ -566,12 +399,12 @@ ClientRequestContext::clientAccessCheckDone(int answer)
     acl_checklist = NULL;
     err_type page_id;
     http_status status;
-    debugs(85, 2, "The request " <<
-           RequestMethodStr(http->request->method) << " " <<
-           http->uri << " is " <<
-           (answer == ACCESS_ALLOWED ? "ALLOWED" : "DENIED") <<
-           ", because it matched '" <<
-           (AclMatchedName ? AclMatchedName : "NO ACL's") << "'" );
+    debugs(85, 2, "The request " << 
+                 RequestMethodStr[http->request->method] << " " <<  
+                 http->uri << " is " << 
+                 (answer == ACCESS_ALLOWED ? "ALLOWED" : "DENIED") << 
+                 ", because it matched '" << 
+                 (AclMatchedName ? AclMatchedName : "NO ACL's") << "'" );
     char const *proxy_auth_msg = "<null>";
 
     if (http->getConn() != NULL && http->getConn()->auth_user_request != NULL)
@@ -619,16 +452,12 @@ ClientRequestContext::clientAccessCheckDone(int answer)
         clientStreamNode *node = (clientStreamNode *)http->client_stream.tail->prev->data;
         clientReplyContext *repContext = dynamic_cast<clientReplyContext *>(node->data.getRaw());
         assert (repContext);
-        IpAddress tmpnoaddr;
-        tmpnoaddr.SetNoAddr();
         repContext->setReplyToError(page_id, status,
                                     http->request->method, NULL,
-                                    http->getConn() != NULL ? http->getConn()->peer : tmpnoaddr,
-                                    http->request,
-                                    NULL,
-                                    http->getConn() != NULL && http->getConn()->auth_user_request ?
-                                    http->getConn()->auth_user_request : http->request->auth_user_request);
-
+                                    http->getConn() != NULL ? &http->getConn()->peer.sin_addr : &no_addr, http->request,
+                                    NULL, http->getConn() != NULL
+                                    && http->getConn()->auth_user_request ? http->getConn()->
+                                    auth_user_request : http->request->auth_user_request);
         node = (clientStreamNode *)http->client_stream.tail->data;
         clientStreamRead(node, http, node->readBuffer);
         return;
@@ -642,45 +471,51 @@ ClientRequestContext::clientAccessCheckDone(int answer)
     http->doCallouts();
 }
 
-#if USE_ADAPTATION
+#if ICAP_CLIENT
+void
+ClientRequestContext::icapAccessCheck()
+{
+    ICAPAccessCheck *icap_access_check;
+
+    icap_access_check = new ICAPAccessCheck(ICAP::methodReqmod, ICAP::pointPreCache, http->request, NULL, icapAclCheckDoneWrapper, this);
+
+    if (icap_access_check != NULL) {
+        icap_access_check->check();
+        return;
+    }
+
+    http->doCallouts();
+}
+
 static void
-adaptationAclCheckDoneWrapper(Adaptation::ServiceGroupPointer g, void *data)
+icapAclCheckDoneWrapper(ICAPServiceRep::Pointer service, void *data)
 {
     ClientRequestContext *calloutContext = (ClientRequestContext *)data;
 
     if (!calloutContext->httpStateIsValid())
         return;
 
-    calloutContext->adaptationAclCheckDone(g);
+    calloutContext->icapAclCheckDone(service);
 }
 
 void
-ClientRequestContext::adaptationAclCheckDone(Adaptation::ServiceGroupPointer g)
+ClientRequestContext::icapAclCheckDone(ICAPServiceRep::Pointer service)
 {
-    debugs(93,3,HERE << this << " adaptationAclCheckDone called");
+    debugs(93,3,HERE << this << " icapAclCheckDone called");
     assert(http);
 
-#if ICAP_CLIENT
-    Adaptation::Icap::History::Pointer ih = http->request->icapHistory();
-    if (ih != NULL) {
-        if (http->getConn() != NULL) {
-            ih->rfc931 = http->getConn()->rfc931;
-#if USE_SSL
-            ih->ssluser = sslGetUserEmail(fd_table[http->getConn()->fd].ssl);
-#endif
-        }
-        ih->log_uri = http->log_uri;
-        ih->req_sz = http->req_sz;
-    }
-#endif
+    if (http->startIcap(service))
+        return;
 
-    if (!g) {
-        debugs(85,3, HERE << "no adaptation needed");
+    if (!service || service->bypass) {
+        // handle ICAP start failure when no service was selected
+        // or where the selected service was optional
         http->doCallouts();
         return;
     }
 
-    http->startAdaptation(g);
+    // handle start failure for an essential ICAP service
+    http->handleIcapFailure();
 }
 
 #endif
@@ -715,7 +550,7 @@ clientHierarchical(ClientHttpRequest * http)
 {
     const char *url = http->uri;
     HttpRequest *request = http->request;
-    HttpRequestMethod method = request->method;
+    method_t method = request->method;
     const wordlist *p = NULL;
 
     /*
@@ -766,7 +601,10 @@ clientInterpretRequestHeaders(ClientHttpRequest * http)
     HttpRequest *request = http->request;
     HttpHeader *req_hdr = &request->header;
     int no_cache = 0;
+#if !(USE_SQUID_ESI) || defined(USE_USERAGENT_LOG) || defined(USE_REFERER_LOG)
+
     const char *str;
+#endif
 
     request->imslen = -1;
     request->ims = req_hdr->getTime(HDR_IF_MODIFIED_SINCE);
@@ -774,47 +612,49 @@ clientInterpretRequestHeaders(ClientHttpRequest * http)
     if (request->ims > 0)
         request->flags.ims = 1;
 
-    if (!request->flags.ignore_cc) {
-        if (req_hdr->has(HDR_PRAGMA)) {
-            String s = req_hdr->getList(HDR_PRAGMA);
+#if USE_SQUID_ESI
+    /*
+     * We ignore Cache-Control as per the Edge Architecture Section 3. See
+     * www.esi.org for more information.
+     */
+#else
 
-            if (strListIsMember(&s, "no-cache", ','))
-                no_cache++;
+    if (req_hdr->has(HDR_PRAGMA)) {
+        String s = req_hdr->getList(HDR_PRAGMA);
 
-            s.clean();
-        }
+        if (strListIsMember(&s, "no-cache", ','))
+            no_cache++;
 
-        if (request->cache_control)
-            if (EBIT_TEST(request->cache_control->mask, CC_NO_CACHE))
-                no_cache++;
+        s.clean();
+    }
 
-        /*
-        * Work around for supporting the Reload button in IE browsers when Squid
-        * is used as an accelerator or transparent proxy, by turning accelerated
-        * IMS request to no-cache requests. Now knows about IE 5.5 fix (is
-        * actually only fixed in SP1, but we can't tell whether we are talking to
-        * SP1 or not so all 5.5 versions are treated 'normally').
-        */
-        if (Config.onoff.ie_refresh) {
-            if (http->flags.accel && request->flags.ims) {
-                if ((str = req_hdr->getStr(HDR_USER_AGENT))) {
-                    if (strstr(str, "MSIE 5.01") != NULL)
-                        no_cache++;
-                    else if (strstr(str, "MSIE 5.0") != NULL)
-                        no_cache++;
-                    else if (strstr(str, "MSIE 4.") != NULL)
-                        no_cache++;
-                    else if (strstr(str, "MSIE 3.") != NULL)
-                        no_cache++;
-                }
+    if (request->cache_control)
+        if (EBIT_TEST(request->cache_control->mask, CC_NO_CACHE))
+            no_cache++;
+
+    /*
+    * Work around for supporting the Reload button in IE browsers when Squid
+    * is used as an accelerator or transparent proxy, by turning accelerated
+    * IMS request to no-cache requests. Now knows about IE 5.5 fix (is
+    * actually only fixed in SP1, but we can't tell whether we are talking to
+    * SP1 or not so all 5.5 versions are treated 'normally').
+    */
+    if (Config.onoff.ie_refresh) {
+        if (http->flags.accel && request->flags.ims) {
+            if ((str = req_hdr->getStr(HDR_USER_AGENT))) {
+                if (strstr(str, "MSIE 5.01") != NULL)
+                    no_cache++;
+                else if (strstr(str, "MSIE 5.0") != NULL)
+                    no_cache++;
+                else if (strstr(str, "MSIE 4.") != NULL)
+                    no_cache++;
+                else if (strstr(str, "MSIE 3.") != NULL)
+                    no_cache++;
             }
         }
     }
 
-    if (request->method == METHOD_OTHER) {
-        no_cache++;
-    }
-
+#endif
     if (no_cache) {
 #if HTTP_VIOLATIONS
 
@@ -837,7 +677,7 @@ clientInterpretRequestHeaders(ClientHttpRequest * http)
             clientStreamNode *node = (clientStreamNode *)http->client_stream.tail->data;
             /* XXX: This is suboptimal. We should give the stream the range set,
              * and thereby let the top of the stream set the offset when the
-             * size becomes known. As it is, we will end up requesting from 0
+             * size becomes known. As it is, we will end up requesting from 0 
              * for evey -X range specification.
              * RBC - this may be somewhat wrong. We should probably set the range
              * iter up at this point.
@@ -860,56 +700,6 @@ clientInterpretRequestHeaders(ClientHttpRequest * http)
     if (req_hdr->has(HDR_AUTHORIZATION))
         request->flags.auth = 1;
 
-    ConnStateData *http_conn = http->getConn();
-    assert(http_conn);
-    request->flags.connection_auth_disabled = http_conn->port->connection_auth_disabled;
-    if (!request->flags.connection_auth_disabled) {
-        if (http_conn->pinning.fd != -1) {
-            if (http_conn->pinning.auth) {
-                request->flags.connection_auth = 1;
-                request->flags.auth = 1;
-            } else {
-                request->flags.connection_proxy_auth = 1;
-            }
-            request->setPinnedConnection(http_conn);
-        }
-    }
-
-    /* check if connection auth is used, and flag as candidate for pinning
-     * in such case.
-     * Note: we may need to set flags.connection_auth even if the connection
-     * is already pinned if it was pinned earlier due to proxy auth
-     */
-    if (!request->flags.connection_auth) {
-        if (req_hdr->has(HDR_AUTHORIZATION) || req_hdr->has(HDR_PROXY_AUTHORIZATION)) {
-            HttpHeaderPos pos = HttpHeaderInitPos;
-            HttpHeaderEntry *e;
-            int may_pin = 0;
-            while ((e = req_hdr->getEntry(&pos))) {
-                if (e->id == HDR_AUTHORIZATION || e->id == HDR_PROXY_AUTHORIZATION) {
-                    const char *value = e->value.rawBuf();
-                    if (strncasecmp(value, "NTLM ", 5) == 0
-                            ||
-                            strncasecmp(value, "Negotiate ", 10) == 0
-                            ||
-                            strncasecmp(value, "Kerberos ", 9) == 0) {
-                        if (e->id == HDR_AUTHORIZATION) {
-                            request->flags.connection_auth = 1;
-                            may_pin = 1;
-                        } else {
-                            request->flags.connection_proxy_auth = 1;
-                            may_pin = 1;
-                        }
-                    }
-                }
-            }
-            if (may_pin && !request->pinnedConnection()) {
-                request->setPinnedConnection(http->getConn());
-            }
-        }
-    }
-
-
     if (request->login[0] != '\0')
         request->flags.auth = 1;
 
@@ -928,33 +718,29 @@ clientInterpretRequestHeaders(ClientHttpRequest * http)
         }
 
 #if FORW_VIA_DB
-        fvdbCountVia(s.termedBuf());
+        fvdbCountVia(s.buf());
 
 #endif
 
         s.clean();
     }
 
-    /**
-     \todo  --enable-useragent-log and --enable-referer-log. We should
-            probably drop those two as the custom log formats accomplish pretty much the same thing..
-    */
 #if USE_USERAGENT_LOG
     if ((str = req_hdr->getStr(HDR_USER_AGENT)))
-        logUserAgent(fqdnFromAddr(http->getConn()->log_addr), str);
+        logUserAgent(fqdnFromAddr(http->getConn() != NULL ? http->getConn()->log_addr : no_addr), str);
 
 #endif
 #if USE_REFERER_LOG
 
     if ((str = req_hdr->getStr(HDR_REFERER)))
-        logReferer(fqdnFromAddr(http->getConn()->log_addr), str, http->log_uri);
+        logReferer(fqdnFromAddr(http->getConn() != NULL ? http->getConn()->log_addr : no_addr), str, http->log_uri);
 
 #endif
 #if FORW_VIA_DB
 
     if (req_hdr->has(HDR_X_FORWARDED_FOR)) {
         String s = req_hdr->getList(HDR_X_FORWARDED_FOR);
-        fvdbCountForw(s.termedBuf());
+        fvdbCountForw(s.buf());
         s.clean();
     }
 
@@ -1022,10 +808,9 @@ ClientRequestContext::clientRedirectDone(char *result)
         new_request->http_ver = old_request->http_ver;
         new_request->header.append(&old_request->header);
         new_request->client_addr = old_request->client_addr;
-#if FOLLOW_X_FORWARDED_FOR
-        new_request->indirect_client_addr = old_request->indirect_client_addr;
-#endif /* FOLLOW_X_FORWARDED_FOR */
+        new_request->client_port = old_request->client_port;
         new_request->my_addr = old_request->my_addr;
+        new_request->my_port = old_request->my_port;
         new_request->flags = old_request->flags;
         new_request->flags.redirected = 1;
 
@@ -1058,19 +843,11 @@ ClientRequestContext::clientRedirectDone(char *result)
     http->doCallouts();
 }
 
-/** Test cache allow/deny configuration
- *  Sets flags.cachable=1 if caching is not denied.
- */
 void
 ClientRequestContext::checkNoCache()
 {
-    if (Config.accessList.noCache) {
-        acl_checklist = clientAclChecklistCreate(Config.accessList.noCache, http);
-        acl_checklist->nonBlockingCheck(checkNoCacheDoneWrapper, this);
-    } else {
-        /* unless otherwise specified, we try to cache. */
-        checkNoCacheDone(1);
-    }
+    acl_checklist = clientAclChecklistCreate(Config.accessList.noCache, http);
+    acl_checklist->nonBlockingCheck(checkNoCacheDoneWrapper, this);
 }
 
 static void
@@ -1100,14 +877,7 @@ ClientRequestContext::checkNoCacheDone(int answer)
 void
 ClientHttpRequest::processRequest()
 {
-    debugs(85, 4, "clientProcessRequest: " << RequestMethodStr(request->method) << " '" << uri << "'");
-
-#if USE_SSL
-    if (request->method == METHOD_CONNECT && sslBumpNeeded()) {
-        sslBumpStart();
-        return;
-    }
-#endif
+    debugs(85, 4, "clientProcessRequest: " << RequestMethodStr[request->method] << " '" << uri << "'");
 
     if (request->method == METHOD_CONNECT && !redirect.status) {
         logType = LOG_TCP_MISS;
@@ -1133,67 +903,6 @@ ClientHttpRequest::httpStart()
     PROF_stop(httpStart);
 }
 
-#if USE_SSL
-
-// determines whether we should bump the CONNECT request
-bool
-ClientHttpRequest::sslBumpNeeded() const
-{
-    if (!getConn()->port->sslBump || !Config.accessList.ssl_bump)
-        return false;
-
-    debugs(85, 5, HERE << "SslBump possible, checking ACL");
-
-    ACLFilledChecklist check(Config.accessList.ssl_bump, request, NULL);
-    check.src_addr = request->client_addr;
-    check.my_addr = request->my_addr;
-    return check.fastCheck() == 1;
-}
-
-// called when comm_write has completed
-static void
-SslBumpEstablish(int, char *, size_t, comm_err_t errflag, int, void *data)
-{
-    ClientHttpRequest *r = static_cast<ClientHttpRequest*>(data);
-    debugs(85, 5, HERE << "responded to CONNECT: " << r << " ? " << errflag);
-
-    assert(r && cbdataReferenceValid(r));
-    r->sslBumpEstablish(errflag);
-}
-
-void
-ClientHttpRequest::sslBumpEstablish(comm_err_t errflag)
-{
-    // Bail out quickly on COMM_ERR_CLOSING - close handlers will tidy up
-    if (errflag == COMM_ERR_CLOSING)
-        return;
-
-    if (errflag) {
-        getConn()->startClosing("CONNECT response failure in SslBump");
-        return;
-    }
-
-    getConn()->switchToHttps();
-}
-
-void
-ClientHttpRequest::sslBumpStart()
-{
-    debugs(85, 5, HERE << "ClientHttpRequest::sslBumpStart");
-
-    // send an HTTP 200 response to kick client SSL negotiation
-    const int fd = getConn()->fd;
-    debugs(33, 7, HERE << "Confirming CONNECT tunnel on FD " << fd);
-
-    // TODO: Unify with tunnel.cc and add a Server(?) header
-    static const char *const conn_established =
-        "HTTP/1.0 200 Connection established\r\n\r\n";
-    comm_write(fd, conn_established, strlen(conn_established),
-               &SslBumpEstablish, this, NULL);
-}
-
-#endif
-
 bool
 ClientHttpRequest::gotEnough() const
 {
@@ -1206,6 +915,30 @@ ClientHttpRequest::gotEnough() const
         return false;
 
     return true;
+}
+
+void
+ClientHttpRequest::maxReplyBodySize(int64_t clen)
+{
+    maxReplyBodySize_ = clen;
+}
+
+int64_t
+ClientHttpRequest::maxReplyBodySize() const
+{
+    return maxReplyBodySize_;
+}
+
+bool
+ClientHttpRequest::isReplyBodyTooLarge(int64_t clen) const
+{
+    if (0 == maxReplyBodySize())
+        return 0;	/* disabled */
+
+    if (clen < 0)
+        return 0;	/* unknown */
+
+    return clen > maxReplyBodySize();
 }
 
 void
@@ -1223,7 +956,9 @@ ClientHttpRequest::loggingEntry(StoreEntry *newEntry)
     loggingEntry_ = newEntry;
 
     if (loggingEntry_)
-        loggingEntry_->lock();
+        loggingEntry_->lock()
+
+        ;
 }
 
 /*
@@ -1265,25 +1000,21 @@ ClientHttpRequest::doCallouts()
 {
     assert(calloutContext);
 
-    /*Save the original request for logging purposes*/
-    if (!calloutContext->http->al.request)
-        calloutContext->http->al.request = HTTPMSGLOCK(request);
-
     if (!calloutContext->http_access_done) {
-        debugs(83, 3, HERE << "Doing calloutContext->clientAccessCheck()");
+	debugs(83, 3, HERE << "Doing calloutContext->clientAccessCheck()");
         calloutContext->http_access_done = true;
         calloutContext->clientAccessCheck();
         return;
     }
 
-#if USE_ADAPTATION
-    if (!calloutContext->adaptation_acl_check_done) {
-        calloutContext->adaptation_acl_check_done = true;
-        if (Adaptation::AccessCheck::Start(
-                    Adaptation::methodReqmod, Adaptation::pointPreCache,
-                    request, NULL, adaptationAclCheckDoneWrapper, calloutContext))
-            return; // will call callback
+#if ICAP_CLIENT
+    if (TheICAPConfig.onoff && !calloutContext->icap_acl_check_done) {
+	debugs(83, 3, HERE << "Doing calloutContext->icapAccessCheck()");
+        calloutContext->icap_acl_check_done = true;
+        calloutContext->icapAccessCheck();
+        return;
     }
+
 #endif
 
     if (!calloutContext->redirect_done) {
@@ -1291,22 +1022,15 @@ ClientHttpRequest::doCallouts()
         assert(calloutContext->redirect_state == REDIRECT_NONE);
 
         if (Config.Program.redirect) {
-            debugs(83, 3, HERE << "Doing calloutContext->clientRedirectStart()");
+	    debugs(83, 3, HERE << "Doing calloutContext->clientRedirectStart()");
             calloutContext->redirect_state = REDIRECT_PENDING;
             calloutContext->clientRedirectStart();
             return;
         }
     }
 
-    if (!calloutContext->adapted_http_access_done) {
-        debugs(83, 3, HERE << "Doing calloutContext->clientAccessCheck2()");
-        calloutContext->adapted_http_access_done = true;
-        calloutContext->clientAccessCheck2();
-        return;
-    }
-
     if (!calloutContext->interpreted_req_hdrs) {
-        debugs(83, 3, HERE << "Doing clientInterpretRequestHeaders()");
+	debugs(83, 3, HERE << "Doing clientInterpretRequestHeaders()");
         calloutContext->interpreted_req_hdrs = 1;
         clientInterpretRequestHeaders(this);
     }
@@ -1315,7 +1039,7 @@ ClientHttpRequest::doCallouts()
         calloutContext->no_cache_done = true;
 
         if (Config.accessList.noCache && request->flags.cachable) {
-            debugs(83, 3, HERE << "Doing calloutContext->checkNoCache()");
+	    debugs(83, 3, HERE << "Doing calloutContext->checkNoCache()");
             calloutContext->checkNoCache();
             return;
         }
@@ -1323,14 +1047,16 @@ ClientHttpRequest::doCallouts()
 
     if (!calloutContext->clientside_tos_done) {
         calloutContext->clientside_tos_done = true;
-        if (getConn() != NULL) {
-            ACLFilledChecklist ch(NULL, request, NULL);
+	if (getConn() != NULL) {
+	    ACLChecklist ch;
             ch.src_addr = request->client_addr;
             ch.my_addr = request->my_addr;
-            int tos = aclMapTOS(Config.accessList.clientside_tos, &ch);
-            if (tos)
-                comm_set_tos(getConn()->fd, tos);
-        }
+            ch.my_port = request->my_port;
+            ch.request = HTTPMSGLOCK(request);
+	    int tos = aclMapTOS(Config.accessList.clientside_tos, &ch);
+	    if (tos)
+		comm_set_tos(getConn()->fd, tos);
+	}
     }
 
     cbdataReferenceDone(calloutContext->http);
@@ -1343,36 +1069,39 @@ ClientHttpRequest::doCallouts()
 
     debugs(83, 3, HERE << "calling processRequest()");
     processRequest();
-
-#if ICAP_CLIENT
-    Adaptation::Icap::History::Pointer ih = request->icapHistory();
-    if (ih != NULL)
-        ih->logType = logType;
-#endif
 }
 
 #ifndef _USE_INLINE_
 #include "client_side_request.cci"
 #endif
 
-#if USE_ADAPTATION
-/// Initiate an asynchronous adaptation transaction which will call us back.
-void
-ClientHttpRequest::startAdaptation(const Adaptation::ServiceGroupPointer &g)
+#if ICAP_CLIENT
+/*
+ * Initiate an ICAP transaction.  Return false on errors. 
+ * The caller must handle errors.
+ */
+bool
+ClientHttpRequest::startIcap(ICAPServiceRep::Pointer service)
 {
-    debugs(85, 3, HERE << "adaptation needed for " << this);
-    assert(!virginHeadSource);
-    assert(!adaptedBodySource);
-    virginHeadSource = initiateAdaptation(
-                           new Adaptation::Iterator(this, request, NULL, g));
+    debugs(85, 3, HERE << this << " ClientHttpRequest::startIcap() called");
+    if (!service) {
+        debugs(85, 3, "ClientHttpRequest::startIcap fails: lack of service");
+        return false;
+    }
+    if (service->broken()) {
+        debugs(85, 3, "ClientHttpRequest::startIcap fails: broken service");
+        return false;
+    }
 
-    // we could try to guess whether we can bypass this adaptation
-    // initiation failure, but it should not really happen
-    assert(virginHeadSource != NULL); // Must, really
+    assert(!icapHeadSource);
+    assert(!icapBodySource);
+    icapHeadSource = initiateIcap(
+        new ICAPModXactLauncher(this, request, NULL, service));
+    return true;
 }
 
 void
-ClientHttpRequest::noteAdaptationAnswer(HttpMsg *msg)
+ClientHttpRequest::noteIcapAnswer(HttpMsg *msg)
 {
     assert(cbdataReferenceValid(this));		// indicates bug
     assert(msg);
@@ -1389,15 +1118,14 @@ ClientHttpRequest::noteAdaptationAnswer(HttpMsg *msg)
         xfree(uri);
         uri = xstrdup(urlCanonical(request));
         setLogUri(this, urlCanonicalClean(request));
-        assert(request->method.id());
+        assert(request->method);
     } else if (HttpReply *new_rep = dynamic_cast<HttpReply*>(msg)) {
         debugs(85,3,HERE << "REQMOD reply is HTTP reply");
 
         // subscribe to receive reply body
         if (new_rep->body_pipe != NULL) {
-            adaptedBodySource = new_rep->body_pipe;
-            int consumer_ok = adaptedBodySource->setConsumerIfNotLate(this);
-            assert(consumer_ok);
+            icapBodySource = new_rep->body_pipe;
+            assert(icapBodySource->setConsumerIfNotLate(this));
         }
 
         clientStreamNode *node = (clientStreamNode *)client_stream.tail->prev->data;
@@ -1408,36 +1136,35 @@ ClientHttpRequest::noteAdaptationAnswer(HttpMsg *msg)
         request_satisfaction_mode = true;
         request_satisfaction_offset = 0;
         storeEntry()->replaceHttpReply(new_rep);
-        storeEntry()->timestampsSet();
 
-        if (!adaptedBodySource) // no body
+        if (!icapBodySource) // no body
             storeEntry()->complete();
         clientGetMoreData(node, this);
     }
 
     // we are done with getting headers (but may be receiving body)
-    clearAdaptation(virginHeadSource);
+    clearIcap(icapHeadSource);
 
     if (!request_satisfaction_mode)
         doCallouts();
 }
 
 void
-ClientHttpRequest::noteAdaptationQueryAbort(bool final)
+ClientHttpRequest::noteIcapQueryAbort(bool final)
 {
-    clearAdaptation(virginHeadSource);
-    assert(!adaptedBodySource);
-    handleAdaptationFailure(!final);
+    clearIcap(icapHeadSource);
+    assert(!icapBodySource);
+    handleIcapFailure(!final);
 }
 
 void
-ClientHttpRequest::noteMoreBodyDataAvailable(BodyPipe::Pointer)
+ClientHttpRequest::noteMoreBodyDataAvailable(BodyPipe &)
 {
     assert(request_satisfaction_mode);
-    assert(adaptedBodySource != NULL);
+    assert(icapBodySource != NULL);
 
-    if (const size_t contentSize = adaptedBodySource->buf().contentSize()) {
-        BodyPipeCheckout bpc(*adaptedBodySource);
+    if (const size_t contentSize = icapBodySource->buf().contentSize()) {
+        BodyPipeCheckout bpc(*icapBodySource);
         const StoreIOBuffer ioBuf(&bpc.buf, request_satisfaction_offset);
         storeEntry()->write(ioBuf);
         // assume can write everything
@@ -1446,51 +1173,50 @@ ClientHttpRequest::noteMoreBodyDataAvailable(BodyPipe::Pointer)
         bpc.checkIn();
     }
 
-    if (adaptedBodySource->exhausted())
+    if (icapBodySource->exhausted())
         endRequestSatisfaction();
     // else wait for more body data
 }
 
 void
-ClientHttpRequest::noteBodyProductionEnded(BodyPipe::Pointer)
+ClientHttpRequest::noteBodyProductionEnded(BodyPipe &)
 {
-    assert(!virginHeadSource);
-    if (adaptedBodySource != NULL) { // did not end request satisfaction yet
-        // We do not expect more because noteMoreBodyDataAvailable always
+    assert(!icapHeadSource);
+    if (icapBodySource != NULL) { // did not end request satisfaction yet
+        // We do not expect more because noteMoreBodyDataAvailable always 
         // consumes everything. We do not even have a mechanism to consume
         // leftovers after noteMoreBodyDataAvailable notifications seize.
-        assert(adaptedBodySource->exhausted());
+        assert(icapBodySource->exhausted());
         endRequestSatisfaction();
     }
 }
 
 void
-ClientHttpRequest::endRequestSatisfaction()
-{
+ClientHttpRequest::endRequestSatisfaction() {
     debugs(85,4, HERE << this << " ends request satisfaction");
     assert(request_satisfaction_mode);
-    stopConsumingFrom(adaptedBodySource);
+    stopConsumingFrom(icapBodySource);
 
     // TODO: anything else needed to end store entry formation correctly?
     storeEntry()->complete();
 }
 
 void
-ClientHttpRequest::noteBodyProducerAborted(BodyPipe::Pointer)
+ClientHttpRequest::noteBodyProducerAborted(BodyPipe &)
 {
-    assert(!virginHeadSource);
-    stopConsumingFrom(adaptedBodySource);
-    handleAdaptationFailure();
+    assert(!icapHeadSource);
+    stopConsumingFrom(icapBodySource);
+    handleIcapFailure();
 }
 
 void
-ClientHttpRequest::handleAdaptationFailure(bool bypassable)
+ClientHttpRequest::handleIcapFailure(bool bypassable)
 {
-    debugs(85,3, HERE << "handleAdaptationFailure(" << bypassable << ")");
+    debugs(85,3, HERE << "handleIcapFailure(" << bypassable << ")");
 
     const bool usedStore = storeEntry() && !storeEntry()->isEmpty();
     const bool usedPipe = request->body_pipe != NULL &&
-                          request->body_pipe->consumedSize() > 0;
+        request->body_pipe->consumedSize() > 0;
 
     if (bypassable && !usedStore && !usedPipe) {
         debugs(85,3, HERE << "ICAP REQMOD callout failed, bypassing: " << calloutContext);
@@ -1505,17 +1231,15 @@ ClientHttpRequest::handleAdaptationFailure(bool bypassable)
     clientReplyContext *repContext = dynamic_cast<clientReplyContext *>(node->data.getRaw());
     assert(repContext);
 
-    // The original author of the code also wanted to pass an errno to
+    // The original author of the code also wanted to pass an errno to 
     // setReplyToError, but it seems unlikely that the errno reflects the
     // true cause of the error at this point, so I did not pass it.
-    IpAddress noAddr;
-    noAddr.SetNoAddr();
-    ConnStateData * c = getConn();
+    ConnStateData::Pointer c = getConn();
     repContext->setReplyToError(ERR_ICAP_FAILURE, HTTP_INTERNAL_SERVER_ERROR,
-                                request->method, NULL,
-                                (c != NULL ? c->peer : noAddr), request, NULL,
-                                (c != NULL && c->auth_user_request ?
-                                 c->auth_user_request : request->auth_user_request));
+        request->method, NULL,
+        (c != NULL ? &c->peer.sin_addr : &no_addr), request, NULL,
+        (c != NULL && c->auth_user_request ?
+            c->auth_user_request : request->auth_user_request));
 
     node = (clientStreamNode *)client_stream.tail->data;
     clientStreamRead(node, this, node->readBuffer);

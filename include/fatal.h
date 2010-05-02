@@ -4,7 +4,12 @@
 #include "config.h"
 
 SQUIDCEXTERN void fatal(const char *message);
-SQUIDCEXTERN void fatalf(const char *fmt,...) PRINTF_FORMAT_ARG1;
+#if STDC_HEADERS
+SQUIDCEXTERN void
+fatalf(const char *fmt,...) PRINTF_FORMAT_ARG1;
+#else
+SQUIDCEXTERN void fatalf();
+#endif
 SQUIDCEXTERN void fatal_dump(const char *message);
 
 #endif

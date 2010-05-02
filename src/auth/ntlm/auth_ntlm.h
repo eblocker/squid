@@ -5,10 +5,10 @@
 
 #ifndef __AUTH_NTLM_H__
 #define __AUTH_NTLM_H__
-#include "auth/Gadgets.h"
-#include "auth/User.h"
-#include "auth/UserRequest.h"
-#include "auth/Config.h"
+#include "authenticate.h"
+#include "AuthUser.h"
+#include "AuthUserRequest.h"
+#include "AuthConfig.h"
 #include "helper.h"
 
 #define DefaultAuthenticateChildrenMax  32	/* 32 processes */
@@ -25,11 +25,14 @@ typedef enum {
 
 /* Generic */
 
-typedef struct {
+typedef struct
+{
     void *data;
     AuthUserRequest *auth_user_request;
     RH *handler;
-} authenticateStateData;
+}
+
+authenticateStateData;
 #endif
 
 class NTLMUser : public AuthUser
@@ -43,7 +46,7 @@ public:
     dlink_list proxy_auth_list;
 };
 
-MEMPROXY_CLASS_INLINE(NTLMUser);
+MEMPROXY_CLASS_INLINE(NTLMUser)
 
 typedef class NTLMUser ntlm_user_t;
 
@@ -56,7 +59,7 @@ public:
     AuthNTLMUserRequest();
     virtual ~AuthNTLMUserRequest();
     virtual int authenticated() const;
-    virtual void authenticate(HttpRequest * request, ConnStateData * conn, http_hdr_type type);
+    virtual void authenticate(HttpRequest * request, ConnStateData::Pointer conn, http_hdr_type type);
     virtual int module_direction();
     virtual void onConnectionClose(ConnStateData *);
     virtual void module_start(RH *, void *);
@@ -68,12 +71,10 @@ public:
 
     virtual const char * connLastHeader();
 
-    /* we need to store the helper server between requests */
+    /*we need to store the helper server between requests */
     helper_stateful_server *authserver;
-    void releaseAuthServer(void); ///< Release authserver NTLM helpers properly when finished or abandoning.
-
     /* what connection is this associated with */
-//    ConnStateData * conn;
+    ConnStateData::Pointer conn;
 
     /* how far through the authentication process are we? */
     auth_state_t auth_state;
@@ -94,7 +95,7 @@ private:
     NTLMUser * _theUser;
 };
 
-MEMPROXY_CLASS_INLINE(AuthNTLMUserRequest);
+MEMPROXY_CLASS_INLINE(AuthNTLMUserRequest)
 
 /* configuration runtime data */
 
@@ -111,7 +112,7 @@ public:
     virtual void fixHeader(AuthUserRequest *, HttpReply *, http_hdr_type, HttpRequest *);
     virtual void init(AuthConfig *);
     virtual void parse(AuthConfig *, int, char *);
-    virtual void registerWithCacheManager(void);
+    virtual void registerWithCacheManager(CacheManager & manager);
     virtual const char * type() const;
     int authenticateChildren;
     int keep_alive;

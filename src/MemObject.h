@@ -1,5 +1,6 @@
+
 /*
- * $Id$
+ * $Id: MemObject.h,v 1.15 2007/08/13 17:20:51 hno Exp $
  *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
@@ -18,12 +19,12 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *
+ *  
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *
+ *  
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
@@ -38,7 +39,6 @@
 #include "stmem.h"
 #include "CommRead.h"
 #include "RemovalPolicy.h"
-#include "HttpRequestMethod.h"
 
 typedef void STMCB (void *data, StoreIOBuffer wroteBuffer);
 
@@ -90,13 +90,12 @@ public:
     void checkUrlChecksum() const;
 #endif
 
-    HttpRequestMethod method;
+    method_t method;
     char *url;
     mem_hdr data_hdr;
     int64_t inmem_lo;
     dlink_list clients;
-
-    /** \todo move into .cc or .cci */
+    /* TODO: move into .cc or .cci */
     size_t clientCount() const {return nclients;}
 
     bool clientIsFirst(void *sc) const {return (clients.head && sc == clients.head->data);}
@@ -113,7 +112,6 @@ public:
     };
 
     SwapOut swapout;
-
     /* Read only - this reply must be preserved by store clients */
     /* The original reply. possibly with updated metadata. */
     HttpRequest *request;
@@ -122,10 +120,13 @@ public:
     IRCB *ping_reply_callback;
     void *ircb_data;
 
-    struct {
+    struct
+    {
         STABH *callback;
         void *data;
-    } abort;
+    }
+
+    abort;
     char *log_url;
     RemovalPolicyNode repl;
     int id;
@@ -147,9 +148,9 @@ private:
     DeferredReadManager deferredReads;
 };
 
-MEMPROXY_CLASS_INLINE(MemObject);
+MEMPROXY_CLASS_INLINE(MemObject)
 
-/** global current memory removal policy */
+/* global current memory removal policy */
 extern RemovalPolicy *mem_policy;
 
 #endif /* SQUID_MEMOBJECT_H */

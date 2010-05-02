@@ -1,14 +1,11 @@
 #include "config.h"
-
+#include <sstream>
 #include <cppunit/TestAssert.h>
 
+#include "Mem.h"
 #include "testURL.h"
 #include "URL.h"
-#include "Mem.h"
 
-#if HAVE_SSTREAM
-#include <sstream>
-#endif
 
 CPPUNIT_TEST_SUITE_REGISTRATION( testURL );
 

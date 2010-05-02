@@ -3,24 +3,18 @@
 
 // Origin: xstd/TextException
 
-#include "squid.h"
-#include <exception>
 
 // simple exception to report custom errors
 // we may want to change the interface to be able to report system errors
 
-class TextException: public std::exception
+class TextException
 {
 
 public:
-    TextException();
     TextException(const char *aMessage, const char *aFileName = 0, int aLineNo = -1);
-    TextException(const TextException& right);
-    virtual ~TextException() throw();
+    ~TextException();
 
-    virtual const char *what() const throw();
-
-    TextException& operator=(const TextException &right);
+    // ostream &print(ostream &os) const;
 
 public:
     char *message; // read-only

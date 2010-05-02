@@ -1,6 +1,6 @@
 
 /*
- * $Id$
+ * $Id: store_client.cc,v 1.159.2.1 2008/02/25 23:08:51 amosjeffries Exp $
  *
  * DEBUG: section 90    Storage Manager Client-Side Interface
  * AUTHOR: Duane Wessels
@@ -21,12 +21,12 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *
+ *  
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *
+ *  
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
@@ -193,7 +193,7 @@ store_client::store_client(StoreEntry *e) : entry (e)
 
     if (getType() == STORE_DISK_CLIENT)
         /* assert we'll be able to get the data we want */
-        /* maybe we should open swapin_sio here */
+        /* maybe we should open swapin_fd here */
         assert(entry->swap_filen > -1 || entry->swapOutAble());
 
 #if STORE_CLIENT_LIST_DEBUG
@@ -346,7 +346,7 @@ store_client::doCopy(StoreEntry *anEntry)
 
     if (storeClientNoMoreToSend(entry, this)) {
         /* There is no more to send! */
-        debugs(33, 3, HERE << "There is no more to send!");
+	debugs(33, 3, HERE << "There is no more to send!");
         callback(0);
         flags.store_copying = 0;
         return;
@@ -499,7 +499,7 @@ store_client::fail()
     /* synchronous open failures callback from the store,
      * before startSwapin detects the failure.
      * TODO: fix this inconsistent behaviour - probably by
-     * having storeSwapInStart become a callback functions,
+     * having storeSwapInStart become a callback functions, 
      * not synchronous
      */
 
@@ -585,7 +585,8 @@ store_client::readHeader(char const *buf, ssize_t len)
         /*
          * we have (part of) what they want
          */
-        size_t copy_sz = min(copyInto.length, body_sz);
+        size_t copy_sz = XMIN(copyInto.length, body_sz)
+                         ;
         debugs(90, 3, "storeClientReadHeader: copying " << copy_sz << " bytes of body");
         xmemmove(copyInto.data, copyInto.data + mem->swap_hdr_sz, copy_sz);
 
@@ -650,7 +651,7 @@ storeUnregister(store_client * sc, StoreEntry * e, void *data)
     if (mem == NULL)
         return 0;
 
-    debugs(90, 3, "storeUnregister: called for '" << e->getMD5Text() << "'");
+        debugs(90, 3, "storeUnregister: called for '" << e->getMD5Text() << "'");
 
     if (sc == NULL) {
         debugs(90, 3, "storeUnregister: No matching client for '" << e->getMD5Text() << "'");
@@ -766,12 +767,6 @@ CheckQuickAbort2(StoreEntry * entry)
 
     if (Config.quickAbort.min < 0) {
         debugs(90, 3, "CheckQuickAbort2: NO disabled");
-        return 0;
-    }
-
-    if ( Config.rangeOffsetLimit < 0 && mem->request && mem->request->range ) {
-        /* Don't abort if the admin has configured range_ofset -1 to download fully for caching. */
-        debugs(90, 3, "CheckQuickAbort2: NO admin configured range replies to full-download");
         return 0;
     }
 

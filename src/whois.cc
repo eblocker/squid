@@ -1,6 +1,6 @@
 
 /*
- * $Id$
+ * $Id: whois.cc,v 1.45 2007/05/29 13:31:41 amosjeffries Exp $
  *
  * DEBUG: section 75    WHOIS protocol
  * AUTHOR: Duane Wessels, Kostas Anagnostakis
@@ -21,12 +21,12 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *
+ *  
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *
+ *  
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
@@ -49,8 +49,8 @@ class WhoisState
 
 public:
     ~WhoisState();
-    void readReply (int fd, char *aBuffer, size_t aBufferLength, comm_err_t flag, int xerrno);
-    void setReplyToOK(StoreEntry *sentry);
+    void readReply (int fd, char *buf, size_t len, comm_err_t flag, int xerrno);
+    void setReplyToOK(StoreEntry *entry);
     StoreEntry *entry;
     HttpRequest *request;
     FwdState::Pointer fwd;
@@ -91,15 +91,16 @@ whoisStart(FwdState * fwd)
     p->fwd = fwd;
     p->dataWritten = false;
 
-    p->entry->lock();
+    p->entry->lock()
+
+    ;
     comm_add_close_handler(fd, whoisClose, p);
 
     l = p->request->urlpath.size() + 3;
 
     buf = (char *)xmalloc(l);
 
-    String str_print=p->request->urlpath.substr(1,p->request->urlpath.size());
-    snprintf(buf, l, SQUIDSTRINGPH"\r\n", SQUIDSTRINGPRINT(str_print));
+    snprintf(buf, l, "%s\r\n", p->request->urlpath.buf() + 1);
 
     comm_write(fd, buf, strlen(buf), whoisWriteComplete, p, NULL);
     comm_read(fd, p->buf, BUFSIZ, whoisReadReply, p);
@@ -124,16 +125,17 @@ whoisReadReply(int fd, char *buf, size_t len, comm_err_t flag, int xerrno, void 
 }
 
 void
-WhoisState::setReplyToOK(StoreEntry *sentry)
+WhoisState::setReplyToOK(StoreEntry *entry)
 {
     HttpReply *reply = new HttpReply;
-    sentry->buffer();
-    reply->setHeaders(HTTP_OK, "Gatewaying", "text/plain", -1, -1, -2);
-    sentry->replaceHttpReply(reply);
+    entry->buffer();
+    HttpVersion version(1, 0);
+    reply->setHeaders(version, HTTP_OK, "Gatewaying", "text/plain", -1, -1, -2);
+    entry->replaceHttpReply(reply);
 }
 
 void
-WhoisState::readReply (int fd, char *aBuffer, size_t aBufferLength, comm_err_t flag, int xerrno)
+WhoisState::readReply (int fd, char *buf, size_t len, comm_err_t flag, int xerrno)
 {
     int do_next_read = 0;
 
@@ -143,27 +145,27 @@ WhoisState::readReply (int fd, char *aBuffer, size_t aBufferLength, comm_err_t f
         return;
     }
 
-    aBuffer[aBufferLength] = '\0';
-    debugs(75, 3, "whoisReadReply: FD " << fd << " read " << aBufferLength << " bytes");
-    debugs(75, 5, "{" << aBuffer << "}");
+    buf[len] = '\0';
+    debugs(75, 3, "whoisReadReply: FD " << fd << " read " << len << " bytes");
+    debugs(75, 5, "{" << buf << "}");
 
-    if (flag == COMM_OK && aBufferLength > 0) {
+    if (flag == COMM_OK && len > 0) {
         if (!dataWritten)
             setReplyToOK(entry);
 
-        kb_incr(&statCounter.server.all.kbytes_in, aBufferLength);
+        kb_incr(&statCounter.server.all.kbytes_in, len);
 
-        kb_incr(&statCounter.server.http.kbytes_in, aBufferLength);
+        kb_incr(&statCounter.server.http.kbytes_in, len);
 
         /* No range support, we always grab it all */
         dataWritten = true;
 
-        entry->append(aBuffer, aBufferLength);
+        entry->append(buf, len);
 
         entry->flush();
 
         do_next_read = 1;
-    } else if (flag != COMM_OK || aBufferLength < 0) {
+    } else if (flag != COMM_OK || len < 0) {
         debugs(50, 2, "whoisReadReply: FD " << fd << ": read failure: " << xstrerror() << ".");
 
         if (ignoreErrno(errno)) {
@@ -193,7 +195,7 @@ WhoisState::readReply (int fd, char *aBuffer, size_t aBufferLength, comm_err_t f
     }
 
     if (do_next_read)
-        comm_read(fd, aBuffer, BUFSIZ, whoisReadReply, this);
+        comm_read(fd, buf, BUFSIZ, whoisReadReply, this);
 }
 
 static void

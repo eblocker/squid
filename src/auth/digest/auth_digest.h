@@ -6,10 +6,10 @@
 #ifndef __AUTH_DIGEST_H__
 #define __AUTH_DIGEST_H__
 #include "rfc2617.h"
-#include "auth/Gadgets.h"
-#include "auth/User.h"
-#include "auth/UserRequest.h"
-#include "auth/Config.h"
+#include "authenticate.h"
+#include "AuthUser.h"
+#include "AuthUserRequest.h"
+#include "AuthConfig.h"
 #include "helper.h"
 
 /* Generic */
@@ -44,7 +44,7 @@ public:
 
 };
 
-MEMPROXY_CLASS_INLINE(DigestUser);
+MEMPROXY_CLASS_INLINE(DigestUser)
 
 typedef class DigestUser digest_user_h;
 
@@ -61,7 +61,7 @@ public:
     virtual ~AuthDigestUserRequest();
 
     virtual int authenticated() const;
-    virtual void authenticate(HttpRequest * request, ConnStateData * conn, http_hdr_type type);
+    virtual void authenticate(HttpRequest * request, ConnStateData::Pointer conn, http_hdr_type type);
     virtual int module_direction();
     virtual void addHeader(HttpReply * rep, int accel);
 #if WAITING_FOR_TE
@@ -74,13 +74,13 @@ public:
 
     virtual const AuthUser *user() const {return _theUser;}
 
-    virtual void user(AuthUser *aUser) {_theUser=dynamic_cast<DigestUser *>(aUser);}
+    virtual void user (AuthUser *aUser) {_theUser=dynamic_cast<DigestUser *>(aUser);}
 
     CredentialsState credentials() const;
     void credentials(CredentialsState);
 
-    void authUser(AuthUser *);
-    AuthUser *authUser() const;
+    void authUser(auth_user_t *);
+    auth_user_t *authUser() const;
 
     char *nonceb64;		/* "dcd98b7102dd2f0e8b11d0f600bfb0c093" */
     char *cnonce;		/* "0a4f113b" */
@@ -93,11 +93,19 @@ public:
     char *uri;			/* = "/dir/index.html" */
     char *response;
 
-    struct {
-        unsigned int authinfo_sent:1;
-        unsigned int invalid_password:1;
-        unsigned int helper_queried:1;
-    } flags;
+    struct
+    {
+
+unsigned int authinfo_sent:
+        1;
+
+	unsigned int invalid_password:1;
+
+unsigned int helper_queried:
+        1;
+    }
+
+    flags;
     digest_nonce_h *nonce;
 
 private:
@@ -105,11 +113,12 @@ private:
     CredentialsState credentials_ok;
 };
 
-MEMPROXY_CLASS_INLINE(AuthDigestUserRequest);
+MEMPROXY_CLASS_INLINE(AuthDigestUserRequest)
 
 /* data to be encoded into the nonce's b64 representation */
 
-struct _digest_nonce_data {
+struct _digest_nonce_data
+{
     time_t creationtime;
     /* in memory address of the nonce struct (similar purpose to an ETag) */
     digest_nonce_h *self;
@@ -118,7 +127,8 @@ struct _digest_nonce_data {
 
 /* the nonce structure we'll pass around */
 
-struct _digest_nonce_h : public hash_link {
+struct _digest_nonce_h : public hash_link
+{
     digest_nonce_data noncedata;
     /* number of uses we've seen of this nonce */
     unsigned long nc;
@@ -128,10 +138,17 @@ struct _digest_nonce_h : public hash_link {
     DigestUser *user;
     /* has this nonce been invalidated ? */
 
-    struct {
-        unsigned int valid:1;
-        unsigned int incache:1;
-    } flags;
+    struct
+    {
+
+unsigned int valid:
+        1;
+
+unsigned int incache:
+        1;
+    }
+
+    flags;
 };
 
 /* configuration runtime data */
@@ -149,7 +166,7 @@ public:
     virtual void fixHeader(AuthUserRequest *, HttpReply *, http_hdr_type, HttpRequest *);
     virtual void init(AuthConfig *);
     virtual void parse(AuthConfig *, int, char *);
-    virtual void registerWithCacheManager(void);
+    virtual void registerWithCacheManager(CacheManager & manager);
     virtual const char * type() const;
     int authenticateChildren;
     char *digestAuthRealm;
@@ -160,7 +177,6 @@ public:
     int NonceStrictness;
     int CheckNonceCount;
     int PostWorkaround;
-    int utf8;
 };
 
 typedef class AuthDigestConfig auth_digest_config;

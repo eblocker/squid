@@ -1,6 +1,6 @@
 
 /*
- * $Id$
+ * $Id: store_rebuild.cc,v 1.89 2007/04/28 22:26:38 hno Exp $
  *
  * DEBUG: section 20    Store Rebuild Routines
  * AUTHOR: Duane Wessels
@@ -21,12 +21,12 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *
+ *  
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *
+ *  
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
@@ -45,12 +45,15 @@ static struct _store_rebuild_data counts;
 static struct timeval rebuild_start;
 static void storeCleanup(void *);
 
-typedef struct {
+typedef struct
+{
     /* total number of "swap.state" entries that will be read */
     int total;
     /* number of entries read so far */
     int scanned;
-} store_rebuild_progress;
+}
+
+store_rebuild_progress;
 
 static store_rebuild_progress *RebuildProgress = NULL;
 
@@ -110,7 +113,7 @@ storeCleanup(void *datanotused)
         debugs(20, 1, "  Completed Validation Procedure");
         debugs(20, 1, "  Validated " << validated << " Entries");
         debugs(20, 1, "  store_swap_size = " << store_swap_size);
-        StoreController::store_dirs_rebuilding--;
+	StoreController::store_dirs_rebuilding--;
         assert(0 == StoreController::store_dirs_rebuilding);
 
         if (opt_store_doublecheck)
@@ -183,8 +186,8 @@ storeRebuildStart(void)
     rebuild_start = current_time;
     /*
      * Note: store_dirs_rebuilding is initialized to 1.
-     *
-     * When we parse the configuration and construct each swap dir,
+     *  
+     * When we parse the configuration and construct each swap dir, 
      * the construction of that raises the rebuild count.
      *
      * This prevents us from trying to write clean logs until we

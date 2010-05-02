@@ -1,5 +1,6 @@
+
 /*
- * $Id$
+ * $Id: defines.h,v 1.122 2007/08/13 17:20:51 hno Exp $
  *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
@@ -18,17 +19,18 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *
+ *  
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *
+ *  
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
  *
  */
+
 #ifndef SQUID_DEFINES_H
 #define SQUID_DEFINES_H
 
@@ -37,10 +39,6 @@
 #endif
 #ifndef FALSE
 #define FALSE 0
-#endif
-
-#ifndef BUFSIZ
-#define BUFSIZ  4096            /* make unreasonable guess */
 #endif
 
 #define ACL_NAME_SZ 32
@@ -65,8 +63,6 @@
 #define COMM_NONBLOCKING	0x01
 #define COMM_NOCLOEXEC		0x02
 #define COMM_REUSEADDR		0x04
-#define COMM_TRANSPARENT	0x08
-#define COMM_DOBIND		0x10
 
 #include "Debug.h"
 #define do_debug(SECTION, LEVEL) ((Debug::level = (LEVEL)) > Debug::Levels[SECTION])
@@ -208,6 +204,8 @@
 #define STORE_HDR_METASIZE (4*sizeof(time_t)+2*sizeof(u_short)+sizeof(uint64_t))
 #define STORE_HDR_METASIZE_OLD (4*sizeof(time_t)+2*sizeof(u_short)+sizeof(size_t))
 
+#define PINGER_PAYLOAD_SZ 8192
+
 #define COUNT_INTERVAL 60
 /*
  * keep 60 minutes' worth of per-minute readings (+ current reading)
@@ -217,6 +215,11 @@
  * keep 3 days' (72 hours) worth of hourly readings
  */
 #define N_COUNT_HOUR_HIST (86400 * 3) / (60 * COUNT_INTERVAL)
+
+/* were to look for errors if config path fails */
+#ifndef DEFAULT_SQUID_ERROR_DIR
+#define DEFAULT_SQUID_ERROR_DIR "/usr/local/squid/etc/errors"
+#endif
 
 /* handy to determine the #elements in a static array */
 #define countof(arr) (sizeof(arr)/sizeof(*arr))

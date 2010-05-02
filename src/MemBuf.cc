@@ -1,5 +1,6 @@
+
 /*
- * $Id$
+ * $Id: MemBuf.cc,v 1.42 2006/09/20 08:13:38 adrian Exp $
  *
  * DEBUG: section 59    auto-growing Memory Buffer with printf
  * AUTHOR: Alex Rousskov
@@ -20,85 +21,82 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *
+ *  
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *
+ *  
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
  *
  */
 
-/**
- \todo use memory pools for .buf recycling @?@ @?@
+/*
+ * To-Do: use memory pools for .buf recycling @?@ @?@
  */
 
-/**
- \verbatim
+/*
  * Rationale:
  * ----------
- *
+ * 
  * Here is how one would comm_write an object without MemBuffer:
- *
+ * 
  * {
  * -- allocate:
  * buf = malloc(big_enough);
- *
+ * 
  * -- "pack":
  * snprintf object(s) piece-by-piece constantly checking for overflows
  * and maintaining (buf+offset);
  * ...
- *
+ * 
  * -- write
  * comm_write(buf, free, ...);
  * }
- *
+ * 
  * The whole "packing" idea is quite messy: We are given a buffer of fixed
  * size and we have to check all the time that we still fit. Sounds logical.
  *
  * However, what happens if we have more data? If we are lucky to stop before
  * we overrun any buffers, we still may have garbage (e.g. half of ETag) in
  * the buffer.
- *
+ * 
  * MemBuffer:
  * ----------
- *
+ * 
  * MemBuffer is a memory-resident buffer with printf()-like interface. It
  * hides all offest handling and overflow checking. Moreover, it has a
  * build-in control that no partial data has been written.
- *
+ * 
  * MemBuffer is designed to handle relatively small data. It starts with a
  * small buffer of configurable size to avoid allocating huge buffers all the
  * time.  MemBuffer doubles the buffer when needed. It assert()s that it will
  * not grow larger than a configurable limit. MemBuffer has virtually no
  * overhead (and can even reduce memory consumption) compared to old
  * "packing" approach.
- *
+ * 
  * MemBuffer eliminates both "packing" mess and truncated data:
- *
+ * 
  * {
  * -- setup
  * MemBuf buf;
- *
+ * 
  * -- required init with optional size tuning (see #defines for defaults)
  * buf.init(initial-size, absolute-maximum);
- *
+ * 
  * -- "pack" (no need to handle offsets or check for overflows)
  * buf.Printf(...);
  * ...
- *
+ * 
  * -- write
  * comm_write_mbuf(fd, buf, handler, data);
  *
  * -- *iff* you did not give the buffer away, free it yourself
  * -- buf.clean();
  * }
- \endverbatim
  */
-
 /* if you have configure you can use this */
 #if defined(HAVE_CONFIG_H)
 #include "config.h"
@@ -124,7 +122,7 @@
 
 CBDATA_CLASS_INIT(MemBuf);
 
-/** init with defaults */
+/* init with defaults */
 void
 MemBuf::init()
 {
@@ -132,7 +130,7 @@ MemBuf::init()
 }
 
 
-/** init with specific sizes */
+/* init with specific sizes */
 void
 MemBuf::init(mb_size_t szInit, mb_size_t szMax)
 {
@@ -145,7 +143,7 @@ MemBuf::init(mb_size_t szInit, mb_size_t szMax)
     grow(szInit);
 }
 
-/**
+/*
  * cleans the mb; last function to call if you do not give .buf away with
  * memBufFreeFunc
  */
@@ -164,10 +162,8 @@ MemBuf::clean()
     }
 }
 
-/**
- * Cleans the buffer without changing its capacity
- * if called with a Null buffer, calls memBufDefInit()
- */
+/* cleans the buffer without changing its capacity
+ * if called with a Null buffer, calls memBufDefInit() */
 void
 MemBuf::reset()
 {
@@ -181,9 +177,7 @@ MemBuf::reset()
     }
 }
 
-/**
- * Unfortunate hack to test if the buffer has been Init()ialized
- */
+/* unfortunate hack to test if the buffer has been Init()ialized */
 int
 MemBuf::isNull()
 {
@@ -207,7 +201,7 @@ mb_size_t MemBuf::potentialSpaceSize() const
     return (terminatedSize < max_capacity) ? max_capacity - terminatedSize : 0;
 }
 
-/// removes sz bytes and "packs" by moving content left
+// removes sz bytes and "packs" by moving content left
 void MemBuf::consume(mb_size_t shiftSize)
 {
     const mb_size_t cSize = contentSize();
@@ -226,23 +220,11 @@ void MemBuf::consume(mb_size_t shiftSize)
     PROF_stop(MemBuf_consume);
 }
 
-// removes last tailSize bytes
-void MemBuf::truncate(mb_size_t tailSize)
-{
-    const mb_size_t cSize = contentSize();
-    assert(0 <= tailSize && tailSize <= cSize);
-    assert(!stolen); /* not frozen */
-    size -= tailSize;
-}
-
-/**
- * calls memcpy, appends exactly size bytes,
- * extends buffer or creates buffer if needed.
- */
+// calls memcpy, appends exactly size bytes, extends buffer if needed
 void MemBuf::append(const char *newContent, mb_size_t sz)
 {
     assert(sz >= 0);
-    assert(buf || (0==capacity && 0==size));
+    assert(buf);
     assert(!stolen); /* not frozen */
 
     PROF_start(MemBuf_append);
@@ -259,7 +241,7 @@ void MemBuf::append(const char *newContent, mb_size_t sz)
     PROF_stop(MemBuf_append);
 }
 
-/// updates content size after external append
+// updates content size after external append
 void MemBuf::appended(mb_size_t sz)
 {
     assert(size + sz <= capacity);
@@ -267,14 +249,11 @@ void MemBuf::appended(mb_size_t sz)
     terminate();
 }
 
-/**
- * Null-terminate in case we are used as a string.
- * Extra octet is not counted in the content size (or space size)
- *
- \note XXX: but the extra octet is counted when growth decisions are made!
- *     This will cause the buffer to grow when spaceSize() == 1 on append,
- *     which will assert() if the buffer cannot grow any more.
- */
+// 0-terminate in case we are used as a string.
+// Extra octet is not counted in the content size (or space size)
+// XXX: but the extra octet is counted when growth decisions are made!
+// This will cause the buffer to grow when spaceSize() == 1 on append,
+// which will assert() if the buffer cannot grow any more.
 void MemBuf::terminate()
 {
     assert(size < capacity);
@@ -282,22 +261,31 @@ void MemBuf::terminate()
 }
 
 /* calls memBufVPrintf */
+#if STDC_HEADERS
 void
 MemBuf::Printf(const char *fmt,...)
 {
     va_list args;
     va_start(args, fmt);
+#else
+void
+MemBuf::Printf(va_alist)
+va_dcl
+{
+    va_list args;
+    mb_size_t sz = 0;
+    va_start(args);
+    const char *fmt = va_arg(args, char *);
+#endif
+
     vPrintf(fmt, args);
     va_end(args);
 }
 
 
-/**
- * vPrintf for other printf()'s to use; calls vsnprintf, extends buf if needed
- */
+/* vPrintf for other printf()'s to use; calls vsnprintf, extends buf if needed */
 void
-MemBuf::vPrintf(const char *fmt, va_list vargs)
-{
+MemBuf::vPrintf(const char *fmt, va_list vargs) {
 #ifdef VA_COPY
     va_list ap;
 #endif
@@ -346,17 +334,15 @@ MemBuf::vPrintf(const char *fmt, va_list vargs)
     }
 }
 
-/**
+/*
+ * returns free() function to be used.
  * Important:
  *   calling this function "freezes" mb,
  *   do not _update_ mb after that in any way
  *   (you still can read-access .buf and .size)
- *
- \retval free() function to be used.
  */
 FREE *
-MemBuf::freeFunc()
-{
+MemBuf::freeFunc() {
     FREE *ff;
     assert(buf);
     assert(!stolen);	/* not frozen */
@@ -366,12 +352,9 @@ MemBuf::freeFunc()
     return ff;
 }
 
-/**
- * Grows (doubles) internal buffer to satisfy required minimal capacity
- */
+/* grows (doubles) internal buffer to satisfy required minimal capacity */
 void
-MemBuf::grow(mb_size_t min_cap)
-{
+MemBuf::grow(mb_size_t min_cap) {
     size_t new_cap;
     size_t buf_cap;
 
@@ -411,12 +394,9 @@ MemBuf::grow(mb_size_t min_cap)
 
 /* Reports */
 
-/**
- * Puts report on MemBuf _module_ usage into mb
- */
+/* puts report on MemBuf _module_ usage into mb */
 void
-memBufReport(MemBuf * mb)
-{
+memBufReport(MemBuf * mb) {
     assert(mb);
     mb->Printf("memBufReport is not yet implemented @?@\n");
 }

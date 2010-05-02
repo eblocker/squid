@@ -1,5 +1,6 @@
+
 /*
- * $Id$
+ * $Id: helper.cc,v 1.90 2007/11/13 21:25:35 rousskov Exp $
  *
  * DEBUG: section 84    Helper process maintenance
  * AUTHOR: Harvest Derived?
@@ -20,12 +21,12 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *
+ *  
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *
+ *  
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
@@ -34,7 +35,6 @@
 
 #include "squid.h"
 #include "helper.h"
-#include "SquidMath.h"
 #include "SquidTime.h"
 #include "Store.h"
 #include "comm.h"
@@ -42,11 +42,6 @@
 #include "wordlist.h"
 
 #define HELPER_MAX_ARGS 64
-
-/* size of helper read buffer (maximum?). no reason given for this size */
-/* though it has been seen to be too short for some requests */
-/* it is dynamic, so increasng should not have side effects */
-#define BUF_8KB	8192
 
 static IOCB helperHandleRead;
 static IOCB helperStatefulHandleRead;
@@ -106,7 +101,7 @@ helperOpenServers(helper * hlp)
 
     debugs(84, 1, "helperOpenServers: Starting " << need_new << "/" << hlp->n_to_start << " '" << shortname << "' processes");
 
-    if (need_new < 1) {
+    if(need_new < 1) {
         debugs(84, 1, "helperOpenServers: No '" << shortname << "' processes needed.");
     }
 
@@ -130,7 +125,6 @@ helperOpenServers(helper * hlp)
                         progname,
                         args,
                         shortname,
-                        hlp->addr,
                         &rfd,
                         &wfd,
                         &hIpc);
@@ -147,10 +141,9 @@ helperOpenServers(helper * hlp)
         srv->hIpc = hIpc;
         srv->pid = pid;
         srv->index = k;
-        srv->addr = hlp->addr;
         srv->rfd = rfd;
         srv->wfd = wfd;
-        srv->rbuf = (char *)memAllocBuf(BUF_8KB, &srv->rbuf_sz);
+        srv->rbuf = (char *)memAllocBuf(8192, &srv->rbuf_sz);
         srv->wqueue = new MemBuf;
         srv->roffset = 0;
         srv->requests = (helper_request **)xcalloc(hlp->concurrency ? hlp->concurrency : 1, sizeof(*srv->requests));
@@ -183,9 +176,9 @@ helperOpenServers(helper * hlp)
     helperKickQueue(hlp);
 }
 
-/**
+/*
  * DPW 2007-05-08
- *
+ * 
  * helperStatefulOpenServers: create the stateful child helper processes
  */
 void
@@ -213,7 +206,7 @@ helperStatefulOpenServers(statefulhelper * hlp)
 
     debugs(84, 1, "helperOpenServers: Starting " << need_new << "/" << hlp->n_to_start << " '" << shortname << "' processes");
 
-    if (need_new < 1) {
+    if(need_new < 1) {
         debugs(84, 1, "helperStatefulOpenServers: No '" << shortname << "' processes needed.");
     }
 
@@ -232,17 +225,16 @@ helperStatefulOpenServers(statefulhelper * hlp)
 
     for (int k = 0; k < need_new; k++) {
         getCurrentTime();
-        int rfd = -1;
-        int wfd = -1;
-        void * hIpc;
+	int rfd = -1;
+	int wfd = -1;
+	void * hIpc;
         pid_t pid = ipcCreate(hlp->ipc_type,
-                              progname,
-                              args,
-                              shortname,
-                              hlp->addr,
-                              &rfd,
-                              &wfd,
-                              &hIpc);
+                        progname,
+                        args,
+                        shortname,
+                        &rfd,
+                        &wfd,
+                        &hIpc);
 
         if (pid < 0) {
             debugs(84, 1, "WARNING: Cannot run '" << progname << "' process.");
@@ -259,10 +251,9 @@ helperStatefulOpenServers(statefulhelper * hlp)
         srv->stats.submits = 0;
         srv->stats.releases = 0;
         srv->index = k;
-        srv->addr = hlp->addr;
         srv->rfd = rfd;
         srv->wfd = wfd;
-        srv->rbuf = (char *)memAllocBuf(BUF_8KB, &srv->rbuf_sz);
+        srv->rbuf = (char *)memAllocBuf(8192, &srv->rbuf_sz);
         srv->roffset = 0;
         srv->parent = cbdataReference(hlp);
 
@@ -289,6 +280,7 @@ helperStatefulOpenServers(statefulhelper * hlp)
         comm_add_close_handler(rfd, helperStatefulServerFree, srv);
 
         comm_read(srv->rfd, srv->rbuf, srv->rbuf_sz - 1, helperStatefulHandleRead, srv);
+
     }
 
     hlp->last_restart = squid_curtime;
@@ -322,7 +314,8 @@ helperSubmit(helper * hlp, const char *buf, HLPCB * callback, void *data)
     debugs(84, 9, "helperSubmit: " << buf);
 }
 
-/// lastserver = "server last used as part of a reserved request sequence"
+/* lastserver = "server last used as part of a reserved request sequence"
+ */
 void
 helperStatefulSubmit(statefulhelper * hlp, const char *buf, HLPSCB * callback, void *data, helper_stateful_server * lastserver)
 {
@@ -347,13 +340,14 @@ helperStatefulSubmit(statefulhelper * hlp, const char *buf, HLPSCB * callback, v
 
     if ((buf != NULL) && lastserver) {
         debugs(84, 5, "StatefulSubmit with lastserver " << lastserver);
+
         assert(lastserver->flags.reserved);
         assert(!(lastserver->request));
 
         debugs(84, 5, "StatefulSubmit dispatching");
         helperStatefulDispatch(lastserver, r);
     } else {
-        helper_stateful_server *srv;
+	helper_stateful_server *srv;
         if ((srv = StatefulGetFirstAvailable(hlp))) {
             helperStatefulDispatch(srv, r);
         } else
@@ -363,7 +357,7 @@ helperStatefulSubmit(statefulhelper * hlp, const char *buf, HLPSCB * callback, v
     debugs(84, 9, "helperStatefulSubmit: placeholder: '" << r->placeholder << "', buf '" << buf << "'.");
 }
 
-/**
+/*
  * DPW 2007-05-08
  *
  * helperStatefulReleaseServer tells the helper that whoever was
@@ -377,24 +371,21 @@ helperStatefulReleaseServer(helper_stateful_server * srv)
         return;
 
     srv->stats.releases++;
-
     srv->flags.reserved = 0;
+
     if (srv->parent->OnEmptyQueue != NULL && srv->data)
         srv->parent->OnEmptyQueue(srv->data);
 
     helperStatefulServerDone(srv);
 }
 
-/** return a pointer to the stateful routines data area */
 void *
 helperStatefulServerGetData(helper_stateful_server * srv)
+/* return a pointer to the stateful routines data area */
 {
     return srv->data;
 }
 
-/**
- * Dump some stats about the helper states to a StoreEntry
- */
 void
 helperStats(StoreEntry * sentry, helper * hlp, const char *label)
 {
@@ -609,7 +600,8 @@ helperStatefulShutdown(statefulhelper * hlp)
         if (srv->flags.reserved) {
             if (shutting_down) {
                 debugs(84, 3, "helperStatefulShutdown: " << hlp->id_name << " #" << srv->index + 1 << " is RESERVED. Closing anyway.");
-            } else {
+            }
+            else {
                 debugs(84, 3, "helperStatefulShutdown: " << hlp->id_name << " #" << srv->index + 1 << " is RESERVED. Not Shutting Down Yet.");
                 continue;
             }
@@ -921,7 +913,10 @@ helperHandleRead(int fd, char *buf, size_t len, comm_err_t flag, int xerrno, voi
 
             srv->dispatch_time = r->dispatch_time;
 
-            hlp->stats.avg_svc_time = Math::intAverage(hlp->stats.avg_svc_time, tvSubMsec(r->dispatch_time, current_time), hlp->stats.replies, REDIRECT_AV_FACTOR);
+            hlp->stats.avg_svc_time =
+                intAverage(hlp->stats.avg_svc_time,
+                           tvSubMsec(r->dispatch_time, current_time),
+                           hlp->stats.replies, REDIRECT_AV_FACTOR);
 
             helperRequestFree(r);
         } else {
@@ -996,7 +991,7 @@ helperStatefulHandleRead(int fd, char *buf, size_t len, comm_err_t flag, int xer
 
     if ((t = strchr(srv->rbuf, '\n'))) {
         /* end of reply found */
-        int called = 1;
+	int called = 1;
         debugs(84, 3, "helperStatefulHandleRead: end of reply found");
 
         if (t > srv->rbuf && t[-1] == '\r')
@@ -1008,7 +1003,7 @@ helperStatefulHandleRead(int fd, char *buf, size_t len, comm_err_t flag, int xer
             r->callback(r->data, srv, srv->rbuf);
         } else {
             debugs(84, 1, "StatefulHandleRead: no callback data registered");
-            called = 0;
+	    called = 0;
         }
 
         srv->flags.busy = 0;
@@ -1018,19 +1013,19 @@ helperStatefulHandleRead(int fd, char *buf, size_t len, comm_err_t flag, int xer
         hlp->stats.replies++;
         srv->answer_time = current_time;
         hlp->stats.avg_svc_time =
-            Math::intAverage(hlp->stats.avg_svc_time,
-                             tvSubMsec(srv->dispatch_time, current_time),
-                             hlp->stats.replies, REDIRECT_AV_FACTOR);
+            intAverage(hlp->stats.avg_svc_time,
+                       tvSubMsec(srv->dispatch_time, current_time),
+                       hlp->stats.replies, REDIRECT_AV_FACTOR);
 
-        if (called)
-            helperStatefulServerDone(srv);
-        else
-            helperStatefulReleaseServer(srv);
+	if (called)
+	    helperStatefulServerDone(srv);
+	else
+	    helperStatefulReleaseServer(srv);
     }
 
     if (srv->rfd != -1)
         comm_read(srv->rfd, srv->rbuf + srv->roffset, srv->rbuf_sz - srv->roffset - 1,
-                  helperStatefulHandleRead, srv);
+              helperStatefulHandleRead, srv);
 }
 
 static void
@@ -1188,7 +1183,7 @@ StatefulGetFirstAvailable(statefulhelper * hlp)
         if ((hlp->IsAvailable != NULL) && (srv->data != NULL) && !(hlp->IsAvailable(srv->data)))
             continue;
 
-        debugs(84, 5, "StatefulGetFirstAvailable: returning srv-" << srv->index);
+	debugs(84, 5, "StatefulGetFirstAvailable: returning srv-" << srv->index);
         return srv;
     }
 
@@ -1292,7 +1287,7 @@ helperStatefulDispatch(helper_stateful_server * srv, helper_stateful_request * r
     if (!cbdataReferenceValid(r->data)) {
         debugs(84, 1, "helperStatefulDispatch: invalid callback data");
         helperStatefulRequestFree(r);
-        helperStatefulReleaseServer(srv);
+	helperStatefulReleaseServer(srv);
         return;
     }
 
@@ -1379,7 +1374,7 @@ helperRequestFree(helper_request * r)
 static void
 helperStatefulRequestFree(helper_stateful_request * r)
 {
-    if (r) {
+    if(r) {
         cbdataReferenceDone(r->data);
         xfree(r->buf);
         delete r;

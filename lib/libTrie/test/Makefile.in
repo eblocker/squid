@@ -29,8 +29,8 @@ POST_INSTALL = :
 NORMAL_UNINSTALL = :
 PRE_UNINSTALL = :
 POST_UNINSTALL = :
-TESTS = trie$(EXEEXT)
-check_PROGRAMS = trie$(EXEEXT)
+TESTS = trie$(EXEEXT) trie-c$(EXEEXT)
+check_PROGRAMS = trie$(EXEEXT) trie-c$(EXEEXT)
 subdir = test
 DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
@@ -44,16 +44,23 @@ CONFIG_CLEAN_FILES =
 am_trie_OBJECTS = trie.$(OBJEXT)
 trie_OBJECTS = $(am_trie_OBJECTS)
 trie_DEPENDENCIES = $(top_builddir)/src/libTrie.a
+am_trie_c_OBJECTS = trie-c.$(OBJEXT)
+trie_c_OBJECTS = $(am_trie_c_OBJECTS)
+trie_c_DEPENDENCIES = $(top_builddir)/src/libTrie.a
 DEFAULT_INCLUDES = -I.@am__isrc@ -I$(top_builddir)
 depcomp = $(SHELL) $(top_srcdir)/cfgaux/depcomp
 am__depfiles_maybe = depfiles
+COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
+	$(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
+CCLD = $(CC)
+LINK = $(CCLD) $(AM_CFLAGS) $(CFLAGS) $(AM_LDFLAGS) $(LDFLAGS) -o $@
 CXXCOMPILE = $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) \
 	$(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS)
 CXXLD = $(CXX)
 CXXLINK = $(CXXLD) $(AM_CXXFLAGS) $(CXXFLAGS) $(AM_LDFLAGS) $(LDFLAGS) \
 	-o $@
-SOURCES = $(trie_SOURCES)
-DIST_SOURCES = $(trie_SOURCES)
+SOURCES = $(trie_SOURCES) $(trie_c_SOURCES)
+DIST_SOURCES = $(trie_SOURCES) $(trie_c_SOURCES)
 ETAGS = etags
 CTAGS = ctags
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
@@ -66,9 +73,9 @@ AWK = @AWK@
 CC = @CC@
 CCDEPMODE = @CCDEPMODE@
 CFLAGS = @CFLAGS@
+CPP = @CPP@
 CPPFLAGS = @CPPFLAGS@
 CXX = @CXX@
-CXXCPP = @CXXCPP@
 CXXDEPMODE = @CXXDEPMODE@
 CXXFLAGS = @CXXFLAGS@
 CYGPATH_W = @CYGPATH_W@
@@ -151,14 +158,16 @@ top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 INCLUDES = -I$(top_srcdir)/include
-AM_CFLAGS = $(TRIE_CFLAGS)
-AM_CXXFLAGS = $(TRIE_CXXFLAGS)
+AM_CFLAGS = @TRIE_CFLAGS@
+AM_CXXFLAGS = @TRIE_CXXFLAGS@
 trie_SOURCES = trie.cc
 trie_LDADD = $(top_builddir)/src/libTrie.a
+trie_c_SOURCES = trie-c.c
+trie_c_LDADD = $(top_builddir)/src/libTrie.a -lstdc++
 all: all-am
 
 .SUFFIXES:
-.SUFFIXES: .cc .o .obj
+.SUFFIXES: .c .cc .o .obj
 $(srcdir)/Makefile.in: @MAINTAINER_MODE_TRUE@ $(srcdir)/Makefile.am  $(am__configure_deps)
 	@for dep in $?; do \
 	  case '$(am__configure_deps)' in \
@@ -194,6 +203,9 @@ clean-checkPROGRAMS:
 trie$(EXEEXT): $(trie_OBJECTS) $(trie_DEPENDENCIES) 
 	@rm -f trie$(EXEEXT)
 	$(CXXLINK) $(trie_OBJECTS) $(trie_LDADD) $(LIBS)
+trie-c$(EXEEXT): $(trie_c_OBJECTS) $(trie_c_DEPENDENCIES) 
+	@rm -f trie-c$(EXEEXT)
+	$(LINK) $(trie_c_OBJECTS) $(trie_c_LDADD) $(LIBS)
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
@@ -201,7 +213,22 @@ mostlyclean-compile:
 distclean-compile:
 	-rm -f *.tab.c
 
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/trie-c.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/trie.Po@am__quote@
+
+.c.o:
+@am__fastdepCC_TRUE@	$(COMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
+@am__fastdepCC_TRUE@	mv -f $(DEPDIR)/$*.Tpo $(DEPDIR)/$*.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='$<' object='$@' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(COMPILE) -c $<
+
+.c.obj:
+@am__fastdepCC_TRUE@	$(COMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ `$(CYGPATH_W) '$<'`
+@am__fastdepCC_TRUE@	mv -f $(DEPDIR)/$*.Tpo $(DEPDIR)/$*.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='$<' object='$@' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(COMPILE) -c `$(CYGPATH_W) '$<'`
 
 .cc.o:
 @am__fastdepCXX_TRUE@	$(CXXCOMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
@@ -465,9 +492,6 @@ uninstall-am:
 	mostlyclean-generic pdf pdf-am ps ps-am tags uninstall \
 	uninstall-am
 
-
-#trie_c_SOURCES = trie-c.c
-#trie_c_LDADD = $(top_builddir)/src/libTrie.a -lm
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.
 .NOEXPORT:

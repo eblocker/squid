@@ -1,6 +1,6 @@
 
 /*
- * $Id$
+ * $Id: store_repl_heap.cc,v 1.25 2007/04/30 16:56:19 wessels Exp $
  *
  * DEBUG: section 81    Store HEAP Removal Policies
  * AUTHOR: Henrik Nordstrom
@@ -12,7 +12,7 @@
  * For details on the original heap policy work and the thinking behind see
  * http://www.hpl.hp.com/techreports/1999/HPL-1999-69.html
  *
- *
+ * 
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
  * ----------------------------------------------------------
  *
@@ -29,12 +29,12 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *
+ *  
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *
+ *  
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
@@ -52,7 +52,8 @@ REMOVALPOLICYCREATE createRemovalPolicy_heap;
 
 static int nr_heap_policies = 0;
 
-struct HeapPolicyData {
+struct HeapPolicyData
+{
     void setPolicyNode (StoreEntry *, void *) const;
     RemovalPolicy *policy;
     heap *theHeap;
@@ -153,7 +154,8 @@ heap_referenced(RemovalPolicy * policy, const StoreEntry * entry,
 
 typedef struct _HeapWalkData HeapWalkData;
 
-struct _HeapWalkData {
+struct _HeapWalkData
+{
     size_t current;
 };
 
@@ -206,7 +208,8 @@ heap_walkInit(RemovalPolicy * policy)
 
 typedef struct _HeapPurgeData HeapPurgeData;
 
-struct _HeapPurgeData {
+struct _HeapPurgeData
+{
     link_list *locked_entries;
     heap_key min_age;
 };
@@ -231,7 +234,9 @@ try_again:
 
     if (entry->locked()) {
 
-        entry->lock();
+        entry->lock()
+
+        ;
         linklistPush(&heap_walker->locked_entries, entry);
 
         goto try_again;

@@ -1,6 +1,6 @@
 
 /*
- * $Id$
+ * $Id: HttpReply.cc,v 1.97 2007/11/26 13:09:55 hno Exp $
  *
  * DEBUG: section 58    HTTP Reply (Response)
  * AUTHOR: Alex Rousskov
@@ -21,12 +21,12 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *
+ *  
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *
+ *  
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
@@ -39,8 +39,7 @@
 #include "HttpReply.h"
 #include "HttpHdrContRange.h"
 #include "HttpHdrSc.h"
-#include "acl/FilledChecklist.h"
-#include "HttpRequest.h"
+#include "ACLChecklist.h"
 #include "MemBuf.h"
 
 /* local constants */
@@ -53,20 +52,21 @@
  * origin server to set headers it should not in a 304, we must explicitly ignore
  * these too. Specifically all entity-headers except those permitted in a 304
  * (rfc2616 10.3.5) must be ignored.
- *
+ * 
  * The list of headers we don't update is made up of:
  *     all hop-by-hop headers
  *     all entity-headers except Expires and Content-Location
  */
 static HttpHeaderMask Denied304HeadersMask;
-static http_hdr_type Denied304HeadersArr[] = {
-    // hop-by-hop headers
-    HDR_CONNECTION, HDR_KEEP_ALIVE, HDR_PROXY_AUTHENTICATE, HDR_PROXY_AUTHORIZATION,
-    HDR_TE, HDR_TRAILERS, HDR_TRANSFER_ENCODING, HDR_UPGRADE,
-    // entity headers
-    HDR_ALLOW, HDR_CONTENT_ENCODING, HDR_CONTENT_LANGUAGE, HDR_CONTENT_LENGTH,
-    HDR_CONTENT_MD5, HDR_CONTENT_RANGE, HDR_CONTENT_TYPE, HDR_LAST_MODIFIED
-};
+static http_hdr_type Denied304HeadersArr[] =
+    {
+        // hop-by-hop headers
+        HDR_CONNECTION, HDR_KEEP_ALIVE, HDR_PROXY_AUTHENTICATE, HDR_PROXY_AUTHORIZATION,
+        HDR_TE, HDR_TRAILERS, HDR_TRANSFER_ENCODING, HDR_UPGRADE,
+        // entity headers
+        HDR_ALLOW, HDR_CONTENT_ENCODING, HDR_CONTENT_LANGUAGE, HDR_CONTENT_LENGTH,
+        HDR_CONTENT_MD5, HDR_CONTENT_RANGE, HDR_CONTENT_TYPE, HDR_LAST_MODIFIED
+    };
 
 /* module initialization */
 void
@@ -77,9 +77,7 @@ httpReplyInitModule(void)
     httpHeaderCalcMask(&Denied304HeadersMask, Denied304HeadersArr, countof(Denied304HeadersArr));
 }
 
-HttpReply::HttpReply() : HttpMsg(hoReply), date (0), last_modified (0),
-        expires (0), surrogate_control (NULL), content_range (NULL), keep_alive (0),
-        protoPrefix("HTTP/"), bodySizeMax(-2)
+HttpReply::HttpReply() : HttpMsg(hoReply), date (0), last_modified (0), expires (0), surrogate_control (NULL), content_range (NULL), keep_alive (0), protoPrefix("HTTP/")
 {
     init();
 }
@@ -116,7 +114,7 @@ void HttpReply::reset()
 void
 HttpReply::clean()
 {
-    // we used to assert that the pipe is NULL, but now the message only
+    // we used to assert that the pipe is NULL, but now the message only 
     // points to a pipe that is owned and initiated by another object.
     body_pipe = NULL;
 
@@ -124,7 +122,6 @@ HttpReply::clean()
     hdrCacheClean();
     header.clean();
     httpStatusLineClean(&sline);
-    bodySizeMax = -2; // hack: make calculatedBodySizeMax() false
 }
 
 void
@@ -156,20 +153,19 @@ HttpReply::pack()
     return mb;
 }
 
-#if DEAD_CODE
 MemBuf *
-httpPackedReply(http_status status, const char *ctype, int64_t clen, time_t lmt, time_t expires)
+httpPackedReply(HttpVersion ver, http_status status, const char *ctype,
+                int64_t clen, time_t lmt, time_t expires)
 {
     HttpReply *rep = new HttpReply;
-    rep->setHeaders(status, ctype, NULL, clen, lmt, expires);
+    rep->setHeaders(ver, status, ctype, NULL, clen, lmt, expires);
     MemBuf *mb = rep->pack();
     delete rep;
     return mb;
 }
-#endif
 
 HttpReply *
-HttpReply::make304() const
+HttpReply::make304 () const
 {
     static const http_hdr_type ImsEntries[] = {HDR_DATE, HDR_CONTENT_TYPE, HDR_EXPIRES, HDR_LAST_MODIFIED, /* eof */ HDR_OTHER};
 
@@ -186,7 +182,8 @@ HttpReply::make304() const
     /* rv->content_range */
     /* rv->keep_alive */
     HttpVersion ver(1,0);
-    httpStatusLineSet(&rv->sline, ver, HTTP_NOT_MODIFIED, "");
+    httpStatusLineSet(&rv->sline, ver,
+                      HTTP_NOT_MODIFIED, "");
 
     for (t = 0; ImsEntries[t] != HDR_OTHER; ++t)
         if ((e = header.findEntry(ImsEntries[t])))
@@ -209,11 +206,10 @@ HttpReply::packed304Reply()
 }
 
 void
-HttpReply::setHeaders(http_status status, const char *reason,
-                      const char *ctype, int64_t clen, time_t lmt, time_t expiresTime)
+HttpReply::setHeaders(HttpVersion ver, http_status status, const char *reason,
+                      const char *ctype, int64_t clen, time_t lmt, time_t expires)
 {
     HttpHeader *hdr;
-    HttpVersion ver(1,0);
     httpStatusLineSet(&sline, ver, status, reason);
     hdr = &header;
     hdr->putStr(HDR_SERVER, visible_appname_string);
@@ -229,8 +225,8 @@ HttpReply::setHeaders(http_status status, const char *reason,
     if (clen >= 0)
         hdr->putInt64(HDR_CONTENT_LENGTH, clen);
 
-    if (expiresTime >= 0)
-        hdr->putTime(HDR_EXPIRES, expiresTime);
+    if (expires >= 0)
+        hdr->putTime(HDR_EXPIRES, expires);
 
     if (lmt > 0)		/* this used to be lmt != 0 @?@ */
         hdr->putTime(HDR_LAST_MODIFIED, lmt);
@@ -239,7 +235,7 @@ HttpReply::setHeaders(http_status status, const char *reason,
 
     content_length = clen;
 
-    expires = expiresTime;
+    expires = expires;
 
     last_modified = lmt;
 }
@@ -251,7 +247,7 @@ HttpReply::redirect(http_status status, const char *loc)
     HttpVersion ver(1,0);
     httpStatusLineSet(&sline, ver, status, httpStatusString(status));
     hdr = &header;
-    hdr->putStr(HDR_SERVER, APP_FULLNAME);
+    hdr->putStr(HDR_SERVER, full_appname_string);
     hdr->putTime(HDR_DATE, squid_curtime);
     hdr->putInt64(HDR_CONTENT_LENGTH, 0);
     hdr->putStr(HDR_LOCATION, loc);
@@ -282,7 +278,7 @@ HttpReply::validatorsMatch(HttpReply const * otherRep) const
 
     two = otherRep->header.getStrOrList(HDR_ETAG);
 
-    if (one.undefined() || two.undefined() || one.caseCmp(two)!=0 ) {
+    if (!one.buf() || !two.buf() || strcasecmp (one.buf(), two.buf())) {
         one.clean();
         two.clean();
         return 0;
@@ -296,7 +292,7 @@ HttpReply::validatorsMatch(HttpReply const * otherRep) const
 
     two = otherRep->header.getStrOrList(HDR_CONTENT_MD5);
 
-    if (one.undefined() || two.undefined() || one.caseCmp(two) != 0 ) {
+    if (!one.buf() || !two.buf() || strcasecmp (one.buf(), two.buf())) {
         one.clean();
         two.clean();
         return 0;
@@ -420,11 +416,11 @@ HttpReply::hdrCacheClean()
  * Returns the body size of a HTTP response
  */
 int64_t
-HttpReply::bodySize(const HttpRequestMethod& method) const
+HttpReply::bodySize(method_t method) const
 {
     if (sline.version.major < 1)
         return -1;
-    else if (method.id() == METHOD_HEAD)
+    else if (METHOD_HEAD == method)
         return 0;
     else if (sline.status == HTTP_OK)
         (void) 0;		/* common case, continue */
@@ -447,11 +443,9 @@ HttpReply::bodySize(const HttpRequestMethod& method) const
 bool
 HttpReply::sanityCheckStartLine(MemBuf *buf, const size_t hdr_len, http_status *error)
 {
-    // hack warning: using psize instead of size here due to type mismatches with MemBuf.
-
     // content is long enough to possibly hold a reply
     // 4 being magic size of a 3-digit number plus space delimiter
-    if ( buf->contentSize() < (protoPrefix.psize() + 4) ) {
+    if ( buf->contentSize() < (protoPrefix.size() + 4) ) {
         if (hdr_len > 0) {
             debugs(58, 3, HERE << "Too small reply header (" << hdr_len << " bytes)");
             *error = HTTP_INVALID_HEADER;
@@ -459,32 +453,24 @@ HttpReply::sanityCheckStartLine(MemBuf *buf, const size_t hdr_len, http_status *
         return false;
     }
 
-    int pos;
     // catch missing or mismatched protocol identifier
-    // allow special-case for ICY protocol (non-HTTP identifier) in response to faked HTTP request.
-    if (strncmp(buf->content(), "ICY", 3) == 0) {
-        protoPrefix = "ICY";
-        pos = protoPrefix.psize();
-    } else {
+    if (protoPrefix.cmp(buf->content(), protoPrefix.size()) != 0) {
+        debugs(58, 3, "HttpReply::sanityCheckStartLine: missing protocol prefix (" << protoPrefix.buf() << ") in '" << buf->content() << "'");
+        *error = HTTP_INVALID_HEADER;
+        return false;
+    }
 
-        if (protoPrefix.cmp(buf->content(), protoPrefix.size()) != 0) {
-            debugs(58, 3, "HttpReply::sanityCheckStartLine: missing protocol prefix (" << protoPrefix << ") in '" << buf->content() << "'");
-            *error = HTTP_INVALID_HEADER;
-            return false;
-        }
+    // catch missing or negative status value (negative '-' is not a digit)
+    int pos = protoPrefix.size();
 
-        // catch missing or negative status value (negative '-' is not a digit)
-        pos = protoPrefix.psize();
+    // skip arbitrary number of digits and a dot in the verion portion
+    while ( pos <= buf->contentSize() && (*(buf->content()+pos) == '.' || xisdigit(*(buf->content()+pos)) ) ) ++pos;
 
-        // skip arbitrary number of digits and a dot in the verion portion
-        while ( pos <= buf->contentSize() && (*(buf->content()+pos) == '.' || xisdigit(*(buf->content()+pos)) ) ) ++pos;
-
-        // catch missing version info
-        if (pos == protoPrefix.psize()) {
-            debugs(58, 3, "HttpReply::sanityCheckStartLine: missing protocol version numbers (ie. " << protoPrefix << "/1.0) in '" << buf->content() << "'");
-            *error = HTTP_INVALID_HEADER;
-            return false;
-        }
+    // catch missing version info
+    if (pos == protoPrefix.size()) {
+        debugs(58, 3, "HttpReply::sanityCheckStartLine: missing protocol version numbers (ie. " << protoPrefix << "/1.0) in '" << buf->content() << "'");
+        *error = HTTP_INVALID_HEADER;
+        return false;
     }
 
     // skip arbitrary number of spaces...
@@ -524,7 +510,7 @@ HttpReply::httpMsgParseError()
  * along with this response
  */
 bool
-HttpReply::expectingBody(const HttpRequestMethod& req_method, int64_t& theSize) const
+HttpReply::expectingBody(method_t req_method, int64_t& theSize) const
 {
     bool expectBody = true;
 
@@ -551,58 +537,6 @@ HttpReply::expectingBody(const HttpRequestMethod& req_method, int64_t& theSize) 
     return expectBody;
 }
 
-bool
-HttpReply::receivedBodyTooLarge(HttpRequest& request, int64_t receivedSize)
-{
-    calcMaxBodySize(request);
-    debugs(58, 3, HERE << receivedSize << " >? " << bodySizeMax);
-    return bodySizeMax >= 0 && receivedSize > bodySizeMax;
-}
-
-bool
-HttpReply::expectedBodyTooLarge(HttpRequest& request)
-{
-    calcMaxBodySize(request);
-    debugs(58, 7, HERE << "bodySizeMax=" << bodySizeMax);
-
-    if (bodySizeMax < 0) // no body size limit
-        return false;
-
-    int64_t expectedSize = -1;
-    if (!expectingBody(request.method, expectedSize))
-        return false;
-
-    debugs(58, 6, HERE << expectedSize << " >? " << bodySizeMax);
-
-    if (expectedSize < 0) // expecting body of an unknown length
-        return false;
-
-    return expectedSize > bodySizeMax;
-}
-
-void
-HttpReply::calcMaxBodySize(HttpRequest& request)
-{
-    // hack: -2 is used as "we have not calculated max body size yet" state
-    if (bodySizeMax != -2) // already tried
-        return;
-    bodySizeMax = -1;
-
-    ACLFilledChecklist ch(NULL, &request, NULL);
-    ch.src_addr = request.client_addr;
-    ch.my_addr = request.my_addr;
-    ch.reply = HTTPMSGLOCK(this); // XXX: this lock makes method non-const
-    for (acl_size_t *l = Config.ReplyBodySize; l; l = l -> next) {
-        /* if there is no ACL list or if the ACLs listed match use this size value */
-        if (!l->aclList || ch.matchAclListFast(l->aclList)) {
-            debugs(58, 4, HERE << "bodySizeMax=" << bodySizeMax);
-            bodySizeMax = l->size; // may be -1
-            break;
-        }
-    }
-}
-
-// XXX: check that this is sufficient for eCAP cloning
 HttpReply *
 HttpReply::clone() const
 {
@@ -612,20 +546,7 @@ HttpReply::clone() const
     rep->hdr_sz = hdr_sz;
     rep->http_ver = http_ver;
     rep->pstate = pstate;
-    rep->body_pipe = body_pipe;
-
     rep->protocol = protocol;
     rep->sline = sline;
-    rep->keep_alive = keep_alive;
     return rep;
-}
-
-
-bool HttpReply::inheritProperties(const HttpMsg *aMsg)
-{
-    const HttpReply *aRep = dynamic_cast<const HttpReply*>(aMsg);
-    if (!aRep)
-        return false;
-    keep_alive = aRep->keep_alive;
-    return true;
 }

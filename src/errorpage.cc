@@ -1,6 +1,6 @@
 
 /*
- * $Id$
+ * $Id: errorpage.cc,v 1.227 2007/05/29 13:31:39 amosjeffries Exp $
  *
  * DEBUG: section 4     Error Generation
  * AUTHOR: Duane Wessels
@@ -21,21 +21,27 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *
+ *  
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *
+ *  
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
  *
  */
-#include "config.h"
+
+/*
+ * Abstract:  These routines are used to generate error messages to be
+ *              sent to clients.  The error type is used to select between
+ *              the various message formats. (formats are stored in the
+ *              Config.errorDirectory)
+ */
 
 #include "errorpage.h"
-#include "auth/UserRequest.h"
+#include "AuthUserRequest.h"
 #include "SquidTime.h"
 #include "Store.h"
 #include "HttpReply.h"
@@ -43,96 +49,70 @@
 #include "MemObject.h"
 #include "fde.h"
 #include "MemBuf.h"
-#include "rfc1738.h"
 #include "URLScheme.h"
 #include "wordlist.h"
 
-/**
- \defgroup ErrorPageInternal Error Page Internals
- \ingroup ErrorPageAPI
- *
- \section Abstract Abstract:
- *   These routines are used to generate error messages to be
- *   sent to clients.  The error type is used to select between
- *   the various message formats. (formats are stored in the
- *   Config.errorDirectory)
- */
-
-
-#ifndef DEFAULT_SQUID_ERROR_DIR
-/** Where to look for errors if config path fails.
- \note Please use ./configure --datadir=/path instead of patching
- */
-#define DEFAULT_SQUID_ERROR_DIR   DEFAULT_SQUID_DATA_DIR"/errors"
-#endif
-
-/// \ingroup ErrorPageInternal
 CBDATA_CLASS_INIT(ErrorState);
 
 /* local types */
 
-/// \ingroup ErrorPageInternal
-typedef struct {
+typedef struct
+{
     int id;
     char *page_name;
-} ErrorDynamicPageInfo;
+}
+
+ErrorDynamicPageInfo;
 
 /* local constant and vars */
 
-/**
- \ingroup ErrorPageInternal
- *
- \note  hard coded error messages are not appended with %S
- *      automagically to give you more control on the format
+/*
+ * note: hard coded error messages are not appended with %S automagically
+ * to give you more control on the format
  */
-static const struct {
+
+static const struct
+{
     int type;			/* and page_id */
     const char *text;
 }
 
 error_hard_text[] = {
 
-    {
-        ERR_SQUID_SIGNATURE,
-        "\n<br>\n"
-        "<hr>\n"
-        "<div id=\"footer\">\n"
-        "Generated %T by %h (%s)\n"
-        "</div>\n"
-        "</body></html>\n"
-    },
-    {
-        TCP_RESET,
-        "reset"
-    }
-};
+                        {
+                            ERR_SQUID_SIGNATURE,
+                            "\n<br>\n"
+                            "<hr>\n"
+                            "<div id=\"footer\">\n"
+                            "Generated %T by %h (%s)\n"
+                            "</div>\n"
+                            "</body></html>\n"
+                        },
+                        {
+                            TCP_RESET,
+                            "reset"
+                        }
+                    };
 
-/// \ingroup ErrorPageInternal
 static Vector<ErrorDynamicPageInfo *> ErrorDynamicPages;
 
 /* local prototypes */
 
-/// \ingroup ErrorPageInternal
 static const int error_hard_text_count = sizeof(error_hard_text) / sizeof(*error_hard_text);
-
-/// \ingroup ErrorPageInternal
 static char **error_text = NULL;
-
-/// \ingroup ErrorPageInternal
 static int error_page_count = 0;
 
-/// \ingroup ErrorPageInternal
-static MemBuf error_stylesheet;
-
-static char *errorTryLoadText(const char *page_name, const char *dir, bool silent = false);
+static char *errorTryLoadText(const char *page_name, const char *dir);
 static char *errorLoadText(const char *page_name);
 static const char *errorFindHardText(err_type type);
 static ErrorDynamicPageInfo *errorDynamicPageInfoCreate(int id, const char *page_name);
 static void errorDynamicPageInfoDestroy(ErrorDynamicPageInfo * info);
+static MemBuf *errorBuildContent(ErrorState * err);
+static int errorDump(ErrorState * err, MemBuf * mb);
+static const char *errorConvert(char token, ErrorState * err);
 static IOCB errorSendComplete;
 
 
-/// \ingroup ErrorPageInternal
 err_type &operator++ (err_type &anErr)
 {
     int tmp = (int)anErr;
@@ -140,12 +120,20 @@ err_type &operator++ (err_type &anErr)
     return anErr;
 }
 
-/// \ingroup ErrorPageInternal
 int operator - (err_type const &anErr, err_type const &anErr2)
 {
     return (int)anErr - (int)anErr2;
 }
 
+/*
+ * Function:  errorInitialize
+ *
+ * Abstract:  This function finds the error messages formats, and stores
+ *            them in error_text[];
+ *
+ * Global effects:
+ *            error_text[] - is modified
+ */
 void
 errorInitialize(void)
 {
@@ -156,43 +144,22 @@ errorInitialize(void)
 
     for (i = ERR_NONE, ++i; i < error_page_count; ++i) {
         safe_free(error_text[i]);
+        /* hard-coded ? */
 
-        if ((text = errorFindHardText(i))) {
-            /**\par
-             * Index any hard-coded error text into defaults.
-             */
+        if ((text = errorFindHardText(i)))
             error_text[i] = xstrdup(text);
-
-        } else if (i < ERR_MAX) {
-            /**\par
-             * Index precompiled fixed template files from one of two sources:
-             *  (a) default language translation directory (error_default_language)
-             *  (b) admin specified custom directory (error_directory)
-             */
+        else if (i < ERR_MAX) {
+            /* precompiled ? */
             error_text[i] = errorLoadText(err_type_str[i]);
-
         } else {
-            /** \par
-             * Index any unknown file names used by deny_info.
-             */
+            /* dynamic */
             ErrorDynamicPageInfo *info = ErrorDynamicPages.items[i - ERR_MAX];
             assert(info && info->id == i && info->page_name);
 
             if (strchr(info->page_name, ':') == NULL) {
-                /** But only if they are not redirection URL. */
+                /* Not on redirected errors... */
                 error_text[i] = errorLoadText(info->page_name);
             }
-        }
-    }
-
-    error_stylesheet.reset();
-
-    // look for and load stylesheet into global MemBuf for it.
-    if (Config.errorStylesheet) {
-        char *temp = errorTryLoadText(Config.errorStylesheet,NULL);
-        if (temp) {
-            error_stylesheet.Printf("%s",temp);
-            safe_free(temp);
         }
     }
 }
@@ -215,7 +182,6 @@ errorClean(void)
     error_page_count = 0;
 }
 
-/// \ingroup ErrorPageInternal
 static const char *
 errorFindHardText(err_type type)
 {
@@ -228,39 +194,16 @@ errorFindHardText(err_type type)
     return NULL;
 }
 
-/**
- * \ingroup ErrorPageInternal
- *
- * Load into the in-memory error text Index a file probably available at:
- *  (a) admin specified custom directory (error_directory)
- *  (b) default language translation directory (error_default_language)
- *  (c) English sub-directory where errors should ALWAYS exist
- */
+
 static char *
 errorLoadText(const char *page_name)
 {
-    char *text = NULL;
+    /* test configured location */
+    char *text = errorTryLoadText(page_name, Config.errorDirectory);
+    /* test default location if failed */
 
-    /** test error_directory configured location */
-    if (Config.errorDirectory)
-        text = errorTryLoadText(page_name, Config.errorDirectory);
-
-#if USE_ERR_LOCALES
-    /** test error_default_language location */
-    if (!text && Config.errorDefaultLanguage) {
-        char dir[256];
-        snprintf(dir,256,"%s/%s", DEFAULT_SQUID_ERROR_DIR, Config.errorDefaultLanguage);
-        text = errorTryLoadText(page_name, dir);
-        if (!text) {
-            debugs(1, DBG_CRITICAL, "Unable to load default error language files. Reset to backups.");
-        }
-    }
-#endif
-
-    /* test default location if failed (templates == English translation base templates) */
-    if (!text) {
-        text = errorTryLoadText(page_name, DEFAULT_SQUID_ERROR_DIR"/templates");
-    }
+    if (!text && strcmp(Config.errorDirectory, DEFAULT_SQUID_ERROR_DIR))
+        text = errorTryLoadText(page_name, DEFAULT_SQUID_ERROR_DIR);
 
     /* giving up if failed */
     if (!text)
@@ -269,9 +212,8 @@ errorLoadText(const char *page_name)
     return text;
 }
 
-/// \ingroup ErrorPageInternal
 static char *
-errorTryLoadText(const char *page_name, const char *dir, bool silent)
+errorTryLoadText(const char *page_name, const char *dir)
 {
     int fd;
     char path[MAXPATHLEN];
@@ -280,32 +222,28 @@ errorTryLoadText(const char *page_name, const char *dir, bool silent)
     ssize_t len;
     MemBuf textbuf;
 
-    // maybe received compound parts, maybe an absolute page_name and no dir
-    if (dir)
-        snprintf(path, sizeof(path), "%s/%s", dir, page_name);
-    else
-        snprintf(path, sizeof(path), "%s", page_name);
-
+    snprintf(path, sizeof(path), "%s/%s", dir, page_name);
     fd = file_open(path, O_RDONLY | O_TEXT);
 
     if (fd < 0) {
-        /* with dynamic locale negotiation we may see some failures before a success. */
-        if (!silent)
-            debugs(4, DBG_CRITICAL, HERE << "'" << path << "': " << xstrerror());
+        debugs(4, 0, "errorTryLoadText: '" << path << "': " << xstrerror());
         return NULL;
     }
 
     textbuf.init();
 
-    while ((len = FD_READ_METHOD(fd, buf, sizeof(buf))) > 0) {
+    while((len = FD_READ_METHOD(fd, buf, sizeof(buf))) > 0) {
         textbuf.append(buf, len);
     }
 
     if (len < 0) {
-        debugs(4, DBG_CRITICAL, HERE << "failed to fully read: '" << path << "': " << xstrerror());
+        debugs(4, 0, "errorTryLoadText: failed to fully read: '" << path << "': " << xstrerror());
     }
 
     file_close(fd);
+
+    if (strstr(textbuf.buf, "%s") == NULL)
+        textbuf.append("%S", 2);	/* add signature */
 
     /* Shrink memory size down to exact size. MemBuf has a tencendy
      * to be rather large..
@@ -317,7 +255,6 @@ errorTryLoadText(const char *page_name, const char *dir, bool silent)
     return text;
 }
 
-/// \ingroup ErrorPageInternal
 static ErrorDynamicPageInfo *
 errorDynamicPageInfoCreate(int id, const char *page_name)
 {
@@ -327,16 +264,14 @@ errorDynamicPageInfoCreate(int id, const char *page_name)
     return info;
 }
 
-/// \ingroup ErrorPageInternal
 static void
 errorDynamicPageInfoDestroy(ErrorDynamicPageInfo * info)
 {
     assert(info);
-    safe_free(info->page_name);
+    xfree(info->page_name);
     delete info;
 }
 
-/// \ingroup ErrorPageInternal
 static int
 errorPageId(const char *page_name)
 {
@@ -368,7 +303,6 @@ errorReservePageId(const char *page_name)
     return (err_type)id;
 }
 
-/// \ingroup ErrorPageInternal
 static const char *
 errorPageName(int pageId)
 {
@@ -381,12 +315,16 @@ errorPageName(int pageId)
     return "ERR_UNKNOWN";	/* should not happen */
 }
 
+/*
+ * Function:  errorCon
+ *
+ * Abstract:  This function creates a ErrorState object.
+ */
 ErrorState *
 errorCon(err_type type, http_status status, HttpRequest * request)
 {
     ErrorState *err = new ErrorState;
     err->page_id = type;	/* has to be reset manually if needed */
-    err->err_language = NULL;
     err->type = type;
     err->httpStatus = status;
 
@@ -398,9 +336,24 @@ errorCon(err_type type, http_status status, HttpRequest * request)
     return err;
 }
 
+/*
+ * Function:  errorAppendEntry
+ *
+ * Arguments: err - This object is destroyed after use in this function.
+ *
+ * Abstract:  This function generates a error page from the info contained
+ *            by 'err' and then stores the text in the specified store
+ *            entry.  This function should only be called by ``server
+ *            side routines'' which need to communicate errors to the
+ *            client side.  It should also be called from client_side.c
+ *            because we now support persistent connections, and
+ *            cannot assume that we can immediately write to the socket
+ *            for an error.
+ */
 void
 errorAppendEntry(StoreEntry * entry, ErrorState * err)
 {
+    HttpReply *rep;
     assert(entry->mem_obj != NULL);
     assert (entry->isEmpty());
     debugs(4, 4, "Creating an error page for entry " << entry <<
@@ -429,7 +382,15 @@ errorAppendEntry(StoreEntry * entry, ErrorState * err)
 
     entry->lock();
     entry->buffer();
-    entry->replaceHttpReply( err->BuildHttpReply() );
+    rep = errorBuildReply(err);
+    /* Add authentication header */
+    /* TODO: alter errorstate to be accel on|off aware. The 0 on the next line
+     * depends on authenticate behaviour: all schemes to date send no extra
+     * data on 407/401 responses, and do not check the accel state on 401/407
+     * responses 
+     */
+    authenticateFixHeader(rep, err->auth_user_request, err->request, 0, 1);
+    entry->replaceHttpReply(rep);
     EBIT_CLR(entry->flags, ENTRY_FWD_HDR_WAIT);
     entry->flush();
     entry->complete();
@@ -439,6 +400,25 @@ errorAppendEntry(StoreEntry * entry, ErrorState * err)
     errorStateFree(err);
 }
 
+/*
+ * Function:  errorSend
+ *
+ * Arguments: err - This object is destroyed after use in this function.
+ *
+ * Abstract:  This function generates a error page from the info contained
+ *            by 'err' and then sends it to the client.
+ *            The callback function errorSendComplete() is called after
+ *            the page has been written to the client socket (fd).
+ *            errorSendComplete() deallocates 'err'.  We need to add
+ *            'err' to the cbdata because comm_write() requires it
+ *            for all callback data pointers.
+ *
+ *            Note, normally errorSend() should only be called from
+ *            routines in ssl.c and pass.c, where we don't have any
+ *            StoreEntry's.  In client_side.c we must allocate a StoreEntry
+ *            for errors and use errorAppendEntry() to account for
+ *            persistent/pipeline connections.
+ */
 void
 errorSend(int fd, ErrorState * err)
 {
@@ -456,21 +436,21 @@ errorSend(int fd, ErrorState * err)
     /* moved in front of errorBuildBuf @?@ */
     err->flags.flag_cbdata = 1;
 
-    rep = err->BuildHttpReply();
+    rep = errorBuildReply(err);
 
     comm_write_mbuf(fd, rep->pack(), errorSendComplete, err);
 
     delete rep;
 }
 
-/**
- \ingroup ErrorPageAPI
+/*
+ * Function:  errorSendComplete
  *
- * Called by commHandleWrite() after data has been written
- * to the client socket.
+ * Abstract:  Called by commHandleWrite() after data has been written
+ *            to the client socket.
  *
- \note If there is a callback, the callback is responsible for
- *     closing the FD, otherwise we do it ourselves.
+ * Note:      If there is a callback, the callback is responsible for
+ *            closing the FD, otherwise we do it ourseves.
  */
 static void
 errorSendComplete(int fd, char *bufnotused, size_t size, comm_err_t errflag, int xerrno, void *data)
@@ -497,80 +477,70 @@ errorStateFree(ErrorState * err)
     HTTPMSGUNLOCK(err->request);
     safe_free(err->redirect_url);
     safe_free(err->url);
+    safe_free(err->dnsserver_msg);
     safe_free(err->request_hdrs);
     wordlistDestroy(&err->ftp.server_msg);
     safe_free(err->ftp.request);
     safe_free(err->ftp.reply);
     AUTHUSERREQUESTUNLOCK(err->auth_user_request, "errstate");
     safe_free(err->err_msg);
-#if USE_ERR_LOCALES
-    if (err->err_language != Config.errorDefaultLanguage)
-#endif
-        safe_free(err->err_language);
     cbdataFree(err);
 }
 
-int
-ErrorState::Dump(MemBuf * mb)
+static int
+errorDump(ErrorState * err, MemBuf * mb)
 {
+    HttpRequest *r = err->request;
     MemBuf str;
     const char *p = NULL;	/* takes priority over mb if set */
-    char ntoabuf[MAX_IPSTRLEN];
-
     str.reset();
     /* email subject line */
-    str.Printf("CacheErrorInfo - %s", errorPageName(type));
+    str.Printf("CacheErrorInfo - %s", errorPageName(err->type));
     mb->Printf("?subject=%s", rfc1738_escape_part(str.buf));
     str.reset();
     /* email body */
     str.Printf("CacheHost: %s\r\n", getMyHostname());
     /* - Err Msgs */
-    str.Printf("ErrPage: %s\r\n", errorPageName(type));
+    str.Printf("ErrPage: %s\r\n", errorPageName(err->type));
 
-    if (xerrno) {
-        str.Printf("Err: (%d) %s\r\n", xerrno, strerror(xerrno));
+    if (err->xerrno) {
+        str.Printf("Err: (%d) %s\r\n", err->xerrno, strerror(err->xerrno));
     } else {
         str.Printf("Err: [none]\r\n");
     }
 
-    if (auth_user_request->denyMessage())
-        str.Printf("Auth ErrMsg: %s\r\n", auth_user_request->denyMessage());
+    if (err->auth_user_request->denyMessage())
+        str.Printf("Auth ErrMsg: %s\r\n", err->auth_user_request->denyMessage());
 
-    if (dnsError.size() > 0)
-        str.Printf("DNS ErrMsg: %s\r\n", dnsError.termedBuf());
+    if (err->dnsserver_msg) {
+        str.Printf("DNS Server ErrMsg: %s\r\n", err->dnsserver_msg);
+    }
 
     /* - TimeStamp */
     str.Printf("TimeStamp: %s\r\n\r\n", mkrfc1123(squid_curtime));
 
     /* - IP stuff */
-    str.Printf("ClientIP: %s\r\n", src_addr.NtoA(ntoabuf,MAX_IPSTRLEN));
+    str.Printf("ClientIP: %s\r\n", inet_ntoa(err->src_addr));
 
-    if (request && request->hier.host[0] != '\0') {
-        str.Printf("ServerIP: %s\r\n", request->hier.host);
+    if (r && r->hier.host[0] != '\0') {
+        str.Printf("ServerIP: %s\r\n", r->hier.host);
     }
 
     str.Printf("\r\n");
     /* - HTTP stuff */
     str.Printf("HTTP Request:\r\n");
 
-    if (NULL != request) {
-        Packer pck;
-        String urlpath_or_slash;
-
-        if (request->urlpath.size() != 0)
-            urlpath_or_slash = request->urlpath;
-        else
-            urlpath_or_slash = "/";
-
-        str.Printf("%s " SQUIDSTRINGPH " HTTP/%d.%d\n",
-                   RequestMethodStr(request->method),
-                   SQUIDSTRINGPRINT(urlpath_or_slash),
-                   request->http_ver.major, request->http_ver.minor);
-        packerToMemInit(&pck, &str);
-        request->header.packInto(&pck);
-        packerClean(&pck);
-    } else if (request_hdrs) {
-        p = request_hdrs;
+    if (NULL != r) {
+        Packer p;
+        str.Printf("%s %s HTTP/%d.%d\n",
+                   RequestMethodStr[r->method],
+                   r->urlpath.size() ? r->urlpath.buf() : "/",
+                   r->http_ver.major, r->http_ver.minor);
+        packerToMemInit(&p, &str);
+        r->header.packInto(&p);
+        packerClean(&p);
+    } else if (err->request_hdrs) {
+        p = err->request_hdrs;
     } else {
         p = "[none]";
     }
@@ -578,11 +548,11 @@ ErrorState::Dump(MemBuf * mb)
     str.Printf("\r\n");
     /* - FTP stuff */
 
-    if (ftp.request) {
-        str.Printf("FTP Request: %s\r\n", ftp.request);
-        str.Printf("FTP Reply: %s\r\n", ftp.reply);
+    if (err->ftp.request) {
+        str.Printf("FTP Request: %s\r\n", err->ftp.request);
+        str.Printf("FTP Reply: %s\r\n", err->ftp.reply);
         str.Printf("FTP Msg: ");
-        wordlistCat(ftp.server_msg, &str);
+        wordlistCat(err->ftp.server_msg, &str);
         str.Printf("\r\n");
     }
 
@@ -592,16 +562,48 @@ ErrorState::Dump(MemBuf * mb)
     return 0;
 }
 
-/// \ingroup ErrorPageInternal
 #define CVT_BUF_SZ 512
 
-const char *
-ErrorState::Convert(char token)
+/*
+ * a - User identity                            x
+ * B - URL with FTP %2f hack                    x
+ * c - Squid error code                         x
+ * d - seconds elapsed since request received   x
+ * e - errno                                    x
+ * E - strerror()                               x
+ * f - FTP request line                         x
+ * F - FTP reply line                           x
+ * g - FTP server message                       x
+ * h - cache hostname                           x
+ * H - server host name                         x
+ * i - client IP address                        x
+ * I - server IP address                        x
+ * L - HREF link for more info/contact          x
+ * M - Request Method                           x
+ * m - Error message returned by auth helper    x 
+ * o - Message returned external acl helper     x
+ * p - URL port #                               x
+ * P - Protocol                                 x
+ * R - Full HTTP Request                        x
+ * S - squid signature from ERR_SIGNATURE       x
+ * s - caching proxy software with version      x
+ * t - local time                               x
+ * T - UTC                                      x
+ * U - URL without password                     x
+ * u - URL with password                        x
+ * w - cachemgr email address                   x
+ * W - error data (to be included in the mailto links)
+ * z - dns server error message                 x
+ * Z - Preformatted error message               x
+ */
+
+static const char *
+errorConvert(char token, ErrorState * err)
 {
+    HttpRequest *r = err->request;
     static MemBuf mb;
     const char *p = NULL;	/* takes priority over mb if set */
     int do_quote = 1;
-    char ntoabuf[MAX_IPSTRLEN];
 
     mb.reset();
 
@@ -609,8 +611,8 @@ ErrorState::Convert(char token)
 
     case 'a':
 
-        if (request && request->auth_user_request)
-            p = request->auth_user_request->username();
+        if (r && r->auth_user_request)
+            p = r->auth_user_request->username();
 
         if (!p)
             p = "-";
@@ -618,24 +620,24 @@ ErrorState::Convert(char token)
         break;
 
     case 'B':
-        p = request ? ftpUrlWith2f(request) : "[no URL]";
+        p = r ? ftpUrlWith2f(r) : "[no URL]";
 
         break;
 
     case 'c':
-        p = errorPageName(type);
+        p = errorPageName(err->type);
 
         break;
 
     case 'e':
-        mb.Printf("%d", xerrno);
+        mb.Printf("%d", err->xerrno);
 
         break;
 
     case 'E':
 
-        if (xerrno)
-            mb.Printf("(%d) %s", xerrno, strerror(xerrno));
+        if (err->xerrno)
+            mb.Printf("(%d) %s", err->xerrno, strerror(err->xerrno));
         else
             mb.Printf("[No Error]");
 
@@ -643,8 +645,8 @@ ErrorState::Convert(char token)
 
     case 'f':
         /* FTP REQUEST LINE */
-        if (ftp.request)
-            p = ftp.request;
+        if (err->ftp.request)
+            p = err->ftp.request;
         else
             p = "nothing";
 
@@ -652,8 +654,8 @@ ErrorState::Convert(char token)
 
     case 'F':
         /* FTP REPLY LINE */
-        if (ftp.request)
-            p = ftp.reply;
+        if (err->ftp.request)
+            p = err->ftp.reply;
         else
             p = "nothing";
 
@@ -661,7 +663,7 @@ ErrorState::Convert(char token)
 
     case 'g':
         /* FTP SERVER MESSAGE */
-        wordlistCat(ftp.server_msg, &mb);
+        wordlistCat(err->ftp.server_msg, &mb);
 
         break;
 
@@ -670,32 +672,27 @@ ErrorState::Convert(char token)
         break;
 
     case 'H':
-        if (request) {
-            if (request->hier.host[0] != '\0') // if non-empty string.
-                p = request->hier.host;
+        if (r) {
+            if (r->hier.host[0] != '\0') // if non-empty string.
+                p = r->hier.host;
             else
-                p = request->GetHost();
+                p = r->host;
         } else
             p = "[unknown host]";
 
         break;
 
     case 'i':
-        mb.Printf("%s", src_addr.NtoA(ntoabuf,MAX_IPSTRLEN));
+        mb.Printf("%s", inet_ntoa(err->src_addr));
 
         break;
 
     case 'I':
-        if (request && request->hier.host[0] != '\0') // if non-empty string
-            mb.Printf("%s", request->hier.host);
+        if (r && r->hier.host[0] != '\0') // if non-empty string
+            mb.Printf("%s", r->hier.host);
         else
             p = "[unknown]";
 
-        break;
-
-    case 'l':
-        mb.append(error_stylesheet.content(), error_stylesheet.contentSize());
-        do_quote = 0;
         break;
 
     case 'L':
@@ -708,24 +705,23 @@ ErrorState::Convert(char token)
         break;
 
     case 'm':
-        p = auth_user_request->denyMessage("[not available]");
+        p = err->auth_user_request->denyMessage("[not available]");
 
         break;
 
     case 'M':
-        p = request ? RequestMethodStr(request->method) : "[unknown method]";
+        p = r ? RequestMethodStr[r->method] : "[unknown method]";
 
         break;
 
     case 'o':
-        p = request ? request->extacl_message.termedBuf() : external_acl_message;
-        if (!p)
-            p = "[not available]";
+        p = external_acl_message ? external_acl_message : "[not available]";
+
         break;
 
     case 'p':
-        if (request) {
-            mb.Printf("%d", (int) request->port);
+        if (r) {
+            mb.Printf("%d", (int) r->port);
         } else {
             p = "[unknown port]";
         }
@@ -733,29 +729,22 @@ ErrorState::Convert(char token)
         break;
 
     case 'P':
-        p = request ? ProtocolStr[request->protocol] : "[unknown protocol]";
+        p = r ? ProtocolStr[r->protocol] : "[unknown protocol]";
         break;
 
     case 'R':
 
-        if (NULL != request) {
-            Packer pck;
-            String urlpath_or_slash;
-
-            if (request->urlpath.size() != 0)
-                urlpath_or_slash = request->urlpath;
-            else
-                urlpath_or_slash = "/";
-
-            mb.Printf("%s " SQUIDSTRINGPH " HTTP/%d.%d\n",
-                      RequestMethodStr(request->method),
-                      SQUIDSTRINGPRINT(urlpath_or_slash),
-                      request->http_ver.major, request->http_ver.minor);
-            packerToMemInit(&pck, &mb);
-            request->header.packInto(&pck);
-            packerClean(&pck);
-        } else if (request_hdrs) {
-            p = request_hdrs;
+        if (NULL != r) {
+            Packer p;
+            mb.Printf("%s %s HTTP/%d.%d\n",
+                      RequestMethodStr[r->method],
+                      r->urlpath.size() ? r->urlpath.buf() : "/",
+                      r->http_ver.major, r->http_ver.minor);
+            packerToMemInit(&p, &mb);
+            r->header.packInto(&p);
+            packerClean(&p);
+        } else if (err->request_hdrs) {
+            p = err->request_hdrs;
         } else {
             p = "[no request]";
         }
@@ -769,14 +758,14 @@ ErrorState::Convert(char token)
     case 'S':
         /* signature may contain %-escapes, recursion */
 
-        if (page_id != ERR_SQUID_SIGNATURE) {
-            const int saved_id = page_id;
-            page_id = ERR_SQUID_SIGNATURE;
-            MemBuf *sign_mb = BuildContent();
+        if (err->page_id != ERR_SQUID_SIGNATURE) {
+            const int saved_id = err->page_id;
+            err->page_id = ERR_SQUID_SIGNATURE;
+            MemBuf *sign_mb = errorBuildContent(err);
             mb.Printf("%s", sign_mb->content());
             sign_mb->clean();
             delete sign_mb;
-            page_id = saved_id;
+            err->page_id = saved_id;
             do_quote = 0;
         } else {
             /* wow, somebody put %S into ERR_SIGNATURE, stop recursion */
@@ -796,11 +785,11 @@ ErrorState::Convert(char token)
     case 'U':
         /* Using the fake-https version of canonical so error pages see https:// */
         /* even when the url-path cannot be shown as more than '*' */
-        p = request ? urlCanonicalFakeHttps(request) : url ? url : "[no URL]";
+        p = r ? urlCanonicalFakeHttps(r) : err->url ? err->url : "[no URL]";
         break;
 
     case 'u':
-        p = request ? urlCanonical(request) : url ? url : "[no URL]";
+        p = r ? urlCanonical(r) : err->url ? err->url : "[no URL]";
         break;
 
     case 'w':
@@ -814,21 +803,21 @@ ErrorState::Convert(char token)
 
     case 'W':
         if (Config.adminEmail && Config.onoff.emailErrData)
-            Dump(&mb);
+            errorDump(err, &mb);
 
         break;
 
     case 'z':
-        if (dnsError.size() > 0)
-            p = dnsError.termedBuf();
+        if (err->dnsserver_msg)
+            p = err->dnsserver_msg;
         else
             p = "[unknown]";
 
         break;
 
     case 'Z':
-        if (err_msg)
-            p = err_msg;
+        if (err->err_msg)
+            p = err->err_msg;
         else
             p = "[unknown]";
 
@@ -860,26 +849,28 @@ ErrorState::Convert(char token)
     return p;
 }
 
+/* allocates and initializes an error response */
 HttpReply *
-ErrorState::BuildHttpReply()
+errorBuildReply(ErrorState * err)
 {
     HttpReply *rep = new HttpReply;
-    const char *name = errorPageName(page_id);
+    const char *name = errorPageName(err->page_id);
     /* no LMT for error pages; error pages expire immediately */
+    HttpVersion version(1, 0);
 
     if (strchr(name, ':')) {
         /* Redirection */
-        rep->setHeaders(HTTP_MOVED_TEMPORARILY, NULL, "text/html", 0, 0, -1);
+        rep->setHeaders(version, HTTP_MOVED_TEMPORARILY, NULL, "text/html", 0, 0, -1);
 
-        if (request) {
-            char *quoted_url = rfc1738_escape_part(urlCanonical(request));
+        if (err->request) {
+            char *quoted_url = rfc1738_escape_part(urlCanonical(err->request));
             httpHeaderPutStrf(&rep->header, HDR_LOCATION, name, quoted_url);
         }
 
-        httpHeaderPutStrf(&rep->header, HDR_X_SQUID_ERROR, "%d %s", httpStatus, "Access Denied");
+        httpHeaderPutStrf(&rep->header, HDR_X_SQUID_ERROR, "%d %s", err->httpStatus, "Access Denied");
     } else {
-        MemBuf *content = BuildContent();
-        rep->setHeaders(httpStatus, NULL, "text/html", content->contentSize(), 0, -1);
+        MemBuf *content = errorBuildContent(err);
+        rep->setHeaders(version, err->httpStatus, NULL, "text/html", content->contentSize(), 0, -1);
         /*
          * include some information for downstream caches. Implicit
          * replaceable content. This isn't quite sufficient. xerrno is not
@@ -888,33 +879,8 @@ ErrorState::BuildHttpReply()
          * might want to know. Someone _will_ want to know OTOH, the first
          * X-CACHE-MISS entry should tell us who.
          */
-        httpHeaderPutStrf(&rep->header, HDR_X_SQUID_ERROR, "%s %d", name, xerrno);
-
-#if USE_ERR_LOCALES
-        /*
-         * If error page auto-negotiate is enabled in any way, send the Vary.
-         * RFC 2616 section 13.6 and 14.44 says MAY and SHOULD do this.
-         * We have even better reasons though:
-         * see http://wiki.squid-cache.org/KnowledgeBase/VaryNotCaching
-         */
-        if (!Config.errorDirectory) {
-            /* We 'negotiated' this ONLY from the Accept-Language. */
-            rep->header.delById(HDR_VARY);
-            rep->header.putStr(HDR_VARY, "Accept-Language");
-        }
-
-        /* add the Content-Language header according to RFC section 14.12 */
-        if (err_language) {
-            rep->header.putStr(HDR_CONTENT_LANGUAGE, err_language);
-        } else
-#endif /* USE_ERROR_LOCALES */
-        {
-            /* default templates are in English */
-            /* language is known unless error_directory override used */
-            if (!Config.errorDirectory)
-                rep->header.putStr(HDR_CONTENT_LANGUAGE, "en");
-        }
-
+        httpHeaderPutStrf(&rep->header, HDR_X_SQUID_ERROR, "%s %d",
+                          name, err->xerrno);
         httpBodySet(&rep->body, content);
         /* do not memBufClean() or delete the content, it was absorbed by httpBody */
     }
@@ -922,137 +888,24 @@ ErrorState::BuildHttpReply()
     return rep;
 }
 
-MemBuf *
-ErrorState::BuildContent()
+static MemBuf *
+errorBuildContent(ErrorState * err)
 {
     MemBuf *content = new MemBuf;
-    const char *m = NULL;
+    const char *m;
     const char *p;
     const char *t;
-
-    assert(page_id > ERR_NONE && page_id < error_page_count);
-
-#if USE_ERR_LOCALES
-    String hdr;
-    char dir[256];
-    int l = 0;
-
-    /** error_directory option in squid.conf overrides translations.
-     * Custom errors are always found either in error_directory or the templates directory.
-     * Otherwise locate the Accept-Language header
-     */
-    if (!Config.errorDirectory && page_id < ERR_MAX && request && request->header.getList(HDR_ACCEPT_LANGUAGE, &hdr) ) {
-
-        size_t pos = 0; // current parsing position in header string
-        char *reset = NULL; // where to reset the p pointer for each new tag file
-        char *dt = NULL;
-
-        /* prep the directory path string to prevent snprintf ... */
-        l = strlen(DEFAULT_SQUID_ERROR_DIR);
-        memcpy(dir, DEFAULT_SQUID_ERROR_DIR, l);
-        dir[ l++ ] = '/';
-        reset = dt = dir + l;
-
-        debugs(4, 6, HERE << "Testing Header: '" << hdr << "'");
-
-        while ( pos < hdr.size() ) {
-
-            /* skip any initial whitespace. */
-            while (pos < hdr.size() && xisspace(hdr[pos])) pos++;
-
-            /*
-             * Header value format:
-             *  - sequence of whitespace delimited tags
-             *  - each tag may suffix with ';'.* which we can ignore.
-             *  - IFF a tag contains only two characters we can wildcard ANY translations matching: <it> '-'? .*
-             *    with preference given to an exact match.
-             */
-            bool invalid_byte = false;
-            while (pos < hdr.size() && hdr[pos] != ';' && hdr[pos] != ',' && !xisspace(hdr[pos]) && dt < (dir+256) ) {
-                if (!invalid_byte) {
-#if HTTP_VIOLATIONS
-                    // if accepting violations we may as well accept some broken browsers
-                    //  which may send us the right code, wrong ISO formatting.
-                    if (hdr[pos] == '_')
-                        *dt = '-';
-                    else
-#endif
-                        *dt = xtolower(hdr[pos]);
-                    // valid codes only contain A-Z, hyphen (-) and *
-                    if (*dt != '-' && *dt != '*' && (*dt < 'a' || *dt > 'z') )
-                        invalid_byte = true;
-                    else
-                        dt++; // move to next destination byte.
-                }
-                pos++;
-            }
-            *dt++ = '\0'; // nul-terminated the filename content string before system use.
-
-            debugs(4, 9, HERE << "STATE: dt='" << dt << "', reset='" << reset << "', pos=" << pos << ", buf='" << ((pos < hdr.size()) ? hdr.substr(pos,hdr.size()) : "") << "'");
-
-            /* if we found anything we might use, try it. */
-            if (*reset != '\0' && !invalid_byte) {
-
-                /* wildcard uses the configured default language */
-                if (reset[0] == '*' && reset[1] == '\0') {
-                    debugs(4, 6, HERE << "Found language '" << reset << "'. Using configured default.");
-                    m = error_text[page_id];
-                    if (!Config.errorDirectory)
-                        err_language = Config.errorDefaultLanguage;
-                    break;
-                }
-
-                debugs(4, 6, HERE << "Found language '" << reset << "', testing for available template in: '" << dir << "'");
-
-                m = errorTryLoadText( err_type_str[page_id], dir, false);
-
-                if (m) {
-                    /* store the language we found for the Content-Language reply header */
-                    err_language = xstrdup(reset);
-                    break;
-                } else if (Config.errorLogMissingLanguages) {
-                    debugs(4, DBG_IMPORTANT, "WARNING: Error Pages Missing Language: " << reset);
-                }
-
-#if HAVE_GLOB
-                if ( (dt - reset) == 2) {
-                    /* TODO glob the error directory for sub-dirs matching: <tag> '-*'   */
-                    /* use first result. */
-                    debugs(4,2, HERE << "wildcard fallback errors not coded yet.");
-                }
-#endif
-            }
-
-            dt = reset; // reset for next tag testing. we replace the failed name instead of cloning.
-
-            // IFF we terminated the tag on whitespace or ';' we need to skip to the next ',' or end of header.
-            while (pos < hdr.size() && hdr[pos] != ',') pos++;
-            if (hdr[pos] == ',') pos++;
-        }
-    }
-#endif /* USE_ERR_LOCALES */
-
-    /** \par
-     * If client-specific error templates are not enabled or available.
-     * fall back to the old style squid.conf settings.
-     */
-    if (!m) {
-        m = error_text[page_id];
-#if USE_ERR_LOCALES
-        if (!Config.errorDirectory)
-            err_language = Config.errorDefaultLanguage;
-#endif
-        debugs(4, 2, HERE << "No existing error page language negotiated for " << errorPageName(page_id) << ". Using default error file.");
-    }
-
-    assert(m);
+    assert(err != NULL);
+    assert(err->page_id > ERR_NONE && err->page_id < error_page_count);
     content->init();
+    m = error_text[err->page_id];
+    assert(m);
 
     while ((p = strchr(m, '%'))) {
         content->append(m, p - m);	/* copy */
-        t = Convert(*++p);		/* convert */
+        t = errorConvert(*++p, err);	/* convert */
         content->Printf("%s", t);	/* copy */
-        m = p + 1;			/* advance */
+        m = p + 1;		/* advance */
     }
 
     if (*m)

@@ -1,6 +1,6 @@
 
 /*
- * $Id$
+ * $Id: HttpHdrContRange.cc,v 1.22 2007/08/13 18:25:14 hno Exp $
  *
  * DEBUG: section 68    HTTP Content-Range Header
  * AUTHOR: Alex Rousskov
@@ -21,12 +21,12 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *
+ *  
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *
+ *  
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
@@ -84,34 +84,22 @@ httpHdrRangeRespSpecParseInit(HttpHdrRangeSpec * spec, const char *field, int fl
     if (!httpHeaderParseOffset(field, &spec->offset))
         return 0;
 
-    /* Additional check for BUG2155 - there MUST BE first-byte-pos and it MUST be positive*/
-    if (spec->offset < 0) {
-        debugs(68, 2, "invalid (no first-byte-pos or it is negative) resp-range-spec near: '" << field << "'");
-        return 0;
-    }
-
     p++;
 
     /* do we have last-pos ? */
-    if (p - field >= flen) {
-        debugs(68, 2, "invalid (no last-byte-pos) resp-range-spec near: '" << field << "'");
-        return 0;
+    if (p - field < flen) {
+        int64_t last_pos;
+
+        if (!httpHeaderParseOffset(p, &last_pos))
+            return 0;
+
+        spec->length = size_diff(last_pos + 1, spec->offset);
+        /* Ensure typecast is safe */
+        assert (spec->length >= 0);
     }
-
-    int64_t last_pos;
-
-    if (!httpHeaderParseOffset(p, &last_pos))
-        return 0;
-
-    if (last_pos < spec->offset) {
-        debugs(68, 2, "invalid (negative last-byte-pos) resp-range-spec near: '" << field << "'");
-        return 0;
-    }
-
-    spec->length = size_diff(last_pos + 1, spec->offset);
 
     /* we managed to parse, check if the result makes sence */
-    if (spec->length <= 0) {
+    if (known_spec(spec->length) && spec->length == 0) {
         debugs(68, 2, "invalid range (" << spec->offset << " += " <<
                (long int) spec->length << ") in resp-range-spec near: '" << field << "'");
         return 0;
@@ -188,19 +176,11 @@ httpHdrContRangeParseInit(HttpHdrContRange * range, const char *str)
         range->elength = range_spec_unknown;
     else if (!httpHeaderParseOffset(p, &range->elength))
         return 0;
-    else if (range->elength <= 0) {
-        /* Additional paranoidal check for BUG2155 - entity-length MUST be > 0 */
-        debugs(68, 2, "invalid (entity-length is negative) content-range-spec near: '" << str << "'");
-        return 0;
-    } else if (known_spec(range->spec.length) && range->elength < (range->spec.offset + range->spec.length)) {
-        debugs(68, 2, "invalid (range is outside entity-length) content-range-spec near: '" << str << "'");
-        return 0;
-    }
 
-    debugs(68, 8, "parsed content-range field: " <<
-           (long int) range->spec.offset << "-" <<
-           (long int) range->spec.offset + range->spec.length - 1 << " / " <<
-           (long int) range->elength);
+        debugs(68, 8, "parsed content-range field: " <<
+               (long int) range->spec.offset << "-" <<
+               (long int) range->spec.offset + range->spec.length - 1 << " / " <<
+               (long int) range->elength);
 
     return 1;
 }

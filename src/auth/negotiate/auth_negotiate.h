@@ -5,24 +5,16 @@
 
 #ifndef __AUTH_NEGOTIATE_H__
 #define __AUTH_NEGOTIATE_H__
-#include "auth/Gadgets.h"
-#include "auth/User.h"
-#include "auth/UserRequest.h"
-#include "auth/Config.h"
+#include "authenticate.h"
+#include "AuthUser.h"
+#include "AuthUserRequest.h"
+#include "AuthConfig.h"
 #include "helper.h"
 
-/**
- \defgroup AuthNegotiateAPI Negotiate Authentication API
- \ingroup AuthAPI
- */
-
-/// \ingroup AuthNegotiateAPI
 #define DefaultAuthenticateChildrenMax  32	/* 32 processes */
 
 #ifndef __AUTH_AUTHENTICATE_STATE_T__
 #define __AUTH_AUTHENTICATE_STATE_T__
-
-/// \ingroup AuthNegotiateAPI
 typedef enum {
     AUTHENTICATE_STATE_NONE,
     AUTHENTICATE_STATE_INITIAL,
@@ -33,15 +25,16 @@ typedef enum {
 
 /* Generic */
 
-/// \ingroup AuthNegotiateAPI
-typedef struct {
+typedef struct
+{
     void *data;
     AuthUserRequest *auth_user_request;
     RH *handler;
-} authenticateStateData;
+}
+
+authenticateStateData;
 #endif
 
-/// \ingroup AuthNegotiateAPI
 class NegotiateUser : public AuthUser
 {
 
@@ -53,12 +46,10 @@ public:
     dlink_list proxy_auth_list;
 };
 
-MEMPROXY_CLASS_INLINE(NegotiateUser);
+MEMPROXY_CLASS_INLINE(NegotiateUser)
 
-/// \ingroup AuthNegotiateAPI
 typedef class NegotiateUser negotiate_user_t;
 
-/// \ingroup AuthNegotiateAPI
 class AuthNegotiateUserRequest : public AuthUserRequest
 {
 
@@ -68,7 +59,7 @@ public:
     AuthNegotiateUserRequest();
     virtual ~AuthNegotiateUserRequest();
     virtual int authenticated() const;
-    virtual void authenticate(HttpRequest * request, ConnStateData * conn, http_hdr_type type);
+    virtual void authenticate(HttpRequest * request, ConnStateData::Pointer conn, http_hdr_type type);
     virtual int module_direction();
     virtual void onConnectionClose(ConnStateData *);
     virtual void module_start(RH *, void *);
@@ -84,10 +75,8 @@ public:
 
     /*we need to store the helper server between requests */
     helper_stateful_server *authserver;
-    void releaseAuthServer(void); ///< Release the authserver helper server properly.
-
     /* what connection is this associated with */
-    /* ConnStateData * conn;*/
+    ConnStateData::Pointer conn;
 
     /* how far through the authentication process are we? */
     auth_state_t auth_state;
@@ -108,11 +97,10 @@ private:
     NegotiateUser * _theUser;
 };
 
-MEMPROXY_CLASS_INLINE(AuthNegotiateUserRequest);
+MEMPROXY_CLASS_INLINE(AuthNegotiateUserRequest)
 
 /* configuration runtime data */
 
-/// \ingroup AuthNegotiateAPI
 class AuthNegotiateConfig : public AuthConfig
 {
 
@@ -126,14 +114,13 @@ public:
     virtual void fixHeader(AuthUserRequest *, HttpReply *, http_hdr_type, HttpRequest *);
     virtual void init(AuthConfig *);
     virtual void parse(AuthConfig *, int, char *);
-    virtual void registerWithCacheManager(void);
+    virtual void registerWithCacheManager(CacheManager & manager);
     virtual const char * type() const;
     int authenticateChildren;
     int keep_alive;
     wordlist *authenticate;
 };
 
-/// \ingroup AuthNegotiateAPI
 typedef class AuthNegotiateConfig auth_negotiate_config;
 
 #endif

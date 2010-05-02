@@ -1,6 +1,6 @@
 
 /*
- * $Id$
+ * $Id: VirtualDeleteOperator.cc,v 1.2 2004/08/15 17:41:28 robertc Exp $
  *
  * AUTHOR: Robert Collins
  *
@@ -20,12 +20,12 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *
+ *  
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *
+ *  
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
@@ -34,20 +34,16 @@
  */
 
 #include "squid.h"
-
-#if HAVE_IOSTREAM
 #include <iostream>
-#endif
 
-class CallCounter
-{
-public:
+class CallCounter {
+  public:
     CallCounter();
     void recordNew();
     void recordDelete();
     size_t news() const;
     size_t deletes() const;
-private:
+  private:
     size_t _news, _deletes;
 };
 
@@ -58,9 +54,8 @@ void CallCounter::recordDelete() { ++_deletes;}
 size_t CallCounter::news() const {return _news;}
 size_t CallCounter::deletes() const {return _deletes;}
 
-class BaseVirtual
-{
-public:
+class BaseVirtual {
+  public:
     void *operator new (size_t);
     void operator delete (void *);
     virtual ~BaseVirtual();
@@ -90,11 +85,10 @@ BaseVirtual::DeleteABase(BaseVirtual *aBase)
     delete aBase;
 }
 
-BaseVirtual::~BaseVirtual() {}
+BaseVirtual::~BaseVirtual(){}
 
-class ChildVirtual : public BaseVirtual
-{
-public:
+class ChildVirtual : public BaseVirtual {
+  public:
     void *operator new (size_t);
     void operator delete (void *);
     virtual ~ChildVirtual();
@@ -117,7 +111,7 @@ ChildVirtual::operator delete(void *address)
     ::operator delete (address);
 }
 
-ChildVirtual::~ChildVirtual() {}
+ChildVirtual::~ChildVirtual(){}
 
 int
 main(int argc, char **argv)

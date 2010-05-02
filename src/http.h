@@ -1,6 +1,6 @@
 
 /*
- * $Id$
+ * $Id: http.h,v 1.33 2007/12/26 23:39:55 hno Exp $
  *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
@@ -19,12 +19,12 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *
+ *  
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *
+ *  
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
@@ -47,6 +47,8 @@ public:
     HttpStateData(FwdState *);
     ~HttpStateData();
 
+    static IOCB SendComplete;
+    static IOCB ReadReplyWrapper;
     static void httpBuildRequestHeader(HttpRequest * request,
                                        HttpRequest * orig_request,
                                        StoreEntry * entry,
@@ -58,7 +60,7 @@ public:
     bool sendRequest();
     void processReplyHeader();
     void processReplyBody();
-    void readReply(const CommIoCbParams &io);
+    void readReply(size_t len, comm_err_t flag, int xerrno);
     virtual void maybeReadVirginBody(); // read response data from the network
     int cacheableReply();
 
@@ -71,7 +73,6 @@ public:
     size_t read_sz;
     int header_bytes_read;	// to find end of response,
     int reply_bytes_read;	// without relying on StoreEntry
-    int body_bytes_truncated; // positive when we read more than we wanted
     MemBuf *readBuf;
     bool ignoreCacheControl;
     bool surrogateNoStore;
@@ -82,7 +83,6 @@ protected:
     virtual HttpRequest *originalRequest();
 
 private:
-    AsyncCall::Pointer closeHandler;
     enum ConnectionStatus {
         INCOMPLETE_MSG,
         COMPLETE_PERSISTENT_MSG,
@@ -94,7 +94,6 @@ private:
     void checkDateSkew(HttpReply *);
 
     bool continueAfterParsingHeader();
-    void truncateVirginBody();
 
     virtual void haveParsedReplyHeaders();
     virtual void closeServer(); // end communication with the server
@@ -109,18 +108,13 @@ private:
     bool decodeAndWriteReplyBody();
     void doneSendingRequestBody();
     void requestBodyHandler(MemBuf &);
-    virtual void sentRequestBody(const CommIoCbParams &io);
-    void sendComplete(const CommIoCbParams &io);
-    void httpStateConnClosed(const CommCloseCbParams &params);
-    void httpTimeout(const CommTimeoutCbParams &params);
-
+    virtual void sentRequestBody(int fd, size_t size, comm_err_t errflag);
     mb_size_t buildRequestPrefix(HttpRequest * request,
                                  HttpRequest * orig_request,
                                  StoreEntry * entry,
                                  MemBuf * mb,
                                  http_state_flags flags);
     static bool decideIfWeDoRanges (HttpRequest * orig_request);
-    bool peerSupportsConnectionPinning() const;
 
     ChunkedCodingParser *httpChunkDecoder;
 private:

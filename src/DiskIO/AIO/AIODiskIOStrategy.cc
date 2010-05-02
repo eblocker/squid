@@ -1,6 +1,6 @@
 
 /*
- * $Id$
+ * $Id: AIODiskIOStrategy.cc,v 1.3 2005/12/26 11:35:22 serassio Exp $
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
  * ----------------------------------------------------------
@@ -18,12 +18,12 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *
+ *  
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *
+ *  
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
@@ -123,7 +123,7 @@ AIODiskIOStrategy::callback()
     void *cbdata;
     int callback_valid;
     void *buf;
-    int filedescriptor;
+    int fd;
     async_queue_entry_t *aqe;
     async_queue_entry_type_t type;
 
@@ -148,7 +148,7 @@ AIODiskIOStrategy::callback()
                 /* Get the callback parameters */
                 freefunc = aqe->aq_e_free;
                 buf = aqe->aq_e_buf;
-                filedescriptor = aqe->aq_e_fd;
+                fd = aqe->aq_e_fd;
                 type = aqe->aq_e_type;
                 callback_valid = cbdataReferenceValidDone(aqe->aq_e_callback_data, &cbdata);
                 AIODiskFile * theFile = NULL;
@@ -202,7 +202,7 @@ AIODiskIOStrategy::init()
 
 void
 AIODiskIOStrategy::statfs(StoreEntry & sentry)const
-{}
+    {}
 
 ConfigOption *
 AIODiskIOStrategy::getOptionTree() const

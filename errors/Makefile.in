@@ -15,7 +15,7 @@
 @SET_MAKE@
 
 #
-# $Id$
+# $Id: Makefile.am,v 1.14.2.1 2008/02/27 10:55:13 amosjeffries Exp $
 #
 VPATH = @srcdir@
 pkgdatadir = $(datadir)/@PACKAGE@
@@ -49,13 +49,14 @@ SOURCES =
 DIST_SOURCES =
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
 ACLOCAL = @ACLOCAL@
-ADAPTATION_LIBS = @ADAPTATION_LIBS@
 ALLOCA = @ALLOCA@
 AMTAR = @AMTAR@
 AR = @AR@
 AR_R = @AR_R@
-AUTH_LIBS_TO_BUILD = @AUTH_LIBS_TO_BUILD@
+AUTH_LIBS = @AUTH_LIBS@
+AUTH_LINKOBJS = @AUTH_LINKOBJS@
 AUTH_MODULES = @AUTH_MODULES@
+AUTH_OBJS = @AUTH_OBJS@
 AUTOCONF = @AUTOCONF@
 AUTOHEADER = @AUTOHEADER@
 AUTOMAKE = @AUTOMAKE@
@@ -68,7 +69,6 @@ CC = @CC@
 CCDEPMODE = @CCDEPMODE@
 CFLAGS = @CFLAGS@
 CGIEXT = @CGIEXT@
-CHMOD = @CHMOD@
 CPP = @CPP@
 CPPFLAGS = @CPPFLAGS@
 CPPUNITCONFIG = @CPPUNITCONFIG@
@@ -78,43 +78,39 @@ CXXCPP = @CXXCPP@
 CXXDEPMODE = @CXXDEPMODE@
 CXXFLAGS = @CXXFLAGS@
 CYGPATH_W = @CYGPATH_W@
-DEFAULT_LOG_DIR = @DEFAULT_LOG_DIR@
-DEFAULT_PIDFILE = @DEFAULT_PIDFILE@
 DEFS = @DEFS@
 DEPDIR = @DEPDIR@
 DIGEST_AUTH_HELPERS = @DIGEST_AUTH_HELPERS@
 DISK_LIBS = @DISK_LIBS@
 DISK_LINKOBJS = @DISK_LINKOBJS@
-DISK_MODULES = @DISK_MODULES@
-DISK_OS_LIBS = @DISK_OS_LIBS@
 DISK_PROGRAMS = @DISK_PROGRAMS@
 DSYMUTIL = @DSYMUTIL@
-ECAPLIB = @ECAPLIB@
-ECAP_LIBS = @ECAP_LIBS@
 ECHO = @ECHO@
 ECHO_C = @ECHO_C@
 ECHO_N = @ECHO_N@
 ECHO_T = @ECHO_T@
 EGREP = @EGREP@
 EPOLL_LIBS = @EPOLL_LIBS@
+ERR_DEFAULT_LANGUAGE = @ERR_DEFAULT_LANGUAGE@
+ERR_LANGUAGES = @ERR_LANGUAGES@
 EXEEXT = @EXEEXT@
-EXPATLIB = @EXPATLIB@
 EXTERNAL_ACL_HELPERS = @EXTERNAL_ACL_HELPERS@
 F77 = @F77@
 FALSE = @FALSE@
 FFLAGS = @FFLAGS@
 GREP = @GREP@
 ICAP_LIBS = @ICAP_LIBS@
-INCLTDL = @INCLTDL@
 INSTALL = @INSTALL@
 INSTALL_DATA = @INSTALL_DATA@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
 INSTALL_SCRIPT = @INSTALL_SCRIPT@
 INSTALL_STRIP_PROGRAM = @INSTALL_STRIP_PROGRAM@
+KRB5INCS = @KRB5INCS@
+KRB5LIBS = @KRB5LIBS@
 LDFLAGS = @LDFLAGS@
 LIBADD_DL = @LIBADD_DL@
-LIBLTDL = @LIBLTDL@
 LIBOBJS = @LIBOBJS@
+LIBREGEX = @LIBREGEX@
 LIBS = @LIBS@
 LIBSASL = @LIBSASL@
 LIBTOOL = @LIBTOOL@
@@ -143,7 +139,6 @@ PACKAGE_TARNAME = @PACKAGE_TARNAME@
 PACKAGE_VERSION = @PACKAGE_VERSION@
 PATH_SEPARATOR = @PATH_SEPARATOR@
 PERL = @PERL@
-PO2HTML = @PO2HTML@
 RANLIB = @RANLIB@
 REGEXLIB = @REGEXLIB@
 REPL_LIBS = @REPL_LIBS@
@@ -151,7 +146,6 @@ REPL_OBJS = @REPL_OBJS@
 REPL_POLICIES = @REPL_POLICIES@
 RM = @RM@
 SED = @SED@
-SET_IPV6_SETTINGS = @SET_IPV6_SETTINGS@
 SET_MAKE = @SET_MAKE@
 SH = @SH@
 SHELL = @SHELL@
@@ -162,14 +156,14 @@ SQUID_CPPUNIT_LA = @SQUID_CPPUNIT_LA@
 SQUID_CPPUNIT_LIBS = @SQUID_CPPUNIT_LIBS@
 SQUID_CXXFLAGS = @SQUID_CXXFLAGS@
 SSLLIB = @SSLLIB@
-STORE_LIBS_TO_ADD = @STORE_LIBS_TO_ADD@
-STORE_LIBS_TO_BUILD = @STORE_LIBS_TO_BUILD@
+STORE_LIBS = @STORE_LIBS@
+STORE_LINKOBJS = @STORE_LINKOBJS@
+STORE_OBJS = @STORE_OBJS@
 STORE_TESTS = @STORE_TESTS@
 STRIP = @STRIP@
 TRUE = @TRUE@
 VERSION = @VERSION@
 WIN32_PSAPI = @WIN32_PSAPI@
-XMLLIB = @XMLLIB@
 XTRA_LIBS = @XTRA_LIBS@
 XTRA_OBJS = @XTRA_OBJS@
 abs_builddir = @abs_builddir@
@@ -179,6 +173,7 @@ abs_top_srcdir = @abs_top_srcdir@
 ac_ct_CC = @ac_ct_CC@
 ac_ct_CXX = @ac_ct_CXX@
 ac_ct_F77 = @ac_ct_F77@
+ac_krb5_config = @ac_krb5_config@
 am__include = @am__include@
 am__leading_dot = @am__leading_dot@
 am__quote = @am__quote@
@@ -228,96 +223,46 @@ top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 errordir = $(datadir)/errors
 DEFAULT_ERROR_DIR = $(errordir)
-DEFAULT_STYLESHEET = $(sysconfdir)/errorpage.css
-ERROR_TEMPLATES = \
-	templates/ERR_FTP_PUT_MODIFIED \
-	templates/ERR_ESI \
-	templates/ERR_SECURE_CONNECT_FAIL \
-	templates/ERR_ZERO_SIZE_OBJECT \
-	templates/ERR_SHUTTING_DOWN \
-	templates/ERR_URN_RESOLVE \
-	templates/ERR_CONNECT_FAIL \
-	templates/ERR_SOCKET_FAILURE \
-	templates/ERR_FTP_NOT_FOUND \
-	templates/ERR_FTP_UNAVAILABLE \
-	templates/ERR_LIFETIME_EXP \
-	templates/ERR_READ_ERROR \
-	templates/ERR_ONLY_IF_CACHED_MISS \
-	templates/ERR_UNSUP_HTTPVERSION \
-	templates/ERR_READ_TIMEOUT \
-	templates/ERR_ICAP_FAILURE \
-	templates/ERR_DIR_LISTING \
-	templates/ERR_FTP_FORBIDDEN \
-	templates/ERR_ACCESS_DENIED \
-	templates/ERR_FORWARDING_DENIED \
-	templates/ERR_CANNOT_FORWARD \
-	templates/ERR_CACHE_MGR_ACCESS_DENIED \
-	templates/ERR_INVALID_REQ \
-	templates/ERR_CACHE_ACCESS_DENIED \
-	templates/ERR_FTP_PUT_ERROR \
-	templates/ERR_FTP_PUT_CREATED \
-	templates/ERR_TOO_BIG \
-	templates/ERR_UNSUP_REQ \
-	templates/ERR_FTP_FAILURE \
-	templates/ERR_DNS_FAIL \
-	templates/ERR_FTP_DISABLED \
-	templates/ERR_NO_RELAY \
-	templates/ERR_INVALID_URL \
-	templates/ERR_INVALID_RESP \
-	templates/ERR_WRITE_ERROR
+INSTALL_LANGUAGES = templates @ERR_LANGUAGES@
+LANGUAGES = \
+		Armenian \
+		Azerbaijani \
+		Bulgarian \
+		Catalan \
+		Czech \
+		Danish \
+		Dutch \
+		English \
+		Estonian \
+		Finnish \
+		French \
+		German \
+		Greek \
+		Hebrew \
+		Hungarian \
+		Italian \
+		Japanese \
+		Korean \
+		Lithuanian \
+		Polish \
+		Portuguese \
+		Romanian \
+		Russian-1251 \
+		Russian-koi8-r \
+		Serbian \
+		Simplify_Chinese \
+		Slovak \
+		Spanish \
+		Swedish \
+		Traditional_Chinese \
+		Turkish \
+		Ukrainian-1251 \
+		Ukrainian-koi8-u \
+		Ukrainian-utf8
 
-TRANSLATE_LANGUAGES = \
-	af.lang \
-	ar.lang \
-	az.lang \
-	bg.lang \
-	ca.lang \
-	cs.lang \
-	da.lang \
-	de.lang \
-	el.lang \
-	en.lang \
-	es.lang \
-	et.lang \
-	fa.lang \
-	fi.lang \
-	fr.lang \
-	he.lang \
-	hu.lang \
-	hy.lang \
-	id.lang \
-	it.lang \
-	ja.lang \
-	ko.lang \
-	lt.lang \
-	lv.lang \
-	ms.lang \
-	nl.lang \
-	pl.lang \
-	pt-br.lang \
-	pt.lang \
-	ro.lang \
-	ru.lang \
-	sk.lang \
-	sr.lang \
-	sv.lang \
-	th.lang \
-	tr.lang \
-	uk.lang \
-	uz.lang \
-	zh-cn.lang \
-	zh-tw.lang
-
-CLEANFILES = $(TRANSLATE_LANGUAGES) translate-warn
-EXTRA_DIST = \
-	$(ERROR_TEMPLATES) \
-	aliases alias-link.sh alias-upgrade errorpage.css TRANSLATORS COPYRIGHT
-
-NOTIDY = `$(PO2HTML) --help | grep -o "\-\-notidy"`
 all: all-am
 
 .SUFFIXES:
-.SUFFIXES: .lang .po
 $(srcdir)/Makefile.in: @MAINTAINER_MODE_TRUE@ $(srcdir)/Makefile.am  $(am__configure_deps)
 	@for dep in $?; do \
 	  case '$(am__configure_deps)' in \
@@ -410,7 +355,6 @@ install-strip:
 mostlyclean-generic:
 
 clean-generic:
-	-test -z "$(CLEANFILES)" || rm -f $(CLEANFILES)
 
 distclean-generic:
 	-test -z "$(CONFIG_CLEAN_FILES)" || rm -f $(CONFIG_CLEAN_FILES)
@@ -418,6 +362,8 @@ distclean-generic:
 maintainer-clean-generic:
 	@echo "This command is intended for maintainers to use"
 	@echo "it deletes files that may require special tools to rebuild."
+clean: clean-am
+
 clean-am: clean-generic clean-libtool mostlyclean-am
 
 distclean: distclean-am
@@ -438,7 +384,7 @@ install-data-am: install-data-local
 
 install-dvi: install-dvi-am
 
-install-exec-am: install-exec-local
+install-exec-am:
 
 install-html: install-html-am
 
@@ -477,104 +423,29 @@ uninstall-am: uninstall-local
 	distdir dvi dvi-am html html-am info info-am install \
 	install-am install-data install-data-am install-data-local \
 	install-dvi install-dvi-am install-exec install-exec-am \
-	install-exec-local install-html install-html-am install-info \
-	install-info-am install-man install-pdf install-pdf-am \
-	install-ps install-ps-am install-strip installcheck \
-	installcheck-am installdirs maintainer-clean \
-	maintainer-clean-generic mostlyclean mostlyclean-generic \
-	mostlyclean-libtool pdf pdf-am ps ps-am uninstall uninstall-am \
-	uninstall-local
+	install-html install-html-am install-info install-info-am \
+	install-man install-pdf install-pdf-am install-ps \
+	install-ps-am install-strip installcheck installcheck-am \
+	installdirs maintainer-clean maintainer-clean-generic \
+	mostlyclean mostlyclean-generic mostlyclean-libtool pdf pdf-am \
+	ps ps-am uninstall uninstall-am uninstall-local
 
 
-all: all-am
-
-translate: translate-warn $(TRANSLATE_LANGUAGES)
-
-translate-warn:
-	case "$(PO2HTML)" in \
-	off) \
-	    echo "WARNING: Translation is disabled."; \
-	    ;; \
-	""|no) \
-	    echo "WARNING: Translation toolkit was not detected."; \
-	    ;; \
-	esac; \
-	touch translate-warn
-
-$(TRANSLATE_LANGUAGES): $(ERROR_TEMPLATES)
-
-.po.lang:
-	if test "$(PO2HTML)" != "" && test "$(PO2HTML)" != "no" && test "$(PO2HTML)" != "off" && test -f $(top_srcdir)/errors/en.po; then \
-	    lang=`basename $@ .lang`; \
-	    mkdir -p $(top_builddir)/errors/$$lang; \
-	    echo -n "Translate '$$lang' ..."; \
-	    for f in $(ERROR_TEMPLATES); do \
-			page=`basename $$f`; \
-			$(PO2HTML) $(NOTIDY) --progress=none -i $(top_srcdir)/errors/$$lang.po -t $(top_srcdir)/errors/$$f >$(top_builddir)/errors/$$lang/$$page || exit 1; \
-		done; \
-		echo "done."; \
-	fi; \
-	touch $@
-
-install-exec-local: translate
-	if test -f $(DESTDIR)$(DEFAULT_STYLESHEET) ; then \
-		echo "$@ will not overwrite existing $(DESTDIR)$(DEFAULT_STYLESHEET)" ; \
-	else \
-		$(mkinstalldirs) $(DESTDIR)`dirname $(DEFAULT_STYLESHEET)` ; \
-		echo "$(INSTALL_DATA) $(srcdir)/errorpage.css $(DESTDIR)$(DEFAULT_STYLESHEET)"; \
-		$(INSTALL_DATA) $(srcdir)/errorpage.css $(DESTDIR)$(DEFAULT_STYLESHEET); \
-	fi
-
-install-data-local: translate
-	$(mkinstalldirs) $(DESTDIR)$(DEFAULT_ERROR_DIR) ; \
-	for l in $(TRANSLATE_LANGUAGES) templates; do \
-	    l=`basename $$l .lang`; \
-	    echo "Located $$l for install..."; \
-	    if test -d $(srcdir)/$$l || test -d $(builddir)/$$l; then \
-		$(mkinstalldirs) $(DESTDIR)$(DEFAULT_ERROR_DIR)/$$l; \
-	    fi; \
-	    for f in $(ERROR_TEMPLATES); do \
-		page=`basename $$f`; \
-		if test -f $(builddir)/$$l/$$page; then \
-		    echo "$(INSTALL_DATA) $(builddir)/$$l/$$page $(DESTDIR)$(DEFAULT_ERROR_DIR)/$$l"; \
-			    $(INSTALL_DATA) $(builddir)/$$l/$$page $(DESTDIR)$(DEFAULT_ERROR_DIR)/$$l; \
-		elif test -f $(srcdir)/$$l/$$page; then \
-		    echo "$(INSTALL_DATA) $(srcdir)/$$l/$$page $(DESTDIR)$(DEFAULT_ERROR_DIR)/$$l"; \
-			    $(INSTALL_DATA) $(srcdir)/$$l/$$page $(DESTDIR)$(DEFAULT_ERROR_DIR)/$$l; \
-		fi; \
-	    done; \
-	done; \
-	$(INSTALL_DATA) $(srcdir)/TRANSLATORS $(DESTDIR)$(DEFAULT_ERROR_DIR)/TRANSLATORS; \
-	$(INSTALL_DATA) $(srcdir)/COPYRIGHT $(DESTDIR)$(DEFAULT_ERROR_DIR)/COPYRIGHT; \
-	$(INSTALL_DATA) $(srcdir)/errorpage.css $(DESTDIR)$(DEFAULT_STYLESHEET).default; \
-	$(SHELL) $(srcdir)/alias-link.sh "$(LN)" "$(RM)" "$(DESTDIR)$(DEFAULT_ERROR_DIR)" "$(srcdir)/aliases" || exit 1 ;
+install-data-local: 
+	@for l in $(INSTALL_LANGUAGES); do \
+		$(mkinstalldirs) $(DESTDIR)$(DEFAULT_ERROR_DIR)/$$l && \
+		for f in $(srcdir)/$$l/ERR_*; do \
+			echo "$(INSTALL_DATA) $$f $(DESTDIR)$(DEFAULT_ERROR_DIR)/$$l"; \
+			$(INSTALL_DATA) $$f $(DESTDIR)$(DEFAULT_ERROR_DIR)/$$l; \
+		done \
+	done
 
 uninstall-local:
-	for l in $(TRANSLATE_LANGUAGES) templates; do \
-	  l=`basename $$l .lang`; \
-	  echo "Located $$l for uninstall ..."; \
-	  if test -d $(srcdir)/$$l; then \
+	@for l in $(INSTALL_LANGUAGES); do \
 		for f in $(srcdir)/$$l/ERR_*; do \
-			if test -f $(DESTDIR)$(DEFAULT_ERROR_DIR)/$$l/`basename $$f`; then \
-		        	$(RM) $(DESTDIR)$(DEFAULT_ERROR_DIR)/$$l/`basename $$f`; \
-			fi; \
-		done; \
-	  fi ; \
-	  if test -d $(builddir)/$$l; then \
-		for f in $(builddir)/$$l/ERR_*; do \
-			if test -f $(DESTDIR)$(DEFAULT_ERROR_DIR)/$$l/`basename $$f`; then \
-		        	$(RM) $(DESTDIR)$(DEFAULT_ERROR_DIR)/$$l/`basename $$f`; \
-			fi; \
-		done; \
-	  fi \
-	done;
-	@$(SHELL) $(top_srcdir)/scripts/remove-cfg.sh "$(RM)" $(DESTDIR)$(DEFAULT_STYLESHEET)
-	rm -f $(DESTDIR)$(DEFAULT_STYLESHEET).default
-	rm -f $(DESTDIR)$(DEFAULT_ERROR_DIR)/TRANSLATORS
-	rm -f $(DESTDIR)$(DEFAULT_ERROR_DIR)/COPYRIGHT
-
-upgrade: install
-	$(SHELL) $(srcdir)/alias-link.sh "$(LN)" "$(RM)" "$(DESTDIR)$(DEFAULT_ERROR_DIR)" "$(srcdir)/alias-upgrade" || exit 1 ;
+	        	rm -f $(DESTDIR)$(DEFAULT_ERROR_DIR)/$$l/`basename $$f`; \
+		done \
+	done
 
 # undocumented hack.  You can use this target to create multi-lingual
 # error pages.  For example:
@@ -582,10 +453,6 @@ upgrade: install
 #	make ADDLANG=English DESTLANG=French addlang
 #
 # by Andres Kroonmaa <andre@mail.lbi.ee>
-#
-# UPDATE: this hack completely breaks HTML standards and with the addition
-#	  of language translations is now largely obsolete.
-#	  It will be removed without notice at some future date.
 #
 addlang: all
 	-@if test -d $(srcdir)/$(ADDLANG); then \
@@ -601,25 +468,16 @@ addlang: all
 	fi \
 	fi
 
-dist-hook: translate
-	for lang in $(TRANSLATE_LANGUAGES); do \
-	  lang=`basename $$lang .lang`; \
-	  if test -d $$lang ; then \
-		mkdir -p $(distdir)/$$lang; \
-		cp -p $(top_builddir)/errors/$$lang/ERR_*  $(distdir)/$$lang \
-		  || exit 1; \
+dist-hook:
+	@ for lang in $(LANGUAGES) templates; do \
+	  if test "$$lang" = .; then :; else \
+	    test -d $(distdir)/$$lang \
+	    || mkdir $(distdir)/$$lang \
+	    || exit 1; \
+	    cp -p $(srcdir)/$$lang/ERR_*  $(distdir)/$$lang \
+	      || exit 1; \
 	  fi; \
 	done
-
-clean: clean-am
-	if test "$(PO2HTML)" != "" && test "$(PO2HTML)" != "no" && test "$(PO2HTML)" != "off" && test -f $(top_srcdir)/errors/en.po; then \
-	  for lang in $(TRANSLATE_LANGUAGES); do \
-	    lang=`basename $$lang .lang`; \
-	    rm -rf $$lang; \
-	  done; \
-	fi
-
-all: translate
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.
 .NOEXPORT:

@@ -1,5 +1,6 @@
+
 /*
- * $Id$
+ * $Id: DiskIOStrategy.h,v 1.1 2004/12/20 16:30:38 robertc Exp $
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
  * ----------------------------------------------------------
@@ -17,12 +18,12 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *
+ *  
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *
+ *  
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
@@ -45,33 +46,30 @@ class DiskIOStrategy
 {
 
 public:
-    virtual ~DiskIOStrategy() {}
+    virtual ~DiskIOStrategy(){}
 
-    /** Can the IO Strategy handle more requests ? */
+    /* Can the IO Strategy handle more requests ? */
     virtual bool shedLoad() = 0;
-
-    /** What is the current load? 999 = 99.9% */
+    /* What is the current load? 999 = 99.9% */
     virtual int load() = 0;
-
-    /** Return a handle for performing IO operations */
-    virtual RefCount<DiskFile> newFile(char const *path) = 0;
-
-    /** flush all IO operations  */
+    /* Return a handle for performing IO operations */
+    virtual RefCount<DiskFile> newFile (char const *path) = 0;
+    /* flush all IO operations  */
     virtual void sync() {}
 
-    /** unlink a file by path */
-    virtual void unlinkFile(char const *) = 0;
+    /* unlink a file by path */
+    virtual void unlinkFile (char const *) = 0;
 
-    /** perform any pending callbacks */
+    /* perform any pending callbacks */
     virtual int callback() { return 0; }
 
-    /** Init per-instance logic */
+    /* Init per-instance logic */
     virtual void init() {}
 
-    /** cachemgr output on the IO instance stats */
+    /* cachemgr output on the IO instance stats */
     virtual void statfs(StoreEntry & sentry)const {}
 
-    /** module specific options */
+    /* module specific options */
     virtual ConfigOption *getOptionTree() const { return NULL;}
 };
 
@@ -82,7 +80,7 @@ class SingletonIOStrategy : public DiskIOStrategy
 {
 
 public:
-    SingletonIOStrategy(DiskIOStrategy *anIO) : io(anIO) {}
+    SingletonIOStrategy(DiskIOStrategy *anIO) : io(anIO){}
 
     virtual bool shedLoad() { return io->shedLoad(); }
 

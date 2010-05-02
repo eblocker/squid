@@ -1,5 +1,6 @@
+
 /*
- * $Id$
+ * $Id: aio_win32.h,v 1.2 2006/09/09 15:29:59 serassio Exp $
  *
  * AUTHOR: Guido Serassio <serassio@squid-cache.org>
  *
@@ -19,12 +20,12 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *
+ *  
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *
+ *  
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
@@ -33,10 +34,6 @@
 
 #ifndef __WIN32_AIO_H__
 #define __WIN32_AIO_H__
-
-#include "config.h"
-
-#if USE_DISKIO_AIO
 
 #ifdef _SQUID_CYGWIN_
 #include "squid_windows.h"
@@ -47,21 +44,22 @@ typedef int64_t	off64_t;
 #endif
 
 #ifdef _SQUID_MSWIN_
-
 union sigval {
     int sival_int; /* integer value */
     void *sival_ptr; /* pointer value */
 };
 
-struct sigevent {
+struct sigevent
+{
     int sigev_notify; /* notification mode */
     int sigev_signo; /* signal number */
     union sigval sigev_value; /* signal value */
 };
 
-// #endif
+#endif
 
-struct aiocb64 {
+struct aiocb64
+{
     int aio_fildes; /* file descriptor */
     void *aio_buf; /* buffer location */
     size_t aio_nbytes; /* length of transfer */
@@ -72,7 +70,8 @@ struct aiocb64 {
     int aio_lio_opcode; /* listio operation */
 };
 
-struct aiocb {
+struct aiocb
+{
     int aio_fildes; /* file descriptor */
     void *aio_buf; /* buffer location */
     size_t aio_nbytes; /* length of transfer */
@@ -108,6 +107,4 @@ int aio_error64(const struct aiocb64 *);
 int aio_open(const char *, int);
 void aio_close(int);
 
-#endif /* _SQUID_MSWIN_ */
-#endif /* USE_DISKIO_AIO */
-#endif /* __WIN32_AIO_H__ */
+#endif

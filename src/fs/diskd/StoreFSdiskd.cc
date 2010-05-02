@@ -1,5 +1,6 @@
+
 /*
- * $Id$
+ * $Id: StoreFSdiskd.cc,v 1.2 2004/12/20 16:30:43 robertc Exp $
  *
  * DEBUG: section 47    Store Directory Routines
  * AUTHOR: Robert Collins
@@ -20,12 +21,12 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *
+ *  
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *
+ *  
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
@@ -33,22 +34,9 @@
  * Copyright (c) 2003, Robert Collins <robertc@squid-cache.org>
  */
 
-/* TODO: remove this file as unused */
 
-#if 0
 #include "StoreFileSystem.h"
-#include "DiskIO/DiskIOModule.h"
-#endif
-
 #include "fs/ufs/StoreFSufs.h"
+#include "DiskIO/DiskIOModule.h"
 
-/** \todo FIXME: break UFSSwapDir out so we don;t need all the extras */
-#include "fs/ufs/ufscommon.h"
-
-/**
- \defgroup diskd diskd Storage Filesystem (UFS Based)
- \ingroup FileSystems, UFS
- */
-
-/* Unused variable: */
-StoreFSufs<UFSSwapDir> *DiskdInstance_foo = NULL;
+static StoreFSufs<UFSSwapDir> DiskdInstance("DiskDaemon", "diskd");

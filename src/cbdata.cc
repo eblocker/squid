@@ -1,6 +1,6 @@
 
 /*
- * $Id$
+ * $Id: cbdata.cc,v 1.76 2007/04/28 22:26:37 hno Exp $
  *
  * DEBUG: section 45    Callback Data Registry
  * ORIGINAL AUTHOR: Duane Wessels
@@ -23,24 +23,21 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *
+ *  
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *
+ *  
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
  *
  */
 
-/**
- \defgroup CBDATAInternal Callback Data Allocator Internals
- \ingroup CBDATAAPI
- *
+/*
  * These routines manage a set of registered callback data pointers.
- * One of the easiest ways to make Squid coredump is to issue a
+ * One of the easiest ways to make Squid coredump is to issue a 
  * callback to for some data structure which has previously been
  * freed.  With these routines, we register (add) callback data
  * pointers, lock them just before registering the callback function,
@@ -71,7 +68,7 @@ class CBDataCall
 {
 
 public:
-    CBDataCall (char const *callLabel, char const *aFile, int aLine) : label(callLabel), file(aFile), line(aLine) {}
+    CBDataCall (char const *callLabel, char const *aFile, int aLine) : label(callLabel), file(aFile), line(aLine){}
 
     char const *label;
     char const *file;
@@ -80,13 +77,11 @@ public:
 
 #endif
 
-/// \ingroup CBDATAInternal
 #define OFFSET_OF(TYPE, MEMBER) ((size_t) &(((TYPE) *)0)->(MEMBER))
 
-/// \ingroup CBDATAInternal
 class cbdata
 {
-    /** \todo examine making cbdata templated on this - so we get type
+    /* TODO: examine making cbdata templated on this - so we get type
      * safe access to data - RBC 20030902 */
 public:
 #if HASHED_CBDATA
@@ -111,11 +106,12 @@ public:
     cbdata_type type;
 #if CBDATA_DEBUG
 
-    void addHistory(char const *label, char const *aFile, int aLine) {
+    void addHistory(char const *label, char const *file, int line)
+    {
         if (calls.size() > 1000)
             return;
 
-        calls.push_back(new CBDataCall(label, aFile, aLine));
+        calls.push_back(new CBDataCall(label, file, line));
     }
 
     dlink_node link;
@@ -126,7 +122,7 @@ public:
 
     /* cookie used while debugging */
     long cookie;
-    void check(int aLine) const {assert(cookie == ((long)this ^ Cookie));}
+    void check(int line) const {assert(cookie == ((long)this ^ Cookie));}
     static const long Cookie;
 
 #if !HASHED_CBDATA
@@ -150,15 +146,13 @@ cbdata::operator new(size_t size, void *where)
     return where;
 }
 
-/**
- * Only ever invoked when placement new throws
- * an exception. Used to prevent an incorrect
- * free.
- */
 void
 cbdata::operator delete(void *where, void *where2)
 {
-    ; // empty.
+    /* Only ever invoked when placement new throws
+     * an exception. Used to prevent an incorrect
+     * free.
+     */
 }
 
 long
@@ -169,7 +163,7 @@ cbdata::MakeOffset()
     return (long)dataOffset;
 }
 #else
-MEMPROXY_CLASS_INLINE(cbdata);
+MEMPROXY_CLASS_INLINE(cbdata)
 #endif
 
 static OBJH cbdataDump;
@@ -177,14 +171,13 @@ static OBJH cbdataDump;
 static OBJH cbdataDumpHistory;
 #endif
 
-/// \ingroup CBDATAInternal
-struct CBDataIndex {
+struct CBDataIndex
+{
     MemAllocator *pool;
     FREE *free_func;
 }
-*cbdata_index = NULL;
 
-/// \ingroup CBDATAInternal
+*cbdata_index = NULL;
 int cbdata_types = 0;
 
 #if HASHED_CBDATA
@@ -251,7 +244,7 @@ cbdataInternalInitType(cbdata_type type, const char *name, int size, FREE * free
 
 #if HASHED_CBDATA
     if (!cbdata_htable)
-        cbdata_htable = hash_create(cbdata_cmp, 1 << 12, cbdata_hash);
+	cbdata_htable = hash_create(cbdata_cmp, 1 << 12, cbdata_hash);
 #endif
 }
 
@@ -269,17 +262,16 @@ cbdataInternalAddType(cbdata_type type, const char *name, int size, FREE * free_
 }
 
 void
-cbdataRegisterWithCacheManager(void)
+cbdataRegisterWithCacheManager(CacheManager & manager)
 {
-    CacheManager *manager=CacheManager::GetInstance();
-    manager->registerAction("cbdata",
-                            "Callback Data Registry Contents",
-                            cbdataDump, 0, 1);
+    manager.registerAction("cbdata",
+                           "Callback Data Registry Contents",
+                           cbdataDump, 0, 1);
 #if CBDATA_DEBUG
 
-    manager->registerAction("cbdatahistory",
-                            "Detailed call history for all current cbdata contents",
-                            cbdataDumpHistory, 0, 1);
+    manager.registerAction("cbdatahistory",
+                           "Detailed call history for all current cbdata contents",
+                           cbdataDumpHistory, 0, 1);
 #endif
 }
 
@@ -366,10 +358,10 @@ cbdataInternalFree(void *p)
 #endif
 
     /* This is ugly. But: operator delete doesn't get
-     * the type parameter, so we can't use that
+     * the type parameter, so we can't use that 
      * to free the memory.
      * So, we free it ourselves.
-     * Note that this means a non-placement
+     * Note that this means a non-placement 
      * new would be a seriously bad idea.
      * Lastly, if we where a templated class,
      * we could use the normal delete operator
@@ -476,10 +468,10 @@ cbdataInternalUnlock(const void *p)
 #endif
 
     /* This is ugly. But: operator delete doesn't get
-     * the type parameter, so we can't use that
+     * the type parameter, so we can't use that 
      * to free the memory.
      * So, we free it ourselves.
-     * Note that this means a non-placement
+     * Note that this means a non-placement 
      * new would be a seriously bad idea.
      * Lastly, if we where a templated class,
      * we could use the normal delete operator
@@ -559,10 +551,12 @@ cbdata::dump(StoreEntry *sentry) const
                       '!', p, type, locks, file, line);
 }
 
-struct CBDataDumper : public unary_function<cbdata, void> {
-    CBDataDumper(StoreEntry *anEntry):where(anEntry) {}
+struct CBDataDumper : public unary_function<cbdata, void>
+{
+    CBDataDumper(StoreEntry *anEntry):where(anEntry){}
 
-    void operator()(cbdata const &x) {
+    void operator()(cbdata const &x)
+    {
         x.dump(where);
     }
 
@@ -608,20 +602,24 @@ CBDATA_CLASS_INIT(generic_cbdata);
 
 #if CBDATA_DEBUG
 
-struct CBDataCallDumper : public unary_function<CBDataCall, void> {
-    CBDataCallDumper (StoreEntry *anEntry):where(anEntry) {}
+struct CBDataCallDumper : public unary_function<CBDataCall, void>
+{
+    CBDataCallDumper (StoreEntry *anEntry):where(anEntry){}
 
-    void operator()(CBDataCall const &x) {
+    void operator()(CBDataCall const &x)
+    {
         storeAppendPrintf(where, "%s\t%s\t%d\n", x.label, x.file, x.line);
     }
 
     StoreEntry *where;
 };
 
-struct CBDataHistoryDumper : public CBDataDumper {
-    CBDataHistoryDumper(StoreEntry *anEntry):CBDataDumper(anEntry),where(anEntry), callDumper(anEntry) {}
+struct CBDataHistoryDumper : public CBDataDumper
+{
+    CBDataHistoryDumper(StoreEntry *anEntry):CBDataDumper(anEntry),where(anEntry), callDumper(anEntry){}
 
-    void operator()(cbdata const &x) {
+    void operator()(cbdata const &x)
+    {
         CBDataDumper::operator()(x);
         storeAppendPrintf(where, "\n");
         storeAppendPrintf(where, "Action\tFile\tLine\n");

@@ -1,16 +1,13 @@
 #include "config.h"
-
 #include <cppunit/TestAssert.h>
 
+#include "AsyncEngine.h"
+#include "CompletionDispatcher.h"
+#include "Mem.h"
 #include "testEventLoop.h"
 #include "EventLoop.h"
-#include "Mem.h"
-
-#if 0
-#include "AsyncEngine.h"
-#include "base/AsyncCallQueue.h"
 #include "event.h"
-#endif
+
 
 CPPUNIT_TEST_SUITE_REGISTRATION( testEventLoop );
 
@@ -43,10 +40,9 @@ testEventLoop::testCreate()
     EventLoop();
 }
 
-#if POLISHED_MAIN_LOOP
 
 /*
- * Running the loop once is useful for integration with other loops, such as
+ * Running the loop once is useful for integration with other loops, such as 
  * migrating to it in incrementally.
  *
  * This test works by having a custom dispatcher and engine which record how
@@ -58,17 +54,17 @@ class RecordDispatcher : public CompletionDispatcher
 
 public:
     int calls;
-    RecordDispatcher(): calls(0) {}
+    RecordDispatcher(): calls(0)
+    {}
 
-    bool dispatch() {
+    bool dispatch()
+    {
         ++calls;
         /* claim we dispatched calls to be useful for the testStopOnIdle test.
          */
         return true;
     }
 };
-
-#endif /* POLISHED_MAIN_LOOP */
 
 class RecordingEngine : public AsyncEngine
 {
@@ -78,16 +74,16 @@ public:
     int lasttimeout;
     int return_timeout;
     RecordingEngine(int return_timeout=0): calls(0), lasttimeout(0),
-            return_timeout(return_timeout) {}
+            return_timeout(return_timeout)
+          {}
 
-    virtual int checkEvents(int timeout) {
-        ++calls;
-        lasttimeout = timeout;
-        return return_timeout;
-    }
-};
-
-#if POLISHED_MAIN_LOOP
+          virtual int checkEvents(int timeout)
+          {
+              ++calls;
+              lasttimeout = timeout;
+              return return_timeout;
+          }
+      };
 
 void
 testEventLoop::testRunOnce()
@@ -119,9 +115,11 @@ class ShutdownDispatcher : public CompletionDispatcher
 public:
     EventLoop &theLoop;
     int calls;
-    ShutdownDispatcher(EventLoop & theLoop):theLoop(theLoop), calls(0) {}
+    ShutdownDispatcher(EventLoop & theLoop):theLoop(theLoop), calls(0)
+    {}
 
-    bool dispatch() {
+    bool dispatch()
+    {
         if (++calls == 2)
             theLoop.stop();
 
@@ -226,8 +224,6 @@ testEventLoop::testStopOnIdle()
     CPPUNIT_ASSERT_EQUAL(false, theLoop.runOnce());
 }
 
-#endif /* POLISHED_MAIN_LOOP */
-
 /* An event loop has a time service which is like an async engine but never
  * generates events and there can only be one such service.
  */
@@ -239,7 +235,8 @@ public:
     StubTime() : calls(0) {}
 
     int calls;
-    void tick() {
+    void tick()
+    {
         ++calls;
     }
 };
@@ -273,7 +270,7 @@ testEventLoop::testSetPrimaryEngine()
     /* one engine - gets a timeout */
     theLoop.registerEngine(&first_engine);
     theLoop.runOnce();
-    CPPUNIT_ASSERT_EQUAL(EVENT_LOOP_TIMEOUT, first_engine.lasttimeout);
+    CPPUNIT_ASSERT_EQUAL(10, first_engine.lasttimeout);
     /* two engines - the second gets the timeout */
     theLoop.registerEngine(&second_engine);
     theLoop.runOnce();
@@ -284,4 +281,5 @@ testEventLoop::testSetPrimaryEngine()
     theLoop.runOnce();
     CPPUNIT_ASSERT_EQUAL(10, first_engine.lasttimeout);
     CPPUNIT_ASSERT_EQUAL(0, second_engine.lasttimeout);
+
 }

@@ -1,5 +1,6 @@
+
 /*
- * $Id$
+ * $Id: DelayPools.h,v 1.4 2006/05/29 00:14:59 robertc Exp $
  *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
@@ -18,12 +19,12 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *
+ *  
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *
+ *  
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
@@ -31,38 +32,33 @@
  *
  * Copyright (c) 2003, Robert Collins <robertc@squid-cache.org>
  */
+
 #ifndef SQUID_DELAYPOOLS_H
 #define SQUID_DELAYPOOLS_H
 
-/**
- \defgroup DelayPoolsAPI Delay Pools API
- \ingroup Components
- */
+/* forward decls */
 
-/// \ingroup DelayPoolsAPI
+class CacheManager;
+
+#include "Array.h"
+
 class Updateable
 {
 
 public:
-    virtual ~Updateable() {}
+    virtual ~Updateable(){}
 
     virtual void update(int) = 0;
 };
 
-/* forward decls */
 class DelayPool;
-class Updateable;
-class StoreEntry;
 
-/* for Vector<> */
-#include "Array.h"
-
-/// \ingroup DelayPoolsAPI
 class DelayPools
 {
 
 public:
     static void Init();
+    static void RegisterWithCacheManager(CacheManager & manager);
     static void Update(void *);
     static unsigned short pools();
     static void pools (u_short pools);
@@ -80,7 +76,6 @@ private:
     static unsigned short pools_;
     static void FreeDelayData ();
     static Vector<Updateable *> toUpdate;
-    static void RegisterWithCacheManager(void);
 };
 
 #endif /* SQUID_DELAYPOOLS_H */

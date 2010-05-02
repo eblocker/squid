@@ -1,5 +1,6 @@
+
 /*
- * $Id$
+ * $Id: DelayBucket.cc,v 1.7 2007/05/29 13:31:36 amosjeffries Exp $
  *
  * DEBUG: section 77    Delay Pools
  * AUTHOR: Robert Collins <robertc@squid-cache.org>
@@ -22,12 +23,12 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *
+ *  
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *
+ *  
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
@@ -43,14 +44,13 @@
 #include "DelayBucket.h"
 #include "DelaySpec.h"
 #include "Store.h"
-
-#if DEAD_CODE // ?
+/*
 #include "DelayPools.h"
 #include "StoreClient.h"
 #include "MemObject.h"
 #include "client_side_request.h"
-#include "acl/Checklist.h"
-#include "acl/Acl.h"
+#include "ACLChecklist.h"
+#include "ACL.h"
 #include "ConfigParser.h"
 #include "DelayId.h"
 #include "Array.h"
@@ -60,7 +60,7 @@
 #include "DelayPool.h"
 #include "DelayVector.h"
 #include "NullDelayId.h"
-#endif
+*/
 
 void
 DelayBucket::stats(StoreEntry *entry)const
@@ -69,7 +69,7 @@ DelayBucket::stats(StoreEntry *entry)const
 }
 
 void
-DelayBucket::update(DelaySpec const &rate, int incr)
+DelayBucket::update (DelaySpec const &rate, int incr)
 {
     if (rate.restore_bps != -1 &&
             (level() += rate.restore_bps * incr) > rate.max_bytes)
@@ -77,7 +77,7 @@ DelayBucket::update(DelaySpec const &rate, int incr)
 }
 
 int
-DelayBucket::bytesWanted(int minimum, int maximum) const
+DelayBucket::bytesWanted (int minimum, int maximum) const
 {
     int result = max(minimum, min(maximum, level()));
     return result;
@@ -90,10 +90,11 @@ DelayBucket::bytesIn(int qty)
 }
 
 void
-DelayBucket::init(DelaySpec const &rate)
+DelayBucket::init (DelaySpec const &rate)
 {
     level() = (int) (((double)rate.max_bytes *
                       Config.Delay.initial) / 100);
 }
 
 #endif
+

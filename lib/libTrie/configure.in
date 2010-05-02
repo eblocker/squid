@@ -50,7 +50,6 @@ fi
 # Checks for programs.
 AC_PROG_CXX
 AC_PROG_CC
-AC_LANG_CPLUSPLUS
 AC_PROG_MAKE_SET
 # for old automakes - like squid-cache.orgs!
 AM_INIT_AUTOMAKE(libTrie, 0.1)
@@ -66,10 +65,8 @@ else
    TRIE_CXXFLAGS=
 fi
 
-if test "$GCC" = "yes" ; then
-       AC_TEST_CHECKFORHUGEOBJECTS
-       TRIE_CXXFLAGS="$TRIE_CXXFLAGS $HUGE_OBJECT_FLAG"
-fi
+AC_TEST_CHECKFORHUGEOBJECTS
+TRIE_CXXFLAGS="$TRIE_CXXFLAGS $HUGE_OBJECT_FLAG"
 
 AC_SUBST(TRIE_CFLAGS)
 AC_SUBST(TRIE_CXXFLAGS)
@@ -77,9 +74,6 @@ AC_SUBST(TRIE_CXXFLAGS)
 # Checks for libraries.
 
 # Checks for header files.
-AC_CHECK_HEADERS( \
-	iostream \
-)
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_C_CONST

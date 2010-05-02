@@ -1,5 +1,5 @@
 /*
- * $Id$
+ * $Id: stub_MemObject.cc,v 1.8 2007/08/14 02:14:44 amosjeffries Exp $
  *
  * DEBUG: section 84    Helper process maintenance
  * AUTHOR: Robert Collins
@@ -20,12 +20,12 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *
+ *  
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *
+ *  
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
@@ -139,7 +139,7 @@ MemObject::write(StoreIOBuffer writeBuffer, STMCB *callback, void *callbackData)
     writeBuffer.offset += (_reply ? _reply->hdr_sz : 0);
 
     /* We don't separate out mime headers yet, so ensure that the first
-     * write is at offset 0 - where they start
+     * write is at offset 0 - where they start 
      */
     assert (data_hdr.endOffset() || writeBuffer.offset == 0);
 

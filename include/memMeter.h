@@ -1,15 +1,10 @@
-/*
- * $Id$
- */
+
 #ifndef _MEM_METER_H_
 #define _MEM_METER_H_
 
-#include "config.h"
-
 /* object to track per-action memory usage (e.g. #idle objects) */
-class MemMeter
-{
-public:
+class MemMeter {
+  public:
     MemMeter() : level(0), hwater_level(0), hwater_stamp(0) {}
     ssize_t level;              /* current level (count or volume) */
     ssize_t hwater_level;       /* high water mark */

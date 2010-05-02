@@ -1,5 +1,5 @@
 /*
- * $Id$
+ * $Id: stub_store.cc,v 1.3 2007/04/21 07:14:20 wessels Exp $
  *
  * DEBUG: section 20    Storage Manager
  * AUTHOR: Robert Collins
@@ -20,12 +20,12 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *
+ *  
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *
+ *  
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
@@ -38,15 +38,20 @@
 StorePointer Store::CurrentRoot = NULL;
 
 extern "C" void
-storeAppendPrintf(StoreEntry * e, const char *fmt,...)
+#if STDC_HEADERS
+    storeAppendPrintf(StoreEntry * e, const char *fmt,...)
+#else
+    storeAppendPrintf(va_alist)
+    va_dcl
+#endif
 {
-    fatal("storeAppendPrintf: Not implemented");
+    fatal("Not implemented");
 }
 
 extern "C" void
-storeAppendVPrintf(StoreEntry * e, const char *fmt, va_list vargs)
+    storeAppendVPrintf(StoreEntry * e, const char *fmt, va_list vargs)
 {
-    fatal("storeAppendVPrintf: Not implemented");
+    fatal("Not implemented");
 }
 
 #ifndef _USE_INLINE_

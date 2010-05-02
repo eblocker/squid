@@ -1,4 +1,8 @@
+
 /*
+ * $Id: client_side_reply.h,v 1.17.4.1 2008/02/25 23:08:50 amosjeffries Exp $
+ *
+ *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
  * ----------------------------------------------------------
  *
@@ -15,12 +19,12 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *
+ *  
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *
+ *  
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
@@ -37,8 +41,8 @@
 #include "StoreClient.h"
 #include "client_side_request.h"
 
+
 class ErrorState;
-class IpAddress;
 
 /* XXX make static method */
 
@@ -72,8 +76,8 @@ public:
     int storeOKTransferDone() const;
     int storeNotOKTransferDone() const;
 
-    void setReplyToError(err_type, http_status, const HttpRequestMethod&, char const *, IpAddress &, HttpRequest *, const char *, AuthUserRequest *);
-    void createStoreEntry(const HttpRequestMethod& m, request_flags flags);
+    void setReplyToError(err_type, http_status, method_t, char const *, struct IN_ADDR *, HttpRequest *, char *, AuthUserRequest *);
+    void createStoreEntry(method_t m, request_flags flags);
     void removeStoreReference(store_client ** scp, StoreEntry ** ep);
     void removeClientStoreReference(store_client **scp, ClientHttpRequest *http);
     void startError(ErrorState * err);
@@ -101,13 +105,16 @@ public:
     const char *lookup_type;	/* temporary hack: storeGet() result: HIT/MISS/NONE */
 #endif
 
-    struct {
+    struct
+    {
 
-        unsigned storelogiccomplete:1;
+unsigned storelogiccomplete: 1;
 
-        unsigned complete:1;		/* we have read all we can from upstream */
+unsigned complete: 1;		/* we have read all we can from upstream */
         bool headersSent;
-    } flags;
+    }
+
+    flags;
     clientStreamNode *ourNode;	/* This will go away if/when this file gets refactored some more */
 
 private:
@@ -133,9 +140,8 @@ private:
     void sendMoreData(StoreIOBuffer result);
     void triggerInitialStoreRead();
     void sendClientOldEntry();
-    void purgeAllCached();
+    void buildMaxBodySize(HttpReply * reply);
 
-    void sendBodyTooLargeError();
 
     StoreEntry *old_entry;
     store_client *old_sc;	/* ... for entry to be validated */

@@ -1,6 +1,6 @@
 
 /*
- * $Id$
+ * $Id: DiskThreadsIOStrategy.cc,v 1.12 2007/04/28 22:26:47 hno Exp $
  *
  * DEBUG: section 79    Squid-side Disk I/O functions.
  * AUTHOR: Robert Collins
@@ -21,12 +21,12 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *
+ *  
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *
+ *  
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
@@ -58,16 +58,13 @@ DiskThreadsIOStrategy::init(void)
      * hasn't been parsed yet and we don't know how many cache_dirs
      * there are, which means we don't know how many threads to start.
      */
-
-    registerWithCacheManager();
 }
 
 void
-DiskThreadsIOStrategy::registerWithCacheManager(void)
+DiskThreadsIOStrategy::registerWithCacheManager(CacheManager & manager)
 {
-    CacheManager::GetInstance()->
-    registerAction("squidaio_counts", "Async IO Function Counters",
-                   aioStats, 0, 1);
+    manager.registerAction("squidaio_counts", "Async IO Function Counters",
+                           aioStats, 0, 1);
 }
 
 void
@@ -139,14 +136,14 @@ DiskThreadsIOStrategy::callback()
         dlinkDelete(&ctrlp->node, &used_list);
 
         if (ctrlp->done_handler) {
-            AIOCB *done_callback = ctrlp->done_handler;
+            AIOCB *callback = ctrlp->done_handler;
             void *cbdata;
             ctrlp->done_handler = NULL;
 
             if (cbdataReferenceValidDone(ctrlp->done_handler_data, &cbdata)) {
                 retval = 1;	/* Return that we've actually done some work */
-                done_callback(ctrlp->fd, cbdata, ctrlp->bufp,
-                              ctrlp->result.aio_return, ctrlp->result.aio_errno);
+                callback(ctrlp->fd, cbdata, ctrlp->bufp,
+                         ctrlp->result.aio_return, ctrlp->result.aio_errno);
             } else {
                 if (ctrlp->operation == _AIO_OPEN) {
                     /* The open operation was aborted.. */
@@ -180,13 +177,13 @@ DiskThreadsIOStrategy::sync()
         return;			/* nothing to do then */
 
     /* Flush all pending operations */
-    debugs(32, 2, "aioSync: flushing pending I/O operations");
+    debugs(32, 1, "aioSync: flushing pending I/O operations");
 
     do {
         callback();
     } while (squidaio_sync());
 
-    debugs(32, 2, "aioSync: done");
+    debugs(32, 1, "aioSync: done");
 }
 
 DiskThreadsIOStrategy::DiskThreadsIOStrategy() :  initialised (false) {}

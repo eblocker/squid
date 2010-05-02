@@ -1,20 +1,16 @@
 ## Process this file with automake to produce Makefile.in
 #
-#  $Id$
+#  $Id: Makefile.am,v 1.30 2007/12/04 13:22:54 hno Exp $
 #
 
-include $(top_srcdir)/src/Common.am
-
-SUBDIRS =
-
-if USE_ESI
-SUBDIRS += libTrie
-endif
-
+DIST_SUBDIRS = libTrie
+SUBDIRS= libTrie
 
 install: all
 install-strip: all
 
+AM_CFLAGS = @SQUID_CFLAGS@
+AM_CXXFLAGS = @SQUID_CXXFLAGS@
 
 if ENABLE_XPROF_STATS
 XPROF_STATS_SOURCE = Profiler.c
@@ -31,12 +27,13 @@ WIN32SRC=
 endif
 
 EXTRA_LIBRARIES = \
+	libregex.a \
 	libsspwin32.a
 noinst_LIBRARIES = \
 	libmiscutil.a \
 	libntlmauth.a \
-	$(LIBSSPWIN32)
-
+	$(LIBSSPWIN32) \
+	@LIBREGEX@
 #
 # dirent.c, encrypt.c and getopt.c are needed for native Windows support.
 #
@@ -50,7 +47,6 @@ EXTRA_libmiscutil_a_SOURCES = \
 libmiscutil_a_SOURCES = \
 	MemPool.cc \
 	base64.c \
-	charset.c \
 	getfullhostname.c \
 	hash.c \
 	heap.c \
@@ -62,56 +58,42 @@ libmiscutil_a_SOURCES = \
 	rfc1123.c \
 	rfc1738.c \
 	rfc2617.c \
-	rfc3596.c \
+	safe_inet_addr.c \
 	$(SNPRINTFSOURCE) \
 	Splay.cc \
 	strnstr.cc \
 	stub_memaccount.c \
 	util.c \
 	uudecode.c \
+	assert.c \
 	xusleep.c \
 	$(XPROF_STATS_SOURCE) \
 	$(WIN32SRC)
-libmiscutil_a_LIBADD = $(LIBOBJS)
-
+libmiscutil_a_LIBADD = \
+	libTrie/src/Trie.o \
+	libTrie/src/TrieNode.o \
+	@LIBOBJS@
 # $(top_srcdir)/include/version.h should be a dependency
+libregex_a_SOURCES = \
+	GNUregex.c
 libntlmauth_a_SOURCES = \
 	ntlmauth.c
 libntlmauth_a_LIBADD = \
-	$(LIBOBJS)
+	@LIBOBJS@
 libsspwin32_a_SOURCES = \
-	base64.c \
 	sspwin32.c
-libsspwin32_a_LIBADD = \
-	$(LIBOBJS)
 
+INCLUDES	= -I$(top_builddir)/include -I$(top_srcdir)/include @SQUID_CPPUNIT_INC@
+##FIXME - set these in configure.in and reuse
 
-TESTS += tests/testAll
+TESTS=$(check_PROGRAMS)
+check_PROGRAMS=tests/testAll
 
-check_PROGRAMS += tests/testAll
-
-tests_testAll_SOURCES= \
-	tests/testArray.h \
-	tests/testArray.cc \
-	tests/testRFC1035.h \
-	tests/testRFC1035.cc \
-	tests/testRFC1738.h \
-	tests/testRFC1738.cc \
-	tests/testMain.cc \
+tests_testAll_SOURCES= tests/testArray.cc tests/testMain.cc  tests/testArray.h \
 	$(XPROF_STATS_SOURCE) \
 	$(WIN32SRC) \
-	util.c
+	util.c assert.c
 
-tests_testAll_LDADD= $(SQUID_CPPUNIT_LA) $(SQUID_CPPUNIT_LIBS)
+tests_testAll_LDADD= @SQUID_CPPUNIT_LA@ @SQUID_CPPUNIT_LIBS@
 
 tests_testAll_LDFLAGS = $(LIBADD_DL)
-
-
-## Special Universal .h dependency test script
-## aborts if error encountered
-testHeaders: $(top_srcdir)/include/*.h
-	$(SHELL) $(top_srcdir)/test-suite/testheaders.sh "$(CXXCOMPILE)" "$(top_srcdir)/include" || exit 1
-
-TESTS += testHeaders
-CLEANFILES += testHeaders
-.PHONY: testHeaders

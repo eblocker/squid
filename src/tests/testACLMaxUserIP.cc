@@ -1,12 +1,10 @@
 #define SQUID_UNIT_TEST 1
 
 #include "squid.h"
-#include "testACLMaxUserIP.h"
-#include "auth/AclMaxUserIp.h"
-
-#if HAVE_STDEXCEPT
 #include <stdexcept>
-#endif
+
+#include "testACLMaxUserIP.h"
+#include "ACLMaxUserIP.h"
 
 CPPUNIT_TEST_SUITE_REGISTRATION( testACLMaxUserIP );
 

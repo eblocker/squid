@@ -1,4 +1,7 @@
+
 /*
+ * $Id: delay_pools.cc,v 1.49 2007/11/13 23:25:34 rousskov Exp $
+ *
  * DEBUG: section 77    Delay Pools
  * AUTHOR: Robert Collins <robertc@squid-cache.org>
  * Based upon original delay pools code by
@@ -20,23 +23,18 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *
+ *  
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *
+ *  
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
  *
  *
  * Copyright (c) 2003, Robert Collins <robertc@squid-cache.org>
- */
-
-/**
- \defgroup DelayPoolsInternal Delay Pools Internal
- \ingroup DelayPoolsAPI
  */
 
 #include "config.h"
@@ -64,12 +62,9 @@
 #include "DelayBucket.h"
 #include "DelayUser.h"
 #include "DelayTagged.h"
-#include "ip/IpAddress.h"
 
-/// \ingroup DelayPoolsInternal
 long DelayPools::MemoryUsed = 0;
 
-/// \ingroup DelayPoolsInternal
 class Aggregate : public CompositePoolNode
 {
 
@@ -92,8 +87,7 @@ public:
 
 private:
 
-    /// \ingroup DelayPoolsInternal
-    class AggregateId:public DelayIdComposite
+class AggregateId:public DelayIdComposite
     {
 
     public:
@@ -114,8 +108,8 @@ private:
     DelaySpec spec;
 };
 
-/// \ingroup DelayPoolsInternal
 template <class Key, class Value>
+
 class VectorMap
 {
 
@@ -135,7 +129,6 @@ private:
     unsigned int nextMapPosition;
 };
 
-/// \ingroup DelayPoolsInternal
 class VectorPool : public CompositePoolNode
 {
 
@@ -159,12 +152,11 @@ protected:
 
     virtual char const *label() const = 0;
 
-    virtual unsigned int makeKey(IpAddress &src_addr) const = 0;
+    virtual unsigned int makeKey (struct IN_ADDR &src_addr) const = 0;
 
     DelaySpec spec;
 
-    /// \ingroup DelayPoolsInternal
-    class Id:public DelayIdComposite
+class Id:public DelayIdComposite
     {
 
     public:
@@ -180,20 +172,20 @@ protected:
     };
 };
 
-/// \ingroup DelayPoolsInternal
 class IndividualPool : public VectorPool
 {
 
 public:
     void *operator new(size_t);
-    void operator delete(void *);
+    void operator delete (void *);
 
 protected:
     virtual char const *label() const {return "Individual";}
-    virtual unsigned int makeKey(IpAddress &src_addr) const;
+
+    virtual unsigned int makeKey (struct IN_ADDR &src_addr) const;
+
 };
 
-/// \ingroup DelayPoolsInternal
 class ClassCNetPool : public VectorPool
 {
 
@@ -203,11 +195,12 @@ public:
 
 protected:
     virtual char const *label() const {return "Network";}
-    virtual unsigned int makeKey (IpAddress &src_addr) const;
+
+    virtual unsigned int makeKey (struct IN_ADDR &src_addr) const;
 };
 
 /* don't use remote storage for these */
-/// \ingroup DelayPoolsInternal
+
 class ClassCBucket
 {
 
@@ -224,7 +217,6 @@ public:
     VectorMap<unsigned char, DelayBucket> individuals;
 };
 
-/// \ingroup DelayPoolsInternal
 class ClassCHostPool : public CompositePoolNode
 {
 
@@ -247,9 +239,9 @@ protected:
 
     virtual char const *label() const {return "Individual";}
 
-    virtual unsigned int makeKey (IpAddress &src_addr) const;
+    virtual unsigned int makeKey (struct IN_ADDR &src_addr) const;
 
-    unsigned char makeHostKey (IpAddress &src_addr) const;
+    unsigned char makeHostKey (struct IN_ADDR &src_addr) const;
 
     DelaySpec spec;
     VectorMap<unsigned char, ClassCBucket> buckets;
@@ -258,8 +250,7 @@ protected:
 
     friend class ClassCHostPool::Id;
 
-    /// \ingroup DelayPoolsInternal
-    class Id:public DelayIdComposite
+class Id:public DelayIdComposite
     {
 
     public:
@@ -290,10 +281,10 @@ CommonPool::operator new(size_t size)
 }
 
 void
-CommonPool::operator delete(void *address)
+CommonPool::operator delete (void *address)
 {
-    DelayPools::MemoryUsed -= sizeof(CommonPool);
-    ::operator delete(address);
+    DelayPools::MemoryUsed -= sizeof (CommonPool);
+    ::operator delete (address);
 }
 
 CommonPool *
@@ -319,6 +310,7 @@ CommonPool::Factory(unsigned char _class, CompositePoolNode::Pointer& compositeC
             temp->push_back (new Aggregate);
             temp->push_back(new IndividualPool);
         }
+
         break;
 
     case 3:
@@ -330,6 +322,7 @@ CommonPool::Factory(unsigned char _class, CompositePoolNode::Pointer& compositeC
             temp->push_back (new ClassCNetPool);
             temp->push_back (new ClassCHostPool);
         }
+
         break;
 
     case 4:
@@ -342,6 +335,7 @@ CommonPool::Factory(unsigned char _class, CompositePoolNode::Pointer& compositeC
             temp->push_back (new ClassCHostPool);
             temp->push_back (new DelayUser);
         }
+
         break;
 
     case 5:
@@ -498,6 +492,7 @@ Aggregate::parse()
 }
 
 DelayIdComposite::Pointer
+
 Aggregate::id(CompositeSelectionDetails &details)
 {
     if (rate()->restore_bps != -1)
@@ -541,19 +536,16 @@ time_t DelayPools::LastUpdate = 0;
 unsigned short DelayPools::pools_ (0);
 
 void
-DelayPools::RegisterWithCacheManager(void)
-{
-    CacheManager::GetInstance()->
-    registerAction("delay", "Delay Pool Levels", Stats, 0, 1);
-}
-
-void
 DelayPools::Init()
 {
     LastUpdate = getCurrentTime();
-    RegisterWithCacheManager();
 }
 
+void
+DelayPools::RegisterWithCacheManager(CacheManager & manager)
+{
+    manager.registerAction("delay", "Delay Pool Levels", Stats, 0, 1);
+}
 
 void
 DelayPools::InitDelayData()
@@ -787,13 +779,13 @@ VectorMap<Key,Value>::indexUsed (unsigned char const index) const
     return index < size();
 }
 
-/** returns the used position, or the position to allocate */
+/* returns the used position, or the position to allocate */
 template <class Key, class Value>
 unsigned char
 VectorMap<Key,Value>::findKeyIndex (Key const key) const
 {
     for (unsigned int index = 0; index < size(); ++index) {
-        assert(indexUsed(index));
+        assert (indexUsed (index));
 
         if (key_map[index] == key)
             return index;
@@ -804,23 +796,20 @@ VectorMap<Key,Value>::findKeyIndex (Key const key) const
 }
 
 DelayIdComposite::Pointer
+
 VectorPool::id(CompositeSelectionDetails &details)
 {
     if (rate()->restore_bps == -1)
         return new NullDelayId;
 
-    /* non-IPv4 are not able to provide IPv4-bitmask for this pool type key. */
-    if ( !details.src_addr.IsIPv4() )
-        return new NullDelayId;
+    unsigned int key = makeKey (details.src_addr);
 
-    unsigned int key = makeKey(details.src_addr);
-
-    if (keyAllocated(key))
-        return new Id(this, buckets.findKeyIndex(key));
+    if (keyAllocated (key))
+        return new Id (this, buckets.findKeyIndex(key));
 
     unsigned char const resultIndex = buckets.insert(key);
 
-    buckets.values[resultIndex].init(*rate());
+    buckets.values[resultIndex].init (*rate());
 
     return new Id(this, resultIndex);
 }
@@ -833,13 +822,13 @@ VectorPool::Id::operator new(size_t size)
 }
 
 void
-VectorPool::Id::operator delete(void *address)
+VectorPool::Id::operator delete (void *address)
 {
     DelayPools::MemoryUsed -= sizeof (Id);
     ::operator delete (address);
 }
 
-VectorPool::Id::Id(VectorPool::Pointer aPool, int anIndex) : theVector (aPool), theIndex (anIndex)
+VectorPool::Id::Id (VectorPool::Pointer aPool, int anIndex) : theVector (aPool), theIndex (anIndex)
 {}
 
 int
@@ -854,16 +843,13 @@ VectorPool::Id::bytesIn(int qty)
     theVector->buckets.values[theIndex].bytesIn (qty);
 }
 
-unsigned int
-IndividualPool::makeKey (IpAddress &src_addr) const
-{
-    /* IPv4 required for this pool */
-    if ( !src_addr.IsIPv4() )
-        return 1;
 
-    struct in_addr host;
-    src_addr.GetInAddr(host);
-    return (ntohl(host.s_addr) & 0xff);
+unsigned int
+IndividualPool::makeKey (struct IN_ADDR &src_addr) const
+{
+    unsigned int host;
+    host = ntohl(src_addr.s_addr) & 0xff;
+    return host;
 }
 
 void *
@@ -881,15 +867,11 @@ ClassCNetPool::operator delete (void *address)
 }
 
 unsigned int
-ClassCNetPool::makeKey (IpAddress &src_addr) const
+ClassCNetPool::makeKey (struct IN_ADDR &src_addr) const
 {
-    /* IPv4 required for this pool */
-    if ( !src_addr.IsIPv4() )
-        return 1;
-
-    struct in_addr net;
-    src_addr.GetInAddr(net);
-    return ( (ntohl(net.s_addr) >> 8) & 0xff);
+    unsigned int net;
+    net = (ntohl(src_addr.s_addr) >> 8) & 0xff;
+    return net;
 }
 
 
@@ -954,38 +936,26 @@ ClassCHostPool::keyAllocated (unsigned char const key) const
 }
 
 unsigned char
-ClassCHostPool::makeHostKey (IpAddress &src_addr) const
+ClassCHostPool::makeHostKey (struct IN_ADDR &src_addr) const
 {
-    /* IPv4 required for this pool */
-    if ( !src_addr.IsIPv4() )
-        return 1;
-
-    /* Temporary bypass for IPv4-only */
-    struct in_addr host;
-    src_addr.GetInAddr(host);
-    return (ntohl(host.s_addr) & 0xff);
+    unsigned int host;
+    host = ntohl(src_addr.s_addr) & 0xff;
+    return host;
 }
 
 unsigned int
-ClassCHostPool::makeKey (IpAddress &src_addr) const
+ClassCHostPool::makeKey (struct IN_ADDR &src_addr) const
 {
-    /* IPv4 required for this pool */
-    if ( !src_addr.IsIPv4() )
-        return 1;
-
-    struct in_addr net;
-    src_addr.GetInAddr(net);
-    return ( (ntohl(net.s_addr) >> 8) & 0xff);
+    unsigned int net;
+    net = (ntohl(src_addr.s_addr) >> 8) & 0xff;
+    return net;
 }
 
 DelayIdComposite::Pointer
+
 ClassCHostPool::id(CompositeSelectionDetails &details)
 {
     if (rate()->restore_bps == -1)
-        return new NullDelayId;
-
-    /* non-IPv4 are not able to provide IPv4-bitmask for this pool type key. */
-    if ( !details.src_addr.IsIPv4() )
         return new NullDelayId;
 
     unsigned int key = makeKey (details.src_addr);

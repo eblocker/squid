@@ -12,6 +12,7 @@ class testEvent : public CPPUNIT_NS::TestFixture
 {
     CPPUNIT_TEST_SUITE( testEvent );
     CPPUNIT_TEST( testCreate );
+    CPPUNIT_TEST( testDispatch );
     CPPUNIT_TEST( testDump );
     CPPUNIT_TEST( testFind );
     CPPUNIT_TEST( testCheckEvents );
@@ -24,6 +25,7 @@ public:
 
 protected:
     void testCreate();
+    void testDispatch();
     void testDump();
     void testFind();
     void testCheckEvents();

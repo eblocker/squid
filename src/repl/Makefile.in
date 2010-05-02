@@ -16,7 +16,7 @@
 
 #  Makefile for storage modules in the Squid Object Cache server
 #
-#  $Id$
+#  $Id: Makefile.am,v 1.7 2005/08/20 21:08:38 serassio Exp $
 #
 
 VPATH = @srcdir@
@@ -37,10 +37,8 @@ PRE_UNINSTALL = :
 POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
-DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in \
-	$(top_srcdir)/src/Common.am
-check_PROGRAMS =
 subdir = src/repl
+DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/acinclude.m4 \
 	$(top_srcdir)/configure.in
@@ -61,7 +59,7 @@ liblru_a_AR = $(AR) $(ARFLAGS)
 liblru_a_LIBADD =
 am_liblru_a_OBJECTS = lru/store_repl_lru.$(OBJEXT)
 liblru_a_OBJECTS = $(am_liblru_a_OBJECTS)
-DEFAULT_INCLUDES = 
+DEFAULT_INCLUDES = -I.@am__isrc@ -I$(top_builddir)/include
 depcomp = $(SHELL) $(top_srcdir)/cfgaux/depcomp
 am__depfiles_maybe = depfiles
 CXXCOMPILE = $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) \
@@ -88,13 +86,14 @@ ETAGS = etags
 CTAGS = ctags
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
 ACLOCAL = @ACLOCAL@
-ADAPTATION_LIBS = @ADAPTATION_LIBS@
 ALLOCA = @ALLOCA@
 AMTAR = @AMTAR@
 AR = @AR@
 AR_R = @AR_R@
-AUTH_LIBS_TO_BUILD = @AUTH_LIBS_TO_BUILD@
+AUTH_LIBS = @AUTH_LIBS@
+AUTH_LINKOBJS = @AUTH_LINKOBJS@
 AUTH_MODULES = @AUTH_MODULES@
+AUTH_OBJS = @AUTH_OBJS@
 AUTOCONF = @AUTOCONF@
 AUTOHEADER = @AUTOHEADER@
 AUTOMAKE = @AUTOMAKE@
@@ -107,7 +106,6 @@ CC = @CC@
 CCDEPMODE = @CCDEPMODE@
 CFLAGS = @CFLAGS@
 CGIEXT = @CGIEXT@
-CHMOD = @CHMOD@
 CPP = @CPP@
 CPPFLAGS = @CPPFLAGS@
 CPPUNITCONFIG = @CPPUNITCONFIG@
@@ -117,43 +115,39 @@ CXXCPP = @CXXCPP@
 CXXDEPMODE = @CXXDEPMODE@
 CXXFLAGS = @CXXFLAGS@
 CYGPATH_W = @CYGPATH_W@
-DEFAULT_LOG_DIR = @DEFAULT_LOG_DIR@
-DEFAULT_PIDFILE = @DEFAULT_PIDFILE@
 DEFS = @DEFS@
 DEPDIR = @DEPDIR@
 DIGEST_AUTH_HELPERS = @DIGEST_AUTH_HELPERS@
 DISK_LIBS = @DISK_LIBS@
 DISK_LINKOBJS = @DISK_LINKOBJS@
-DISK_MODULES = @DISK_MODULES@
-DISK_OS_LIBS = @DISK_OS_LIBS@
 DISK_PROGRAMS = @DISK_PROGRAMS@
 DSYMUTIL = @DSYMUTIL@
-ECAPLIB = @ECAPLIB@
-ECAP_LIBS = @ECAP_LIBS@
 ECHO = @ECHO@
 ECHO_C = @ECHO_C@
 ECHO_N = @ECHO_N@
 ECHO_T = @ECHO_T@
 EGREP = @EGREP@
 EPOLL_LIBS = @EPOLL_LIBS@
+ERR_DEFAULT_LANGUAGE = @ERR_DEFAULT_LANGUAGE@
+ERR_LANGUAGES = @ERR_LANGUAGES@
 EXEEXT = @EXEEXT@
-EXPATLIB = @EXPATLIB@
 EXTERNAL_ACL_HELPERS = @EXTERNAL_ACL_HELPERS@
 F77 = @F77@
 FALSE = @FALSE@
 FFLAGS = @FFLAGS@
 GREP = @GREP@
 ICAP_LIBS = @ICAP_LIBS@
-INCLTDL = @INCLTDL@
 INSTALL = @INSTALL@
 INSTALL_DATA = @INSTALL_DATA@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
 INSTALL_SCRIPT = @INSTALL_SCRIPT@
 INSTALL_STRIP_PROGRAM = @INSTALL_STRIP_PROGRAM@
+KRB5INCS = @KRB5INCS@
+KRB5LIBS = @KRB5LIBS@
 LDFLAGS = @LDFLAGS@
 LIBADD_DL = @LIBADD_DL@
-LIBLTDL = @LIBLTDL@
 LIBOBJS = @LIBOBJS@
+LIBREGEX = @LIBREGEX@
 LIBS = @LIBS@
 LIBSASL = @LIBSASL@
 LIBTOOL = @LIBTOOL@
@@ -182,7 +176,6 @@ PACKAGE_TARNAME = @PACKAGE_TARNAME@
 PACKAGE_VERSION = @PACKAGE_VERSION@
 PATH_SEPARATOR = @PATH_SEPARATOR@
 PERL = @PERL@
-PO2HTML = @PO2HTML@
 RANLIB = @RANLIB@
 REGEXLIB = @REGEXLIB@
 REPL_LIBS = @REPL_LIBS@
@@ -190,7 +183,6 @@ REPL_OBJS = @REPL_OBJS@
 REPL_POLICIES = @REPL_POLICIES@
 RM = @RM@
 SED = @SED@
-SET_IPV6_SETTINGS = @SET_IPV6_SETTINGS@
 SET_MAKE = @SET_MAKE@
 SH = @SH@
 SHELL = @SHELL@
@@ -201,14 +193,14 @@ SQUID_CPPUNIT_LA = @SQUID_CPPUNIT_LA@
 SQUID_CPPUNIT_LIBS = @SQUID_CPPUNIT_LIBS@
 SQUID_CXXFLAGS = @SQUID_CXXFLAGS@
 SSLLIB = @SSLLIB@
-STORE_LIBS_TO_ADD = @STORE_LIBS_TO_ADD@
-STORE_LIBS_TO_BUILD = @STORE_LIBS_TO_BUILD@
+STORE_LIBS = @STORE_LIBS@
+STORE_LINKOBJS = @STORE_LINKOBJS@
+STORE_OBJS = @STORE_OBJS@
 STORE_TESTS = @STORE_TESTS@
 STRIP = @STRIP@
 TRUE = @TRUE@
 VERSION = @VERSION@
 WIN32_PSAPI = @WIN32_PSAPI@
-XMLLIB = @XMLLIB@
 XTRA_LIBS = @XTRA_LIBS@
 XTRA_OBJS = @XTRA_OBJS@
 abs_builddir = @abs_builddir@
@@ -218,6 +210,7 @@ abs_top_srcdir = @abs_top_srcdir@
 ac_ct_CC = @ac_ct_CC@
 ac_ct_CXX = @ac_ct_CXX@
 ac_ct_F77 = @ac_ct_F77@
+ac_krb5_config = @ac_krb5_config@
 am__include = @am__include@
 am__leading_dot = @am__leading_dot@
 am__quote = @am__quote@
@@ -265,24 +258,23 @@ target_alias = @target_alias@
 top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
-AM_CFLAGS = $(SQUID_CFLAGS)
-AM_CXXFLAGS = $(SQUID_CXXFLAGS)
-CLEANFILES = testHeaders
-TESTS = testHeaders
-INCLUDES = -I$(top_srcdir) -I$(top_srcdir)/include -I$(top_srcdir)/src \
-	-I$(top_builddir)/include $(SQUID_CPPUNIT_INC) -I$(srcdir)
 AUTOMAKE_OPTIONS = subdir-objects
+AM_CFLAGS = @SQUID_CFLAGS@
+AM_CXXFLAGS = @SQUID_CXXFLAGS@
 
-# No recursion is needed for the subdirs, we build from here.
+# No recursion is needed for the subdirs, we build from here. // @REPL_POLICIES@
 EXTRA_LIBRARIES = liblru.a libheap.a
-noinst_LIBRARIES = $(REPL_LIBS)
+noinst_LIBRARIES = @REPL_LIBS@
 liblru_a_SOURCES = lru/store_repl_lru.cc
 libheap_a_SOURCES = heap/store_heap_replacement.h heap/store_heap_replacement.cc heap/store_repl_heap.cc
+INCLUDES = -I. -I$(top_builddir)/include -I$(top_srcdir)/include \
+	-I$(top_srcdir)/src
+
 all: all-am
 
 .SUFFIXES:
 .SUFFIXES: .cc .lo .o .obj
-$(srcdir)/Makefile.in: @MAINTAINER_MODE_TRUE@ $(srcdir)/Makefile.am $(top_srcdir)/src/Common.am $(am__configure_deps)
+$(srcdir)/Makefile.in: @MAINTAINER_MODE_TRUE@ $(srcdir)/Makefile.am  $(am__configure_deps)
 	@for dep in $?; do \
 	  case '$(am__configure_deps)' in \
 	    *$$dep*) \
@@ -340,13 +332,6 @@ liblru.a: $(liblru_a_OBJECTS) $(liblru_a_DEPENDENCIES)
 	-rm -f liblru.a
 	$(liblru_a_AR) liblru.a $(liblru_a_OBJECTS) $(liblru_a_LIBADD)
 	$(RANLIB) liblru.a
-
-clean-checkPROGRAMS:
-	@list='$(check_PROGRAMS)'; for p in $$list; do \
-	  f=`echo $$p|sed 's/$(EXEEXT)$$//'`; \
-	  echo " rm -f $$p $$f"; \
-	  rm -f $$p $$f ; \
-	done
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
@@ -438,79 +423,6 @@ GTAGS:
 distclean-tags:
 	-rm -f TAGS ID GTAGS GRTAGS GSYMS GPATH tags
 
-check-TESTS: $(TESTS)
-	@failed=0; all=0; xfail=0; xpass=0; skip=0; ws='[	 ]'; \
-	srcdir=$(srcdir); export srcdir; \
-	list=' $(TESTS) '; \
-	if test -n "$$list"; then \
-	  for tst in $$list; do \
-	    if test -f ./$$tst; then dir=./; \
-	    elif test -f $$tst; then dir=; \
-	    else dir="$(srcdir)/"; fi; \
-	    if $(TESTS_ENVIRONMENT) $${dir}$$tst; then \
-	      all=`expr $$all + 1`; \
-	      case " $(XFAIL_TESTS) " in \
-	      *$$ws$$tst$$ws*) \
-		xpass=`expr $$xpass + 1`; \
-		failed=`expr $$failed + 1`; \
-		echo "XPASS: $$tst"; \
-	      ;; \
-	      *) \
-		echo "PASS: $$tst"; \
-	      ;; \
-	      esac; \
-	    elif test $$? -ne 77; then \
-	      all=`expr $$all + 1`; \
-	      case " $(XFAIL_TESTS) " in \
-	      *$$ws$$tst$$ws*) \
-		xfail=`expr $$xfail + 1`; \
-		echo "XFAIL: $$tst"; \
-	      ;; \
-	      *) \
-		failed=`expr $$failed + 1`; \
-		echo "FAIL: $$tst"; \
-	      ;; \
-	      esac; \
-	    else \
-	      skip=`expr $$skip + 1`; \
-	      echo "SKIP: $$tst"; \
-	    fi; \
-	  done; \
-	  if test "$$failed" -eq 0; then \
-	    if test "$$xfail" -eq 0; then \
-	      banner="All $$all tests passed"; \
-	    else \
-	      banner="All $$all tests behaved as expected ($$xfail expected failures)"; \
-	    fi; \
-	  else \
-	    if test "$$xpass" -eq 0; then \
-	      banner="$$failed of $$all tests failed"; \
-	    else \
-	      banner="$$failed of $$all tests did not behave as expected ($$xpass unexpected passes)"; \
-	    fi; \
-	  fi; \
-	  dashes="$$banner"; \
-	  skipped=""; \
-	  if test "$$skip" -ne 0; then \
-	    skipped="($$skip tests were not run)"; \
-	    test `echo "$$skipped" | wc -c` -le `echo "$$banner" | wc -c` || \
-	      dashes="$$skipped"; \
-	  fi; \
-	  report=""; \
-	  if test "$$failed" -ne 0 && test -n "$(PACKAGE_BUGREPORT)"; then \
-	    report="Please report to $(PACKAGE_BUGREPORT)"; \
-	    test `echo "$$report" | wc -c` -le `echo "$$banner" | wc -c` || \
-	      dashes="$$report"; \
-	  fi; \
-	  dashes=`echo "$$dashes" | sed s/./=/g`; \
-	  echo "$$dashes"; \
-	  echo "$$banner"; \
-	  test -z "$$skipped" || echo "$$skipped"; \
-	  test -z "$$report" || echo "$$report"; \
-	  echo "$$dashes"; \
-	  test "$$failed" -eq 0; \
-	else :; fi
-
 distdir: $(DISTFILES)
 	@srcdirstrip=`echo "$(srcdir)" | sed 's/[].[^$$\\*]/\\\\&/g'`; \
 	topsrcdirstrip=`echo "$(top_srcdir)" | sed 's/[].[^$$\\*]/\\\\&/g'`; \
@@ -538,8 +450,6 @@ distdir: $(DISTFILES)
 	  fi; \
 	done
 check-am: all-am
-	$(MAKE) $(AM_MAKEFLAGS) $(check_PROGRAMS)
-	$(MAKE) $(AM_MAKEFLAGS) check-TESTS
 check: check-am
 all-am: Makefile $(LIBRARIES)
 installdirs:
@@ -560,7 +470,6 @@ install-strip:
 mostlyclean-generic:
 
 clean-generic:
-	-test -z "$(CLEANFILES)" || rm -f $(CLEANFILES)
 
 distclean-generic:
 	-test -z "$(CONFIG_CLEAN_FILES)" || rm -f $(CONFIG_CLEAN_FILES)
@@ -574,8 +483,8 @@ maintainer-clean-generic:
 	@echo "it deletes files that may require special tools to rebuild."
 clean: clean-am
 
-clean-am: clean-checkPROGRAMS clean-generic clean-libtool \
-	clean-noinstLIBRARIES mostlyclean-am
+clean-am: clean-generic clean-libtool clean-noinstLIBRARIES \
+	mostlyclean-am
 
 distclean: distclean-am
 	-rm -rf heap/$(DEPDIR) lru/$(DEPDIR)
@@ -633,26 +542,19 @@ uninstall-am:
 
 .MAKE: install-am install-strip
 
-.PHONY: CTAGS GTAGS all all-am check check-TESTS check-am clean \
-	clean-checkPROGRAMS clean-generic clean-libtool \
-	clean-noinstLIBRARIES ctags distclean distclean-compile \
-	distclean-generic distclean-libtool distclean-tags distdir dvi \
-	dvi-am html html-am info info-am install install-am \
-	install-data install-data-am install-dvi install-dvi-am \
-	install-exec install-exec-am install-html install-html-am \
-	install-info install-info-am install-man install-pdf \
-	install-pdf-am install-ps install-ps-am install-strip \
-	installcheck installcheck-am installdirs maintainer-clean \
-	maintainer-clean-generic mostlyclean mostlyclean-compile \
-	mostlyclean-generic mostlyclean-libtool pdf pdf-am ps ps-am \
-	tags uninstall uninstall-am
+.PHONY: CTAGS GTAGS all all-am check check-am clean clean-generic \
+	clean-libtool clean-noinstLIBRARIES ctags distclean \
+	distclean-compile distclean-generic distclean-libtool \
+	distclean-tags distdir dvi dvi-am html html-am info info-am \
+	install install-am install-data install-data-am install-dvi \
+	install-dvi-am install-exec install-exec-am install-html \
+	install-html-am install-info install-info-am install-man \
+	install-pdf install-pdf-am install-ps install-ps-am \
+	install-strip installcheck installcheck-am installdirs \
+	maintainer-clean maintainer-clean-generic mostlyclean \
+	mostlyclean-compile mostlyclean-generic mostlyclean-libtool \
+	pdf pdf-am ps ps-am tags uninstall uninstall-am
 
-
-$(OBJS): $(top_srcdir)/include/version.h $(top_builddir)/include/autoconf.h
-
-testHeaders: $(srcdir)/heap/*.h
-	$(SHELL) $(top_srcdir)/test-suite/testheaders.sh "$(CXXCOMPILE)" "$(srcdir)/heap" || exit 1
-.PHONY: testHeaders
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.
 .NOEXPORT:

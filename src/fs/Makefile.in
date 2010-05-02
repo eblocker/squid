@@ -14,6 +14,11 @@
 
 @SET_MAKE@
 
+#  Makefile for storage modules in the Squid Object Cache server
+#
+#  $Id: Makefile.am,v 1.13 2005/08/20 21:08:38 serassio Exp $
+#
+
 VPATH = @srcdir@
 pkgdatadir = $(datadir)/@PACKAGE@
 pkglibdir = $(libdir)/@PACKAGE@
@@ -32,10 +37,8 @@ PRE_UNINSTALL = :
 POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
-DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in \
-	$(top_srcdir)/src/Common.am
-check_PROGRAMS =
 subdir = src/fs
+DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/acinclude.m4 \
 	$(top_srcdir)/configure.in
@@ -44,25 +47,24 @@ am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 mkinstalldirs = $(install_sh) -d
 CONFIG_HEADER = $(top_builddir)/include/autoconf.h
 CONFIG_CLEAN_FILES =
-LTLIBRARIES = $(noinst_LTLIBRARIES)
-libaufs_la_LIBADD =
-am_libaufs_la_OBJECTS = StoreFSaufs.lo
-libaufs_la_OBJECTS = $(am_libaufs_la_OBJECTS)
-libcoss_la_LIBADD =
-am_libcoss_la_OBJECTS = StoreFScoss.lo store_io_coss.lo \
-	store_dir_coss.lo
-libcoss_la_OBJECTS = $(am_libcoss_la_OBJECTS)
-libdiskd_la_LIBADD =
-am_libdiskd_la_OBJECTS = StoreFSdiskd.lo
-libdiskd_la_OBJECTS = $(am_libdiskd_la_OBJECTS)
-am__DEPENDENCIES_1 =
-am_libfs_la_OBJECTS = Module.lo
-libfs_la_OBJECTS = $(am_libfs_la_OBJECTS)
-libufs_la_LIBADD =
-am_libufs_la_OBJECTS = StoreFSufs.lo store_dir_ufs.lo store_io_ufs.lo \
-	ufscommon.lo
-libufs_la_OBJECTS = $(am_libufs_la_OBJECTS)
-DEFAULT_INCLUDES = 
+LIBRARIES = $(noinst_LIBRARIES)
+ARFLAGS = cru
+libcoss_a_AR = $(AR) $(ARFLAGS)
+libcoss_a_LIBADD =
+am__dirstamp = $(am__leading_dot)dirstamp
+am_libcoss_a_OBJECTS = coss/store_io_coss.$(OBJEXT) \
+	coss/store_dir_coss.$(OBJEXT)
+libcoss_a_OBJECTS = $(am_libcoss_a_OBJECTS)
+libnull_a_AR = $(AR) $(ARFLAGS)
+libnull_a_LIBADD =
+am_libnull_a_OBJECTS = null/store_null.$(OBJEXT)
+libnull_a_OBJECTS = $(am_libnull_a_OBJECTS)
+libufs_a_AR = $(AR) $(ARFLAGS)
+libufs_a_LIBADD =
+am_libufs_a_OBJECTS = ufs/store_dir_ufs.$(OBJEXT) \
+	ufs/store_io_ufs.$(OBJEXT) ufs/ufscommon.$(OBJEXT)
+libufs_a_OBJECTS = $(am_libufs_a_OBJECTS)
+DEFAULT_INCLUDES = -I.@am__isrc@ -I$(top_builddir)/include
 depcomp = $(SHELL) $(top_srcdir)/cfgaux/depcomp
 am__depfiles_maybe = depfiles
 CXXCOMPILE = $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) \
@@ -83,23 +85,22 @@ CCLD = $(CC)
 LINK = $(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
 	--mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) $(AM_LDFLAGS) \
 	$(LDFLAGS) -o $@
-SOURCES = $(libaufs_la_SOURCES) $(libcoss_la_SOURCES) \
-	$(libdiskd_la_SOURCES) $(libfs_la_SOURCES) \
-	$(libufs_la_SOURCES)
-DIST_SOURCES = $(libaufs_la_SOURCES) $(libcoss_la_SOURCES) \
-	$(libdiskd_la_SOURCES) $(libfs_la_SOURCES) \
-	$(libufs_la_SOURCES)
+SOURCES = $(libcoss_a_SOURCES) $(libnull_a_SOURCES) \
+	$(libufs_a_SOURCES)
+DIST_SOURCES = $(libcoss_a_SOURCES) $(libnull_a_SOURCES) \
+	$(libufs_a_SOURCES)
 ETAGS = etags
 CTAGS = ctags
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
 ACLOCAL = @ACLOCAL@
-ADAPTATION_LIBS = @ADAPTATION_LIBS@
 ALLOCA = @ALLOCA@
 AMTAR = @AMTAR@
 AR = @AR@
 AR_R = @AR_R@
-AUTH_LIBS_TO_BUILD = @AUTH_LIBS_TO_BUILD@
+AUTH_LIBS = @AUTH_LIBS@
+AUTH_LINKOBJS = @AUTH_LINKOBJS@
 AUTH_MODULES = @AUTH_MODULES@
+AUTH_OBJS = @AUTH_OBJS@
 AUTOCONF = @AUTOCONF@
 AUTOHEADER = @AUTOHEADER@
 AUTOMAKE = @AUTOMAKE@
@@ -112,7 +113,6 @@ CC = @CC@
 CCDEPMODE = @CCDEPMODE@
 CFLAGS = @CFLAGS@
 CGIEXT = @CGIEXT@
-CHMOD = @CHMOD@
 CPP = @CPP@
 CPPFLAGS = @CPPFLAGS@
 CPPUNITCONFIG = @CPPUNITCONFIG@
@@ -122,43 +122,39 @@ CXXCPP = @CXXCPP@
 CXXDEPMODE = @CXXDEPMODE@
 CXXFLAGS = @CXXFLAGS@
 CYGPATH_W = @CYGPATH_W@
-DEFAULT_LOG_DIR = @DEFAULT_LOG_DIR@
-DEFAULT_PIDFILE = @DEFAULT_PIDFILE@
 DEFS = @DEFS@
 DEPDIR = @DEPDIR@
 DIGEST_AUTH_HELPERS = @DIGEST_AUTH_HELPERS@
 DISK_LIBS = @DISK_LIBS@
 DISK_LINKOBJS = @DISK_LINKOBJS@
-DISK_MODULES = @DISK_MODULES@
-DISK_OS_LIBS = @DISK_OS_LIBS@
 DISK_PROGRAMS = @DISK_PROGRAMS@
 DSYMUTIL = @DSYMUTIL@
-ECAPLIB = @ECAPLIB@
-ECAP_LIBS = @ECAP_LIBS@
 ECHO = @ECHO@
 ECHO_C = @ECHO_C@
 ECHO_N = @ECHO_N@
 ECHO_T = @ECHO_T@
 EGREP = @EGREP@
 EPOLL_LIBS = @EPOLL_LIBS@
+ERR_DEFAULT_LANGUAGE = @ERR_DEFAULT_LANGUAGE@
+ERR_LANGUAGES = @ERR_LANGUAGES@
 EXEEXT = @EXEEXT@
-EXPATLIB = @EXPATLIB@
 EXTERNAL_ACL_HELPERS = @EXTERNAL_ACL_HELPERS@
 F77 = @F77@
 FALSE = @FALSE@
 FFLAGS = @FFLAGS@
 GREP = @GREP@
 ICAP_LIBS = @ICAP_LIBS@
-INCLTDL = @INCLTDL@
 INSTALL = @INSTALL@
 INSTALL_DATA = @INSTALL_DATA@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
 INSTALL_SCRIPT = @INSTALL_SCRIPT@
 INSTALL_STRIP_PROGRAM = @INSTALL_STRIP_PROGRAM@
+KRB5INCS = @KRB5INCS@
+KRB5LIBS = @KRB5LIBS@
 LDFLAGS = @LDFLAGS@
 LIBADD_DL = @LIBADD_DL@
-LIBLTDL = @LIBLTDL@
 LIBOBJS = @LIBOBJS@
+LIBREGEX = @LIBREGEX@
 LIBS = @LIBS@
 LIBSASL = @LIBSASL@
 LIBTOOL = @LIBTOOL@
@@ -187,7 +183,6 @@ PACKAGE_TARNAME = @PACKAGE_TARNAME@
 PACKAGE_VERSION = @PACKAGE_VERSION@
 PATH_SEPARATOR = @PATH_SEPARATOR@
 PERL = @PERL@
-PO2HTML = @PO2HTML@
 RANLIB = @RANLIB@
 REGEXLIB = @REGEXLIB@
 REPL_LIBS = @REPL_LIBS@
@@ -195,7 +190,6 @@ REPL_OBJS = @REPL_OBJS@
 REPL_POLICIES = @REPL_POLICIES@
 RM = @RM@
 SED = @SED@
-SET_IPV6_SETTINGS = @SET_IPV6_SETTINGS@
 SET_MAKE = @SET_MAKE@
 SH = @SH@
 SHELL = @SHELL@
@@ -206,14 +200,14 @@ SQUID_CPPUNIT_LA = @SQUID_CPPUNIT_LA@
 SQUID_CPPUNIT_LIBS = @SQUID_CPPUNIT_LIBS@
 SQUID_CXXFLAGS = @SQUID_CXXFLAGS@
 SSLLIB = @SSLLIB@
-STORE_LIBS_TO_ADD = @STORE_LIBS_TO_ADD@
-STORE_LIBS_TO_BUILD = @STORE_LIBS_TO_BUILD@
+STORE_LIBS = @STORE_LIBS@
+STORE_LINKOBJS = @STORE_LINKOBJS@
+STORE_OBJS = @STORE_OBJS@
 STORE_TESTS = @STORE_TESTS@
 STRIP = @STRIP@
 TRUE = @TRUE@
 VERSION = @VERSION@
 WIN32_PSAPI = @WIN32_PSAPI@
-XMLLIB = @XMLLIB@
 XTRA_LIBS = @XTRA_LIBS@
 XTRA_OBJS = @XTRA_OBJS@
 abs_builddir = @abs_builddir@
@@ -223,6 +217,7 @@ abs_top_srcdir = @abs_top_srcdir@
 ac_ct_CC = @ac_ct_CC@
 ac_ct_CXX = @ac_ct_CXX@
 ac_ct_F77 = @ac_ct_F77@
+ac_krb5_config = @ac_krb5_config@
 am__include = @am__include@
 am__leading_dot = @am__leading_dot@
 am__quote = @am__quote@
@@ -270,52 +265,37 @@ target_alias = @target_alias@
 top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
-AM_CFLAGS = $(SQUID_CFLAGS)
-AM_CXXFLAGS = $(SQUID_CXXFLAGS)
-CLEANFILES = testHeaders
-TESTS = testHeaders
-INCLUDES = -I$(top_srcdir) -I$(top_srcdir)/include -I$(top_srcdir)/src \
-	-I$(top_builddir)/include $(SQUID_CPPUNIT_INC) -I$(srcdir)
-EXTRA_LTLIBRARIES = libaufs.la libdiskd.la libcoss.la libufs.la
-noinst_LTLIBRARIES = $(STORE_LIBS_TO_BUILD) libfs.la
-
-# aufs is a "fake" legacy store
-libaufs_la_SOURCES = \
-	aufs/StoreFSaufs.cc
-
-
-# diskd is a "fake" legacy store
-libdiskd_la_SOURCES = \
-	diskd/StoreFSdiskd.cc
-
-libcoss_la_SOURCES = \
-	coss/StoreFScoss.h \
-	coss/StoreFScoss.cc \
+AUTOMAKE_OPTIONS = subdir-objects
+AM_CFLAGS = @SQUID_CFLAGS@
+AM_CXXFLAGS = @SQUID_CXXFLAGS@
+EXTRA_LIBRARIES = libcoss.a libnull.a libufs.a
+noinst_LIBRARIES = @STORE_LIBS@
+libcoss_a_SOURCES = \
 	coss/store_coss.h \
 	coss/store_io_coss.cc \
 	coss/store_dir_coss.cc \
 	coss/CossSwapDir.h
 
-libufs_la_SOURCES = \
-	ufs/StoreFSufs.h \
-	ufs/StoreFSufs.cc \
-	ufs/store_dir_ufs.cc \
-	ufs/store_io_ufs.cc \
+libnull_a_SOURCES = null/store_null.cc null/store_null.h
+libufs_a_SOURCES = ufs/store_dir_ufs.cc ufs/store_io_ufs.cc \
 	ufs/ufscommon.cci \
 	ufs/ufscommon.cc \
 	ufs/ufscommon.h 
 
-libfs_la_SOURCES = Module.cc Module.h
-libfs_la_LIBADD = $(STORE_LIBS_TO_BUILD)
-libfs_la_DEPENDENCIES = $(STORE_LIBS_TO_BUILD)
 EXTRA_DIST = \
-	coss/coss-notes.txt
+	coss/coss-notes.txt \
+	coss/StoreFScoss.h \
+	ufs/StoreFSufs.h \
+	null/StoreFSnull.h
+
+INCLUDES = -I. -I$(top_builddir)/include -I$(top_srcdir)/include \
+	-I$(top_srcdir)/src
 
 all: all-am
 
 .SUFFIXES:
 .SUFFIXES: .cc .lo .o .obj
-$(srcdir)/Makefile.in: @MAINTAINER_MODE_TRUE@ $(srcdir)/Makefile.am $(top_srcdir)/src/Common.am $(am__configure_deps)
+$(srcdir)/Makefile.in: @MAINTAINER_MODE_TRUE@ $(srcdir)/Makefile.am  $(am__configure_deps)
 	@for dep in $?; do \
 	  case '$(am__configure_deps)' in \
 	    *$$dep*) \
@@ -345,132 +325,93 @@ $(top_srcdir)/configure: @MAINTAINER_MODE_TRUE@ $(am__configure_deps)
 $(ACLOCAL_M4): @MAINTAINER_MODE_TRUE@ $(am__aclocal_m4_deps)
 	cd $(top_builddir) && $(MAKE) $(AM_MAKEFLAGS) am--refresh
 
-clean-noinstLTLIBRARIES:
-	-test -z "$(noinst_LTLIBRARIES)" || rm -f $(noinst_LTLIBRARIES)
-	@list='$(noinst_LTLIBRARIES)'; for p in $$list; do \
-	  dir="`echo $$p | sed -e 's|/[^/]*$$||'`"; \
-	  test "$$dir" != "$$p" || dir=.; \
-	  echo "rm -f \"$${dir}/so_locations\""; \
-	  rm -f "$${dir}/so_locations"; \
-	done
-libaufs.la: $(libaufs_la_OBJECTS) $(libaufs_la_DEPENDENCIES) 
-	$(CXXLINK)  $(libaufs_la_OBJECTS) $(libaufs_la_LIBADD) $(LIBS)
-libcoss.la: $(libcoss_la_OBJECTS) $(libcoss_la_DEPENDENCIES) 
-	$(CXXLINK)  $(libcoss_la_OBJECTS) $(libcoss_la_LIBADD) $(LIBS)
-libdiskd.la: $(libdiskd_la_OBJECTS) $(libdiskd_la_DEPENDENCIES) 
-	$(CXXLINK)  $(libdiskd_la_OBJECTS) $(libdiskd_la_LIBADD) $(LIBS)
-libfs.la: $(libfs_la_OBJECTS) $(libfs_la_DEPENDENCIES) 
-	$(CXXLINK)  $(libfs_la_OBJECTS) $(libfs_la_LIBADD) $(LIBS)
-libufs.la: $(libufs_la_OBJECTS) $(libufs_la_DEPENDENCIES) 
-	$(CXXLINK)  $(libufs_la_OBJECTS) $(libufs_la_LIBADD) $(LIBS)
-
-clean-checkPROGRAMS:
-	@list='$(check_PROGRAMS)'; for p in $$list; do \
-	  f=`echo $$p|sed 's/$(EXEEXT)$$//'`; \
-	  echo " rm -f $$p $$f"; \
-	  rm -f $$p $$f ; \
-	done
+clean-noinstLIBRARIES:
+	-test -z "$(noinst_LIBRARIES)" || rm -f $(noinst_LIBRARIES)
+coss/$(am__dirstamp):
+	@$(MKDIR_P) coss
+	@: > coss/$(am__dirstamp)
+coss/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) coss/$(DEPDIR)
+	@: > coss/$(DEPDIR)/$(am__dirstamp)
+coss/store_io_coss.$(OBJEXT): coss/$(am__dirstamp) \
+	coss/$(DEPDIR)/$(am__dirstamp)
+coss/store_dir_coss.$(OBJEXT): coss/$(am__dirstamp) \
+	coss/$(DEPDIR)/$(am__dirstamp)
+libcoss.a: $(libcoss_a_OBJECTS) $(libcoss_a_DEPENDENCIES) 
+	-rm -f libcoss.a
+	$(libcoss_a_AR) libcoss.a $(libcoss_a_OBJECTS) $(libcoss_a_LIBADD)
+	$(RANLIB) libcoss.a
+null/$(am__dirstamp):
+	@$(MKDIR_P) null
+	@: > null/$(am__dirstamp)
+null/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) null/$(DEPDIR)
+	@: > null/$(DEPDIR)/$(am__dirstamp)
+null/store_null.$(OBJEXT): null/$(am__dirstamp) \
+	null/$(DEPDIR)/$(am__dirstamp)
+libnull.a: $(libnull_a_OBJECTS) $(libnull_a_DEPENDENCIES) 
+	-rm -f libnull.a
+	$(libnull_a_AR) libnull.a $(libnull_a_OBJECTS) $(libnull_a_LIBADD)
+	$(RANLIB) libnull.a
+ufs/$(am__dirstamp):
+	@$(MKDIR_P) ufs
+	@: > ufs/$(am__dirstamp)
+ufs/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) ufs/$(DEPDIR)
+	@: > ufs/$(DEPDIR)/$(am__dirstamp)
+ufs/store_dir_ufs.$(OBJEXT): ufs/$(am__dirstamp) \
+	ufs/$(DEPDIR)/$(am__dirstamp)
+ufs/store_io_ufs.$(OBJEXT): ufs/$(am__dirstamp) \
+	ufs/$(DEPDIR)/$(am__dirstamp)
+ufs/ufscommon.$(OBJEXT): ufs/$(am__dirstamp) \
+	ufs/$(DEPDIR)/$(am__dirstamp)
+libufs.a: $(libufs_a_OBJECTS) $(libufs_a_DEPENDENCIES) 
+	-rm -f libufs.a
+	$(libufs_a_AR) libufs.a $(libufs_a_OBJECTS) $(libufs_a_LIBADD)
+	$(RANLIB) libufs.a
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
+	-rm -f coss/store_dir_coss.$(OBJEXT)
+	-rm -f coss/store_io_coss.$(OBJEXT)
+	-rm -f null/store_null.$(OBJEXT)
+	-rm -f ufs/store_dir_ufs.$(OBJEXT)
+	-rm -f ufs/store_io_ufs.$(OBJEXT)
+	-rm -f ufs/ufscommon.$(OBJEXT)
 
 distclean-compile:
 	-rm -f *.tab.c
 
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Module.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/StoreFSaufs.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/StoreFScoss.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/StoreFSdiskd.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/StoreFSufs.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/store_dir_coss.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/store_dir_ufs.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/store_io_coss.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/store_io_ufs.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ufscommon.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@coss/$(DEPDIR)/store_dir_coss.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@coss/$(DEPDIR)/store_io_coss.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@null/$(DEPDIR)/store_null.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@ufs/$(DEPDIR)/store_dir_ufs.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@ufs/$(DEPDIR)/store_io_ufs.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@ufs/$(DEPDIR)/ufscommon.Po@am__quote@
 
 .cc.o:
-@am__fastdepCXX_TRUE@	$(CXXCOMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
-@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/$*.Tpo $(DEPDIR)/$*.Po
+@am__fastdepCXX_TRUE@	depbase=`echo $@ | sed 's|[^/]*$$|$(DEPDIR)/&|;s|\.o$$||'`;\
+@am__fastdepCXX_TRUE@	$(CXXCOMPILE) -MT $@ -MD -MP -MF $$depbase.Tpo -c -o $@ $< &&\
+@am__fastdepCXX_TRUE@	mv -f $$depbase.Tpo $$depbase.Po
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='$<' object='$@' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXXCOMPILE) -c -o $@ $<
 
 .cc.obj:
-@am__fastdepCXX_TRUE@	$(CXXCOMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ `$(CYGPATH_W) '$<'`
-@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/$*.Tpo $(DEPDIR)/$*.Po
+@am__fastdepCXX_TRUE@	depbase=`echo $@ | sed 's|[^/]*$$|$(DEPDIR)/&|;s|\.obj$$||'`;\
+@am__fastdepCXX_TRUE@	$(CXXCOMPILE) -MT $@ -MD -MP -MF $$depbase.Tpo -c -o $@ `$(CYGPATH_W) '$<'` &&\
+@am__fastdepCXX_TRUE@	mv -f $$depbase.Tpo $$depbase.Po
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='$<' object='$@' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXXCOMPILE) -c -o $@ `$(CYGPATH_W) '$<'`
 
 .cc.lo:
-@am__fastdepCXX_TRUE@	$(LTCXXCOMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
-@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/$*.Tpo $(DEPDIR)/$*.Plo
+@am__fastdepCXX_TRUE@	depbase=`echo $@ | sed 's|[^/]*$$|$(DEPDIR)/&|;s|\.lo$$||'`;\
+@am__fastdepCXX_TRUE@	$(LTCXXCOMPILE) -MT $@ -MD -MP -MF $$depbase.Tpo -c -o $@ $< &&\
+@am__fastdepCXX_TRUE@	mv -f $$depbase.Tpo $$depbase.Plo
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='$<' object='$@' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(LTCXXCOMPILE) -c -o $@ $<
-
-StoreFSaufs.lo: aufs/StoreFSaufs.cc
-@am__fastdepCXX_TRUE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT StoreFSaufs.lo -MD -MP -MF $(DEPDIR)/StoreFSaufs.Tpo -c -o StoreFSaufs.lo `test -f 'aufs/StoreFSaufs.cc' || echo '$(srcdir)/'`aufs/StoreFSaufs.cc
-@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/StoreFSaufs.Tpo $(DEPDIR)/StoreFSaufs.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='aufs/StoreFSaufs.cc' object='StoreFSaufs.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o StoreFSaufs.lo `test -f 'aufs/StoreFSaufs.cc' || echo '$(srcdir)/'`aufs/StoreFSaufs.cc
-
-StoreFScoss.lo: coss/StoreFScoss.cc
-@am__fastdepCXX_TRUE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT StoreFScoss.lo -MD -MP -MF $(DEPDIR)/StoreFScoss.Tpo -c -o StoreFScoss.lo `test -f 'coss/StoreFScoss.cc' || echo '$(srcdir)/'`coss/StoreFScoss.cc
-@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/StoreFScoss.Tpo $(DEPDIR)/StoreFScoss.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='coss/StoreFScoss.cc' object='StoreFScoss.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o StoreFScoss.lo `test -f 'coss/StoreFScoss.cc' || echo '$(srcdir)/'`coss/StoreFScoss.cc
-
-store_io_coss.lo: coss/store_io_coss.cc
-@am__fastdepCXX_TRUE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT store_io_coss.lo -MD -MP -MF $(DEPDIR)/store_io_coss.Tpo -c -o store_io_coss.lo `test -f 'coss/store_io_coss.cc' || echo '$(srcdir)/'`coss/store_io_coss.cc
-@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/store_io_coss.Tpo $(DEPDIR)/store_io_coss.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='coss/store_io_coss.cc' object='store_io_coss.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o store_io_coss.lo `test -f 'coss/store_io_coss.cc' || echo '$(srcdir)/'`coss/store_io_coss.cc
-
-store_dir_coss.lo: coss/store_dir_coss.cc
-@am__fastdepCXX_TRUE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT store_dir_coss.lo -MD -MP -MF $(DEPDIR)/store_dir_coss.Tpo -c -o store_dir_coss.lo `test -f 'coss/store_dir_coss.cc' || echo '$(srcdir)/'`coss/store_dir_coss.cc
-@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/store_dir_coss.Tpo $(DEPDIR)/store_dir_coss.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='coss/store_dir_coss.cc' object='store_dir_coss.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o store_dir_coss.lo `test -f 'coss/store_dir_coss.cc' || echo '$(srcdir)/'`coss/store_dir_coss.cc
-
-StoreFSdiskd.lo: diskd/StoreFSdiskd.cc
-@am__fastdepCXX_TRUE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT StoreFSdiskd.lo -MD -MP -MF $(DEPDIR)/StoreFSdiskd.Tpo -c -o StoreFSdiskd.lo `test -f 'diskd/StoreFSdiskd.cc' || echo '$(srcdir)/'`diskd/StoreFSdiskd.cc
-@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/StoreFSdiskd.Tpo $(DEPDIR)/StoreFSdiskd.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='diskd/StoreFSdiskd.cc' object='StoreFSdiskd.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o StoreFSdiskd.lo `test -f 'diskd/StoreFSdiskd.cc' || echo '$(srcdir)/'`diskd/StoreFSdiskd.cc
-
-StoreFSufs.lo: ufs/StoreFSufs.cc
-@am__fastdepCXX_TRUE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT StoreFSufs.lo -MD -MP -MF $(DEPDIR)/StoreFSufs.Tpo -c -o StoreFSufs.lo `test -f 'ufs/StoreFSufs.cc' || echo '$(srcdir)/'`ufs/StoreFSufs.cc
-@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/StoreFSufs.Tpo $(DEPDIR)/StoreFSufs.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='ufs/StoreFSufs.cc' object='StoreFSufs.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o StoreFSufs.lo `test -f 'ufs/StoreFSufs.cc' || echo '$(srcdir)/'`ufs/StoreFSufs.cc
-
-store_dir_ufs.lo: ufs/store_dir_ufs.cc
-@am__fastdepCXX_TRUE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT store_dir_ufs.lo -MD -MP -MF $(DEPDIR)/store_dir_ufs.Tpo -c -o store_dir_ufs.lo `test -f 'ufs/store_dir_ufs.cc' || echo '$(srcdir)/'`ufs/store_dir_ufs.cc
-@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/store_dir_ufs.Tpo $(DEPDIR)/store_dir_ufs.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='ufs/store_dir_ufs.cc' object='store_dir_ufs.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o store_dir_ufs.lo `test -f 'ufs/store_dir_ufs.cc' || echo '$(srcdir)/'`ufs/store_dir_ufs.cc
-
-store_io_ufs.lo: ufs/store_io_ufs.cc
-@am__fastdepCXX_TRUE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT store_io_ufs.lo -MD -MP -MF $(DEPDIR)/store_io_ufs.Tpo -c -o store_io_ufs.lo `test -f 'ufs/store_io_ufs.cc' || echo '$(srcdir)/'`ufs/store_io_ufs.cc
-@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/store_io_ufs.Tpo $(DEPDIR)/store_io_ufs.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='ufs/store_io_ufs.cc' object='store_io_ufs.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o store_io_ufs.lo `test -f 'ufs/store_io_ufs.cc' || echo '$(srcdir)/'`ufs/store_io_ufs.cc
-
-ufscommon.lo: ufs/ufscommon.cc
-@am__fastdepCXX_TRUE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT ufscommon.lo -MD -MP -MF $(DEPDIR)/ufscommon.Tpo -c -o ufscommon.lo `test -f 'ufs/ufscommon.cc' || echo '$(srcdir)/'`ufs/ufscommon.cc
-@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/ufscommon.Tpo $(DEPDIR)/ufscommon.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='ufs/ufscommon.cc' object='ufscommon.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o ufscommon.lo `test -f 'ufs/ufscommon.cc' || echo '$(srcdir)/'`ufs/ufscommon.cc
 
 mostlyclean-libtool:
 	-rm -f *.lo
@@ -525,79 +466,6 @@ GTAGS:
 distclean-tags:
 	-rm -f TAGS ID GTAGS GRTAGS GSYMS GPATH tags
 
-check-TESTS: $(TESTS)
-	@failed=0; all=0; xfail=0; xpass=0; skip=0; ws='[	 ]'; \
-	srcdir=$(srcdir); export srcdir; \
-	list=' $(TESTS) '; \
-	if test -n "$$list"; then \
-	  for tst in $$list; do \
-	    if test -f ./$$tst; then dir=./; \
-	    elif test -f $$tst; then dir=; \
-	    else dir="$(srcdir)/"; fi; \
-	    if $(TESTS_ENVIRONMENT) $${dir}$$tst; then \
-	      all=`expr $$all + 1`; \
-	      case " $(XFAIL_TESTS) " in \
-	      *$$ws$$tst$$ws*) \
-		xpass=`expr $$xpass + 1`; \
-		failed=`expr $$failed + 1`; \
-		echo "XPASS: $$tst"; \
-	      ;; \
-	      *) \
-		echo "PASS: $$tst"; \
-	      ;; \
-	      esac; \
-	    elif test $$? -ne 77; then \
-	      all=`expr $$all + 1`; \
-	      case " $(XFAIL_TESTS) " in \
-	      *$$ws$$tst$$ws*) \
-		xfail=`expr $$xfail + 1`; \
-		echo "XFAIL: $$tst"; \
-	      ;; \
-	      *) \
-		failed=`expr $$failed + 1`; \
-		echo "FAIL: $$tst"; \
-	      ;; \
-	      esac; \
-	    else \
-	      skip=`expr $$skip + 1`; \
-	      echo "SKIP: $$tst"; \
-	    fi; \
-	  done; \
-	  if test "$$failed" -eq 0; then \
-	    if test "$$xfail" -eq 0; then \
-	      banner="All $$all tests passed"; \
-	    else \
-	      banner="All $$all tests behaved as expected ($$xfail expected failures)"; \
-	    fi; \
-	  else \
-	    if test "$$xpass" -eq 0; then \
-	      banner="$$failed of $$all tests failed"; \
-	    else \
-	      banner="$$failed of $$all tests did not behave as expected ($$xpass unexpected passes)"; \
-	    fi; \
-	  fi; \
-	  dashes="$$banner"; \
-	  skipped=""; \
-	  if test "$$skip" -ne 0; then \
-	    skipped="($$skip tests were not run)"; \
-	    test `echo "$$skipped" | wc -c` -le `echo "$$banner" | wc -c` || \
-	      dashes="$$skipped"; \
-	  fi; \
-	  report=""; \
-	  if test "$$failed" -ne 0 && test -n "$(PACKAGE_BUGREPORT)"; then \
-	    report="Please report to $(PACKAGE_BUGREPORT)"; \
-	    test `echo "$$report" | wc -c` -le `echo "$$banner" | wc -c` || \
-	      dashes="$$report"; \
-	  fi; \
-	  dashes=`echo "$$dashes" | sed s/./=/g`; \
-	  echo "$$dashes"; \
-	  echo "$$banner"; \
-	  test -z "$$skipped" || echo "$$skipped"; \
-	  test -z "$$report" || echo "$$report"; \
-	  echo "$$dashes"; \
-	  test "$$failed" -eq 0; \
-	else :; fi
-
 distdir: $(DISTFILES)
 	@srcdirstrip=`echo "$(srcdir)" | sed 's/[].[^$$\\*]/\\\\&/g'`; \
 	topsrcdirstrip=`echo "$(top_srcdir)" | sed 's/[].[^$$\\*]/\\\\&/g'`; \
@@ -625,10 +493,8 @@ distdir: $(DISTFILES)
 	  fi; \
 	done
 check-am: all-am
-	$(MAKE) $(AM_MAKEFLAGS) $(check_PROGRAMS)
-	$(MAKE) $(AM_MAKEFLAGS) check-TESTS
 check: check-am
-all-am: Makefile $(LTLIBRARIES)
+all-am: Makefile $(LIBRARIES)
 installdirs:
 install: install-am
 install-exec: install-exec-am
@@ -647,21 +513,26 @@ install-strip:
 mostlyclean-generic:
 
 clean-generic:
-	-test -z "$(CLEANFILES)" || rm -f $(CLEANFILES)
 
 distclean-generic:
 	-test -z "$(CONFIG_CLEAN_FILES)" || rm -f $(CONFIG_CLEAN_FILES)
+	-rm -f coss/$(DEPDIR)/$(am__dirstamp)
+	-rm -f coss/$(am__dirstamp)
+	-rm -f null/$(DEPDIR)/$(am__dirstamp)
+	-rm -f null/$(am__dirstamp)
+	-rm -f ufs/$(DEPDIR)/$(am__dirstamp)
+	-rm -f ufs/$(am__dirstamp)
 
 maintainer-clean-generic:
 	@echo "This command is intended for maintainers to use"
 	@echo "it deletes files that may require special tools to rebuild."
 clean: clean-am
 
-clean-am: clean-checkPROGRAMS clean-generic clean-libtool \
-	clean-noinstLTLIBRARIES mostlyclean-am
+clean-am: clean-generic clean-libtool clean-noinstLIBRARIES \
+	mostlyclean-am
 
 distclean: distclean-am
-	-rm -rf ./$(DEPDIR)
+	-rm -rf coss/$(DEPDIR) null/$(DEPDIR) ufs/$(DEPDIR)
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
 	distclean-tags
@@ -695,7 +566,7 @@ install-ps: install-ps-am
 installcheck-am:
 
 maintainer-clean: maintainer-clean-am
-	-rm -rf ./$(DEPDIR)
+	-rm -rf coss/$(DEPDIR) null/$(DEPDIR) ufs/$(DEPDIR)
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic
 
@@ -716,33 +587,26 @@ uninstall-am:
 
 .MAKE: install-am install-strip
 
-.PHONY: CTAGS GTAGS all all-am check check-TESTS check-am clean \
-	clean-checkPROGRAMS clean-generic clean-libtool \
-	clean-noinstLTLIBRARIES ctags distclean distclean-compile \
-	distclean-generic distclean-libtool distclean-tags distdir dvi \
-	dvi-am html html-am info info-am install install-am \
-	install-data install-data-am install-dvi install-dvi-am \
-	install-exec install-exec-am install-html install-html-am \
-	install-info install-info-am install-man install-pdf \
-	install-pdf-am install-ps install-ps-am install-strip \
-	installcheck installcheck-am installdirs maintainer-clean \
-	maintainer-clean-generic mostlyclean mostlyclean-compile \
-	mostlyclean-generic mostlyclean-libtool pdf pdf-am ps ps-am \
-	tags uninstall uninstall-am
+.PHONY: CTAGS GTAGS all all-am check check-am clean clean-generic \
+	clean-libtool clean-noinstLIBRARIES ctags distclean \
+	distclean-compile distclean-generic distclean-libtool \
+	distclean-tags distdir dvi dvi-am html html-am info info-am \
+	install install-am install-data install-data-am install-dvi \
+	install-dvi-am install-exec install-exec-am install-html \
+	install-html-am install-info install-info-am install-man \
+	install-pdf install-pdf-am install-ps install-ps-am \
+	install-strip installcheck installcheck-am installdirs \
+	maintainer-clean maintainer-clean-generic mostlyclean \
+	mostlyclean-compile mostlyclean-generic mostlyclean-libtool \
+	pdf pdf-am ps ps-am tags uninstall uninstall-am
 
 
-$(OBJS): $(top_srcdir)/include/version.h $(top_builddir)/include/autoconf.h
-
-coss/all: libcoss.la
+coss/all: libcoss.a
 coss/clean: clean
-ufs/all: libufs.la
+null/all: libnull.a
+null/clean: clean
+ufs/all: libufs.a
 ufs/clean: clean
-
-testHeaders: $(srcdir)/ufs/*.h $(srcdir)/coss/*.h
-	$(SHELL) $(top_srcdir)/test-suite/testheaders.sh "$(CXXCOMPILE)" "$(srcdir)/ufs" || exit 1
-	$(SHELL) $(top_srcdir)/test-suite/testheaders.sh "$(CXXCOMPILE)" "$(srcdir)/coss" || exit 1
-
-.PHONY: testHeaders
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.
 .NOEXPORT:

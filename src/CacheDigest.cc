@@ -1,6 +1,6 @@
 
 /*
- * $Id$
+ * $Id: CacheDigest.cc,v 1.40 2007/11/15 16:47:35 wessels Exp $
  *
  * DEBUG: section 70    Cache Digest
  * AUTHOR: Alex Rousskov
@@ -21,12 +21,12 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *
+ *  
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *
+ *  
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
@@ -40,12 +40,15 @@
 
 /* local types */
 
-typedef struct {
+typedef struct
+{
     int bit_count;		/* total number of bits */
     int bit_on_count;		/* #bits turned on */
     int bseq_len_sum;		/* sum of all bit seq length */
     int bseq_count;		/* number of bit seqs */
-} CacheDigestStats;
+}
+
+CacheDigestStats;
 
 /* local functions */
 static void cacheDigestHashKey(const CacheDigest * cd, const cache_key * key);
@@ -156,22 +159,26 @@ cacheDigestAdd(CacheDigest * cd, const cache_key * key)
     {
         int on_xition_cnt = 0;
 
-        if (!CBIT_TEST(cd->mask, hashed_keys[0])) {
+        if (!CBIT_TEST(cd->mask, hashed_keys[0]))
+        {
             CBIT_SET(cd->mask, hashed_keys[0]);
             on_xition_cnt++;
         }
 
-        if (!CBIT_TEST(cd->mask, hashed_keys[1])) {
+        if (!CBIT_TEST(cd->mask, hashed_keys[1]))
+        {
             CBIT_SET(cd->mask, hashed_keys[1]);
             on_xition_cnt++;
         }
 
-        if (!CBIT_TEST(cd->mask, hashed_keys[2])) {
+        if (!CBIT_TEST(cd->mask, hashed_keys[2]))
+        {
             CBIT_SET(cd->mask, hashed_keys[2]);
             on_xition_cnt++;
         }
 
-        if (!CBIT_TEST(cd->mask, hashed_keys[3])) {
+        if (!CBIT_TEST(cd->mask, hashed_keys[3]))
+        {
             CBIT_SET(cd->mask, hashed_keys[3]);
             on_xition_cnt++;
         }

@@ -1,6 +1,6 @@
 
 /*
- * $Id$
+ * $Id: fde.cc,v 1.7 2007/08/13 17:20:51 hno Exp $
  *
  * DEBUG: none          FDE
  * AUTHOR: Robert Collins
@@ -21,12 +21,12 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *
+ *  
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *
+ *  
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
@@ -43,7 +43,7 @@ bool
 fde::readPending(int fdNumber)
 {
     if (type == FD_SOCKET)
-        return comm_monitors_read(fdNumber);
+        return comm_has_pending_read(fdNumber);
 
     return read_handler ? true : false ;
 }
@@ -64,7 +64,7 @@ fde::dumpStats (StoreEntry &dumpEntry, int fdNumber)
                       fdNumber,
 #endif
                       fdTypeStr[type],
-                      timeoutHandler != NULL ? (int) (timeout - squid_curtime) : 0,
+                      timeout_handler ? (int) (timeout - squid_curtime) / 60 : 0,
                       bytes_read,
                       readPending(fdNumber) ? '*' : ' ',
                       bytes_written,
@@ -107,15 +107,12 @@ fde::DumpStats (StoreEntry *dumpEntry)
 char const *
 fde::remoteAddr() const
 {
-    LOCAL_ARRAY(char, buf, MAX_IPSTRLEN );
+    LOCAL_ARRAY(char, buf, 32);
 
     if (type != FD_SOCKET)
         return null_string;
 
-    if ( *ipaddr )
-        snprintf( buf, MAX_IPSTRLEN, "%s:%d", ipaddr, (int)remote_port);
-    else
-        local_addr.ToURL(buf,MAX_IPSTRLEN); // ToHostname does not include port.
+    snprintf(buf, 32, "%s.%d", ipaddr, (int) remote_port);
 
     return buf;
 }

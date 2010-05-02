@@ -1,5 +1,6 @@
+
 /*
- * $Id$
+ * $Id: store_log.cc,v 1.35 2007/08/13 17:20:51 hno Exp $
  *
  * DEBUG: section 20    Storage Manager Logging Functions
  * AUTHOR: Duane Wessels
@@ -20,12 +21,12 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *
+ *  
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *
+ *  
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
@@ -37,31 +38,26 @@
 #include "MemObject.h"
 #include "HttpReply.h"
 #include "CacheManager.h"
-#include "SquidTime.h"
 
-static const char *storeLogTags[] = {
-    "CREATE",
-    "SWAPIN",
-    "SWAPOUT",
-    "RELEASE",
-    "SO_FAIL",
-};
+static const char *storeLogTags[] =
+    {
+        "CREATE",
+        "SWAPIN",
+        "SWAPOUT",
+        "RELEASE",
+        "SO_FAIL",
+    };
 
 static int storeLogTagsCounts[STORE_LOG_SWAPOUTFAIL+1];
 static OBJH storeLogTagsHist;
 
 static Logfile *storelog = NULL;
 
-static String str_unknown;
-
 void
 storeLog(int tag, const StoreEntry * e)
 {
     MemObject *mem = e->mem_obj;
     HttpReply const *reply;
-
-    if (str_unknown.undefined())
-        str_unknown="unknown"; //hack. Delay initialization as string doesn't support global variables..
 
     if (NULL == storelog)
         return;
@@ -80,10 +76,7 @@ storeLog(int tag, const StoreEntry * e)
          * Because if we print it before the swap file number, it'll break
          * the existing log format.
          */
-
-        String ctype=(reply->content_type.size() ? reply->content_type.termedBuf() : str_unknown);
-
-        logfilePrintf(storelog, "%9d.%03d %-7s %02d %08X %s %4d %9d %9d %9d " SQUIDSTRINGPH " %"PRId64"/%"PRId64" %s %s\n",
+        logfilePrintf(storelog, "%9d.%03d %-7s %02d %08X %s %4d %9d %9d %9d %s %"PRId64"/%"PRId64" %s %s\n",
                       (int) current_time.tv_sec,
                       (int) current_time.tv_usec / 1000,
                       storeLogTags[tag],
@@ -94,10 +87,10 @@ storeLog(int tag, const StoreEntry * e)
                       (int) reply->date,
                       (int) reply->last_modified,
                       (int) reply->expires,
-                      SQUIDSTRINGPRINT(ctype),
+                      reply->content_type.size() ? reply->content_type.buf() : "unknown",
                       reply->content_length,
                       e->contentLen(),
-                      RequestMethodStr(mem->method),
+                      RequestMethodStr[mem->method],
                       mem->log_url);
     } else {
         /* no mem object. Most RELEASE cases */
@@ -131,19 +124,9 @@ storeLogClose(void)
     storelog = NULL;
 }
 
-static void
-storeLogRegisterWithCacheManager(void)
-{
-    CacheManager::GetInstance()->
-    registerAction("store_log_tags", "Histogram of store.log tags",
-                   storeLogTagsHist, 0, 1);
-}
-
 void
 storeLogOpen(void)
 {
-    storeLogRegisterWithCacheManager();
-
     if (Config.Log.store == NULL || strcmp(Config.Log.store, "none") == 0) {
         debugs(20, 1, "Store logging disabled");
         return;
@@ -153,12 +136,20 @@ storeLogOpen(void)
 }
 
 void
+storeLogRegisterWithCacheManager(CacheManager & manager)
+{
+    manager.registerAction("store_log_tags",
+	"Histogram of store.log tags",
+	storeLogTagsHist, 0, 1);
+}
+
+void
 storeLogTagsHist(StoreEntry *e)
 {
     int tag;
     for (tag = 0; tag <= STORE_LOG_SWAPOUTFAIL; tag++) {
-        storeAppendPrintf(e, "%s %d\n",
-                          storeLogTags[tag],
-                          storeLogTagsCounts[tag]);
+	storeAppendPrintf(e, "%s %d\n",
+	    storeLogTags[tag],
+	    storeLogTagsCounts[tag]);
     }
 }

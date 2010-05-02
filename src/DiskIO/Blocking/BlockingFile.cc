@@ -1,5 +1,6 @@
+
 /*
- * $Id$
+ * $Id: BlockingFile.cc,v 1.4 2007/04/30 16:56:11 wessels Exp $
  *
  * DEBUG: section 47    Store Directory Routines
  * AUTHOR: Robert Collins
@@ -20,12 +21,12 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *
+ *  
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *
+ *  
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
@@ -39,9 +40,8 @@
 #include "DiskIO/WriteRequest.h"
 
 CBDATA_CLASS_INIT(BlockingFile);
-
 void *
-BlockingFile::operator new(size_t sz)
+BlockingFile::operator new (size_t)
 {
     CBDATA_INIT_TYPE(BlockingFile);
     BlockingFile *result = cbdataAlloc(BlockingFile);
@@ -51,15 +51,15 @@ BlockingFile::operator new(size_t sz)
 }
 
 void
-BlockingFile::operator delete(void *address)
+BlockingFile::operator delete (void *address)
 {
     BlockingFile *t = static_cast<BlockingFile *>(address);
     cbdataFree(t);
 }
 
-BlockingFile::BlockingFile(char const *aPath) : fd (-1), closed (true), error_(false)
+BlockingFile::BlockingFile (char const *aPath) : fd (-1), closed (true), error_(false)
 {
-    assert(aPath);
+    assert (aPath);
     debugs(79, 3, "BlockingFile::BlockingFile: " << aPath);
     path_ = xstrdup (aPath);
 }
@@ -71,7 +71,7 @@ BlockingFile::~BlockingFile()
 }
 
 void
-BlockingFile::open(int flags, mode_t mode, RefCount<IORequestor> callback)
+BlockingFile::open (int flags, mode_t mode, IORequestor::Pointer callback)
 {
     /* Simulate async calls */
     fd = file_open(path_ , flags);
@@ -89,12 +89,8 @@ BlockingFile::open(int flags, mode_t mode, RefCount<IORequestor> callback)
     callback->ioCompletedNotification();
 }
 
-/**
- * Alias for BlockingFile::open(...)
- \copydoc BlockingFile::open(int flags, mode_t mode, RefCount<IORequestor> callback)
- */
 void
-BlockingFile::create(int flags, mode_t mode, RefCount<IORequestor> callback)
+BlockingFile::create (int flags, mode_t mode, IORequestor::Pointer callback)
 {
     /* We use the same logic path for open */
     open(flags, mode, callback);
@@ -112,7 +108,7 @@ void BlockingFile::doClose()
 }
 
 void
-BlockingFile::close()
+BlockingFile::close ()
 {
     debugs(79, 3, "BlockingFile::close: " << this << " closing for " << ioRequestor.getRaw());
     doClose();
@@ -172,9 +168,9 @@ BlockingFile::write(WriteRequest *aRequest)
 }
 
 bool
-BlockingFile::ioInProgress() const
+BlockingFile::ioInProgress()const
 {
-    /** \retval false   IO is never pending with UFS */
+    /* IO is never pending with UFS */
     return false;
 }
 

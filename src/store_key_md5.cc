@@ -1,6 +1,6 @@
 
 /*
- * $Id$
+ * $Id: store_key_md5.cc,v 1.36 2007/11/15 16:47:35 wessels Exp $
  *
  * DEBUG: section 20    Storage Manager MD5 Cache Keys
  * AUTHOR: Duane Wessels
@@ -21,12 +21,12 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *
+ *  
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *
+ *  
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
@@ -99,12 +99,12 @@ storeKeyHashHash(const void *key, unsigned int n)
 }
 
 const cache_key *
-storeKeyPrivate(const char *url, const HttpRequestMethod& method, int id)
+storeKeyPrivate(const char *url, method_t method, int id)
 {
     static cache_key digest[SQUID_MD5_DIGEST_LENGTH];
     SquidMD5_CTX M;
     assert(id > 0);
-    debugs(20, 3, "storeKeyPrivate: " << RequestMethodStr(method) << " " << url);
+    debugs(20, 3, "storeKeyPrivate: " << RequestMethodStr[method] << " " << url);
     SquidMD5Init(&M);
     SquidMD5Update(&M, (unsigned char *) &id, sizeof(id));
     SquidMD5Update(&M, (unsigned char *) &method, sizeof(method));
@@ -114,10 +114,10 @@ storeKeyPrivate(const char *url, const HttpRequestMethod& method, int id)
 }
 
 const cache_key *
-storeKeyPublic(const char *url, const HttpRequestMethod& method)
+storeKeyPublic(const char *url, const method_t method)
 {
     static cache_key digest[SQUID_MD5_DIGEST_LENGTH];
-    unsigned char m = (unsigned char) method.id();
+    unsigned char m = (unsigned char) method;
     SquidMD5_CTX M;
     SquidMD5Init(&M);
     SquidMD5Update(&M, &m, sizeof(m));
@@ -133,10 +133,10 @@ storeKeyPublicByRequest(HttpRequest * request)
 }
 
 const cache_key *
-storeKeyPublicByRequestMethod(HttpRequest * request, const HttpRequestMethod& method)
+storeKeyPublicByRequestMethod(HttpRequest * request, const method_t method)
 {
     static cache_key digest[SQUID_MD5_DIGEST_LENGTH];
-    unsigned char m = (unsigned char) method.id();
+    unsigned char m = (unsigned char) method;
     const char *url = urlCanonical(request);
     SquidMD5_CTX M;
     SquidMD5Init(&M);

@@ -1,5 +1,6 @@
+
 /*
- * $Id$
+ * $Id: client_side_reply.cc,v 1.144.2.4 2008/02/27 05:59:29 amosjeffries Exp $
  *
  * DEBUG: section 88    Client-side Reply Routines
  * AUTHOR: Robert Collins (Originally Duane Wessels in client_side.c)
@@ -20,23 +21,18 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *
+ *  
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *
+ *  
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
  *
  */
-#include "config.h"
 
-/* for ClientActiveRequests global */
-#include "dlink.h"
-
-/* old includes without reasons given. */
 #include "squid.h"
 #include "client_side_reply.h"
 #include "errorpage.h"
@@ -45,15 +41,15 @@
 #include "HttpReply.h"
 #include "HttpRequest.h"
 #include "forward.h"
+
 #include "clientStream.h"
-#include "auth/UserRequest.h"
+#include "AuthUserRequest.h"
 #if USE_SQUID_ESI
-#include "esi/Esi.h"
+#include "ESI.h"
 #endif
 #include "MemObject.h"
-#include "fde.h"
-#include "acl/FilledChecklist.h"
-#include "acl/Gadgets.h"
+#include "ACLChecklist.h"
+#include "ACL.h"
 #if DELAY_POOLS
 #include "DelayPools.h"
 #endif
@@ -64,7 +60,9 @@ CBDATA_CLASS_INIT(clientReplyContext);
 
 /* Local functions */
 extern "C" CSS clientReplyStatus;
-extern ErrorState *clientBuildError(err_type, http_status, char const *, IpAddress &, HttpRequest *);
+extern ErrorState *clientBuildError(err_type, http_status, char const *,
+
+                                        struct IN_ADDR *, HttpRequest *);
 
 /* privates */
 
@@ -86,15 +84,14 @@ clientReplyContext::~clientReplyContext()
 clientReplyContext::clientReplyContext(ClientHttpRequest *clientContext) : http (cbdataReference(clientContext)), old_entry (NULL), old_sc(NULL), deleting(false)
 {}
 
-/** Create an error in the store awaiting the client side to read it.
- *
- * This may be better placed in the clientStream logic, but it has not been
+/* create an error in the store awaiting the client side to read it. */
+/* This may be better placed in the clientStream logic, but it has not been
  * relocated there yet
  */
 void
 clientReplyContext::setReplyToError(
-    err_type err, http_status status, const HttpRequestMethod& method, char const *uri,
-    IpAddress &addr, HttpRequest * failedrequest, const char *unparsedrequest,
+    err_type err, http_status status, method_t method, char const *uri,
+    struct IN_ADDR *addr, HttpRequest * failedrequest, char *unparsedrequest,
     AuthUserRequest * auth_user_request)
 {
     ErrorState *errstate =
@@ -111,9 +108,10 @@ clientReplyContext::setReplyToError(
 
     createStoreEntry(method, request_flags());
 
-    if (auth_user_request) {
+    if (auth_user_request)
+    {
         errstate->auth_user_request = auth_user_request;
-        AUTHUSERREQUESTLOCK(errstate->auth_user_request, "errstate");
+	AUTHUSERREQUESTLOCK(errstate->auth_user_request, "errstate");
     }
 
     assert(errstate->callback_data == NULL);
@@ -126,22 +124,22 @@ clientReplyContext::removeStoreReference(store_client ** scp,
         StoreEntry ** ep)
 {
     StoreEntry *e;
-    store_client *sc_tmp = *scp;
+    store_client *sc = *scp;
 
     if ((e = *ep) != NULL) {
         *ep = NULL;
-        storeUnregister(sc_tmp, e, this);
+        storeUnregister(sc, e, this);
         *scp = NULL;
         e->unlock();
     }
 }
 
 void
-clientReplyContext::removeClientStoreReference(store_client **scp, ClientHttpRequest *aHttpRequest)
+clientReplyContext::removeClientStoreReference(store_client **scp, ClientHttpRequest *http)
 {
-    StoreEntry *reference = aHttpRequest->storeEntry();
+    StoreEntry *reference = http->storeEntry();
     removeStoreReference(scp, &reference);
-    aHttpRequest->storeEntry(reference);
+    http->storeEntry(reference);
 }
 
 void *
@@ -214,11 +212,11 @@ void
 clientReplyContext::triggerInitialStoreRead()
 {
     /* when confident, 0 becomes reqofs, and then this factors into
-     * startSendProcess
+     * startSendProcess 
      */
     assert(reqofs == 0);
-    StoreIOBuffer localTempBuffer (next()->readBuffer.length, 0, next()->readBuffer.data);
-    storeClientCopy(sc, http->storeEntry(), localTempBuffer, SendMoreData, this);
+    StoreIOBuffer tempBuffer (next()->readBuffer.length, 0, next()->readBuffer.data);
+    storeClientCopy(sc, http->storeEntry(), tempBuffer, SendMoreData, this);
 }
 
 /* there is an expired entry in the store.
@@ -233,7 +231,7 @@ clientReplyContext::processExpired()
     assert(http->storeEntry()->lastmod >= 0);
     /*
      * check if we are allowed to contact other servers
-     * @?@: Instead of a 504 (Gateway Timeout) reply, we may want to return
+     * @?@: Instead of a 504 (Gateway Timeout) reply, we may want to return 
      *      a stale entry *if* it matches client requirements
      */
 
@@ -278,8 +276,8 @@ clientReplyContext::processExpired()
 
     {
         /* start counting the length from 0 */
-        StoreIOBuffer localTempBuffer(HTTP_REQBUF_SZ, 0, tempbuf);
-        storeClientCopy(sc, entry, localTempBuffer, HandleIMSReply, this);
+        StoreIOBuffer tempBuffer(HTTP_REQBUF_SZ, 0, tempbuf);
+        storeClientCopy(sc, entry, tempBuffer, HandleIMSReply, this);
     }
 }
 
@@ -357,53 +355,52 @@ clientReplyContext::handleIMSReply(StoreIOBuffer result)
     HttpReply *old_rep = (HttpReply *) old_entry->getReply();
 
     // origin replied 304
-    // TODO FIXME: old_rep2 was forcibly unshadowed, used to be old_rep. Are we sure
-    //  that the right semantics were preserved?
+
     if (status == HTTP_NOT_MODIFIED) {
-        http->logType = LOG_TCP_REFRESH_UNMODIFIED;
+	http->logType = LOG_TCP_REFRESH_UNMODIFIED;
 
-        // update headers on existing entry
-        HttpReply *old_rep2 = (HttpReply *) old_entry->getReply();
-        old_rep2->updateOnNotModified(http->storeEntry()->getReply());
-        old_entry->timestampsSet();
+	// update headers on existing entry
+	HttpReply *old_rep = (HttpReply *) old_entry->getReply();
+	old_rep->updateOnNotModified(http->storeEntry()->getReply());
+	old_entry->timestampsSet();
 
-        // if client sent IMS
+	// if client sent IMS
 
-        if (http->request->flags.ims && !old_entry->modifiedSince(http->request)) {
-            // forward the 304 from origin
-            debugs(88, 3, "handleIMSReply: origin replied 304, revalidating existing entry and forwarding 304 to client");
-            sendClientUpstreamResponse();
-        } else {
-            // send existing entry, it's still valid
-            debugs(88, 3, "handleIMSReply: origin replied 304, revalidating existing entry and sending " <<
-                   old_rep2->sline.status << " to client");
-            sendClientOldEntry();
-        }
+	if (http->request->flags.ims) {
+	    // forward the 304 from origin
+	    debugs(88, 3, "handleIMSReply: origin replied 304, revalidating existing entry and forwarding 304 to client");
+	    sendClientUpstreamResponse();
+	} else {
+	    // send existing entry, it's still valid
+	    debugs(88, 3, "handleIMSReply: origin replied 304, revalidating existing entry and sending " <<
+		   old_rep->sline.status << " to client");
+	    sendClientOldEntry();
+	}
     }
 
     // origin replied with a non-error code
     else if (status > HTTP_STATUS_NONE && status < HTTP_INTERNAL_SERVER_ERROR) {
-        // forward response from origin
-        http->logType = LOG_TCP_REFRESH_MODIFIED;
-        debugs(88, 3, "handleIMSReply: origin replied " << status << ", replacing existing entry and forwarding to client");
-        sendClientUpstreamResponse();
+	// forward response from origin
+	http->logType = LOG_TCP_REFRESH_MODIFIED;
+	debugs(88, 3, "handleIMSReply: origin replied " << status << ", replacing existing entry and forwarding to client");
+	sendClientUpstreamResponse();
     }
 
     // origin replied with an error
     else {
-        // ignore and let client have old entry
-        http->logType = LOG_TCP_REFRESH_FAIL;
-        debugs(88, 3, "handleIMSReply: origin replied with error " <<
-               status << ", sending old entry (" << old_rep->sline.status << ") to client");
-        sendClientOldEntry();
+	// ignore and let client have old entry
+	http->logType = LOG_TCP_REFRESH_FAIL;
+	debugs(88, 3, "handleIMSReply: origin replied with error " <<
+	       status << ", sending old entry (" << old_rep->sline.status << ") to client");
+	sendClientOldEntry();
     }
 }
 
 extern "C" CSR clientGetMoreData;
 extern "C" CSD clientReplyDetach;
 
-/**
- * clientReplyContext::cacheHit Should only be called until the HTTP reply headers
+/*
+ * clientCacheHit should only be called until the HTTP reply headers
  * have been parsed.  Normally this should be a single call, but
  * it might take more than one.  As soon as we have the headers,
  * we hand off to clientSendMoreData, processExpired, or
@@ -413,16 +410,12 @@ void
 clientReplyContext::CacheHit(void *data, StoreIOBuffer result)
 {
     clientReplyContext *context = (clientReplyContext *)data;
-    context->cacheHit(result);
+    context->cacheHit (result);
 }
 
-/**
- * Process a possible cache HIT.
- */
 void
 clientReplyContext::cacheHit(StoreIOBuffer result)
 {
-    /** Ignore if the HIT object is being deleted. */
     if (deleting)
         return;
 
@@ -464,7 +457,7 @@ clientReplyContext::cacheHit(StoreIOBuffer result)
     assert(http->logType == LOG_TCP_HIT);
 
     if (strcmp(e->mem_obj->url, urlCanonical(r)) != 0) {
-        debugs(33, 1, "clientProcessHit: URL mismatch, '" << e->mem_obj->url << "' != '" << urlCanonical(r) << "'");
+	debugs(33, 1, "clientProcessHit: URL mismatch, '" << e->mem_obj->url << "' != '" << urlCanonical(r) << "'");
         processMiss();
         return;
     }
@@ -489,7 +482,7 @@ clientReplyContext::cacheHit(StoreIOBuffer result)
         /* Note: varyEvalyateMatch updates the request with vary information
          * so we only get here once. (it also takes care of cancelling loops)
          */
-        debugs(88, 2, "clientProcessHit: Vary detected!");
+         debugs(88, 2, "clientProcessHit: Vary detected!");
         clientGetMoreData(ourNode, http);
         return;
 
@@ -600,16 +593,16 @@ clientReplyContext::cacheHit(StoreIOBuffer result)
             http->logType = LOG_TCP_MISS;
         else
 #endif
-            if (e->mem_status == IN_MEMORY)
-                http->logType = LOG_TCP_MEM_HIT;
-            else if (Config.onoff.offline)
-                http->logType = LOG_TCP_OFFLINE_HIT;
+	if (e->mem_status == IN_MEMORY)
+            http->logType = LOG_TCP_MEM_HIT;
+        else if (Config.onoff.offline)
+            http->logType = LOG_TCP_OFFLINE_HIT;
 
         sendMoreData(result);
     }
 }
 
-/**
+/*
  * Prepare to fetch the object as it's a cache miss of some kind.
  */
 void
@@ -618,12 +611,12 @@ clientReplyContext::processMiss()
     char *url = http->uri;
     HttpRequest *r = http->request;
     ErrorState *err = NULL;
-    debugs(88, 4, "clientProcessMiss: '" << RequestMethodStr(r->method) << " " << url << "'");
-
-    /**
+    debugs(88, 4, "clientProcessMiss: '" << RequestMethodStr[r->method] << " " << url << "'");
+    /*
      * We might have a left-over StoreEntry from a failed cache hit
      * or IMS request.
      */
+
     if (http->storeEntry()) {
         if (EBIT_TEST(http->storeEntry()->flags, ENTRY_SPECIAL)) {
             debugs(88, 0, "clientProcessMiss: miss on a special object (" << url << ").");
@@ -634,18 +627,11 @@ clientReplyContext::processMiss()
         removeClientStoreReference(&sc, http);
     }
 
-    /** Check if its a PURGE request to be actioned. */
     if (r->method == METHOD_PURGE) {
         purgeRequest();
         return;
     }
 
-    /** Check if its an 'OTHER' request. Purge all cached entries if so and continue. */
-    if (r->method == METHOD_OTHER) {
-        purgeAllCached();
-    }
-
-    /** Check if 'only-if-cached' flag is set. Action if so. */
     if (http->onlyIfCached()) {
         processOnlyIfCachedMiss();
         return;
@@ -653,9 +639,11 @@ clientReplyContext::processMiss()
 
     /// Deny loops for accelerator and interceptor. TODO: deny in all modes?
     if (r->flags.loopdetect &&
-            (http->flags.accel || http->flags.intercepted)) {
+        (http->flags.accel || http->flags.transparent)) {
         http->al.http.code = HTTP_FORBIDDEN;
-        err = clientBuildError(ERR_ACCESS_DENIED, HTTP_FORBIDDEN, NULL, http->getConn()->peer, http->request);
+        err =
+            clientBuildError(ERR_ACCESS_DENIED, HTTP_FORBIDDEN, NULL,
+                             &http->getConn()->peer.sin_addr, http->request);
         createStoreEntry(r->method, request_flags());
         errorAppendEntry(http->storeEntry(), err);
         triggerInitialStoreRead();
@@ -679,18 +667,16 @@ clientReplyContext::processMiss()
             return;
         }
 
-        /** Check for internal requests. Update Protocol info if so. */
         if (http->flags.internal)
             r->protocol = PROTO_INTERNAL;
 
-        /** Start forwarding to get the new object from network */
         FwdState::fwdStart(http->getConn() != NULL ? http->getConn()->fd : -1,
                            http->storeEntry(),
                            r);
     }
 }
 
-/**
+/*
  * client issued a request with an only-if-cached cache-control directive;
  * we did not find a cached object that can be returned without
  *     contacting other servers;
@@ -701,9 +687,10 @@ clientReplyContext::processOnlyIfCachedMiss()
 {
     ErrorState *err = NULL;
     debugs(88, 4, "clientProcessOnlyIfCachedMiss: '" <<
-           RequestMethodStr(http->request->method) << " " << http->uri << "'");
+           RequestMethodStr[http->request->method] << " " << http->uri << "'");
     http->al.http.code = HTTP_GATEWAY_TIMEOUT;
-    err = clientBuildError(ERR_ONLY_IF_CACHED_MISS, HTTP_GATEWAY_TIMEOUT, NULL, http->getConn()->peer, http->request);
+    err = clientBuildError(ERR_ONLY_IF_CACHED_MISS, HTTP_GATEWAY_TIMEOUT, NULL,
+                           &http->getConn()->peer.sin_addr, http->request);
     removeClientStoreReference(&sc, http);
     startError(err);
 }
@@ -714,52 +701,7 @@ clientReplyContext::purgeRequestFindObjectToPurge()
     /* Try to find a base entry */
     http->flags.purging = 1;
     lookingforstore = 1;
-
-    // TODO: can we use purgeAllCached() here instead of doing the
-    // getPublicByRequestMethod() dance?
     StoreEntry::getPublicByRequestMethod(this, http->request, METHOD_GET);
-}
-
-// Purges all entries with a given url
-// TODO: move to SideAgent parent, when we have one
-/*
- * We probably cannot purge Vary-affected responses because their MD5
- * keys depend on vary headers.
- */
-void
-purgeEntriesByUrl(HttpRequest * req, const char *url)
-{
-#if USE_HTCP
-    bool get_or_head_sent = false;
-#endif
-
-    for (HttpRequestMethod m(METHOD_NONE); m != METHOD_ENUM_END; ++m) {
-        if (m.isCacheble()) {
-            if (StoreEntry *entry = storeGetPublic(url, m)) {
-                debugs(88, 5, "purging " << RequestMethodStr(m) << ' ' << url);
-#if USE_HTCP
-                neighborsHtcpClear(entry, url, req, m, HTCP_CLR_INVALIDATION);
-                if (m == METHOD_GET || m == METHOD_HEAD) {
-                    get_or_head_sent = true;
-                }
-#endif
-                entry->release();
-            }
-        }
-    }
-
-#if USE_HTCP
-    if (!get_or_head_sent) {
-        neighborsHtcpClear(NULL, url, req, HttpRequestMethod(METHOD_GET), HTCP_CLR_INVALIDATION);
-    }
-#endif
-}
-
-void
-clientReplyContext::purgeAllCached()
-{
-    const char *url = urlCanonical(http->request);
-    purgeEntriesByUrl(http->request, url);
 }
 
 void
@@ -803,16 +745,20 @@ clientReplyContext::purgeFoundObject(StoreEntry *entry)
 
     if (EBIT_TEST(entry->flags, ENTRY_SPECIAL)) {
         http->logType = LOG_TCP_DENIED;
-        ErrorState *err = clientBuildError(ERR_ACCESS_DENIED, HTTP_FORBIDDEN, NULL, http->getConn()->peer, http->request);
+        ErrorState *err =
+            clientBuildError(ERR_ACCESS_DENIED, HTTP_FORBIDDEN, NULL,
+                             &http->getConn()->peer.sin_addr, http->request);
         startError(err);
         return;
     }
 
-    StoreIOBuffer localTempBuffer;
+    StoreIOBuffer tempBuffer;
     /* Swap in the metadata */
     http->storeEntry(entry);
 
-    http->storeEntry()->lock();
+    http->storeEntry()->lock()
+
+    ;
     http->storeEntry()->createMemObject(http->uri, http->log_uri);
 
     http->storeEntry()->mem_obj->method = http->request->method;
@@ -823,14 +769,14 @@ clientReplyContext::purgeFoundObject(StoreEntry *entry)
 
     reqofs = 0;
 
-    localTempBuffer.offset = http->out.offset;
+    tempBuffer.offset = http->out.offset;
 
-    localTempBuffer.length = next()->readBuffer.length;
+    tempBuffer.length = next()->readBuffer.length;
 
-    localTempBuffer.data = next()->readBuffer.data;
+    tempBuffer.data = next()->readBuffer.data;
 
     storeClientCopy(sc, http->storeEntry(),
-                    localTempBuffer, CacheHit, this);
+                    tempBuffer, CacheHit, this);
 }
 
 void
@@ -841,13 +787,15 @@ clientReplyContext::purgeRequest()
 
     if (!Config2.onoff.enable_purge) {
         http->logType = LOG_TCP_DENIED;
-        ErrorState *err = clientBuildError(ERR_ACCESS_DENIED, HTTP_FORBIDDEN, NULL, http->getConn()->peer, http->request);
+        ErrorState *err =
+            clientBuildError(ERR_ACCESS_DENIED, HTTP_FORBIDDEN, NULL,
+                             &http->getConn()->peer.sin_addr, http->request);
         startError(err);
         return;
     }
 
     /* Release both IP cache */
-    ipcacheInvalidate(http->request->GetHost());
+    ipcacheInvalidate(http->request->host);
 
     if (!http->flags.purging)
         purgeRequestFindObjectToPurge();
@@ -873,9 +821,6 @@ clientReplyContext::purgeDoPurgeGet(StoreEntry *newEntry)
     if (!newEntry->isNull()) {
         /* Release the cached URI */
         debugs(88, 4, "clientPurgeRequest: GET '" << newEntry->url() << "'" );
-#if USE_HTCP
-        neighborsHtcpClear(newEntry, NULL, http->request, HttpRequestMethod(METHOD_GET), HTCP_CLR_PURGE);
-#endif
         newEntry->release();
         purgeStatus = HTTP_OK;
     }
@@ -889,9 +834,6 @@ clientReplyContext::purgeDoPurgeHead(StoreEntry *newEntry)
 {
     if (newEntry && !newEntry->isNull()) {
         debugs(88, 4, "clientPurgeRequest: HEAD '" << newEntry->url() << "'" );
-#if USE_HTCP
-        neighborsHtcpClear(newEntry, NULL, http->request, HttpRequestMethod(METHOD_HEAD), HTCP_CLR_PURGE);
-#endif
         newEntry->release();
         purgeStatus = HTTP_OK;
     }
@@ -904,9 +846,6 @@ clientReplyContext::purgeDoPurgeHead(StoreEntry *newEntry)
 
         if (entry) {
             debugs(88, 4, "clientPurgeRequest: Vary GET '" << entry->url() << "'" );
-#if USE_HTCP
-            neighborsHtcpClear(entry, NULL, http->request, HttpRequestMethod(METHOD_GET), HTCP_CLR_PURGE);
-#endif
             entry->release();
             purgeStatus = HTTP_OK;
         }
@@ -915,9 +854,6 @@ clientReplyContext::purgeDoPurgeHead(StoreEntry *newEntry)
 
         if (entry) {
             debugs(88, 4, "clientPurgeRequest: Vary HEAD '" << entry->url() << "'" );
-#if USE_HTCP
-            neighborsHtcpClear(entry, NULL, http->request, HttpRequestMethod(METHOD_HEAD), HTCP_CLR_PURGE);
-#endif
             entry->release();
             purgeStatus = HTTP_OK;
         }
@@ -935,27 +871,34 @@ clientReplyContext::purgeDoPurgeHead(StoreEntry *newEntry)
     triggerInitialStoreRead();
 
     HttpReply *rep = new HttpReply;
-    rep->setHeaders(purgeStatus, NULL, NULL, 0, 0, -1);
+
+    HttpVersion version(1,0);
+
+    rep->setHeaders(version, purgeStatus, NULL, NULL, 0, 0, -1);
+
     http->storeEntry()->replaceHttpReply(rep);
+
     http->storeEntry()->complete();
 }
 
 void
 clientReplyContext::traceReply(clientStreamNode * node)
 {
-    clientStreamNode *nextNode = (clientStreamNode *)node->node.next->data;
-    StoreIOBuffer localTempBuffer;
+    clientStreamNode *next = (clientStreamNode *)node->node.next->data;
+    StoreIOBuffer tempBuffer;
     assert(http->request->max_forwards == 0);
     createStoreEntry(http->request->method, request_flags());
-    localTempBuffer.offset = nextNode->readBuffer.offset + headers_sz;
-    localTempBuffer.length = nextNode->readBuffer.length;
-    localTempBuffer.data = nextNode->readBuffer.data;
+    tempBuffer.offset = next->readBuffer.offset + headers_sz;
+    tempBuffer.length = next->readBuffer.length;
+    tempBuffer.data = next->readBuffer.data;
     storeClientCopy(sc, http->storeEntry(),
-                    localTempBuffer, SendMoreData, this);
+                    tempBuffer, SendMoreData, this);
     http->storeEntry()->releaseRequest();
     http->storeEntry()->buffer();
     HttpReply *rep = new HttpReply;
-    rep->setHeaders(HTTP_OK, NULL, "text/plain", http->request->prefixLen(), 0, squid_curtime);
+    HttpVersion version(1,0);
+    rep->setHeaders(version, HTTP_OK, NULL, "text/plain",
+                    http->request->prefixLen(), 0, squid_curtime);
     http->storeEntry()->replaceHttpReply(rep);
     http->request->swapOut(http->storeEntry());
     http->storeEntry()->complete();
@@ -981,7 +924,7 @@ clientReplyContext::checkTransferDone()
     /*
      * Handle STORE_OK objects.
      * objectLen(entry) will be set proprely.
-     * RC: Does objectLen(entry) include the Headers?
+     * RC: Does objectLen(entry) include the Headers? 
      * RC: Yes.
      */
     if (entry->store_status == STORE_OK) {
@@ -995,10 +938,10 @@ int
 clientReplyContext::storeOKTransferDone() const
 {
     if (http->out.offset >= http->storeEntry()->objectLen() - headers_sz) {
-        debugs(88,3,HERE << "storeOKTransferDone " <<
-               " out.offset=" << http->out.offset <<
-               " objectLen()=" << http->storeEntry()->objectLen() <<
-               " headers_sz=" << headers_sz);
+	debugs(88,3,HERE << "storeOKTransferDone " <<
+	" out.offset=" << http->out.offset <<
+	" objectLen()=" << http->storeEntry()->objectLen() <<
+	" headers_sz=" << headers_sz);
         return 1;
     }
 
@@ -1015,7 +958,7 @@ clientReplyContext::storeNotOKTransferDone() const
     assert(mem != NULL);
     assert(http->request != NULL);
     /* mem->reply was wrong because it uses the UPSTREAM header length!!! */
-    HttpReply const *curReply = mem->getReply();
+    HttpReply const *reply = mem->getReply();
 
     if (headers_sz == 0)
         /* haven't found end of headers yet */
@@ -1023,9 +966,9 @@ clientReplyContext::storeNotOKTransferDone() const
 
     int sending = SENDING_BODY;
 
-    if (curReply->sline.status == HTTP_NO_CONTENT ||
-            curReply->sline.status == HTTP_NOT_MODIFIED ||
-            curReply->sline.status < HTTP_OK ||
+    if (reply->sline.status == HTTP_NO_CONTENT ||
+            reply->sline.status == HTTP_NOT_MODIFIED ||
+            reply->sline.status < HTTP_OK ||
             http->request->method == METHOD_HEAD)
         sending = SENDING_HDRSONLY;
 
@@ -1034,17 +977,17 @@ clientReplyContext::storeNotOKTransferDone() const
      * If we are sending a body and we don't have a content-length,
      * then we must wait for the object to become STORE_OK.
      */
-    if (curReply->content_length < 0)
+    if (reply->content_length < 0)
         return 0;
 
-    int64_t expectedLength = curReply->content_length + http->out.headers_sz;
+    int64_t expectedLength = reply->content_length + http->out.headers_sz;
 
     if (http->out.size < expectedLength)
         return 0;
     else {
-        debugs(88,3,HERE << "storeNotOKTransferDone " <<
-               " out.size=" << http->out.size <<
-               " expectedLength=" << expectedLength);
+	debugs(88,3,HERE << "storeNotOKTransferDone " <<
+	" out.size=" << http->out.size <<
+	" expectedLength=" << expectedLength);
         return 1;
     }
 }
@@ -1062,7 +1005,7 @@ clientHttpRequestStatus(int fd, ClientHttpRequest const *http)
 #if SIZEOF_INT64_T == 4
     if (http->out.size > 0x7FFF0000) {
         debugs(88, 1, "WARNING: closing FD " << fd << " to prevent out.size counter overflow");
-        debugs(88, 1, "\tclient " << http->getConn()->peer);
+        debugs(88, 1, "\tclient " << (inet_ntoa(http->getConn() != NULL ? http->getConn()->peer.sin_addr : no_addr)));
         debugs(88, 1, "\treceived " << http->out.size << " bytes");
         debugs(88, 1, "\tURI " << http->log_uri);
         return 1;
@@ -1072,7 +1015,7 @@ clientHttpRequestStatus(int fd, ClientHttpRequest const *http)
 #if SIZEOF_INT64_T == 4
     if (http->out.offset > 0x7FFF0000) {
         debugs(88, 1, "WARNING: closing FD " << fd < " to prevent out.offset counter overflow");
-        debugs(88, 1, "\tclient " << http->getConn()->peer);
+        debugs(88, 1, "\tclient " << (inet_ntoa(http->getConn() != NULL ? http->getConn()->peer.sin_addr : no_addr)));
         debugs(88, 1, "\treceived " << http->out.size << " bytes, offset " << http->out.offset);
         debugs(88, 1, "\tURI " << http->log_uri);
         return 1;
@@ -1148,8 +1091,7 @@ clientReplyContext::replyStatus()
         return STREAM_UNPLANNED_COMPLETE;
     }
 
-    // XXX: Should this be checked earlier? We could return above w/o checking.
-    if (reply->receivedBodyTooLarge(*http->request, http->out.offset - 4096)) {
+    if (http->isReplyBodyTooLarge(http->out.offset - 4096)) {
         /* 4096 is a margin for the HTTP headers included in out.offset */
         debugs(88, 5, "clientReplyStatus: client reply body is too large");
         return STREAM_FAILED;
@@ -1162,8 +1104,8 @@ clientReplyContext::replyStatus()
  * which breaks the rep_mime_type acl, which
  * coincidentally, is the most common acl for reply access lists.
  * A better long term fix for this is to allow acl matchs on the various
- * status codes, and then supply a default ruleset that puts these
- * codes before any user defines access entries. That way the user
+ * status codes, and then supply a default ruleset that puts these 
+ * codes before any user defines access entries. That way the user 
  * can choose to block these responses where appropriate, but won't get
  * mysterious breakages.
  */
@@ -1193,12 +1135,10 @@ clientReplyContext::alwaysAllowResponse(http_status sline) const
     return result;
 }
 
-/**
- * Generate the reply headers sent to client.
- *
- * Filters out unwanted entries and hop-by-hop from original reply header
- * then adds extra entries if we have more info than origin server
- * then adds Squid specific entries
+/*
+ * filters out unwanted entries from original reply header
+ * adds extra entries if we have more info than origin server
+ * adds Squid specific entries
  */
 void
 clientReplyContext::buildReplyHeader()
@@ -1212,19 +1152,23 @@ clientReplyContext::buildReplyHeader()
     hdr->delById(HDR_ETAG);
 #endif
 
+    // TODO: Should ESIInclude.cc that calls removeConnectionHeaderEntries
+    // also delete HDR_PROXY_CONNECTION and HDR_KEEP_ALIVE like we do below?
+
+    // XXX: Should HDR_PROXY_CONNECTION by studied instead of HDR_CONNECTION?
+    // httpHeaderHasConnDir does that but we do not. Is this is a bug?
+    hdr->delById(HDR_PROXY_CONNECTION);
+    /* here: Keep-Alive is a field-name, not a connection directive! */
+    hdr->delById(HDR_KEEP_ALIVE);
+    /* remove Set-Cookie if a hit */
+
     if (is_hit)
         hdr->delById(HDR_SET_COOKIE);
 
-    // if there is not configured a peer proxy with login=PASS option enabled
-    // remove the Proxy-Authenticate header
-    if ( !(request->peer_login && strcmp(request->peer_login,"PASS") ==0))
-        reply->header.delById(HDR_PROXY_AUTHENTICATE);
-
-    reply->header.removeHopByHopEntries();
+    reply->header.removeConnectionHeaderEntries();
 
     //    if (request->range)
     //      clientBuildRangeHeader(http, reply);
-
     /*
      * Add a estimated Age header on cache hits.
      */
@@ -1246,14 +1190,11 @@ clientReplyContext::buildReplyHeader()
          * the objects age, so a Age: 0 header does not add any useful
          * information to the reply in any case.
          */
-#if DEAD_CODE
-        // XXX: realy useless? or is there a bug now that this is detatched from the below if-sequence ?
-        // looks like this pre-if was supposed to be the browser workaround...
+
         if (NULL == http->storeEntry())
             (void) 0;
         else if (http->storeEntry()->timestamp < 0)
             (void) 0;
-#endif
 
         if (EBIT_TEST(http->storeEntry()->flags, ENTRY_SPECIAL)) {
             hdr->delById(HDR_DATE);
@@ -1271,90 +1212,41 @@ clientReplyContext::buildReplyHeader()
             /* TODO: if maxage or s-maxage is present, don't do this */
 
             if (squid_curtime - http->storeEntry()->timestamp >= 86400) {
-                char tbuf[512];
-                snprintf (tbuf, sizeof(tbuf), "%s %s %s",
+                char tempbuf[512];
+                snprintf (tempbuf, sizeof(tempbuf), "%s %s %s",
                           "113", ThisCache,
                           "This cache hit is still fresh and more than 1 day old");
-                hdr->putStr(HDR_WARNING, tbuf);
+                hdr->putStr(HDR_WARNING, tempbuf);
             }
         }
-    }
 
-    /* RFC 2616: Section 14.18
-     *
-     * Add a Date: header if missing.
-     * We have access to a clock therefore are required to amend any shortcoming in servers.
-     *
-     * NP: done after Age: to prevent ENTRY_SPECIAL double-handling this header.
-     */
-    if ( !hdr->has(HDR_DATE) ) {
-        if (!http->storeEntry())
-            hdr->insertTime(HDR_DATE, squid_curtime);
-        else if (http->storeEntry()->timestamp > 0)
-            hdr->insertTime(HDR_DATE, http->storeEntry()->timestamp);
-        else {
-            debugs(88,1,"WARNING: An error inside Squid has caused an HTTP reply without Date:. Please report this");
-            /* TODO: dump something useful about the problem */
-        }
     }
 
     /* Filter unproxyable authentication types */
-
     if (http->logType != LOG_TCP_DENIED &&
-            hdr->has(HDR_WWW_AUTHENTICATE)) {
+            (hdr->has(HDR_WWW_AUTHENTICATE) || hdr->has(HDR_PROXY_AUTHENTICATE))) {
         HttpHeaderPos pos = HttpHeaderInitPos;
         HttpHeaderEntry *e;
 
-        int connection_auth_blocked = 0;
+        int headers_deleted = 0;
         while ((e = hdr->getEntry(&pos))) {
-            if (e->id == HDR_WWW_AUTHENTICATE) {
-                const char *value = e->value.rawBuf();
+            if (e->id == HDR_WWW_AUTHENTICATE || e->id == HDR_PROXY_AUTHENTICATE) {
+                const char *value = e->value.buf();
 
                 if ((strncasecmp(value, "NTLM", 4) == 0 &&
                         (value[4] == '\0' || value[4] == ' '))
                         ||
                         (strncasecmp(value, "Negotiate", 9) == 0 &&
-                         (value[9] == '\0' || value[9] == ' '))
-                        ||
-                        (strncasecmp(value, "Kerberos", 8) == 0 &&
-                         (value[8] == '\0' || value[8] == ' '))) {
-                    if (request->flags.connection_auth_disabled) {
-                        hdr->delAt(pos, connection_auth_blocked);
-                        continue;
-                    }
-                    request->flags.must_keepalive = 1;
-                    if (!request->flags.accelerated && !request->flags.intercepted) {
-                        httpHeaderPutStrf(hdr, HDR_PROXY_SUPPORT, "Session-Based-Authentication");
-                        /*
-                          We send "[Proxy-]Connection: Proxy-Support" header to mark
-                          Proxy-Support as a hop-by-hop header for intermediaries that do not
-                          understand the semantics of this header. The RFC should have included
-                          this recommendation.
-                        */
-                        httpHeaderPutStrf(hdr, HDR_CONNECTION, "Proxy-support");
-                    }
-                    break;
-                }
+                         (value[9] == '\0' || value[9] == ' ')))
+                            hdr->delAt(pos, headers_deleted);
             }
         }
-
-        if (connection_auth_blocked)
+        if (headers_deleted)
             hdr->refreshMask();
     }
 
     /* Handle authentication headers */
-    if (http->logType == LOG_TCP_DENIED &&
-            ( reply->sline.status == HTTP_PROXY_AUTHENTICATION_REQUIRED ||
-              reply->sline.status == HTTP_UNAUTHORIZED)
-       ) {
-        /* Add authentication header */
-        /*! \todo alter errorstate to be accel on|off aware. The 0 on the next line
-         * depends on authenticate behaviour: all schemes to date send no extra
-         * data on 407/401 responses, and do not check the accel state on 401/407
-         * responses
-         */
-        authenticateFixHeader(reply, request->auth_user_request, request, 0, 1);
-    } else if (request->auth_user_request)
+    if (request->auth_user_request)
         authenticateFixHeader(reply, request->auth_user_request, request,
                               http->flags.accel, 0);
 
@@ -1371,43 +1263,47 @@ clientReplyContext::buildReplyHeader()
 #endif
 
     /* Check whether we should send keep-alive */
-    if (!Config.onoff.error_pconns && reply->sline.status >= 400 && !request->flags.must_keepalive) {
-        debugs(33, 3, "clientBuildReplyHeader: Error, don't keep-alive");
-        request->flags.proxy_keepalive = 0;
-    } else if (!Config.onoff.client_pconns && !request->flags.must_keepalive) {
-        debugs(33, 2, "clientBuildReplyHeader: Connection Keep-Alive not requested by admin or client");
-        request->flags.proxy_keepalive = 0;
-    } else if (request->flags.proxy_keepalive && shutting_down) {
-        debugs(88, 3, "clientBuildReplyHeader: Shutting down, don't keep-alive.");
-        request->flags.proxy_keepalive = 0;
-    } else if (request->flags.connection_auth && !reply->keep_alive) {
-        debugs(33, 2, "clientBuildReplyHeader: Connection oriented auth but server side non-persistent");
-        request->flags.proxy_keepalive = 0;
-    } else if (reply->bodySize(request->method) < 0) {
+    // TODO: disable proxy_keepalive only once
+
+    if (reply->bodySize(request->method) < 0) {
         debugs(88, 3, "clientBuildReplyHeader: can't keep-alive, unknown body size" );
         request->flags.proxy_keepalive = 0;
-    } else if (fdUsageHigh()&& !request->flags.must_keepalive) {
+    }
+
+    if (fdUsageHigh()&& !request->flags.must_keepalive) {
         debugs(88, 3, "clientBuildReplyHeader: Not many unused FDs, can't keep-alive");
         request->flags.proxy_keepalive = 0;
     }
 
+    if (!Config.onoff.error_pconns && reply->sline.status >= 400 && !request->flags.must_keepalive) {
+        debugs(33, 3, "clientBuildReplyHeader: Error, don't keep-alive");
+        request->flags.proxy_keepalive = 0;
+    }
+
+    if (!Config.onoff.client_pconns && !request->flags.must_keepalive)
+        request->flags.proxy_keepalive = 0;
+
+    if (request->flags.proxy_keepalive && shutting_down) {
+        debugs(88, 3, "clientBuildReplyHeader: Shutting down, don't keep-alive.");
+        request->flags.proxy_keepalive = 0;
+    }
 
     /* Append VIA */
     if (Config.onoff.via) {
         LOCAL_ARRAY(char, bbuf, MAX_URL + 32);
         String strVia;
-        hdr->getList(HDR_VIA, &strVia);
+       	hdr->getList(HDR_VIA, &strVia);
         snprintf(bbuf, MAX_URL + 32, "%d.%d %s",
                  reply->sline.version.major,
                  reply->sline.version.minor,
                  ThisCache);
         strListAdd(&strVia, bbuf, ',');
         hdr->delById(HDR_VIA);
-        hdr->putStr(HDR_VIA, strVia.termedBuf());
+        hdr->putStr(HDR_VIA, strVia.buf());
     }
     /* Signal keep-alive if needed */
-    hdr->putStr( (http->flags.accel || http->flags.intercepted)? HDR_CONNECTION : HDR_PROXY_CONNECTION,
-                 request->flags.proxy_keepalive ? "keep-alive" : "close");
+    hdr->putStr(http->flags.accel ? HDR_CONNECTION : HDR_PROXY_CONNECTION,
+                request->flags.proxy_keepalive ? "keep-alive" : "close");
 
 #if ADD_X_REQUEST_URI
     /*
@@ -1434,10 +1330,8 @@ clientReplyContext::cloneReply()
 
     reply = HTTPMSGLOCK(rep);
 
-    if (reply->sline.protocol == PROTO_HTTP) {
-        /* enforce 1.0 reply version (but only on real HTTP traffic) */
-        reply->sline.version = HttpVersion(1,0);
-    }
+    /* enforce 1.0 reply version */
+    reply->sline.version = HttpVersion(1,0);
 
     /* do header conversions */
     buildReplyHeader();
@@ -1456,17 +1350,12 @@ clientReplyContext::identifyStoreObject()
     }
 }
 
-/**
- * Check state of the current StoreEntry object.
- * to see if we can determine the final status of the request.
- */
 void
 clientReplyContext::identifyFoundObject(StoreEntry *newEntry)
 {
     StoreEntry *e = newEntry;
     HttpRequest *r = http->request;
 
-    /** \li If the entry received isNull() then we ignore it. */
     if (e->isNull()) {
         http->storeEntry(NULL);
     } else {
@@ -1474,20 +1363,17 @@ clientReplyContext::identifyFoundObject(StoreEntry *newEntry)
     }
 
     e = http->storeEntry();
-
     /* Release IP-cache entries on reload */
-    /** \li If the request has no-cache flag set or some no_cache HACK in operation we
-      * 'invalidate' the cached IP entries for this request ???
-      */
+
     if (r->flags.nocache) {
 
 #if USE_DNSSERVERS
 
-        ipcacheInvalidate(r->GetHost());
+        ipcacheInvalidate(r->host);
 
 #else
 
-        ipcacheInvalidateNegative(r->GetHost());
+        ipcacheInvalidateNegative(r->host);
 
 #endif /* USE_DNSSERVERS */
 
@@ -1499,11 +1385,11 @@ clientReplyContext::identifyFoundObject(StoreEntry *newEntry)
 
 #if USE_DNSSERVERS
 
-        ipcacheInvalidate(r->GetHost());
+        ipcacheInvalidate(r->host);
 
 #else
 
-        ipcacheInvalidateNegative(r->GetHost());
+        ipcacheInvalidateNegative(r->host);
 
 #endif /* USE_DNSSERVERS */
 
@@ -1517,15 +1403,14 @@ clientReplyContext::identifyFoundObject(StoreEntry *newEntry)
 #endif
 
     if (NULL == http->storeEntry()) {
-        /** \li If no StoreEntry object is current assume this object isn't in the cache set MISS*/
-        debugs(85, 3, "clientProcessRequest2: StoreEntry is NULL -  MISS");
+        /* this object isn't in the cache */
+        debugs(85, 3, "clientProcessRequest2: storeGet() MISS");
         http->logType = LOG_TCP_MISS;
         doGetMoreData();
         return;
     }
 
     if (Config.onoff.offline) {
-        /** \li If we are running in offline mode set to HIT */
         debugs(85, 3, "clientProcessRequest2: offline HIT");
         http->logType = LOG_TCP_HIT;
         doGetMoreData();
@@ -1533,8 +1418,7 @@ clientReplyContext::identifyFoundObject(StoreEntry *newEntry)
     }
 
     if (http->redirect.status) {
-        /** \li If redirection status is True force this to be a MISS */
-        debugs(85, 3, "clientProcessRequest2: redirectStatus forced StoreEntry to NULL -  MISS");
+        /* force this to be a miss */
         http->storeEntry(NULL);
         http->logType = LOG_TCP_MISS;
         doGetMoreData();
@@ -1550,7 +1434,7 @@ clientReplyContext::identifyFoundObject(StoreEntry *newEntry)
     }
 
     if (EBIT_TEST(e->flags, ENTRY_SPECIAL)) {
-        /* \li Special entries are always hits, no matter what the client says */
+        /* Special entries are always hits, no matter what the client says */
         debugs(85, 3, "clientProcessRequest2: ENTRY_SPECIAL HIT");
         http->logType = LOG_TCP_HIT;
         doGetMoreData();
@@ -1570,14 +1454,13 @@ clientReplyContext::identifyFoundObject(StoreEntry *newEntry)
     doGetMoreData();
 }
 
-/**
- * Request more data from the store for the client Stream
+/* Request more data from the store for the client Stream
  * This is *the* entry point to this module.
  *
  * Preconditions:
- *  - This is the head of the list.
- *  - There is at least one more node.
- *  - Data context is not null
+ * This is the head of the list.
+ * There is at least one more node.
+ * data context is not null
  */
 void
 clientGetMoreData(clientStreamNode * aNode, ClientHttpRequest * http)
@@ -1636,9 +1519,11 @@ clientReplyContext::doGetMoreData()
     /* We still have to do store logic processing - vary, cache hit etc */
     if (http->storeEntry() != NULL) {
         /* someone found the object in the cache for us */
-        StoreIOBuffer localTempBuffer;
+        StoreIOBuffer tempBuffer;
 
-        http->storeEntry()->lock();
+        http->storeEntry()->lock()
+
+        ;
 
         if (http->storeEntry()->mem_obj == NULL) {
             /*
@@ -1649,7 +1534,8 @@ clientReplyContext::doGetMoreData()
              * the method as GET.
              */
             http->storeEntry()->createMemObject(http->uri, http->log_uri);
-            http->storeEntry()->mem_obj->method = http->request->method;
+            http->storeEntry()->mem_obj->method =
+                http->request->method;
         }
 
         sc = storeClientListAdd(http->storeEntry(), this);
@@ -1663,32 +1549,26 @@ clientReplyContext::doGetMoreData()
         /* guarantee nothing has been sent yet! */
         assert(http->out.size == 0);
         assert(http->out.offset == 0);
-#if USE_ZPH_QOS
-        if (Config.zph.tos_local_hit) {
-            debugs(33, 2, "ZPH Local hit, TOS=" << Config.zph.tos_local_hit);
-            comm_set_tos(http->getConn()->fd, Config.zph.tos_local_hit);
-        }
-#endif /* USE_ZPH_QOS */
-        localTempBuffer.offset = reqofs;
-        localTempBuffer.length = getNextNode()->readBuffer.length;
-        localTempBuffer.data = getNextNode()->readBuffer.data;
-        storeClientCopy(sc, http->storeEntry(), localTempBuffer, CacheHit, this);
+        tempBuffer.offset = reqofs;
+        tempBuffer.length = getNextNode()->readBuffer.length;
+        tempBuffer.data = getNextNode()->readBuffer.data;
+        storeClientCopy(sc, http->storeEntry(), tempBuffer, CacheHit, this);
     } else {
         /* MISS CASE, http->logType is already set! */
         processMiss();
     }
 }
 
-/** The next node has removed itself from the stream. */
+/* the next node has removed itself from the stream. */
 void
 clientReplyDetach(clientStreamNode * node, ClientHttpRequest * http)
 {
-    /** detach from the stream */
+    /* detach from the stream */
     clientStreamDetach(node, http);
 }
 
-/**
- * Accepts chunk of a http message in buf, parses prefix, filters headers and
+/*
+ * accepts chunk of a http message in buf, parses prefix, filters headers and
  * such, writes processed message to the message recipient
  */
 void
@@ -1718,23 +1598,22 @@ clientReplyContext::errorInStream(StoreIOBuffer const &result, size_t const &siz
 void
 clientReplyContext::sendStreamError(StoreIOBuffer const &result)
 {
-    /** call clientWriteComplete so the client socket gets closed
-     *
-     * We call into the stream, because we don't know that there is a
+    /* call clientWriteComplete so the client socket gets closed */
+    /* We call into the stream, because we don't know that there is a
      * client socket!
      */
-    debugs(88, 5, "clientReplyContext::sendStreamError: A stream error has occured, marking as complete and sending no data.");
-    StoreIOBuffer localTempBuffer;
+     debugs(88, 5, "clientReplyContext::sendStreamError: A stream error has occured, marking as complete and sending no data.");
+    StoreIOBuffer tempBuffer;
     flags.complete = 1;
-    localTempBuffer.flags.error = result.flags.error;
+    tempBuffer.flags.error = result.flags.error;
     clientStreamCallback((clientStreamNode*)http->client_stream.head->data, http, NULL,
-                         localTempBuffer);
+                         tempBuffer);
 }
 
 void
 clientReplyContext::pushStreamData(StoreIOBuffer const &result, char *source)
 {
-    StoreIOBuffer localTempBuffer;
+    StoreIOBuffer tempBuffer;
 
     if (result.length == 0) {
         debugs(88, 5, "clientReplyContext::pushStreamData: marking request as complete due to 0 length store result");
@@ -1742,14 +1621,14 @@ clientReplyContext::pushStreamData(StoreIOBuffer const &result, char *source)
     }
 
     assert(result.offset - headers_sz == next()->readBuffer.offset);
-    localTempBuffer.offset = result.offset - headers_sz;
-    localTempBuffer.length = result.length;
+    tempBuffer.offset = result.offset - headers_sz;
+    tempBuffer.length = result.length;
 
-    if (localTempBuffer.length)
-        localTempBuffer.data = source;
+    if (tempBuffer.length)
+        tempBuffer.data = source;
 
     clientStreamCallback((clientStreamNode*)http->client_stream.head->data, http, NULL,
-                         localTempBuffer);
+                         tempBuffer);
 }
 
 clientStreamNode *
@@ -1759,53 +1638,70 @@ clientReplyContext::next() const
     return getNextNode();
 }
 
+/*
+ * Calculates the maximum size allowed for an HTTP response
+ */
 void
-clientReplyContext::sendBodyTooLargeError()
+clientReplyContext::buildMaxBodySize(HttpReply * reply)
 {
-    IpAddress tmp_noaddr;
-    tmp_noaddr.SetNoAddr(); // TODO: make a global const
-    http->logType = LOG_TCP_DENIED_REPLY;
-    ErrorState *err = clientBuildError(ERR_TOO_BIG, HTTP_FORBIDDEN, NULL,
-                                       http->getConn() != NULL ? http->getConn()->peer : tmp_noaddr,
-                                       http->request);
-    removeClientStoreReference(&(sc), http);
-    HTTPMSGUNLOCK(reply);
-    startError(err);
+    acl_size_t *l = Config.ReplyBodySize;
+    ACLChecklist *ch;
 
+    if (http->logType == LOG_TCP_DENIED)
+        return;
+
+    ch = clientAclChecklistCreate(NULL, http);
+
+    ch->reply = HTTPMSGLOCK(reply);
+
+    for (l = Config.ReplyBodySize; l; l = l -> next) {
+        if (ch->matchAclListFast(l->aclList)) {
+            if (l->size != -1) {
+                debugs(58, 3, "clientReplyContext: Setting maxBodySize to " <<  l->size);
+                http->maxReplyBodySize(l->size);
+            }
+
+            break;
+        }
+    }
+
+    delete ch;
 }
 
 void
 clientReplyContext::processReplyAccess ()
 {
-    /* NP: this should probably soft-fail to a zero-sized-reply error ?? */
     assert(reply);
+    buildMaxBodySize(reply);
 
-    /** Don't block our own responses or HTTP status messages */
-    if (http->logType == LOG_TCP_DENIED ||
-            http->logType == LOG_TCP_DENIED_REPLY ||
-            alwaysAllowResponse(reply->sline.status)) {
+    /* Dont't block our own responses or HTTP status messages */
+    if (http->logType == LOG_TCP_DENIED || http->logType == LOG_TCP_DENIED_REPLY || alwaysAllowResponse(reply->sline.status)) {
         headers_sz = reply->hdr_sz;
-        processReplyAccessResult(1);
-        return;
+	processReplyAccessResult(1);
+	return;
     }
 
-    /** Check for reply to big error */
-    if (reply->expectedBodyTooLarge(*http->request)) {
-        sendBodyTooLargeError();
+    if (http->isReplyBodyTooLarge(reply->content_length)) {
+        http->logType = LOG_TCP_DENIED_REPLY;
+        ErrorState *err =
+            clientBuildError(ERR_TOO_BIG, HTTP_FORBIDDEN, NULL,
+                             http->getConn() != NULL ? &http->getConn()->peer.sin_addr : &no_addr,
+                             http->request);
+        removeClientStoreReference(&sc, http);
+        HTTPMSGUNLOCK(reply);
+        startError(err);
         return;
     }
 
     headers_sz = reply->hdr_sz;
 
-    /** check for absent access controls (permit by default) */
     if (!Config.accessList.reply) {
-        processReplyAccessResult(1);
-        return;
+	processReplyAccessResult(1);
+	return;
     }
 
-    /** Process http_reply_access lists */
-    ACLFilledChecklist *replyChecklist =
-        clientAclChecklistCreate(Config.accessList.reply, http);
+    ACLChecklist *replyChecklist;
+    replyChecklist = clientAclChecklistCreate(Config.accessList.reply, http);
     replyChecklist->reply = HTTPMSGLOCK(reply);
     replyChecklist->nonBlockingCheck(ProcessReplyAccessResult, this);
 }
@@ -1820,10 +1716,10 @@ clientReplyContext::ProcessReplyAccessResult (int rv, void *voidMe)
 void
 clientReplyContext::processReplyAccessResult(bool accessAllowed)
 {
-    debugs(88, 2, "The reply for " << RequestMethodStr(http->request->method)
-           << " " << http->uri << " is "
-           << ( accessAllowed ? "ALLOWED" : "DENIED")
-           << ", because it matched '"
+    debugs(88, 2, "The reply for " << RequestMethodStr[http->request->method] 
+           << " " << http->uri << " is " 
+           << ( accessAllowed ? "ALLOWED" : "DENIED") 
+           << ", because it matched '" 
            << (AclMatchedName ? AclMatchedName : "NO ACL's") << "'" );
 
     if (!accessAllowed) {
@@ -1836,11 +1732,10 @@ clientReplyContext::processReplyAccessResult(bool accessAllowed)
         if (page_id == ERR_NONE)
             page_id = ERR_ACCESS_DENIED;
 
-        IpAddress tmp_noaddr;
-        tmp_noaddr.SetNoAddr();
-        err = clientBuildError(page_id, HTTP_FORBIDDEN, NULL,
-                               http->getConn() != NULL ? http->getConn()->peer : tmp_noaddr,
-                               http->request);
+        err =
+            clientBuildError(page_id, HTTP_FORBIDDEN, NULL,
+                             http->getConn() != NULL ? &http->getConn()->peer.sin_addr : &no_addr,
+                             http->request);
 
         removeClientStoreReference(&sc, http);
 
@@ -1857,8 +1752,8 @@ clientReplyContext::processReplyAccessResult(bool accessAllowed)
 
     ssize_t body_size = reqofs - reply->hdr_sz;
     if (body_size < 0) {
-        reqofs = reply->hdr_sz;
-        body_size = 0;
+	reqofs = reply->hdr_sz;
+	body_size = 0;
     }
 
     debugs(88, 3, "clientReplyContext::sendMoreData: Appending " <<
@@ -1887,7 +1782,7 @@ clientReplyContext::processReplyAccessResult(bool accessAllowed)
     assert (!flags.headersSent);
     flags.headersSent = true;
 
-    StoreIOBuffer localTempBuffer;
+    StoreIOBuffer tempBuffer;
     char *buf = next()->readBuffer.data;
     char *body_buf = buf + reply->hdr_sz;
 
@@ -1901,20 +1796,20 @@ clientReplyContext::processReplyAccessResult(bool accessAllowed)
     if (next()->readBuffer.offset != 0) {
         if (next()->readBuffer.offset > body_size) {
             /* Can't use any of the body we received. send nothing */
-            localTempBuffer.length = 0;
-            localTempBuffer.data = NULL;
+            tempBuffer.length = 0;
+            tempBuffer.data = NULL;
         } else {
-            localTempBuffer.length = body_size - next()->readBuffer.offset;
-            localTempBuffer.data = body_buf + next()->readBuffer.offset;
+            tempBuffer.length = body_size - next()->readBuffer.offset;
+            tempBuffer.data = body_buf + next()->readBuffer.offset;
         }
     } else {
-        localTempBuffer.length = body_size;
-        localTempBuffer.data = body_buf;
+        tempBuffer.length = body_size;
+        tempBuffer.data = body_buf;
     }
 
     /* TODO??: move the data in the buffer back by the request header size */
     clientStreamCallback((clientStreamNode *)http->client_stream.head->data,
-                         http, reply, localTempBuffer);
+                         http, reply, tempBuffer);
 
     return;
 }
@@ -1927,14 +1822,9 @@ clientReplyContext::sendMoreData (StoreIOBuffer result)
 
     StoreEntry *entry = http->storeEntry();
 
-    ConnStateData * conn = http->getConn();
+    ConnStateData::Pointer conn = http->getConn();
 
     int fd = conn != NULL ? conn->fd : -1;
-    if (fd >= 0 && fd_table[fd].closing()) { // too late, our conn is closing
-        // TODO: should we also quit when fd is negative?
-        debugs(33,3, HERE << "not sending more data to a closing FD " << fd);
-        return;
-    }
 
     char *buf = next()->readBuffer.data;
 
@@ -1946,24 +1836,6 @@ clientReplyContext::sendMoreData (StoreIOBuffer result)
         xmemcpy(buf, result.data, result.length);
         body_buf = buf;
     }
-
-#if USE_ZPH_QOS
-    if (reqofs==0 && !logTypeIsATcpHit(http->logType)) {
-        assert(fd >= 0); // the beginning of this method implies fd may be -1
-        int tos = 0;
-        if (Config.zph.tos_sibling_hit && http->request->hier.code==SIBLING_HIT ) {
-            tos = Config.zph.tos_sibling_hit;
-            debugs(33, 2, "ZPH: Sibling Peer hit with hier.code=" << http->request->hier.code << ", TOS=" << tos);
-        } else if (Config.zph.tos_parent_hit && http->request->hier.code==PARENT_HIT) {
-            tos = Config.zph.tos_parent_hit;
-            debugs(33, 2, "ZPH: Parent Peer hit with hier.code=" << http->request->hier.code << ", TOS=" << tos);
-        } else if (Config.zph.preserve_miss_tos && Config.zph.preserve_miss_tos_mask) {
-            tos = fd_table[fd].upstreamTOS & Config.zph.preserve_miss_tos_mask;
-            debugs(33, 2, "ZPH: Preserving TOS on miss, TOS="<<tos);
-        }
-        comm_set_tos(fd,tos);
-    }
-#endif
 
     /* We've got the final data to start pushing... */
     flags.storelogiccomplete = 1;
@@ -1984,9 +1856,9 @@ clientReplyContext::sendMoreData (StoreIOBuffer result)
            reqofs << " bytes (" << result.length <<
            " new bytes)");
     debugs(88, 5, "clientReplyContext::sendMoreData:"
-           " FD " << fd <<
-           " '" << entry->url() << "'" <<
-           " out.offset=" << http->out.offset);
+		" FD " << fd <<
+		" '" << entry->url() << "'" <<
+		" out.offset=" << http->out.offset);
 
     /* update size of the request */
     reqsize = reqofs;
@@ -2006,13 +1878,13 @@ clientReplyContext::sendMoreData (StoreIOBuffer result)
     /* handle headers */
 
     if (Config.onoff.log_mime_hdrs) {
-        size_t k;
+	size_t k;
 
-        if ((k = headersEnd(buf, reqofs))) {
-            safe_free(http->al.headers.reply);
-            http->al.headers.reply = (char *)xcalloc(k + 1, 1);
-            xstrncpy(http->al.headers.reply, buf, k);
-        }
+	if ((k = headersEnd(buf, reqofs))) {
+	    safe_free(http->al.headers.reply);
+	    http->al.headers.reply = (char *)xcalloc(k + 1, 1);
+	    xstrncpy(http->al.headers.reply, buf, k);
+	}
     }
 
     holdingBuffer = result;
@@ -2025,7 +1897,7 @@ clientReplyContext::sendMoreData (StoreIOBuffer result)
 /* Using this breaks the client layering just a little!
  */
 void
-clientReplyContext::createStoreEntry(const HttpRequestMethod& m, request_flags reqFlags)
+clientReplyContext::createStoreEntry(method_t m, request_flags flags)
 {
     assert(http != NULL);
     /*
@@ -2036,7 +1908,7 @@ clientReplyContext::createStoreEntry(const HttpRequestMethod& m, request_flags r
     if (http->request == NULL)
         http->request = HTTPMSGLOCK(new HttpRequest(m, PROTO_NONE, null_string));
 
-    StoreEntry *e = storeCreateEntry(http->uri, http->log_uri, reqFlags, m);
+    StoreEntry *e = storeCreateEntry(http->uri, http->log_uri, flags, m);
 
     sc = storeClientListAdd(e, this);
 
@@ -2054,26 +1926,27 @@ clientReplyContext::createStoreEntry(const HttpRequestMethod& m, request_flags r
     /* http->reqbuf = http->norm_reqbuf; */
     //    assert(http->reqbuf == http->norm_reqbuf);
     /* The next line is illegal because we don't know if the client stream
-     * buffers have been set up
+     * buffers have been set up 
      */
     //    storeClientCopy(http->sc, e, 0, HTTP_REQBUF_SZ, http->reqbuf,
     //        SendMoreData, this);
     /* So, we mark the store logic as complete */
-    flags.storelogiccomplete = 1;
+    this->flags.storelogiccomplete = 1;
 
     /* and get the caller to request a read, from whereever they are */
     /* NOTE: after ANY data flows down the pipe, even one step,
-     * this function CAN NOT be used to manage errors
+     * this function CAN NOT be used to manage errors 
      */
     http->storeEntry(e);
 }
 
 ErrorState *
 clientBuildError(err_type page_id, http_status status, char const *url,
-                 IpAddress &src_addr, HttpRequest * request)
+
+                 struct IN_ADDR * src_addr, HttpRequest * request)
 {
     ErrorState *err = errorCon(page_id, status, request);
-    err->src_addr = src_addr;
+    err->src_addr = *src_addr;
 
     if (url)
         err->url = xstrdup(url);

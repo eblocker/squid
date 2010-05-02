@@ -1,6 +1,6 @@
 
 /*
- * $Id$
+ * $Id: HttpRequest.h,v 1.30 2007/08/13 17:20:51 hno Exp $
  *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
@@ -19,12 +19,12 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *
+ *  
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *
+ *  
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
@@ -38,28 +38,14 @@
 #include "client_side.h"
 #include "HierarchyLogEntry.h"
 #include "HttpRequestMethod.h"
-#if USE_ADAPTATION
-#include "adaptation/History.h"
-#endif
-#if ICAP_CLIENT
-#include "adaptation/icap/History.h"
-#endif
 
 /*  Http Request */
-//DEAD?: extern int httpRequestHdrAllowedByName(http_hdr_type id);
+extern int httpRequestHdrAllowed(const HttpHeaderEntry * e, String * strConnection);
+extern int httpRequestHdrAllowedByName(http_hdr_type id);
 extern void httpRequestPack(void *obj, Packer *p);
 
-// TODO: Move these three to access_log.h or AccessLogEntry.h
-#if USE_ADAPTATION
-extern bool alLogformatHasAdaptToken;
-#endif
-#if ICAP_CLIENT
-extern bool alLogformatHasIcapToken;
-#endif
-extern int LogfileStatus;
 
 class HttpHdrRange;
-class DnsLookupDetails;
 
 class HttpRequest: public HttpMsg
 {
@@ -67,53 +53,20 @@ class HttpRequest: public HttpMsg
 public:
     MEMPROXY_CLASS(HttpRequest);
     HttpRequest();
-    HttpRequest(const HttpRequestMethod& aMethod, protocol_t aProtocol, const char *aUrlpath);
+    HttpRequest(method_t aMethod, protocol_t aProtocol, const char *aUrlpath);
     ~HttpRequest();
     virtual void reset();
 
     // use HTTPMSGLOCK() instead of calling this directly
-    virtual HttpRequest *_lock() {
+    virtual HttpRequest *_lock()
+    {
         return static_cast<HttpRequest*>(HttpMsg::_lock());
     };
 
-    void initHTTP(const HttpRequestMethod& aMethod, protocol_t aProtocol, const char *aUrlpath);
-
-    virtual HttpRequest *clone() const;
+    void initHTTP(method_t aMethod, protocol_t aProtocol, const char *aUrlpath);
 
     /* are responses to this request potentially cachable */
     bool cacheable() const;
-
-    /* Now that we care what host contains it is better off being protected. */
-    /* HACK: These two methods are only inline to get around Makefile dependancies */
-    /*      caused by HttpRequest being used in places it really shouldn't.        */
-    /*      ideally they would be methods of URL instead. */
-    inline void SetHost(const char *src) {
-        host_addr.SetEmpty();
-        host_addr = src;
-        if ( host_addr.IsAnyAddr() ) {
-            xstrncpy(host, src, SQUIDHOSTNAMELEN);
-            host_is_numeric = 0;
-        } else {
-            host_addr.ToHostname(host, SQUIDHOSTNAMELEN);
-            debugs(23, 3, "HttpRequest::SetHost() given IP: " << host_addr);
-            host_is_numeric = 1;
-        }
-    };
-    inline const char* GetHost(void) const { return host; };
-    inline const int GetHostIsNumeric(void) const { return host_is_numeric; };
-
-#if USE_ADAPTATION
-    /// Returns possibly nil history, creating it if adapt. logging is enabled
-    Adaptation::History::Pointer adaptLogHistory() const;
-    /// Returns possibly nil history, creating it if requested
-    Adaptation::History::Pointer adaptHistory(bool createIfNone = false) const;
-#endif
-#if ICAP_CLIENT
-    /// Returns possibly nil history, creating it if icap logging is enabled
-    Adaptation::Icap::History::Pointer icapHistory() const;
-#endif
-
-    void recordLookup(const DnsLookupDetails &detail);
 
 protected:
     void clean();
@@ -121,29 +74,11 @@ protected:
     void init();
 
 public:
-    HttpRequestMethod method;
+    method_t method;
 
     char login[MAX_LOGIN_SZ];
 
-private:
-    char host[SQUIDHOSTNAMELEN];
-    int host_is_numeric;
-
-    /***
-     * The client side connection data of pinned connections for the client side
-     * request related objects
-     */
-    ConnStateData *pinned_connection;
-
-#if USE_ADAPTATION
-    mutable Adaptation::History::Pointer adaptHistory_; ///< per-HTTP transaction info
-#endif
-#if ICAP_CLIENT
-    mutable Adaptation::Icap::History::Pointer icapHistory_; ///< per-HTTP transaction info
-#endif
-
-public:
-    IpAddress host_addr;
+    char host[SQUIDHOSTNAMELEN + 1];
 
     AuthUserRequest *auth_user_request;
 
@@ -163,17 +98,17 @@ public:
 
     int64_t max_forwards;
 
-    IpAddress client_addr;
+    /* these in_addr's could probably be sockaddr_in's */
 
-#if FOLLOW_X_FORWARDED_FOR
-    IpAddress indirect_client_addr;
-#endif /* FOLLOW_X_FORWARDED_FOR */
+    struct IN_ADDR client_addr;
 
-    IpAddress my_addr;
+    struct IN_ADDR my_addr;
+
+    unsigned short my_port;
+
+    unsigned short client_port;
 
     HierarchyLogEntry hier;
-
-    int dnsWait; ///< sum of DNS lookup delays in milliseconds, for %dt
 
     err_type errType;
 
@@ -193,12 +128,6 @@ public:
 
     String extacl_log;		/* String to be used for access.log purposes */
 
-    String extacl_message;	/* String to be used for error page purposes */
-
-#if FOLLOW_X_FORWARDED_FOR
-    String x_forwarded_for_iterator; /* XXX a list of IP addresses */
-#endif /* FOLLOW_X_FORWARDED_FOR */
-
 public:
     bool multipartRangeRequest() const;
 
@@ -206,7 +135,7 @@ public:
 
     int parseHeader(const char *parse_start, int len);
 
-    virtual bool expectingBody(const HttpRequestMethod& unused, int64_t&) const;
+    virtual bool expectingBody(method_t unused, int64_t&) const;
 
     bool bodyNibbled() const; // the request has a [partially] consumed body
 
@@ -218,21 +147,9 @@ public:
 
     static void httpRequestPack(void *obj, Packer *p);
 
-    static HttpRequest * CreateFromUrlAndMethod(char * url, const HttpRequestMethod& method);
+    static HttpRequest * CreateFromUrlAndMethod(char * url, method_t method);
 
     static HttpRequest * CreateFromUrl(char * url);
-
-    void setPinnedConnection(ConnStateData *conn) {
-        pinned_connection = cbdataReference(conn);
-    }
-
-    ConnStateData *pinnedConnection() {
-        return pinned_connection;
-    }
-
-    void releasePinnedConnection() {
-        cbdataReferenceDone(pinned_connection);
-    }
 
 private:
     const char *packableURI(bool full_uri) const;
@@ -244,9 +161,8 @@ protected:
 
     virtual void hdrCacheInit();
 
-    virtual bool inheritProperties(const HttpMsg *aMsg);
 };
 
-MEMPROXY_CLASS_INLINE(HttpRequest);
+MEMPROXY_CLASS_INLINE(HttpRequest)
 
 #endif /* SQUID_HTTPREQUEST_H */

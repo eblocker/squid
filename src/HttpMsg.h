@@ -1,6 +1,6 @@
 
 /*
- * $Id$
+ * $Id: HttpMsg.h,v 1.16 2007/08/13 17:20:51 hno Exp $
  *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
@@ -19,12 +19,12 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *
+ *  
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *
+ *  
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
@@ -36,7 +36,6 @@
 
 #include "typedefs.h"
 #include "HttpHeader.h"
-#include "HttpStatusCode.h"
 #include "HttpVersion.h"
 #include "BodyPipe.h"
 
@@ -55,9 +54,6 @@ public:
 
     virtual HttpMsg *_lock();	// please use HTTPMSGLOCK()
     virtual void _unlock();	// please use HTTPMSGUNLOCK()
-
-    ///< produce a message copy, except for a few connection-specific settings
-    virtual HttpMsg *clone() const = 0; ///< \todo rename: not a true copy?
 
     /// [re]sets Content-Length header and cached value
     void setContentLength(int64_t clen);
@@ -93,20 +89,18 @@ public:
 
     virtual int httpMsgParseError();
 
-    virtual bool expectingBody(const HttpRequestMethod&, int64_t&) const = 0;
+    virtual bool expectingBody(method_t, int64_t&) const = 0;
 
     void firstLineBuf(MemBuf&);
 
-    virtual bool inheritProperties(const HttpMsg *aMsg) = 0;
-
 protected:
-    /**
-     * Validate the message start line is syntactically correct.
-     * Set HTTP error status according to problems found.
-     *
-     * \retval true   Status line has no serious problems.
-     * \retval false  Status line has a serious problem. Correct response is indicated by error.
-     */
+     /**
+      * Validate the message start line is syntactically correct.
+      * Set HTTP error status according to problems found.
+      *
+      * \retval true   Status line has no serious problems.
+      * \retval false  Status line has a serious problem. Correct response is indicated by error.
+      */
     virtual bool sanityCheckStartLine(MemBuf *buf, const size_t hdr_len, http_status *error) = 0;
 
     virtual void packFirstLineInto(Packer * p, bool full_uri) const = 0;
@@ -120,18 +114,17 @@ protected:
 };
 
 /* Temporary parsing state; might turn into the replacement parser later on */
-class HttpParser
-{
+class HttpParser {
 public:
-    char state;
-    const char *buf;
-    int bufsiz;
-    int req_start, req_end;
-    int hdr_start, hdr_end;
-    int m_start, m_end;
-    int u_start, u_end;
-    int v_start, v_end;
-    int v_maj, v_min;
+	char state;
+	const char *buf;
+	int bufsiz;
+	int req_start, req_end;
+	int hdr_start, hdr_end;
+	int m_start, m_end;
+	int u_start, u_end;
+	int v_start, v_end;
+	int v_maj, v_min;
 };
 
 extern void HttpParserInit(HttpParser *, const char *buf, int len);

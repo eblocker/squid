@@ -1,4 +1,6 @@
 #include "squid.h"
+#include <stdexcept>
+
 #include "testNull.h"
 #include "Store.h"
 #include "SwapDir.h"
@@ -11,10 +13,6 @@
 #include "HttpReply.h"
 #include "StoreFileSystem.h"
 #include "testStoreSupport.h"
-
-#if HAVE_STDEXCEPT
-#include <stdexcept>
-#endif
 
 #define TESTDIR "testNull__testNullSearch"
 
@@ -58,7 +56,7 @@ testNull::commonInit()
     /* garh garh */
     storeReplAdd("lru", createRemovalPolicy_lru);
 
-    visible_appname_string = xstrdup(APP_FULLNAME);
+    visible_appname_string = xstrdup(PACKAGE "/" VERSION);
 
     Mem::Init();
 
@@ -161,9 +159,10 @@ testNull::testNullSearch()
         request_flags flags;
         flags.cachable = 1;
         StoreEntry *pe = storeCreateEntry("dummy url", "dummy log url", flags, METHOD_GET);
+        HttpVersion version(1, 0);
         /* We are allowed to do this typecast */
         HttpReply *rep = (HttpReply *) pe->getReply();	// bypass const
-        rep->setHeaders(HTTP_OK, "dummy test object", "x-squid-internal/test", -1, -1, squid_curtime + 100000);
+        rep->setHeaders(version, HTTP_OK, "dummy test object", "x-squid-internal/test", -1, -1, squid_curtime + 100000);
 
         pe->setPublicKey();
 

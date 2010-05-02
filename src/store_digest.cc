@@ -1,6 +1,6 @@
 
 /*
- * $Id: store_digest.cc,v 1.76.2.1 2008/02/25 23:08:51 amosjeffries Exp $
+ * $Id$
  *
  * DEBUG: section 71    Store Digest Manager
  * AUTHOR: Alex Rousskov
@@ -21,12 +21,12 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *  
+ *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *  
+ *
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
@@ -71,17 +71,14 @@ public:
 };
 
 
-typedef struct
-{
+typedef struct {
     int del_count;		/* #store entries deleted from store_digest */
     int del_lost_count;		/* #store entries not found in store_digest on delete */
     int add_count;		/* #store entries accepted to store_digest */
     int add_coll_count;		/* #accepted entries that collided with existing ones */
     int rej_count;		/* #store entries not accepted to store_digest */
     int rej_coll_count;		/* #not accepted entries that collided with existing ones */
-}
-
-StoreDigestStats;
+} StoreDigestStats;
 
 /* local vars */
 static StoreDigestState sd_state;
@@ -103,6 +100,13 @@ static void storeDigestAdd(const StoreEntry *);
 
 #endif /* USE_CACHE_DIGESTS */
 
+static void
+storeDigestRegisterWithCacheManager(void)
+{
+    CacheManager::GetInstance()->
+    registerAction("store_digest", "Store Digest", storeDigestReport, 0, 1);
+}
+
 /*
  * PUBLIC FUNCTIONS
  */
@@ -110,6 +114,8 @@ static void storeDigestAdd(const StoreEntry *);
 void
 storeDigestInit(void)
 {
+    storeDigestRegisterWithCacheManager();
+
 #if USE_CACHE_DIGESTS
     const int cap = storeDigestCalcCap();
 
@@ -130,13 +136,6 @@ storeDigestInit(void)
     store_digest = NULL;
     debugs(71, 3, "Local cache digest is 'off'");
 #endif
-}
-
-void
-storeDigestRegisterWithCacheManager(CacheManager & manager)
-{
-    manager.registerAction("store_digest", "Store Digest",
-                           storeDigestReport, 0, 1);
 }
 
 /* called when store_rebuild completes */
@@ -421,11 +420,10 @@ storeDigestRewriteResume(void)
     e->setPublicKey();
     /* fake reply */
     HttpReply *rep = new HttpReply;
-    HttpVersion version(1, 0);
-    rep->setHeaders(version, HTTP_OK, "Cache Digest OK",
-                    "application/cache-digest", store_digest->mask_size + sizeof(sd_state.cblock),
-                    squid_curtime, squid_curtime + Config.digest.rewrite_period);
-    debugs(71, 3, "storeDigestRewrite: entry expires on " << rep->expires << 
+    rep->setHeaders(HTTP_OK, "Cache Digest OK",
+                    "application/cache-digest", (store_digest->mask_size + sizeof(sd_state.cblock)),
+                    squid_curtime, (squid_curtime + Config.digest.rewrite_period) );
+    debugs(71, 3, "storeDigestRewrite: entry expires on " << rep->expires <<
            " (" << std::showpos << (int) (rep->expires - squid_curtime) << ")");
     e->buffer();
     e->replaceHttpReply(rep);
@@ -441,7 +439,7 @@ storeDigestRewriteFinish(StoreEntry * e)
     assert(e == sd_state.rewrite_lock);
     e->complete();
     e->timestampsSet();
-    debugs(71, 2, "storeDigestRewriteFinish: digest expires at " << e->expires << 
+    debugs(71, 2, "storeDigestRewriteFinish: digest expires at " << e->expires <<
            " (" << std::showpos << (int) (e->expires - squid_curtime) << ")");
     /* is this the write order? @?@ */
     e->mem_obj->unlinkRequest();
@@ -506,13 +504,13 @@ storeDigestCalcCap(void)
 {
     /*
      * To-Do: Bloom proved that the optimal filter utilization is 50% (half of
-     * the bits are off). However, we do not have a formula to calculate the 
+     * the bits are off). However, we do not have a formula to calculate the
      * number of _entries_ we want to pre-allocate for.
      */
     const int hi_cap = Store::Root().maxSize() / Config.Store.avgObjectSize;
     const int lo_cap = 1 + store_swap_size / Config.Store.avgObjectSize;
     const int e_count = StoreEntry::inUseCount();
-    int cap = e_count ? e_count : hi_cap;
+    int cap = e_count ? e_count :hi_cap;
     debugs(71, 2, "storeDigestCalcCap: have: " << e_count << ", want " << cap <<
            " entries; limits: [" << lo_cap << ", " << hi_cap << "]");
 
@@ -521,7 +519,7 @@ storeDigestCalcCap(void)
 
     /* do not enforce hi_cap limit, average-based estimation may be wrong
      *if (cap > hi_cap)
-     *  cap = hi_cap; 
+     *  cap = hi_cap;
      */
     return cap;
 }
@@ -534,8 +532,8 @@ storeDigestResize(void)
     int diff;
     assert(store_digest);
     diff = abs(cap - store_digest->capacity);
-    debugs(71, 2, "storeDigestResize: " << 
-           store_digest->capacity << " -> " << cap << "; change: " << 
+    debugs(71, 2, "storeDigestResize: " <<
+           store_digest->capacity << " -> " << cap << "; change: " <<
            diff << " (" << xpercentInt(diff, store_digest->capacity) << "%)" );
     /* avoid minor adjustments */
 

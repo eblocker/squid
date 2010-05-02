@@ -1,6 +1,5 @@
-
 /*
- * $Id: CommonPool.h,v 1.5 2007/05/29 13:31:36 amosjeffries Exp $
+ * $Id$
  *
  * DEBUG: section 77    Delay Pools
  * AUTHOR: Robert Collins <robertc@squid-cache.org>
@@ -23,12 +22,12 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *  
+ *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *  
+ *
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
@@ -46,11 +45,13 @@
 #include "SquidString.h"
 #include "CompositePoolNode.h"
 
-/* Next steps: make this a composite, and TypeLabel a composite method.
- * Then we have a legacy composite which returns class 1/2/3, and new 
+/*
+ \ingroup DelayPoolsAPI
+ *
+ \todo Next steps: make this a composite, and TypeLabel a composite method.
+ * Then we have a legacy composite which returns class 1/2/3, and new
  * composites which return a descriptor of some sort.
  */
-
 class CommonPool
 {
 
@@ -58,7 +59,7 @@ public:
     void *operator new(size_t);
     void operator delete (void *);
     static CommonPool *Factory (unsigned char _class, CompositePoolNode::Pointer&);
-    char const* theClassTypeLabel() const {return typeLabel.buf();}
+    char const* theClassTypeLabel() const {return typeLabel.termedBuf();}
 
 protected:
     CommonPool();

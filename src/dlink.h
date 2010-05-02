@@ -1,6 +1,5 @@
-
 /*
- * $Id: dlink.h,v 1.1 2006/04/22 13:07:36 robertc Exp $
+ * $Id$
  *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
@@ -19,18 +18,17 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *  
+ *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *  
+ *
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
  *
  */
-
 #ifndef SQUID_DLINK_H
 #define SQUID_DLINK_H
 
@@ -40,21 +38,28 @@ class dlink_node
 {
 
 public:
-    dlink_node() : data(NULL), prev(NULL), next(NULL){}
+    dlink_node() : data(NULL), prev(NULL), next(NULL) {}
 
     void *data;
     dlink_node *prev;
     dlink_node *next;
 };
 
-struct _dlink_list
-{
+struct dlink_list {
     dlink_node *head;
     dlink_node *tail;
 };
 
-class dlink_node;
+/* mported form globals.h */
+extern dlink_list ClientActiveRequests;
 
-typedef struct _dlink_list dlink_list;
+/* imported directly from protos.h */
+
+SQUIDCEXTERN void dlinkAdd(void *data, dlink_node *, dlink_list *);
+SQUIDCEXTERN void dlinkAddAfter(void *, dlink_node *, dlink_node *, dlink_list *);
+SQUIDCEXTERN void dlinkAddTail(void *data, dlink_node *, dlink_list *);
+SQUIDCEXTERN void dlinkDelete(dlink_node * m, dlink_list * list);
+SQUIDCEXTERN void dlinkNodeDelete(dlink_node * m);
+SQUIDCEXTERN dlink_node *dlinkNodeNew(void);
 
 #endif /* SQUID_DLINK_H */

@@ -1,6 +1,6 @@
 
 /*
- * $Id: mem_node.h,v 1.10.2.1 2008/02/25 02:45:50 amosjeffries Exp $
+ * $Id$
  *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
@@ -19,12 +19,12 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *  
+ *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *  
+ *
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
@@ -58,12 +58,10 @@ public:
     StoreIOBuffer nodeBuffer;
     /* Private */
     char data[SM_PAGE_SIZE];
-
-unsigned int write_pending:
-    1;
+    unsigned int write_pending:1;
 };
 
-MEMPROXY_CLASS_INLINE(mem_node)
+MEMPROXY_CLASS_INLINE(mem_node);
 
 inline std::ostream &
 operator << (std::ostream &os, mem_node &aNode)

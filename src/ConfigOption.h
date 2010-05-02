@@ -1,5 +1,5 @@
 /*
- * $Id: ConfigOption.h,v 1.1 2004/12/20 16:30:32 robertc Exp $
+ * $Id$
  *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
@@ -18,22 +18,25 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *  
+ *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *  
+ *
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
  *
  */
-
 #ifndef SQUID_CONFIGOPTION_H
 #define SQUID_CONFIGOPTION_H
 
+class StoreEntry;
+
+/* for Vector<> */
 #include "Array.h"
+
 
 /* cache option parsers */
 
@@ -58,23 +61,20 @@ public:
 };
 
 template <class C>
-
 class ConfigOptionAdapter : public ConfigOption
 {
 
 public:
-    ConfigOptionAdapter (C& theObject, bool (C::*parseFP)(char const *option, const char *value, int reconfiguring), void (C::*dumpFP) (StoreEntry * e) const) : object(theObject), parser (parseFP), dumper(dumpFP) {}
+    ConfigOptionAdapter(C& theObject, bool (C::*parseFP)(char const *option, const char *value, int reconfiguring), void (C::*dumpFP) (StoreEntry * e) const) : object(theObject), parser (parseFP), dumper(dumpFP) {}
 
-    bool parse(char const *option, const char *value, int reconfiguring)
-    {
+    bool parse(char const *option, const char *value, int isaReconf) {
         if (parser)
-            return (object.*parser)(option, value, reconfiguring);
+            return (object.*parser)(option, value, isaReconf);
 
         return false;
     }
 
-    void dump (StoreEntry * e) const
-    {
+    void dump(StoreEntry * e) const {
         if (dumper)
             (object.*dumper) (e);
     }

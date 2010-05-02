@@ -1,6 +1,6 @@
 
 /*
- * $Id: unlinkd_daemon.cc,v 1.1 2007/04/24 15:04:22 hno Exp $
+ * $Id$
  *
  * DEBUG: -             Unlink Daemon
  * AUTHOR: Duane Wessels
@@ -21,12 +21,12 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *  
+ *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *  
+ *
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
@@ -37,10 +37,36 @@
 
 #include "squid.h"
 
-/* This is the external unlinkd process */
+/**
+ \defgroup unlinkd unlinkd
+ \ingroup ExternalPrograms
+ \par
+    The unlink(2) system call can cause a process to block
+    for a significant amount of time.  Therefore we do not want
+    to make unlink() calls from Squid.  Instead we pass them
+    to this external process.
+ */
 
+/// \ingroup unlinkd
 #define UNLINK_BUF_LEN 1024
 
+/**
+ \ingroup unlinkd
+ \par This is the unlinkd external process.
+ *
+ \par
+ *    unlinkd receives the full path of any files to be removed
+ *    from stdin, each on its own line.
+ *
+ \par
+ *    The results for each file are printed to stdout in the order
+ *    they were received
+ *
+ \param argc Ignored.
+ \param argv Ignored.
+ \retval ERR An error occured removing the file.
+ \retval OK  The file has been removed.
+ */
 int
 main(int argc, char *argv[])
 {
@@ -64,4 +90,3 @@ main(int argc, char *argv[])
 
     exit(0);
 }
-

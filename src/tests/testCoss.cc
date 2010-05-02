@@ -1,6 +1,4 @@
 #include "squid.h"
-#include <stdexcept>
-
 #include "testCoss.h"
 #include "Store.h"
 #include "SwapDir.h"
@@ -13,6 +11,10 @@
 #include "HttpReply.h"
 #include "StoreFileSystem.h"
 #include "testStoreSupport.h"
+
+#if HAVE_STDEXCEPT
+#include <stdexcept>
+#endif
 
 #define TESTDIR "testCoss__testCossSearch"
 
@@ -56,7 +58,7 @@ testCoss::commonInit()
     /* garh garh */
     storeReplAdd("lru", createRemovalPolicy_lru);
 
-    visible_appname_string = xstrdup(PACKAGE "/" VERSION);
+    visible_appname_string = xstrdup(APP_FULLNAME);
 
     Mem::Init();
 
@@ -180,7 +182,7 @@ testCoss::testCossSearch()
     loop.run();
 
     /* cannot use loop.run(); as the loop will never idle: the store-dir
-     * clean() scheduled event prevents it 
+     * clean() scheduled event prevents it
      */
 
     /* nothing left to rebuild */
@@ -192,9 +194,8 @@ testCoss::testCossSearch()
         request_flags flags;
         flags.cachable = 1;
         StoreEntry *pe = storeCreateEntry("dummy url", "dummy log url", flags, METHOD_GET);
-        HttpVersion version(1, 0);
         HttpReply *rep = (HttpReply *) pe->getReply();	// bypass const
-        rep->setHeaders(version, HTTP_OK, "dummy test object", "x-squid-internal/test", -1, -1, squid_curtime + 100000);
+        rep->setHeaders(HTTP_OK, "dummy test object", "x-squid-internal/test", -1, -1, squid_curtime + 100000);
 
         pe->setPublicKey();
 
@@ -268,7 +269,7 @@ testCoss::testCossSearch()
         throw std::runtime_error("Failed to clean test work directory");
 }
 
-/* The COSS store should always configure an IO engine even if none is 
+/* The COSS store should always configure an IO engine even if none is
  * supplied on the configuration line.
  */
 void

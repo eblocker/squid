@@ -1,6 +1,6 @@
 
 /*
- * $Id: ssl_support.cc,v 1.35.4.1 2008/02/10 10:43:09 serassio Exp $
+ * $Id$
  *
  * AUTHOR: Benno Rice
  * DEBUG: section 83    SSL accelerator support
@@ -21,12 +21,12 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *  
+ *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *  
+ *
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
@@ -41,7 +41,14 @@
 #if USE_SSL
 
 #include "fde.h"
+#include "acl/FilledChecklist.h"
 
+/**
+ \defgroup ServerProtocolSSLInternal Server-Side SSL Internals
+ \ingroup ServerProtocolSSLAPI
+ */
+
+/// \ingroup ServerProtocolSSLInternal
 static int
 ssl_ask_password_cb(char *buf, int size, int rwflag, void *userdata)
 {
@@ -67,6 +74,7 @@ ssl_ask_password_cb(char *buf, int size, int rwflag, void *userdata)
     return len;
 }
 
+/// \ingroup ServerProtocolSSLInternal
 static void
 ssl_ask_password(SSL_CTX * context, const char * prompt)
 {
@@ -76,6 +84,7 @@ ssl_ask_password(SSL_CTX * context, const char * prompt)
     }
 }
 
+/// \ingroup ServerProtocolSSLInternal
 static RSA *
 ssl_temp_rsa_cb(SSL * ssl, int anInt, int keylen)
 {
@@ -126,6 +135,7 @@ ssl_temp_rsa_cb(SSL * ssl, int anInt, int keylen)
     return rsa;
 }
 
+/// \ingroup ServerProtocolSSLInternal
 static int
 ssl_verify_cb(int ok, X509_STORE_CTX * ctx)
 {
@@ -134,6 +144,7 @@ ssl_verify_cb(int ok, X509_STORE_CTX * ctx)
     SSL_CTX *sslctx = SSL_get_SSL_CTX(ssl);
     const char *server = (const char *)SSL_get_ex_data(ssl, ssl_ex_index_server);
     void *dont_verify_domain = SSL_CTX_get_ex_data(sslctx, ssl_ctx_ex_index_dont_verify_domain);
+    ACLChecklist *check = (ACLChecklist*)SSL_get_ex_data(ssl, ssl_ex_index_cert_error_check);
     X509 *peer_cert = ctx->cert;
 
     X509_NAME_oneline(X509_get_subject_name(peer_cert), buffer,
@@ -146,6 +157,31 @@ ssl_verify_cb(int ok, X509_STORE_CTX * ctx)
             int i;
             int found = 0;
             char cn[1024];
+
+            STACK_OF(GENERAL_NAME) * altnames;
+            altnames = (STACK_OF(GENERAL_NAME)*)X509_get_ext_d2i(peer_cert, NID_subject_alt_name, NULL, NULL);
+            if (altnames) {
+                int numalts = sk_GENERAL_NAME_num(altnames);
+                debugs(83, 3, "Verifying server domain " << server << " to certificate subjectAltName");
+                for (i = 0; i < numalts; i++) {
+                    const GENERAL_NAME *check = sk_GENERAL_NAME_value(altnames, i);
+                    if (check->type != GEN_DNS) {
+                        continue;
+                    }
+                    ASN1_STRING *data = check->d.dNSName;
+                    if (data->length > (int)sizeof(cn) - 1) {
+                        continue;
+                    }
+                    memcpy(cn, data->data, data->length);
+                    cn[data->length] = '\0';
+                    debugs(83, 4, "Verifying server domain " << server << " to certificate name " << cn);
+                    if (matchDomainName(server, cn[0] == '*' ? cn + 1 : cn) == 0) {
+                        found = 1;
+                        break;
+                    }
+                }
+            }
+
             X509_NAME *name = X509_get_subject_name(peer_cert);
             debugs(83, 3, "Verifying server domain " << server << " to certificate dn " << buffer);
 
@@ -168,8 +204,10 @@ ssl_verify_cb(int ok, X509_STORE_CTX * ctx)
             }
 
             if (!found) {
-                debugs(83, 2, "ERROR: Certificate " << buffer << " does not match domainname " << server);
+                debugs(83, 2, "SQUID_X509_V_ERR_DOMAIN_MISMATCH: Certificate " << buffer << " does not match domainname " << server);
                 ok = 0;
+                if (check)
+                    Filled(check)->ssl_error = SQUID_X509_V_ERR_DOMAIN_MISMATCH;
             }
         }
     } else {
@@ -186,7 +224,7 @@ ssl_verify_cb(int ok, X509_STORE_CTX * ctx)
         case X509_V_ERR_ERROR_IN_CERT_NOT_BEFORE_FIELD:
             debugs(83, 5, "SSL Certificate has illegal \'not before\' field: " <<
                    buffer);
-            
+
             break;
 
         case X509_V_ERR_CERT_HAS_EXPIRED:
@@ -201,15 +239,27 @@ ssl_verify_cb(int ok, X509_STORE_CTX * ctx)
             debugs(83, 1, "SSL unknown certificate error " << ctx->error << " in " << buffer);
             break;
         }
+
+        if (check)
+            Filled(check)->ssl_error = ctx->error;
     }
 
-if (!dont_verify_domain && server) {}
+    if (!ok && check) {
+        if (check->fastCheck()) {
+            debugs(83, 3, "bypassing SSL error " << ctx->error << " in " << buffer);
+            ok = 1;
+        } else {
+            debugs(83, 5, "confirming SSL error " << ctx->error);
+        }
+    }
+
+    if (!dont_verify_domain && server) {}
 
     return ok;
 }
 
-static struct ssl_option
-{
+/// \ingroup ServerProtocolSSLInternal
+static struct ssl_option {
     const char *name;
     long value;
 }
@@ -217,123 +267,124 @@ static struct ssl_option
 ssl_options[] = {
 
 #ifdef SSL_OP_MICROSOFT_SESS_ID_BUG
-                    {
-                        "MICROSOFT_SESS_ID_BUG", SSL_OP_MICROSOFT_SESS_ID_BUG
-                    },
+    {
+        "MICROSOFT_SESS_ID_BUG", SSL_OP_MICROSOFT_SESS_ID_BUG
+    },
 #endif
 #ifdef SSL_OP_NETSCAPE_CHALLENGE_BUG
-                    {
-                        "NETSCAPE_CHALLENGE_BUG", SSL_OP_NETSCAPE_CHALLENGE_BUG
-                    },
+    {
+        "NETSCAPE_CHALLENGE_BUG", SSL_OP_NETSCAPE_CHALLENGE_BUG
+    },
 #endif
 #ifdef SSL_OP_NETSCAPE_REUSE_CIPHER_CHANGE_BUG
-                    {
-                        "NETSCAPE_REUSE_CIPHER_CHANGE_BUG", SSL_OP_NETSCAPE_REUSE_CIPHER_CHANGE_BUG
-                    },
+    {
+        "NETSCAPE_REUSE_CIPHER_CHANGE_BUG", SSL_OP_NETSCAPE_REUSE_CIPHER_CHANGE_BUG
+    },
 #endif
 #ifdef SSL_OP_SSLREF2_REUSE_CERT_TYPE_BUG
-                    {
-                        "SSLREF2_REUSE_CERT_TYPE_BUG", SSL_OP_SSLREF2_REUSE_CERT_TYPE_BUG
-                    },
+    {
+        "SSLREF2_REUSE_CERT_TYPE_BUG", SSL_OP_SSLREF2_REUSE_CERT_TYPE_BUG
+    },
 #endif
 #ifdef SSL_OP_MICROSOFT_BIG_SSLV3_BUFFER
-                    {
-                        "MICROSOFT_BIG_SSLV3_BUFFER", SSL_OP_MICROSOFT_BIG_SSLV3_BUFFER
-                    },
+    {
+        "MICROSOFT_BIG_SSLV3_BUFFER", SSL_OP_MICROSOFT_BIG_SSLV3_BUFFER
+    },
 #endif
 #ifdef SSL_OP_MSIE_SSLV2_RSA_PADDING
-                    {
-                        "MSIE_SSLV2_RSA_PADDING", SSL_OP_MSIE_SSLV2_RSA_PADDING
-                    },
+    {
+        "MSIE_SSLV2_RSA_PADDING", SSL_OP_MSIE_SSLV2_RSA_PADDING
+    },
 #endif
 #ifdef SSL_OP_SSLEAY_080_CLIENT_DH_BUG
-                    {
-                        "SSLEAY_080_CLIENT_DH_BUG", SSL_OP_SSLEAY_080_CLIENT_DH_BUG
-                    },
+    {
+        "SSLEAY_080_CLIENT_DH_BUG", SSL_OP_SSLEAY_080_CLIENT_DH_BUG
+    },
 #endif
 #ifdef SSL_OP_TLS_D5_BUG
-                    {
-                        "TLS_D5_BUG", SSL_OP_TLS_D5_BUG
-                    },
+    {
+        "TLS_D5_BUG", SSL_OP_TLS_D5_BUG
+    },
 #endif
 #ifdef SSL_OP_TLS_BLOCK_PADDING_BUG
-                    {
-                        "TLS_BLOCK_PADDING_BUG", SSL_OP_TLS_BLOCK_PADDING_BUG
-                    },
+    {
+        "TLS_BLOCK_PADDING_BUG", SSL_OP_TLS_BLOCK_PADDING_BUG
+    },
 #endif
 #ifdef SSL_OP_TLS_ROLLBACK_BUG
-                    {
-                        "TLS_ROLLBACK_BUG", SSL_OP_TLS_ROLLBACK_BUG
-                    },
+    {
+        "TLS_ROLLBACK_BUG", SSL_OP_TLS_ROLLBACK_BUG
+    },
 #endif
 #ifdef SSL_OP_ALL
-                    {
-                        "ALL", SSL_OP_ALL
-                    },
+    {
+        "ALL", SSL_OP_ALL
+    },
 #endif
 #ifdef SSL_OP_SINGLE_DH_USE
-                    {
-                        "SINGLE_DH_USE", SSL_OP_SINGLE_DH_USE
-                    },
+    {
+        "SINGLE_DH_USE", SSL_OP_SINGLE_DH_USE
+    },
 #endif
 #ifdef SSL_OP_EPHEMERAL_RSA
-                    {
-                        "EPHEMERAL_RSA", SSL_OP_EPHEMERAL_RSA
-                    },
+    {
+        "EPHEMERAL_RSA", SSL_OP_EPHEMERAL_RSA
+    },
 #endif
 #ifdef SSL_OP_PKCS1_CHECK_1
-                    {
-                        "PKCS1_CHECK_1", SSL_OP_PKCS1_CHECK_1
-                    },
+    {
+        "PKCS1_CHECK_1", SSL_OP_PKCS1_CHECK_1
+    },
 #endif
 #ifdef SSL_OP_PKCS1_CHECK_2
-                    {
-                        "PKCS1_CHECK_2", SSL_OP_PKCS1_CHECK_2
-                    },
+    {
+        "PKCS1_CHECK_2", SSL_OP_PKCS1_CHECK_2
+    },
 #endif
 #ifdef SSL_OP_NETSCAPE_CA_DN_BUG
-                    {
-                        "NETSCAPE_CA_DN_BUG", SSL_OP_NETSCAPE_CA_DN_BUG
-                    },
+    {
+        "NETSCAPE_CA_DN_BUG", SSL_OP_NETSCAPE_CA_DN_BUG
+    },
 #endif
 #ifdef SSL_OP_NON_EXPORT_FIRST
-                    {
-                        "NON_EXPORT_FIRST", SSL_OP_NON_EXPORT_FIRST
-                    },
+    {
+        "NON_EXPORT_FIRST", SSL_OP_NON_EXPORT_FIRST
+    },
 #endif
 #ifdef SSL_OP_CIPHER_SERVER_PREFERENCE
-                    {
-                        "CIPHER_SERVER_PREFERENCE", SSL_OP_CIPHER_SERVER_PREFERENCE
-                    },
+    {
+        "CIPHER_SERVER_PREFERENCE", SSL_OP_CIPHER_SERVER_PREFERENCE
+    },
 #endif
 #ifdef SSL_OP_NETSCAPE_DEMO_CIPHER_CHANGE_BUG
-                    {
-                        "NETSCAPE_DEMO_CIPHER_CHANGE_BUG", SSL_OP_NETSCAPE_DEMO_CIPHER_CHANGE_BUG
-                    },
+    {
+        "NETSCAPE_DEMO_CIPHER_CHANGE_BUG", SSL_OP_NETSCAPE_DEMO_CIPHER_CHANGE_BUG
+    },
 #endif
 #ifdef SSL_OP_NO_SSLv2
-                    {
-                        "NO_SSLv2", SSL_OP_NO_SSLv2
-                    },
+    {
+        "NO_SSLv2", SSL_OP_NO_SSLv2
+    },
 #endif
 #ifdef SSL_OP_NO_SSLv3
-                    {
-                        "NO_SSLv3", SSL_OP_NO_SSLv3
-                    },
+    {
+        "NO_SSLv3", SSL_OP_NO_SSLv3
+    },
 #endif
 #ifdef SSL_OP_NO_TLSv1
-                    {
-                        "NO_TLSv1", SSL_OP_NO_TLSv1
-                    },
+    {
+        "NO_TLSv1", SSL_OP_NO_TLSv1
+    },
 #endif
-                    {
-                        "", 0
-                    },
-                    {
-                        NULL, 0
-                    }
-                };
+    {
+        "", 0
+    },
+    {
+        NULL, 0
+    }
+};
 
+/// \ingroup ServerProtocolSSLInternal
 static long
 ssl_parse_options(const char *options)
 {
@@ -412,14 +463,22 @@ no_options:
     return op;
 }
 
+/// \ingroup ServerProtocolSSLInternal
 #define SSL_FLAG_NO_DEFAULT_CA		(1<<0)
+/// \ingroup ServerProtocolSSLInternal
 #define SSL_FLAG_DELAYED_AUTH		(1<<1)
+/// \ingroup ServerProtocolSSLInternal
 #define SSL_FLAG_DONT_VERIFY_PEER	(1<<2)
+/// \ingroup ServerProtocolSSLInternal
 #define SSL_FLAG_DONT_VERIFY_DOMAIN	(1<<3)
+/// \ingroup ServerProtocolSSLInternal
 #define SSL_FLAG_NO_SESSION_REUSE	(1<<4)
+/// \ingroup ServerProtocolSSLInternal
 #define SSL_FLAG_VERIFY_CRL		(1<<5)
+/// \ingroup ServerProtocolSSLInternal
 #define SSL_FLAG_VERIFY_CRL_ALL		(1<<6)
 
+/// \ingroup ServerProtocolSSLInternal
 static long
 ssl_parse_flags(const char *flags)
 {
@@ -465,7 +524,75 @@ ssl_parse_flags(const char *flags)
     return fl;
 }
 
+struct SslErrorMapEntry {
+    const char *name;
+    ssl_error_t value;
+};
 
+static SslErrorMapEntry TheSslErrorMap[] = {
+    { "SQUID_X509_V_ERR_DOMAIN_MISMATCH", SQUID_X509_V_ERR_DOMAIN_MISMATCH },
+    { "X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT", X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT },
+    { "X509_V_ERR_CERT_NOT_YET_VALID", X509_V_ERR_CERT_NOT_YET_VALID },
+    { "X509_V_ERR_ERROR_IN_CERT_NOT_BEFORE_FIELD", X509_V_ERR_ERROR_IN_CERT_NOT_BEFORE_FIELD },
+    { "X509_V_ERR_CERT_HAS_EXPIRED", X509_V_ERR_CERT_HAS_EXPIRED },
+    { "X509_V_ERR_ERROR_IN_CERT_NOT_AFTER_FIELD", X509_V_ERR_ERROR_IN_CERT_NOT_AFTER_FIELD },
+    { "X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY", X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY },
+    { "SSL_ERROR_NONE", SSL_ERROR_NONE },
+    { NULL, SSL_ERROR_NONE }
+};
+
+ssl_error_t
+sslParseErrorString(const char *name)
+{
+    assert(name);
+
+    for (int i = 0; TheSslErrorMap[i].name; ++i) {
+        if (strcmp(name, TheSslErrorMap[i].name) == 0)
+            return TheSslErrorMap[i].value;
+    }
+
+    if (xisdigit(*name)) {
+        const long int value = strtol(name, NULL, 0);
+        if (SQUID_SSL_ERROR_MIN <= value && value <= SQUID_SSL_ERROR_MAX)
+            return value;
+        fatalf("Too small or too bug SSL error code '%s'", name);
+    }
+
+    fatalf("Unknown SSL error name '%s'", name);
+    return SSL_ERROR_SSL; // not reached
+}
+
+const char *
+sslFindErrorString(ssl_error_t value)
+{
+    for (int i = 0; TheSslErrorMap[i].name; ++i) {
+        if (TheSslErrorMap[i].value == value)
+            return TheSslErrorMap[i].name;
+    }
+
+    return NULL;
+}
+
+// "dup" function for SSL_get_ex_new_index("cert_err_check")
+static int
+ssl_dupAclChecklist(CRYPTO_EX_DATA *, CRYPTO_EX_DATA *, void *,
+                    int, long, void *)
+{
+    // We do not support duplication of ACLCheckLists.
+    // If duplication is needed, we can count copies with cbdata.
+    assert(false);
+    return 0;
+}
+
+// "free" function for SSL_get_ex_new_index("cert_err_check")
+static void
+ssl_freeAclChecklist(void *, void *ptr, CRYPTO_EX_DATA *,
+                     int, long, void *)
+{
+    delete static_cast<ACLChecklist *>(ptr); // may be NULL
+}
+
+/// \ingroup ServerProtocolSSLInternal
 static void
 ssl_initialize(void)
 {
@@ -502,9 +629,10 @@ ssl_initialize(void)
 
     ssl_ex_index_server = SSL_get_ex_new_index(0, (void *) "server", NULL, NULL, NULL);
     ssl_ctx_ex_index_dont_verify_domain = SSL_CTX_get_ex_new_index(0, (void *) "dont_verify_domain", NULL, NULL, NULL);
-
+    ssl_ex_index_cert_error_check = SSL_get_ex_new_index(0, (void *) "cert_error_check", NULL, &ssl_dupAclChecklist, &ssl_freeAclChecklist);
 }
 
+/// \ingroup ServerProtocolSSLInternal
 static int
 ssl_load_crl(SSL_CTX *sslContext, const char *CRLfile)
 {
@@ -634,7 +762,7 @@ sslCreateServerContext(const char *certfile, const char *keyfile, int version, c
 
     if (!SSL_CTX_check_private_key(sslContext)) {
         ssl_error = ERR_get_error();
-        debugs(83, 0, "SSL private key '" << 
+        debugs(83, 0, "SSL private key '" <<
                certfile << "' does not match public key '" <<
                keyfile << "': " << ERR_error_string(ssl_error, NULL)  );
         goto error;
@@ -664,7 +792,7 @@ sslCreateServerContext(const char *certfile, const char *keyfile, int version, c
         cert_names = SSL_load_client_CA_file(clientCA);
 
         if (cert_names == NULL) {
-            debugs(83, 1, "Error loading the client CA certificates from '" << clientCA << "\': " << ERR_error_string(ERR_get_error(),NULL)  ); 
+            debugs(83, 1, "Error loading the client CA certificates from '" << clientCA << "\': " << ERR_error_string(ERR_get_error(),NULL)  );
             goto error;
         }
 
@@ -866,6 +994,7 @@ sslCreateClientContext(const char *certfile, const char *keyfile, int version, c
     return sslContext;
 }
 
+/// \ingroup ServerProtocolSSLInternal
 int
 ssl_read_method(int fd, char *buf, int len)
 {
@@ -892,6 +1021,7 @@ ssl_read_method(int fd, char *buf, int len)
     return i;
 }
 
+/// \ingroup ServerProtocolSSLInternal
 int
 ssl_write_method(int fd, const char *buf, int len)
 {
@@ -916,6 +1046,7 @@ ssl_shutdown_method(int fd)
     SSL_shutdown(ssl);
 }
 
+/// \ingroup ServerProtocolSSLInternal
 static const char *
 ssl_get_attribute(X509_NAME * name, const char *attribute_name)
 {
@@ -942,6 +1073,7 @@ done:
     return *buffer ? buffer : NULL;
 }
 
+/// \ingroup ServerProtocolSSLInternal
 const char *
 sslGetUserAttribute(SSL * ssl, const char *attribute_name)
 {
@@ -966,6 +1098,7 @@ sslGetUserAttribute(SSL * ssl, const char *attribute_name)
     return ret;
 }
 
+/// \ingroup ServerProtocolSSLInternal
 const char *
 sslGetCAAttribute(SSL * ssl, const char *attribute_name)
 {

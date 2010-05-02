@@ -1,13 +1,22 @@
 #
 #  Makefile for the Squid SASL authentication helper
 #
-#  $Id: Makefile.am,v 1.7 2004/12/20 16:30:15 robertc Exp $
+#  $Id$
 #
 #  Uncomment and customize the following to suit your needs:
 #
 
-INCLUDES	= -I$(top_srcdir)/include
+include $(top_srcdir)/src/Common.am
 
 libexec_PROGRAMS	= sasl_auth
-LDADD			= -L$(top_builddir)/lib -lmiscutil $(LIBSASL) $(XTRA_LIBS)
+
+## we need our local files too (but avoid -I. at all costs)
+INCLUDES += -I$(srcdir)
+
+LDADD = \
+	$(top_builddir)/compat/libcompat.la \
+	-L$(top_builddir)/lib -lmiscutil \
+	$(LIBSASL) \
+	$(XTRA_LIBS)
+
 EXTRA_DIST		= squid_sasl_auth squid_sasl_auth.conf

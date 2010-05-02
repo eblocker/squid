@@ -1,6 +1,5 @@
-
 /*
- * $Id: DiskdFile.cc,v 1.4 2007/08/16 23:32:28 hno Exp $
+ * $Id$
  *
  * DEBUG: section 79    Squid-side DISKD I/O functions.
  * AUTHOR: Duane Wessels
@@ -21,12 +20,12 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *  
+ *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *  
+ *
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
@@ -51,7 +50,7 @@
 CBDATA_CLASS_INIT(DiskdFile);
 
 void *
-DiskdFile::operator new (size_t)
+DiskdFile::operator new(size_t unused)
 {
     CBDATA_INIT_TYPE(DiskdFile);
     DiskdFile *result = cbdataAlloc(DiskdFile);
@@ -62,14 +61,14 @@ DiskdFile::operator new (size_t)
 }
 
 void
-DiskdFile::operator delete (void *address)
+DiskdFile::operator delete(void *address)
 {
     DiskdFile *t = static_cast<DiskdFile *>(address);
     debugs(79, 3, "diskdFile with base " << t << " deleting");
     cbdataFree(t);
 }
 
-DiskdFile::DiskdFile (char const *aPath, DiskdIOStrategy *anIO) : errorOccured (false), IO(anIO),
+DiskdFile::DiskdFile(char const *aPath, DiskdIOStrategy *anIO) : errorOccured (false), IO(anIO),
         inProgressIOs (0)
 {
     assert (aPath);
@@ -85,7 +84,7 @@ DiskdFile::~DiskdFile()
 }
 
 void
-DiskdFile::open (int flags, mode_t aMode, IORequestor::Pointer callback)
+DiskdFile::open(int flags, mode_t aMode, RefCount< IORequestor > callback)
 {
     debugs(79, 3, "DiskdFile::open: " << this << " opening for " << callback.getRaw());
     assert (ioRequestor.getRaw() == NULL);
@@ -116,7 +115,7 @@ DiskdFile::open (int flags, mode_t aMode, IORequestor::Pointer callback)
 }
 
 void
-DiskdFile::create (int flags, mode_t aMode, IORequestor::Pointer callback)
+DiskdFile::create(int flags, mode_t aMode, RefCount< IORequestor > callback)
 {
     debugs(79, 3, "DiskdFile::create: " << this << " creating for " << callback.getRaw());
     assert (ioRequestor.getRaw() == NULL);
@@ -329,8 +328,7 @@ DiskdFile::write(WriteRequest *aRequest)
                      aRequest);
 
     if (x < 0) {
-        ioCompleted()
-        ;
+        ioCompleted();
         errorOccured = true;
         debugs(79, 1, "storeDiskdSend WRITE: " << xstrerror());
         //        IO->shm.put (shm_offset);

@@ -1,6 +1,6 @@
 
 /*
- * $Id: stmem.cc,v 1.92.2.1 2008/02/25 02:45:50 amosjeffries Exp $
+ * $Id$
  *
  * DEBUG: section 19    Store Memory Primitives
  * AUTHOR: Harvest Derived
@@ -21,12 +21,12 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *  
+ *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *  
+ *
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
@@ -140,7 +140,7 @@ mem_hdr::writeAvailable(mem_node *aNode, int64_t location, size_t amount, char c
 
     /* these two can go I think */
     assert (location - aNode->nodeBuffer.offset == (int64_t)aNode->nodeBuffer.length);
-    size_t copyLen = XMIN (amount, aNode->space());
+    size_t copyLen = min(amount, aNode->space());
 
     xmemcpy(aNode->nodeBuffer.data + aNode->nodeBuffer.length, source, copyLen);
 
@@ -216,7 +216,7 @@ mem_hdr::copyAvailable(mem_node *aNode, int64_t location, size_t amount, char *t
 
     size_t copyOffset = location - aNode->nodeBuffer.offset;
 
-    size_t copyLen = XMIN (amount, aNode->nodeBuffer.length - copyOffset);
+    size_t copyLen = min(amount, aNode->nodeBuffer.length - copyOffset);
 
     xmemcpy(target, aNode->nodeBuffer.data + copyOffset, copyLen);
 
@@ -235,7 +235,7 @@ mem_hdr::debugDump() const
 
 /* FIXME: how do we deal with sparse results -
  * where we have (say)
- * 0-500 and 1000-1500, but are asked for 
+ * 0-500 and 1000-1500, but are asked for
  * 0-2000
  * Partial answer:
  * we supply 0-500 and stop.

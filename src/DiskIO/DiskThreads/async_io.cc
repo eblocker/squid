@@ -1,6 +1,6 @@
 
 /*
- * $Id: async_io.cc,v 1.5 2007/08/16 23:32:28 hno Exp $
+ * $Id$
  *
  * DEBUG: section 32    Asynchronous Disk I/O
  * AUTHOR: Pete Bentley <pete@demon.net>
@@ -22,12 +22,12 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
- *  
+ *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *  
+ *
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
@@ -43,14 +43,11 @@
 
 AIOCounts squidaio_counts;
 
-typedef struct squidaio_unlinkq_t
-{
+typedef struct squidaio_unlinkq_t {
     char *path;
 
     struct squidaio_unlinkq_t *next;
-}
-
-squidaio_unlinkq_t;
+} squidaio_unlinkq_t;
 
 dlink_list used_list;
 

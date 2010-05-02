@@ -279,7 +279,7 @@ SAMBAPREFIX = /usr/local/samba
 SMB_AUTH_HELPER_PATH = $(libexecdir)/$(SMB_AUTH_HELPER)
 libexec_SCRIPTS = $(SMB_AUTH_HELPER)
 smb_auth_CFLAGS = -DSAMBAPREFIX=\"$(SAMBAPREFIX)\" -DHELPERSCRIPT=\"$(SMB_AUTH_HELPER_PATH)\"
-EXTRA_DIST = smb_auth.sh COPYING-2.0
+EXTRA_DIST = smb_auth.sh COPYING-2.0 config.test
 LDADD = \
 	$(top_builddir)/compat/libcompat.la \
 	-L$(top_builddir)/lib -lmiscutil \

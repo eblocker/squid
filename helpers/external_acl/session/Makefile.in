@@ -14,14 +14,6 @@
 
 @SET_MAKE@
 
-#
-#  Makefile for the Squid LDAP authentication helper
-#
-#  $Id$
-#
-#  Uncomment and customize the following to suit your needs:
-#
-
 VPATH = @srcdir@
 pkgdatadir = $(datadir)/@PACKAGE@
 pkglibdir = $(libdir)/@PACKAGE@
@@ -267,7 +259,7 @@ CLEANFILES =
 INCLUDES = -I$(top_srcdir) -I$(top_srcdir)/include -I$(top_srcdir)/src \
 	-I$(top_builddir)/include $(SQUID_CPPUNIT_INC) -I$(srcdir)
 man_MANS = squid_session.8
-EXTRA_DIST = squid_session.8
+EXTRA_DIST = squid_session.8 config.test
 squid_session_SOURCES = squid_session.c
 LDADD = \
 	$(top_builddir)/compat/libcompat.la \

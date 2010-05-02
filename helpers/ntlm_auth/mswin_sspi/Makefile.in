@@ -14,12 +14,6 @@
 
 @SET_MAKE@
 
-#
-#  Makefile for the Squid Object Cache server
-#
-#  $Id$
-#
-
 VPATH = @srcdir@
 pkgdatadir = $(datadir)/@PACKAGE@
 pkglibdir = $(libdir)/@PACKAGE@
@@ -270,7 +264,7 @@ LDADD = \
 	-ladvapi32 \
 	$(XTRA_LIBS)
 
-EXTRA_DIST = readme.txt
+EXTRA_DIST = readme.txt config.test
 all: all-am
 
 .SUFFIXES:

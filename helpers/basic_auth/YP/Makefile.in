@@ -269,6 +269,7 @@ LDADD = \
 	$(CRYPTLIB) \
 	$(XTRA_LIBS)
 
+EXTRA_DIST = config.test
 all: all-am
 
 .SUFFIXES:

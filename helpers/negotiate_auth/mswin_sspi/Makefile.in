@@ -263,7 +263,7 @@ INCLUDES = -I$(top_srcdir) -I$(top_srcdir)/include -I$(top_srcdir)/src \
 	-I$(top_builddir)/include $(SQUID_CPPUNIT_INC) -I$(srcdir)
 mswin_negotiate_auth_SOURCES = libnegotiatessp.c negotiate_auth.c negotiate.h
 LDADD = -L$(top_builddir)/lib -lsspwin32 -ladvapi32 -lmiscutil $(XTRA_LIBS)
-EXTRA_DIST = readme.txt
+EXTRA_DIST = readme.txt config.test
 all: all-am
 
 .SUFFIXES:

@@ -2,10 +2,10 @@
 <HTML>
 <HEAD>
  <META NAME="GENERATOR" CONTENT="LinuxDoc-Tools 0.9.65">
- <TITLE>Squid 3.1.3 release notes</TITLE>
+ <TITLE>Squid 3.1.4 release notes</TITLE>
 </HEAD>
 <BODY>
-<H1>Squid 3.1.3 release notes</H1>
+<H1>Squid 3.1.4 release notes</H1>
 
 <H2>Squid Developers</H2>
 <HR>
@@ -70,7 +70,7 @@ for Applied Network Research and members of the Web Caching community.</EM>
 <HR>
 <H2><A NAME="s1">1.</A> <A HREF="#toc1">Notice</A></H2>
 
-<P>The Squid Team are pleased to announce the release of Squid-3.1.3.</P>
+<P>The Squid Team are pleased to announce the release of Squid-3.1.4.</P>
 <P>This new release is available for download from 
 <A HREF="http://www.squid-cache.org/Versions/v3/3.1/">http://www.squid-cache.org/Versions/v3/3.1/</A> or the 
 <A HREF="http://www.squid-cache.org/Mirrors/http-mirrors.html">mirrors</A>.</P>
@@ -1426,6 +1426,11 @@ Old forms will be deprecated in some as yet undecided future release.
 <DT><B>maximum_object_size_in_memory</B><DD>
 <P>Default size limit increased to 512KB.</P>
 
+<DT><B>memory_pools_limit</B><DD>
+<P>Memory limits have been revised and corrected from 3.1.4 onwards.</P>
+<P>Please check and update your squid.conf to use the text <EM>none</EM> for no limit instead of the old 0 (zero).</P>
+<P>All users upgrading need to be aware that from Squid-3.3 setting this option to 0 (zero) will mean zero bytes of memory get pooled.</P>
+
 <DT><B>negative_ttl</B><DD>
 <P>New default of 0 seconds. To prevent negative-caching of failure messages unless explicitly
 permitted by the message generating web server.</P>
@@ -1562,11 +1567,6 @@ proxies.</P>
 <P>Disable error page localization for visitors.</P>
 <P>error_directory option is required if this option is used.</P>
 
-<DT><B>--disable-caps</B><DD>
-<P>Build without libcap support. The default is to auto-detect system capabilities
-and enable support when possible.</P>
-<P>NOTE: Disabling this or building without libcap support will break TPROXY support.</P>
-
 <DT><B>--disable-ipv6</B><DD>
 <P>Build without IPv6 support. The default is to auto-detect system capabilities
 and build with IPv6 when possible.</P>
@@ -1582,7 +1582,7 @@ Please do not use lightly, and please report the build issues which make it need
 to the squid developers before doing so.</P>
 
 <DT><B>--disable-translation</B><DD>
-<P>Prevent Squid generating localized error page templates and manuals.
+<P>Prevent Squid generating localized error page templates and manuals when built.
 Which is usually tried, but may not be needed.</P>
 <P>This is an optimization for building fast when localization is not needed
 or localization tools are not available.</P>
@@ -1623,6 +1623,11 @@ see the IPv6 details above for a better description.</P>
 <DT><B>--with-po2html=PATH</B><DD>
 <P>Absolute path to po2html executable.
 Default is to automatically detect the binary.</P>
+
+<DT><B>--without-libcap</B><DD>
+<P>Build without libcap support. The default is to auto-detect system capabilities
+and enable support when possible.</P>
+<P>NOTE: Disabling this or building without libcap support will break TPROXY support.</P>
 
 </DL>
 </P>
@@ -1677,6 +1682,9 @@ Use --without-pthreads to disable, but only if you really have to.</P>
 
 <DT><B>--disable-carp</B><DD>
 <P>Removed. CARP is required by several peering algoithms. Disabling is not useful.</P>
+
+<DT><B>--disable-mempools</B><DD>
+<P>Replaced by memory_pools squid.conf option.</P>
 </DL>
 </P>
 

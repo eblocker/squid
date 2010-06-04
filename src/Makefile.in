@@ -1530,10 +1530,10 @@ top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 AM_CFLAGS = $(SQUID_CFLAGS)
 AM_CXXFLAGS = $(SQUID_CXXFLAGS)
-CLEANFILES = cf_gen_defines.h cf.data cf_parser.h squid.conf.default \
-	squid.conf.documented globals.cc string_arrays.c \
-	repl_modules.cc DiskIO/DiskIOModules_gen.cc test_tools.cc *.a \
-	testHeaders
+CLEANFILES = cf_gen_defines.cci cf.data cf_parser.cci \
+	squid.conf.default squid.conf.documented globals.cc \
+	string_arrays.c repl_modules.cc DiskIO/DiskIOModules_gen.cc \
+	test_tools.cc *.a testHeaders
 TESTS = $(check_PROGRAMS) testHeaders
 INCLUDES = -I$(top_srcdir) -I$(top_srcdir)/include -I$(top_srcdir)/src \
 	-I$(top_builddir)/include $(SQUID_CPPUNIT_INC) \
@@ -1646,7 +1646,7 @@ COMMON_LIBS = \
 	fs/libfs.la
 
 cf_gen_SOURCES = cf_gen.cc
-nodist_cf_gen_HEADER = cf_gen_defines.h
+nodist_cf_gen_HEADER = cf_gen_defines.cci
 cf_gen_LDADD = \
 	../compat/libcompat.la \
 	-L../lib -lmiscutil \
@@ -1788,7 +1788,7 @@ noinst_HEADERS = \
 nodist_squid_SOURCES = \
 	$(DISKIO_GEN_SOURCE) \
 	repl_modules.cc \
-	cf_parser.h \
+	cf_parser.cci \
 	globals.cc \
 	string_arrays.c
 
@@ -1869,8 +1869,8 @@ nodist_ufsdump_SOURCES = \
 	globals.cc
 
 BUILT_SOURCES = \
-	cf_gen_defines.h \
-	cf_parser.h \
+	cf_gen_defines.cci \
+	cf_parser.cci \
 	globals.cc \
 	string_arrays.c \
 	repl_modules.cc
@@ -4514,7 +4514,7 @@ uninstall-am: uninstall-binPROGRAMS uninstall-dataDATA \
 
 
 $(OBJS): $(top_srcdir)/include/version.h $(top_builddir)/include/autoconf.h
-cf_gen.$(OBJEXT): cf_gen_defines.h
+cf_gen.$(OBJEXT): cf_gen_defines.cci
 
 DiskIO/DiskIOModules_gen.cc: Makefile
 	$(SHELL) $(srcdir)/DiskIO/modules.sh $(DISK_MODULES) > DiskIO/DiskIOModules_gen.cc
@@ -4533,16 +4533,16 @@ cache_diff: cache_diff.o debug.o globals.o store_key_md5.o
 test_cache_digest: test_cache_digest.o CacheDigest.o debug.o globals.o store_key_md5.o
 	$(CC) -o $@ $(LDFLAGS) $@.o CacheDigest.o debug.o globals.o store_key_md5.o $(STD_APP_LIBS)
 
-cache_cf.o: cf_parser.h
+cache_cf.o: cf_parser.cci
 
-# squid.conf.default is built by cf_gen when making cf_parser.h
-squid.conf.default squid.conf.documented: cf_parser.h
+# squid.conf.default is built by cf_gen when making cf_parser.cci
+squid.conf.default squid.conf.documented: cf_parser.cci
 	true
 
-cf_parser.h: cf.data cf_gen$(EXEEXT)
+cf_parser.cci: cf.data cf_gen$(EXEEXT)
 	./cf_gen cf.data $(srcdir)/cf.data.depend
 
-cf_gen_defines.h: $(srcdir)/cf_gen_defines $(srcdir)/cf.data.pre
+cf_gen_defines.cci: $(srcdir)/cf_gen_defines $(srcdir)/cf.data.pre
 	$(AWK) -f $(srcdir)/cf_gen_defines <$(srcdir)/cf.data.pre >$@ || ($(RM) -f $@ && exit 1)
 
 cf.data: cf.data.pre Makefile

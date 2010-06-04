@@ -56,21 +56,23 @@ LIBRARIES = $(noinst_LIBRARIES)
 ARFLAGS = cru
 libmiscutil_a_AR = $(AR) $(ARFLAGS)
 libmiscutil_a_DEPENDENCIES = $(LIBOBJS)
-am__libmiscutil_a_SOURCES_DIST = MemPool.cc base64.c charset.c \
-	getfullhostname.c hash.c heap.c html_quote.c iso3307.c md5.c \
-	radix.c rfc1035.c rfc1123.c rfc1738.c rfc2617.c rfc3596.c \
-	Splay.cc strnstr.cc stub_memaccount.c util.c uudecode.c \
-	xusleep.c Profiler.c win32lib.c
+am__libmiscutil_a_SOURCES_DIST = MemPool.cc MemPoolChunked.cc \
+	MemPoolMalloc.cc base64.c charset.c getfullhostname.c hash.c \
+	heap.c html_quote.c iso3307.c md5.c radix.c rfc1035.c \
+	rfc1123.c rfc1738.c rfc2617.c rfc3596.c Splay.cc strnstr.cc \
+	stub_memaccount.c util.c uudecode.c xusleep.c Profiler.c \
+	win32lib.c
 @ENABLE_XPROF_STATS_TRUE@am__objects_1 = Profiler.$(OBJEXT)
 @ENABLE_WIN32SPECIFIC_TRUE@am__objects_2 = win32lib.$(OBJEXT)
-am_libmiscutil_a_OBJECTS = MemPool.$(OBJEXT) base64.$(OBJEXT) \
-	charset.$(OBJEXT) getfullhostname.$(OBJEXT) hash.$(OBJEXT) \
-	heap.$(OBJEXT) html_quote.$(OBJEXT) iso3307.$(OBJEXT) \
-	md5.$(OBJEXT) radix.$(OBJEXT) rfc1035.$(OBJEXT) \
-	rfc1123.$(OBJEXT) rfc1738.$(OBJEXT) rfc2617.$(OBJEXT) \
-	rfc3596.$(OBJEXT) Splay.$(OBJEXT) strnstr.$(OBJEXT) \
-	stub_memaccount.$(OBJEXT) util.$(OBJEXT) uudecode.$(OBJEXT) \
-	xusleep.$(OBJEXT) $(am__objects_1) $(am__objects_2)
+am_libmiscutil_a_OBJECTS = MemPool.$(OBJEXT) MemPoolChunked.$(OBJEXT) \
+	MemPoolMalloc.$(OBJEXT) base64.$(OBJEXT) charset.$(OBJEXT) \
+	getfullhostname.$(OBJEXT) hash.$(OBJEXT) heap.$(OBJEXT) \
+	html_quote.$(OBJEXT) iso3307.$(OBJEXT) md5.$(OBJEXT) \
+	radix.$(OBJEXT) rfc1035.$(OBJEXT) rfc1123.$(OBJEXT) \
+	rfc1738.$(OBJEXT) rfc2617.$(OBJEXT) rfc3596.$(OBJEXT) \
+	Splay.$(OBJEXT) strnstr.$(OBJEXT) stub_memaccount.$(OBJEXT) \
+	util.$(OBJEXT) uudecode.$(OBJEXT) xusleep.$(OBJEXT) \
+	$(am__objects_1) $(am__objects_2)
 libmiscutil_a_OBJECTS = $(am_libmiscutil_a_OBJECTS)
 libntlmauth_a_AR = $(AR) $(ARFLAGS)
 libntlmauth_a_DEPENDENCIES = $(LIBOBJS)
@@ -352,6 +354,8 @@ EXTRA_libmiscutil_a_SOURCES = \
 
 libmiscutil_a_SOURCES = \
 	MemPool.cc \
+	MemPoolChunked.cc \
+	MemPoolMalloc.cc \
 	base64.c \
 	charset.c \
 	getfullhostname.c \
@@ -485,6 +489,8 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@$(DEPDIR)/strtoll.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@$(DEPDIR)/tempnam.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/MemPool.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/MemPoolChunked.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/MemPoolMalloc.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Profiler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Splay.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/base64.Po@am__quote@

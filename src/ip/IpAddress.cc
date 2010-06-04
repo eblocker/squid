@@ -1,5 +1,5 @@
 /*
- * DEBUG: section 14   IP Storage and Handling
+ * DEBUG: section 14    IP Storage and Handling
  * AUTHOR: Amos Jeffries
  *
  * SQUID Internet Object Cache  http://squid.nlanr.net/Squid/
@@ -168,9 +168,6 @@ const int IpAddress::ApplyMask(IpAddress const &mask_addr)
         p1[i] &= p2[i];
     }
 
-    /* we have found a situation where mask forms or destroys a IPv4 map. */
-    check4Mapped();
-
     return changes;
 }
 
@@ -287,6 +284,9 @@ const struct in6_addr IpAddress::v4_localhost = {{{ 0x00, 0x00, 0x00, 0x00, 0x00
 };
 const struct in6_addr IpAddress::v4_anyaddr = {{{ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
             0x00, 0x00, 0xff, 0xff, 0x00, 0x00, 0x00, 0x00 }}
+};
+const struct in6_addr IpAddress::v4_noaddr = {{{ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff }}
 };
 const struct in6_addr IpAddress::v6_noaddr = {{{ 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
             0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff }}
@@ -511,9 +511,6 @@ IpAddress& IpAddress::operator =(struct sockaddr_in const &s)
     memcpy(&m_SocketAddr, &s, sizeof(struct sockaddr_in));
 #endif
 
-    /* maintain stored family values properly */
-    check4Mapped();
-
     return *this;
 };
 
@@ -534,12 +531,6 @@ IpAddress& IpAddress::operator =(const struct sockaddr_storage &s)
     return *this;
 };
 
-void IpAddress::check4Mapped()
-{
-    // obsolete.
-    // TODO use this NOW to set the sin6_family properly on exporting. not on import.
-}
-
 #if USE_IPV6
 IpAddress::IpAddress(struct sockaddr_in6 const &s)
 {
@@ -551,8 +542,6 @@ IpAddress& IpAddress::operator =(struct sockaddr_in6 const &s)
 {
     memcpy(&m_SocketAddr, &s, sizeof(struct sockaddr_in6));
 
-    /* maintain address family properly */
-    check4Mapped();
     return *this;
 };
 
@@ -575,10 +564,6 @@ IpAddress& IpAddress::operator =(struct in_addr const &s)
     memcpy(&m_SocketAddr.sin_addr, &s, sizeof(struct in_addr));
 
 #endif
-
-    /* maintain stored family type properly */
-    check4Mapped();
-
     return *this;
 };
 
@@ -595,9 +580,6 @@ IpAddress& IpAddress::operator =(struct in6_addr const &s)
 
     memcpy(&m_SocketAddr.sin6_addr, &s, sizeof(struct in6_addr));
     m_SocketAddr.sin6_family = AF_INET6;
-
-    /* maintain address family type properly */
-    check4Mapped();
 
     return *this;
 };
@@ -996,11 +978,11 @@ unsigned int IpAddress::ToHostname(char *buf, const unsigned int blen) const
         p++;
     }
 
-    /* 7 being space for [,], and port */
+    /* 8 being space for [ ] : and port digits */
     if ( IsIPv6() )
-        NtoA(p, blen-7, AF_INET6);
+        NtoA(p, blen-8, AF_INET6);
     else
-        NtoA(p, blen-7, AF_INET);
+        NtoA(p, blen-8, AF_INET);
 
     // find the end of the new string
     while (*p != '\0' && p < buf+blen)
@@ -1030,9 +1012,9 @@ char* IpAddress::ToURL(char* buf, unsigned int blen) const
 
     p += ToHostname(p, blen);
 
-    if (m_SocketAddr.sin6_port > 0 && p < (buf+blen-6) ) {
-        /* 6 is max length of expected ':port' (short int) */
-        snprintf(p, 6,":%d", GetPort() );
+    if (m_SocketAddr.sin6_port > 0 && p <= (buf+blen-7) ) {
+        // ':port' (short int) needs at most 6 bytes plus 1 for 0-terminator
+        snprintf(p, 7, ":%d", GetPort() );
     }
 
     // force a null-terminated string
@@ -1123,15 +1105,13 @@ void IpAddress::Map4to6(const struct in_addr &in, struct in6_addr &out) const
 
     if ( in.s_addr == 0x00000000) {
         /* ANYADDR */
-        memset(&out, 0, sizeof(struct in6_addr));
+        out = v4_anyaddr;
     } else if ( in.s_addr == 0xFFFFFFFF) {
         /* NOADDR */
-        memset(&out, 255, sizeof(struct in6_addr));
+        out = v4_noaddr;
     } else {
         /* general */
-        memset(&out, 0, sizeof(struct in6_addr));
-        out.s6_addr[10] = 0xFF;
-        out.s6_addr[11] = 0xFF;
+        out = v4_anyaddr;
         out.s6_addr[12] = ((uint8_t *)&in.s_addr)[0];
         out.s6_addr[13] = ((uint8_t *)&in.s_addr)[1];
         out.s6_addr[14] = ((uint8_t *)&in.s_addr)[2];

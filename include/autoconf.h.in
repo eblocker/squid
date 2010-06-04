@@ -36,9 +36,6 @@
 /* Traffic management via "delay pools". */
 #undef DELAY_POOLS
 
-/* Define if you have problems with memPools and want to disable Pools. */
-#undef DISABLE_POOLS
-
 /* Enable following X-Forwarded-For headers */
 #undef FOLLOW_X_FORWARDED_FOR
 
@@ -1024,6 +1021,9 @@
 /* Use Cache Digests for locating objects in neighbor caches. This code is
    still semi-experimental. */
 #undef USE_CACHE_DIGESTS
+
+/* Define to Enable chunked Memory Pools support (experimental) */
+#undef USE_CHUNKEDMEMPOOLS
 
 /* DiskIO modules are expected to be available. */
 #undef USE_DISKIO

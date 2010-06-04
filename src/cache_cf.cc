@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * DEBUG: section 3     Configuration File Parsing
+ * DEBUG: section 03    Configuration File Parsing
  * AUTHOR: Harvest Derived
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
@@ -2228,7 +2228,7 @@ static void
 dump_refreshpattern(StoreEntry * entry, const char *name, refresh_t * head)
 {
     while (head != NULL) {
-        storeAppendPrintf(entry, "%s%s %s %d %d%% %d\n",
+        storeAppendPrintf(entry, "%s%s %s %d %d%% %d",
                           name,
                           head->flags.icase ? " -i" : null_string,
                           head->pattern,
@@ -2785,7 +2785,7 @@ dump_removalpolicy(StoreEntry * entry, const char *name, RemovalPolicySettings *
     storeAppendPrintf(entry, "\n");
 }
 
-#include "cf_parser.h"
+#include "cf_parser.cci"
 
 peer_t
 parseNeighborType(const char *s)

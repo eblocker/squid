@@ -1,6 +1,8 @@
 squid3 (3.1.4-1) UNRELEASED; urgency=low
 
   * New upstream release
+    - Fixes several issues with IPv6 socket handling (Closes: #581901, #584223)
+    - Fixes assertion in comm.cc (Closes: #572368)
 
  -- Luigi Gangitano <luigi@debian.org>  Fri, 04 Jun 2010 14:49:32 +0200
 

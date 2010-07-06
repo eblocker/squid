@@ -4678,7 +4678,7 @@ DOC_END
 NAME: persistent_connection_after_error
 TYPE: onoff
 LOC: Config.onoff.error_pconns
-DEFAULT: off
+DEFAULT: on
 DOC_START
 	With this directive the use of persistent connections after
 	HTTP errors can be disabled. Useful if you have clients
@@ -6655,6 +6655,19 @@ DOC_START
 	In some cases (a Proxy server acting as VPN gateway is one) it could be
 	desiderable to disable this behaviour setting this to 'off'.
 	Note: after changing this, Squid service must be restarted.
+DOC_END
+
+NAME: max_filedescriptors max_filedesc
+TYPE: int
+DEFAULT: 0
+LOC: Config.max_filedescriptors
+DOC_START
+	The maximum number of filedescriptors supported.
+
+	The default "0" means Squid inherits the current ulimit setting.
+
+	Note: Changing this requires a restart of Squid. Also
+	not all comm loops supports large values.
 DOC_END
 
 EOF

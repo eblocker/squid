@@ -346,7 +346,7 @@ Mem::CleanIdlePools(void *unused)
 void
 memConfigure(void)
 {
-    size_t new_pool_limit;
+    ssize_t new_pool_limit;
 
     /** Set to configured value first */
     if (!Config.onoff.mem_pools)
@@ -354,8 +354,8 @@ memConfigure(void)
     else if (Config.MemPools.limit > 0)
         new_pool_limit = Config.MemPools.limit;
     else {
-	if (Config.MemPools.limit == 0)
-	    debugs(13, 1, "memory_pools_limit 0 has been chagned to memory_pools_limit none. Please update your config");
+        if (Config.MemPools.limit == 0)
+            debugs(13, 1, "memory_pools_limit 0 has been chagned to memory_pools_limit none. Please update your config");
         new_pool_limit = -1;
     }
 

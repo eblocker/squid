@@ -1,6 +1,4 @@
-squid3 (3.1.5-2) UNRELEASED; urgency=low
-
-  * NOT RELEASED YET
+squid3 (3.1.5-2) unstable; urgency=low
 
   * debian/control
     - Added build dependency on libltdl-dev fixing FTBFS on most archs

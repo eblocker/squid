@@ -49,6 +49,7 @@
 #include "ip/IpAddress.h"
 #include "ip/IpIntercept.h"
 #include "protos.h"
+#include "ip/tools.h"
 
 #if defined(_SQUID_CYGWIN_)
 #include <sys/ioctl.h>
@@ -258,7 +259,7 @@ public:
     int fd;
 
 private:
-    bool acceptOne();
+    void acceptOne();
 
     AsyncCall::Pointer theCallback;
     bool mayAcceptMore;
@@ -562,6 +563,9 @@ comm_local_port(int fd)
     if (F->local_addr.GetPort())
         return F->local_addr.GetPort();
 
+    if (F->sock_family == AF_INET)
+        temp.SetIPv4();
+
     temp.InitAddrInfo(addr);
 
     if (getsockname(fd, addr->ai_addr, &(addr->ai_addrlen)) ) {
@@ -575,14 +579,16 @@ comm_local_port(int fd)
 
     F->local_addr.SetPort(temp.GetPort());
 
+#if 0 // seems to undo comm_open actions on the FD ...
     // grab default socket information for this address
     temp.GetAddrInfo(addr);
 
     F->sock_family = addr->ai_family;
 
     temp.FreeAddrInfo(addr);
+#endif
 
-    debugs(5, 6, "comm_local_port: FD " << fd << ": port " << F->local_addr.GetPort());
+    debugs(5, 6, "comm_local_port: FD " << fd << ": port " << F->local_addr.GetPort() << "(family=" << F->sock_family << ")");
     return F->local_addr.GetPort();
 }
 
@@ -658,7 +664,7 @@ comm_set_v6only(int fd, int tos)
 {
 #ifdef IPV6_V6ONLY
     if (setsockopt(fd, IPPROTO_IPV6, IPV6_V6ONLY, (char *) &tos, sizeof(int)) < 0) {
-        debugs(50, 1, "comm_open: setsockopt(IPV6_V6ONLY) on FD " << fd << ": " << xstrerror());
+        debugs(50, 1, "comm_open: setsockopt(IPV6_V6ONLY) " << (tos?"ON":"OFF") << " for FD " << fd << ": " << xstrerror());
     }
 #else
     debugs(50, 0, "WARNING: comm_open: setsockopt(IPV6_V6ONLY) not supported on this platform");
@@ -715,10 +721,10 @@ comm_openex(int sock_type,
     debugs(50, 3, "comm_openex: Attempt open socket for: " << addr );
 
     new_socket = socket(AI->ai_family, AI->ai_socktype, AI->ai_protocol);
-#if USE_IPV6
+
     /* under IPv6 there is the possibility IPv6 is present but disabled. */
     /* try again as IPv4-native if possible */
-    if ( new_socket < 0 && addr.IsIPv6() && addr.SetIPv4() ) {
+    if ( new_socket < 0 && Ip::EnableIpv6 && addr.IsIPv6() && addr.SetIPv4() ) {
         /* attempt to open this IPv4-only. */
         addr.FreeAddrInfo(AI);
         /* Setup the socket addrinfo details for use */
@@ -729,7 +735,6 @@ comm_openex(int sock_type,
         new_socket = socket(AI->ai_family, AI->ai_socktype, AI->ai_protocol);
         debugs(50, 2, HERE << "attempt open " << note << " socket on: " << addr);
     }
-#endif
 
     if (new_socket < 0) {
         /* Increase the number of reserved fd's if calls to socket()
@@ -756,21 +761,13 @@ comm_openex(int sock_type,
         tos = TOS;
     }
 
-#if IPV6_SPECIAL_SPLITSTACK
-
-    if ( addr.IsIPv6() )
-        comm_set_v6only(new_socket, tos);
-
-#endif
-
-#if IPV6_SPECIAL_V4MAPPED
+    if ( Ip::EnableIpv6&IPV6_SPECIAL_SPLITSTACK && addr.IsIPv6() )
+        comm_set_v6only(new_socket, 1);
 
     /* Windows Vista supports Dual-Sockets. BUT defaults them to V6ONLY. Turn it OFF. */
     /* Other OS may have this administratively disabled for general use. Same deal. */
-    if ( addr.IsIPv6() )
+    if ( Ip::EnableIpv6&IPV6_SPECIAL_V4MAPPING && addr.IsIPv6() )
         comm_set_v6only(new_socket, 0);
-
-#endif
 
     /* update fdstat */
     debugs(5, 5, "comm_open: FD " << new_socket << " is a new socket");
@@ -1026,6 +1023,8 @@ ConnectStateData::commResetFD()
 
     debugs(50, 3, "commResetFD: Reset socket FD " << fd << "->" << fd2 << " : family=" << new_family );
 
+    debugs(50, 3, "commResetFD: Reset socket FD " << fd << "->" << fd2 << " : family=" << new_family );
+
     /* INET6: copy the new sockets family type to the FDE table */
     F->sock_family = new_family;
 
@@ -1051,12 +1050,8 @@ ConnectStateData::commResetFD()
     if (F->tos)
         comm_set_tos(fd, F->tos);
 
-#if IPV6_SPECIAL_SPLITSTACK
-
-    if ( F->local_addr.IsIPv6() )
-        comm_set_v6only(fd, F->tos);
-
-#endif
+    if ( Ip::EnableIpv6&IPV6_SPECIAL_SPLITSTACK && F->local_addr.IsIPv6() )
+        comm_set_v6only(fd, 1);
 
     copyFDFlags(fd, F);
 
@@ -1434,11 +1429,7 @@ comm_old_accept(int fd, ConnectionDetail &details)
     details.peer.NtoA(F->ipaddr,MAX_IPSTRLEN);
     F->remote_port = details.peer.GetPort();
     F->local_addr.SetPort(details.me.GetPort());
-#if USE_IPV6
-    F->sock_family = details.me.IsIPv4()?AF_INET:AF_INET6;
-#else
-    F->sock_family = AF_INET;
-#endif
+    F->sock_family = details.me.IsIPv6()?AF_INET6:AF_INET;
     details.me.FreeAddrInfo(gai);
 
     commSetNonBlocking(sock);
@@ -1887,8 +1878,8 @@ commSetCloseOnExec(int fd)
     int flags;
     int dummy = 0;
 
-    if ((flags = fcntl(fd, F_GETFL, dummy)) < 0) {
-        debugs(50, 0, "FD " << fd << ": fcntl F_GETFL: " << xstrerror());
+    if ((flags = fcntl(fd, F_GETFD, dummy)) < 0) {
+        debugs(50, 0, "FD " << fd << ": fcntl F_GETFD: " << xstrerror());
         return;
     }
 
@@ -2284,7 +2275,7 @@ AcceptFD::subscribe(AsyncCall::Pointer &call)
         commSetSelect(fd, COMM_SELECT_READ, comm_accept_try, NULL, 0);
 }
 
-bool
+void
 AcceptFD::acceptOne()
 {
     // If there is no callback and we accept, we will leak the accepted FD.
@@ -2295,7 +2286,8 @@ AcceptFD::acceptOne()
         // either listen always or listen only when there is a callback?
         if (!AcceptLimiter::Instance().deferring())
             commSetSelect(fd, COMM_SELECT_READ, comm_accept_try, NULL, 0);
-        return false;
+        mayAcceptMore = false;
+        return;
     }
 
     /*
@@ -2316,14 +2308,15 @@ AcceptFD::acceptOne()
         if (newfd == COMM_NOMESSAGE) {
             /* register interest again */
             debugs(5, 5, HERE << "try later: FD " << fd <<
-                   " handler: " << *theCallback);
+                   " handler: " << theCallback);
             commSetSelect(fd, COMM_SELECT_READ, comm_accept_try, NULL, 0);
-            return false;
+            return;
         }
 
         // A non-recoverable error; notify the caller */
         notify(-1, COMM_ERROR, errno, connDetails);
-        return false;
+        mayAcceptMore = false;
+        return;
     }
 
     assert(theCallback != NULL);
@@ -2331,13 +2324,13 @@ AcceptFD::acceptOne()
            " newfd: " << newfd << " from: " << connDetails.peer <<
            " handler: " << *theCallback);
     notify(newfd, COMM_OK, 0, connDetails);
-    return true;
+    mayAcceptMore = true;
 }
 
 void
 AcceptFD::acceptNext()
 {
-    mayAcceptMore = acceptOne();
+    acceptOne();
 }
 
 void

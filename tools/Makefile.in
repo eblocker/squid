@@ -59,19 +59,24 @@ binPROGRAMS_INSTALL = $(INSTALL_PROGRAM)
 libexecPROGRAMS_INSTALL = $(INSTALL_PROGRAM)
 PROGRAMS = $(bin_PROGRAMS) $(libexec_PROGRAMS)
 am_cachemgr__CGIEXT__OBJECTS = cachemgr__CGIEXT_-cachemgr.$(OBJEXT)
-cachemgr__CGIEXT__OBJECTS = $(am_cachemgr__CGIEXT__OBJECTS)
+nodist_cachemgr__CGIEXT__OBJECTS = cachemgr__CGIEXT_-time.$(OBJEXT) \
+	cachemgr__CGIEXT_-stub_debug.$(OBJEXT)
+cachemgr__CGIEXT__OBJECTS = $(am_cachemgr__CGIEXT__OBJECTS) \
+	$(nodist_cachemgr__CGIEXT__OBJECTS)
 cachemgr__CGIEXT__LDADD = $(LDADD)
 am__DEPENDENCIES_1 =
-cachemgr__CGIEXT__DEPENDENCIES = ../compat/libcompat.la \
-	../src/ip/libip.la $(am__DEPENDENCIES_1)
+cachemgr__CGIEXT__DEPENDENCIES = ../src/ip/libip.la \
+	../compat/libcompat.la $(am__DEPENDENCIES_1)
 cachemgr__CGIEXT__LINK = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) \
 	$(LIBTOOLFLAGS) --mode=link $(CXXLD) \
 	$(cachemgr__CGIEXT__CXXFLAGS) $(CXXFLAGS) $(AM_LDFLAGS) \
 	$(LDFLAGS) -o $@
 am_squidclient_OBJECTS = squidclient.$(OBJEXT)
-squidclient_OBJECTS = $(am_squidclient_OBJECTS)
+nodist_squidclient_OBJECTS = time.$(OBJEXT) stub_debug.$(OBJEXT)
+squidclient_OBJECTS = $(am_squidclient_OBJECTS) \
+	$(nodist_squidclient_OBJECTS)
 squidclient_LDADD = $(LDADD)
-squidclient_DEPENDENCIES = ../compat/libcompat.la ../src/ip/libip.la \
+squidclient_DEPENDENCIES = ../src/ip/libip.la ../compat/libcompat.la \
 	$(am__DEPENDENCIES_1)
 DEFAULT_INCLUDES = 
 depcomp = $(SHELL) $(top_srcdir)/cfgaux/depcomp
@@ -85,7 +90,9 @@ CXXLD = $(CXX)
 CXXLINK = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
 	--mode=link $(CXXLD) $(AM_CXXFLAGS) $(CXXFLAGS) $(AM_LDFLAGS) \
 	$(LDFLAGS) -o $@
-SOURCES = $(cachemgr__CGIEXT__SOURCES) $(squidclient_SOURCES)
+SOURCES = $(cachemgr__CGIEXT__SOURCES) \
+	$(nodist_cachemgr__CGIEXT__SOURCES) $(squidclient_SOURCES) \
+	$(nodist_squidclient_SOURCES)
 DIST_SOURCES = $(cachemgr__CGIEXT__SOURCES) $(squidclient_SOURCES)
 RECURSIVE_TARGETS = all-recursive check-recursive dvi-recursive \
 	html-recursive info-recursive install-data-recursive \
@@ -108,6 +115,7 @@ ADAPTATION_LIBS = @ADAPTATION_LIBS@
 ALLOCA = @ALLOCA@
 AMTAR = @AMTAR@
 AR = @AR@
+ARGZ_H = @ARGZ_H@
 AR_R = @AR_R@
 AUTH_LIBS_TO_BUILD = @AUTH_LIBS_TO_BUILD@
 AUTH_MODULES = @AUTH_MODULES@
@@ -184,7 +192,9 @@ LN = @LN@
 LN_S = @LN_S@
 LTDLDEPS = @LTDLDEPS@
 LTDLINCL = @LTDLINCL@
+LTDLOPEN = @LTDLOPEN@
 LTLIBOBJS = @LTLIBOBJS@
+LT_CONFIG_H = @LT_CONFIG_H@
 LT_DLLOADERS = @LT_DLLOADERS@
 LT_DLPREOPEN = @LT_DLPREOPEN@
 MAINT = @MAINT@
@@ -218,7 +228,6 @@ REPL_OBJS = @REPL_OBJS@
 REPL_POLICIES = @REPL_POLICIES@
 RM = @RM@
 SED = @SED@
-SET_IPV6_SETTINGS = @SET_IPV6_SETTINGS@
 SET_MAKE = @SET_MAKE@
 SH = @SH@
 SHELL = @SHELL@
@@ -277,6 +286,8 @@ libexecdir = @libexecdir@
 localedir = @localedir@
 localstatedir = @localstatedir@
 lt_ECHO = @lt_ECHO@
+ltdl_LIBOBJS = @ltdl_LIBOBJS@
+ltdl_LTLIBOBJS = @ltdl_LTLIBOBJS@
 makesnmplib = @makesnmplib@
 mandir = @mandir@
 mkdir_p = @mkdir_p@
@@ -289,6 +300,7 @@ sbindir = @sbindir@
 sharedstatedir = @sharedstatedir@
 srcdir = @srcdir@
 subdirs = @subdirs@
+sys_symbol_underscore = @sys_symbol_underscore@
 sysconfdir = @sysconfdir@
 target_alias = @target_alias@
 top_build_prefix = @top_build_prefix@
@@ -296,21 +308,26 @@ top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 AM_CFLAGS = $(SQUID_CFLAGS)
 AM_CXXFLAGS = $(SQUID_CXXFLAGS)
-CLEANFILES = 
+CLEANFILES = stub_debug.cc time.cc
 INCLUDES = -I$(top_srcdir) -I$(top_srcdir)/include -I$(top_srcdir)/src \
 	-I$(top_builddir)/include $(SQUID_CPPUNIT_INC) -I$(srcdir)
 AUTOMAKE_OPTIONS = subdir-objects
+
+# Neither of these should be disted from here.
+TESTSOURCES = stub_debug.cc time.cc
 SUBDIRS = 
 man_MANS = \
 	squidclient.1
 
 DEFAULT_CACHEMGR_CONFIG = $(sysconfdir)/cachemgr.conf
 squidclient_SOURCES = squidclient.cc
+nodist_squidclient_SOURCES = time.cc stub_debug.cc
 cachemgr__CGIEXT__SOURCES = cachemgr.cc
+nodist_cachemgr__CGIEXT__SOURCES = time.cc stub_debug.cc
 cachemgr__CGIEXT__CXXFLAGS = -DDEFAULT_CACHEMGR_CONFIG=\"$(DEFAULT_CACHEMGR_CONFIG)\" $(AM_CXXFLAGS)
 LDADD = \
-	../compat/libcompat.la \
 	../src/ip/libip.la \
+	../compat/libcompat.la \
 	-L../lib -lmiscutil \
 	$(XTRA_LIBS)
 
@@ -429,7 +446,11 @@ distclean-compile:
 	-rm -f *.tab.c
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/cachemgr__CGIEXT_-cachemgr.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/cachemgr__CGIEXT_-stub_debug.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/cachemgr__CGIEXT_-time.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/squidclient.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/stub_debug.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/time.Po@am__quote@
 
 .cc.o:
 @am__fastdepCXX_TRUE@	depbase=`echo $@ | sed 's|[^/]*$$|$(DEPDIR)/&|;s|\.o$$||'`;\
@@ -468,6 +489,34 @@ cachemgr__CGIEXT_-cachemgr.obj: cachemgr.cc
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='cachemgr.cc' object='cachemgr__CGIEXT_-cachemgr.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(cachemgr__CGIEXT__CXXFLAGS) $(CXXFLAGS) -c -o cachemgr__CGIEXT_-cachemgr.obj `if test -f 'cachemgr.cc'; then $(CYGPATH_W) 'cachemgr.cc'; else $(CYGPATH_W) '$(srcdir)/cachemgr.cc'; fi`
+
+cachemgr__CGIEXT_-time.o: time.cc
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(cachemgr__CGIEXT__CXXFLAGS) $(CXXFLAGS) -MT cachemgr__CGIEXT_-time.o -MD -MP -MF $(DEPDIR)/cachemgr__CGIEXT_-time.Tpo -c -o cachemgr__CGIEXT_-time.o `test -f 'time.cc' || echo '$(srcdir)/'`time.cc
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/cachemgr__CGIEXT_-time.Tpo $(DEPDIR)/cachemgr__CGIEXT_-time.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='time.cc' object='cachemgr__CGIEXT_-time.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(cachemgr__CGIEXT__CXXFLAGS) $(CXXFLAGS) -c -o cachemgr__CGIEXT_-time.o `test -f 'time.cc' || echo '$(srcdir)/'`time.cc
+
+cachemgr__CGIEXT_-time.obj: time.cc
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(cachemgr__CGIEXT__CXXFLAGS) $(CXXFLAGS) -MT cachemgr__CGIEXT_-time.obj -MD -MP -MF $(DEPDIR)/cachemgr__CGIEXT_-time.Tpo -c -o cachemgr__CGIEXT_-time.obj `if test -f 'time.cc'; then $(CYGPATH_W) 'time.cc'; else $(CYGPATH_W) '$(srcdir)/time.cc'; fi`
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/cachemgr__CGIEXT_-time.Tpo $(DEPDIR)/cachemgr__CGIEXT_-time.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='time.cc' object='cachemgr__CGIEXT_-time.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(cachemgr__CGIEXT__CXXFLAGS) $(CXXFLAGS) -c -o cachemgr__CGIEXT_-time.obj `if test -f 'time.cc'; then $(CYGPATH_W) 'time.cc'; else $(CYGPATH_W) '$(srcdir)/time.cc'; fi`
+
+cachemgr__CGIEXT_-stub_debug.o: stub_debug.cc
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(cachemgr__CGIEXT__CXXFLAGS) $(CXXFLAGS) -MT cachemgr__CGIEXT_-stub_debug.o -MD -MP -MF $(DEPDIR)/cachemgr__CGIEXT_-stub_debug.Tpo -c -o cachemgr__CGIEXT_-stub_debug.o `test -f 'stub_debug.cc' || echo '$(srcdir)/'`stub_debug.cc
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/cachemgr__CGIEXT_-stub_debug.Tpo $(DEPDIR)/cachemgr__CGIEXT_-stub_debug.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='stub_debug.cc' object='cachemgr__CGIEXT_-stub_debug.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(cachemgr__CGIEXT__CXXFLAGS) $(CXXFLAGS) -c -o cachemgr__CGIEXT_-stub_debug.o `test -f 'stub_debug.cc' || echo '$(srcdir)/'`stub_debug.cc
+
+cachemgr__CGIEXT_-stub_debug.obj: stub_debug.cc
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(cachemgr__CGIEXT__CXXFLAGS) $(CXXFLAGS) -MT cachemgr__CGIEXT_-stub_debug.obj -MD -MP -MF $(DEPDIR)/cachemgr__CGIEXT_-stub_debug.Tpo -c -o cachemgr__CGIEXT_-stub_debug.obj `if test -f 'stub_debug.cc'; then $(CYGPATH_W) 'stub_debug.cc'; else $(CYGPATH_W) '$(srcdir)/stub_debug.cc'; fi`
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/cachemgr__CGIEXT_-stub_debug.Tpo $(DEPDIR)/cachemgr__CGIEXT_-stub_debug.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='stub_debug.cc' object='cachemgr__CGIEXT_-stub_debug.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(cachemgr__CGIEXT__CXXFLAGS) $(CXXFLAGS) -c -o cachemgr__CGIEXT_-stub_debug.obj `if test -f 'stub_debug.cc'; then $(CYGPATH_W) 'stub_debug.cc'; else $(CYGPATH_W) '$(srcdir)/stub_debug.cc'; fi`
 
 mostlyclean-libtool:
 	-rm -f *.lo
@@ -888,6 +937,12 @@ uninstall-man: uninstall-man1
 
 
 $(OBJS): $(top_srcdir)/include/version.h $(top_builddir)/include/autoconf.h
+
+stub_debug.cc: $(top_srcdir)/src/stub_debug.cc
+	cp $(top_srcdir)/src/stub_debug.cc .
+
+time.cc: $(top_srcdir)/src/time.cc
+	cp $(top_srcdir)/src/time.cc .
 
 $(OBJS): $(top_srcdir)/include/version.h ../include/autoconf.h
 

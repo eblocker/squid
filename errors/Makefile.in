@@ -53,6 +53,7 @@ ADAPTATION_LIBS = @ADAPTATION_LIBS@
 ALLOCA = @ALLOCA@
 AMTAR = @AMTAR@
 AR = @AR@
+ARGZ_H = @ARGZ_H@
 AR_R = @AR_R@
 AUTH_LIBS_TO_BUILD = @AUTH_LIBS_TO_BUILD@
 AUTH_MODULES = @AUTH_MODULES@
@@ -129,7 +130,9 @@ LN = @LN@
 LN_S = @LN_S@
 LTDLDEPS = @LTDLDEPS@
 LTDLINCL = @LTDLINCL@
+LTDLOPEN = @LTDLOPEN@
 LTLIBOBJS = @LTLIBOBJS@
+LT_CONFIG_H = @LT_CONFIG_H@
 LT_DLLOADERS = @LT_DLLOADERS@
 LT_DLPREOPEN = @LT_DLPREOPEN@
 MAINT = @MAINT@
@@ -163,7 +166,6 @@ REPL_OBJS = @REPL_OBJS@
 REPL_POLICIES = @REPL_POLICIES@
 RM = @RM@
 SED = @SED@
-SET_IPV6_SETTINGS = @SET_IPV6_SETTINGS@
 SET_MAKE = @SET_MAKE@
 SH = @SH@
 SHELL = @SHELL@
@@ -222,6 +224,8 @@ libexecdir = @libexecdir@
 localedir = @localedir@
 localstatedir = @localstatedir@
 lt_ECHO = @lt_ECHO@
+ltdl_LIBOBJS = @ltdl_LIBOBJS@
+ltdl_LTLIBOBJS = @ltdl_LTLIBOBJS@
 makesnmplib = @makesnmplib@
 mandir = @mandir@
 mkdir_p = @mkdir_p@
@@ -234,6 +238,7 @@ sbindir = @sbindir@
 sharedstatedir = @sharedstatedir@
 srcdir = @srcdir@
 subdirs = @subdirs@
+sys_symbol_underscore = @sys_symbol_underscore@
 sysconfdir = @sysconfdir@
 target_alias = @target_alias@
 top_build_prefix = @top_build_prefix@
@@ -243,41 +248,41 @@ errordir = $(datadir)/errors
 DEFAULT_ERROR_DIR = $(errordir)
 DEFAULT_STYLESHEET = $(sysconfdir)/errorpage.css
 ERROR_TEMPLATES = \
-	templates/ERR_FTP_PUT_MODIFIED \
-	templates/ERR_ESI \
-	templates/ERR_SECURE_CONNECT_FAIL \
-	templates/ERR_ZERO_SIZE_OBJECT \
-	templates/ERR_SHUTTING_DOWN \
-	templates/ERR_URN_RESOLVE \
-	templates/ERR_CONNECT_FAIL \
-	templates/ERR_SOCKET_FAILURE \
-	templates/ERR_FTP_NOT_FOUND \
-	templates/ERR_FTP_UNAVAILABLE \
-	templates/ERR_LIFETIME_EXP \
-	templates/ERR_READ_ERROR \
-	templates/ERR_ONLY_IF_CACHED_MISS \
-	templates/ERR_UNSUP_HTTPVERSION \
-	templates/ERR_READ_TIMEOUT \
-	templates/ERR_ICAP_FAILURE \
-	templates/ERR_DIR_LISTING \
-	templates/ERR_FTP_FORBIDDEN \
 	templates/ERR_ACCESS_DENIED \
-	templates/ERR_FORWARDING_DENIED \
-	templates/ERR_CANNOT_FORWARD \
-	templates/ERR_CACHE_MGR_ACCESS_DENIED \
-	templates/ERR_INVALID_REQ \
 	templates/ERR_CACHE_ACCESS_DENIED \
-	templates/ERR_FTP_PUT_ERROR \
-	templates/ERR_FTP_PUT_CREATED \
-	templates/ERR_TOO_BIG \
-	templates/ERR_UNSUP_REQ \
-	templates/ERR_FTP_FAILURE \
+	templates/ERR_CACHE_MGR_ACCESS_DENIED \
+	templates/ERR_CANNOT_FORWARD \
+	templates/ERR_CONNECT_FAIL \
+	templates/ERR_DIR_LISTING \
 	templates/ERR_DNS_FAIL \
+	templates/ERR_ESI \
+	templates/ERR_FORWARDING_DENIED \
 	templates/ERR_FTP_DISABLED \
-	templates/ERR_NO_RELAY \
-	templates/ERR_INVALID_URL \
+	templates/ERR_FTP_FAILURE \
+	templates/ERR_FTP_FORBIDDEN \
+	templates/ERR_FTP_NOT_FOUND \
+	templates/ERR_FTP_PUT_CREATED \
+	templates/ERR_FTP_PUT_ERROR \
+	templates/ERR_FTP_PUT_MODIFIED \
+	templates/ERR_FTP_UNAVAILABLE \
+	templates/ERR_ICAP_FAILURE \
+	templates/ERR_INVALID_REQ \
 	templates/ERR_INVALID_RESP \
-	templates/ERR_WRITE_ERROR
+	templates/ERR_INVALID_URL \
+	templates/ERR_LIFETIME_EXP \
+	templates/ERR_NO_RELAY \
+	templates/ERR_ONLY_IF_CACHED_MISS \
+	templates/ERR_READ_ERROR \
+	templates/ERR_READ_TIMEOUT \
+	templates/ERR_SECURE_CONNECT_FAIL \
+	templates/ERR_SHUTTING_DOWN \
+	templates/ERR_SOCKET_FAILURE \
+	templates/ERR_TOO_BIG \
+	templates/ERR_UNSUP_HTTPVERSION \
+	templates/ERR_UNSUP_REQ \
+	templates/ERR_URN_RESOLVE \
+	templates/ERR_WRITE_ERROR \
+	templates/ERR_ZERO_SIZE_OBJECT
 
 TRANSLATE_LANGUAGES = \
 	af.lang \
@@ -312,7 +317,7 @@ TRANSLATE_LANGUAGES = \
 	ro.lang \
 	ru.lang \
 	sk.lang \
-	sr.lang \
+	sr-latn.lang \
 	sv.lang \
 	th.lang \
 	tr.lang \

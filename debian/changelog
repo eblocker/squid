@@ -2,6 +2,9 @@ squid3 (3.1.6-1) UNRELEASED; urgency=low
 
   * New upstream release
 
+  * debian/rules
+    - Removed now-default --enable-ipv6 option
+
  -- Luigi Gangitano <luigi@debian.org>  Mon, 09 Aug 2010 00:59:26 +0200
 
 squid3 (3.1.5-2) unstable; urgency=low

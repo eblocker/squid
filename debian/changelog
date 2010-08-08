@@ -8,6 +8,9 @@ squid3 (3.1.6-1) UNRELEASED; urgency=low
   * debian/control
     - Bumped Standard-Version to 3.9.1, no change needed
 
+  * debian/patches/01-cf.data.pre
+    - Updated to match new upstream default IPv6 configuration
+
  -- Luigi Gangitano <luigi@debian.org>  Mon, 09 Aug 2010 00:59:26 +0200
 
 squid3 (3.1.5-2) unstable; urgency=low

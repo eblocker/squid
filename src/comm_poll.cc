@@ -165,7 +165,10 @@ fdIsIcp(int fd)
 static int
 fdIsDns(int fd)
 {
-    if (fd == DnsSocket)
+    if (fd == DnsSocketA)
+        return 1;
+
+    if (fd == DnsSocketB)
         return 1;
 
     return 0;
@@ -577,10 +580,14 @@ comm_poll_dns_incoming(void)
     int nevents;
     dns_io_events = 0;
 
-    if (DnsSocket < 0)
+    if (DnsSocketA < 0 && DnsSocketB < 0)
         return;
 
-    fds[nfds++] = DnsSocket;
+    if (DnsSocketA >= 0)
+        fds[nfds++] = DnsSocketA;
+
+    if (DnsSocketB >= 0)
+        fds[nfds++] = DnsSocketB;
 
     nevents = comm_check_incoming_poll_handlers(nfds, fds);
 

@@ -47,10 +47,11 @@ CONFIG_HEADER = $(top_builddir)/include/autoconf.h
 CONFIG_CLEAN_FILES =
 LTLIBRARIES = $(noinst_LTLIBRARIES)
 libip_la_LIBADD =
-am_libip_la_OBJECTS = IpAddress.lo IpIntercept.lo QosConfig.lo
+am_libip_la_OBJECTS = IpAddress.lo IpIntercept.lo QosConfig.lo \
+	tools.lo
 libip_la_OBJECTS = $(am_libip_la_OBJECTS)
 am_testIpAddress_OBJECTS = testIpAddress.$(OBJEXT)
-nodist_testIpAddress_OBJECTS = testMain.$(OBJEXT)
+nodist_testIpAddress_OBJECTS = testMain.$(OBJEXT) test_tools.$(OBJEXT)
 testIpAddress_OBJECTS = $(am_testIpAddress_OBJECTS) \
 	$(nodist_testIpAddress_OBJECTS)
 am__DEPENDENCIES_1 =
@@ -92,6 +93,7 @@ ADAPTATION_LIBS = @ADAPTATION_LIBS@
 ALLOCA = @ALLOCA@
 AMTAR = @AMTAR@
 AR = @AR@
+ARGZ_H = @ARGZ_H@
 AR_R = @AR_R@
 AUTH_LIBS_TO_BUILD = @AUTH_LIBS_TO_BUILD@
 AUTH_MODULES = @AUTH_MODULES@
@@ -168,7 +170,9 @@ LN = @LN@
 LN_S = @LN_S@
 LTDLDEPS = @LTDLDEPS@
 LTDLINCL = @LTDLINCL@
+LTDLOPEN = @LTDLOPEN@
 LTLIBOBJS = @LTLIBOBJS@
+LT_CONFIG_H = @LT_CONFIG_H@
 LT_DLLOADERS = @LT_DLLOADERS@
 LT_DLPREOPEN = @LT_DLPREOPEN@
 MAINT = @MAINT@
@@ -202,7 +206,6 @@ REPL_OBJS = @REPL_OBJS@
 REPL_POLICIES = @REPL_POLICIES@
 RM = @RM@
 SED = @SED@
-SET_IPV6_SETTINGS = @SET_IPV6_SETTINGS@
 SET_MAKE = @SET_MAKE@
 SH = @SH@
 SHELL = @SHELL@
@@ -261,6 +264,8 @@ libexecdir = @libexecdir@
 localedir = @localedir@
 localstatedir = @localstatedir@
 lt_ECHO = @lt_ECHO@
+ltdl_LIBOBJS = @ltdl_LIBOBJS@
+ltdl_LTLIBOBJS = @ltdl_LTLIBOBJS@
 makesnmplib = @makesnmplib@
 mandir = @mandir@
 mkdir_p = @mkdir_p@
@@ -273,6 +278,7 @@ sbindir = @sbindir@
 sharedstatedir = @sharedstatedir@
 srcdir = @srcdir@
 subdirs = @subdirs@
+sys_symbol_underscore = @sys_symbol_underscore@
 sysconfdir = @sysconfdir@
 target_alias = @target_alias@
 top_build_prefix = @top_build_prefix@
@@ -295,14 +301,17 @@ libip_la_SOURCES = \
 	IpIntercept.h \
 	IpIntercept.cc \
 	QosConfig.h \
-	QosConfig.cc
+	QosConfig.cc \
+	tools.cc \
+	tools.h
 
 testIpAddress_SOURCES = \
 	testIpAddress.cc \
 	testIpAddress.h
 
 nodist_testIpAddress_SOURCES = \
-	../tests/testMain.cc
+	$(top_srcdir)/src/tests/testMain.cc \
+	$(top_srcdir)/test-suite/test_tools.cc
 
 testIpAddress_LDADD = \
 	$(top_builddir)/compat/libcompat.la \
@@ -379,6 +388,8 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/QosConfig.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/testIpAddress.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/testMain.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_tools.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/tools.Plo@am__quote@
 
 .cc.o:
 @am__fastdepCXX_TRUE@	$(CXXCOMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
@@ -401,19 +412,33 @@ distclean-compile:
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(LTCXXCOMPILE) -c -o $@ $<
 
-testMain.o: ../tests/testMain.cc
-@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT testMain.o -MD -MP -MF $(DEPDIR)/testMain.Tpo -c -o testMain.o `test -f '../tests/testMain.cc' || echo '$(srcdir)/'`../tests/testMain.cc
+testMain.o: $(top_srcdir)/src/tests/testMain.cc
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT testMain.o -MD -MP -MF $(DEPDIR)/testMain.Tpo -c -o testMain.o `test -f '$(top_srcdir)/src/tests/testMain.cc' || echo '$(srcdir)/'`$(top_srcdir)/src/tests/testMain.cc
 @am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/testMain.Tpo $(DEPDIR)/testMain.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='../tests/testMain.cc' object='testMain.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='$(top_srcdir)/src/tests/testMain.cc' object='testMain.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o testMain.o `test -f '../tests/testMain.cc' || echo '$(srcdir)/'`../tests/testMain.cc
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o testMain.o `test -f '$(top_srcdir)/src/tests/testMain.cc' || echo '$(srcdir)/'`$(top_srcdir)/src/tests/testMain.cc
 
-testMain.obj: ../tests/testMain.cc
-@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT testMain.obj -MD -MP -MF $(DEPDIR)/testMain.Tpo -c -o testMain.obj `if test -f '../tests/testMain.cc'; then $(CYGPATH_W) '../tests/testMain.cc'; else $(CYGPATH_W) '$(srcdir)/../tests/testMain.cc'; fi`
+testMain.obj: $(top_srcdir)/src/tests/testMain.cc
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT testMain.obj -MD -MP -MF $(DEPDIR)/testMain.Tpo -c -o testMain.obj `if test -f '$(top_srcdir)/src/tests/testMain.cc'; then $(CYGPATH_W) '$(top_srcdir)/src/tests/testMain.cc'; else $(CYGPATH_W) '$(srcdir)/$(top_srcdir)/src/tests/testMain.cc'; fi`
 @am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/testMain.Tpo $(DEPDIR)/testMain.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='../tests/testMain.cc' object='testMain.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='$(top_srcdir)/src/tests/testMain.cc' object='testMain.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o testMain.obj `if test -f '../tests/testMain.cc'; then $(CYGPATH_W) '../tests/testMain.cc'; else $(CYGPATH_W) '$(srcdir)/../tests/testMain.cc'; fi`
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o testMain.obj `if test -f '$(top_srcdir)/src/tests/testMain.cc'; then $(CYGPATH_W) '$(top_srcdir)/src/tests/testMain.cc'; else $(CYGPATH_W) '$(srcdir)/$(top_srcdir)/src/tests/testMain.cc'; fi`
+
+test_tools.o: $(top_srcdir)/test-suite/test_tools.cc
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT test_tools.o -MD -MP -MF $(DEPDIR)/test_tools.Tpo -c -o test_tools.o `test -f '$(top_srcdir)/test-suite/test_tools.cc' || echo '$(srcdir)/'`$(top_srcdir)/test-suite/test_tools.cc
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/test_tools.Tpo $(DEPDIR)/test_tools.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='$(top_srcdir)/test-suite/test_tools.cc' object='test_tools.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o test_tools.o `test -f '$(top_srcdir)/test-suite/test_tools.cc' || echo '$(srcdir)/'`$(top_srcdir)/test-suite/test_tools.cc
+
+test_tools.obj: $(top_srcdir)/test-suite/test_tools.cc
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT test_tools.obj -MD -MP -MF $(DEPDIR)/test_tools.Tpo -c -o test_tools.obj `if test -f '$(top_srcdir)/test-suite/test_tools.cc'; then $(CYGPATH_W) '$(top_srcdir)/test-suite/test_tools.cc'; else $(CYGPATH_W) '$(srcdir)/$(top_srcdir)/test-suite/test_tools.cc'; fi`
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/test_tools.Tpo $(DEPDIR)/test_tools.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='$(top_srcdir)/test-suite/test_tools.cc' object='test_tools.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o test_tools.obj `if test -f '$(top_srcdir)/test-suite/test_tools.cc'; then $(CYGPATH_W) '$(top_srcdir)/test-suite/test_tools.cc'; else $(CYGPATH_W) '$(srcdir)/$(top_srcdir)/test-suite/test_tools.cc'; fi`
 
 mostlyclean-libtool:
 	-rm -f *.lo

@@ -34,6 +34,7 @@
 #include "cache_snmp.h"
 #include "acl/FilledChecklist.h"
 #include "ip/IpAddress.h"
+#include "ip/tools.h"
 
 #define SNMP_REQUEST_SIZE 4096
 #define MAX_PROTOSTAT 5
@@ -285,6 +286,17 @@ snmpConnectionOpen(void)
 
     if (Config.Port.snmp > 0) {
         Config.Addrs.snmp_incoming.SetPort(Config.Port.snmp);
+
+        if (!Ip::EnableIpv6 && !Config.Addrs.snmp_incoming.SetIPv4()) {
+            debugs(49, DBG_CRITICAL, "ERROR: IPv6 is disabled. " << Config.Addrs.snmp_incoming << " is not an IPv4 address.");
+            fatal("SNMP port cannot be opened.");
+        }
+
+        /* split-stack for now requires IPv4-only SNMP */
+        if (Ip::EnableIpv6&IPV6_SPECIAL_SPLITSTACK && Config.Addrs.snmp_incoming.IsAnyAddr()) {
+            Config.Addrs.snmp_incoming.SetIPv4();
+        }
+
         enter_suid();
         theInSnmpConnection = comm_open_listener(SOCK_DGRAM,
                               IPPROTO_UDP,
@@ -302,6 +314,17 @@ snmpConnectionOpen(void)
 
         if (!Config.Addrs.snmp_outgoing.IsNoAddr()) {
             Config.Addrs.snmp_outgoing.SetPort(Config.Port.snmp);
+
+            if (!Ip::EnableIpv6 && !Config.Addrs.snmp_outgoing.SetIPv4()) {
+                debugs(49, DBG_CRITICAL, "ERROR: IPv6 is disabled. " << Config.Addrs.snmp_outgoing << " is not an IPv4 address.");
+                fatal("SNMP port cannot be opened.");
+            }
+
+            /* split-stack for now requires IPv4-only SNMP */
+            if (Ip::EnableIpv6&IPV6_SPECIAL_SPLITSTACK && Config.Addrs.snmp_outgoing.IsAnyAddr()) {
+                Config.Addrs.snmp_outgoing.SetIPv4();
+            }
+
             enter_suid();
             theOutSnmpConnection = comm_open_listener(SOCK_DGRAM,
                                    IPPROTO_UDP,
@@ -801,10 +824,8 @@ client_Inst(oid * name, snint * len, mib_tree_entry * current, oid_ParseFn ** Fn
 
         if (laddr.IsIPv4())
             size = sizeof(in_addr);
-#if USE_IPV6
         else
             size = sizeof(in6_addr);
-#endif
 
         debugs(49, 6, HERE << "len" << *len << ", current-len" << current->len << ", addr=" << laddr << ", size=" << size);
 
@@ -827,10 +848,8 @@ client_Inst(oid * name, snint * len, mib_tree_entry * current, oid_ParseFn ** Fn
         if (!laddr.IsAnyAddr()) {
             if (laddr.IsIPv4())
                 newshift = sizeof(in_addr);
-#if USE_IPV6
             else
                 newshift = sizeof(in6_addr);
-#endif
 
             debugs(49, 6, HERE << "len" << *len << ", current-len" << current->len << ", addr=" << laddr << ", newshift=" << newshift);
 
@@ -1104,26 +1123,18 @@ addr2oid(IpAddress &addr, oid * Dest)
 {
     u_int i ;
     u_char *cp = NULL;
-    struct in_addr iaddr;
-#if USE_IPV6
+    struct in_addr i4addr;
     struct in6_addr i6addr;
     oid code = addr.IsIPv6()? INETADDRESSTYPE_IPV6  : INETADDRESSTYPE_IPV4 ;
     u_int size = (code == INETADDRESSTYPE_IPV4) ? sizeof(struct in_addr):sizeof(struct in6_addr);
-#else
-    oid code = INETADDRESSTYPE_IPV4 ;
-    u_int size = sizeof(struct in_addr) ;
-#endif /* USE_IPV6 */
     //  Dest[0] = code ;
     if ( code == INETADDRESSTYPE_IPV4 ) {
-        addr.GetInAddr(iaddr);
-        cp = (u_char *) &(iaddr.s_addr);
-    }
-#if USE_IPV6
-    else {
+        addr.GetInAddr(i4addr);
+        cp = (u_char *) &(i4addr.s_addr);
+    } else {
         addr.GetInAddr(i6addr);
         cp = (u_char *) &i6addr;
     }
-#endif
     for ( i=0 ; i < size ; i++) {
         // OID's are in network order
         Dest[i] = *cp++;
@@ -1141,32 +1152,23 @@ addr2oid(IpAddress &addr, oid * Dest)
 void
 oid2addr(oid * id, IpAddress &addr, u_int size)
 {
-    struct in_addr iaddr;
+    struct in_addr i4addr;
+    struct in6_addr i6addr;
     u_int i;
     u_char *cp;
-#if USE_IPV6
-    struct in6_addr i6addr;
     if ( size == sizeof(struct in_addr) )
-#endif /* USE_IPV6 */
-        cp = (u_char *) &(iaddr.s_addr);
-#if USE_IPV6
+        cp = (u_char *) &(i4addr.s_addr);
     else
         cp = (u_char *) &(i6addr);
-#endif /* USE_IPV6 */
     MemBuf tmp;
     debugs(49, 7, "oid2addr: id : " << snmpDebugOid(id, size, tmp) );
     for (i=0 ; i<size; i++) {
         cp[i] = id[i];
     }
-#if USE_IPV6
     if ( size == sizeof(struct in_addr) )
-#endif
-        addr = iaddr;
-#if USE_IPV6
+        addr = i4addr;
     else
         addr = i6addr;
-#endif
-
 }
 
 /* SNMP checklists */

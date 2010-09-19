@@ -212,7 +212,7 @@ public:
     bool transparent() const;
     void transparent(bool const);
     bool reading() const;
-    void reading(bool const);
+    void stopReading(); ///< cancels comm_read if it is scheduled
 
     bool closing() const;
     void startClosing(const char *reason);
@@ -268,6 +268,7 @@ public:
     void startDechunkingRequest(HttpParser *hp);
     bool parseRequestChunks(HttpParser *hp);
     void finishDechunkingRequest(HttpParser *hp);
+    void cleanDechunkingRequest();
 
 private:
     int connReadWasError(comm_err_t flag, int size, int xerrno);
@@ -278,10 +279,10 @@ private:
 private:
     CBDATA_CLASS2(ConnStateData);
     bool transparent_;
-    bool reading_;
     bool closing_;
 
     bool switchedToHttps_;
+    AsyncCall::Pointer reader; ///< set when we are reading
     BodyPipe::Pointer bodyPipe; // set when we are reading request body
 };
 

@@ -1,3 +1,26 @@
+squid3 (3.1.6-1.1) unstable; urgency=high
+
+  * Non-maintainer upload by the security team
+  * Fix DoS due to wrong string handling (Closes: #596086)
+    Fixes: CVE-2010-3072
+
+ -- Steffen Joeris <white@debian.org>  Mon, 13 Sep 2010 17:07:51 +1000
+
+squid3 (3.1.6-1) unstable; urgency=low
+
+  * New upstream release
+
+  * debian/rules
+    - Removed now-default --enable-ipv6 option
+
+  * debian/control
+    - Bumped Standard-Version to 3.9.1, no change needed
+
+  * debian/patches/01-cf.data.pre
+    - Updated to match new upstream default IPv6 configuration
+
+ -- Luigi Gangitano <luigi@debian.org>  Mon, 09 Aug 2010 00:59:26 +0200
+
 squid3 (3.1.5-2) unstable; urgency=low
 
   * debian/control

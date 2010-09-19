@@ -1,3 +1,11 @@
+squid3 (3.1.6-1.1) unstable; urgency=high
+
+  * Non-maintainer upload by the security team
+  * Fix DoS due to wrong string handling (Closes: #596086)
+    Fixes: CVE-2010-3072
+
+ -- Steffen Joeris <white@debian.org>  Mon, 13 Sep 2010 17:07:51 +1000
+
 squid3 (3.1.6-1) unstable; urgency=low
 
   * New upstream release

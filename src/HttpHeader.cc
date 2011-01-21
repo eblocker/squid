@@ -92,6 +92,7 @@ static const HttpHeaderFieldAttrs HeadersAttrs[] = {
     {"Content-Range", HDR_CONTENT_RANGE, ftPContRange},
     {"Content-Type", HDR_CONTENT_TYPE, ftStr},
     {"Cookie", HDR_COOKIE, ftStr},
+    {"Cookie2", HDR_COOKIE2, ftStr},
     {"Date", HDR_DATE, ftDate_1123},
     {"ETag", HDR_ETAG, ftETag},
     {"Expires", HDR_EXPIRES, ftDate_1123},
@@ -121,9 +122,10 @@ static const HttpHeaderFieldAttrs HeadersAttrs[] = {
     {"Retry-After", HDR_RETRY_AFTER, ftStr},	/* for now (ftDate_1123 or ftInt!) */
     {"Server", HDR_SERVER, ftStr},
     {"Set-Cookie", HDR_SET_COOKIE, ftStr},
+    {"Set-Cookie2", HDR_SET_COOKIE2, ftStr},
     {"TE", HDR_TE, ftStr},
     {"Title", HDR_TITLE, ftStr},
-    {"Trailers", HDR_TRAILERS, ftStr},
+    {"Trailer", HDR_TRAILER, ftStr},
     {"Transfer-Encoding", HDR_TRANSFER_ENCODING, ftStr},
     {"Translate", HDR_TRANSLATE, ftStr},	/* for now. may need to crop */
     {"Unless-Modified-Since", HDR_UNLESS_MODIFIED_SINCE, ftStr},  /* for now ignore. may need to crop */
@@ -184,7 +186,7 @@ static http_hdr_type ListHeadersArr[] = {
     HDR_UPGRADE,
     HDR_VARY,
     HDR_VIA,
-    /* HDR_WARNING, */
+    HDR_WARNING,
     HDR_WWW_AUTHENTICATE,
     HDR_AUTHENTICATION_INFO,
     HDR_PROXY_AUTHENTICATION_INFO,
@@ -222,7 +224,7 @@ static http_hdr_type ReplyHeadersArr[] = {
     HDR_ACCEPT, HDR_ACCEPT_CHARSET, HDR_ACCEPT_ENCODING, HDR_ACCEPT_LANGUAGE,
     HDR_ACCEPT_RANGES, HDR_AGE,
     HDR_LOCATION, HDR_MAX_FORWARDS,
-    HDR_MIME_VERSION, HDR_PUBLIC, HDR_RETRY_AFTER, HDR_SERVER, HDR_SET_COOKIE,
+    HDR_MIME_VERSION, HDR_PUBLIC, HDR_RETRY_AFTER, HDR_SERVER, HDR_SET_COOKIE, HDR_SET_COOKIE2,
     HDR_VARY,
     HDR_WARNING, HDR_PROXY_CONNECTION, HDR_X_CACHE,
     HDR_X_CACHE_LOOKUP,
@@ -249,7 +251,7 @@ static http_hdr_type RequestHeadersArr[] = {
 static HttpHeaderMask HopByHopHeadersMask;
 static http_hdr_type HopByHopHeadersArr[] = {
     HDR_CONNECTION, HDR_KEEP_ALIVE, /*HDR_PROXY_AUTHENTICATE,*/ HDR_PROXY_AUTHORIZATION,
-    HDR_TE, HDR_TRAILERS, HDR_TRANSFER_ENCODING, HDR_UPGRADE, HDR_PROXY_CONNECTION
+    HDR_TE, HDR_TRAILER, HDR_TRANSFER_ENCODING, HDR_UPGRADE, HDR_PROXY_CONNECTION
 };
 
 /* header accounting */
@@ -645,6 +647,11 @@ HttpHeader::parse(const char *header_start, const char *header_end)
         }
 
         addEntry(e);
+    }
+
+    if (chunked()) {
+        // RFC 2616 section 4.4: ignore Content-Length with Transfer-Encoding
+        delById(HDR_CONTENT_LENGTH);
     }
 
     PROF_stop(HttpHeaderParse);
@@ -1181,6 +1188,14 @@ HttpHeader::putSc(HttpHdrSc *sc)
     /* cleanup */
     packerClean(&p);
     mb.clean();
+}
+
+void
+HttpHeader::putWarning(const int code, const char *const text)
+{
+    char buf[512];
+    snprintf(buf, sizeof(buf), "%i %s \"%s\"", code, visible_appname_string, text);
+    putStr(HDR_WARNING, buf);
 }
 
 /* add extension header (these fields are not parsed/analyzed/joined, etc.) */

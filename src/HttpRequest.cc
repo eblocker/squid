@@ -51,6 +51,8 @@ HttpRequest::HttpRequest() : HttpMsg(hoRequest)
 
 HttpRequest::HttpRequest(const HttpRequestMethod& aMethod, protocol_t aProtocol, const char *aUrlpath) : HttpMsg(hoRequest)
 {
+    static unsigned int id = 1;
+    debugs(93,7, HERE << "constructed, this=" << this << " id=" << ++id);
     init();
     initHTTP(aMethod, aProtocol, aUrlpath);
 }
@@ -58,6 +60,7 @@ HttpRequest::HttpRequest(const HttpRequestMethod& aMethod, protocol_t aProtocol,
 HttpRequest::~HttpRequest()
 {
     clean();
+    debugs(93,7, HERE << "destructed, this=" << this);
 }
 
 void
@@ -86,7 +89,6 @@ HttpRequest::init()
     ims = -1;
     imslen = 0;
     lastmod = -1;
-    max_forwards = -1;
     client_addr.SetEmpty();
     my_addr.SetEmpty();
     body_pipe = NULL;
@@ -96,6 +98,7 @@ HttpRequest::init()
     peer_login = NULL;		// not allocated/deallocated by this class
     peer_domain = NULL;		// not allocated/deallocated by this class
     vary_headers = NULL;
+    myportname = null_string;
     tag = null_string;
     extacl_user = null_string;
     extacl_passwd = null_string;
@@ -142,6 +145,8 @@ HttpRequest::clean()
 
     if (pinned_connection)
         cbdataReferenceDone(pinned_connection);
+
+    myportname.clean();
 
     tag.clean();
 
@@ -191,7 +196,6 @@ HttpRequest::clone() const
     // range handled in hdrCacheInit()
     copy->ims = ims;
     copy->imslen = imslen;
-    copy->max_forwards = max_forwards;
     copy->hier = hier; // Is it safe to copy? Should we?
 
     copy->errType = errType;
@@ -202,6 +206,7 @@ HttpRequest::clone() const
     copy->vary_headers = vary_headers ? xstrdup(vary_headers) : NULL;
     // XXX: what to do with copy->peer_domain?
 
+    copy->myportname = myportname;
     copy->tag = tag;
     copy->extacl_user = extacl_user;
     copy->extacl_passwd = extacl_passwd;
@@ -492,7 +497,7 @@ HttpRequest::expectingBody(const HttpRequestMethod& unused, int64_t& theSize) co
         expectBody = Config.onoff.request_entities ? true : false;
     else if (method == METHOD_PUT || method == METHOD_POST)
         expectBody = true;
-    else if (header.hasListMember(HDR_TRANSFER_ENCODING, "chunked", ','))
+    else if (header.chunked())
         expectBody = true;
     else if (content_length >= 0)
         expectBody = true;
@@ -500,7 +505,7 @@ HttpRequest::expectingBody(const HttpRequestMethod& unused, int64_t& theSize) co
         expectBody = false;
 
     if (expectBody) {
-        if (header.hasListMember(HDR_TRANSFER_ENCODING, "chunked", ','))
+        if (header.chunked())
             theSize = -1;
         else if (content_length >= 0)
             theSize = content_length;
@@ -563,6 +568,14 @@ HttpRequest::cacheable() const
         return false;
 
     return true;
+}
+
+bool
+HttpRequest::conditional() const
+{
+    return flags.ims ||
+           header.has(HDR_IF_MATCH) ||
+           header.has(HDR_IF_NONE_MATCH);
 }
 
 bool HttpRequest::inheritProperties(const HttpMsg *aMsg)

@@ -63,8 +63,10 @@ private:
 
     static void logReplyStatus(int tries, http_status status);
     void updateHierarchyInfo();
+    void doneWithRetries();
     void completed();
     void retryOrBail();
+    ErrorState *makeConnectingError(const err_type type) const;
     static void RegisterWithCacheManager(void);
 
 #if WIP_FWD_LOG

@@ -434,17 +434,11 @@ main(int argc, char *argv[])
             strcat(msg, buf);
         }
 
-        /* HTTP/1.0 may need keep-alive */
-        if (strcmp(version, "1.0") == 0) {
-            if (keep_alive) {
-                if (strchr(url, ':')) {
-                    snprintf(buf, BUFSIZ, "Proxy-Connection: keep-alive\r\n");
-                    strcat(msg, buf);
-                } else
-                    strcat(msg, "Connection: keep-alive\r\n");
-            }
-        }
-        /* HTTP/1.1 may need close */
+        /* HTTP/1.0 may need keep-alive explicitly */
+        if (strcmp(version, "1.0") == 0 && keep_alive)
+            strcat(msg, "Connection: keep-alive\r\n");
+
+        /* HTTP/1.1 may need close explicitly */
         if (!keep_alive)
             strcat(msg, "Connection: close\r\n");
 
@@ -453,7 +447,7 @@ main(int argc, char *argv[])
     }
 
     if (opt_verbose)
-        fprintf(stderr, "Request: '%s'\n", msg);
+        fprintf(stderr, "Request:'%s'\n", msg);
 
     if (ping) {
 #if HAVE_SIGACTION
@@ -480,6 +474,9 @@ main(int argc, char *argv[])
     for (i = 0; loops == 0 || i < loops; i++) {
         int fsize = 0;
         struct addrinfo *AI = NULL;
+
+        if (opt_verbose)
+            fprintf(stderr, "Resolving... %s\n", hostname);
 
         /* Connect to the server */
 
@@ -518,6 +515,11 @@ main(int argc, char *argv[])
 
         iaddr.SetPort(port);
 
+        if (opt_verbose) {
+            char ipbuf[MAX_IPSTRLEN];
+            fprintf(stderr, "Connecting... %s(%s)\n", hostname, iaddr.NtoA(ipbuf, MAX_IPSTRLEN));
+        }
+
         if (client_comm_connect(conn, iaddr, ping ? &tv1 : NULL) < 0) {
             char hostnameBuf[MAX_IPSTRLEN];
             iaddr.ToURL(hostnameBuf, MAX_IPSTRLEN);
@@ -529,6 +531,10 @@ main(int argc, char *argv[])
                 perror(tbuf);
             }
             exit(1);
+        }
+        if (opt_verbose) {
+            char ipbuf[MAX_IPSTRLEN];
+            fprintf(stderr, "Connected to: %s (%s)\n", hostname, iaddr.NtoA(ipbuf, MAX_IPSTRLEN));
         }
 
         /* Send the HTTP request */

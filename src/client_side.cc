@@ -207,11 +207,12 @@ ConnStateData::readSomeData()
 
     debugs(33, 4, "clientReadSomeData: FD " << fd << ": reading request...");
 
-    makeSpaceAvailable();
+    if (!maybeMakeSpaceAvailable())
+        return;
 
     typedef CommCbMemFunT<ConnStateData, CommIoCbParams> Dialer;
-    reader = asyncCall(33, 5, "ConnStateData::clientReadRequest",
-                       Dialer(this, &ConnStateData::clientReadRequest));
+    reader = JobCallback(33, 5,
+                         Dialer, this, ConnStateData::clientReadRequest);
     comm_read(fd, in.addressToReadInto(), getAvailableBufferLength(), reader);
 }
 
@@ -575,9 +576,9 @@ ClientHttpRequest::logRequest()
         }
 
         delete checklist;
-
-        accessLogFreeMemory(&al);
     }
+
+    accessLogFreeMemory(&al);
 }
 
 void
@@ -704,10 +705,7 @@ clientSetKeepaliveFlag(ClientHttpRequest * http)
     debugs(33, 3, "clientSetKeepaliveFlag: method = " <<
            RequestMethodStr(request->method));
 
-    /* We are HTTP/1.0 facing clients still */
-    HttpVersion http_ver(1,0);
-
-    if (httpMsgIsPersistent(http_ver, req_hdr))
+    if (httpMsgIsPersistent(request->http_ver, req_hdr))
         request->flags.proxy_keepalive = 1;
 }
 
@@ -1078,7 +1076,7 @@ clientIfRangeMatch(ClientHttpRequest * http, HttpReply * rep)
             return 0;		/* must use strong validator for sub-range requests */
         }
 
-        return etagIsEqual(&rep_tag, &spec.tag);
+        return etagIsStrongEqual(rep_tag, spec.tag);
     }
 
     /* got modification time? */
@@ -1164,8 +1162,6 @@ ClientSocketContext::buildRangeHeader(HttpReply * rep)
         debugs(33, 3, "clientBuildRangeHeader: range spec count: " <<
                spec_count << " virgin clen: " << rep->content_length);
         assert(spec_count > 0);
-        /* ETags should not be returned with Partial Content replies? */
-        hdr->delById(HDR_ETAG);
         /* append appropriate header(s) */
 
         if (spec_count == 1) {
@@ -1361,8 +1357,8 @@ ConnStateData::readNextRequest()
      * Set the timeout BEFORE calling clientReadRequest().
      */
     typedef CommCbMemFunT<ConnStateData, CommTimeoutCbParams> TimeoutDialer;
-    AsyncCall::Pointer timeoutCall =  asyncCall(33, 5, "ConnStateData::requestTimeout",
-                                      TimeoutDialer(this, &ConnStateData::requestTimeout));
+    AsyncCall::Pointer timeoutCall = JobCallback(33, 5,
+                                     TimeoutDialer, this, ConnStateData::requestTimeout);
     commSetTimeout(fd, Config.Timeout.persistent_request, timeoutCall);
 
     readSomeData();
@@ -1801,7 +1797,7 @@ prepareAcceleratedURL(ConnStateData * conn, ClientHttpRequest *http, char *url, 
     int vhost = conn->port->vhost;
     int vport = conn->port->vport;
     char *host;
-    char ntoabuf[MAX_IPSTRLEN];
+    char ipbuf[MAX_IPSTRLEN];
 
     http->flags.accel = 1;
 
@@ -1858,19 +1854,19 @@ prepareAcceleratedURL(ConnStateData * conn, ClientHttpRequest *http, char *url, 
         /* Put the local socket IP address as the hostname.  */
         int url_sz = strlen(url) + 32 + Config.appendDomainLen;
         http->uri = (char *)xcalloc(url_sz, 1);
+        http->getConn()->me.ToHostname(ipbuf,MAX_IPSTRLEN);
         snprintf(http->uri, url_sz, "%s://%s:%d%s",
                  http->getConn()->port->protocol,
-                 http->getConn()->me.NtoA(ntoabuf,MAX_IPSTRLEN),
-                 http->getConn()->me.GetPort(), url);
+                 ipbuf, http->getConn()->me.GetPort(), url);
         debugs(33, 5, "ACCEL VPORT REWRITE: '" << http->uri << "'");
     } else if (vport > 0) {
         /* Put the local socket IP address as the hostname, but static port  */
         int url_sz = strlen(url) + 32 + Config.appendDomainLen;
         http->uri = (char *)xcalloc(url_sz, 1);
+        http->getConn()->me.ToHostname(ipbuf,MAX_IPSTRLEN);
         snprintf(http->uri, url_sz, "%s://%s:%d%s",
                  http->getConn()->port->protocol,
-                 http->getConn()->me.NtoA(ntoabuf,MAX_IPSTRLEN),
-                 vport, url);
+                 ipbuf, vport, url);
         debugs(33, 5, "ACCEL VPORT REWRITE: '" << http->uri << "'");
     }
 }
@@ -1879,7 +1875,7 @@ static void
 prepareTransparentURL(ConnStateData * conn, ClientHttpRequest *http, char *url, const char *req_hdr)
 {
     char *host;
-    char ntoabuf[MAX_IPSTRLEN];
+    char ipbuf[MAX_IPSTRLEN];
 
     if (*url != '/')
         return; /* already in good shape */
@@ -1897,10 +1893,10 @@ prepareTransparentURL(ConnStateData * conn, ClientHttpRequest *http, char *url, 
         /* Put the local socket IP address as the hostname.  */
         int url_sz = strlen(url) + 32 + Config.appendDomainLen;
         http->uri = (char *)xcalloc(url_sz, 1);
+        http->getConn()->me.ToHostname(ipbuf,MAX_IPSTRLEN),
         snprintf(http->uri, url_sz, "%s://%s:%d%s",
                  http->getConn()->port->protocol,
-                 http->getConn()->me.NtoA(ntoabuf,MAX_IPSTRLEN),
-                 http->getConn()->me.GetPort(), url);
+                 ipbuf, http->getConn()->me.GetPort(), url);
         debugs(33, 5, "TRANSPARENT REWRITE: '" << http->uri << "'");
     }
 }
@@ -1913,8 +1909,7 @@ isChunkedRequest(const HttpParser *hp)
     if (!request.parseHeader(HttpParserHdrBuf(hp), HttpParserHdrSz(hp)))
         return false;
 
-    return request.header.has(HDR_TRANSFER_ENCODING) &&
-           request.header.hasListMember(HDR_TRANSFER_ENCODING, "chunked", ',');
+    return request.header.chunked();
 }
 
 
@@ -2159,13 +2154,22 @@ ConnStateData::getAvailableBufferLength() const
     return result;
 }
 
-void
-ConnStateData::makeSpaceAvailable()
+bool
+ConnStateData::maybeMakeSpaceAvailable()
 {
     if (getAvailableBufferLength() < 2) {
-        in.buf = (char *)memReallocBuf(in.buf, in.allocatedSize * 2, &in.allocatedSize);
+        size_t newSize;
+        if (in.allocatedSize >= Config.maxRequestBufferSize) {
+            debugs(33, 4, "request buffer full: client_request_buffer_max_size=" << Config.maxRequestBufferSize);
+            return false;
+        }
+        if ((newSize=in.allocatedSize * 2) > Config.maxRequestBufferSize) {
+            newSize=Config.maxRequestBufferSize;
+        }
+        in.buf = (char *)memReallocBuf(in.buf, newSize, &in.allocatedSize);
         debugs(33, 2, "growing request buffer: notYetUsed=" << in.notYetUsed << " size=" << in.allocatedSize);
     }
+    return true;
 }
 
 void
@@ -2316,6 +2320,7 @@ clientProcessRequest(ConnStateData *conn, HttpParser *hp, ClientSocketContext *c
     bool notedUseOfBuffer = false;
     bool tePresent = false;
     bool deChunked = false;
+    bool mustReplyToOptions = false;
     bool unsupportedTe = false;
 
     /* We have an initial client stream in place should it be needed */
@@ -2416,6 +2421,7 @@ clientProcessRequest(ConnStateData *conn, HttpParser *hp, ClientSocketContext *c
     request->indirect_client_addr = conn->peer;
 #endif /* FOLLOW_X_FORWARDED_FOR */
     request->my_addr = conn->me;
+    request->myportname = conn->port->name;
     request->http_ver = http_ver;
 
     tePresent = request->header.has(HDR_TRANSFER_ENCODING);
@@ -2428,8 +2434,10 @@ clientProcessRequest(ConnStateData *conn, HttpParser *hp, ClientSocketContext *c
     } else
         conn->cleanDechunkingRequest();
 
+    mustReplyToOptions = (method == METHOD_OPTIONS) &&
+                         (request->header.getInt64(HDR_MAX_FORWARDS) == 0);
     unsupportedTe = tePresent && !deChunked;
-    if (!urlCheckRequest(request) || unsupportedTe) {
+    if (!urlCheckRequest(request) || mustReplyToOptions || unsupportedTe) {
         clientStreamNode *node = context->getClientReplyContext();
         clientReplyContext *repContext = dynamic_cast<clientReplyContext *>(node->data.getRaw());
         assert (repContext);
@@ -2780,7 +2788,7 @@ ConnStateData::handleReadData(char *buf, size_t size)
  * called when new request body data has been buffered in in.buf
  * may close the connection if we were closing and piped everything out
  */
-void
+bool
 ConnStateData::handleRequestBodyData()
 {
     assert(bodyPipe != NULL);
@@ -2866,14 +2874,19 @@ ConnStateData::handleRequestBodyData()
              * because mayNeedMoreData is true if request size is not known.
              */
             comm_close(fd);
+            return false;
         }
     }
+    return true;
 }
 
 void
 ConnStateData::noteMoreBodySpaceAvailable(BodyPipe::Pointer )
 {
-    handleRequestBodyData();
+    if (!handleRequestBodyData())
+        return;
+
+    readSomeData();
 }
 
 void
@@ -2931,8 +2944,8 @@ ConnStateData::requestTimeout(const CommTimeoutCbParams &io)
          * if we don't close() here, we still need a timeout handler!
          */
         typedef CommCbMemFunT<ConnStateData, CommTimeoutCbParams> TimeoutDialer;
-        AsyncCall::Pointer timeoutCall =  asyncCall(33, 5, "ConnStateData::requestTimeout",
-                                          TimeoutDialer(this,&ConnStateData::requestTimeout));
+        AsyncCall::Pointer timeoutCall =  JobCallback(33, 5,
+                                          TimeoutDialer, this, ConnStateData::requestTimeout);
         commSetTimeout(io.fd, 30, timeoutCall);
 
         /*
@@ -3058,16 +3071,16 @@ httpAccept(int sock, int newfd, ConnectionDetail *details,
     connState = connStateCreate(&details->peer, &details->me, newfd, s);
 
     typedef CommCbMemFunT<ConnStateData, CommCloseCbParams> Dialer;
-    AsyncCall::Pointer call = asyncCall(33, 5, "ConnStateData::connStateClosed",
-                                        Dialer(connState, &ConnStateData::connStateClosed));
+    AsyncCall::Pointer call = JobCallback(33, 5,
+                                          Dialer, connState, ConnStateData::connStateClosed);
     comm_add_close_handler(newfd, call);
 
     if (Config.onoff.log_fqdn)
         fqdncache_gethostbyaddr(details->peer, FQDN_LOOKUP_IF_MISS);
 
     typedef CommCbMemFunT<ConnStateData, CommTimeoutCbParams> TimeoutDialer;
-    AsyncCall::Pointer timeoutCall =  asyncCall(33, 5, "ConnStateData::requestTimeout",
-                                      TimeoutDialer(connState,&ConnStateData::requestTimeout));
+    AsyncCall::Pointer timeoutCall =  JobCallback(33, 5,
+                                      TimeoutDialer, connState, ConnStateData::requestTimeout);
     commSetTimeout(newfd, Config.Timeout.read, timeoutCall);
 
 #if USE_IDENT
@@ -3269,16 +3282,16 @@ httpsAccept(int sock, int newfd, ConnectionDetail *details,
     ConnStateData *connState = connStateCreate(details->peer, details->me,
                                newfd, &s->http);
     typedef CommCbMemFunT<ConnStateData, CommCloseCbParams> Dialer;
-    AsyncCall::Pointer call = asyncCall(33, 5, "ConnStateData::connStateClosed",
-                                        Dialer(connState, &ConnStateData::connStateClosed));
+    AsyncCall::Pointer call = JobCallback(33, 5,
+                                          Dialer, connState, ConnStateData::connStateClosed);
     comm_add_close_handler(newfd, call);
 
     if (Config.onoff.log_fqdn)
         fqdncache_gethostbyaddr(details->peer, FQDN_LOOKUP_IF_MISS);
 
     typedef CommCbMemFunT<ConnStateData, CommTimeoutCbParams> TimeoutDialer;
-    AsyncCall::Pointer timeoutCall =  asyncCall(33, 5, "ConnStateData::requestTimeout",
-                                      TimeoutDialer(connState,&ConnStateData::requestTimeout));
+    AsyncCall::Pointer timeoutCall =  JobCallback(33, 5,
+                                      TimeoutDialer, connState, ConnStateData::requestTimeout);
     commSetTimeout(newfd, Config.Timeout.request, timeoutCall);
 
 #if USE_IDENT
@@ -3801,8 +3814,8 @@ void ConnStateData::pinConnection(int pinning_fd, HttpRequest *request, struct p
     fd_note(pinning_fd, desc);
 
     typedef CommCbMemFunT<ConnStateData, CommCloseCbParams> Dialer;
-    pinning.closeHandler = asyncCall(33, 5, "ConnStateData::clientPinnedConnectionClosed",
-                                     Dialer(this, &ConnStateData::clientPinnedConnectionClosed));
+    pinning.closeHandler = JobCallback(33, 5,
+                                       Dialer, this, ConnStateData::clientPinnedConnectionClosed);
     comm_add_close_handler(pinning_fd, pinning.closeHandler);
 
 }

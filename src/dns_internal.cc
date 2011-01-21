@@ -43,7 +43,7 @@
 #include "fde.h"
 #include "ip/tools.h"
 #include "MemBuf.h"
-
+#include "util.h"
 #include "wordlist.h"
 
 #if HAVE_ARPA_NAMESER_H
@@ -201,8 +201,13 @@ idnsAddNameserver(const char *buf)
 
     if (A.IsAnyAddr()) {
         debugs(78, 0, "WARNING: Squid does not accept " << A << " in DNS server specifications.");
-        A = "127.0.0.1";
+        A.SetLocalhost();
         debugs(78, 0, "Will be using " << A << " instead, assuming you meant that DNS is running on the same machine");
+    }
+
+    if (!Ip::EnableIpv6 && !A.SetIPv4()) {
+        debugs(78, DBG_IMPORTANT, "WARNING: IPv6 is disabled. Discarding " << A << " in DNS server specifications.");
+        return;
     }
 
     if (nns == nns_alloc) {
@@ -253,6 +258,7 @@ idnsAddPathComponent(const char *buf)
 
     assert(npc < npc_alloc);
     strcpy(searchpath[npc].domain, buf);
+    Tolower(searchpath[npc].domain);
     debugs(78, 3, "idnsAddPathComponent: Added domain #" << npc << ": " << searchpath[npc].domain);
     npc++;
 }
@@ -700,13 +706,15 @@ idnsDoSendQueryVC(nsvc *vc)
 }
 
 static void
-idnsInitVCConnected(int fd, const DnsLookupDetails &, comm_err_t status, int xerrno, void *data)
+idnsInitVCConnected(int fd, const DnsLookupDetails &details, comm_err_t status, int xerrno, void *data)
 {
     nsvc * vc = (nsvc *)data;
 
     if (status != COMM_OK) {
-        char buf[MAX_IPSTRLEN];
-        debugs(78, 1, "idnsInitVCConnected: Failed to connect to nameserver " << nameservers[vc->ns].S.NtoA(buf,MAX_IPSTRLEN) << " using TCP!");
+        char buf[MAX_IPSTRLEN] = "";
+        if (vc->ns < nns)
+            nameservers[vc->ns].S.NtoA(buf,MAX_IPSTRLEN);
+        debugs(78, 1, HERE << "Failed to connect to nameserver " << buf << " using TCP: " << details);
         comm_close(fd);
         return;
     }
@@ -722,7 +730,8 @@ idnsVCClosed(int fd, void *data)
     nsvc * vc = (nsvc *)data;
     delete vc->queue;
     delete vc->msg;
-    nameservers[vc->ns].vc = NULL;
+    if (vc->ns < nns) // XXX: idnsShutdown may have freed nameservers[]
+        nameservers[vc->ns].vc = NULL;
     cbdataFree(vc);
 }
 
@@ -732,6 +741,7 @@ idnsInitVC(int ns)
     char buf[MAX_IPSTRLEN];
 
     nsvc *vc = cbdataAlloc(nsvc);
+    assert(ns < nns);
     nameservers[ns].vc = vc;
     vc->ns = ns;
 
@@ -741,6 +751,12 @@ idnsInitVC(int ns)
         addr = Config.Addrs.udp_outgoing;
     else
         addr = Config.Addrs.udp_incoming;
+
+    if (nameservers[ns].S.IsIPv4() && !addr.SetIPv4()) {
+        debugs(31, DBG_CRITICAL, "ERROR: Cannot contact DNS nameserver " << nameservers[ns].S << " from " << addr);
+        addr.SetAnyAddr();
+        addr.SetIPv4();
+    }
 
     vc->queue = new MemBuf;
 
@@ -765,6 +781,7 @@ idnsInitVC(int ns)
 static void
 idnsSendQueryVC(idns_query * q, int ns)
 {
+    assert(ns < nns);
     if (nameservers[ns].vc == NULL)
         idnsInitVC(ns);
 
@@ -817,7 +834,7 @@ idnsSendQuery(idns_query * q)
         } else {
             if (DnsSocketB >= 0 && nameservers[ns].S.IsIPv6())
                 y = comm_udp_sendto(DnsSocketB, nameservers[ns].S, q->buf, q->sz);
-            else
+            else if (DnsSocketA)
                 x = comm_udp_sendto(DnsSocketA, nameservers[ns].S, q->buf, q->sz);
         }
 
@@ -832,14 +849,11 @@ idnsSendQuery(idns_query * q)
 
     } while ( (x<0 && y<0) && q->nsends % nns != 0);
 
-    if (y >= 0) {
+    if (y > 0) {
         fd_bytes(DnsSocketB, y, FD_WRITE);
-        commSetSelect(DnsSocketB, COMM_SELECT_READ, idnsRead, NULL, 0);
     }
-
-    if (x >= 0) {
+    if (x > 0) {
         fd_bytes(DnsSocketA, x, FD_WRITE);
-        commSetSelect(DnsSocketA, COMM_SELECT_READ, idnsRead, NULL, 0);
     }
 
     nameservers[ns].nqueries++;
@@ -1097,6 +1111,7 @@ idnsGrokReply(const char *buf, size_t sz)
         safe_free(message->answer);
 
         message->answer = result;
+        message->ancount += q->initial_AAAA.count;
         n += q->initial_AAAA.count;
         q->initial_AAAA.count=0;
     } else if (q->initial_AAAA.count > 0 && n <= 0) {
@@ -1125,6 +1140,10 @@ idnsRead(int fd, void *data)
     IpAddress from;
 
     debugs(78, 3, "idnsRead: starting with FD " << fd);
+
+    // Always keep reading. This stops (or at least makes harder) several
+    // attacks on the DNS client.
+    commSetSelect(fd, COMM_SELECT_READ, idnsRead, NULL, 0);
 
     /* BUG (UNRESOLVED)
      *  two code lines after returning from comm_udprecvfrom()
@@ -1172,7 +1191,14 @@ idnsRead(int fd, void *data)
 
         if (ns >= 0) {
             nameservers[ns].nreplies++;
-        } else if (Config.onoff.ignore_unknown_nameservers) {
+        }
+
+        // Before unknown_nameservers check to avoid flooding cache.log on attacks,
+        // but after the ++ above to keep statistics right.
+        if (!lru_list.head)
+            continue; // Don't process replies if there is no pending query.
+
+        if (ns < 0 && Config.onoff.ignore_unknown_nameservers) {
             static time_t last_warning = 0;
 
             if (squid_curtime - last_warning > 60) {
@@ -1185,10 +1211,6 @@ idnsRead(int fd, void *data)
         }
 
         idnsGrokReply(rbuf, len);
-    }
-
-    if (lru_list.head) {
-        commSetSelect(fd, COMM_SELECT_READ, idnsRead, NULL, 0);
     }
 }
 
@@ -1257,13 +1279,14 @@ idnsReadVC(int fd, char *buf, size_t len, comm_err_t flag, int xerrno, void *dat
         return;
     }
 
-    vc->msg->size += len;	// XXX should not access -> size directly
+    vc->msg->size += len;       // XXX should not access -> size directly
 
     if (vc->msg->contentSize() < vc->msglen) {
         comm_read(fd, buf + len, vc->msglen - vc->msg->contentSize(), idnsReadVC, vc);
         return;
     }
 
+    assert(vc->ns < nns);
     debugs(78, 3, "idnsReadVC: FD " << fd << ": received " <<
            (int) vc->msg->contentSize() << " bytes via tcp from " <<
            nameservers[vc->ns].S << ".");
@@ -1376,10 +1399,12 @@ idnsInit(void)
         if (DnsSocketB >= 0) {
             port = comm_local_port(DnsSocketB);
             debugs(78, 1, "DNS Socket created at " << addrB << ", FD " << DnsSocketB);
+            commSetSelect(DnsSocketB, COMM_SELECT_READ, idnsRead, NULL, 0);
         }
         if (DnsSocketA >= 0) {
             port = comm_local_port(DnsSocketA);
             debugs(78, 1, "DNS Socket created at " << addrA << ", FD " << DnsSocketA);
+            commSetSelect(DnsSocketA, COMM_SELECT_READ, idnsRead, NULL, 0);
         }
     }
 
@@ -1445,6 +1470,7 @@ idnsShutdown(void)
         }
     }
 
+    // XXX: vcs are not closed/freed yet and may try to access nameservers[]
     idnsFreeNameservers();
     idnsFreeSearchpath();
 }

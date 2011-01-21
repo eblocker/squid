@@ -23,8 +23,9 @@ Adaptation::AccessCheck::Start(Method method, VectPoint vp,
 
     if (Config::Enabled) {
         // the new check will call the callback and delete self, eventually
-        return AsyncStart(new AccessCheck(
-                              ServiceFilter(method, vp, req, rep), cb, cbdata));
+        AsyncJob::Start(new AccessCheck( // we do not store so not a CbcPointer
+                            ServiceFilter(method, vp, req, rep), cb, cbdata));
+        return true;
     }
 
     debugs(83, 3, HERE << "adaptation off, skipping");
@@ -123,7 +124,15 @@ Adaptation::AccessCheck::AccessCheckCallbackWrapper(int answer, void *data)
      * we should be kicking off an authentication before continuing
      * with this request. see bug 2400 for details.
      */
-    ac->noteAnswer(answer==ACCESS_ALLOWED);
+
+    // convert to async call to get async call protections and features
+    typedef UnaryMemFunT<AccessCheck, int> MyDialer;
+    AsyncCall::Pointer call =
+        asyncCall(93,7, "Adaptation::AccessCheck::noteAnswer",
+                  MyDialer(ac, &Adaptation::AccessCheck::noteAnswer,
+                           answer==ACCESS_ALLOWED));
+    ScheduleCallHere(call);
+
 }
 
 /// process the results of the ACL check

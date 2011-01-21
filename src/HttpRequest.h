@@ -65,6 +65,8 @@ class HttpRequest: public HttpMsg
 {
 
 public:
+    typedef HttpMsgPointerT<HttpRequest> Pointer;
+
     MEMPROXY_CLASS(HttpRequest);
     HttpRequest();
     HttpRequest(const HttpRequestMethod& aMethod, protocol_t aProtocol, const char *aUrlpath);
@@ -82,6 +84,8 @@ public:
 
     /* are responses to this request potentially cachable */
     bool cacheable() const;
+
+    bool conditional() const; ///< has at least one recognized If-* header
 
     /* Now that we care what host contains it is better off being protected. */
     /* HACK: These two methods are only inline to get around Makefile dependancies */
@@ -161,8 +165,6 @@ public:
 
     int imslen;
 
-    int64_t max_forwards;
-
     IpAddress client_addr;
 
 #if FOLLOW_X_FORWARDED_FOR
@@ -184,6 +186,8 @@ public:
     const char *vary_headers;	/* Used when varying entities are detected. Changes how the store key is calculated */
 
     char *peer_domain;		/* Configured peer forceddomain */
+
+    String myportname; // Internal tag name= value from port this requests arrived in.
 
     String tag;			/* Internal tag for this request */
 

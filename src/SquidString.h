@@ -44,7 +44,7 @@
 /* squid string placeholder (for printf) */
 #ifndef SQUIDSTRINGPH
 #define SQUIDSTRINGPH "%.*s"
-#define SQUIDSTRINGPRINT(s) s.psize(),s.rawBuf()
+#define SQUIDSTRINGPRINT(s) (s).psize(),(s).rawBuf()
 #endif /* SQUIDSTRINGPH */
 
 
@@ -166,6 +166,8 @@ private:
     void allocAndFill(const char *str, int len);
     void allocBuffer(size_type sz);
     void setBuffer(char *buf, size_type sz);
+
+    _SQUID_INLINE_ bool nilCmp(bool, bool, int &) const;
 
     /* never reference these directly! */
     size_type size_; /* buffer size; 64K limit */

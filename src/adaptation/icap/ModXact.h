@@ -136,7 +136,8 @@ class ModXact: public Xaction, public BodyProducer, public BodyConsumer
 {
 
 public:
-    ModXact(Adaptation::Initiator *anInitiator, HttpMsg *virginHeader, HttpRequest *virginCause, ServiceRep::Pointer &s);
+    ModXact(HttpMsg *virginHeader, HttpRequest *virginCause, ServiceRep::Pointer &s);
+    virtual ~ModXact();
 
     // BodyProducer methods
     virtual void noteMoreBodySpaceAvailable(BodyPipe::Pointer);
@@ -161,7 +162,6 @@ public:
     InOut virgin;
     InOut adapted;
 
-protected:
     // bypasses exceptions if needed and possible
     virtual void callException(const std::exception &e);
 
@@ -184,6 +184,7 @@ private:
     void writePreviewBody();
     void writePrimeBody();
     void writeSomeBody(const char *label, size_t size);
+    void decideWritingAfterPreview(const char *previewKind);
 
     void startReading();
     void readMore();
@@ -322,7 +323,7 @@ private:
 class ModXactLauncher: public Launcher
 {
 public:
-    ModXactLauncher(Adaptation::Initiator *anInitiator, HttpMsg *virginHeader, HttpRequest *virginCause, Adaptation::ServicePointer s);
+    ModXactLauncher(HttpMsg *virginHeader, HttpRequest *virginCause, Adaptation::ServicePointer s);
 
 protected:
     virtual Xaction *createXaction();

@@ -13,6 +13,7 @@
 #include "pconn.h"
 #include "HttpRequest.h"
 #include "HttpReply.h"
+#include "ip/tools.h"
 #include "acl/FilledChecklist.h"
 #include "icap_log.h"
 #include "fde.h"
@@ -23,9 +24,10 @@ static PconnPool *icapPconnPool = new PconnPool("ICAP Servers");
 
 //CBDATA_NAMESPACED_CLASS_INIT(Adaptation::Icap, Xaction);
 
-Adaptation::Icap::Xaction::Xaction(const char *aTypeName, Adaptation::Initiator *anInitiator, Adaptation::Icap::ServiceRep::Pointer &aService):
+Adaptation::Icap::Xaction::Xaction(const char *aTypeName,
+                                   Adaptation::Icap::ServiceRep::Pointer &aService):
         AsyncJob(aTypeName),
-        Adaptation::Initiate(aTypeName, anInitiator),
+        Adaptation::Initiate(aTypeName),
         icapRequest(NULL),
         icapReply(NULL),
         attempts(0),
@@ -50,7 +52,6 @@ Adaptation::Icap::Xaction::~Xaction()
     debugs(93,3, typeName << " destructed, this=" << this <<
            " [icapx" << id << ']'); // we should not call virtual status() here
     HTTPMSGUNLOCK(icapRequest);
-    HTTPMSGUNLOCK(icapReply);
 }
 
 Adaptation::Icap::ServiceRep &
@@ -104,7 +105,8 @@ void Adaptation::Icap::Xaction::openConnection()
         // fake the connect callback
         // TODO: can we sync call Adaptation::Icap::Xaction::noteCommConnected here instead?
         typedef CommCbMemFunT<Adaptation::Icap::Xaction, CommConnectCbParams> Dialer;
-        Dialer dialer(this, &Adaptation::Icap::Xaction::noteCommConnected);
+        CbcPointer<Xaction> self(this);
+        Dialer dialer(self, &Adaptation::Icap::Xaction::noteCommConnected);
         dialer.params.fd = connection;
         dialer.params.flag = COMM_OK;
         // fake other parameters by copying from the existing connection
@@ -116,6 +118,15 @@ void Adaptation::Icap::Xaction::openConnection()
     disableRetries(); // we only retry pconn failures
 
     IpAddress outgoing;
+    if (!Ip::EnableIpv6 && !outgoing.SetIPv4()) {
+        debugs(31, DBG_CRITICAL, "ERROR: IPv6 is disabled. " << outgoing << " is not an IPv4 address.");
+        dieOnConnectionFailure(); // throws
+    }
+    /* split-stack for now requires default IPv4-only socket */
+    if (Ip::EnableIpv6&IPV6_SPECIAL_SPLITSTACK && outgoing.IsAnyAddr() && !s.cfg().ipv6) {
+        outgoing.SetIPv4();
+    }
+
     connection = comm_open(SOCK_STREAM, 0, outgoing,
                            COMM_NONBLOCKING, s.cfg().uri.termedBuf());
 
@@ -126,20 +137,19 @@ void Adaptation::Icap::Xaction::openConnection()
 
     // TODO: service bypass status may differ from that of a transaction
     typedef CommCbMemFunT<Adaptation::Icap::Xaction, CommTimeoutCbParams> TimeoutDialer;
-    AsyncCall::Pointer timeoutCall =  asyncCall(93, 5, "Adaptation::Icap::Xaction::noteCommTimedout",
-                                      TimeoutDialer(this,&Adaptation::Icap::Xaction::noteCommTimedout));
-
+    AsyncCall::Pointer timeoutCall = JobCallback(93, 5,
+                                     TimeoutDialer, this, Adaptation::Icap::Xaction::noteCommTimedout);
     commSetTimeout(connection, TheConfig.connect_timeout(
                        service().cfg().bypass), timeoutCall);
 
     typedef CommCbMemFunT<Adaptation::Icap::Xaction, CommCloseCbParams> CloseDialer;
-    closer =  asyncCall(93, 5, "Adaptation::Icap::Xaction::noteCommClosed",
-                        CloseDialer(this,&Adaptation::Icap::Xaction::noteCommClosed));
+    closer = JobCallback(93, 5,
+                         CloseDialer, this, Adaptation::Icap::Xaction::noteCommClosed);
     comm_add_close_handler(connection, closer);
 
     typedef CommCbMemFunT<Adaptation::Icap::Xaction, CommConnectCbParams> ConnectDialer;
-    connector = asyncCall(93,3, "Adaptation::Icap::Xaction::noteCommConnected",
-                          ConnectDialer(this, &Adaptation::Icap::Xaction::noteCommConnected));
+    connector = JobCallback(93,3,
+                            ConnectDialer, this, Adaptation::Icap::Xaction::noteCommConnected);
     commConnectStart(connection, s.cfg().host.termedBuf(), s.cfg().port, connector);
 }
 
@@ -223,8 +233,8 @@ void Adaptation::Icap::Xaction::scheduleWrite(MemBuf &buf)
 {
     // comm module will free the buffer
     typedef CommCbMemFunT<Adaptation::Icap::Xaction, CommIoCbParams> Dialer;
-    writer = asyncCall(93,3, "Adaptation::Icap::Xaction::noteCommWrote",
-                       Dialer(this, &Adaptation::Icap::Xaction::noteCommWrote));
+    writer = JobCallback(93,3,
+                         Dialer, this, Adaptation::Icap::Xaction::noteCommWrote);
 
     comm_write_mbuf(connection, &buf, writer);
     updateTimeout();
@@ -259,9 +269,10 @@ void Adaptation::Icap::Xaction::handleCommTimedout()
            theService->cfg().methodStr() << " " <<
            theService->cfg().uri << status());
     reuseConnection = false;
-    service().noteFailure();
 
-    throw TexcHere(connector != NULL ?
+    const bool whileConnecting = connector != NULL;
+    closeConnection(); // so that late Comm callbacks do not disturb bypass
+    throw TexcHere(whileConnecting ?
                    "timed out while connecting to the ICAP service" :
                    "timed out while talking to the ICAP service");
 }
@@ -306,8 +317,8 @@ void Adaptation::Icap::Xaction::updateTimeout()
         // XXX: why does Config.Timeout lacks a write timeout?
         // TODO: service bypass status may differ from that of a transaction
         typedef CommCbMemFunT<Adaptation::Icap::Xaction, CommTimeoutCbParams> TimeoutDialer;
-        AsyncCall::Pointer call =  asyncCall(93, 5, "Adaptation::Icap::Xaction::noteCommTimedout",
-                                             TimeoutDialer(this,&Adaptation::Icap::Xaction::noteCommTimedout));
+        AsyncCall::Pointer call = JobCallback(93,5,
+                                              TimeoutDialer, this, Adaptation::Icap::Xaction::noteCommTimedout);
 
         commSetTimeout(connection,
                        TheConfig.io_timeout(service().cfg().bypass), call);
@@ -330,8 +341,8 @@ void Adaptation::Icap::Xaction::scheduleRead()
      * here instead of reading directly into readBuf.buf.
      */
     typedef CommCbMemFunT<Adaptation::Icap::Xaction, CommIoCbParams> Dialer;
-    reader = asyncCall(93,3, "Adaptation::Icap::Xaction::noteCommRead",
-                       Dialer(this, &Adaptation::Icap::Xaction::noteCommRead));
+    reader = JobCallback(93,3,
+                         Dialer, this, Adaptation::Icap::Xaction::noteCommRead);
 
     comm_read(connection, commBuf, readBuf.spaceSize(), reader);
     updateTimeout();
@@ -346,23 +357,31 @@ void Adaptation::Icap::Xaction::noteCommRead(const CommIoCbParams &io)
     Must(io.flag == COMM_OK);
     Must(io.size >= 0);
 
-    al.icap.bytesRead+=io.size;
+    if (!io.size) {
+        commEof = true;
+        reuseConnection = false;
 
-    updateTimeout();
+        // detect a pconn race condition: eof on the first pconn read
+        if (!al.icap.bytesRead && retriable()) {
+            setOutcome(xoRace);
+            mustStop("pconn race");
+            return;
+        }
+    } else {
 
-    debugs(93, 3, HERE << "read " << io.size << " bytes");
+        al.icap.bytesRead+=io.size;
 
-    /*
-     * See comments in Adaptation::Icap::Xaction.h about why we use commBuf
-     * here instead of reading directly into readBuf.buf.
-     */
+        updateTimeout();
 
-    if (io.size > 0) {
+        debugs(93, 3, HERE << "read " << io.size << " bytes");
+
+        /*
+         * See comments in Adaptation::Icap::Xaction.h about why we use commBuf
+         * here instead of reading directly into readBuf.buf.
+         */
+
         readBuf.append(commBuf, io.size);
         disableRetries(); // because pconn did not fail
-    } else {
-        reuseConnection = false;
-        commEof = true;
     }
 
     handleCommRead(io.size);
@@ -421,7 +440,7 @@ bool Adaptation::Icap::Xaction::doneWithIo() const
 void Adaptation::Icap::Xaction::noteInitiatorAborted()
 {
 
-    if (theInitiator) {
+    if (theInitiator.set()) {
         clearInitiator();
         mustStop("initiator aborted");
     }
@@ -454,8 +473,7 @@ void Adaptation::Icap::Xaction::swanSong()
     if (commBuf)
         memFreeBuf(commBufSize, commBuf);
 
-    if (theInitiator)
-        tellQueryAborted();
+    tellQueryAborted();
 
     maybeLog();
 
@@ -464,12 +482,15 @@ void Adaptation::Icap::Xaction::swanSong()
 
 void Adaptation::Icap::Xaction::tellQueryAborted()
 {
-    Adaptation::Icap::Launcher *l = dynamic_cast<Adaptation::Icap::Launcher*>(theInitiator.ptr());
-    Adaptation::Icap::XactAbortInfo abortInfo(icapRequest, icapReply, retriable(), repeatable());
-    CallJob(91, 5, __FILE__, __LINE__,
-            "Adaptation::Icap::Launcher::noteXactAbort",
-            XactAbortCall(l, &Adaptation::Icap::Launcher::noteXactAbort, abortInfo) );
-    clearInitiator();
+    if (theInitiator.set()) {
+        Adaptation::Icap::XactAbortInfo abortInfo(icapRequest, icapReply,
+                retriable(), repeatable());
+        Launcher *launcher = dynamic_cast<Launcher*>(theInitiator.get());
+        // launcher may be nil if initiator is invalid
+        CallJobHere1(91,5, CbcPointer<Launcher>(launcher),
+                     Launcher, noteXactAbort, abortInfo);
+        clearInitiator();
+    }
 }
 
 

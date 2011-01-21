@@ -40,8 +40,8 @@
 #include "adaptation/icap/ServiceRep.h"
 #include "adaptation/Initiate.h"
 #include "AccessLogEntry.h"
+#include "HttpReply.h"
 
-class HttpMsg;
 class CommConnectCbParams;
 
 namespace Adaptation
@@ -63,7 +63,7 @@ class Xaction: public Adaptation::Initiate
 {
 
 public:
-    Xaction(const char *aTypeName, Adaptation::Initiator *anInitiator, ServiceRep::Pointer &aService);
+    Xaction(const char *aTypeName, ServiceRep::Pointer &aService);
     virtual ~Xaction();
 
     void disableRetries();
@@ -80,7 +80,7 @@ public:
 
     // TODO: create these only when actually sending/receiving
     HttpRequest *icapRequest; ///< sent (or at least created) ICAP request
-    HttpReply *icapReply; ///< received ICAP reply, if any
+    HttpReply::Pointer icapReply; ///< received ICAP reply, if any
 
     /// the number of times we tried to get to the service, including this time
     int attempts;
@@ -125,10 +125,12 @@ protected:
     // useful for debugging
     virtual bool fillVirginHttpHeader(MemBuf&) const;
 
+public:
     // custom exception handling and end-of-call checks
     virtual void callException(const std::exception  &e);
     virtual void callEnd();
 
+protected:
     // logging
     void setOutcome(const XactOutcome &xo);
     virtual void finalizeLogInfo();

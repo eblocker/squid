@@ -129,6 +129,7 @@ static void parse_string(char **);
 static void default_all(void);
 static void defaults_if_none(void);
 static int parse_line(char *);
+static void parse_obsolete(const char *);
 static void parseBytesLine(size_t * bptr, const char *units);
 static size_t parseBytesUnits(const char *unit);
 static void free_all(void);
@@ -736,6 +737,26 @@ configDoConfigure(void)
     }
 
 #endif
+
+    // prevent infinite fetch loops in the request parser
+    // due to buffer full but not enough data recived to finish parse
+    if (Config.maxRequestBufferSize <= Config.maxRequestHeaderSize) {
+        fatalf("Client request buffer of %u bytes cannot hold a request with %u bytes of headers." \
+               " Change client_request_buffer_max or request_header_max_size limits.",
+               (uint32_t)Config.maxRequestBufferSize, (uint32_t)Config.maxRequestHeaderSize);
+    }
+}
+
+/** Parse a line containing an obsolete directive.
+ * To upgrade it where possible instead of just "Bungled config" for
+ * directives which cannot be marked as simply aliases of the some name.
+ * For example if the parameter order and content has changed.
+ * Or if the directive has been completely removed.
+ */
+void
+parse_obsolete(const char *name)
+{
+    // Directives which have been radically changed rather than removed
 }
 
 /* Parse a time specification from the config file.  Store the
@@ -2327,6 +2348,16 @@ parse_refreshpattern(refresh_t ** head)
 
     i = GetInteger();		/* token: min */
 
+    /* catch negative and insanely huge values close to 32-bit wrap */
+    if (i < 0) {
+        debugs(3, DBG_IMPORTANT, "WARNING: refresh_pattern minimum age negative. Cropped back to zero.");
+        i = 0;
+    }
+    if (i > 60*24*365) {
+        debugs(3, DBG_IMPORTANT, "WARNING: refresh_pattern minimum age too high. Cropped back to 1 year.");
+        i = 60*24*365;
+    }
+
     min = (time_t) (i * 60);	/* convert minutes to seconds */
 
     i = GetInteger();		/* token: pct */
@@ -2334,6 +2365,16 @@ parse_refreshpattern(refresh_t ** head)
     pct = (double) i / 100.0;
 
     i = GetInteger();		/* token: max */
+
+    /* catch negative and insanely huge values close to 32-bit wrap */
+    if (i < 0) {
+        debugs(3, DBG_IMPORTANT, "WARNING: refresh_pattern maximum age negative. Cropped back to zero.");
+        i = 0;
+    }
+    if (i > 60*24*365) {
+        debugs(3, DBG_IMPORTANT, "WARNING: refresh_pattern maximum age too high. Cropped back to 1 year.");
+        i = 60*24*365;
+    }
 
     max = (time_t) (i * 60);	/* convert minutes to seconds */
 
@@ -3136,7 +3177,11 @@ parse_http_port_option(http_port_list * s, char *token)
     } else if (strncmp(token, "sslcontext=", 11) == 0) {
         safe_free(s->sslcontext);
         s->sslcontext = xstrdup(token + 11);
-    } else if (strcmp(token, "sslBump") == 0) {
+    } else if (strcasecmp(token, "sslBump") == 0) {
+        debugs(3, DBG_CRITICAL, "WARNING: '" << token << "' is deprecated " <<
+               "in http_port. Use 'ssl-bump' instead.");
+        s->sslBump = 1; // accelerated when bumped, otherwise not
+    } else if (strcmp(token, "ssl-bump") == 0) {
         s->sslBump = 1; // accelerated when bumped, otherwise not
 #endif
     } else {
@@ -3256,17 +3301,45 @@ dump_generic_http_port(StoreEntry * e, const char *n, const http_port_list * s)
                       n,
                       s->s.ToURL(buf,MAX_IPSTRLEN));
 
-    if (s->defaultsite)
-        storeAppendPrintf(e, " defaultsite=%s", s->defaultsite);
-
+    // MODES and specific sub-options.
     if (s->intercepted)
         storeAppendPrintf(e, " intercept");
 
-    if (s->vhost)
-        storeAppendPrintf(e, " vhost");
+    else if (s->spoof_client_ip)
+        storeAppendPrintf(e, " tproxy");
 
-    if (s->vport)
-        storeAppendPrintf(e, " vport");
+    else if (s->accel) {
+        if (s->vhost)
+            storeAppendPrintf(e, " vhost");
+
+        if (s->vport < 0)
+            storeAppendPrintf(e, " vport");
+        else if (s->vport > 0)
+            storeAppendPrintf(e, " vport=%d", s->vport);
+
+        if (s->defaultsite)
+            storeAppendPrintf(e, " defaultsite=%s", s->defaultsite);
+
+        if (s->protocol && strcmp(s->protocol,"http") != 0)
+            storeAppendPrintf(e, " protocol=%s", s->protocol);
+
+        if (s->allow_direct)
+            storeAppendPrintf(e, " allow-direct");
+
+        if (s->ignore_cc)
+            storeAppendPrintf(e, " ignore-cc");
+
+    }
+
+    // Generic independent options
+
+    if (s->name)
+        storeAppendPrintf(e, " name=%s", s->name);
+
+#if USE_HTTP_VIOLATIONS
+    if (!s->accel && s->ignore_cc)
+        storeAppendPrintf(e, " ignore-cc");
+#endif
 
     if (s->connection_auth_disabled)
         storeAppendPrintf(e, " connection-auth=off");
@@ -3293,6 +3366,9 @@ dump_generic_http_port(StoreEntry * e, const char *n, const http_port_list * s)
     }
 
 #if USE_SSL
+    if (s->sslBump)
+        storeAppendPrintf(e, " ssl-bump");
+
     if (s->cert)
         storeAppendPrintf(e, " cert=%s", s->cert);
 
@@ -3325,9 +3401,6 @@ dump_generic_http_port(StoreEntry * e, const char *n, const http_port_list * s)
 
     if (s->sslcontext)
         storeAppendPrintf(e, " sslcontext=%s", s->sslcontext);
-
-    if (s->sslBump)
-        storeAppendPrintf(e, " sslBump");
 #endif
 }
 

@@ -139,8 +139,8 @@ HttpStateData::HttpStateData(FwdState *theFwdState) : AsyncJob("HttpStateData"),
      * register the handler to free HTTP state data when the FD closes
      */
     typedef CommCbMemFunT<HttpStateData, CommCloseCbParams> Dialer;
-    closeHandler = asyncCall(9, 5, "httpStateData::httpStateConnClosed",
-                             Dialer(this,&HttpStateData::httpStateConnClosed));
+    closeHandler = JobCallback(9, 5,
+                               Dialer, this, HttpStateData::httpStateConnClosed);
     comm_add_close_handler(fd, closeHandler);
 }
 
@@ -370,6 +370,12 @@ HttpStateData::cacheableReply()
 #endif
 
     if (surrogateNoStore)
+        return 0;
+
+    // RFC 2616: do not cache replies to responses with no-store CC directive
+    if (request && request->cache_control &&
+            EBIT_TEST(request->cache_control->mask, CC_NO_STORE) &&
+            !REFRESH_OVERRIDE(ignore_no_store))
         return 0;
 
     if (!ignoreCacheControl) {
@@ -681,6 +687,7 @@ HttpStateData::processReplyHeader()
         tmprep->header.putExt("X-Transformed-From", "HTTP/0.9");
         mb = tmprep->pack();
         newrep->parse(mb, eof, &error);
+        delete mb;
         delete tmprep;
     } else {
         if (!parsed && error > 0) { // unrecoverable parsing error
@@ -708,6 +715,8 @@ HttpStateData::processReplyHeader()
         readBuf->consume(header_bytes_read);
     }
 
+    newrep->removeStaleWarnings();
+
     /* Skip 1xx messages for now. Advertised in Via as an internal 1.0 hop */
     if (newrep->sline.protocol == PROTO_HTTP && newrep->sline.status >= 100 && newrep->sline.status < 200) {
 
@@ -729,7 +738,7 @@ HttpStateData::processReplyHeader()
     }
 
     flags.chunked = 0;
-    if (newrep->sline.protocol == PROTO_HTTP && newrep->header.hasListMember(HDR_TRANSFER_ENCODING, "chunked", ',')) {
+    if (newrep->sline.protocol == PROTO_HTTP && newrep->header.chunked()) {
         flags.chunked = 1;
         httpChunkDecoder = new ChunkedCodingParser;
     }
@@ -896,9 +905,9 @@ HttpStateData::haveParsedReplyHeaders()
 no_cache:
 
     if (!ignoreCacheControl && rep->cache_control) {
-        if (EBIT_TEST(rep->cache_control->mask, CC_PROXY_REVALIDATE))
-            EBIT_SET(entry->flags, ENTRY_REVALIDATE);
-        else if (EBIT_TEST(rep->cache_control->mask, CC_MUST_REVALIDATE))
+        if (EBIT_TEST(rep->cache_control->mask, CC_PROXY_REVALIDATE) ||
+                EBIT_TEST(rep->cache_control->mask, CC_MUST_REVALIDATE) ||
+                EBIT_TEST(rep->cache_control->mask, CC_S_MAXAGE))
             EBIT_SET(entry->flags, ENTRY_REVALIDATE);
     }
 
@@ -958,16 +967,14 @@ HttpStateData::ConnectionStatus
 HttpStateData::persistentConnStatus() const
 {
     debugs(11, 3, "persistentConnStatus: FD " << fd << " eof=" << eof);
-    const HttpReply *vrep = virginReply();
-    debugs(11, 5, "persistentConnStatus: content_length=" << vrep->content_length);
-
-    /* If we haven't seen the end of reply headers, we are not done */
-    debugs(11, 5, "persistentConnStatus: flags.headers_parsed=" << flags.headers_parsed);
-
-    if (!flags.headers_parsed)
-        return INCOMPLETE_MSG;
-
     if (eof) // already reached EOF
+        return COMPLETE_NONPERSISTENT_MSG;
+
+    /* If server fd is closing (but we have not been notified yet), stop Comm
+       I/O to avoid assertions. TODO: Change Comm API to handle callers that
+       want more I/O after async closing (usually initiated by others). */
+    // XXX: add canReceive or s/canSend/canTalkToServer/
+    if (!canSend(fd))
         return COMPLETE_NONPERSISTENT_MSG;
 
     /** \par
@@ -977,6 +984,9 @@ HttpStateData::persistentConnStatus() const
      */
     if (lastChunk && flags.chunked)
         return statusIfComplete();
+
+    const HttpReply *vrep = virginReply();
+    debugs(11, 5, "persistentConnStatus: content_length=" << vrep->content_length);
 
     const int64_t clen = vrep->bodySize(request->method);
 
@@ -1406,8 +1416,7 @@ HttpStateData::maybeReadVirginBody()
         flags.do_next_read = 0;
         typedef CommCbMemFunT<HttpStateData, CommIoCbParams> Dialer;
         entry->delayAwareRead(fd, readBuf->space(read_size), read_size,
-                              asyncCall(11, 5, "HttpStateData::readReply",
-                                        Dialer(this, &HttpStateData::readReply)));
+                              JobCallback(11, 5, Dialer, this,  HttpStateData::readReply));
     }
 }
 
@@ -1450,8 +1459,8 @@ HttpStateData::sendComplete(const CommIoCbParams &io)
      * request bodies.
      */
     typedef CommCbMemFunT<HttpStateData, CommTimeoutCbParams> TimeoutDialer;
-    AsyncCall::Pointer timeoutCall =  asyncCall(11, 5, "HttpStateData::httpTimeout",
-                                      TimeoutDialer(this,&HttpStateData::httpTimeout));
+    AsyncCall::Pointer timeoutCall =  JobCallback(11, 5,
+                                      TimeoutDialer, this, HttpStateData::httpTimeout);
 
     commSetTimeout(fd, Config.Timeout.read, timeoutCall);
 
@@ -1491,7 +1500,7 @@ HttpStateData::httpBuildRequestHeader(HttpRequest * request,
                                       HttpRequest * orig_request,
                                       StoreEntry * entry,
                                       HttpHeader * hdr_out,
-                                      http_state_flags flags)
+                                      const http_state_flags flags)
 {
     /* building buffer for complex strings */
 #define BBUF_SZ (MAX_URL+32)
@@ -1720,11 +1729,7 @@ HttpStateData::httpBuildRequestHeader(HttpRequest * request,
 
     /* maybe append Connection: keep-alive */
     if (flags.keepalive) {
-        if (flags.proxying) {
-            hdr_out->putStr(HDR_PROXY_CONNECTION, "keep-alive");
-        } else {
-            hdr_out->putStr(HDR_CONNECTION, "keep-alive");
-        }
+        hdr_out->putStr(HDR_CONNECTION, "keep-alive");
     }
 
     /* append Front-End-Https */
@@ -1773,7 +1778,7 @@ copyOneHeaderFromClientsideRequestToUpstreamRequest(const HttpHeaderEntry *e, co
     case HDR_TE:                  /** \par TE: */
     case HDR_KEEP_ALIVE:          /** \par Keep-Alive: */
     case HDR_PROXY_AUTHENTICATE:  /** \par Proxy-Authenticate: */
-    case HDR_TRAILERS:            /** \par Trailers: */
+    case HDR_TRAILER:             /** \par Trailer: */
     case HDR_UPGRADE:             /** \par Upgrade: */
     case HDR_TRANSFER_ENCODING:   /** \par Transfer-Encoding: */
         break;
@@ -1870,12 +1875,13 @@ copyOneHeaderFromClientsideRequestToUpstreamRequest(const HttpHeaderEntry *e, co
 
         break;
 
-    case HDR_PROXY_CONNECTION:
+    case HDR_PROXY_CONNECTION: // SHOULD ignore. But doing so breaks things.
+        break;
 
     case HDR_X_FORWARDED_FOR:
 
     case HDR_CACHE_CONTROL:
-        /** \par Proxy-Connaction:, X-Forwarded-For:, Cache-Control:
+        /** \par X-Forwarded-For:, Cache-Control:
          * handled specially by Squid, so leave off for now.
          * append these after the loop if needed */
         break;
@@ -1934,8 +1940,7 @@ mb_size_t
 HttpStateData::buildRequestPrefix(HttpRequest * aRequest,
                                   HttpRequest * original_request,
                                   StoreEntry * sentry,
-                                  MemBuf * mb,
-                                  http_state_flags stateFlags)
+                                  MemBuf * mb)
 {
     const int offset = mb->size;
     HttpVersion httpver(1,1);
@@ -1947,7 +1952,7 @@ HttpStateData::buildRequestPrefix(HttpRequest * aRequest,
     {
         HttpHeader hdr(hoRequest);
         Packer p;
-        httpBuildRequestHeader(aRequest, original_request, sentry, &hdr, stateFlags);
+        httpBuildRequestHeader(aRequest, original_request, sentry, &hdr, flags);
 
         if (aRequest->flags.pinned && aRequest->flags.connection_auth)
             aRequest->flags.auth_sent = 1;
@@ -1979,8 +1984,8 @@ HttpStateData::sendRequest()
     }
 
     typedef CommCbMemFunT<HttpStateData, CommTimeoutCbParams> TimeoutDialer;
-    AsyncCall::Pointer timeoutCall =  asyncCall(11, 5, "HttpStateData::httpTimeout",
-                                      TimeoutDialer(this,&HttpStateData::httpTimeout));
+    AsyncCall::Pointer timeoutCall =  JobCallback(11, 5,
+                                      TimeoutDialer, this, HttpStateData::httpTimeout);
     commSetTimeout(fd, Config.Timeout.lifetime, timeoutCall);
     flags.do_next_read = 1;
     maybeReadVirginBody();
@@ -1989,13 +1994,13 @@ HttpStateData::sendRequest()
         if (!startRequestBodyFlow()) // register to receive body data
             return false;
         typedef CommCbMemFunT<HttpStateData, CommIoCbParams> Dialer;
-        Dialer dialer(this, &HttpStateData::sentRequestBody);
-        requestSender = asyncCall(11,5, "HttpStateData::sentRequestBody", dialer);
+        requestSender = JobCallback(11,5,
+                                    Dialer, this, HttpStateData::sentRequestBody);
     } else {
         assert(!requestBodySource);
         typedef CommCbMemFunT<HttpStateData, CommIoCbParams> Dialer;
-        Dialer dialer(this, &HttpStateData::sendComplete);
-        requestSender = asyncCall(11,5, "HttpStateData::SendComplete", dialer);
+        requestSender = JobCallback(11,5,
+                                    Dialer, this,  HttpStateData::sendComplete);
     }
 
     if (_peer != NULL) {
@@ -2035,7 +2040,7 @@ HttpStateData::sendRequest()
     }
 
     mb.init();
-    buildRequestPrefix(request, orig_request, entry, &mb, flags);
+    buildRequestPrefix(request, orig_request, entry, &mb);
     debugs(11, 6, "httpSendRequest: FD " << fd << ":\n" << mb.buf);
     comm_write_mbuf(fd, &mb, requestSender);
 
@@ -2088,8 +2093,8 @@ HttpStateData::doneSendingRequestBody()
             }
 
             typedef CommCbMemFunT<HttpStateData, CommIoCbParams> Dialer;
-            Dialer dialer(this, &HttpStateData::sendComplete);
-            AsyncCall::Pointer call= asyncCall(11,5, "HttpStateData::SendComplete", dialer);
+            AsyncCall::Pointer call = JobCallback(11,5,
+                                                  Dialer, this, HttpStateData::sendComplete);
             comm_write(fd, "\r\n", 2, call);
         }
         return;

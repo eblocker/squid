@@ -59,6 +59,56 @@ COMMENT_START
   configuration files.
 COMMENT_END
 
+# Options Removed in 3.1
+NAME: dns_testnames
+TYPE: obsolete
+DOC_START
+	Remove this line. DNS is no longer tested on startup.
+DOC_END
+
+NAME: extension_methods
+TYPE: obsolete
+DOC_START
+	Remove this line. All valid methods for HTTP are accepted by default.
+DOC_END
+
+# 2.7 Options Removed/Replaced in 3.1
+NAME: incoming_rate
+TYPE: obsolete
+DOC_NONE
+
+NAME: server_http11
+TYPE: obsolete
+DOC_START
+	Remove this line. HTTP/1.1 is supported by default.
+DOC_END
+
+NAME: upgrade_http0.9
+TYPE: obsolete
+DOC_START
+	Remove this line. ICY/1.0 streaming protocol is supported by default.
+DOC_END
+
+NAME: zph_local zph_mode zph_option zph_parent zph_sibling
+TYPE: obsolete
+DOC_START
+	Alter these entries. Use the qos_flows directive instead.
+DOC_END
+
+# Options Removed in 3.0
+NAME: header_access
+TYPE: obsolete
+DOC_START
+	Since squid-3.0 replace with request_header_access or reply_header_access
+	depending on whether you wish to match client requests or server replies.
+DOC_END
+
+NAME: httpd_accel_no_pmtu_disc
+TYPE: obsolete
+DOC_START
+	Since squid-3.0 use the 'disable-pmtu-discovery' flag on http_port instead.
+DOC_END
+
 COMMENT_START
  OPTIONS FOR AUTHENTICATION
  -----------------------------------------------------------------------------
@@ -265,12 +315,12 @@ DOC_START
 	auth_param ntlm children 5
 
 	"keep_alive" on|off
-	If you experience problems with PUT/POST requests when using the
-	Negotiate authentication scheme then you can try setting this to
-	off. This will cause Squid to forcibly close the connection on
-	the initial requests where the browser asks which schemes are
-	supported by the proxy.
-
+	Whether to keep the connection open after the initial response where
+	Squid tells the browser which schemes are supported by the proxy.
+	Some browsers are known to present many login popups or to corrupt
+	POST/PUT requests transfer if the connection is not closed.
+	The default is currently OFF to avoid this, but may change.
+	
 	auth_param ntlm keep_alive on
 
 	=== Options for configuring the NEGOTIATE auth-scheme follow ===
@@ -299,15 +349,15 @@ DOC_START
 	auth_param negotiate children 5
 
 	"keep_alive" on|off
-	If you experience problems with PUT/POST requests when using the
-	Negotiate authentication scheme then you can try setting this to
-	off. This will cause Squid to forcibly close the connection on
-	the initial requests where the browser asks which schemes are
-	supported by the proxy.
-
+	Whether to keep the connection open after the initial response where
+	Squid tells the browser which schemes are supported by the proxy.
+	Some browsers are known to present many login popups or to corrupt
+	POST/PUT requests transfer if the connection is not closed.
+	The default is currently OFF to avoid this, but may change.
+	
 	auth_param negotiate keep_alive on
 
-	
+
 	Examples:
 
 #Recommended minimum configuration per scheme:
@@ -724,7 +774,6 @@ NAME: follow_x_forwarded_for
 TYPE: acl_access
 IFDEF: FOLLOW_X_FORWARDED_FOR
 LOC: Config.accessList.followXFF
-DEFAULT: none
 DEFAULT_IF_NONE: deny all
 DOC_START
 	Allowing or Denying the X-Forwarded-For header to be followed to
@@ -811,7 +860,6 @@ DOC_END
 NAME: http_access
 TYPE: acl_access
 LOC: Config.accessList.http
-DEFAULT: none
 DEFAULT_IF_NONE: deny all
 DOC_START
 	Allowing or Denying access based on defined access lists
@@ -906,7 +954,6 @@ DOC_END
 NAME: icp_access
 TYPE: acl_access
 LOC: Config.accessList.icp
-DEFAULT: none
 DEFAULT_IF_NONE: deny all
 DOC_START
 	Allowing or Denying access to the ICP port based on defined
@@ -928,7 +975,6 @@ NAME: htcp_access
 IFDEF: USE_HTCP
 TYPE: acl_access
 LOC: Config.accessList.htcp
-DEFAULT: none
 DEFAULT_IF_NONE: deny all
 DOC_START
 	Allowing or Denying access to the HTCP port based on defined
@@ -954,7 +1000,6 @@ NAME: htcp_clr_access
 IFDEF: USE_HTCP
 TYPE: acl_access
 LOC: Config.accessList.htcp_clr
-DEFAULT: none
 DEFAULT_IF_NONE: deny all
 DOC_START
 	Allowing or Denying access to purge content using HTCP based
@@ -997,7 +1042,6 @@ DOC_END
 NAME: ident_lookup_access
 TYPE: acl_access
 IFDEF: USE_IDENT
-DEFAULT: none
 DEFAULT_IF_NONE: deny all
 LOC: Ident::TheConfig.identLookup
 DOC_START
@@ -1157,7 +1201,7 @@ DOC_START
 			sporadically hang or never complete requests set
 			disable-pmtu-discovery option to 'transparent'.
 
-	   sslBump 	Intercept each CONNECT request matching ssl_bump ACL,
+	   ssl-bump 	Intercept each CONNECT request matching ssl_bump ACL,
 			establish secure connection with the client and with
 			the server, decrypt HTTP messages as they pass through
 			Squid, and treat them as unencrypted HTTP messages,
@@ -1314,8 +1358,8 @@ DOC_START
 	Example where normal_service_net uses the TOS value 0x00
 	and good_service_net uses 0x20
 
-	acl normal_service_net src 10.0.0.0/255.255.255.0
-	acl good_service_net src 10.0.1.0/255.255.255.0
+	acl normal_service_net src 10.0.0.0/24
+	acl good_service_net src 10.0.1.0/24
 	tcp_outgoing_tos 0x00 normal_service_net
 	tcp_outgoing_tos 0x20 good_service_net
 
@@ -1325,8 +1369,8 @@ DOC_START
 
 	The TOS/DSCP byte must be exactly that - a octet value  0 - 255, or
 	"default" to use whatever default your host has. Note that in
-	practice often only values 0 - 63 is usable as the two highest bits
-	have been redefined for use by ECN (RFC3168).
+	practice often only multiples of 4 is usable as the two rightmost bits
+	have been redefined for use by ECN (RFC 3168 section 23.1).
 
 	Processing proceeds in the order specified, and stops at first fully
 	matching line.
@@ -1650,6 +1694,10 @@ DOC_START
 	when using encrypted SSL certificate keys. If not specified
 	keys must either be unencrypted, or Squid started with the -N
 	option to allow it to query interactively for the passphrase.
+
+	The key file name is given as argument to the program allowing
+	selection of the right password if you have multiple encrypted
+	keys.
 DOC_END
 
 COMMENT_START
@@ -1791,8 +1839,8 @@ DOC_START
 			which parent to fectch from. If the rtt is less than the
 			base time the rtt is set to a minimal value.
 	
-	ttl=N		Specify a IP multicast TTL to use when sending an ICP
-			queries to this address.
+	ttl=N		Specify a TTL to use when sending multicast ICP queries
+			to this address.
 			Only useful when sending to a multicast group.
 			Because we don't accept ICP replies from random
 			hosts, you must configure other group members as
@@ -2233,10 +2281,10 @@ DOC_START
 	Instead, if you want Squid to use the entire disk drive,
 	subtract 20% and use that value.
 
-	'Level-1' is the number of first-level subdirectories which
+	'L1' is the number of first-level subdirectories which
 	will be created under the 'Directory'.  The default is 16.
 
-	'Level-2' is the number of second-level subdirectories which
+	'L2' is the number of second-level subdirectories which
 	will be created under each first-level directory.  The default
 	is 256.
 
@@ -2296,8 +2344,8 @@ DOC_START
 
 	no-store, no new objects should be stored to this cache_dir
 
-	max-size=n, refers to the max object size this storedir supports.
-	It is used to initially choose the storedir to dump the object.
+	max-size=n, refers to the max object size in bytes this cache_dir
+	supports.  It is used to select the cache_dir to store the object.
 	Note: To make optimal use of the max-size limits you should order
 	the cache_dir lines with the smallest max-size value first and the
 	ones with no max-size specification last.
@@ -2532,7 +2580,6 @@ DOC_END
 NAME: access_log cache_access_log
 TYPE: access_log
 LOC: Config.Log.accesslogs
-DEFAULT: none
 DEFAULT_IF_NONE: @DEFAULT_ACCESS_LOG@ squid
 DOC_START
 	These files log client request activities. Has a line every HTTP or
@@ -2892,7 +2939,6 @@ COMMENT_END
 
 NAME: cache_log
 TYPE: string
-DEFAULT: none
 DEFAULT_IF_NONE: @DEFAULT_CACHE_LOG@
 LOC: Debug::cache_log
 DOC_START
@@ -2923,7 +2969,6 @@ DOC_END
 NAME: coredump_dir
 TYPE: string
 LOC: Config.coredump_dir
-DEFAULT: none
 DEFAULT_IF_NONE: none
 DOC_START
 	By default Squid leaves core files in the directory from where
@@ -3546,6 +3591,17 @@ DOC_START
 	be no limit imposed.
 DOC_END
 
+NAME: client_request_buffer_max_size
+COMMENT: (bytes)
+TYPE: b_size_t
+DEFAULT: 512 KB
+LOC: Config.maxRequestBufferSize
+DOC_START
+	This specifies the maximum buffer size of a client request.
+	It prevents squid eating too much memory when somebody uploads
+	a large file.
+DOC_END
+
 NAME: chunked_request_body_max_size
 COMMENT: (bytes)
 TYPE: b_int64_t
@@ -3743,7 +3799,6 @@ DOC_START
 		request_header_access Retry-After allow all
 		request_header_access Title allow all
 		request_header_access Connection allow all
-		request_header_access Proxy-Connection allow all
 		request_header_access All deny all
 
 	although many of those are HTTP reply headers, and so should be
@@ -3819,7 +3874,6 @@ DOC_START
 		reply_header_access Retry-After allow all
 		reply_header_access Title allow all
 		reply_header_access Connection allow all
-		reply_header_access Proxy-Connection allow all
 		reply_header_access All deny all
 
 	although the HTTP request headers won't be usefully controlled
@@ -4563,7 +4617,6 @@ DOC_END
 NAME: wccp2_service
 TYPE: wccp2_service
 LOC: Config.Wccp2.info
-DEFAULT: none
 DEFAULT_IF_NONE: standard 0
 IFDEF: USE_WCCPv2
 DOC_START
@@ -4792,7 +4845,6 @@ DOC_END
 NAME: snmp_access
 TYPE: acl_access
 LOC: Config.accessList.snmp
-DEFAULT: none
 DEFAULT_IF_NONE: deny all
 IFDEF: SQUID_SNMP
 DOC_START
@@ -5794,6 +5846,11 @@ DOC_START
 		Routing is not allowed by default: the ICAP X-Next-Services
 		response header is ignored.
 
+	ipv6=on|off
+		Only has effect on split-stack systems. The default on those systems
+		is to use IPv4-only connections. When set to 'on' this option will
+		make Squid use IPv6-only connections to contact this ICAP service.
+
 	Older icap_service format without optional named parameters is
 	deprecated but supported for backward compatibility.
 
@@ -6060,7 +6117,6 @@ NAME: icap_retry
 TYPE: acl_access
 IFDEF: ICAP_CLIENT
 LOC: Adaptation::Icap::TheConfig.repeat
-DEFAULT: none
 DEFAULT_IF_NONE: deny all
 DOC_START
 	This ACL determines which retriable ICAP transactions are
@@ -6510,7 +6566,6 @@ NAME: as_whois_server
 TYPE: string
 LOC: Config.as_whois_server
 DEFAULT: whois.ra.net
-DEFAULT_IF_NONE: whois.ra.net
 DOC_START
 	WHOIS server to query for AS numbers.  NOTE: AS numbers are
 	queried only when Squid starts up, not for every request.

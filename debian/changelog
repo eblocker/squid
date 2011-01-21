@@ -1,3 +1,11 @@
+squid3 (3.1.6-1.2) unstable; urgency=low
+
+  * Non-maintainer upload.
+  * Fix DoS while processing large DNS replies with no IPv6 resolver present
+    (CVE-2010-2951) (Closes: #599709)
+
+ -- Ben Hutchings <ben@decadent.org.uk>  Sat, 30 Oct 2010 17:00:55 +0200
+
 squid3 (3.1.6-1.1) unstable; urgency=high
 
   * Non-maintainer upload by the security team

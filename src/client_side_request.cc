@@ -830,7 +830,9 @@ clientInterpretRequestHeaders(ClientHttpRequest * http)
 
     /* ignore range header in non-GETs or non-HEADs */
     if (request->method == METHOD_GET || request->method == METHOD_HEAD) {
-        request->range = req_hdr->getRange();
+        // XXX: initialize if we got here without HttpRequest::parseHeader()
+        if (!request->range)
+            request->range = req_hdr->getRange();
 
         if (request->range) {
             request->flags.range = 1;
@@ -854,6 +856,7 @@ clientInterpretRequestHeaders(ClientHttpRequest * http)
     else {
         req_hdr->delById(HDR_RANGE);
         req_hdr->delById(HDR_REQUEST_RANGE);
+        delete request->range;
         request->range = NULL;
     }
 
@@ -1111,6 +1114,7 @@ ClientHttpRequest::processRequest()
 
     if (request->method == METHOD_CONNECT && !redirect.status) {
         logType = LOG_TCP_MISS;
+        getConn()->stopReading(); // tunnels read for themselves
         tunnelStart(this, &out.size, &al.http.code);
         return;
     }

@@ -401,7 +401,7 @@ DOC_START
 	  protocol=2.5	Compatibility mode for Squid-2.5 external acl helpers
 	  ipv4 / ipv6	IP-mode used to communicate to this helper.
 			For compatability with older configurations and helpers
-			the default is 'ipv4'.
+			the default is currently 'ipv4'.
 
 	FORMAT specifications
 
@@ -693,10 +693,8 @@ NOCOMMENT_START
 # Recommended minimum configuration:
 #
 acl manager proto cache_object
-acl localhost src 127.0.0.1/32
-@IPV6_ONLY_SETTING@acl localhost src ::1/128
-acl to_localhost dst 127.0.0.0/8 0.0.0.0/32
-@IPV6_ONLY_SETTING@acl to_localhost dst ::1/128
+acl localhost src 127.0.0.1/32 ::1
+acl to_localhost dst 127.0.0.0/8 0.0.0.0/32 ::1
 
 # Example rule allowing access from your local networks.
 # Adapt to list your (internal) IP networks from where browsing
@@ -704,8 +702,8 @@ acl to_localhost dst 127.0.0.0/8 0.0.0.0/32
 acl localnet src 10.0.0.0/8	# RFC1918 possible internal network
 acl localnet src 172.16.0.0/12	# RFC1918 possible internal network
 acl localnet src 192.168.0.0/16	# RFC1918 possible internal network
-@IPV6_ONLY_SETTING@acl localnet src fc00::/7   # RFC 4193 local private network range
-@IPV6_ONLY_SETTING@acl localnet src fe80::/10  # RFC 4291 link-local (directly plugged) machines
+acl localnet src fc00::/7       # RFC 4193 local private network range
+acl localnet src fe80::/10      # RFC 4291 link-local (directly plugged) machines
 
 acl SSL_ports port 443
 acl Safe_ports port 80		# http
@@ -1179,9 +1177,9 @@ DOC_START
 			the port specification (port or addr:port)
 
 	   tcpkeepalive[=idle,interval,timeout]
-			Enable TCP keepalive probes of idle connections
-			idle is the initial time before TCP starts probing
-			the connection, interval how often to probe, and
+			Enable TCP keepalive probes of idle connections.
+			In seconds; idle is the initial time before TCP starts
+			probing the connection, interval how often to probe, and
 			timeout the time before giving up.
 
 	If you run Squid on a dual-homed machine with an internal
@@ -1383,9 +1381,9 @@ DOC_START
 	The kernel patch can be downloaded from http://zph.bratcheda.org
 
 	disable-preserve-miss
-		If set, any HTTP response towards clients will
-		have the TOS value of the response comming from the
-		remote server masked with the value of miss-mask.
+		By default, the existing TOS value of the response coming
+		from the remote server will be retained and masked with
+		miss-mark. This option disables that feature.
 
 	miss-mask=0xFF
 		Allows you to mask certain bits in the TOS received from the
@@ -6322,7 +6320,7 @@ DOC_END
 
 NAME: memory_pools_limit
 COMMENT: (bytes)
-TYPE: b_size_t
+TYPE: b_int64_t
 DEFAULT: 5 MB
 LOC: Config.MemPools.limit
 DOC_START
@@ -6341,7 +6339,7 @@ DOC_START
 	will be no limit on the total amount of memory used for safe-keeping.
 
 	To disable memory allocation optimization, do not set
-	memory_pools_limit to 0. Set memory_pools to "off" instead.
+	memory_pools_limit to 0 or none. Set memory_pools to "off" instead.
 
 	An overhead for maintaining memory pools is not taken into account
 	when the limit is checked. This overhead is close to four bytes per

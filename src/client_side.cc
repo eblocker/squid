@@ -205,16 +205,14 @@ ConnStateData::readSomeData()
     if (reading())
         return;
 
-    reading(true);
-
     debugs(33, 4, "clientReadSomeData: FD " << fd << ": reading request...");
 
     makeSpaceAvailable();
 
     typedef CommCbMemFunT<ConnStateData, CommIoCbParams> Dialer;
-    AsyncCall::Pointer call = asyncCall(33, 5, "ConnStateData::clientReadRequest",
-                                        Dialer(this, &ConnStateData::clientReadRequest));
-    comm_read(fd, in.addressToReadInto(), getAvailableBufferLength(), call);
+    reader = asyncCall(33, 5, "ConnStateData::clientReadRequest",
+                       Dialer(this, &ConnStateData::clientReadRequest));
+    comm_read(fd, in.addressToReadInto(), getAvailableBufferLength(), reader);
 }
 
 
@@ -2427,7 +2425,8 @@ clientProcessRequest(ConnStateData *conn, HttpParser *hp, ClientSocketContext *c
         request->setContentLength(conn->in.dechunked.contentSize());
         request->header.delById(HDR_TRANSFER_ENCODING);
         conn->finishDechunkingRequest(hp);
-    }
+    } else
+        conn->cleanDechunkingRequest();
 
     unsupportedTe = tePresent && !deChunked;
     if (!urlCheckRequest(request) || unsupportedTe) {
@@ -2669,7 +2668,8 @@ void
 ConnStateData::clientReadRequest(const CommIoCbParams &io)
 {
     debugs(33,5,HERE << "clientReadRequest FD " << io.fd << " size " << io.size);
-    reading(false);
+    Must(reading());
+    reader = NULL;
     bool do_next_read = 1; /* the default _is_ to read data! - adrian */
 
     assert (io.fd == fd);
@@ -2991,7 +2991,7 @@ connStateCreate(const IpAddress &peer, const IpAddress &me, int fd, http_port_li
 
     result->peer = peer;
     result->log_addr = peer;
-    result->log_addr.ApplyMask(Config.Addrs.client_netmask.GetCIDR());
+    result->log_addr.ApplyMask(Config.Addrs.client_netmask);
     result->me = me;
     result->fd = fd;
     result->in.buf = (char *)memAllocBuf(CLIENT_REQ_BUF_SZ, &result->in.allocatedSize);
@@ -3563,7 +3563,7 @@ clientAclChecklistCreate(const acl_access * acl, ClientHttpRequest * http)
 
 CBDATA_CLASS_INIT(ConnStateData);
 
-ConnStateData::ConnStateData() :AsyncJob("ConnStateData"), transparent_ (false), reading_ (false), closing_ (false)
+ConnStateData::ConnStateData() :AsyncJob("ConnStateData"), transparent_ (false), closing_ (false)
 {
     pinning.fd = -1;
     pinning.pinned = false;
@@ -3585,14 +3585,16 @@ ConnStateData::transparent(bool const anInt)
 bool
 ConnStateData::reading() const
 {
-    return reading_;
+    return reader != NULL;
 }
 
 void
-ConnStateData::reading(bool const newBool)
+ConnStateData::stopReading()
 {
-    assert (reading() != newBool);
-    reading_ = newBool;
+    if (reading()) {
+        comm_read_cancel(fd, reader);
+        reader = NULL;
+    }
 }
 
 
@@ -3654,9 +3656,6 @@ ConnStateData::finishDechunkingRequest(HttpParser *hp)
     debugs(33, 5, HERE << "finish dechunking; content: " << in.dechunked.contentSize());
 
     assert(in.dechunkingState == chunkReady);
-    assert(in.bodyParser);
-    delete in.bodyParser;
-    in.bodyParser = NULL;
 
     const mb_size_t headerSize = HttpParserRequestLen(hp);
 
@@ -3678,8 +3677,19 @@ ConnStateData::finishDechunkingRequest(HttpParser *hp)
 
     in.notYetUsed = end - in.buf;
 
-    in.chunked.clean();
-    in.dechunked.clean();
+    cleanDechunkingRequest();
+}
+
+/// cleanup dechunking state, get ready for the next request
+void
+ConnStateData::cleanDechunkingRequest()
+{
+    if (in.dechunkingState > chunkNone) {
+        delete in.bodyParser;
+        in.bodyParser = NULL;
+        in.chunked.clean();
+        in.dechunked.clean();
+    }
     in.dechunkingState = chunkUnknown;
 }
 

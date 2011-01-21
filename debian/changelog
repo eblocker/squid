@@ -4,6 +4,8 @@ squid3 (3.1.10-1) UNRELEASED; urgency=low
     - Removed patches integrated upstream
       + 16-CVE-2010-3072
       + 17-CVE-2010-2951
+    - Fixes TCP DNS lookups failure on IPv6-disabled systems (Closes: #607379)
+    - Fixes HTTPS not working if IPv6 is disabled (Closes: #594713)
 
  -- Luigi Gangitano <luigi@debian.org>  Fri, 21 Jan 2011 18:43:56 +0100
 

@@ -164,6 +164,8 @@ FwdState::~FwdState()
 
     serversFree(&servers);
 
+    doneWithRetries();
+
     HTTPMSGUNLOCK(request);
 
     if (err)
@@ -414,6 +416,12 @@ FwdState::checkRetry()
     if (shutting_down)
         return false;
 
+    if (!self) { // we have aborted before the server called us back
+        debugs(17, 5, HERE << "not retrying because of earlier abort");
+        // we will be destroyed when the server clears its Pointer to us
+        return false;
+    }
+
     if (entry->store_status != STORE_PENDING)
         return false;
 
@@ -497,12 +505,6 @@ FwdState::serverClosed(int fd)
 void
 FwdState::retryOrBail()
 {
-    if (!self) { // we have aborted before the server called us back
-        debugs(17, 5, HERE << "not retrying because of earlier abort");
-        // we will be destroyed when the server clears its Pointer to us
-        return;
-    }
-
     if (checkRetry()) {
         int originserver = (servers->_peer == NULL);
         debugs(17, 3, "fwdServerClosed: re-forwarding (" << n_tries << " tries, " << (squid_curtime - start_t) << " secs)");
@@ -539,11 +541,24 @@ FwdState::retryOrBail()
         return;
     }
 
-    if (!err && shutting_down) {
+    // TODO: should we call completed() here and move doneWithRetries there?
+    doneWithRetries();
+
+    if (self != NULL && !err && shutting_down) {
         errorCon(ERR_SHUTTING_DOWN, HTTP_SERVICE_UNAVAILABLE, request);
     }
 
     self = NULL;	// refcounted
+}
+
+// If the Server quits before nibbling at the request body, the body sender
+// will not know (so that we can retry). Call this if we will not retry. We
+// will notify the sender so that it does not get stuck waiting for space.
+void
+FwdState::doneWithRetries()
+{
+    if (request && request->body_pipe != NULL)
+        request->body_pipe->expectNoConsumption();
 }
 
 // called by the server that failed after calling unregister()
@@ -581,7 +596,7 @@ FwdState::negotiateSSL(int fd)
             debugs(81, 1, "fwdNegotiateSSL: Error negotiating SSL connection on FD " << fd <<
                    ": " << ERR_error_string(ERR_get_error(), NULL) << " (" << ssl_error <<
                    "/" << ret << "/" << errno << ")");
-            ErrorState *anErr = errorCon(ERR_SECURE_CONNECT_FAIL, HTTP_SERVICE_UNAVAILABLE, request);
+            ErrorState *const anErr = makeConnectingError(ERR_SECURE_CONNECT_FAIL);
 #ifdef EPROTO
 
             anErr->xerrno = EPROTO;
@@ -701,7 +716,7 @@ FwdState::connectDone(int aServerFD, const DnsLookupDetails &dns, comm_err_t sta
 
         debugs(17, 4, "fwdConnectDone: Unknown host: " << request->GetHost());
 
-        ErrorState *anErr = errorCon(ERR_DNS_FAIL, HTTP_SERVICE_UNAVAILABLE, request);
+        ErrorState *const anErr = makeConnectingError(ERR_DNS_FAIL);
 
         anErr->dnsError = dns.error;
 
@@ -710,7 +725,7 @@ FwdState::connectDone(int aServerFD, const DnsLookupDetails &dns, comm_err_t sta
         comm_close(server_fd);
     } else if (status != COMM_OK) {
         assert(fs);
-        ErrorState *anErr = errorCon(ERR_CONNECT_FAIL, HTTP_SERVICE_UNAVAILABLE, request);
+        ErrorState *const anErr = makeConnectingError(ERR_CONNECT_FAIL);
         anErr->xerrno = xerrno;
 
         fail(anErr);
@@ -870,9 +885,9 @@ FwdState::connectStart()
 
     // if IPv6 is disabled try to force IPv4-only outgoing.
     if (!Ip::EnableIpv6 && !outgoing.SetIPv4()) {
-        debugs(50, 4, "fwdConnectStart: " << xstrerror());
+        debugs(50, 4, "fwdConnectStart: IPv6 is Disabled. Cannot connect from " << outgoing);
         ErrorState *anErr = errorCon(ERR_CONNECT_FAIL, HTTP_SERVICE_UNAVAILABLE, request);
-        anErr->xerrno = errno;
+        anErr->xerrno = EAFNOSUPPORT;
         fail(anErr);
         self = NULL;	// refcounted
         return;
@@ -1151,6 +1166,19 @@ FwdState::reforward()
     s = e->getReply()->sline.status;
     debugs(17, 3, "fwdReforward: status " << s);
     return reforwardableStatus(s);
+}
+
+/**
+ * Create "503 Service Unavailable" or "504 Gateway Timeout" error depending
+ * on whether this is a validation request. RFC 2616 says that we MUST reply
+ * with "504 Gateway Timeout" if validation fails and cached reply has
+ * proxy-revalidate, must-revalidate or s-maxage Cache-Control directive.
+ */
+ErrorState *
+FwdState::makeConnectingError(const err_type type) const
+{
+    return errorCon(type, request->flags.need_validation ?
+                    HTTP_GATEWAY_TIMEOUT : HTTP_SERVICE_UNAVAILABLE, request);
 }
 
 static void

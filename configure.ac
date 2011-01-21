@@ -2,7 +2,7 @@
 dnl
 dnl  $Id$
 dnl
-AC_INIT([Squid Web Proxy],[3.1.6],[http://www.squid-cache.org/bugs/],[squid])
+AC_INIT([Squid Web Proxy],[3.1.10],[http://www.squid-cache.org/bugs/],[squid])
 AC_PREREQ(2.61)
 AC_CONFIG_HEADERS([include/autoconf.h])
 AC_CONFIG_AUX_DIR(cfgaux)
@@ -26,6 +26,18 @@ AM_PROG_CC_C_O
 AC_PROG_CXX
 AC_LANG([C++])
 AC_CANONICAL_HOST
+
+AC_MSG_CHECKING([simplified host os])
+simple_host_os=`echo $host_os|sed 's/[0-9].*//g;s/-.*//g'`
+squid_host_os_version=`echo $host_os|tr -d "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ-"`
+if test -n "$squid_host_os_version"; then
+        squid_host_os="`echo $simple_host_os| sed s/$squid_host_os_version//g`"
+else
+        squid_host_os="$simple_host_os"
+fi 
+AC_MSG_RESULT($squid_host_os (version $squid_host_os_version))
+# on windows squid_host_os is either mingw or cygwin, version is 32
+
 
 dnl Make the squid top srcdir available to sub-packages as --with-squid=PATH
 new_configure_args="$ac_configure_args --with-squid=$ac_abs_confdir"
@@ -273,6 +285,12 @@ dnl TODO: check if the problem will be present in any other newer MinGW release.
     mingw|mingw32)
         SQUID_CFLAGS="-Wall -Wpointer-arith -Wwrite-strings -Wcomments"
 	;;
+    *-freebsd*)
+	# FreeBSD places local libraries and packages in /usr/local
+	CFLAGS="$CFLAGS -I/usr/local/include"
+	CXXFLAGS="$CXXFLAGS -I/usr/local/include"
+	LDFLAGS="$LDFLAGS -L/usr/local/lib -Wl,-R/usr/local/lib"
+	;;
     *)
         SQUID_CFLAGS="-Wall -Wpointer-arith -Wwrite-strings -Wmissing-prototypes -Wmissing-declarations -Wcomments"
 	;;
@@ -366,7 +384,7 @@ AC_ARG_ENABLE(debug-cbdata,
 
 dnl Nasty hack to get autoconf 2.64 on Linux to run.
 dnl all other uses of RUN_IFELSE are wrapped inside CACHE_CHECK which breaks on 2.64
-AC_RUN_IFELSE([AC_LANG_SOURCE([[ int main(int argc, char **argv) { return 0; } ]])],[],[],[])
+AC_RUN_IFELSE([AC_LANG_SOURCE([[ int main(int argc, char **argv) { return 0; } ]])],[],[],[:])
 
 dnl This is a developer only option.. developers know how to set defines
 dnl
@@ -531,12 +549,15 @@ for module in $MAYBE_DISK_MODULES none; do
 			AC_MSG_NOTICE([Windows threads support automatically enabled])
 			;;
 		i386-unknown-freebsd*)
-			SQUID_CFLAGS="$SQUID_CFLAGS -D_REENTRANT"
-			SQUID_CXXFLAGS="$SQUID_CXXFLAGS -D_REENTRANT"
-			if test "$GCC" = "yes" ; then
-				if test -z "$PRESET_LDFLAGS"; then
-					LDFLAGS="$LDFLAGS -pthread"
-				fi
+		        if test `echo "$squid_host_os_version" | cut -b1` -lt 7 ; then
+		          AC_MSG_NOTICE(pthread library requires FreeBSD 7 or later)
+		          use_diskthreads="no"
+		        else
+		          SQUID_CFLAGS="$SQUID_CFLAGS -D_REENTRANT"
+		          SQUID_CXXFLAGS="$SQUID_CXXFLAGS -D_REENTRANT"
+		          if test "x$GCC" = "xyes" -a "x$PRESET_LDFLAGS" = "x" ; then
+		            LDFLAGS="$LDFLAGS -pthread"
+		          fi
 			fi
 			;;
 		*-solaris2.*)
@@ -878,16 +899,26 @@ if test "$use_esi" = "yes" ; then
   if test "$with_libxml2" != "no" ; then
     AC_CHECK_LIB([xml2], [main], [XMLLIB="-lxml2"; HAVE_LIBXML2=1])
     dnl Find the main header and include path...
+    ac_cv_libxml2_include='no'
     AC_CHECK_HEADERS([libxml/parser.h], [], [
+        AC_MSG_NOTICE([Testing in /usr/include/libxml2])
         SAVED_CPPFLAGS="$CPPFLAGS"
         CPPFLAGS="-I/usr/include/libxml2 $CPPFLAGS"
         unset ac_cv_header_libxml_parser_h
-        AC_CHECK_HEADERS([libxml/parser.h], [ac_cv_libxml2_include=yes], [])
+        AC_CHECK_HEADERS([libxml/parser.h], [ac_cv_libxml2_include="/usr/include/libxml2"], [])
         CPPFLAGS="$SAVED_CPPFLAGS"
+        if test "x$ac_cv_libxml2_include" = "xno"; then
+            AC_MSG_NOTICE([Testing in /usr/local/include/libxml2])
+            SAVED_CPPFLAGS="$CPPFLAGS"
+            CPPFLAGS="-I/usr/local/include/libxml2 $CPPFLAGS"
+            unset ac_cv_header_libxml_parser_h
+            AC_CHECK_HEADERS([libxml/parser.h], [ac_cv_libxml2_include="/usr/local/include/libxml2"], [])
+            CPPFLAGS="$SAVED_CPPFLAGS"
+        fi
         ])
-    if test "x$ac_cv_libxml2_include" = "xyes"; then
-        SQUID_CXXFLAGS="-I/usr/include/libxml2 $SQUID_CXXFLAGS"
-        CPPFLAGS="-I/usr/include/libxml2 $CPPFLAGS"
+    if test "x$ac_cv_libxml2_include" != "xno"; then
+        SQUID_CXXFLAGS="-I$ac_cv_libxml2_include $SQUID_CXXFLAGS"
+        CPPFLAGS="-I$ac_cv_libxml2_include $CPPFLAGS"
     fi
     dnl Now that we know where to look find the other headers...
     AC_CHECK_HEADERS(libxml/HTMLparser.h libxml/HTMLtree.h)
@@ -1331,11 +1362,67 @@ int main(int argc, char **argv)
     }
     return 0;
 }
-      ]])],[ac_cv_epoll_works=yes],[ac_cv_epoll_works=no],[]))
+      ]])],[ac_cv_epoll_works=yes],[ac_cv_epoll_works=no],[:]))
   fi
 
   if test "$force_epoll" = "yes" && test "$ac_cv_epoll_works" = "no" ; then
     AC_MSG_ERROR([Epoll does not work. Force-enabling it is not going to help.])
+  fi
+fi
+
+dnl Enable solaris /dev/poll
+enable_devpoll=auto
+AC_ARG_ENABLE(devpoll,
+  AS_HELP_STRING([--disable-devpoll],[Disable Solaris /dev/poll support.]),
+[
+  case "$enableval" in
+  yes)
+    AC_MSG_WARN([Forcing devpoll() to be enabled])
+    SELECT_TYPE="devpoll"
+    enable_devpoll="yes"
+    ;;
+  no)
+    AC_MSG_WARN([Forcing devpoll() to be disabled])
+    enable_devpoll=no
+  ;;
+esac
+])
+dnl auto-detect and verify devpoll header and library present and working
+if test "x$enable_devpoll" != "xno"; then
+
+  # Check for /dev/poll
+  AC_CHECK_FUNCS(ioctl)
+  AC_CHECK_FUNCS(write)
+
+  dnl devpoll requires sys/devpoll.h
+  AC_CHECK_HEADERS([sys/devpoll.h],,[
+        if test "x$enable_devpoll" = "xyes"; then
+            AC_MSG_ERROR([--enable-devpoll specified but /dev/poll headers not found])
+        fi
+        enable_devpoll=no])
+
+  dnl Verify that /dev/poll really works
+  if test "$ac_cv_func_ioctl" = "yes" && test "$ac_cv_func_write" = "yes"; then
+    AC_CACHE_CHECK(if /dev/poll works, ac_cv_devpoll_works,
+      AC_RUN_IFELSE([AC_LANG_SOURCE([[
+#include <sys/devpoll.h>
+#include <fcntl.h>
+#include <stdlib.h>
+#include <stdio.h>
+int main(int argc, char **argv)
+{
+    int fd = open("/dev/poll", O_RDWR);
+    if (fd < 0) {
+       perror("devpoll_create:");
+       return 1;
+    }
+    return 0;
+}
+      ]])],[ac_cv_devpoll_works=yes],[ac_cv_devpoll_works=no],[:]))
+  fi
+
+  if test "x$enable_devpoll" = "xyes" && test "x$ac_cv_devpoll_works" = "xno" ; then
+    AC_MSG_ERROR([/dev/poll does not work. Force-enabling it is not going to help.])
   fi
 fi
 
@@ -2481,6 +2568,8 @@ AC_CHECK_TYPE(uint64_t,[
   AC_CHECK_SIZEOF(uint64_t,,SQUID_DEFAULT_SIZEOF_INCLUDES)
   AC_DEFINE(HAVE_UINT64_T,1,[uint64_t is defined in system headers])
   ],,SQUID_DEFAULT_INCLUDES)
+#need the define for overflow checks
+AC_CHECK_SIZEOF(off_t)
 
 dnl On Solaris 9 x86, gcc may includes a "fixed" set of old system include files
 dnl that is incompatible with the updated Solaris header files.
@@ -3013,6 +3102,8 @@ elif test -z "$disable_epoll" && test "$ac_cv_epoll_works" = "yes" ; then
 	SELECT_TYPE="epoll"
 elif test -z "$disable_kqueue" && test "$ac_cv_func_kqueue" = "yes" ; then
 	SELECT_TYPE="kqueue"
+elif test "x$enable_devpoll" != "xno" && test "x$ac_cv_devpoll_works" = "xyes"; then
+        SELECT_TYPE="devpoll"
 elif test -z "$disable_poll" && test "$ac_cv_func_poll" = "yes" ; then
         SELECT_TYPE="poll"
 elif test -z "$disable_select" && test "$ac_cv_func_select" = "yes" ; then
@@ -3025,7 +3116,7 @@ elif test -z "$disable_select" && test "$ac_cv_func_select" = "yes" ; then
 		;;
 	esac
 else
-        AC_MSG_WARN([Eep!  Can't find poll, kqueue, epoll, or select!])
+        AC_MSG_WARN([Eep!  Cannot find epoll, kqueue, /dev/poll, poll or select!])
         AC_MSG_WARN([I'll try select and hope for the best.])
         SELECT_TYPE="select"
         AC_DEFINE(USE_SELECT,1)
@@ -3044,6 +3135,9 @@ AM_CONDITIONAL([USE_DEVPOLL], [test $SELECT_TYPE = devpoll])
 case $SELECT_TYPE in
 epoll)
 	AC_DEFINE(USE_EPOLL,1,[Use epoll() for the IO loop])
+	;;
+devpoll)
+	AC_DEFINE(USE_DEVPOLL,1,[Use /dev/poll for the IO loop])
 	;;
 poll)
         AC_DEFINE(USE_POLL,1,[Use poll() for the IO loop])
@@ -3075,7 +3169,7 @@ AC_CACHE_CHECK(if setresuid is implemented, ac_cv_func_setresuid,
     }
     return 0;
   }
-  ]])],[ac_cv_func_setresuid="yes"],[ac_cv_func_setresuid="no"],[])
+  ]])],[ac_cv_func_setresuid="yes"],[ac_cv_func_setresuid="no"],[:])
 )
 if test "$ac_cv_func_setresuid" = "yes" ; then
   AC_DEFINE(HAVE_SETRESUID,1,[Yay! Another Linux brokenness.  Its not good enough to know that setresuid() exists, because RedHat 5.0 declare setresuid() but doesn't implement it.])
@@ -3100,7 +3194,7 @@ int main(int argc, char **argv)
     strnstr(str, "fubar", size);
     return 0;
 }
-  ]])],[ac_cv_func_strnstr="yes"],[ac_cv_func_strnstr="no"],[])
+  ]])],[ac_cv_func_strnstr="yes"],[ac_cv_func_strnstr="no"],[:])
 )
 if test "$ac_cv_func_strnstr" = "yes" ; then
   AC_DEFINE(HAVE_STRNSTR,1,[Yay! We have a working strnstr!])
@@ -3125,7 +3219,7 @@ AC_CACHE_CHECK(if va_copy is implemented, ac_cv_func_va_copy,
          return 0;
       }
       int main(int argc, char **argv) { return f (0, 42); }
-      ]])],[ac_cv_func_va_copy="yes"],[ac_cv_func_va_copy="no"],[])
+      ]])],[ac_cv_func_va_copy="yes"],[ac_cv_func_va_copy="no"],[:])
 )
 if test "$ac_cv_func_va_copy" = "yes" ; then
   AC_DEFINE(HAVE_VA_COPY, 1, [If your system have va_copy])
@@ -3148,7 +3242,7 @@ AC_CACHE_CHECK(if __va_copy is implemented, ac_cv_func___va_copy,
          return 0;
       }
       int main(int argc, char **argv) { return f (0, 42); }
-      ]])],[ac_cv_func___va_copy="yes"],[ac_cv_func___va_copy="no"],[])
+      ]])],[ac_cv_func___va_copy="yes"],[ac_cv_func___va_copy="no"],[:])
 )
 if test "$ac_cv_func___va_copy" = "yes" ; then
   AC_DEFINE(HAVE___VA_COPY, 1, [Some systems have __va_copy instead of va_copy])

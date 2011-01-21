@@ -51,7 +51,7 @@ class OptXact: public Xaction
 {
 
 public:
-    OptXact(Adaptation::Initiator *anInitiator, ServiceRep::Pointer &aService);
+    OptXact(ServiceRep::Pointer &aService);
 
 protected:
     virtual void start();
@@ -60,14 +60,18 @@ protected:
     virtual void handleCommRead(size_t size);
 
     void makeRequest(MemBuf &buf);
-    HttpMsg *parseResponse();
+    bool parseResponse();
 
     void startReading();
+    virtual bool doneReading() const { return commEof || readAll; }
 
     virtual void swanSong();
 
 private:
     virtual void finalizeLogInfo();
+
+    bool readAll; ///< read the entire OPTIONS response
+
     CBDATA_CLASS2(OptXact);
 };
 
@@ -76,7 +80,7 @@ private:
 class OptXactLauncher: public Launcher
 {
 public:
-    OptXactLauncher(Adaptation::Initiator *anInitiator, Adaptation::ServicePointer aService);
+    OptXactLauncher(Adaptation::ServicePointer aService);
 
 protected:
     virtual Xaction *createXaction();

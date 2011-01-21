@@ -51,6 +51,7 @@ static const HttpHeaderFieldAttrs CcAttrs[CC_ENUM_END] = {
     {"max-age", (http_hdr_type)CC_MAX_AGE},
     {"s-maxage", (http_hdr_type)CC_S_MAXAGE},
     {"max-stale", (http_hdr_type)CC_MAX_STALE},
+    {"min-fresh", (http_hdr_type)CC_MIN_FRESH},
     {"Other,", (http_hdr_type)CC_OTHER}	/* ',' will protect from matches */
 };
 
@@ -89,7 +90,7 @@ HttpHdrCc *
 httpHdrCcCreate(void)
 {
     HttpHdrCc *cc = (HttpHdrCc *)memAllocate(MEM_HTTP_HDR_CC);
-    cc->max_age = cc->s_maxage = cc->max_stale = -1;
+    cc->max_age = cc->s_maxage = cc->max_stale = cc->min_fresh = -1;
     return cc;
 }
 
@@ -138,17 +139,16 @@ httpHdrCcParseInit(HttpHdrCc * cc, const String * str)
             type = CC_OTHER;
         }
 
+        // ignore known duplicate directives
         if (EBIT_TEST(cc->mask, type)) {
-            if (type != CC_OTHER)
+            if (type != CC_OTHER) {
                 debugs(65, 2, "hdr cc: ignoring duplicate cache-directive: near '" << item << "' in '" << str << "'");
-
-            CcFieldsInfo[type].stat.repCount++;
-
-            continue;
+                CcFieldsInfo[type].stat.repCount++;
+                continue;
+            }
+        } else {
+            EBIT_SET(cc->mask, type);
         }
-
-        /* update mask */
-        EBIT_SET(cc->mask, type);
 
         /* post-processing special cases */
         switch (type) {
@@ -178,6 +178,16 @@ httpHdrCcParseInit(HttpHdrCc * cc, const String * str)
             if (!p || !httpHeaderParseInt(p, &cc->max_stale)) {
                 debugs(65, 2, "cc: max-stale directive is valid without value");
                 cc->max_stale = -1;
+            }
+
+            break;
+
+        case CC_MIN_FRESH:
+
+            if (!p || !httpHeaderParseInt(p, &cc->min_fresh)) {
+                debugs(65, 2, "cc: invalid min-fresh specs near '" << item << "'");
+                cc->min_fresh = -1;
+                EBIT_CLR(cc->mask, type);
             }
 
             break;
@@ -221,6 +231,7 @@ httpHdrCcDup(const HttpHdrCc * cc)
     dup->max_age = cc->max_age;
     dup->s_maxage = cc->s_maxage;
     dup->max_stale = cc->max_stale;
+    dup->min_fresh = cc->min_fresh;
     return dup;
 }
 
@@ -248,6 +259,9 @@ httpHdrCcPackInto(const HttpHdrCc * cc, Packer * p)
 
             if (flag == CC_MAX_STALE && cc->max_stale >= 0)
                 packerPrintf(p, "=%d", (int) cc->max_stale);
+
+            if (flag == CC_MIN_FRESH)
+                packerPrintf(p, "=%d", (int) cc->min_fresh);
 
             pcount++;
         }

@@ -33,9 +33,9 @@ or obtained by writing to the Free Software Foundation, Inc.,
 #if !defined(LTDL_H)
 #define LTDL_H 1
 
-#include "libltdl/lt_system.h"
-#include "libltdl/lt_error.h"
-#include "libltdl/lt_dlloader.h"
+#include <libltdl/lt_system.h>
+#include <libltdl/lt_error.h>
+#include <libltdl/lt_dlloader.h>
 
 LT_BEGIN_C_DECLS
 

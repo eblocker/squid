@@ -962,9 +962,6 @@ clientInterpretRequestHeaders(ClientHttpRequest * http)
     }
 
 #endif
-    if (request->method == METHOD_TRACE || request->method == METHOD_OPTIONS) {
-        request->max_forwards = req_hdr->getInt64(HDR_MAX_FORWARDS);
-    }
 
     request->flags.cachable = http->request->cacheable();
 
@@ -1012,11 +1009,18 @@ ClientRequestContext::clientRedirectDone(char *result)
             if ((t = strchr(result, ':')) != NULL) {
                 http->redirect.status = status;
                 http->redirect.location = xstrdup(t + 1);
+                // TODO: validate the URL produced here is RFC 2616 compliant absolute URI
             } else {
-                debugs(85, 1, "clientRedirectDone: bad input: " << result);
+                if (old_request->http_ver < HttpVersion(1,1))
+                    debugs(85, DBG_CRITICAL, "ERROR: URL-rewrite produces invalid 302 redirect Location: " << result);
+                else
+                    debugs(85, DBG_CRITICAL, "ERROR: URL-rewrite produces invalid 303 redirect Location: " << result);
             }
-        } else if (strcmp(result, http->uri))
-            new_request = HttpRequest::CreateFromUrlAndMethod(result, old_request->method);
+        } else if (strcmp(result, http->uri)) {
+            if (!(new_request = HttpRequest::CreateFromUrlAndMethod(result, old_request->method)))
+                debugs(85, DBG_CRITICAL, "ERROR: URL-rewrite produces invalid request: " <<
+                       old_request->method << " " << result << " HTTP/1.1");
+        }
     }
 
     if (new_request) {
@@ -1040,7 +1044,8 @@ ClientRequestContext::clientRedirectDone(char *result)
         if (old_request->body_pipe != NULL) {
             new_request->body_pipe = old_request->body_pipe;
             old_request->body_pipe = NULL;
-            debugs(0,0,HERE << "redirecting body_pipe " << new_request->body_pipe << " from request " << old_request << " to " << new_request);
+            debugs(61,2, HERE << "URL-rewriter diverts body_pipe " << new_request->body_pipe <<
+                   " from request " << old_request << " to " << new_request);
         }
 
         new_request->content_length = old_request->content_length;
@@ -1368,11 +1373,11 @@ ClientHttpRequest::startAdaptation(const Adaptation::ServiceGroupPointer &g)
     assert(!virginHeadSource);
     assert(!adaptedBodySource);
     virginHeadSource = initiateAdaptation(
-                           new Adaptation::Iterator(this, request, NULL, g));
+                           new Adaptation::Iterator(request, NULL, g));
 
     // we could try to guess whether we can bypass this adaptation
     // initiation failure, but it should not really happen
-    assert(virginHeadSource != NULL); // Must, really
+    Must(initiated(virginHeadSource));
 }
 
 void

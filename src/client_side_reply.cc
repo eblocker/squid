@@ -350,21 +350,18 @@ clientReplyContext::handleIMSReply(StoreIOBuffer result)
     // request to origin was aborted
     if (EBIT_TEST(http->storeEntry()->flags, ENTRY_ABORTED)) {
         debugs(88, 3, "handleIMSReply: request to origin aborted '" << http->storeEntry()->url() << "', sending old entry to client" );
-        http->logType = LOG_TCP_REFRESH_FAIL;
+        http->logType = LOG_TCP_REFRESH_FAIL_OLD;
         sendClientOldEntry();
     }
 
     HttpReply *old_rep = (HttpReply *) old_entry->getReply();
 
     // origin replied 304
-    // TODO FIXME: old_rep2 was forcibly unshadowed, used to be old_rep. Are we sure
-    //  that the right semantics were preserved?
     if (status == HTTP_NOT_MODIFIED) {
         http->logType = LOG_TCP_REFRESH_UNMODIFIED;
 
         // update headers on existing entry
-        HttpReply *old_rep2 = (HttpReply *) old_entry->getReply();
-        old_rep2->updateOnNotModified(http->storeEntry()->getReply());
+        old_rep->updateOnNotModified(http->storeEntry()->getReply());
         old_entry->timestampsSet();
 
         // if client sent IMS
@@ -376,7 +373,7 @@ clientReplyContext::handleIMSReply(StoreIOBuffer result)
         } else {
             // send existing entry, it's still valid
             debugs(88, 3, "handleIMSReply: origin replied 304, revalidating existing entry and sending " <<
-                   old_rep2->sline.status << " to client");
+                   old_rep->sline.status << " to client");
             sendClientOldEntry();
         }
     }
@@ -390,9 +387,14 @@ clientReplyContext::handleIMSReply(StoreIOBuffer result)
     }
 
     // origin replied with an error
-    else {
+    else if (http->request->flags.fail_on_validation_err) {
+        http->logType = LOG_TCP_REFRESH_FAIL_ERR;
+        debugs(88, 3, "handleIMSReply: origin replied with error " << status <<
+               ", forwarding to client due to fail_on_validation_err");
+        sendClientUpstreamResponse();
+    } else {
         // ignore and let client have old entry
-        http->logType = LOG_TCP_REFRESH_FAIL;
+        http->logType = LOG_TCP_REFRESH_FAIL_OLD;
         debugs(88, 3, "handleIMSReply: origin replied with error " <<
                status << ", sending old entry (" << old_rep->sline.status << ") to client");
         sendClientOldEntry();
@@ -514,7 +516,7 @@ clientReplyContext::cacheHit(StoreIOBuffer result)
        ) {
         http->logType = LOG_TCP_NEGATIVE_HIT;
         sendMoreData(result);
-    } else if (!Config.onoff.offline && refreshCheckHTTP(e, r) && !http->flags.internal) {
+    } else if (!http->flags.internal && refreshCheckHTTP(e, r)) {
         debugs(88, 5, "clientCacheHit: in refreshCheck() block");
         /*
          * We hold a stale copy; it needs to be validated
@@ -556,41 +558,9 @@ clientReplyContext::cacheHit(StoreIOBuffer result)
             http->logType = LOG_TCP_MISS;
             processMiss();
         }
-    } else if (r->flags.ims) {
-        /*
-         * Handle If-Modified-Since requests from the client
-         */
-
-        if (e->getReply()->sline.status != HTTP_OK) {
-            debugs(88, 4, "clientCacheHit: Reply code " <<
-                   e->getReply()->sline.status << " != 200");
-            http->logType = LOG_TCP_MISS;
-            processMiss();
-        } else if (e->modifiedSince(http->request)) {
-            http->logType = LOG_TCP_IMS_HIT;
-            sendMoreData(result);
-        } else {
-            time_t const timestamp = e->timestamp;
-            HttpReply *temprep = e->getReply()->make304();
-            http->logType = LOG_TCP_IMS_HIT;
-            removeClientStoreReference(&sc, http);
-            createStoreEntry(http->request->method,
-                             request_flags());
-            e = http->storeEntry();
-            /*
-             * Copy timestamp from the original entry so the 304
-             * reply has a meaningful Age: header.
-             */
-            e->timestamp = timestamp;
-            e->replaceHttpReply(temprep);
-            e->complete();
-            /* TODO: why put this in the store and then serialise it and then parse it again.
-             * Simply mark the request complete in our context and
-             * write the reply struct to the client side
-             */
-            triggerInitialStoreRead();
-        }
-    } else {
+    } else if (r->conditional())
+        processConditional(result);
+    else {
         /*
          * plain ol' cache hit
          */
@@ -706,6 +676,72 @@ clientReplyContext::processOnlyIfCachedMiss()
     err = clientBuildError(ERR_ONLY_IF_CACHED_MISS, HTTP_GATEWAY_TIMEOUT, NULL, http->getConn()->peer, http->request);
     removeClientStoreReference(&sc, http);
     startError(err);
+}
+
+/// process conditional request from client
+void
+clientReplyContext::processConditional(StoreIOBuffer &result)
+{
+    StoreEntry *const e = http->storeEntry();
+
+    if (e->getReply()->sline.status != HTTP_OK) {
+        debugs(88, 4, "clientReplyContext::processConditional: Reply code " <<
+               e->getReply()->sline.status << " != 200");
+        http->logType = LOG_TCP_MISS;
+        processMiss();
+        return;
+    }
+
+    HttpRequest &r = *http->request;
+
+    if (r.header.has(HDR_IF_MATCH) && !e->hasIfMatchEtag(r)) {
+        // RFC 2616: reply with 412 Precondition Failed if If-Match did not match
+        sendPreconditionFailedError();
+        return;
+    }
+
+    bool matchedIfNoneMatch = false;
+    if (r.header.has(HDR_IF_NONE_MATCH)) {
+        if (!e->hasIfNoneMatchEtag(r)) {
+            // RFC 2616: ignore IMS if If-None-Match did not match
+            r.flags.ims = 0;
+            r.ims = -1;
+            r.imslen = 0;
+            r.header.delById(HDR_IF_MODIFIED_SINCE);
+            http->logType = LOG_TCP_MISS;
+            sendMoreData(result);
+            return;
+        }
+
+        if (!r.flags.ims) {
+            // RFC 2616: if If-None-Match matched and there is no IMS,
+            // reply with 304 Not Modified or 412 Precondition Failed
+            sendNotModifiedOrPreconditionFailedError();
+            return;
+        }
+
+        // otherwise check IMS below to decide if we reply with 304 or 412
+        matchedIfNoneMatch = true;
+    }
+
+    if (r.flags.ims) {
+        // handle If-Modified-Since requests from the client
+        if (e->modifiedSince(&r)) {
+            http->logType = LOG_TCP_IMS_HIT;
+            sendMoreData(result);
+            return;
+        }
+
+        if (matchedIfNoneMatch) {
+            // If-None-Match matched, reply with 304 Not Modified or
+            // 412 Precondition Failed
+            sendNotModifiedOrPreconditionFailedError();
+            return;
+        }
+
+        // otherwise reply with 304 Not Modified
+        sendNotModified();
+    }
 }
 
 void
@@ -945,7 +981,6 @@ clientReplyContext::traceReply(clientStreamNode * node)
 {
     clientStreamNode *nextNode = (clientStreamNode *)node->node.next->data;
     StoreIOBuffer localTempBuffer;
-    assert(http->request->max_forwards == 0);
     createStoreEntry(http->request->method, request_flags());
     localTempBuffer.offset = nextNode->readBuffer.offset + headers_sz;
     localTempBuffer.length = nextNode->readBuffer.length;
@@ -1214,6 +1249,7 @@ clientReplyContext::buildReplyHeader()
 
     if (is_hit)
         hdr->delById(HDR_SET_COOKIE);
+    // TODO: RFC 2965 : Must honour Cache-Control: no-cache="set-cookie2" and remove header.
 
     // if there is not configured a peer proxy with login=PASS option enabled
     // remove the Proxy-Authenticate header
@@ -1296,6 +1332,13 @@ clientReplyContext::buildReplyHeader()
             debugs(88,1,"WARNING: An error inside Squid has caused an HTTP reply without Date:. Please report this");
             /* TODO: dump something useful about the problem */
         }
+    }
+
+    // add Warnings required by RFC 2616 if serving a stale hit
+    if (http->request->flags.stale_if_hit && logTypeIsATcpHit(http->logType)) {
+        hdr->putWarning(110, "Response is stale");
+        if (http->request->flags.need_validation)
+            hdr->putWarning(111, "Revalidation failed");
     }
 
     /* Filter unproxyable authentication types */
@@ -1391,7 +1434,6 @@ clientReplyContext::buildReplyHeader()
         request->flags.proxy_keepalive = 0;
     }
 
-
     /* Append VIA */
     if (Config.onoff.via) {
         LOCAL_ARRAY(char, bbuf, MAX_URL + 32);
@@ -1405,9 +1447,8 @@ clientReplyContext::buildReplyHeader()
         hdr->delById(HDR_VIA);
         hdr->putStr(HDR_VIA, strVia.termedBuf());
     }
-    /* Signal keep-alive if needed */
-    hdr->putStr( (http->flags.accel || http->flags.intercepted)? HDR_CONNECTION : HDR_PROXY_CONNECTION,
-                 request->flags.proxy_keepalive ? "keep-alive" : "close");
+    /* Signal keep-alive or close explicitly */
+    hdr->putStr(HDR_CONNECTION, request->flags.proxy_keepalive ? "keep-alive" : "close");
 
 #if ADD_X_REQUEST_URI
     /*
@@ -1614,10 +1655,10 @@ clientGetMoreData(clientStreamNode * aNode, ClientHttpRequest * http)
         return;
     }
 
-    /* TODO: handle OPTIONS request on max_forwards == 0 as well */
+    // OPTIONS with Max-Forwards:0 handled in clientProcessRequest()
 
     if (context->http->request->method == METHOD_TRACE) {
-        if (context->http->request->max_forwards == 0) {
+        if (context->http->request->header.getInt64(HDR_MAX_FORWARDS) == 0) {
             context->traceReply(aNode);
             return;
         }
@@ -1772,6 +1813,55 @@ clientReplyContext::sendBodyTooLargeError()
     HTTPMSGUNLOCK(reply);
     startError(err);
 
+}
+
+/// send 412 (Precondition Failed) to client
+void
+clientReplyContext::sendPreconditionFailedError()
+{
+    http->logType = LOG_TCP_HIT;
+    ErrorState *const err =
+        clientBuildError(ERR_PRECONDITION_FAILED, HTTP_PRECONDITION_FAILED,
+                         NULL, http->getConn()->peer, http->request);
+    removeClientStoreReference(&sc, http);
+    HTTPMSGUNLOCK(reply);
+    startError(err);
+}
+
+/// send 304 (Not Modified) to client
+void
+clientReplyContext::sendNotModified()
+{
+    StoreEntry *e = http->storeEntry();
+    const time_t timestamp = e->timestamp;
+    HttpReply *const temprep = e->getReply()->make304();
+    http->logType = LOG_TCP_IMS_HIT;
+    removeClientStoreReference(&sc, http);
+    createStoreEntry(http->request->method, request_flags());
+    e = http->storeEntry();
+    // Copy timestamp from the original entry so the 304
+    // reply has a meaningful Age: header.
+    e->timestamp = timestamp;
+    e->replaceHttpReply(temprep);
+    e->complete();
+    /*
+     * TODO: why put this in the store and then serialise it and
+     * then parse it again. Simply mark the request complete in
+     * our context and write the reply struct to the client side.
+     */
+    triggerInitialStoreRead();
+}
+
+/// send 304 (Not Modified) or 412 (Precondition Failed) to client
+/// depending on request method
+void
+clientReplyContext::sendNotModifiedOrPreconditionFailedError()
+{
+    if (http->request->method == METHOD_GET ||
+            http->request->method == METHOD_HEAD)
+        sendNotModified();
+    else
+        sendPreconditionFailedError();
 }
 
 void

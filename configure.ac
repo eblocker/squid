@@ -2,7 +2,7 @@
 dnl
 dnl  $Id$
 dnl
-AC_INIT([Squid Web Proxy],[3.1.10],[http://www.squid-cache.org/bugs/],[squid])
+AC_INIT([Squid Web Proxy],[3.1.11],[http://www.squid-cache.org/bugs/],[squid])
 AC_PREREQ(2.61)
 AC_CONFIG_HEADERS([include/autoconf.h])
 AC_CONFIG_AUX_DIR(cfgaux)
@@ -927,14 +927,11 @@ if test "$use_esi" = "yes" ; then
       AC_MSG_ERROR([Required library libxml2 is not able to be found.])
     fi
   fi
-
-else
-  AC_MSG_NOTICE([Disabling ESI processor and Surrogate header support.])
 fi
-AM_CONDITIONAL(USE_ESI, test "$use_esi" = "yes")
 AM_CONDITIONAL(HAVE_LIBEXPAT, test $HAVE_LIBEXPAT = 1)
-AC_SUBST(EXPATLIB)
 AM_CONDITIONAL(HAVE_LIBXML2, test $HAVE_LIBXML2 = 1)
+AM_CONDITIONAL(USE_ESI, test "x$use_esi" = "xyes")
+AC_SUBST(EXPATLIB)
 AC_SUBST(XMLLIB)
 
 AM_CONDITIONAL(USE_ICAP_CLIENT, false)

@@ -870,7 +870,10 @@ ErrorState::BuildHttpReply()
 
     if (strchr(name, ':')) {
         /* Redirection */
-        rep->setHeaders(HTTP_MOVED_TEMPORARILY, NULL, "text/html", 0, 0, -1);
+        if (request->method != METHOD_GET && request->method != METHOD_HEAD && request->http_ver >= HttpVersion(1,1))
+            rep->setHeaders(HTTP_TEMPORARY_REDIRECT, NULL, "text/html", 0, 0, -1);
+        else
+            rep->setHeaders(HTTP_MOVED_TEMPORARILY, NULL, "text/html", 0, 0, -1);
 
         if (request) {
             char *quoted_url = rfc1738_escape_part(urlCanonical(request));
@@ -937,6 +940,7 @@ ErrorState::BuildContent()
     String hdr;
     char dir[256];
     int l = 0;
+    const char *freePage = NULL;
 
     /** error_directory option in squid.conf overrides translations.
      * Custom errors are always found either in error_directory or the templates directory.
@@ -1010,6 +1014,7 @@ ErrorState::BuildContent()
                 if (m) {
                     /* store the language we found for the Content-Language reply header */
                     err_language = xstrdup(reset);
+                    freePage = m;
                     break;
                 } else if (Config.errorLogMissingLanguages) {
                     debugs(4, DBG_IMPORTANT, "WARNING: Error Pages Missing Language: " << reset);
@@ -1060,6 +1065,10 @@ ErrorState::BuildContent()
         content->Printf("%s", m);	/* copy tail */
 
     assert((size_t)content->contentSize() == strlen(content->content()));
+
+#if USE_ERR_LOCALES
+    safe_free(freePage);
+#endif
 
     return content;
 }

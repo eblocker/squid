@@ -254,22 +254,34 @@ refreshCheck(const StoreEntry * entry, HttpRequest * request, time_t delta)
     if (NULL == R)
         R = &DefaultRefresh;
 
+    debugs(22, 3, "refreshCheck: Matched '" << R->pattern << " " <<
+           (int) R->min << " " << (int) (100.0 * R->pct) << "%% " <<
+           (int) R->max << "'");
+
+    debugs(22, 3, "\tage:\t" << age);
+
+    debugs(22, 3, "\tcheck_time:\t" << mkrfc1123(check_time));
+
+    debugs(22, 3, "\tentry->timestamp:\t" << mkrfc1123(entry->timestamp));
+
+    if (request && !request->flags.ignore_cc) {
+        const HttpHdrCc *const cc = request->cache_control;
+        if (cc && cc->min_fresh > 0) {
+            debugs(22, 3, "\tage + min-fresh:\t" << age << " + " <<
+                   cc->min_fresh << " = " << age + cc->min_fresh);
+            debugs(22, 3, "\tcheck_time + min-fresh:\t" << check_time << " + "
+                   << cc->min_fresh << " = " <<
+                   mkrfc1123(check_time + cc->min_fresh));
+            age += cc->min_fresh;
+            check_time += cc->min_fresh;
+        }
+    }
+
     memset(&sf, '\0', sizeof(sf));
 
     staleness = refreshStaleness(entry, check_time, age, R, &sf);
 
     debugs(22, 3, "Staleness = " << staleness);
-
-    debugs(22, 3, "refreshCheck: Matched '" << R->pattern << " " <<
-           (int) R->min << " " << (int) (100.0 * R->pct) << "%% " <<
-           (int) R->max << "'");
-
-
-    debugs(22, 3, "refreshCheck: age = " << age);
-
-    debugs(22, 3, "\tcheck_time:\t" << mkrfc1123(check_time));
-
-    debugs(22, 3, "\tentry->timestamp:\t" << mkrfc1123(entry->timestamp));
 
     if (EBIT_TEST(entry->flags, ENTRY_REVALIDATE) && staleness > -1
 #if HTTP_VIOLATIONS
@@ -277,6 +289,8 @@ refreshCheck(const StoreEntry * entry, HttpRequest * request, time_t delta)
 #endif
        ) {
         debugs(22, 3, "refreshCheck: YES: Must revalidate stale response");
+        if (request)
+            request->flags.fail_on_validation_err = 1;
         return STALE_MUST_REVALIDATE;
     }
 
@@ -312,17 +326,16 @@ refreshCheck(const StoreEntry * entry, HttpRequest * request, time_t delta)
         if (NULL != cc) {
             if (cc->max_age > -1) {
 #if HTTP_VIOLATIONS
-                if (R->flags.ignore_reload && cc->max_age == 0) {} else
+                if (R->flags.ignore_reload && cc->max_age == 0) {
+                    debugs(22, 3, "refreshCheck: MAYBE: client-max-age = 0 and ignore-reload");
+                } else
 #endif
                 {
-#if 0
-
                     if (cc->max_age == 0) {
                         debugs(22, 3, "refreshCheck: YES: client-max-age = 0");
                         return STALE_EXCEEDS_REQUEST_MAX_AGE_VALUE;
                     }
 
-#endif
                     if (age > cc->max_age) {
                         debugs(22, 3, "refreshCheck: YES: age > client-max-age");
                         return STALE_EXCEEDS_REQUEST_MAX_AGE_VALUE;
@@ -436,6 +449,20 @@ refreshIsCachable(const StoreEntry * entry)
     return 1;
 }
 
+/// whether reply is stale if it is a hit
+static bool
+refreshIsStaleIfHit(const int reason)
+{
+    switch (reason) {
+    case FRESH_MIN_RULE:
+    case FRESH_LMFACTOR_RULE:
+    case FRESH_EXPIRES:
+        return false;
+    default:
+        return true;
+    }
+}
+
 /* refreshCheck... functions below are protocol-specific wrappers around
  * refreshCheck() function above */
 
@@ -445,7 +472,8 @@ refreshCheckHTTP(const StoreEntry * entry, HttpRequest * request)
     int reason = refreshCheck(entry, request, 0);
     refreshCounts[rcHTTP].total++;
     refreshCounts[rcHTTP].status[reason]++;
-    return (reason < 200) ? 0 : 1;
+    request->flags.stale_if_hit = refreshIsStaleIfHit(reason);
+    return (Config.onoff.offline || reason < 200) ? 0 : 1;
 }
 
 int

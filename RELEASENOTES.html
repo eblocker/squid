@@ -1,11 +1,11 @@
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
 <HTML>
 <HEAD>
- <META NAME="GENERATOR" CONTENT="LinuxDoc-Tools 0.9.65">
- <TITLE>Squid 3.1.6 release notes</TITLE>
+ <META NAME="GENERATOR" CONTENT="LinuxDoc-Tools 0.9.66">
+ <TITLE>Squid 3.1.10 release notes</TITLE>
 </HEAD>
 <BODY>
-<H1>Squid 3.1.6 release notes</H1>
+<H1>Squid 3.1.10 release notes</H1>
 
 <H2>Squid Developers</H2>
 <HR>
@@ -70,7 +70,7 @@ for Applied Network Research and members of the Web Caching community.</EM>
 <HR>
 <H2><A NAME="s1">1.</A> <A HREF="#toc1">Notice</A></H2>
 
-<P>The Squid Team are pleased to announce the release of Squid-3.1.6</P>
+<P>The Squid Team are pleased to announce the release of Squid-3.1.10</P>
 <P>This new release is available for download from 
 <A HREF="http://www.squid-cache.org/Versions/v3/3.1/">http://www.squid-cache.org/Versions/v3/3.1/</A> or the 
 <A HREF="http://www.squid-cache.org/Mirrors/http-mirrors.html">mirrors</A>.</P>
@@ -89,7 +89,6 @@ While this release is not fully bug-free we believe it is ready for use in produ
 <P>
 <UL>
 <LI>The lack of some features available in Squid-2.x series. See the regression sections below for full details.</LI>
-<LI>IPv6 split-stack support for Windows XP, MacOS X, OpenBSD and maybe others is not complete.</LI>
 <LI>CVE-2009-0801 : NAT interception vulnerability to malicious clients.</LI>
 </UL>
 </P>
@@ -97,7 +96,6 @@ While this release is not fully bug-free we believe it is ready for use in produ
 <P>Currently known issues which only depends on available developer time and may still be resolved in a future 3.1 release are:</P>
 <P>
 <UL>
-<LI>An ongoing slow FD leak introduced somewhere during the Squid-3.0 cycle.</LI>
 <LI>Windows support is still largely missing.</LI>
 <LI>AIX support for building with the IBM compiler is broken.</LI>
 </UL>
@@ -241,7 +239,7 @@ with Squid. From 3.1.6 the automatic capability detection will enable these abil
 <LI>permit IPv6 server connection provided tcp_outgoing_address has been configured (see below).</LI>
 </UL>
 </P>
-<P><EM>NOTE:</EM> SNMP, ICP and HTCP are not yet opening double ports so they will only run as IPv4-only or IPv6-only.</P>
+<P><EM>NOTE:</EM> ICAP, SNMP, ICP and HTCP are not yet opening double ports so they will only run as IPv4-only or IPv6-only.</P>
 
 <P>Specify a specific tcp_outgoing_address and the clients who match its ACL are limited
 to the IPv4 or IPv6 network that address belongs to. They are not permitted over the
@@ -264,7 +262,7 @@ be chosen to handle transparently intercepted traffic.
 </P>
 
 <P>Real transparent Interception (TPROXY) may be able to perform IPv6 interception.
-However this currently still needs kernel patching with experimental patches to enable IPv6.
+However this currently still needs patching of kernels older than 2.6.37.
 Squid will attempt to discover support on startup and may permit or deny IPv6 wildcard for
 tproxy flagged ports depending on your system.</P>
 
@@ -681,6 +679,10 @@ Default: ON
 </PRE>
 </P>
 
+<DT><B>client_request_buffer_max_size</B><DD>
+<P>New directive added with squid-3.1.10 to set limits on the amount of buffer space allocated
+for receiving upload and request data from clients.</P>
+
 <DT><B>dns_v4_fallback</B><DD>
 <P>New option to prevent Squid from always looking up IPv4 regardless of whether IPv6 addresses are found.
 Squid will follow a policy of prefering IPv6 links, keeping the IPv4 only as a safety net behind IPv6.
@@ -1033,8 +1035,8 @@ Default: ON
 
 <DT><B>ssl_bump</B><DD>
 <P>New Access control for which CONNECT requests to an http_port
-marked with an sslBump flag are actually "bumped". Please
-see the sslBump flag of an http_port option for more details
+marked with an ssl-bump flag are actually "bumped". Please
+see the ssl-bump flag of an http_port option for more details
 about decoding proxied SSL connections.
 DEFAULT: No requests are bumped.
 <PRE>
@@ -1288,7 +1290,7 @@ format, so all helpers will need to be checked and converted to cope with such i
 </PRE>
 </P>
 
-<DT><B>http_port transparent intercept sslbump connection-auth[=on|off] ignore-cc</B><DD>
+<DT><B>http_port transparent intercept ssl-bump connection-auth[=on|off] ignore-cc</B><DD>
 <P>Option 'transparent' is being deprecated in favour of 'intercept' which more clearly identifies what the option does.
 For now option 'tproxy' remains with old behaviour meaning fully-invisible proxy using TPROXY support.</P>
 <P>New port options
@@ -1315,7 +1317,7 @@ For now option 'tproxy' remains with old behaviour meaning fully-invisible proxy
                         Warning: This option violates HTTP specifications if
                         used in non-accelerator setups.
 
-           sslBump      Intercept each CONNECT request matching ssl_bump ACL,
+           ssl-bump     Intercept each CONNECT request matching ssl_bump ACL,
                         establish secure connection with the client and with
                         the server, decrypt HTTP messages as they pass through
                         Squid, and treat them as unencrypted HTTP messages,
@@ -1329,16 +1331,16 @@ For now option 'tproxy' remains with old behaviour meaning fully-invisible proxy
                         for more information on these options.
 
                         The ssl_bump option is required to fully enable
-                        the SslBump feature.
+                        the SSL Bump feature.
         
 </PRE>
 </P>
 
-<DT><B>https_port intercept sslbump connection-auth[=on|off]</B><DD>
+<DT><B>https_port intercept ssl-bump connection-auth[=on|off]</B><DD>
 <P>New port options. see http_port.</P>
 
-<DT><B>icap_service bypass=on|off|1|0 routing=on|off|1|0</B><DD>
-<P>New options 'bypass=' and 'routing='.
+<DT><B>icap_service bypass=on|off|1|0 routing=on|off|1|0 ipv6=on|off</B><DD>
+<P>New options 'bypass=', 'routing=' and 'ipv6='.
 <PRE>
         bypass=on|off|1|0
                 If set to 'on' or '1', the ICAP service is treated as
@@ -1361,10 +1363,15 @@ For now option 'tproxy' remains with old behaviour meaning fully-invisible proxy
                 should have the same method and vectoring point as the current
                 ICAP transaction.  Services violating these rules are ignored.
                 An empty X-Next-Services value results in an empty plan which
-                ends the current adaptation. 
+                ends the current adaptation.
 
                 Routing is not allowed by default: the ICAP X-Next-Services
                 response header is ignored.
+
+        ipv6=on|off
+                Only has effect on split-stack systems. The default on those systems
+                is to use IPv4-only connections. When set to 'on' this option will
+                make Squid use IPv6-only connections to contact this ICAP service.
         
 </PRE>
 </P>

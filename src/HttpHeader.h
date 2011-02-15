@@ -73,6 +73,7 @@ typedef enum {
     HDR_CONTENT_RANGE,
     HDR_CONTENT_TYPE,
     HDR_COOKIE,
+    HDR_COOKIE2,
     HDR_DATE,
     HDR_ETAG,
     HDR_EXPIRES,
@@ -102,9 +103,10 @@ typedef enum {
     HDR_RETRY_AFTER,
     HDR_SERVER,
     HDR_SET_COOKIE,
+    HDR_SET_COOKIE2,
     HDR_TE,
     HDR_TITLE,
-    HDR_TRAILERS,
+    HDR_TRAILER,
     HDR_TRANSFER_ENCODING,
     HDR_TRANSLATE,             /* IIS custom header we may need to cut off */
     HDR_UNLESS_MODIFIED_SINCE,             /* IIS custom header we may need to cut off */
@@ -239,6 +241,7 @@ public:
     void putContRange(const HttpHdrContRange * cr);
     void putRange(const HttpHdrRange * range);
     void putSc(HttpHdrSc *sc);
+    void putWarning(const int code, const char *const text); ///< add a Warning header
     void putExt(const char *name, const char *value);
     int getInt(http_hdr_type id) const;
     int64_t getInt64(http_hdr_type id) const;
@@ -255,6 +258,7 @@ public:
     int hasListMember(http_hdr_type id, const char *member, const char separator) const;
     int hasByNameListMember(const char *name, const char *member, const char separator) const;
     void removeHopByHopEntries();
+    inline bool chunked() const; ///< whether message uses chunked Transfer-Encoding
 
     /* protected, do not use these, use interface functions instead */
     Vector<HttpHeaderEntry *> entries;		/**< parsed fields in raw format */
@@ -281,5 +285,12 @@ SQUIDCEXTERN void httpHeaderUpdate(HttpHeader * old, const HttpHeader * fresh, c
 int httpMsgIsPersistent(HttpVersion const &http_ver, const HttpHeader * hdr);
 
 SQUIDCEXTERN void httpHeaderCalcMask(HttpHeaderMask * mask, http_hdr_type http_hdr_type_enums[], size_t count);
+
+inline bool
+HttpHeader::chunked() const
+{
+    return has(HDR_TRANSFER_ENCODING) &&
+           hasListMember(HDR_TRANSFER_ENCODING, "chunked", ',');
+}
 
 #endif /* SQUID_HTTPHEADER_H */

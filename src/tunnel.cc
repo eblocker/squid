@@ -46,6 +46,7 @@
 #include "client_side.h"
 #include "MemBuf.h"
 #include "http.h"
+#include "ip/tools.h"
 
 class TunnelStateData
 {
@@ -174,7 +175,7 @@ tunnelStateFree(TunnelStateData * tunnelState)
     assert(tunnelState->noConnections());
     safe_free(tunnelState->url);
     FwdState::serversFree(&tunnelState->servers);
-    tunnelState->host = NULL;
+    safe_free(tunnelState->host);
     HTTPMSGUNLOCK(tunnelState->request);
     delete tunnelState;
 }
@@ -641,6 +642,24 @@ tunnelStart(ClientHttpRequest * http, int64_t * size_ptr, int *status_ptr)
     statCounter.server.other.requests++;
     /* Create socket. */
     IpAddress temp = getOutgoingAddr(request,NULL);
+
+    // if IPv6 is disabled try to force IPv4-only outgoing.
+    if (!Ip::EnableIpv6 && !temp.SetIPv4()) {
+        debugs(50, 4, "tunnelStart: IPv6 is Disabled. Tunnel failed from " << temp);
+        ErrorState *anErr = errorCon(ERR_CONNECT_FAIL, HTTP_SERVICE_UNAVAILABLE, request);
+        anErr->xerrno = EAFNOSUPPORT;
+        errorSend(fd, anErr);
+        return;
+    }
+
+    // if IPv6 is split-stack, prefer IPv4
+    if (Ip::EnableIpv6&IPV6_SPECIAL_SPLITSTACK) {
+        // NP: This is not a great choice of default,
+        // but with the current Internet being IPv4-majority has a higher success rate.
+        // if setting to IPv4 fails we dont care, that just means to use IPv6 outgoing.
+        temp.SetIPv4();
+    }
+
     int flags = COMM_NONBLOCKING;
     if (request->flags.spoof_client_ip) {
         flags |= COMM_TRANSPARENT;
@@ -739,7 +758,7 @@ tunnelPeerSelectComplete(FwdServer * fs, void *data)
     }
 
     tunnelState->servers = fs;
-    tunnelState->host = fs->_peer ? fs->_peer->host : xstrdup(request->GetHost());
+    tunnelState->host = fs->_peer ? xstrdup(fs->_peer->host) : xstrdup(request->GetHost());
 
     if (fs->_peer == NULL) {
         tunnelState->port = request->port;

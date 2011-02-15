@@ -1,5 +1,6 @@
 
 #include "squid.h"
+#include "base/AsyncJobCalls.h"
 #include "BodyPipe.h"
 #include "TextException.h"
 
@@ -40,8 +41,9 @@ class BodyProducerDialer: public UnaryMemFunT<BodyProducer, BodyPipe::Pointer>
 public:
     typedef UnaryMemFunT<BodyProducer, BodyPipe::Pointer> Parent;
 
-    BodyProducerDialer(BodyProducer *aProducer, Parent::Method aHandler,
-                       BodyPipe::Pointer bp): Parent(aProducer, aHandler, bp) {}
+    BodyProducerDialer(const BodyProducer::Pointer &aProducer,
+                       Parent::Method aHandler, BodyPipe::Pointer bp):
+            Parent(aProducer, aHandler, bp) {}
 
     virtual bool canDial(AsyncCall &call);
 };
@@ -54,8 +56,9 @@ class BodyConsumerDialer: public UnaryMemFunT<BodyConsumer, BodyPipe::Pointer>
 public:
     typedef UnaryMemFunT<BodyConsumer, BodyPipe::Pointer> Parent;
 
-    BodyConsumerDialer(BodyConsumer *aConsumer, Parent::Method aHandler,
-                       BodyPipe::Pointer bp): Parent(aConsumer, aHandler, bp) {}
+    BodyConsumerDialer(const BodyConsumer::Pointer &aConsumer,
+                       Parent::Method aHandler, BodyPipe::Pointer bp):
+            Parent(aConsumer, aHandler, bp) {}
 
     virtual bool canDial(AsyncCall &call);
 };
@@ -66,7 +69,7 @@ BodyProducerDialer::canDial(AsyncCall &call)
     if (!Parent::canDial(call))
         return false;
 
-    BodyProducer *producer = object;
+    const BodyProducer::Pointer &producer = job;
     BodyPipe::Pointer pipe = arg1;
     if (!pipe->stillProducing(producer)) {
         debugs(call.debugSection, call.debugLevel, HERE << producer <<
@@ -83,7 +86,7 @@ BodyConsumerDialer::canDial(AsyncCall &call)
     if (!Parent::canDial(call))
         return false;
 
-    BodyConsumer *consumer = object;
+    const BodyConsumer::Pointer &consumer = job;
     BodyPipe::Pointer pipe = arg1;
     if (!pipe->stillConsuming(consumer)) {
         debugs(call.debugSection, call.debugLevel, HERE << consumer <<
@@ -126,7 +129,7 @@ void BodyConsumer::stopConsumingFrom(RefCount<BodyPipe> &pipe)
 BodyPipe::BodyPipe(Producer *aProducer): theBodySize(-1),
         theProducer(aProducer), theConsumer(0),
         thePutSize(0), theGetSize(0),
-        mustAutoConsume(false), isCheckedOut(false)
+        mustAutoConsume(false), abortedConsumption(false), isCheckedOut(false)
 {
     // TODO: teach MemBuf to start with zero minSize
     // TODO: limit maxSize by theBodySize, when known?
@@ -183,9 +186,9 @@ uint64_t BodyPipe::unproducedSize() const
 void
 BodyPipe::clearProducer(bool atEof)
 {
-    if (theProducer) {
+    if (theProducer.set()) {
         debugs(91,7, HERE << "clearing BodyPipe producer" << status());
-        theProducer = NULL;
+        theProducer.clear();
         if (atEof) {
             if (!bodySizeKnown())
                 theBodySize = thePutSize;
@@ -215,10 +218,10 @@ BodyPipe::putMoreData(const char *aBuffer, size_t size)
 }
 
 bool
-BodyPipe::setConsumerIfNotLate(Consumer *aConsumer)
+BodyPipe::setConsumerIfNotLate(const Consumer::Pointer &aConsumer)
 {
     assert(!theConsumer);
-    assert(aConsumer);
+    assert(aConsumer.set()); // but might be invalid
 
     // TODO: convert this into an exception and remove IfNotLate suffix
     // If there is something consumed already, we are in an auto-consuming mode
@@ -227,6 +230,8 @@ BodyPipe::setConsumerIfNotLate(Consumer *aConsumer)
         assert(mustAutoConsume);
         return false;
     }
+
+    Must(!abortedConsumption); // did not promise to never consume
 
     theConsumer = aConsumer;
     debugs(91,7, HERE << "set consumer" << status());
@@ -238,25 +243,30 @@ BodyPipe::setConsumerIfNotLate(Consumer *aConsumer)
     return true;
 }
 
-// When BodyPipe consumer is gone, all events for that consumer must not
-// reach the new consumer (if any). Otherwise, the calls may go out of order
-// (if _some_ calls are dropped due to the ultimate destination being
-// temporary NULL). The code keeps track of the number of outstanding
-// events and skips that number if consumer leaves. TODO: when AscyncCall
-// support is improved, should we just schedule calls directly to consumer?
 void
 BodyPipe::clearConsumer()
 {
-    if (theConsumer) {
+    if (theConsumer.set()) {
         debugs(91,7, HERE << "clearing consumer" << status());
-        theConsumer = NULL;
-        if (consumedSize() && !exhausted()) {
-            AsyncCall::Pointer call= asyncCall(91, 7,
-                                               "BodyProducer::noteBodyConsumerAborted",
-                                               BodyProducerDialer(theProducer,
-                                                                  &BodyProducer::noteBodyConsumerAborted, this));
-            ScheduleCallHere(call);
-        }
+        theConsumer.clear();
+        // do not abort if we have not consumed so that HTTP or ICAP can retry
+        // benign xaction failures due to persistent connection race conditions
+        if (consumedSize())
+            expectNoConsumption();
+    }
+}
+
+void
+BodyPipe::expectNoConsumption()
+{
+    Must(!theConsumer);
+    if (!abortedConsumption && !exhausted()) {
+        AsyncCall::Pointer call= asyncCall(91, 7,
+                                           "BodyProducer::noteBodyConsumerAborted",
+                                           BodyProducerDialer(theProducer,
+                                                              &BodyProducer::noteBodyConsumerAborted, this));
+        ScheduleCallHere(call);
+        abortedConsumption = true;
     }
 }
 
@@ -334,7 +344,7 @@ BodyPipe::undoCheckOut(Checkout &checkout)
     // raw buffers should always check them in (possibly unchanged)
     // instead of relying on the automated undo mechanism of Checkout.
     // The code can always use a temporary buffer to accomplish that.
-    assert(checkout.checkedOutSize == currentSize);
+    Must(checkout.checkedOutSize == currentSize);
 }
 
 // TODO: Optimize: inform consumer/producer about more data/space only if
@@ -377,7 +387,7 @@ BodyPipe::postAppend(size_t size)
 void
 BodyPipe::scheduleBodyDataNotification()
 {
-    if (theConsumer) {
+    if (theConsumer.valid()) { // TODO: allow asyncCall() to check this instead
         AsyncCall::Pointer call = asyncCall(91, 7,
                                             "BodyConsumer::noteMoreBodyDataAvailable",
                                             BodyConsumerDialer(theConsumer,
@@ -389,7 +399,7 @@ BodyPipe::scheduleBodyDataNotification()
 void
 BodyPipe::scheduleBodyEndNotification()
 {
-    if (theConsumer) {
+    if (theConsumer.valid()) { // TODO: allow asyncCall() to check this instead
         if (bodySizeKnown() && bodySize() == thePutSize) {
             AsyncCall::Pointer call = asyncCall(91, 7,
                                                 "BodyConsumer::noteBodyProductionEnded",
@@ -423,13 +433,15 @@ const char *BodyPipe::status() const
     outputBuffer.Printf(" %d+%d", (int)theBuf.contentSize(), (int)theBuf.spaceSize());
 
     outputBuffer.Printf(" pipe%p", this);
-    if (theProducer)
-        outputBuffer.Printf(" prod%p", theProducer);
-    if (theConsumer)
-        outputBuffer.Printf(" cons%p", theConsumer);
+    if (theProducer.set())
+        outputBuffer.Printf(" prod%p", theProducer.get());
+    if (theConsumer.set())
+        outputBuffer.Printf(" cons%p", theConsumer.get());
 
     if (mustAutoConsume)
         outputBuffer.append(" A", 2);
+    if (abortedConsumption)
+        outputBuffer.append(" !C", 3);
     if (isCheckedOut)
         outputBuffer.append(" L", 2); // Locked
 
@@ -451,8 +463,13 @@ BodyPipeCheckout::BodyPipeCheckout(BodyPipe &aPipe): pipe(aPipe),
 
 BodyPipeCheckout::~BodyPipeCheckout()
 {
-    if (!checkedIn)
-        pipe.undoCheckOut(*this);
+    if (!checkedIn) {
+        // Do not pipe.undoCheckOut(*this) because it asserts or throws
+        // TODO: consider implementing the long-term solution discussed at
+        // http://www.mail-archive.com/squid-dev@squid-cache.org/msg07910.html
+        debugs(91,2, HERE << "Warning: cannot undo BodyPipeCheckout");
+        pipe.checkIn(*this);
+    }
 }
 
 void

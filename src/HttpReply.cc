@@ -62,7 +62,7 @@ static HttpHeaderMask Denied304HeadersMask;
 static http_hdr_type Denied304HeadersArr[] = {
     // hop-by-hop headers
     HDR_CONNECTION, HDR_KEEP_ALIVE, HDR_PROXY_AUTHENTICATE, HDR_PROXY_AUTHORIZATION,
-    HDR_TE, HDR_TRAILERS, HDR_TRANSFER_ENCODING, HDR_UPGRADE,
+    HDR_TE, HDR_TRAILER, HDR_TRANSFER_ENCODING, HDR_UPGRADE,
     // entity headers
     HDR_ALLOW, HDR_CONTENT_ENCODING, HDR_CONTENT_LANGUAGE, HDR_CONTENT_LENGTH,
     HDR_CONTENT_MD5, HDR_CONTENT_RANGE, HDR_CONTENT_TYPE, HDR_LAST_MODIFIED
@@ -186,7 +186,7 @@ HttpReply::make304() const
     /* rv->content_range */
     /* rv->keep_alive */
     HttpVersion ver(1,0);
-    httpStatusLineSet(&rv->sline, ver, HTTP_NOT_MODIFIED, "");
+    httpStatusLineSet(&rv->sline, ver, HTTP_NOT_MODIFIED, NULL);
 
     for (t = 0; ImsEntries[t] != HDR_OTHER; ++t)
         if ((e = header.findEntry(ImsEntries[t])))
@@ -540,7 +540,7 @@ HttpReply::expectingBody(const HttpRequestMethod& req_method, int64_t& theSize) 
         expectBody = true;
 
     if (expectBody) {
-        if (header.hasListMember(HDR_TRANSFER_ENCODING, "chunked", ','))
+        if (header.chunked())
             theSize = -1;
         else if (content_length >= 0)
             theSize = content_length;
@@ -589,7 +589,12 @@ HttpReply::calcMaxBodySize(HttpRequest& request)
     bodySizeMax = -1;
 
     ACLFilledChecklist ch(NULL, &request, NULL);
-    ch.src_addr = request.client_addr;
+#if FOLLOW_X_FORWARDED_FOR
+    if (Config.onoff.acl_uses_indirect_client)
+        ch.src_addr = request.indirect_client_addr;
+    else
+#endif
+        ch.src_addr = request.client_addr;
     ch.my_addr = request.my_addr;
     ch.reply = HTTPMSGLOCK(this); // XXX: this lock makes method non-const
     for (acl_size_t *l = Config.ReplyBodySize; l; l = l -> next) {
@@ -628,4 +633,68 @@ bool HttpReply::inheritProperties(const HttpMsg *aMsg)
         return false;
     keep_alive = aRep->keep_alive;
     return true;
+}
+
+void HttpReply::removeStaleWarnings()
+{
+    String warning;
+    if (header.getList(HDR_WARNING, &warning)) {
+        const String newWarning = removeStaleWarningValues(warning);
+        if (warning.size() && warning.size() == newWarning.size())
+            return; // some warnings are there and none changed
+        header.delById(HDR_WARNING);
+        if (newWarning.size()) { // some warnings left
+            HttpHeaderEntry *const e =
+                new HttpHeaderEntry(HDR_WARNING, NULL, newWarning.termedBuf());
+            header.addEntry(e);
+        }
+    }
+}
+
+/**
+ * Remove warning-values with warn-date different from Date value from
+ * a single header entry. Returns a string with all valid warning-values.
+ */
+String HttpReply::removeStaleWarningValues(const String &value)
+{
+    String newValue;
+    const char *item = 0;
+    int len = 0;
+    const char *pos = 0;
+    while (strListGetItem(&value, ',', &item, &len, &pos)) {
+        bool keep = true;
+        // Does warning-value have warn-date (which contains quoted date)?
+        // We scan backwards, looking for two quoted strings.
+        // warning-value = warn-code SP warn-agent SP warn-text [SP warn-date]
+        const char *p = item + len - 1;
+
+        while (p >= item && xisspace(*p)) --p; // skip whitespace
+
+        // warning-value MUST end with quote
+        if (p >= item && *p == '"') {
+            const char *const warnDateEnd = p;
+            --p;
+            while (p >= item && *p != '"') --p; // find the next quote
+
+            const char *warnDateBeg = p + 1;
+            --p;
+            while (p >= item && xisspace(*p)) --p; // skip whitespace
+
+            if (p >= item && *p == '"' && warnDateBeg - p > 2) {
+                // found warn-text
+                String warnDate;
+                warnDate.append(warnDateBeg, warnDateEnd - warnDateBeg);
+                const time_t time = parse_rfc1123(warnDate.termedBuf());
+                keep = (time > 0 && time == date); // keep valid and matching date
+            }
+        }
+
+        if (keep) {
+            if (newValue.size())
+                newValue.append(", ");
+            newValue.append(item, len);
+        }
+    }
+
+    return newValue;
 }

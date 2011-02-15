@@ -4,6 +4,7 @@ etc/squid3/errorpage.css
 etc/logrotate.d
 etc/resolvconf
 etc/init.d/squid3
+etc/ufw
 usr/lib/squid3
 usr/sbin/squid3
 usr/share/man/man8/squid3.8

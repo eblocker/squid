@@ -671,7 +671,9 @@ DOC_START
 
 	acl aclname maxconn number
 	  # This will be matched when the client's IP address has
-	  # more than <number> HTTP connections established. [fast]
+	  # more than <number> TCP connections established. [fast]
+	  # NOTE: This only measures direct TCP links so X-Forwarded-For
+	  # indirect clients are not counted.
 
 	acl aclname max_user_ip [-s] number
 	  # This will be matched when the user attempts to log in from more
@@ -831,6 +833,9 @@ DOC_START
 	Controls whether the indirect client address
 	(see follow_x_forwarded_for) is used instead of the
 	direct client address in acl matching.
+
+	NOTE: maxconn ACL considers direct TCP links and indirect
+	      clients will always have zero. So no match.
 DOC_END
 
 NAME: delay_pool_uses_indirect_client
@@ -1480,14 +1485,18 @@ DOC_START
 	an additional ACL needs to be used which ensures the IPv6-bound traffic
 	is never forced or permitted out the IPv4 interface.
 
+	# IPv6 destination test along with a dummy access control to perofrm the required DNS
+	# This MUST be place before any ALLOW rules.
 	acl to_ipv6 dst ipv6
-	tcp_outgoing_address 2002::c001 good_service_net to_ipv6
+	http_access deny ipv6 !all
+
+	tcp_outgoing_address 2001:db8::c001 good_service_net to_ipv6
 	tcp_outgoing_address 10.1.0.2 good_service_net !to_ipv6
 
-	tcp_outgoing_address 2002::beef normal_service_net to_ipv6
+	tcp_outgoing_address 2001:db8::beef normal_service_net to_ipv6
 	tcp_outgoing_address 10.1.0.1 normal_service_net !to_ipv6
 
-	tcp_outgoing_address 2002::1 to_ipv6
+	tcp_outgoing_address 2001:db8::1 to_ipv6
 	tcp_outgoing_address 10.1.0.3 !to_ipv6
 
 	WARNING:
@@ -3065,6 +3074,29 @@ DOC_START
 	the related problems with external NAT devices/layers.
 
 	Requires ftp_passive to be ON (default) for any effect.
+DOC_END
+
+NAME: ftp_eprt
+TYPE: onoff
+DEFAULT: on
+LOC: Config.Ftp.eprt
+DOC_START
+	FTP Protocol extensions permit the use of a special "EPRT" command.
+
+	This extension provides a protocol neutral alternative to the
+	IPv4-only PORT command. When supported it enables active FTP data
+	channels over IPv6 and efficient NAT handling.
+
+	Turning this OFF will prevent EPRT being attempted and will skip
+	straight to using PORT for IPv4 servers.
+
+	Some devices are known to not handle this extension correctly and
+	may result in crashes. Devices which suport EPRT enough to fail
+	cleanly will result in Squid attempting PORT anyway. This directive
+	should only be disabled when EPRT results in device failures.
+
+	WARNING: Doing so will convert Squid back to the old behavior with all
+	the related problems with external NAT devices/layers and IPv4-only FTP.
 DOC_END
 
 NAME: ftp_sanitycheck
@@ -5381,7 +5413,7 @@ DOC_START
 	    Example: deny_info ERR_CUSTOM_ACCESS_DENIED bad_guys
 
 	Alternatively you can specify an error URL. The browsers will
-	get redirected (302) to the specified URL. %s in the redirection
+	get redirected (302 or 307) to the specified URL. %s in the redirection
 	URL will be replaced by the requested URL.
 
 	Alternatively you can tell Squid to reset the TCP connection
@@ -6644,6 +6676,8 @@ DOC_START
 
 	Defaults to off for bandwidth management and access logging
 	reasons.
+
+	WARNING: pipelining breaks NTLM and Negotiate/Kerberos authentication.
 DOC_END
 
 NAME: high_response_time_warning

@@ -503,6 +503,7 @@ struct SquidConfig {
         int passive;
         int epsv_all;
         int epsv;
+        int eprt;
         int sanitycheck;
         int telnet;
     } Ftp;
@@ -724,6 +725,7 @@ public:
     int max_age;
     int s_maxage;
     int max_stale;
+    int stale_if_error;
     int min_fresh;
     String other;
 };

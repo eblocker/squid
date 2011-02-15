@@ -69,9 +69,11 @@ install/squid3::
 	install -m 755 -g root -d $(INSTALLDIR)/etc/logrotate.d
 	install -m 755 -g root -d $(INSTALLDIR)/etc/resolvconf
 	install -m 755 -g root -d $(INSTALLDIR)/etc/resolvconf/update-libc.d
+	install -m 755 -g root -d $(INSTALLDIR)/etc/ufw/applications.d
 	install -m 755 -g root debian/squid3.rc $(INSTALLDIR)/etc/init.d/squid3
 	install -m 755 -g root debian/squid3.resolvconf $(INSTALLDIR)/etc/resolvconf/update-libc.d/squid3
 	install -m 644 -g root debian/squid3.logrotate $(INSTALLDIR)/etc/logrotate.d/squid3
+	install -m 644 -g root debian/squid3.ufw.profile $(INSTALLDIR)/etc/ufw/applications.d/squid3
 	install -m 755 -g root -d debian/squid3/var/log
 	install -m 755 -g root -d debian/squid3/var/spool
 	install -m 755 -g root -d debian/squid3/var/run

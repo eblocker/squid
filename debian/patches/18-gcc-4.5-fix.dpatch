@@ -1,0 +1,46 @@
+#! /bin/sh /usr/share/dpatch/dpatch-run
+## 18-gcc-4.5-fix.dpatch by Luigi Gangitano <luigi@debian.org>
+##
+## All lines beginning with `## DP:' are a description of the patch.
+## DP: Fix building with binutils-gold and gcc 4.5
+
+@DPATCH@
+diff -urNad '--exclude=CVS' '--exclude=.svn' '--exclude=.git' '--exclude=.arch' '--exclude=.hg' '--exclude=_darcs' '--exclude=.bzr' squid3~/helpers/negotiate_auth/squid_kerb_auth/configure.ac squid3/helpers/negotiate_auth/squid_kerb_auth/configure.ac
+--- squid3~/helpers/negotiate_auth/squid_kerb_auth/configure.ac	2011-01-21 18:39:34.000000000 +0100
++++ squid3/helpers/negotiate_auth/squid_kerb_auth/configure.ac	2011-02-17 01:05:58.000000000 +0100
+@@ -93,7 +93,7 @@
+                        else
+                          ac_gssapi_libs=`krb5-config --libs gssapi 2>/dev/null`
+                          if test "x$ac_gssapi_libs" != "x" ; then
+-                           LDFLAGS="$LDFLAGS $ac_gssapi_libs"
++                           LIBS="$LIBS $ac_gssapi_libs"
+                          else
+                            for lib in $ac_gss_libs; do
+                              AC_CHECK_LIB($lib,main)
+@@ -117,7 +117,7 @@
+                      fi
+                      ac_gssapi_libs=`krb5-config --libs gssapi 2>/dev/null`
+                      if test "x$ac_gssapi_libs" != "x" ; then
+-                         LDFLAGS="$LDFLAGS $ac_gssapi_libs"
++                         LIBS="$LIBS $ac_gssapi_libs"
+                      else
+                          for lib in $ac_gss_libs; do
+                             AC_CHECK_LIB($lib,main)
+@@ -171,7 +171,7 @@
+                              ac_libdir=`echo $ac_gssapi_libs | sed -e 's/.*-L//' | sed -e 's/ .*//'`  
+                              LDFLAGS="$LDFLAGS $w_flag$ac_libdir$w_flag_2"
+                            fi
+-                           LDFLAGS="$LDFLAGS $ac_gssapi_libs"
++                           LIBS="$LIBS $ac_gssapi_libs"
+                          else
+                            for lib in $ac_gss_libs; do
+                              AC_CHECK_LIB($lib,main)
+@@ -200,7 +200,7 @@
+                            ac_libdir=`echo $ac_gssapi_libs | sed -e 's/.*-L//' | sed -e 's/ .*//'`  
+                            LDFLAGS="$LDFLAGS $w_flag$ac_libdir$w_flag_2"
+                          fi
+-                         LDFLAGS="$LDFLAGS $ac_gssapi_libs"
++                         LIBS="$LIBS $ac_gssapi_libs"
+                      else
+                          for lib in $ac_gss_libs; do
+                             AC_CHECK_LIB($lib,main)

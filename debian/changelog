@@ -2,6 +2,9 @@ squid3 (3.1.11-1) UNRELEASED; urgency=low
 
   * New upstream release
 
+  * debian/patches/18-gcc-4.5-fix
+    - Added upstream fix for gcc 4.5 building (Closes: #613153)
+
  -- Luigi Gangitano <luigi@debian.org>  Tue, 15 Feb 2011 01:46:19 +0100
 
 squid3 (3.1.10-1) unstable; urgency=low

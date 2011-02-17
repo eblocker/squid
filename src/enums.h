@@ -103,6 +103,7 @@ typedef enum {
     ERR_INVALID_RESP,
     ERR_ICAP_FAILURE,
     ERR_UNSUP_HTTPVERSION,     /* HTTP version is not supported */
+    ERR_GATEWAY_FAILURE,
     ERR_MAX
 } err_type;
 
@@ -147,6 +148,7 @@ typedef enum {
     CC_MAX_STALE,
     CC_MIN_FRESH,
     CC_ONLY_IF_CACHED,
+    CC_STALE_IF_ERROR,
     CC_OTHER,
     CC_ENUM_END
 } http_hdr_cc_type;

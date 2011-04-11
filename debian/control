@@ -10,7 +10,7 @@ Package: squid3
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}, netbase, adduser, logrotate (>= 3.5.4-1), squid3-common (= ${source:Version}), lsb-base
 Suggests: squidclient, squid-cgi, resolvconf (>= 0.40), smbclient, ufw
-Description: A full featured Web Proxy cache (HTTP proxy)
+Description: Full featured Web Proxy cache (HTTP proxy)
  Squid is a high-performance proxy caching server for web clients, supporting
  FTP, gopher, and HTTP data objects.
  .
@@ -22,7 +22,7 @@ Architecture: any
 Section: debug
 Priority: extra
 Depends: squid3 (= ${binary:Version}), ${misc:Depends}
-Description: A full featured Web Proxy cache (HTTP proxy) - Debug symbols
+Description: Full featured Web Proxy cache (HTTP proxy) - Debug symbols
  Squid is a high-performance proxy caching server for web clients, supporting
  FTP, gopher, and HTTP data objects.
  .
@@ -34,7 +34,7 @@ Description: A full featured Web Proxy cache (HTTP proxy) - Debug symbols
 Package: squid3-common
 Architecture: all
 Depends: ${misc:Depends}, squid-langpack (>= 20110214-1)
-Description: A full featured Web Proxy cache (HTTP proxy) - common files
+Description: Full featured Web Proxy cache (HTTP proxy) - common files
  Squid is a high-performance proxy caching server for web clients, supporting
  FTP, gopher, and HTTP data objects.
  .
@@ -49,7 +49,7 @@ Depends: ${shlibs:Depends}, ${misc:Depends}
 Provides: squid3-client
 Conflicts: squid3-client
 Replaces: squid3-client
-Description: A full featured Web Proxy cache (HTTP proxy) - control utility
+Description: Full featured Web Proxy cache (HTTP proxy) - control utility
  Squid is a high-performance proxy caching server for web clients, supporting
  FTP, gopher, and HTTP data objects.
  .
@@ -65,7 +65,7 @@ Depends: apache2 | httpd, ${shlibs:Depends}, ${misc:Depends}
 Provides: squid3-cgi
 Conflicts: squid3-cgi
 Replaces: squid3-cgi
-Description: A full featured Web Proxy cache (HTTP proxy) - control CGI
+Description: Full featured Web Proxy cache (HTTP proxy) - control CGI
  Squid is a high-performance proxy caching server for web clients, supporting
  FTP, gopher, and HTTP data objects.
  .

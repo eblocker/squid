@@ -3,6 +3,7 @@ squid3 (3.1.12-1) UNRELEASED; urgency=low
   * New upstream release
     - Removed patch integrated upstream
       + 18-gcc-4.5-fix
+    - Rebuild against libdb5.1 (Closes: #621453)
 
   * debian/control
     - Remove article at start of synopsis, to make lintian happy

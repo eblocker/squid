@@ -1,4 +1,4 @@
-squid3 (3.1.12-1) UNRELEASED; urgency=low
+squid3 (3.1.12-1) unstable; urgency=low
 
   * New upstream release
     - Removed patch integrated upstream

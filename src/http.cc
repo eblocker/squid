@@ -85,7 +85,7 @@ HttpStateData::HttpStateData(FwdState *theFwdState) : AsyncJob("HttpStateData"),
     surrogateNoStore = false;
     fd = fwd->server_fd;
     readBuf = new MemBuf;
-    readBuf->init();
+    readBuf->init(16*1024, 256*1024);
     orig_request = HTTPMSGLOCK(fwd->request);
 
     // reset peer response time stats for %<pt
@@ -941,7 +941,7 @@ HttpStateData::statusIfComplete() const
      * connection.
      */
     if (!flags.request_sent) {
-        debugs(11, 1, "statusIfComplete: Request not yet fully sent \"" << RequestMethodStr(orig_request->method) << " " << entry->url() << "\"" );
+        debugs(11, 2, "statusIfComplete: Request not yet fully sent \"" << RequestMethodStr(orig_request->method) << " " << entry->url() << "\"" );
         return COMPLETE_NONPERSISTENT_MSG;
     }
 
@@ -2076,7 +2076,7 @@ HttpStateData::doneSendingRequestBody()
 
 #if HTTP_VIOLATIONS
     if (Config.accessList.brokenPosts) {
-        ACLFilledChecklist ch(Config.accessList.brokenPosts, request, NULL);
+        ACLFilledChecklist ch(Config.accessList.brokenPosts, originalRequest(), NULL);
         if (!ch.fastCheck()) {
             debugs(11, 5, "doneSendingRequestBody: didn't match brokenPosts");
             CommIoCbParams io(NULL);

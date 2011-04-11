@@ -1,6 +1,8 @@
 squid3 (3.1.12-1) UNRELEASED; urgency=low
 
   * New upstream release
+    - Removed patch integrated upstream
+      + 18-gcc-4.5-fix
 
  -- Luigi Gangitano <luigi@debian.org>  Mon, 11 Apr 2011 18:47:02 +0200
 

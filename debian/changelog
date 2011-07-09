@@ -1,4 +1,4 @@
-squid3 (3.1.14-1) UNRELEASED; urgency=low
+squid3 (3.1.14-1) unstable; urgency=low
 
   * New upstream release
     - Fixes FTBFS with GCC 4.6 (Closes: #625405)

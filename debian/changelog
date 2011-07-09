@@ -2,7 +2,8 @@ squid3 (3.1.14-1) UNRELEASED; urgency=low
 
   * New upstream release
     - Fixes FTBFS with GCC 4.6 (Closes: #625405)
-    - Fixes issues with IPv4/IPv6 DNS resolution (Closes: #604566)
+    - Fixes issue with IPv4/IPv6 DNS resolution (Closes: #604566)
+    - Fixes issue with IPv6 resolution in access.log (Closes: #604832)
 
   * debian/control
     - Bumped Standard-Version to 3.9.2, no change needed

@@ -55,8 +55,8 @@ find_cache_type () {
 }
 
 start () {
-	cache_dir=`find_cache_dir cache_dir /var/spool/squid3`
-	cache_type=`find_cache_type cache_dir ufs`
+	cache_dir=`find_cache_dir cache_dir`
+	cache_type=`find_cache_type cache_dir`
 
 	#
     # Create spool dirs if they don't exist.

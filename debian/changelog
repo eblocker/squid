@@ -6,6 +6,10 @@ squid3 (3.1.14-1) UNRELEASED; urgency=low
   * debian/control
     - Bumped Standard-Version to 3.9.2, no change needed
 
+  * debian/squid.rc
+    - Fixed init script preventing alterate cache dir from being created
+      (Closes: #623935)
+
  -- Luigi Gangitano <luigi@debian.org>  Sat, 09 Jul 2011 17:58:46 +0200
 
 squid3 (3.1.12-1) unstable; urgency=low

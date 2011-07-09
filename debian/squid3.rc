@@ -64,7 +64,7 @@ start () {
 	if [ "$cache_type" = "coss" -a -d "$cache_dir" -a ! -f "$cache_dir/stripe" ] || [ "$cache_type" != "coss" -a -d "$cache_dir" -a ! -d "$cache_dir/00" ]
 	then
 		log_warning_msg "Creating $DESC cache structure"
-		$DAEMON -z
+		$DAEMON -z -f $CONFIG
 	fi
 
 	umask 027

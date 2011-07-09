@@ -105,6 +105,9 @@ ClientRequestContext::operator delete (void *address)
 /* Local functions */
 /* other */
 static void clientAccessCheckDoneWrapper(int, void *);
+#if USE_SSL
+static void sslBumpAccessCheckDoneWrapper(int, void *);
+#endif
 static int clientHierarchical(ClientHttpRequest * http);
 static void clientInterpretRequestHeaders(ClientHttpRequest * http);
 static RH clientRedirectDoneWrapper;
@@ -133,6 +136,9 @@ ClientRequestContext::ClientRequestContext(ClientHttpRequest *anHttp) : http(cbd
     redirect_done = false;
     no_cache_done = false;
     interpreted_req_hdrs = false;
+#if USE_SSL
+    sslBumpCheckDone = false;
+#endif
     debugs(85,3, HERE << this << " ClientRequestContext constructed");
 }
 
@@ -165,6 +171,9 @@ ClientHttpRequest::ClientHttpRequest(ConnStateData * aConn) :
     dlinkAdd(this, &active, &ClientActiveRequests);
 #if USE_ADAPTATION
     request_satisfaction_mode = false;
+#endif
+#if USE_SSL
+    sslBumpNeed = needUnknown;
 #endif
 }
 
@@ -991,7 +1000,6 @@ clientRedirectDoneWrapper(void *data, char *result)
 void
 ClientRequestContext::clientRedirectDone(char *result)
 {
-    HttpRequest *new_request = NULL;
     HttpRequest *old_request = http->request;
     debugs(85, 5, "clientRedirectDone: '" << http->uri << "' result=" << (result ? result : "NULL"));
     assert(redirect_state == REDIRECT_PENDING);
@@ -1017,43 +1025,33 @@ ClientRequestContext::clientRedirectDone(char *result)
                     debugs(85, DBG_CRITICAL, "ERROR: URL-rewrite produces invalid 303 redirect Location: " << result);
             }
         } else if (strcmp(result, http->uri)) {
-            if (!(new_request = HttpRequest::CreateFromUrlAndMethod(result, old_request->method)))
+            // XXX: validate the URL properly *without* generating a whole new request object right here.
+            // XXX: the clone() should be done only AFTER we know the new URL is valid.
+            HttpRequest *new_request = old_request->clone();
+            if (urlParse(old_request->method, result, new_request)) {
+                debugs(61,2, HERE << "URL-rewriter diverts URL from " << urlCanonical(old_request) << " to " << urlCanonical(new_request));
+
+                // update the new request to flag the re-writing was done on it
+                new_request->flags.redirected = 1;
+
+                // unlink bodypipe from the old request. Not needed there any longer.
+                if (old_request->body_pipe != NULL) {
+                    old_request->body_pipe = NULL;
+                    debugs(61,2, HERE << "URL-rewriter diverts body_pipe " << new_request->body_pipe <<
+                           " from request " << old_request << " to " << new_request);
+                }
+
+                // update the current working ClientHttpRequest fields
+                safe_free(http->uri);
+                http->uri = xstrdup(urlCanonical(new_request));
+                HTTPMSGUNLOCK(old_request);
+                http->request = HTTPMSGLOCK(new_request);
+            } else {
                 debugs(85, DBG_CRITICAL, "ERROR: URL-rewrite produces invalid request: " <<
                        old_request->method << " " << result << " HTTP/1.1");
+                delete new_request;
+            }
         }
-    }
-
-    if (new_request) {
-        safe_free(http->uri);
-        http->uri = xstrdup(urlCanonical(new_request));
-        new_request->http_ver = old_request->http_ver;
-        new_request->header.append(&old_request->header);
-        new_request->client_addr = old_request->client_addr;
-#if FOLLOW_X_FORWARDED_FOR
-        new_request->indirect_client_addr = old_request->indirect_client_addr;
-#endif /* FOLLOW_X_FORWARDED_FOR */
-        new_request->my_addr = old_request->my_addr;
-        new_request->flags = old_request->flags;
-        new_request->flags.redirected = 1;
-
-        if (old_request->auth_user_request) {
-            new_request->auth_user_request = old_request->auth_user_request;
-            AUTHUSERREQUESTLOCK(new_request->auth_user_request, "new request");
-        }
-
-        if (old_request->body_pipe != NULL) {
-            new_request->body_pipe = old_request->body_pipe;
-            old_request->body_pipe = NULL;
-            debugs(61,2, HERE << "URL-rewriter diverts body_pipe " << new_request->body_pipe <<
-                   " from request " << old_request << " to " << new_request);
-        }
-
-        new_request->content_length = old_request->content_length;
-        new_request->extacl_user = old_request->extacl_user;
-        new_request->extacl_passwd = old_request->extacl_passwd;
-        new_request->flags.proxy_keepalive = old_request->flags.proxy_keepalive;
-        HTTPMSGUNLOCK(old_request);
-        http->request = HTTPMSGLOCK(new_request);
     }
 
     /* FIXME PIPELINE: This is innacurate during pipelining */
@@ -1100,6 +1098,45 @@ ClientRequestContext::checkNoCacheDone(int answer)
     http->doCallouts();
 }
 
+#if USE_SSL
+bool
+ClientRequestContext::sslBumpAccessCheck()
+{
+    if (http->request->method == METHOD_CONNECT &&
+            Config.accessList.ssl_bump && http->getConn()->port->sslBump) {
+        debugs(85, 5, HERE << "SslBump possible, checking ACL");
+
+        ACLFilledChecklist *acl_checklist = clientAclChecklistCreate(Config.accessList.ssl_bump, http);
+        acl_checklist->nonBlockingCheck(sslBumpAccessCheckDoneWrapper, this);
+        return true;
+    } else {
+        http->sslBumpNeeded(false);
+        return false;
+    }
+}
+
+/**
+ * A wrapper function to use the ClientRequestContext::sslBumpAccessCheckDone method
+ * as ACLFilledChecklist callback
+ */
+static void
+sslBumpAccessCheckDoneWrapper(int answer, void *data)
+{
+    ClientRequestContext *calloutContext = static_cast<ClientRequestContext *>(data);
+
+    if (!calloutContext->httpStateIsValid())
+        return;
+    calloutContext->sslBumpAccessCheckDone(answer == ACCESS_ALLOWED);
+}
+
+void
+ClientRequestContext::sslBumpAccessCheckDone(bool doSslBump)
+{
+    http->sslBumpNeeded(doSslBump);
+    http->doCallouts();
+}
+#endif
+
 /*
  * Identify requests that do not go through the store and client side stream
  * and forward them to the appropriate location. All other requests, request
@@ -1110,14 +1147,13 @@ ClientHttpRequest::processRequest()
 {
     debugs(85, 4, "clientProcessRequest: " << RequestMethodStr(request->method) << " '" << uri << "'");
 
-#if USE_SSL
-    if (request->method == METHOD_CONNECT && sslBumpNeeded()) {
-        sslBumpStart();
-        return;
-    }
-#endif
-
     if (request->method == METHOD_CONNECT && !redirect.status) {
+#if USE_SSL
+        if (sslBumpNeeded()) {
+            sslBumpStart();
+            return;
+        }
+#endif
         logType = LOG_TCP_MISS;
         getConn()->stopReading(); // tunnels read for themselves
         tunnelStart(this, &out.size, &al.http.code);
@@ -1144,19 +1180,18 @@ ClientHttpRequest::httpStart()
 
 #if USE_SSL
 
-// determines whether we should bump the CONNECT request
 bool
 ClientHttpRequest::sslBumpNeeded() const
 {
-    if (!getConn()->port->sslBump || !Config.accessList.ssl_bump)
-        return false;
+    assert(sslBumpNeed != needUnknown);
+    return (sslBumpNeed == needConfirmed);
+}
 
-    debugs(85, 5, HERE << "SslBump possible, checking ACL");
-
-    ACLFilledChecklist check(Config.accessList.ssl_bump, request, NULL);
-    check.src_addr = request->client_addr;
-    check.my_addr = request->my_addr;
-    return check.fastCheck() == 1;
+void
+ClientHttpRequest::sslBumpNeeded(bool isNeeded)
+{
+    debugs(83, 3, HERE << "sslBump required: "<< (isNeeded ? "Yes" : "No"));
+    sslBumpNeed = (isNeeded ? needConfirmed : needNot);
 }
 
 // called when comm_write has completed
@@ -1183,7 +1218,7 @@ ClientHttpRequest::sslBumpEstablish(comm_err_t errflag)
         return;
     }
 
-    getConn()->switchToHttps();
+    getConn()->switchToHttps(request->GetHost());
 }
 
 void
@@ -1331,17 +1366,14 @@ ClientHttpRequest::doCallouts()
         }
     }
 
-    if (!calloutContext->clientside_tos_done) {
-        calloutContext->clientside_tos_done = true;
-        if (getConn() != NULL) {
-            ACLFilledChecklist ch(NULL, request, NULL);
-            ch.src_addr = request->client_addr;
-            ch.my_addr = request->my_addr;
-            int tos = aclMapTOS(Config.accessList.clientside_tos, &ch);
-            if (tos)
-                comm_set_tos(getConn()->fd, tos);
-        }
+#if USE_SSL
+    if (!calloutContext->sslBumpCheckDone) {
+        calloutContext->sslBumpCheckDone = true;
+        if (calloutContext->sslBumpAccessCheck())
+            return;
+        /* else no ssl bump required*/
     }
+#endif
 
     cbdataReferenceDone(calloutContext->http);
     delete calloutContext;

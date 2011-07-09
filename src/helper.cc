@@ -656,6 +656,7 @@ helperCreate(const char *name)
     CBDATA_INIT_TYPE(helper);
     hlp = cbdataAlloc(helper);
     hlp->id_name = name;
+    hlp->eom = '\n';
     return hlp;
 }
 
@@ -666,6 +667,7 @@ helperStatefulCreate(const char *name)
     CBDATA_INIT_TYPE(statefulhelper);
     hlp = cbdataAlloc(statefulhelper);
     hlp->id_name = name;
+    hlp->eom = '\n';
     return hlp;
 }
 
@@ -838,6 +840,55 @@ helperStatefulServerFree(int fd, void *data)
     cbdataFree(srv);
 }
 
+/// Calls back with a pointer to the buffer with the helper output
+static void helperReturnBuffer(int request_number, helper_server * srv, helper * hlp, char * msg, char * msg_end)
+{
+    helper_request *r = srv->requests[request_number];
+    if (r) {
+        HLPCB *callback = r->callback;
+
+        srv->requests[request_number] = NULL;
+
+        r->callback = NULL;
+
+        void *cbdata = NULL;
+        if (cbdataReferenceValidDone(r->data, &cbdata))
+            callback(cbdata, msg);
+
+        srv->stats.pending--;
+
+        hlp->stats.replies++;
+
+        srv->answer_time = current_time;
+
+        srv->dispatch_time = r->dispatch_time;
+
+        hlp->stats.avg_svc_time =
+            Math::intAverage(hlp->stats.avg_svc_time,
+                             tvSubMsec(r->dispatch_time, current_time),
+                             hlp->stats.replies, REDIRECT_AV_FACTOR);
+
+        helperRequestFree(r);
+    } else {
+        debugs(84, 1, "helperHandleRead: unexpected reply on channel " <<
+               request_number << " from " << hlp->id_name << " #" << srv->index + 1 <<
+               " '" << srv->rbuf << "'");
+    }
+    srv->roffset -= (msg_end - srv->rbuf);
+    memmove(srv->rbuf, msg_end, srv->roffset + 1);
+
+    if (!srv->flags.shutdown) {
+        helperKickQueue(hlp);
+    } else if (!srv->flags.closing && !srv->stats.pending) {
+        int wfd = srv->wfd;
+        srv->wfd = -1;
+        if (srv->rfd == wfd)
+            srv->rfd = -1;
+        srv->flags.closing=1;
+        comm_close(wfd);
+        return;
+    }
+}
 
 static void
 helperHandleRead(int fd, char *buf, size_t len, comm_err_t flag, int xerrno, void *data)
@@ -857,12 +908,8 @@ helperHandleRead(int fd, char *buf, size_t len, comm_err_t flag, int xerrno, voi
 
     debugs(84, 5, "helperHandleRead: " << len << " bytes from " << hlp->id_name << " #" << srv->index + 1);
 
-    if (flag != COMM_OK || len <= 0) {
-        if (len < 0)
-            debugs(84, 1, "helperHandleRead: FD " << fd << " read: " << xstrerror());
-
+    if (flag != COMM_OK || len == 0) {
         comm_close(fd);
-
         return;
     }
 
@@ -880,14 +927,13 @@ helperHandleRead(int fd, char *buf, size_t len, comm_err_t flag, int xerrno, voi
         srv->rbuf[0] = '\0';
     }
 
-    while ((t = strchr(srv->rbuf, '\n'))) {
+    while ((t = strchr(srv->rbuf, hlp->eom))) {
         /* end of reply found */
-        helper_request *r;
         char *msg = srv->rbuf;
         int i = 0;
         debugs(84, 3, "helperHandleRead: end of reply found");
 
-        if (t > srv->rbuf && t[-1] == '\r')
+        if (t > srv->rbuf && t[-1] == '\r' && hlp->eom == '\n')
             t[-1] = '\0';
 
         *t++ = '\0';
@@ -899,51 +945,7 @@ helperHandleRead(int fd, char *buf, size_t len, comm_err_t flag, int xerrno, voi
                 msg++;
         }
 
-        r = srv->requests[i];
-
-        if (r) {
-            HLPCB *callback = r->callback;
-            void *cbdata;
-
-            srv->requests[i] = NULL;
-
-            r->callback = NULL;
-
-            if (cbdataReferenceValidDone(r->data, &cbdata))
-                callback(cbdata, msg);
-
-            srv->stats.pending--;
-
-            hlp->stats.replies++;
-
-            srv->answer_time = current_time;
-
-            srv->dispatch_time = r->dispatch_time;
-
-            hlp->stats.avg_svc_time = Math::intAverage(hlp->stats.avg_svc_time, tvSubMsec(r->dispatch_time, current_time), hlp->stats.replies, REDIRECT_AV_FACTOR);
-
-            helperRequestFree(r);
-        } else {
-            debugs(84, 1, "helperHandleRead: unexpected reply on channel " <<
-                   i << " from " << hlp->id_name << " #" << srv->index + 1 <<
-                   " '" << srv->rbuf << "'");
-
-        }
-
-        srv->roffset -= (t - srv->rbuf);
-        memmove(srv->rbuf, t, srv->roffset + 1);
-
-        if (!srv->flags.shutdown) {
-            helperKickQueue(hlp);
-        } else if (!srv->flags.closing && !srv->stats.pending) {
-            int wfd = srv->wfd;
-            srv->wfd = -1;
-            if (srv->rfd == wfd)
-                srv->rfd = -1;
-            srv->flags.closing=1;
-            comm_close(wfd);
-            return;
-        }
+        helperReturnBuffer(i, srv, hlp, msg, t);
     }
 
     if (srv->rfd != -1)
@@ -971,12 +973,8 @@ helperStatefulHandleRead(int fd, char *buf, size_t len, comm_err_t flag, int xer
            hlp->id_name << " #" << srv->index + 1);
 
 
-    if (flag != COMM_OK || len <= 0) {
-        if (len < 0)
-            debugs(84, 1, "helperStatefulHandleRead: FD " << fd << " read: " << xstrerror());
-
+    if (flag != COMM_OK || len == 0) {
         comm_close(fd);
-
         return;
     }
 
@@ -993,12 +991,12 @@ helperStatefulHandleRead(int fd, char *buf, size_t len, comm_err_t flag, int xer
         srv->roffset = 0;
     }
 
-    if ((t = strchr(srv->rbuf, '\n'))) {
+    if ((t = strchr(srv->rbuf, hlp->eom))) {
         /* end of reply found */
         int called = 1;
         debugs(84, 3, "helperStatefulHandleRead: end of reply found");
 
-        if (t > srv->rbuf && t[-1] == '\r')
+        if (t > srv->rbuf && t[-1] == '\r' && hlp->eom == '\n')
             t[-1] = '\0';
 
         *t = '\0';

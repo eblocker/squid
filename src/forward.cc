@@ -48,6 +48,10 @@
 #include "icmp/net_db.h"
 #include "ip/IpIntercept.h"
 #include "ip/tools.h"
+#if USE_SSL
+#include "ssl_support.h"
+#include "ssl/ErrorDetail.h"
+#endif
 
 static PSC fwdStartCompleteWrapper;
 static PF fwdServerClosedWrapper;
@@ -605,6 +609,14 @@ FwdState::negotiateSSL(int fd)
             anErr->xerrno = EACCES;
 #endif
 
+            Ssl::ErrorDetail *errFromFailure = (Ssl::ErrorDetail *)SSL_get_ex_data(ssl, ssl_ex_index_ssl_error_detail);
+            if (errFromFailure != NULL) {
+                // The errFromFailure is attached to the ssl object
+                // and will be released when ssl object destroyed.
+                // Copy errFromFailure to a new Ssl::ErrorDetail object
+                anErr->detail = new Ssl::ErrorDetail(*errFromFailure);
+            }
+
             fail(anErr);
 
             if (fs->_peer) {
@@ -744,8 +756,10 @@ FwdState::connectDone(int aServerFD, const DnsLookupDetails &dns, comm_err_t sta
 
         if ((fs->_peer && fs->_peer->use_ssl) ||
                 (!fs->_peer && request->protocol == PROTO_HTTPS)) {
-            initiateSSL();
-            return;
+            if (fs->code != PINNED) {
+                initiateSSL();
+                return;
+            }
         }
 
 #endif
@@ -820,6 +834,13 @@ FwdState::connectStart()
     if (ftimeout < ctimeout)
         ctimeout = ftimeout;
 
+    if (fs->_peer && request->flags.sslBumped == true) {
+        debugs(50, 4, "fwdConnectStart: Ssl bumped connections through parrent proxy are not allowed");
+        ErrorState *anErr = errorCon(ERR_CANNOT_FORWARD, HTTP_SERVICE_UNAVAILABLE, request);
+        fail(anErr);
+        self = NULL; // refcounted
+        return;
+    }
 
     request->flags.pinned = 0;
     if (fs->code == PINNED) {
@@ -871,6 +892,9 @@ FwdState::connectStart()
         updateHierarchyInfo();
 
         comm_add_close_handler(fd, fwdServerClosedWrapper, this);
+
+        if (comm_local_port(fd))
+            request->hier.peer_local_addr = fd_table[fd].local_addr;
 
         dispatch();
 
@@ -930,6 +954,9 @@ FwdState::connectStart()
 
     if (!fs->_peer)
         origin_tries++;
+
+    if (comm_local_port(fd))
+        request->hier.peer_local_addr = fd_table[fd].local_addr;
 
     /*
      * stats.conn_open is used to account for the number of

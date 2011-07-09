@@ -93,8 +93,7 @@ public:
     _SQUID_INLINE_ StoreEntry *loggingEntry() const;
     void loggingEntry(StoreEntry *);
 
-    _SQUID_INLINE_ ConnStateData * getConn();
-    _SQUID_INLINE_ ConnStateData * const getConn() const;
+    _SQUID_INLINE_ ConnStateData * getConn() const;
     _SQUID_INLINE_ void setConn(ConnStateData *);
     HttpRequest *request;		/* Parsed URL ... */
     char *uri;
@@ -150,8 +149,14 @@ private:
     ConnStateData * conn_;
 
 #if USE_SSL
+    /// whether the request needs to be bumped
+    enum { needUnknown,  needConfirmed,  needNot } sslBumpNeed;
+
 public:
+    /// return true if the request needs to be bumped
     bool sslBumpNeeded() const;
+    /// set the sslBumpNeeded state
+    void sslBumpNeeded(bool isNeeded);
     void sslBumpStart();
     void sslBumpEstablish(comm_err_t errflag);
 #endif

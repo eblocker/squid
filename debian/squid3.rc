@@ -55,8 +55,8 @@ find_cache_type () {
 }
 
 start () {
-	cache_dir=`find_cache_dir cache_dir /var/spool/squid3`
-	cache_type=`find_cache_type cache_dir ufs`
+	cache_dir=`find_cache_dir cache_dir`
+	cache_type=`find_cache_type cache_dir`
 
 	#
     # Create spool dirs if they don't exist.
@@ -64,7 +64,7 @@ start () {
 	if [ "$cache_type" = "coss" -a -d "$cache_dir" -a ! -f "$cache_dir/stripe" ] || [ "$cache_type" != "coss" -a -d "$cache_dir" -a ! -d "$cache_dir/00" ]
 	then
 		log_warning_msg "Creating $DESC cache structure"
-		$DAEMON -z
+		$DAEMON -z -f $CONFIG
 	fi
 
 	umask 027

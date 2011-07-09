@@ -1374,8 +1374,6 @@ void Adaptation::Icap::ModXact::decideOnPreview()
 
     // we decided to do preview, now compute its size
 
-    Must(wantedSize >= 0);
-
     // cannot preview more than we can backup
     size_t ad = min(wantedSize, TheBackupLimit);
 
@@ -1622,7 +1620,10 @@ void Adaptation::Icap::VirginBodyAct::disable()
 void Adaptation::Icap::VirginBodyAct::progress(size_t size)
 {
     Must(active());
-    Must(size >= 0);
+#if SIZEOF_SIZE_T > 4
+    /* always true for smaller size_t's */
+    Must(static_cast<int64_t>(size) >= 0);
+#endif
     theStart += static_cast<int64_t>(size);
 }
 
@@ -1639,7 +1640,6 @@ Adaptation::Icap::Preview::Preview(): theWritten(0), theAd(0), theState(stDisabl
 void Adaptation::Icap::Preview::enable(size_t anAd)
 {
     // TODO: check for anAd not exceeding preview size limit
-    Must(anAd >= 0);
     Must(!enabled());
     theAd = anAd;
     theState = stWriting;

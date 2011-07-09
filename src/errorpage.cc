@@ -508,6 +508,9 @@ errorStateFree(ErrorState * err)
     if (err->err_language != Config.errorDefaultLanguage)
 #endif
         safe_free(err->err_language);
+#if USE_SSL
+    delete err->detail;
+#endif
     cbdataFree(err);
 }
 
@@ -515,7 +518,6 @@ int
 ErrorState::Dump(MemBuf * mb)
 {
     MemBuf str;
-    const char *p = NULL;	/* takes priority over mb if set */
     char ntoabuf[MAX_IPSTRLEN];
 
     str.reset();
@@ -570,10 +572,6 @@ ErrorState::Dump(MemBuf * mb)
         packerToMemInit(&pck, &str);
         request->header.packInto(&pck);
         packerClean(&pck);
-    } else if (request_hdrs) {
-        p = request_hdrs;
-    } else {
-        p = "[none]";
     }
 
     str.Printf("\r\n");
@@ -597,7 +595,7 @@ ErrorState::Dump(MemBuf * mb)
 #define CVT_BUF_SZ 512
 
 const char *
-ErrorState::Convert(char token)
+ErrorState::Convert(char token, bool allowRecursion)
 {
     static MemBuf mb;
     const char *p = NULL;	/* takes priority over mb if set */
@@ -626,6 +624,25 @@ ErrorState::Convert(char token)
     case 'c':
         p = errorPageName(type);
 
+        break;
+
+    case 'D':
+        if (!allowRecursion)
+            p = "%D";  // if recursion is not allowed, do not convert
+#if USE_SSL
+        // currently only SSL error details implemented
+        else if (detail) {
+            const String &errDetail = detail->toString();
+            if (errDetail.defined()) {
+                MemBuf *detail_mb  = ConvertText(errDetail.termedBuf(), false);
+                mb.append(detail_mb->content(), detail_mb->contentSize());
+                delete detail_mb;
+                do_quote = 0;
+            }
+        }
+#endif
+        if (!mb.contentSize())
+            mb.Printf("[No Error Detail]");
         break;
 
     case 'e':
@@ -929,10 +946,7 @@ ErrorState::BuildHttpReply()
 MemBuf *
 ErrorState::BuildContent()
 {
-    MemBuf *content = new MemBuf;
     const char *m = NULL;
-    const char *p;
-    const char *t;
 
     assert(page_id > ERR_NONE && page_id < error_page_count);
 
@@ -1051,12 +1065,25 @@ ErrorState::BuildContent()
         debugs(4, 2, HERE << "No existing error page language negotiated for " << errorPageName(page_id) << ". Using default error file.");
     }
 
+    MemBuf *result = ConvertText(m, true);
+#if USE_ERR_LOCALES
+    safe_free(freePage);
+#endif
+
+    return result;
+}
+
+MemBuf *ErrorState::ConvertText(const char *text, bool allowRecursion)
+{
+    MemBuf *content = new MemBuf;
+    const char *p;
+    const char *m = text;
     assert(m);
     content->init();
 
     while ((p = strchr(m, '%'))) {
         content->append(m, p - m);	/* copy */
-        t = Convert(*++p);		/* convert */
+        const char *t = Convert(*++p, allowRecursion);		/* convert */
         content->Printf("%s", t);	/* copy */
         m = p + 1;			/* advance */
     }
@@ -1065,10 +1092,6 @@ ErrorState::BuildContent()
         content->Printf("%s", m);	/* copy tail */
 
     assert((size_t)content->contentSize() == strlen(content->content()));
-
-#if USE_ERR_LOCALES
-    safe_free(freePage);
-#endif
 
     return content;
 }

@@ -57,11 +57,20 @@
 #include <glob.h>
 #endif
 
+#if HAVE_LIMITS
+#include <limits>
+#endif
+
 #if SQUID_SNMP
 #include "snmp.h"
 #endif
 #if USE_SQUID_ESI
 #include "esi/Parser.h"
+#endif
+
+#if USE_SSL
+#include "ssl/Config.h"
+#include "ssl/gadgets.h"
 #endif
 
 #if USE_ADAPTATION
@@ -132,6 +141,9 @@ static int parse_line(char *);
 static void parse_obsolete(const char *);
 static void parseBytesLine(size_t * bptr, const char *units);
 static size_t parseBytesUnits(const char *unit);
+#if USE_SSL
+static void parseBytesOptionValue(size_t * bptr, const char *units, char const * value);
+#endif
 static void free_all(void);
 void requirePathnameExists(const char *name, const char *path);
 static OBJH dump_config;
@@ -355,7 +367,7 @@ parseOneConfigFile(const char *file_name, unsigned int depth)
             continue;
         }
 
-        debugs(3, 5, "Processing: '" << tmp_line << "'");
+        debugs(3, (opt_parse_cfg_only?1:5), "Processing: " << tmp_line);
 
         /* Handle includes here */
         if (tmp_line_len >= 9 && strncmp(tmp_line, "include", 7) == 0 && xisspace(tmp_line[7])) {
@@ -488,6 +500,16 @@ configDoConfigure(void)
 
     if (Config.errHtmlText == NULL)
         Config.errHtmlText = xstrdup(null_string);
+
+#if !HAVE_SETRLIMIT || !defined(RLIMIT_NOFILE)
+    if (Config.max_filedescriptors > 0) {
+        debugs(0, DBG_IMPORTANT, "WARNING: max_filedescriptors disabled. Operating System setrlimit(RLIMIT_NOFILE) is missing.");
+    }
+#elif USE_SELECT || USE_SELECT_WIN32
+    if (Config.max_filedescriptors > FD_SETSIZE) {
+        debugs(0, DBG_IMPORTANT, "WARNING: max_filedescriptors limited to " << FD_SETSIZE << " by select() algorithm.");
+    }
+#endif
 
     storeConfigure();
 
@@ -721,7 +743,13 @@ configDoConfigure(void)
 
             debugs(3, 1, "Initializing http_port " << s->http.s << " SSL context");
 
-            s->sslContext = sslCreateServerContext(s->cert, s->key, s->version, s->cipher, s->options, s->sslflags, s->clientca, s->cafile, s->capath, s->crlfile, s->dhfile, s->sslcontext);
+            s->staticSslContext.reset(
+                sslCreateServerContext(s->cert, s->key,
+                                       s->version, s->cipher, s->options, s->sslflags, s->clientca,
+                                       s->cafile, s->capath, s->crlfile, s->dhfile,
+                                       s->sslContextSessionId));
+
+            Ssl::readCertAndPrivateKeyFromFiles(s->signingCert, s->signPkey, s->cert, s->key);
         }
     }
 
@@ -732,7 +760,11 @@ configDoConfigure(void)
         for (s = Config.Sockaddr.https; s != NULL; s = (https_port_list *) s->http.next) {
             debugs(3, 1, "Initializing https_port " << s->http.s << " SSL context");
 
-            s->sslContext = sslCreateServerContext(s->cert, s->key, s->version, s->cipher, s->options, s->sslflags, s->clientca, s->cafile, s->capath, s->crlfile, s->dhfile, s->sslcontext);
+            s->staticSslContext.reset(
+                sslCreateServerContext(s->cert, s->key,
+                                       s->version, s->cipher, s->options, s->sslflags, s->clientca,
+                                       s->cafile, s->capath, s->crlfile, s->dhfile,
+                                       s->sslContextSessionId));
         }
     }
 
@@ -930,6 +962,44 @@ parseBytesLine(size_t * bptr, const char *units)
     if (static_cast<double>(*bptr) * 2 != m * d / u * 2)
         self_destruct();
 }
+
+#if USE_SSL
+/**
+ * Parse bytes from a string.
+ * Similar to the parseBytesLine function but parses the string value instead of
+ * the current token value.
+ */
+static void parseBytesOptionValue(size_t * bptr, const char *units, char const * value)
+{
+    int u;
+    if ((u = parseBytesUnits(units)) == 0) {
+        self_destruct();
+        return;
+    }
+
+    // Find number from string beginning.
+    char const * number_begin = value;
+    char const * number_end = value;
+
+    while ((*number_end >= '0' && *number_end <= '9')) {
+        number_end++;
+    }
+
+    String number;
+    number.limitInit(number_begin, number_end - number_begin);
+
+    int d = xatoi(number.termedBuf());
+    int m;
+    if ((m = parseBytesUnits(number_end)) == 0) {
+        self_destruct();
+        return;
+    }
+
+    *bptr = static_cast<size_t>(m * d / u);
+    if (static_cast<double>(*bptr) * 2 != m * d / u * 2)
+        self_destruct();
+}
+#endif
 
 static size_t
 parseBytesUnits(const char *unit)
@@ -2555,6 +2625,11 @@ free_string(char **var)
 void
 parse_eol(char *volatile *var)
 {
+    if (!var) {
+        self_destruct();
+        return;
+    }
+
     unsigned char *token = (unsigned char *) strtok(NULL, null_string);
     safe_free(*var);
 
@@ -3191,8 +3266,16 @@ parse_http_port_option(http_port_list * s, char *token)
         safe_free(s->sslflags);
         s->sslflags = xstrdup(token + 9);
     } else if (strncmp(token, "sslcontext=", 11) == 0) {
-        safe_free(s->sslcontext);
-        s->sslcontext = xstrdup(token + 11);
+        safe_free(s->sslContextSessionId);
+        s->sslContextSessionId = xstrdup(token + 11);
+    } else if (strcmp(token, "generate-host-certificates") == 0) {
+        s->generateHostCertificates = true;
+    } else if (strcmp(token, "generate-host-certificates=on") == 0) {
+        s->generateHostCertificates = true;
+    } else if (strcmp(token, "generate-host-certificates=off") == 0) {
+        s->generateHostCertificates = false;
+    } else if (strncmp(token, "dynamic_cert_mem_cache_size=", 28) == 0) {
+        parseBytesOptionValue(&s->dynamicCertMemCacheSize, B_BYTES_STR, token + 28);
     } else if (strcasecmp(token, "sslBump") == 0) {
         debugs(3, DBG_CRITICAL, "WARNING: '" << token << "' is deprecated " <<
                "in http_port. Use 'ssl-bump' instead.");
@@ -3269,7 +3352,7 @@ clone_http_port_list(http_port_list *a)
     char *crlfile;
     char *dhfile;
     char *sslflags;
-    char *sslcontext;
+    char *sslContextSessionId;
     SSL_CTX *sslContext;
 #endif
 
@@ -3415,8 +3498,14 @@ dump_generic_http_port(StoreEntry * e, const char *n, const http_port_list * s)
     if (s->sslflags)
         storeAppendPrintf(e, " sslflags=%s", s->sslflags);
 
-    if (s->sslcontext)
-        storeAppendPrintf(e, " sslcontext=%s", s->sslcontext);
+    if (s->sslContextSessionId)
+        storeAppendPrintf(e, " sslcontext=%s", s->sslContextSessionId);
+
+    if (s->generateHostCertificates)
+        storeAppendPrintf(e, " generate-host-certificates");
+
+    if (s->dynamicCertMemCacheSize != std::numeric_limits<size_t>::max())
+        storeAppendPrintf(e, "dynamic_cert_mem_cache_size=%lu%s\n", (unsigned long)s->dynamicCertMemCacheSize, B_BYTES_STR);
 #endif
 }
 
@@ -3514,10 +3603,13 @@ requirePathnameExists(const char *name, const char *path)
     }
 
     if (stat(path, &sb) < 0) {
+        debugs(0, DBG_CRITICAL, (opt_parse_cfg_only?"FATAL ":"") << "ERROR: " << name << " " << path << ": " << xstrerror());
+        // keep going to find more issues if we are only checking the config file with "-k parse"
+        if (opt_parse_cfg_only)
+            return;
+        // this is fatal if it is found during startup or reconfigure
         if (opt_send_signal == -1 || opt_send_signal == SIGHUP)
             fatalf("%s %s: %s", name, path, xstrerror());
-        else
-            fprintf(stderr, "WARNING: %s %s: %s\n", name, path, xstrerror());
     }
 }
 

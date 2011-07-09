@@ -1362,7 +1362,7 @@ FtpStateData::dataRead(const CommIoCbParams &io)
         IOStats.Ftp.read_hist[bin]++;
     }
 
-    if (io.flag != COMM_OK || io.size < 0) {
+    if (io.flag != COMM_OK) {
         debugs(50, ignoreErrno(io.xerrno) ? 3 : DBG_IMPORTANT,
                "ftpDataRead: read error: " << xstrerr(io.xerrno));
 
@@ -1859,7 +1859,7 @@ void FtpStateData::ftpReadControlReply(const CommIoCbParams &io)
         fd_bytes(io.fd, io.size, FD_READ);
     }
 
-    if (io.flag != COMM_OK || io.size < 0) {
+    if (io.flag != COMM_OK) {
         debugs(50, ignoreErrno(io.xerrno) ? 3 : DBG_IMPORTANT,
                "ftpReadControlReply: read error: " << xstrerr(io.xerrno));
 
@@ -1868,9 +1868,7 @@ void FtpStateData::ftpReadControlReply(const CommIoCbParams &io)
         } else {
             failed(ERR_READ_ERROR, io.xerrno);
             /* failed closes ctrl.fd and frees ftpState */
-            return;
         }
-
         return;
     }
 
@@ -2453,7 +2451,6 @@ ftpReadEPSV(FtpStateData* ftpState)
 {
     int code = ftpState->ctrl.replycode;
     char h1, h2, h3, h4;
-    int n;
     u_short port;
     IpAddress ipa_remote;
     int fd = ftpState->data.fd;
@@ -2521,7 +2518,7 @@ ftpReadEPSV(FtpStateData* ftpState)
 
     buf = ftpState->ctrl.last_reply + strcspn(ftpState->ctrl.last_reply, "(");
 
-    n = sscanf(buf, "(%c%c%c%hu%c)", &h1, &h2, &h3, &port, &h4);
+    sscanf(buf, "(%c%c%c%hu%c)", &h1, &h2, &h3, &port, &h4);
 
     if (h1 != h2 || h1 != h3 || h1 != h4) {
         debugs(9, DBG_IMPORTANT, "Invalid EPSV reply from " <<

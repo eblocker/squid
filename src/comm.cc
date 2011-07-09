@@ -759,6 +759,7 @@ comm_openex(int sock_type,
     /* set TOS if needed */
     if (TOS && comm_set_tos(new_socket, TOS) ) {
         tos = TOS;
+        (void)tos;
     }
 
     if ( Ip::EnableIpv6&IPV6_SPECIAL_SPLITSTACK && addr.IsIPv6() )
@@ -1550,6 +1551,10 @@ comm_close_complete(int fd, void *data)
         F->ssl = NULL;
     }
 
+    if (F->dynamicSslContext) {
+        SSL_CTX_free(F->dynamicSslContext);
+        F->dynamicSslContext = NULL;
+    }
 #endif
     fd_close(fd);		/* update fdstat */
 

@@ -2,7 +2,7 @@
 dnl
 dnl  $Id$
 dnl
-AC_INIT([Squid Web Proxy],[3.1.12],[http://www.squid-cache.org/bugs/],[squid])
+AC_INIT([Squid Web Proxy],[3.1.14],[http://www.squid-cache.org/bugs/],[squid])
 AC_PREREQ(2.61)
 AC_CONFIG_HEADERS([include/autoconf.h])
 AC_CONFIG_AUX_DIR(cfgaux)
@@ -1678,6 +1678,26 @@ if test "$use_dnsserver" = "yes"; then
     AM_CONDITIONAL(USE_DNSSERVER, true)
 fi
 
+AM_CONDITIONAL(USE_SSL_CRTD, false)
+use_ssl_crtd=
+AC_ARG_ENABLE(ssl-crtd,
+  AC_HELP_STRING([--enable-ssl-crtd],
+                 [Prevent Squid from directly generation of SSL private key and 
+                  certificate request and instead enables the ssl_crtd processes.]), [
+  if test "x$enableval" = "xyes" ; then
+     use_ssl_crtd="yes"
+  fi
+])
+
+if test "x$use_ssl_crtd" = "xyes" -a  -z "$USE_OPENSSL" ; then
+   AC_MSG_ERROR([You need to enable ssl gatewaying support to use ssl_crtd feature. Try to use --enable-ssl. ])
+fi
+
+if test "x$use_ssl_crtd" = "xyes"; then
+  AC_DEFINE(USE_SSL_CRTD, 1,[Use ssl_crtd daemon])
+  AM_CONDITIONAL(USE_SSL_CRTD, true)
+fi
+
 dnl Select Default hosts file location
 AC_ARG_ENABLE(default-hostsfile,
   AS_HELP_STRING([--enable-default-hostsfile=path],[Select default location for hosts file.
@@ -2257,6 +2277,7 @@ AC_CHECK_HEADERS( \
 	execinfo.h \
 	fcntl.h \
 	fnmatch.h \
+	fstream \
 	getopt.h \
 	glob.h \
 	gnumalloc.h \
@@ -2272,12 +2293,16 @@ AC_CHECK_HEADERS( \
 	libc.h \
 	libgen.h \
 	limits.h \
+	limits \
 	linux/posix_types.h \
 	linux/types.h \
+	list \
 	machine/byte_swap.h \
 	malloc.h \
+	map \
 	math.h \
 	memory.h \
+	memory \
 	mount.h \
 	netdb.h \
 	netinet/in.h \
@@ -2286,6 +2311,7 @@ AC_CHECK_HEADERS( \
 	openssl/err.h \
 	openssl/md5.h \
 	openssl/ssl.h \
+	openssl/txt_db.h \
 	openssl/x509v3.h \
 	netinet/tcp.h \
 	openssl/engine.h \
@@ -2567,6 +2593,7 @@ AC_CHECK_TYPE(uint64_t,[
   ],,SQUID_DEFAULT_INCLUDES)
 #need the define for overflow checks
 AC_CHECK_SIZEOF(off_t)
+AC_CHECK_SIZEOF(size_t)
 
 dnl On Solaris 9 x86, gcc may includes a "fixed" set of old system include files
 dnl that is incompatible with the updated Solaris header files.
@@ -3934,6 +3961,7 @@ AC_CONFIG_FILES([\
 	src/icmp/Makefile \
 	src/ident/Makefile \
 	src/ip/Makefile \
+	src/ssl/Makefile \
 	contrib/Makefile \
 	snmplib/Makefile \
 	icons/Makefile \

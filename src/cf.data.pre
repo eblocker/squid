@@ -542,8 +542,9 @@ DOC_START
 
 	When using "file", the file should contain one item per line.
 
-	By default, regular expressions are CASE-SENSITIVE.  To make
-	them case-insensitive, use the -i option.
+	By default, regular expressions are CASE-SENSITIVE.
+	To make them case-insensitive, use the -i option. To return case-sensitive
+	use the +i option between patterns, or make a new ACL line without -i.
 
 	Some acl types require suspending the current request in order
 	to access some external data source.
@@ -1339,6 +1340,25 @@ DOC_START
 
 	   sslcontext=	SSL session ID context identifier.
 
+	   generate-host-certificates[=<on|off>]
+			Dynamically create SSL server certificates for the
+			destination hosts of bumped CONNECT requests.When 
+			enabled, the cert and key options are used to sign
+			generated certificates. Otherwise generated
+			certificate will be selfsigned.
+			If there is CA certificate life time of generated 
+			certificate equals lifetime of CA certificate. If
+			generated certificate is selfsigned lifetime is three 
+			years.
+			This option is enabled by default when SslBump is used.
+			See the sslBump option above for more information.
+			
+	   dynamic_cert_mem_cache_size=SIZE
+			Approximate total RAM size spent on cached generated
+			certificates. If set to zero, caching is disabled. The
+			default value is 4MB. An average XXX-bit certificate
+			consumes about XXX bytes of RAM.
+
 	   vport	Accelerator with IP based virtual host support.
 
 	   vport=NN	As above, but uses specified port number rather
@@ -1630,9 +1650,9 @@ DOC_START
 
 	By default, no requests are bumped.
 
-	See also: http_port sslBump
+	See also: http_port ssl-bump
    
-	This clause only supports fast acl types.
+	This clause supports both fast and slow acl types.
 	See http://wiki.squid-cache.org/SquidFaq/SquidAcl for details.
 
 
@@ -1659,7 +1679,6 @@ DOC_START
 	    NO_DEFAULT_CA	Don't use the default CA list built in
 				to OpenSSL.
 DOC_END
-
 
 NAME: sslproxy_cert_error
 IFDEF: USE_SSL
@@ -1691,8 +1710,6 @@ DOC_START
 	Default setting:  sslproxy_cert_error deny all
 DOC_END
 
-
-
 NAME: sslpassword_program
 IFDEF: USE_SSL
 DEFAULT: none
@@ -1707,6 +1724,35 @@ DOC_START
 	The key file name is given as argument to the program allowing
 	selection of the right password if you have multiple encrypted
 	keys.
+DOC_END
+
+COMMENT_START
+OPTIONS RELATING TO EXTERNAL SSL_CRTD 
+-----------------------------------------------------------------------------
+COMMENT_END
+
+NAME: sslcrtd_program
+TYPE: eol 
+IFDEF: USE_SSL_CRTD
+DEFAULT: @DEFAULT_SSL_CRTD@ -s @DEFAULT_SSL_DB_DIR@ -M 4MB
+LOC: Ssl::TheConfig.ssl_crtd
+DOC_START
+	Specify the location and options of the executable for ssl_crtd process.
+	@DEFAULT_SSL_CRTD@ program requires -s and -M parameters
+	For more information use:
+		@DEFAULT_SSL_CRTD@ -h
+DOC_END
+
+NAME: sslcrtd_children
+TYPE: int
+IFDEF: USE_SSL_CRTD
+DEFAULT: 5
+LOC: Ssl::TheConfig.ssl_crtd_n_running
+DOC_START
+	The maximum number of processes spawn to service ssl server.
+	The maximum this may be safely set to is 32.
+	
+	You must have at least one ssl_crtd process.
 DOC_END
 
 COMMENT_START
@@ -2489,6 +2535,8 @@ DOC_START
 		<A	Server IP address or peer name
 		la	Local IP address (http_port)
 		lp	Local port number (http_port)
+		<la	Local IP address of the last server or peer connection
+		<lp     Local port number of the last server or peer connection
 		ts	Seconds since epoch
 		tu	subsecond time (milliseconds)
 		tl	Local time. Optional strftime format argument
@@ -3183,10 +3231,10 @@ TYPE: wordlist
 LOC: Config.Program.redirect
 DEFAULT: none
 DOC_START
-	Specify the location of the executable for the URL rewriter.
+	Specify the location of the executable URL rewriter to use.
 	Since they can perform almost any function there isn't one included.
 
-	For each requested URL rewriter will receive on line with the format
+	For each requested URL, the rewriter will receive on line with the format
 
 	URL <SP> client_ip "/" fqdn <SP> user <SP> method [<SP> kvpairs]<NL>
 
@@ -3200,7 +3248,7 @@ DOC_START
 
 	The rewriter can also indicate that a client-side redirect should
 	be performed to the new URL. This is done by prefixing the returned
-	URL with "301:" (moved permanently) or 302: (moved temporarily).
+	URL with "301:" (moved permanently) or 302: (moved temporarily), etc.
 
 	By default, a URL rewriter is not used.
 DOC_END
@@ -3695,10 +3743,10 @@ IFDEF: FOLLOW_X_FORWARDED_FOR&&ICAP_CLIENT
 DEFAULT: on
 LOC: Adaptation::Icap::TheConfig.icap_uses_indirect_client
 DOC_START
-   Controls whether the indirect client address
-   (see follow_x_forwarded_for) instead of the
-   direct client address is passed to an ICAP
-   server as "X-Client-IP".
+	Controls whether the indirect client IP address (instead of the direct
+	client IP address) is passed to adaptation services.
+
+	See also: follow_x_forwarded_for adaptation_send_client_ip
 DOC_END
 
 NAME: via
@@ -4416,6 +4464,11 @@ DOC_START
 		class 5		Requests are grouped according their tag (see
 				external_acl's tag= reply).
 
+
+	Each pool also requires a delay_parameters directive to configure the pool size
+	and speed limits used whenever the pool is applied to a request. Along with
+	a set of delay_access directives to determine when it is used.
+
 	NOTE: If an IP address is a.b.c.d
 		-> bits 25 through 32 are "d"
 		-> bits 17 through 24 are "c"
@@ -4457,45 +4510,47 @@ LOC: Config.Delay
 DOC_START
 	This defines the parameters for a delay pool.  Each delay pool has
 	a number of "buckets" associated with it, as explained in the
-	description of delay_class.  For a class 1 delay pool, the syntax is:
+	description of delay_class.
 
-delay_parameters pool aggregate
+	For a class 1 delay pool, the syntax is:
+		delay_pools pool 1
+		delay_parameters pool aggregate
 
 	For a class 2 delay pool:
-
-delay_parameters pool aggregate individual
+		delay_pools pool 2
+		delay_parameters pool aggregate individual
 
 	For a class 3 delay pool:
-
-delay_parameters pool aggregate network individual
+		delay_pools pool 3
+		delay_parameters pool aggregate network individual
 
 	For a class 4 delay pool:
-
-delay_parameters pool aggregate network individual user
+		delay_pools pool 4
+		delay_parameters pool aggregate network individual user
 
 	For a class 5 delay pool:
+		delay_pools pool 5
+		delay_parameters pool tagrate
 
-delay_parameters pool tag
-
-	The variables here are:
+	The option variables are:
 
 		pool		a pool number - ie, a number between 1 and the
 				number specified in delay_pools as used in
 				delay_class lines.
 
-		aggregate	the "delay parameters" for the aggregate bucket
+		aggregate	the speed limit parameters for the aggregate bucket
 				(class 1, 2, 3).
 
-		individual	the "delay parameters" for the individual
+		individual	the speed limit parameters for the individual
 				buckets (class 2, 3).
 
-		network		the "delay parameters" for the network buckets
+		network		the speed limit parameters for the network buckets
 				(class 3).
 
-		user		the delay parameters for the user buckets
+		user		the speed limit parameters for the user buckets
 				(class 4).
 
-		tag		the delay parameters for the tag buckets
+		tagrate		the speed limit parameters for the tag buckets
 				(class 5).
 
 	A pair of delay parameters is written restore/maximum, where restore is
@@ -4503,30 +4558,39 @@ delay_parameters pool tag
 	quoted in bits) per second placed into the bucket, and maximum is the
 	maximum number of bytes which can be in the bucket at any time.
 
+	There must be one delay_parameters line for each delay pool.
+
+
 	For example, if delay pool number 1 is a class 2 delay pool as in the
-	above example, and is being used to strictly limit each host to 64kbps
+	above example, and is being used to strictly limit each host to 64Kbit/sec
 	(plus overheads), with no overall limit, the line is:
 
-delay_parameters 1 -1/-1 8000/8000
+		delay_parameters 1 -1/-1 8000/8000
+
+	Note that 8 x 8000 KByte/sec -> 64Kbit/sec.
 
 	Note that the figure -1 is used to represent "unlimited".
 
+
 	And, if delay pool number 2 is a class 3 delay pool as in the above
-	example, and you want to limit it to a total of 256kbps (strict limit)
-	with each 8-bit network permitted 64kbps (strict limit) and each
-	individual host permitted 4800bps with a bucket maximum size of 64kb
+	example, and you want to limit it to a total of 256Kbit/sec (strict limit)
+	with each 8-bit network permitted 64Kbit/sec (strict limit) and each
+	individual host permitted 4800bit/sec with a bucket maximum size of 64Kbits
 	to permit a decent web page to be downloaded at a decent speed
 	(if the network is not being limited due to overuse) but slow down
 	large downloads more significantly:
 
-delay_parameters 2 32000/32000 8000/8000 600/8000
+		delay_parameters 2 32000/32000 8000/8000 600/8000
 
-	There must be one delay_parameters line for each delay pool.
+	Note that 8 x 32000 KByte/sec -> 256Kbit/sec.
+		  8 x  8000 KByte/sec ->  64Kbit/sec.
+		  8 x   600 Byte/sec  -> 4800bit/sec.
+
 
 	Finally, for a class 4 delay pool as in the example - each user will
-	be limited to 128Kb no matter how many workstations they are logged into.:
+	be limited to 128Kbits/sec no matter how many workstations they are logged into.:
 
-delay_parameters 4 32000/32000 8000/8000 600/64000 16000/16000
+		delay_parameters 4 32000/32000 8000/8000 600/64000 16000/16000
 DOC_END
 
 NAME: delay_initial_bucket_level
@@ -5804,7 +5868,11 @@ COMMENT: on|off
 LOC: Adaptation::Icap::TheConfig.send_client_ip
 DEFAULT: off
 DOC_START
-	This adds the header "X-Client-IP" to ICAP requests.
+	If enabled, Squid shares HTTP client IP information with adaptation
+	services. For ICAP, Squid adds the X-Client-IP header to ICAP requests.
+	For eCAP, Squid sets the libecap::metaClientIp transaction option.
+
+	See also: adaptation_uses_indirect_client
 DOC_END
 
 NAME: icap_send_client_username

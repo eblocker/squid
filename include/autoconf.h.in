@@ -210,6 +210,9 @@
 /* Define to 1 if you have the <fnmatch.h> header file. */
 #undef HAVE_FNMATCH_H
 
+/* Define to 1 if you have the <fstream> header file. */
+#undef HAVE_FSTREAM
+
 /* "Define to 1 if aufs filesystem module is build" */
 #undef HAVE_FS_AUFS
 
@@ -369,6 +372,9 @@
 /* Define to 1 if you have the <libxml/parser.h> header file. */
 #undef HAVE_LIBXML_PARSER_H
 
+/* Define to 1 if you have the <limits> header file. */
+#undef HAVE_LIMITS
+
 /* Define to 1 if you have the <limits.h> header file. */
 #undef HAVE_LIMITS_H
 
@@ -384,6 +390,9 @@
 
 /* Define to 1 if you have the <linux/types.h> header file. */
 #undef HAVE_LINUX_TYPES_H
+
+/* Define to 1 if you have the <list> header file. */
+#undef HAVE_LIST
 
 /* long is defined in system headers */
 #undef HAVE_LONG
@@ -415,6 +424,9 @@
 /* Define to 1 if you have the `mallopt' function. */
 #undef HAVE_MALLOPT
 
+/* Define to 1 if you have the <map> header file. */
+#undef HAVE_MAP
+
 /* Define to 1 if you have the <math.h> header file. */
 #undef HAVE_MATH_H
 
@@ -423,6 +435,9 @@
 
 /* Define to 1 if you have the `memmove' function. */
 #undef HAVE_MEMMOVE
+
+/* Define to 1 if you have the <memory> header file. */
+#undef HAVE_MEMORY
 
 /* Define to 1 if you have the <memory.h> header file. */
 #undef HAVE_MEMORY_H
@@ -519,6 +534,9 @@
 
 /* Define to 1 if you have the <openssl/ssl.h> header file. */
 #undef HAVE_OPENSSL_SSL_H
+
+/* Define to 1 if you have the <openssl/txt_db.h> header file. */
+#undef HAVE_OPENSSL_TXT_DB_H
 
 /* Define to 1 if you have the <openssl/x509v3.h> header file. */
 #undef HAVE_OPENSSL_X509V3_H
@@ -1208,6 +1226,9 @@
 
 /* Define this to include code for SSL encryption. */
 #undef USE_SSL
+
+/* Use ssl_crtd daemon */
+#undef USE_SSL_CRTD
 
 /* Define this if unlinkd is required (strongly recommended for ufs storage
    type) */

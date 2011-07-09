@@ -66,6 +66,7 @@ struct _helper {
     unsigned int concurrency;
     time_t last_queue_warn;
     time_t last_restart;
+    char eom;   ///< The char which marks the end of (response) message, normally '\n'
 
     struct {
         int requests;
@@ -90,6 +91,7 @@ struct _helper_stateful {
     HLPSONEQ *OnEmptyQueue;
     time_t last_queue_warn;
     time_t last_restart;
+    char eom;   ///< The char which marks the end of (response) message, normally '\n'
 
     struct {
         int requests;

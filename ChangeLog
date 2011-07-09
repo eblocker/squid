@@ -1,3 +1,56 @@
+Changes to squid-3.1.14 (04 Jul 2011):
+
+	- Regression Bug 3261: Could not create a DNS socket and exit
+
+Changes to squid-3.1.13 (01 Jul 2011):
+
+	- Regression Bug 3239: problems with myip/myport upgrade
+	- Bug 3153: hung ICAP RESPMOD transactions
+	- Update ssl_crtd to use 'OK' status inline with other helpers
+
+Changes to squid-3.1.12.3 (18 Jun 2011):
+
+	- Bug 3236: Port of %oa, %<lp and %<lp and %<la log format options
+	- Bug 3214: unexpected read from ssl_crtd
+	- Bug 3153: Prevent ICAP RESPMOD transactions getting stuck with the adapted body
+	- Fix RADIUS helper resource leak
+	- Fix segfault parsing digest auth realm
+	- Fix segfault in parse_eol()
+	- Fixed bypass of SSL certificate validation errors
+	- Warn about myip/myport problems on interception proxies
+	- Polish: display easily grepped config lines on -k parse
+	- Fix squidclient -V option and allow non-HTTP protocols to be tested
+
+Changes to squid-3.1.12.2 (30 May 2011):
+
+	- Bug 3226: Tags from external ACLs do not correctly expire
+	- Bug 3215: Malformed IPv6 DNS reverse lookup
+	- Bug 3209: ssl-bumped requests forwarded unencrypted to the parent proxies/caches
+	- Bug 3205: SSL-bump starts then hangs
+	- Bug 3178: gcc-4.6 complains unused variables
+	- Bug 3122: Unknown record type in WCCPv2 Packet (6)
+	- Bug 2965 (partial): Compile errors on MinGW
+	- Fix to only ssl-bump CONNECT requests if they are about to be tunneled
+	- Fix cache manager display of -i/+i in regex ACL config display
+	- Fix cache manager display of cache_peer options userhash and sourcehash 
+	- Fix URL re-writer loosing many transaction details
+	- Fix always-true comparison in ICAP for some 32-bit platforms
+	- Support for 'slow' group ACLs in ssl_bump access control
+	- Support OpenSSL 1.0.0 built without SSLv2
+	- Support GCC 4.6 and binutils-gold
+	- Add CSS id attribute to BODY tag of generated error pages.
+	- Display WARNING and ERROR when max_filedescriptors has failed
+
+Changes to squid-3.1.12.1 (19 Apr 2011):
+
+	- Port from 3.2: Dynamic SSL Certificate generation
+	- Bug 3194: selinux may prevent ntlm_smb_lm_auth from using /tmp
+	- Bug 3185: 3.1.11 fails to compile on OpenBSD 4.8 and 4.9
+	- Bug 3183: Invalid URL accepted with url host part of only '@'
+	- Display ERROR in cache.log for invalid configured paths
+	- Cache Manager: send User-Agent header from cachemgr.cgi
+	- ... and many portability compile fixes for non-GCC systems.
+
 Changes to squid-3.1.12 (04 Apr 2011):
 
 	- Regression fix: Use bigger buffer for server reads.
@@ -830,7 +883,7 @@ authorative for this release and mirrored here for reference only.
 	- the mailto links on Squid's ERR pages now contain data about the
 	  occurred error by default, so that the email will contain this data in
 	  its body. This feature can be disabled via the email_err_data directive.
-	  (Clemens Löser)
+	  (Clemens L?ser)
 	- COSS now uses a file called stripe and the path in squid.conf is the
 	  directory this is placed in. Additionally squid -z will create the
 	  COSS swapfile.

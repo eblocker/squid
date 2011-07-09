@@ -104,8 +104,18 @@ ACLRegexData::dump()
 {
     wordlist *W = NULL;
     relist *temp = data;
+    int flags = REG_EXTENDED | REG_NOSUB;
 
     while (temp != NULL) {
+        if (temp->flags != flags) {
+            if ((temp->flags&REG_ICASE) != 0) {
+                wordlistAdd(&W, "-i");
+            } else {
+                wordlistAdd(&W, "+i");
+            }
+            flags = temp->flags;
+        }
+
         wordlistAdd(&W, temp->pattern);
         temp = temp->next;
     }
@@ -124,8 +134,13 @@ aclParseRegexList(relist **curlist)
     int errcode;
     int flags = REG_EXTENDED | REG_NOSUB;
 
+    debugs(28,5, HERE << "Regex new line.");
+
     for (Tail = (relist **)curlist; *Tail; Tail = &((*Tail)->next));
     while ((t = ConfigParser::strtokFile())) {
+
+        debugs(28,5, HERE << "Regex token: " << t);
+
         if (strcmp(t, "-i") == 0) {
             flags |= REG_ICASE;
             continue;
@@ -145,6 +160,7 @@ aclParseRegexList(relist **curlist)
         }
 
         q = (relist *)memAllocate(MEM_RELIST);
+        q->flags = flags;
         q->pattern = xstrdup(t);
         q->regex = comp;
         *(Tail) = q;

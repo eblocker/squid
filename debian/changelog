@@ -4,6 +4,9 @@ squid3 (3.1.15-1) UNRELEASED; urgency=low
     - Fixes DoS issue in Gopher client (Closes: #639755)
       (Ref: CVE-2011-3205, SQUID-2011:3)
 
+  * debian/control
+    - Removed hardcoded list of non-Linux architectures (Closes: #634765)
+
  -- Luigi Gangitano <luigi@debian.org>  Fri, 02 Sep 2011 13:33:41 +0200
 
 squid3 (3.1.14-1) unstable; urgency=low

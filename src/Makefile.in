@@ -150,8 +150,7 @@ DiskIO_DiskDaemon_diskd_DEPENDENCIES =  \
 	$(top_builddir)/lib/libmiscutil.a $(am__DEPENDENCIES_1)
 am_cf_gen_OBJECTS = cf_gen.$(OBJEXT)
 cf_gen_OBJECTS = $(am_cf_gen_OBJECTS)
-cf_gen_DEPENDENCIES = ../compat/libcompat.la $(am__DEPENDENCIES_1) \
-	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1)
+cf_gen_DEPENDENCIES =
 am_dnsserver_OBJECTS = dnsserver.$(OBJEXT) SquidNew.$(OBJEXT)
 dnsserver_OBJECTS = $(am_dnsserver_OBJECTS)
 dnsserver_LDADD = $(LDADD)
@@ -1484,6 +1483,7 @@ EXTERNAL_ACL_HELPERS = @EXTERNAL_ACL_HELPERS@
 FALSE = @FALSE@
 FGREP = @FGREP@
 GREP = @GREP@
+HOSTCXX = @HOSTCXX@
 ICAP_LIBS = @ICAP_LIBS@
 INCLTDL = @INCLTDL@
 INSTALL = @INSTALL@
@@ -1748,13 +1748,7 @@ COMMON_LIBS = \
 
 cf_gen_SOURCES = cf_gen.cc
 nodist_cf_gen_HEADER = cf_gen_defines.cci
-cf_gen_LDADD = \
-	../compat/libcompat.la \
-	-L../lib -lmiscutil \
-	$(EPOLL_LIBS) \
-	$(MINGW_LIBS) \
-	$(XTRA_LIBS)
-
+cf_gen_LDADD = 
 ACL_REGISTRATION_SOURCES = AclRegs.cc AuthReg.cc
 DISKIO_SOURCE = \
 	DiskIO/DiskIOModule.cc \
@@ -3778,9 +3772,6 @@ DiskIO/DiskDaemon/diskd.$(OBJEXT): DiskIO/DiskDaemon/$(am__dirstamp) \
 DiskIO/DiskDaemon/diskd$(EXEEXT): $(DiskIO_DiskDaemon_diskd_OBJECTS) $(DiskIO_DiskDaemon_diskd_DEPENDENCIES) DiskIO/DiskDaemon/$(am__dirstamp)
 	@rm -f DiskIO/DiskDaemon/diskd$(EXEEXT)
 	$(CXXLINK) $(DiskIO_DiskDaemon_diskd_OBJECTS) $(DiskIO_DiskDaemon_diskd_LDADD) $(LIBS)
-cf_gen$(EXEEXT): $(cf_gen_OBJECTS) $(cf_gen_DEPENDENCIES) 
-	@rm -f cf_gen$(EXEEXT)
-	$(CXXLINK) $(cf_gen_OBJECTS) $(cf_gen_LDADD) $(LIBS)
 dnsserver$(EXEEXT): $(dnsserver_OBJECTS) $(dnsserver_DEPENDENCIES) 
 	@rm -f dnsserver$(EXEEXT)
 	$(CXXLINK) $(dnsserver_OBJECTS) $(dnsserver_LDADD) $(LIBS)
@@ -4821,6 +4812,10 @@ test_cache_digest: test_cache_digest.o CacheDigest.o debug.o globals.o store_key
 	$(CC) -o $@ $(LDFLAGS) $@.o CacheDigest.o debug.o globals.o store_key_md5.o $(STD_APP_LIBS)
 
 cache_cf.o: cf_parser.cci
+
+# cf_gen builds the configuration files.
+cf_gen$(EXEEXT): $(cf_gen_SOURCES) $(cf_gen_DEPENDENCIES)
+	$(HOSTCXX) -o $@ $(srcdir)/cf_gen.cc -I$(srcdir) -I$(top_builddir)/include/ -I$(top_builddir)/src
 
 # squid.conf.default is built by cf_gen when making cf_parser.cci
 squid.conf.default squid.conf.documented: cf_parser.cci

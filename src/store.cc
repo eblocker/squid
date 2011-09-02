@@ -1431,7 +1431,9 @@ StoreEntry::checkNegativeHit() const
 void
 StoreEntry::negativeCache()
 {
-    if (expires == 0)
+    // XXX: should make the default for expires 0 instead of -1
+    //      so we can distinguish "Expires: -1" from nothing.
+    if (expires <= 0)
 #if HTTP_VIOLATIONS
         expires = squid_curtime + Config.negativeTtl;
 #else
@@ -1489,6 +1491,14 @@ StoreEntry::timestampsSet()
     /* make sure that 0 <= served_date <= squid_curtime */
 
     if (served_date < 0 || served_date > squid_curtime)
+        served_date = squid_curtime;
+
+    /* Bug 1791:
+     * If the returned Date: is more than 24 hours older than
+     * the squid_curtime, then one of us needs to use NTP to set our
+     * clock.  We'll pretend that our clock is right.
+     */
+    else if (served_date < (squid_curtime - 24 * 60 * 60) )
         served_date = squid_curtime;
 
     /*

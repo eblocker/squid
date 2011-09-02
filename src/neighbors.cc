@@ -74,7 +74,7 @@ static OBJH neighborDumpNonPeers;
 static void dump_peers(StoreEntry * sentry, peer * peers);
 
 static icp_common_t echo_hdr;
-static u_short echo_port;
+static unsigned short echo_port;
 
 static int NLateReplies = 0;
 static peer *first_ping = NULL;
@@ -214,13 +214,10 @@ peerAllowedToUse(const peer * p, HttpRequest * request)
 static int
 peerWouldBePinged(const peer * p, HttpRequest * request)
 {
-    if (!peerAllowedToUse(p, request))
+    if (p->icp.port == 0)
         return 0;
 
     if (p->options.no_query)
-        return 0;
-
-    if (p->options.background_ping && (squid_curtime - p->stats.last_query < Config.backgroundPingRate))
         return 0;
 
     if (p->options.mcast_responder)
@@ -229,7 +226,7 @@ peerWouldBePinged(const peer * p, HttpRequest * request)
     if (p->n_addresses == 0)
         return 0;
 
-    if (p->icp.port == 0)
+    if (p->options.background_ping && (squid_curtime - p->stats.last_query < Config.backgroundPingRate))
         return 0;
 
     /* the case below seems strange, but can happen if the
@@ -237,6 +234,9 @@ peerWouldBePinged(const peer * p, HttpRequest * request)
     if (p->type == PEER_SIBLING)
         if (!request->flags.hierarchical)
             return 0;
+
+    if (!peerAllowedToUse(p, request))
+        return 0;
 
     /* Ping dead peers every timeout interval */
     if (squid_curtime - p->stats.last_query > Config.Timeout.deadPeer)
@@ -252,15 +252,15 @@ peerWouldBePinged(const peer * p, HttpRequest * request)
 int
 peerHTTPOkay(const peer * p, HttpRequest * request)
 {
+    if (p->max_conn)
+        if (p->stats.conn_open >= p->max_conn)
+            return 0;
+
     if (!peerAllowedToUse(p, request))
         return 0;
 
     if (!neighborUp(p))
         return 0;
-
-    if (p->max_conn)
-        if (p->stats.conn_open >= p->max_conn)
-            return 0;
 
     return 1;
 }
@@ -477,33 +477,6 @@ getDefaultParent(HttpRequest * request)
     return NULL;
 }
 
-/*
- * XXX DW thinks this function is equivalent to/redundant with
- * getFirstUpParent().  peerHTTPOkay() only returns true if the
- * peer is UP anyway, so this function would not return a
- * DOWN parent.
- */
-peer *
-getAnyParent(HttpRequest * request)
-{
-    peer *p = NULL;
-
-    for (p = Config.peers; p; p = p->next) {
-        if (neighborType(p, request) != PEER_PARENT)
-            continue;
-
-        if (!peerHTTPOkay(p, request))
-            continue;
-
-        debugs(15, 3, "getAnyParent: returning " << p->host);
-
-        return p;
-    }
-
-    debugs(15, 3, "getAnyParent: returning NULL");
-    return NULL;
-}
-
 peer *
 getNextPeer(peer * p)
 {
@@ -613,7 +586,7 @@ neighbors_init(void)
         nul = *AI;
         nul.GetInAddr( *((struct in_addr*)&echo_hdr.shostid) );
         sep = getservbyname("echo", "udp");
-        echo_port = sep ? ntohs((u_short) sep->s_port) : 7;
+        echo_port = sep ? ntohs((unsigned short) sep->s_port) : 7;
     }
 
     first_ping = Config.peers;

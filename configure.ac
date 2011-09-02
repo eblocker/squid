@@ -2,7 +2,7 @@
 dnl
 dnl  $Id$
 dnl
-AC_INIT([Squid Web Proxy],[3.1.14],[http://www.squid-cache.org/bugs/],[squid])
+AC_INIT([Squid Web Proxy],[3.1.15],[http://www.squid-cache.org/bugs/],[squid])
 AC_PREREQ(2.61)
 AC_CONFIG_HEADERS([include/autoconf.h])
 AC_CONFIG_AUX_DIR(cfgaux)
@@ -26,6 +26,12 @@ AM_PROG_CC_C_O
 AC_PROG_CXX
 AC_LANG([C++])
 AC_CANONICAL_HOST
+
+# might be cross-compiling
+if test "x$HOSTCXX" = "x"; then
+  HOSTCXX="$CXX"
+fi
+AC_SUBST(HOSTCXX)
 
 AC_MSG_CHECKING([simplified host os])
 simple_host_os=`echo $host_os|sed 's/[0-9].*//g;s/-.*//g'`
@@ -1634,13 +1640,13 @@ AC_ARG_ENABLE(leakfinder,
 
 follow_xff=1
 AC_ARG_ENABLE(follow-x-forwarded-for,
-  AS_HELP_STRING([--enable-follow-x-forwarded-for],[Enable support for following the X-Forwarded-For
+  AS_HELP_STRING([--disable-follow-x-forwarded-for],[Disable support for following the X-Forwarded-For
                  HTTP header to try to find the IP address of the
                  original or indirect client when a request has
                  been forwarded through other proxies.]),
-[ if test "$enableval" = "yes" ; then
-    AC_MSG_NOTICE([follow X-Forwarded-For enabled])
-    follow_xff=1
+[ if test "$enableval" = "no" ; then
+    AC_MSG_NOTICE([Disabling follow X-Forwarded-For])
+    follow_xff=0
   fi
 ])
 if test $follow_xff = 1; then
@@ -2310,6 +2316,7 @@ AC_CHECK_HEADERS( \
 	netinet/ip_fil_compat.h \
 	openssl/err.h \
 	openssl/md5.h \
+	openssl/opensslv.h \
 	openssl/ssl.h \
 	openssl/txt_db.h \
 	openssl/x509v3.h \

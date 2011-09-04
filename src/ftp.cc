@@ -202,7 +202,7 @@ public:
     struct DataChannel: public FtpChannel {
         MemBuf *readBuf;
         char *host;
-        u_short port;
+        unsigned short port;
         bool read_pending;
     } data;
 
@@ -1295,7 +1295,8 @@ FtpStateData::dataComplete()
 void
 FtpStateData::maybeReadVirginBody()
 {
-    if (data.fd < 0)
+    // too late to read
+    if (data.fd < 0 || fd_table[data.fd].closing())
         return;
 
     if (data.read_pending)
@@ -2451,7 +2452,7 @@ ftpReadEPSV(FtpStateData* ftpState)
 {
     int code = ftpState->ctrl.replycode;
     char h1, h2, h3, h4;
-    u_short port;
+    unsigned short port;
     IpAddress ipa_remote;
     int fd = ftpState->data.fd;
     char *buf;
@@ -2755,7 +2756,7 @@ ftpReadPasv(FtpStateData * ftpState)
     int h1, h2, h3, h4;
     int p1, p2;
     int n;
-    u_short port;
+    unsigned short port;
     IpAddress ipa_remote;
     int fd = ftpState->data.fd;
     char *buf;

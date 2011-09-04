@@ -133,7 +133,7 @@ static void configDoConfigure(void);
 static void parse_refreshpattern(refresh_t **);
 static int parseTimeUnits(const char *unit);
 static void parseTimeLine(time_t * tptr, const char *units);
-static void parse_ushort(u_short * var);
+static void parse_ushort(unsigned short * var);
 static void parse_string(char **);
 static void default_all(void);
 static void defaults_if_none(void);
@@ -316,6 +316,11 @@ parseOneConfigFile(const char *file_name, unsigned int depth)
 
         if ((token = strchr(config_input_line, '\r')))
             *token = '\0';
+
+        // strip any prefix whitespace off the line.
+        const char *p = skip_ws(config_input_line);
+        if (config_input_line != p)
+            memmove(config_input_line, p, strlen(p)+1);
 
         if (strncmp(config_input_line, "#line ", 6) == 0) {
             static char new_file_name[1024];
@@ -1753,7 +1758,7 @@ isUnsignedNumeric(const char *str, size_t len)
  \param proto	'tcp' or 'udp' for protocol
  \returns       Port the named service is supposed to be listening on.
  */
-static u_short
+static unsigned short
 GetService(const char *proto)
 {
     struct servent *port = NULL;
@@ -1767,7 +1772,7 @@ GetService(const char *proto)
     if ( !isUnsignedNumeric(token, strlen(token)) )
         port = getservbyname(token, proto);
     if (port != NULL) {
-        return ntohs((u_short)port->s_port);
+        return ntohs((unsigned short)port->s_port);
     }
     /** Or a numeric translation of the config text. */
     return xatos(token);
@@ -1777,7 +1782,7 @@ GetService(const char *proto)
  \returns       Port the named TCP service is supposed to be listening on.
  \copydoc GetService(const char *proto)
  */
-inline u_short
+inline unsigned short
 GetTcpService(void)
 {
     return GetService("tcp");
@@ -1787,7 +1792,7 @@ GetTcpService(void)
  \returns       Port the named UDP service is supposed to be listening on.
  \copydoc GetService(const char *proto)
  */
-inline u_short
+inline unsigned short
 GetUdpService(void)
 {
     return GetService("udp");
@@ -2755,25 +2760,25 @@ free_b_int64_t(int64_t * var)
 #define free_kb_int64_t free_b_int64_t
 
 static void
-dump_ushort(StoreEntry * entry, const char *name, u_short var)
+dump_ushort(StoreEntry * entry, const char *name, unsigned short var)
 {
     storeAppendPrintf(entry, "%s %d\n", name, var);
 }
 
 static void
-free_ushort(u_short * u)
+free_ushort(unsigned short * u)
 {
     *u = 0;
 }
 
 static void
-parse_ushort(u_short * var)
+parse_ushort(unsigned short * var)
 {
     ConfigParser::ParseUShort(var);
 }
 
 void
-ConfigParser::ParseUShort(u_short *var)
+ConfigParser::ParseUShort(unsigned short *var)
 {
     *var = GetShort();
 }
@@ -3107,7 +3112,7 @@ parse_http_port_specification(http_port_list * s, char *token)
         if (!Ip::EnableIpv6)
             s->s.SetIPv4();
         debugs(3, 3, "http(s)_port: found Listen on wildcard address: *:" << s->s.GetPort() );
-    } else if ( s->s = host ) { /* check/parse numeric IPA */
+    } else if ( (s->s = host) ) { /* check/parse numeric IPA */
         s->s.SetPort(port);
         if (!Ip::EnableIpv6)
             s->s.SetIPv4();
@@ -3667,7 +3672,11 @@ parse_access_log(customlog ** logs)
 
     if (strcmp(filename, "none") == 0) {
         cl->type = CLF_NONE;
-        goto done;
+        aclParseAclList(LegacyParser, &cl->aclList);
+        while (*logs)
+            logs = &(*logs)->next;
+        *logs = cl;
+        return;
     }
 
     if ((logdef_name = strtok(NULL, w_space)) == NULL)
@@ -3708,7 +3717,6 @@ parse_access_log(customlog ** logs)
         return;
     }
 
-done:
     aclParseAclList(LegacyParser, &cl->aclList);
 
     while (*logs)

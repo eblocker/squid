@@ -1026,20 +1026,25 @@ DOC_END
 NAME: miss_access
 TYPE: acl_access
 LOC: Config.accessList.miss
-DEFAULT: allow all
+DEFAULT_IF_NONE: allow all
 DOC_START
-	Use to force your neighbors to use you as a sibling instead of
-	a parent.  For example:
+	Determins whether network access is permitted when satisfying a request.
+
+	For example;
+	    to force your neighbors to use you as a sibling instead of
+	    a parent.
 
 		acl localclients src 172.16.0.0/16
 		miss_access allow localclients
 		miss_access deny  !localclients
 
-	This means only your local clients are allowed to fetch
-	MISSES and all other clients can only fetch HITS.
+	This means only your local clients are allowed to fetch relayed/MISS
+	replies from the network and all other clients can only fetch cached
+	objects (HITs).
 
-	By default, allow all clients who passed the http_access rules
-	to fetch MISSES from us.
+
+	The default for this setting allows all clients who passed the
+	http_access rules to relay via this proxy.
 
 	This clause only supports fast acl types.
 	See http://wiki.squid-cache.org/SquidFaq/SquidAcl for details.
@@ -6416,6 +6421,7 @@ NAME: ignore_unknown_nameservers
 TYPE: onoff
 LOC: Config.onoff.ignore_unknown_nameservers
 DEFAULT: on
+IFDEF: !USE_DNSSERVERS
 DOC_START
 	By default Squid checks that DNS responses are received
 	from the same IP addresses they are sent to.  If they
@@ -6428,6 +6434,7 @@ NAME: dns_v4_fallback
 TYPE: onoff
 DEFAULT: on
 LOC: Config.onoff.dns_require_A
+IFDEF: !USE_DNSSERVERS
 DOC_START
 	Standard practice with DNS is to lookup either A or AAAA records
 	and use the results if it succeeds. Only looking up the other if
@@ -6442,6 +6449,25 @@ DOC_START
 	WARNING: There are some possibly unwanted side-effects with this on:
 		*) Doubles the load placed by squid on the DNS network.
 		*) May negatively impact connection delay times.
+DOC_END
+
+NAME: dns_v4_first
+TYPE: onoff
+DEFAULT: off
+LOC: Config.dns.v4_first
+IFDEF: !USE_DNSSERVERS
+DOC_START
+	With the IPv6 Internet being as fast or faster than IPv4 Internet
+	for most networks Squid prefers to contact websites over IPv6.
+
+	This option reverses the order of preference to make Squid contact
+	dual-stack websites over IPv4 first. Squid will still perform both
+	IPv6 and IPv4 DNS lookups before connecting.
+
+	WARNING:
+	  This option will restrict the situations under which IPv6
+	  connectivity is used (and tested). Hiding network problems
+	  which would otherwise be detected and warned about.
 DOC_END
 
 NAME: ipcache_size
@@ -6675,10 +6701,16 @@ TYPE: onoff
 LOC: Config.retry.onerror
 DEFAULT: off
 DOC_START
-	If set to on Squid will automatically retry requests when
-	receiving an error response. This is mainly useful if you
-	are in a complex cache hierarchy to work around access
-	control errors.
+	If set to ON Squid will automatically retry requests when
+	receiving an error response with status 403 (Forbidden),
+	500 (Internal Error), 501 or 503 (Service not available).
+	Status 502 and 504 (Gateway errors) are always retried.
+	
+	This is mainly useful if you are in a complex cache hierarchy to
+	work around access control errors.
+	
+	NOTE: This retry will attempt to find another working destination.
+	Which is different from the server which just failed.
 DOC_END
 
 NAME: as_whois_server

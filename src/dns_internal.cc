@@ -1117,25 +1117,35 @@ idnsGrokReply(const char *buf, size_t sz)
 
         debugs(78, 6, HERE << "Merging DNS results " << q->name << " AAAA has " << q->initial_AAAA.count << " RR, A has " << n << " RR");
 
+        if (Config.dns.v4_first) {
+            memcpy( tmp, message->answer, (sizeof(rfc1035_rr)*n) );
+            tmp += n;
+            /* free the RR object without freeing its child strings (they are now taken by the copy above) */
+            safe_free(message->answer);
+        }
+
         memcpy(tmp, q->initial_AAAA.answers, (sizeof(rfc1035_rr)*(q->initial_AAAA.count)) );
         tmp += q->initial_AAAA.count;
         /* free the RR object without freeing its child strings (they are now taken by the copy above) */
         safe_free(q->initial_AAAA.answers);
 
-        memcpy( tmp, message->answer, (sizeof(rfc1035_rr)*n) );
-        /* free the RR object without freeing its child strings (they are now taken by the copy above) */
-        safe_free(message->answer);
+        if (!Config.dns.v4_first) {
+            memcpy( tmp, message->answer, (sizeof(rfc1035_rr)*n) );
+            /* free the RR object without freeing its child strings (they are now taken by the copy above) */
+            safe_free(message->answer);
+        }
 
-        message->answer = result;
-        message->ancount += q->initial_AAAA.count;
         n += q->initial_AAAA.count;
-        q->initial_AAAA.count=0;
+        q->initial_AAAA.count = 0;
+        message->answer = result;
+        message->ancount = n;
     } else if (q->initial_AAAA.count > 0 && n <= 0) {
         /* initial of dual queries was the only result set. */
         debugs(78, 6, HERE << "Merging DNS results " << q->name << " AAAA has " << q->initial_AAAA.count << " RR, A has " << n << " RR");
         rfc1035RRDestroy(&(message->answer), n);
         message->answer = q->initial_AAAA.answers;
         n = q->initial_AAAA.count;
+        message->ancount = n;
     }
     /* else initial results were empty. just use the final set as authoritative */
 

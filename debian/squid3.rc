@@ -137,8 +137,11 @@ case "$1" in
 		log_end_msg $?
 	fi
 	;;
+    status)
+	status_of_proc -p $PIDFILE $DAEMON $NAME && exit 0 || exit 3
+	;;
     *)
-	echo "Usage: /etc/init.d/$NAME {start|stop|reload|force-reload|restart}"
+	echo "Usage: /etc/init.d/$NAME {start|stop|reload|force-reload|restart|status}"
 	exit 3
 	;;
 esac

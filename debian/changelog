@@ -4,6 +4,10 @@ squid3 (3.1.16-1) UNRELEASED; urgency=low
 
   * Changed source format to 3.0 (quilt)
 
+  * debian/squid3.rc
+    - Added LSB compliant option to init script (Closes: #645780)
+      Thanks to Fredrik Eriksson
+
  -- Luigi Gangitano <luigi@debian.org>  Wed,  2 Nov 2011 19:21:17 +0100
 
 squid3 (3.1.15-1) unstable; urgency=high

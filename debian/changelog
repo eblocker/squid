@@ -8,7 +8,7 @@ squid3 (3.1.16-1) unstable; urgency=low
     - Added LSB compliant option to init script (Closes: #645780)
       Thanks to Fredrik Eriksson
 
- -- Luigi Gangitano <luigi@debian.org>  Thy,  3 Nov 2011 13:37:17 +0100
+ -- Luigi Gangitano <luigi@debian.org>  Thu,  3 Nov 2011 13:37:17 +0100
 
 squid3 (3.1.15-1) unstable; urgency=high
 

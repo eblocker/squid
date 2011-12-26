@@ -142,6 +142,9 @@
 /* Define to 1 if you have the <crypt.h> header file. */
 #undef HAVE_CRYPT_H
 
+/* Define to 1 if you have the <cstdarg> header file. */
+#undef HAVE_CSTDARG
+
 /* Define to 1 if you have the <cstring> header file. */
 #undef HAVE_CSTRING
 
@@ -612,6 +615,9 @@
 
 /* Define to 1 if you have the `rint' function. */
 #undef HAVE_RINT
+
+/* Define to 1 if Mac Darwin without sasl.h */
+#undef HAVE_SASL_DARWIN
 
 /* Define to 1 if you have the <sasl.h> header file. */
 #undef HAVE_SASL_H

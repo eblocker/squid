@@ -1,8 +1,10 @@
 Author: Luigi Gangitano <luigi@debian.org>
 Description: Default configuration file for debian
---- a/src/cf.data.pre
-+++ b/src/cf.data.pre
-@@ -172,7 +172,7 @@
+Index: squid3-3.1.18/src/cf.data.pre
+===================================================================
+--- squid3-3.1.18.orig/src/cf.data.pre	2011-12-26 22:10:23.000000000 +0100
++++ squid3-3.1.18/src/cf.data.pre	2011-12-26 22:35:01.000000000 +0100
+@@ -178,7 +178,7 @@
  	If you want to use the traditional NCSA proxy authentication, set
  	this line to something like
  
@@ -11,7 +13,7 @@ Description: Default configuration file for debian
  
  	"utf8" on|off
  	HTTP uses iso-latin-1 as characterset, while some authentication
-@@ -240,7 +240,7 @@
+@@ -246,7 +246,7 @@
  	If you want to use a digest authenticator, set this line to
  	something like
  
@@ -20,7 +22,7 @@ Description: Default configuration file for debian
  
  	"utf8" on|off
  	HTTP uses iso-latin-1 as characterset, while some authentication
-@@ -302,7 +302,7 @@
+@@ -308,7 +308,7 @@
  	of type proxy_auth.  By default, the NTLM authenticator_program
  	is not used.
  
@@ -29,7 +31,7 @@ Description: Default configuration file for debian
  
  	"children" numberofchildren
  	The number of authenticator processes to spawn (no default).
-@@ -337,7 +337,7 @@
+@@ -343,7 +343,7 @@
  	The only supported program for this role is the ntlm_auth
  	program distributed as part of Samba, version 4 or later.
  
@@ -38,7 +40,7 @@ Description: Default configuration file for debian
  
  	"children" numberofchildren
  	The number of authenticator processes to spawn (no default).
-@@ -752,11 +752,11 @@
+@@ -761,11 +761,11 @@
  # Example rule allowing access from your local networks.
  # Adapt to list your (internal) IP networks from where browsing
  # should be allowed
@@ -55,7 +57,7 @@ Description: Default configuration file for debian
  
  acl SSL_ports port 443
  acl Safe_ports port 80		# http
-@@ -915,7 +915,7 @@
+@@ -924,7 +924,7 @@
  # Example rule allowing access from your local networks.
  # Adapt localnet in the ACL section to list your (internal) IP networks
  # from where browsing should be allowed
@@ -64,7 +66,7 @@ Description: Default configuration file for debian
  http_access allow localhost
  
  # And finally deny all other access to this proxy
-@@ -2828,7 +2828,7 @@
+@@ -2845,7 +2845,7 @@
  
  NAME: logfile_rotate
  TYPE: int
@@ -73,7 +75,7 @@ Description: Default configuration file for debian
  LOC: Config.Log.rotateNumber
  DOC_START
  	Specifies the number of logfile rotations to make when you
-@@ -2847,6 +2847,9 @@
+@@ -2864,6 +2864,9 @@
  
  	Note, from Squid-3.1 this option has no effect on the cache.log,
  	that log can be rotated separately by using debug_options
@@ -83,7 +85,7 @@ Description: Default configuration file for debian
  DOC_END
  
  NAME: emulate_httpd_log
-@@ -4268,7 +4271,7 @@
+@@ -4285,7 +4288,7 @@
  NAME: visible_hostname
  TYPE: string
  LOC: Config.visibleHostname

@@ -561,8 +561,12 @@ endif
 
 unlinkd_SOURCES = unlinkd_daemon.cc SquidNew.cc
 
-dnsserver_SOURCES = dnsserver.cc SquidNew.cc
 recv_announce_SOURCES = recv-announce.cc SquidNew.cc
+
+## dnsserver is a standalone helper. Do not link to any internal libraries
+dnsserver_SOURCES = dnsserver.cc
+## SquidNew.cc tests/stub_debug.cc test_tools.cc time.cc
+dnsserver_LDADD = $(COMPAT_LIB)
 
 ## What requires what..
 ## many things want ACLChecklist.cc
@@ -763,7 +767,7 @@ squid.conf.default squid.conf.documented: cf_parser.cci
 	true
 
 cf_parser.cci: cf.data cf_gen$(EXEEXT)
-	./cf_gen cf.data $(srcdir)/cf.data.depend
+	./cf_gen$(EXEEXT) cf.data $(srcdir)/cf.data.depend
 
 cf_gen_defines.cci: $(srcdir)/cf_gen_defines $(srcdir)/cf.data.pre
 	$(AWK) -f $(srcdir)/cf_gen_defines <$(srcdir)/cf.data.pre >$@ || ($(RM) -f $@ && exit 1)

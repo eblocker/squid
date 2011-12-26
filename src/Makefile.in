@@ -151,11 +151,9 @@ DiskIO_DiskDaemon_diskd_DEPENDENCIES =  \
 am_cf_gen_OBJECTS = cf_gen.$(OBJEXT)
 cf_gen_OBJECTS = $(am_cf_gen_OBJECTS)
 cf_gen_DEPENDENCIES =
-am_dnsserver_OBJECTS = dnsserver.$(OBJEXT) SquidNew.$(OBJEXT)
+am_dnsserver_OBJECTS = dnsserver.$(OBJEXT)
 dnsserver_OBJECTS = $(am_dnsserver_OBJECTS)
-dnsserver_LDADD = $(LDADD)
-dnsserver_DEPENDENCIES = $(COMMON_LIBS) $(am__DEPENDENCIES_1) \
-	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1)
+dnsserver_DEPENDENCIES =
 am_recv_announce_OBJECTS = recv-announce.$(OBJEXT) SquidNew.$(OBJEXT)
 recv_announce_OBJECTS = $(am_recv_announce_OBJECTS)
 recv_announce_LDADD = $(LDADD)
@@ -1911,8 +1909,9 @@ squid_DEPENDENCIES = $(top_builddir)/lib/libmiscutil.a \
 #         -all-static -dlopen self
 #
 unlinkd_SOURCES = unlinkd_daemon.cc SquidNew.cc
-dnsserver_SOURCES = dnsserver.cc SquidNew.cc
 recv_announce_SOURCES = recv-announce.cc SquidNew.cc
+dnsserver_SOURCES = dnsserver.cc
+dnsserver_LDADD = $(COMPAT_LIB)
 ufsdump_SOURCES = \
 	ClientInfo.h \
 	cbdata.h \
@@ -4822,7 +4821,7 @@ squid.conf.default squid.conf.documented: cf_parser.cci
 	true
 
 cf_parser.cci: cf.data cf_gen$(EXEEXT)
-	./cf_gen cf.data $(srcdir)/cf.data.depend
+	./cf_gen$(EXEEXT) cf.data $(srcdir)/cf.data.depend
 
 cf_gen_defines.cci: $(srcdir)/cf_gen_defines $(srcdir)/cf.data.pre
 	$(AWK) -f $(srcdir)/cf_gen_defines <$(srcdir)/cf.data.pre >$@ || ($(RM) -f $@ && exit 1)

@@ -2,6 +2,9 @@ squid3 (3.1.18-1) UNRELEASED; urgency=low
 
   * New upstream release
 
+  * debian/patches/19-adaptation-compile.patch
+    - Added upstream patch to fix compile failure
+
  -- Luigi Gangitano <luigi@debian.org>  Mon, 26 Dec 2011 22:04:28 +0100
 
 squid3 (3.1.16-1) unstable; urgency=low

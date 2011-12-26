@@ -2,8 +2,7 @@
 
 include /usr/share/cdbs/1/rules/debhelper.mk
 include /usr/share/cdbs/1/class/autotools.mk
-include /usr/share/cdbs/1/rules/dpatch.mk
-
+ 
 INSTALLDIR := $(CURDIR)/debian/tmp
 datadir=/usr/share/squid3
 

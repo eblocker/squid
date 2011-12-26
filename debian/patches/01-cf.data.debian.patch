@@ -1,14 +1,8 @@
-#! /bin/sh /usr/share/dpatch/dpatch-run
-## 01-cf.data.debian.dpatch by Luigi Gangitano <luigi@debian.org>
-##
-## All lines beginning with `## DP:' are a description of the patch.
-## DP: Default configuration file for debian
-
-@DPATCH@
-diff -urNad '--exclude=CVS' '--exclude=.svn' '--exclude=.git' '--exclude=.arch' '--exclude=.hg' '--exclude=_darcs' '--exclude=.bzr' squid3~/src/cf.data.pre squid3/src/cf.data.pre
---- squid3~/src/cf.data.pre	2010-08-09 00:54:08.000000000 +0200
-+++ squid3/src/cf.data.pre	2010-08-09 01:11:28.000000000 +0200
-@@ -122,7 +122,7 @@
+Author: Luigi Gangitano <luigi@debian.org>
+Description: Default configuration file for debian
+--- a/src/cf.data.pre
++++ b/src/cf.data.pre
+@@ -172,7 +172,7 @@
  	If you want to use the traditional NCSA proxy authentication, set
  	this line to something like
  
@@ -17,7 +11,7 @@ diff -urNad '--exclude=CVS' '--exclude=.svn' '--exclude=.git' '--exclude=.arch' 
  
  	"utf8" on|off
  	HTTP uses iso-latin-1 as characterset, while some authentication
-@@ -190,7 +190,7 @@
+@@ -240,7 +240,7 @@
  	If you want to use a digest authenticator, set this line to
  	something like
  
@@ -26,7 +20,7 @@ diff -urNad '--exclude=CVS' '--exclude=.svn' '--exclude=.git' '--exclude=.arch' 
  
  	"utf8" on|off
  	HTTP uses iso-latin-1 as characterset, while some authentication
-@@ -252,7 +252,7 @@
+@@ -302,7 +302,7 @@
  	of type proxy_auth.  By default, the NTLM authenticator_program
  	is not used.
  
@@ -35,7 +29,7 @@ diff -urNad '--exclude=CVS' '--exclude=.svn' '--exclude=.git' '--exclude=.arch' 
  
  	"children" numberofchildren
  	The number of authenticator processes to spawn (no default).
-@@ -287,7 +287,7 @@
+@@ -337,7 +337,7 @@
  	The only supported program for this role is the ntlm_auth
  	program distributed as part of Samba, version 4 or later.
  
@@ -44,7 +38,7 @@ diff -urNad '--exclude=CVS' '--exclude=.svn' '--exclude=.git' '--exclude=.arch' 
  
  	"children" numberofchildren
  	The number of authenticator processes to spawn (no default).
-@@ -699,11 +699,11 @@
+@@ -752,11 +752,11 @@
  # Example rule allowing access from your local networks.
  # Adapt to list your (internal) IP networks from where browsing
  # should be allowed
@@ -61,7 +55,7 @@ diff -urNad '--exclude=CVS' '--exclude=.svn' '--exclude=.git' '--exclude=.arch' 
  
  acl SSL_ports port 443
  acl Safe_ports port 80		# http
-@@ -861,7 +861,7 @@
+@@ -915,7 +915,7 @@
  # Example rule allowing access from your local networks.
  # Adapt localnet in the ACL section to list your (internal) IP networks
  # from where browsing should be allowed
@@ -70,7 +64,7 @@ diff -urNad '--exclude=CVS' '--exclude=.svn' '--exclude=.git' '--exclude=.arch' 
  http_access allow localhost
  
  # And finally deny all other access to this proxy
-@@ -2718,7 +2718,7 @@
+@@ -2828,7 +2828,7 @@
  
  NAME: logfile_rotate
  TYPE: int
@@ -79,7 +73,7 @@ diff -urNad '--exclude=CVS' '--exclude=.svn' '--exclude=.git' '--exclude=.arch' 
  LOC: Config.Log.rotateNumber
  DOC_START
  	Specifies the number of logfile rotations to make when you
-@@ -2737,6 +2737,9 @@
+@@ -2847,6 +2847,9 @@
  
  	Note, from Squid-3.1 this option has no effect on the cache.log,
  	that log can be rotated separately by using debug_options
@@ -89,7 +83,7 @@ diff -urNad '--exclude=CVS' '--exclude=.svn' '--exclude=.git' '--exclude=.arch' 
  DOC_END
  
  NAME: emulate_httpd_log
-@@ -4110,7 +4113,7 @@
+@@ -4268,7 +4271,7 @@
  NAME: visible_hostname
  TYPE: string
  LOC: Config.visibleHostname

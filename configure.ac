@@ -2,7 +2,7 @@
 dnl
 dnl  $Id$
 dnl
-AC_INIT([Squid Web Proxy],[3.1.16],[http://www.squid-cache.org/bugs/],[squid])
+AC_INIT([Squid Web Proxy],[3.1.18],[http://www.squid-cache.org/bugs/],[squid])
 AC_PREREQ(2.61)
 AC_CONFIG_HEADERS([include/autoconf.h])
 AC_CONFIG_AUX_DIR(cfgaux)
@@ -2057,22 +2057,25 @@ AC_ARG_ENABLE(win32-service,
   fi
 ])
 
-
 dnl Check for Cyrus SASL
 if test "$require_sasl" = "yes"; then
-	AC_CHECK_HEADERS(sasl/sasl.h sasl.h)
-	if test "$ac_cv_header_sasl_sasl_h" = "yes"; then
-		AC_MSG_NOTICE([using SASL2])
-		LIBSASL="-lsasl2"
-	else
-		if test "$ac_cv_header_sasl_h" = "yes"; then
-			AC_MSG_NOTICE([using SASL])
-			LIBSASL="-lsasl"
-		else
-			AC_MSG_ERROR(Neither SASL nor SASL2 found)
-		fi
-	fi
-	AC_SUBST(LIBSASL)
+  AC_CHECK_HEADERS(sasl/sasl.h sasl.h)
+  AC_CHECK_LIB(sasl2,sasl_errstring,[LIBSASL="-lsasl2"],[
+    AC_CHECK_LIB(sasl,sasl_errstring,[LIBSASL="-lsasl"], [
+      AC_MSG_ERROR(Neither SASL nor SASL2 found)
+    ])
+  ])
+  case "$squid_host_os" in
+    Darwin)
+      if test "$ac_cv_lib_sasl2_sasl_errstring" = "yes" ; then
+        AC_DEFINE(HAVE_SASL_DARWIN,1,[Define to 1 if Mac Darwin without sasl.h])
+        echo "checking for MAC Darwin without sasl.h ... yes"
+      else
+        echo "checking for MAC Darwin without sasl.h ... no"
+      fi
+      ;;
+  esac
+  AC_SUBST(LIBSASL)
 fi
 
 dnl Disable "unlinkd" code
@@ -2256,8 +2259,10 @@ case "$host" in
 	;;
 esac
 
-dnl set $(AR)
-AC_PATH_PROG(AR, ar, $FALSE)
+dnl set $(AR) if not provided by the build environment
+if test "x$AR" = "x"; then
+  AC_PATH_PROG(AR, ar, $FALSE)
+fi
 AR_R="$AR r"
 case "$host" in
 	*-next-nextstep3)
@@ -2277,6 +2282,7 @@ AC_CHECK_HEADERS( \
 	bstring.h \
 	cassert \
 	crypt.h \
+	cstdarg \
 	cstring \
 	ctype.h \
 	errno.h \

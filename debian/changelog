@@ -1,6 +1,8 @@
 squid3 (3.1.19-1) UNRELEASED; urgency=low
 
   * New upstream release
+    - Removed patch integrated upstream
+      + 19-adaptation-compile
 
   * debian/rules
     - Enabled WCCPv2 support (Closes: #654877)

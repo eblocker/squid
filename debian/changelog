@@ -9,7 +9,7 @@ squid3 (3.1.20-1) UNRELEASED; urgency=low
     - Enabled hardening options (Closes: #669684)
 
   * debian/patches/01-cf.data.debian.patch
-    - Fixed minor typos in configuration file (Closes: #670832)
+    - Fixed minor typos in configuration file (Closes: #670832, #673350)
 
  -- Luigi Gangitano <luigi@debian.org>  Mon, 18 Jun 2012 14:20:53 +0200
 

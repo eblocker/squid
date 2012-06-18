@@ -53,14 +53,15 @@ CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
 LTLIBRARIES = $(noinst_LTLIBRARIES)
 libsslsquid_la_LIBADD =
+am__libsslsquid_la_SOURCES_DIST = context_storage.cc context_storage.h \
+	Config.cc Config.h ErrorDetail.cc ErrorDetail.h helper.cc \
+	helper.h
+@USE_SSL_CRTD_TRUE@am__objects_1 = helper.lo
 am_libsslsquid_la_OBJECTS = context_storage.lo Config.lo \
-	ErrorDetail.lo
+	ErrorDetail.lo $(am__objects_1)
 libsslsquid_la_OBJECTS = $(am_libsslsquid_la_OBJECTS)
 libsslutil_la_LIBADD =
-am__libsslutil_la_SOURCES_DIST = gadgets.cc gadgets.h crtd_message.cc \
-	crtd_message.h helper.cc helper.h
-@USE_SSL_CRTD_TRUE@am__objects_1 = helper.lo
-am_libsslutil_la_OBJECTS = gadgets.lo crtd_message.lo $(am__objects_1)
+am_libsslutil_la_OBJECTS = gadgets.lo crtd_message.lo
 libsslutil_la_OBJECTS = $(am_libsslutil_la_OBJECTS)
 @USE_SSL_CRTD_TRUE@am__EXEEXT_1 = ssl_crtd$(EXEEXT)
 am__installdirs = "$(DESTDIR)$(libexecdir)"
@@ -98,8 +99,8 @@ LINK = $(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
 	$(LDFLAGS) -o $@
 SOURCES = $(libsslsquid_la_SOURCES) $(libsslutil_la_SOURCES) \
 	$(ssl_crtd_SOURCES)
-DIST_SOURCES = $(libsslsquid_la_SOURCES) \
-	$(am__libsslutil_la_SOURCES_DIST) $(am__ssl_crtd_SOURCES_DIST)
+DIST_SOURCES = $(am__libsslsquid_la_SOURCES_DIST) \
+	$(libsslutil_la_SOURCES) $(am__ssl_crtd_SOURCES_DIST)
 ETAGS = etags
 CTAGS = ctags
 am__tty_colors = \
@@ -322,14 +323,15 @@ libsslsquid_la_SOURCES = \
 	Config.cc \
 	Config.h \
 	ErrorDetail.cc \
-	ErrorDetail.h
+	ErrorDetail.h \
+	\
+	$(SSL_CRTD_SOURCE)
 
 libsslutil_la_SOURCES = \
 	gadgets.cc \
 	gadgets.h \
 	crtd_message.cc \
-	crtd_message.h \
-	$(SSL_CRTD_SOURCE)
+	crtd_message.h
 
 @USE_SSL_CRTD_TRUE@ssl_crtd_SOURCES = ssl_crtd.cc certificate_db.cc certificate_db.h
 @USE_SSL_CRTD_TRUE@ssl_crtd_LDADD = $(SSLLIB) -lsslutil ../../compat/libcompat.la ../../lib/libmiscutil.a

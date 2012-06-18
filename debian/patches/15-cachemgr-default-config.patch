@@ -1,9 +1,7 @@
 Author: Luigi Gangitano <luigi@debian.org>
 Description: Fix path for cachemgr.cgi default configuration file
-Index: squid3-3.1.18/tools/Makefile.am
-===================================================================
---- squid3-3.1.18.orig/tools/Makefile.am	2010-08-09 01:00:25.000000000 +0200
-+++ squid3-3.1.18/tools/Makefile.am	2011-12-26 22:36:49.000000000 +0100
+--- a/tools/Makefile.am
++++ b/tools/Makefile.am
 @@ -34,7 +34,7 @@
  man_MANS = \
  	squidclient.1
@@ -21,10 +19,8 @@ Index: squid3-3.1.18/tools/Makefile.am
  	$(INSTALL_DATA) $(srcdir)/cachemgr.conf $(DESTDIR)$(DEFAULT_CACHEMGR_CONFIG).default
  	@if test -f $(DESTDIR)$(DEFAULT_CACHEMGR_CONFIG) ; then \
  	        echo "$@ will not overwrite existing $(DESTDIR)$(DEFAULT_CACHEMGR_CONFIG)" ; \
-Index: squid3-3.1.18/tools/Makefile.in
-===================================================================
---- squid3-3.1.18.orig/tools/Makefile.in	2011-09-02 13:37:09.000000000 +0200
-+++ squid3-3.1.18/tools/Makefile.in	2011-12-26 22:36:49.000000000 +0100
+--- a/tools/Makefile.in
++++ b/tools/Makefile.in
 @@ -375,7 +375,7 @@
  man_MANS = \
  	squidclient.1

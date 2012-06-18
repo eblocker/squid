@@ -1,9 +1,7 @@
 Author: Luigi Gangitano <luigi@debian.org>
 Description: Default configuration file for debian
-Index: squid3-3.1.18/src/cf.data.pre
-===================================================================
---- squid3-3.1.18.orig/src/cf.data.pre	2011-12-26 22:10:23.000000000 +0100
-+++ squid3-3.1.18/src/cf.data.pre	2011-12-26 22:35:01.000000000 +0100
+--- a/src/cf.data.pre
++++ b/src/cf.data.pre
 @@ -178,7 +178,7 @@
  	If you want to use the traditional NCSA proxy authentication, set
  	this line to something like
@@ -40,7 +38,7 @@ Index: squid3-3.1.18/src/cf.data.pre
  
  	"children" numberofchildren
  	The number of authenticator processes to spawn (no default).
-@@ -761,11 +761,11 @@
+@@ -760,11 +760,11 @@
  # Example rule allowing access from your local networks.
  # Adapt to list your (internal) IP networks from where browsing
  # should be allowed
@@ -57,7 +55,7 @@ Index: squid3-3.1.18/src/cf.data.pre
  
  acl SSL_ports port 443
  acl Safe_ports port 80		# http
-@@ -924,7 +924,7 @@
+@@ -923,7 +923,7 @@
  # Example rule allowing access from your local networks.
  # Adapt localnet in the ACL section to list your (internal) IP networks
  # from where browsing should be allowed
@@ -66,7 +64,16 @@ Index: squid3-3.1.18/src/cf.data.pre
  http_access allow localhost
  
  # And finally deny all other access to this proxy
-@@ -2845,7 +2845,7 @@
+@@ -1527,7 +1527,7 @@
+ 	an additional ACL needs to be used which ensures the IPv6-bound traffic
+ 	is never forced or permitted out the IPv4 interface.
+ 
+-	# IPv6 destination test along with a dummy access control to perofrm the required DNS
++	# IPv6 destination test along with a dummy access control to perform the required DNS
+ 	# This MUST be place before any ALLOW rules.
+ 	acl to_ipv6 dst ipv6
+ 	http_access deny ipv6 !all
+@@ -2844,7 +2844,7 @@
  
  NAME: logfile_rotate
  TYPE: int
@@ -75,7 +82,7 @@ Index: squid3-3.1.18/src/cf.data.pre
  LOC: Config.Log.rotateNumber
  DOC_START
  	Specifies the number of logfile rotations to make when you
-@@ -2864,6 +2864,9 @@
+@@ -2863,6 +2863,9 @@
  
  	Note, from Squid-3.1 this option has no effect on the cache.log,
  	that log can be rotated separately by using debug_options
@@ -85,7 +92,7 @@ Index: squid3-3.1.18/src/cf.data.pre
  DOC_END
  
  NAME: emulate_httpd_log
-@@ -4285,7 +4288,7 @@
+@@ -4284,7 +4287,7 @@
  NAME: visible_hostname
  TYPE: string
  LOC: Config.visibleHostname
@@ -94,3 +101,14 @@ Index: squid3-3.1.18/src/cf.data.pre
  DOC_START
  	If you want to present a special hostname in error messages, etc,
  	define this.  Otherwise, the return value of gethostname()
+@@ -6482,8 +6485,8 @@
+ 
+ 	WARNING:
+ 	  This option will restrict the situations under which IPv6
+-	  connectivity is used (and tested). Hiding network problems
+-	  which would otherwise be detected and warned about.
++	  connectivity is used (and tested), potentially hiding network
++	  problem swhich would otherwise be detected and warned about.
+ DOC_END
+ 
+ NAME: ipcache_size

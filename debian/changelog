@@ -2,6 +2,9 @@ squid3 (3.1.20-1) UNRELEASED; urgency=low
 
   * New upstream release
 
+  * debian/control
+    - Bumped Standard-Version to 3.9.3, no change needed
+
  -- Luigi Gangitano <luigi@debian.org>  Mon, 18 Jun 2012 14:20:53 +0200
 
 squid3 (3.1.19-1) unstable; urgency=low

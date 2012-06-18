@@ -1890,7 +1890,7 @@ squid_LDADD = $(COMMON_LIBS) icmp/libicmp.la icmp/libicmp-core.la \
 	../compat/libcompat.la -L../lib $(XTRA_OBJS) $(DISK_LINKOBJS) \
 	$(REPL_OBJS) $(DISK_LIBS) $(DISK_OS_LIBS) $(CRYPTLIB) \
 	$(REGEXLIB) $(SNMPLIB) ${ADAPTATION_LIBS} $(ESI_LIBS) \
-	$(SSLLIB) $(SSL_LIBS) -lmiscutil $(EPOLL_LIBS) $(MINGW_LIBS) \
+	$(SSL_LIBS) $(SSLLIB) -lmiscutil $(EPOLL_LIBS) $(MINGW_LIBS) \
 	$(XTRA_LIBS) $(am__append_6)
 squid_DEPENDENCIES = $(top_builddir)/lib/libmiscutil.a \
 	$(DISK_LIBS) \
@@ -2397,8 +2397,8 @@ tests_testCacheManager_LDADD = \
 	-L../lib -lmiscutil \
 	$(SQUID_CPPUNIT_LIBS) \
 	$(SQUID_CPPUNIT_LA) \
-	$(SSLLIB) \
 	$(SSL_LIBS) \
+	$(SSLLIB) \
 	$(XTRA_LIBS)
 
 tests_testCacheManager_LDFLAGS = $(LIBADD_DL)
@@ -2577,8 +2577,8 @@ tests_testEvent_LDADD = \
 	-L../lib -lmiscutil \
 	$(SQUID_CPPUNIT_LIBS) \
 	$(SQUID_CPPUNIT_LA) \
-	$(SSLLIB) \
 	$(SSL_LIBS) \
+	$(SSLLIB) \
 	$(XTRA_LIBS)
 
 tests_testEvent_LDFLAGS = $(LIBADD_DL)
@@ -2730,8 +2730,8 @@ tests_testEventLoop_LDADD = \
 	-L../lib -lmiscutil \
 	$(SQUID_CPPUNIT_LIBS) \
 	$(SQUID_CPPUNIT_LA) \
-	$(SSLLIB) \
 	$(SSL_LIBS) \
+	$(SSLLIB) \
 	$(XTRA_LIBS)
 
 tests_testEventLoop_LDFLAGS = $(LIBADD_DL)
@@ -2879,8 +2879,8 @@ tests_test_http_range_LDADD = \
 	-L../lib -lmiscutil \
 	$(SQUID_CPPUNIT_LIBS) \
 	$(SQUID_CPPUNIT_LA) \
-	$(SSLLIB) \
 	$(SSL_LIBS) \
+	$(SSLLIB) \
 	$(XTRA_LIBS)
 
 tests_test_http_range_LDFLAGS = $(LIBADD_DL)
@@ -3031,8 +3031,8 @@ tests_testHttpRequest_LDADD = \
 	-L../lib -lmiscutil \
 	$(SQUID_CPPUNIT_LIBS) \
 	$(SQUID_CPPUNIT_LA) \
-	$(SSLLIB) \
 	$(SSL_LIBS) \
+	$(SSLLIB) \
 	$(XTRA_LIBS)
 
 tests_testHttpRequest_LDFLAGS = $(LIBADD_DL)
@@ -3477,8 +3477,8 @@ tests_testURL_LDADD = \
 	-L../lib -lmiscutil \
 	$(SQUID_CPPUNIT_LIBS) \
 	$(SQUID_CPPUNIT_LA) \
-	$(SSLLIB) \
 	$(SSL_LIBS) \
+	$(SSLLIB) \
 	$(XTRA_LIBS)
 
 tests_testURL_LDFLAGS = $(LIBADD_DL)

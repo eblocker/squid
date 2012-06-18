@@ -733,27 +733,21 @@ UFSSwapDir::closeTmpSwapLog()
     file_close(swaplog_fd);
 
     if (xrename(new_path, swaplog_path) < 0) {
-        fatal("commonUfsDirCloseTmpSwapLog: rename failed");
+        debugs(50, DBG_IMPORTANT, "ERROR: " << swaplog_path << ": " << xstrerror());
+        fatalf("Failed to rename log file %s to %s.new", swaplog_path, swaplog_path);
     }
 
     fd = file_open(swaplog_path, O_WRONLY | O_CREAT | O_BINARY);
 
     if (fd < 0) {
-        debugs(50, 1, "" << swaplog_path << ": " << xstrerror());
-        fatal("commonUfsDirCloseTmpSwapLog: Failed to open swap log.");
+        debugs(50, DBG_IMPORTANT, "ERROR: " << swaplog_path << ": " << xstrerror());
+        fatalf("Failed to open swap log %s", swaplog_path);
     }
 
     safe_free(swaplog_path);
     safe_free(new_path);
     swaplog_fd = fd;
     debugs(47, 3, "Cache Dir #" << index << " log opened on FD " << fd);
-}
-
-static void
-FreeHeader(void *address)
-{
-    StoreSwapLogHeader *anObject = static_cast <StoreSwapLogHeader *>(address);
-    delete anObject;
 }
 
 FILE *
@@ -794,9 +788,16 @@ UFSSwapDir::openTmpSwapLog(int *clean_flag, int *zero_flag)
     swaplog_fd = fd;
 
     {
-        StoreSwapLogHeader *header = new StoreSwapLogHeader;
-        file_write(swaplog_fd, -1, header, sizeof(*header),
-                   NULL, NULL, FreeHeader);
+        const StoreSwapLogHeader header;
+        MemBuf buf;
+        buf.init(header.record_size, header.record_size);
+        buf.append(reinterpret_cast<const char*>(&header), sizeof(header));
+        // Pad to keep in sync with UFSSwapDir::writeCleanStart().
+        // TODO: When MemBuf::spaceSize() is fixed not to subtract one,
+        // memset() space() with zeroes and use spaceSize() below.
+        buf.appended(static_cast<size_t>(header.record_size) - sizeof(header));
+        file_write(swaplog_fd, -1, buf.content(), buf.contentSize(),
+                   NULL, NULL, buf.freeFunc());
     }
 
     /* open a read-only stream of the old log */
@@ -882,6 +883,7 @@ UFSSwapDir::writeCleanStart()
     state->outbuf_offset = 0;
     /*copy the header */
     xmemcpy(state->outbuf, &header, sizeof(StoreSwapLogHeader));
+    // Leave a gap to keep in sync with UFSSwapDir::openTmpSwapLog().
     state->outbuf_offset += header.record_size;
 
     state->walker = repl->WalkInit(repl);

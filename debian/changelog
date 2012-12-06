@@ -2,6 +2,10 @@ squid3 (3.1.20-2) UNRELEASED; urgency=low
 
   * NOT RELEASED YET
 
+  * debian/patches/20-ipv6-fix
+    - Added upstream fix for squid not working when IPv6 is not loaded
+      (Closes: #660489)
+
  -- Luigi Gangitano <luigi@debian.org>  Thu, 06 Dec 2012 20:02:56 +0100
 
 squid3 (3.1.20-1) unstable; urgency=low

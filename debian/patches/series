@@ -1,3 +1,5 @@
 01-cf.data.debian.patch
 02-makefile-defaults.patch
 15-cachemgr-default-config.patch
+20-ipv6-fix
+30-CVE-2012-5643-CVE-2013-0189.patch

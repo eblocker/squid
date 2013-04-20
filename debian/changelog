@@ -1,3 +1,39 @@
+squid3 (3.1.20-2.1) unstable; urgency=high
+
+  * Non-maintainer upload
+
+  * Urgency high due to security fixes
+
+  * debian/patches/30-CVE-2012-5643-CVE-2013-0189.patch
+    - Added upstream fix for squid-cgi (cachemgr) memory leaks and denial of
+      service vulnerability (Closes: #696187)
+
+ -- Michael Stapelberg <stapelberg@debian.org>  Tue, 05 Feb 2013 23:16:27 +0100
+
+squid3 (3.1.20-2) unstable; urgency=low
+
+  * debian/patches/20-ipv6-fix
+    - Added upstream fix for squid not working when IPv6 is not loaded
+      (Closes: #660489)
+
+ -- Luigi Gangitano <luigi@debian.org>  Thu, 06 Dec 2012 20:02:56 +0100
+
+squid3 (3.1.20-1) unstable; urgency=low
+
+  * New upstream release
+
+  * debian/control
+    - Bumped Standard-Version to 3.9.3, no change needed
+    - Added missing dependency on dpkg-dev (>= 1.16.1~)
+
+  * debian/rules
+    - Enabled hardening options (Closes: #669684)
+
+  * debian/patches/01-cf.data.debian.patch
+    - Fixed minor typos in configuration file (Closes: #670832, #673350)
+
+ -- Luigi Gangitano <luigi@debian.org>  Mon, 18 Jun 2012 14:20:53 +0200
+
 squid3 (3.1.19-1) unstable; urgency=low
 
   * New upstream release

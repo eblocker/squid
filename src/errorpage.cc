@@ -511,6 +511,7 @@ errorStateFree(ErrorState * err)
 #if USE_SSL
     delete err->detail;
 #endif
+    err->dnsError.clean();
     cbdataFree(err);
 }
 
@@ -614,6 +615,12 @@ ErrorState::Convert(char token, bool allowRecursion)
         if (!p)
             p = "-";
 
+        break;
+
+    case 'b':
+        // NP: dynamic location of proxy-port not supported on 3.1
+        // display the generic well-known port instead
+        p = "3128";
         break;
 
     case 'B':
@@ -770,7 +777,7 @@ ErrorState::Convert(char token, bool allowRecursion)
                       SQUIDSTRINGPRINT(urlpath_or_slash),
                       request->http_ver.major, request->http_ver.minor);
             packerToMemInit(&pck, &mb);
-            request->header.packInto(&pck);
+            request->header.packInto(&pck, true); //hide authorization data
             packerClean(&pck);
         } else if (request_hdrs) {
             p = request_hdrs;
@@ -834,6 +841,10 @@ ErrorState::Convert(char token, bool allowRecursion)
         if (Config.adminEmail && Config.onoff.emailErrData)
             Dump(&mb);
 
+        break;
+
+    case 'x':
+        p = "[Not Available]"; // not supported by 3.1
         break;
 
     case 'z':

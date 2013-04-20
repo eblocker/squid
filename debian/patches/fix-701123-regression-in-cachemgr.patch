@@ -1,0 +1,39 @@
+Description: Fix regression in cachemgr.cgi
+ Fix regression introduced by the patches for CVE-2012-5643 and
+ CVE-2013-0189. Apply further patch provided by upstream.
+Origin: upstream, http://www.squid-cache.org/Versions/v3/3.1/changesets/squid-3.1-10486.patch
+Bug: http://bugs.squid-cache.org/show_bug.cgi?id=3790
+Bug-Debian: http://bugs.debian.org/701123
+Forwarded: not-needed
+Author: Reinhard Sojka <reinhard.sojka@parlament.gv.at>
+Last-Update: 2013-02-23
+Applied-Upstream: yes
+
+--- a/tools/cachemgr.cc
++++ b/tools/cachemgr.cc
+@@ -1162,7 +1162,6 @@
+ {
+     static char buf[1024];
+     size_t stringLength = 0;
+-    const char *str64;
+ 
+     if (!req->passwd)
+         return "";
+@@ -1171,15 +1170,12 @@
+              req->user_name ? req->user_name : "",
+              req->passwd);
+ 
+-    str64 = base64_encode(buf);
+-
+-    stringLength += snprintf(buf, sizeof(buf), "Authorization: Basic %s\r\n", str64);
++    stringLength += snprintf(buf, sizeof(buf), "Authorization: Basic %s\r\n", base64_encode(buf));
+ 
+     assert(stringLength < sizeof(buf));
+ 
+-    snprintf(&buf[stringLength], sizeof(buf) - stringLength, "Proxy-Authorization: Basic %s\r\n", str64);
++    snprintf(&buf[stringLength], sizeof(buf) - stringLength, "Proxy-Authorization: Basic %s\r\n", base64_encode(buf));
+ 
+-    xxfree(str64);
+     return buf;
+ }
+ 

@@ -153,7 +153,7 @@ cf_gen_OBJECTS = $(am_cf_gen_OBJECTS)
 cf_gen_DEPENDENCIES =
 am_dnsserver_OBJECTS = dnsserver.$(OBJEXT)
 dnsserver_OBJECTS = $(am_dnsserver_OBJECTS)
-dnsserver_DEPENDENCIES =
+dnsserver_DEPENDENCIES = $(am__DEPENDENCIES_1)
 am_recv_announce_OBJECTS = recv-announce.$(OBJEXT) SquidNew.$(OBJEXT)
 recv_announce_OBJECTS = $(am_recv_announce_OBJECTS)
 recv_announce_LDADD = $(LDADD)
@@ -1911,7 +1911,10 @@ squid_DEPENDENCIES = $(top_builddir)/lib/libmiscutil.a \
 unlinkd_SOURCES = unlinkd_daemon.cc SquidNew.cc
 recv_announce_SOURCES = recv-announce.cc SquidNew.cc
 dnsserver_SOURCES = dnsserver.cc
-dnsserver_LDADD = $(COMPAT_LIB)
+dnsserver_LDADD = \
+	$(COMPAT_LIB) \
+	$(XTRA_LIBS)
+
 ufsdump_SOURCES = \
 	ClientInfo.h \
 	cbdata.h \

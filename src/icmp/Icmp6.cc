@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 42    ICMP Pinger program
  * AUTHOR: Duane Wessels, Amos Jeffries
  *
@@ -37,6 +35,7 @@
 
 #if USE_ICMP
 
+#include "leakcheck.h"
 #include "SquidTime.h"
 #include "Debug.h"
 #include "Icmp6.h"
@@ -119,12 +118,12 @@ Icmp6::Open(void)
     icmp_sock = socket(PF_INET6, SOCK_RAW, IPPROTO_ICMPV6);
 
     if (icmp_sock < 0) {
-        debugs(50, 0, HERE << " icmp_sock: " << xstrerror());
+        debugs(50, DBG_CRITICAL, HERE << " icmp_sock: " << xstrerror());
         return -1;
     }
 
     icmp_ident = getpid() & 0xffff;
-    debugs(42, 1, "pinger: ICMPv6 socket opened");
+    debugs(42, DBG_IMPORTANT, "pinger: ICMPv6 socket opened");
 
     return icmp_sock;
 }
@@ -133,7 +132,7 @@ Icmp6::Open(void)
  * Generates an RFC 4443 Icmp6 ECHO Packet and sends into the network.
  */
 void
-Icmp6::SendEcho(IpAddress &to, int opcode, const char *payload, int len)
+Icmp6::SendEcho(Ip::Address &to, int opcode, const char *payload, int len)
 {
     int x;
     LOCAL_ARRAY(char, pkt, MAX_PKT6_SZ);
@@ -158,10 +157,10 @@ Icmp6::SendEcho(IpAddress &to, int opcode, const char *payload, int len)
     icmp->icmp6_code = 0;
     icmp->icmp6_cksum = 0;
     icmp->icmp6_id = icmp_ident;
-    icmp->icmp6_seq = (unsigned short) icmp_pkts_sent++;
+    icmp->icmp6_seq = (unsigned short) icmp_pkts_sent;
+    ++icmp_pkts_sent;
 
     icmp6_pktsize = sizeof(struct icmp6_hdr);
-
 
     // Fill Icmp6 ECHO data content
     echo = (icmpEchoData *) (pkt + sizeof(icmp6_hdr));
@@ -174,7 +173,7 @@ Icmp6::SendEcho(IpAddress &to, int opcode, const char *payload, int len)
         if (len > MAX_PAYLOAD)
             len = MAX_PAYLOAD;
 
-        xmemcpy(echo->payload, payload, len);
+        memcpy(echo->payload, payload, len);
 
         icmp6_pktsize += len;
     }
@@ -196,11 +195,12 @@ Icmp6::SendEcho(IpAddress &to, int opcode, const char *payload, int len)
                S->ai_addrlen);
 
     if (x < 0) {
-        debugs(42, 1, HERE << "Error sending to ICMPv6 packet to " << to << ". ERR: " << xstrerror());
+        debugs(42, DBG_IMPORTANT, HERE << "Error sending to ICMPv6 packet to " << to << ". ERR: " << xstrerror());
     }
     debugs(42,9, HERE << "x=" << x);
 
     Log(to, 0, NULL, 0, 0);
+    to.FreeAddrInfo(S);
 }
 
 /**
@@ -219,7 +219,7 @@ Icmp6::Recv(void)
     static pingerReplyData preply;
 
     if (icmp_sock < 0) {
-        debugs(42,0, HERE << "dropping ICMPv6 read. No socket!?");
+        debugs(42, DBG_CRITICAL, HERE << "dropping ICMPv6 read. No socket!?");
         return;
     }
 
@@ -266,11 +266,10 @@ Icmp6::Recv(void)
     #define ip6_hlim	// MAX hops  (always 64, but no guarantee)
     #define ip6_hops	// HOPS!!!  (can it be true??)
 
-
         ip = (struct ip6_hdr *) pkt;
         pkt += sizeof(ip6_hdr);
 
-    debugs(42,0, HERE << "ip6_nxt=" << ip->ip6_nxt <<
+    debugs(42, DBG_CRITICAL, HERE << "ip6_nxt=" << ip->ip6_nxt <<
     		", ip6_plen=" << ip->ip6_plen <<
     		", ip6_hlim=" << ip->ip6_hlim <<
     		", ip6_hops=" << ip->ip6_hops	<<
@@ -295,11 +294,13 @@ Icmp6::Recv(void)
                    ( icmp6header->icmp6_type&0x80 ? icmp6HighPktStr[(int)(icmp6header->icmp6_type&0x7f)] : icmp6LowPktStr[(int)(icmp6header->icmp6_type&0x7f)] )
                   );
         }
+        preply.from.FreeAddrInfo(from);
         return;
     }
 
     if (icmp6header->icmp6_id != icmp_ident) {
         debugs(42, 8, HERE << "dropping Icmp6 read. IDENT check failed. ident=='" << icmp_ident << "'=='" << icmp6header->icmp6_id << "'");
+        preply.from.FreeAddrInfo(from);
         return;
     }
 
@@ -336,6 +337,7 @@ Icmp6::Recv(void)
 
     /* send results of the lookup back to squid.*/
     control.SendResult(preply, (sizeof(pingerReplyData) - PINGER_PAYLOAD_SZ + preply.psize) );
+    preply.from.FreeAddrInfo(from);
 }
 
 #endif /* USE_ICMP */

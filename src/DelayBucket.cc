@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 77    Delay Pools
  * AUTHOR: Robert Collins <robertc@squid-cache.org>
  * Based upon original delay pools code by
@@ -36,31 +34,13 @@
  * Copyright (c) 2003, Robert Collins <robertc@squid-cache.org>
  */
 
-#include "config.h"
-
-#if DELAY_POOLS
 #include "squid.h"
+
+#if USE_DELAY_POOLS
 #include "DelayBucket.h"
 #include "DelaySpec.h"
+#include "SquidConfig.h"
 #include "Store.h"
-
-#if DEAD_CODE // ?
-#include "DelayPools.h"
-#include "StoreClient.h"
-#include "MemObject.h"
-#include "client_side_request.h"
-#include "acl/Checklist.h"
-#include "acl/Acl.h"
-#include "ConfigParser.h"
-#include "DelayId.h"
-#include "Array.h"
-#include "String.h"
-#include "CommonPool.h"
-#include "CompositePoolNode.h"
-#include "DelayPool.h"
-#include "DelayVector.h"
-#include "NullDelayId.h"
-#endif
 
 void
 DelayBucket::stats(StoreEntry *entry)const
@@ -96,4 +76,4 @@ DelayBucket::init(DelaySpec const &rate)
                       Config.Delay.initial) / 100);
 }
 
-#endif
+#endif /* USE_DELAY_POOLS */

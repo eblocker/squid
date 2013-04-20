@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  * DEBUG: section 64    HTTP Range Header
  * AUTHOR: Alex Rousskov
  *
@@ -38,6 +36,8 @@
 #include "HttpHeaderRange.h"
 #include "client_side_request.h"
 #include "HttpReply.h"
+#include "HttpHeaderTools.h"
+#include "StrList.h"
 
 /*
  *    Currently only byte ranges are supported
@@ -56,7 +56,6 @@
  *    Note: when response length becomes known, we convert any range
  *    spec into type one above. (Canonization process).
  */
-
 
 /* local routines */
 #define known_spec(s) ((s) > HttpHdrRangeSpec::UnknownPosition)
@@ -97,14 +96,14 @@ HttpHdrRangeSpec::parseInit(const char *field, int flen)
             return false;
     } else
         /* must have a '-' somewhere in _this_ field */
-        if (!((p = strchr(field, '-')) || (p - field >= flen))) {
+        if (!((p = strchr(field, '-')) && (p - field < flen))) {
             debugs(64, 2, "invalid (missing '-') range-spec near: '" << field << "'");
             return false;
         } else {
             if (!httpHeaderParseOffset(field, &offset))
                 return false;
 
-            p++;
+            ++p;
 
             /* do we have last-pos ? */
             if (p - field < flen) {
@@ -132,11 +131,11 @@ void
 HttpHdrRangeSpec::packInto(Packer * packer) const
 {
     if (!known_spec(offset))	/* suffix */
-        packerPrintf(packer, "-%"PRId64,  length);
+        packerPrintf(packer, "-%" PRId64,  length);
     else if (!known_spec(length))		/* trailer */
-        packerPrintf(packer, "%"PRId64"-", offset);
+        packerPrintf(packer, "%" PRId64 "-", offset);
     else			/* range */
-        packerPrintf(packer, "%"PRId64"-%"PRId64,
+        packerPrintf(packer, "%" PRId64 "-%" PRId64,
                      offset, offset + length - 1);
 }
 
@@ -361,7 +360,6 @@ HttpHdrRange::merge (Vector<HttpHdrRangeSpec *> &basis)
            " specs, merged " << basis.size() - specs.size() << " specs");
 }
 
-
 void
 HttpHdrRange::getCanonizedSpecs (Vector<HttpHdrRangeSpec *> &copy)
 {
@@ -525,31 +523,29 @@ HttpHdrRange::lowestOffset(int64_t size) const
 }
 
 /*
- * Return true if the first range offset is larger than the configured
- * limit.
- * Note that exceeding the limit (returning true) results in only
- * grabbing the needed range elements from the origin.
+ * \retval true   Fetch only requested ranges. The first range is larger that configured limit.
+ * \retval false  Full download. Not a range request, no limit, or the limit is not yet reached.
  */
 bool
-HttpHdrRange::offsetLimitExceeded() const
+HttpHdrRange::offsetLimitExceeded(const int64_t limit) const
 {
     if (NULL == this)
         /* not a range request */
         return false;
 
-    if (Config.rangeOffsetLimit == 0)
-        /* disabled */
+    if (limit == 0)
+        /* 0 == disabled */
         return true;
 
-    if (-1 == Config.rangeOffsetLimit)
-        /* forced */
+    if (-1 == limit)
+        /* 'none' == forced */
         return false;
 
     if (firstOffset() == -1)
         /* tail request */
         return true;
 
-    if (Config.rangeOffsetLimit >= firstOffset())
+    if (limit >= firstOffset())
         /* below the limit */
         return false;
 

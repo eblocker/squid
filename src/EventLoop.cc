@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 01    Main Loop
  * AUTHOR: Harvest Derived
  *
@@ -32,8 +30,12 @@
  *
  */
 
+#include "squid.h"
+#include "AsyncEngine.h"
+#include "Debug.h"
 #include "EventLoop.h"
 #include "base/AsyncCallQueue.h"
+#include "SquidTime.h"
 
 EventLoop::EventLoop() : errcount(0), last_loop(false), timeService(NULL),
         primaryEngine(NULL)
@@ -133,7 +135,7 @@ EventLoop::runOnce()
 
     if (error) {
         ++errcount;
-        debugs(1, 0, "Select loop Error. Retry " << errcount);
+        debugs(1, DBG_CRITICAL, "Select loop Error. Retry " << errcount);
     } else
         errcount = 0;
 

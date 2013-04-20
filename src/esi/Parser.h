@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
  * ----------------------------------------------------------
@@ -32,9 +30,6 @@
 #ifndef SQUID_ESIPARSER_H
 #define SQUID_ESIPARSER_H
 
-/* for size_t */
-#include "config.h"
-
 class ESIParserClient
 {
 public:
@@ -44,7 +39,6 @@ public:
     virtual void parserComment (const char *s) = 0;
     virtual ~ESIParserClient() {};
 };
-
 
 /* for RefCountable */
 #include "RefCount.h"

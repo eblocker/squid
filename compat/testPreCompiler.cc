@@ -1,4 +1,5 @@
-#include "config.h"
+#define SQUID_UNIT_TEST 1
+#include "squid.h"
 
 #if HAVE_ASSERT_H
 #include <assert.h>

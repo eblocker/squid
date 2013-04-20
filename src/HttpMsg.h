@@ -1,7 +1,4 @@
-
 /*
- * $Id$
- *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
  * ----------------------------------------------------------
@@ -36,6 +33,7 @@
 
 #include "typedefs.h"
 #include "HttpHeader.h"
+#include "HttpRequestMethod.h"
 #include "HttpStatusCode.h"
 #include "HttpVersion.h"
 #include "BodyPipe.h"
@@ -44,7 +42,6 @@
 
 template <class Msg>
 class HttpMsgPointerT;
-
 
 class HttpMsg
 {
@@ -68,6 +65,14 @@ public:
     /// [re]sets Content-Length header and cached value
     void setContentLength(int64_t clen);
 
+    /**
+     * \retval true  the message sender asks to keep the connection open.
+     * \retval false the message sender will close the connection.
+     *
+     * Factors other than the headers may result in connection closure.
+     */
+    bool persistent() const;
+
 public:
     HttpVersion http_ver;
 
@@ -82,7 +87,7 @@ public:
 
     int64_t content_length;
 
-    protocol_t protocol;
+    AnyP::ProtocolType protocol;
 
     HttpMsgParseState pstate;   /* the current parsing state */
 
@@ -125,56 +130,7 @@ protected:
 
 };
 
-/* Temporary parsing state; might turn into the replacement parser later on */
-class HttpParser
-{
-public:
-    /**
-     * Attempt to parse the first line of a new request message.
-     *
-     * Governed by:
-     *  RFC 1945 section 5.1
-     *  RFC 2616 section 5.1
-     *
-     * Parsing state is stored between calls. However the current implementation
-     * begins parsing from scratch on every call.
-     * The return value tells you whether the parsing state fields are valid or not.
-     *
-     * \retval -1  an error occurred. request_parse_status indicates HTTP status result.
-     * \retval  1  successful parse
-     * \retval  0  more data is needed to complete the parse
-     */
-    int parseRequestFirstLine();
-
-public:
-    char state;
-    const char *buf;
-    int bufsiz;
-    int req_start, req_end;
-    int hdr_start, hdr_end;
-    int m_start, m_end;
-    int u_start, u_end;
-    int v_start, v_end;
-    int v_maj, v_min;
-};
-
-extern void HttpParserInit(HttpParser *, const char *buf, int len);
-extern int HttpParserParseReqLine(HttpParser *hp);
-
-#define MSGDODEBUG 0
-#if MSGDODEBUG
-extern int HttpParserReqSz(HttpParser *);
-extern int HttpParserHdrSz(HttpParser *);
-extern const char * HttpParserHdrBuf(HttpParser *);
-extern int HttpParserRequestLen(HttpParser *hp);
-#else
-#define	HttpParserReqSz(hp)	( (hp)->req_end - (hp)->req_start + 1 )
-#define	HttpParserHdrSz(hp)	( (hp)->hdr_end - (hp)->hdr_start + 1 )
-#define	HttpParserHdrBuf(hp)	( (hp)->buf + (hp)->hdr_start )
-#define	HttpParserRequestLen(hp)	( (hp)->hdr_end - (hp)->req_start + 1 )
-#endif
-
-SQUIDCEXTERN int httpMsgIsolateHeaders(const char **parse_start, int len, const char **blk_start, const char **blk_end);
+int httpMsgIsolateHeaders(const char **parse_start, int len, const char **blk_start, const char **blk_end);
 
 #define HTTPMSGUNLOCK(a) if(a){(a)->_unlock();(a)=NULL;}
 #define HTTPMSGLOCK(a) (a)->_lock()

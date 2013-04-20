@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  * DEBUG: section 53    AS Number handling
  * AUTHOR: Duane Wessels, Kostas Anagnostakis
  *
@@ -34,19 +32,24 @@
  */
 
 #include "squid.h"
-#include "CacheManager.h"
-#include "radix.h"
-#include "HttpRequest.h"
-#include "StoreClient.h"
-#include "Store.h"
 #include "acl/Acl.h"
 #include "acl/Asn.h"
 #include "acl/Checklist.h"
-#include "acl/SourceAsn.h"
 #include "acl/DestinationAsn.h"
 #include "acl/DestinationIp.h"
-#include "HttpReply.h"
+#include "acl/SourceAsn.h"
+#include "cache_cf.h"
 #include "forward.h"
+#include "HttpReply.h"
+#include "HttpRequest.h"
+#include "ipcache.h"
+#include "mgr/Registration.h"
+#include "radix.h"
+#include "RequestFlags.h"
+#include "SquidConfig.h"
+#include "Store.h"
+#include "StoreClient.h"
+#include "StoreClient.h"
 #include "wordlist.h"
 
 #define WHOIS_PORT 43
@@ -54,15 +57,14 @@
 
 /* BEGIN of definitions for radix tree entries */
 
-
 /* 32/128 bits address in memory with length */
 class m_ADDR
 {
 public:
     uint8_t len;
-    IpAddress addr;
+    Ip::Address addr;
 
-    m_ADDR() : len(sizeof(IpAddress)) {};
+    m_ADDR() : len(sizeof(Ip::Address)) {};
 };
 
 /* END of definitions for radix tree entries */
@@ -112,7 +114,6 @@ static void asnCacheStart(int as);
 
 static STCB asHandleReply;
 
-
 #if defined(__cplusplus)
 extern "C" {
 #endif
@@ -135,7 +136,7 @@ static OBJH asnStats;
 /* PUBLIC */
 
 int
-asnMatchIp(CbDataList<int> *data, IpAddress &addr)
+asnMatchIp(CbDataList<int> *data, Ip::Address &addr)
 {
     struct squid_radix_node *rn;
     as_info *e;
@@ -189,7 +190,7 @@ ACLASN::prepareForUse()
 static void
 asnRegisterWithCacheManager(void)
 {
-    CacheManager::GetInstance()->registerAction("asndb", "AS Number Database", asnStats, 0, 1);
+    Mgr::RegisterAction("asndb", "AS Number Database", asnStats, 0, 1);
 }
 
 /* initialize the radix tree structure */
@@ -200,12 +201,14 @@ CBDATA_TYPE(ASState);
 void
 asnInit(void)
 {
-    static int inited = 0;
+    static bool inited = false;
     squid_max_keylen = 40;
     CBDATA_INIT_TYPE(ASState);
 
-    if (0 == inited++)
+    if (!inited) {
+        inited = true;
         squid_rn_init();
+    }
 
     squid_rn_inithead(&AS_tree_head, 8);
 
@@ -229,7 +232,6 @@ asnStats(StoreEntry * sentry)
 
 /* PRIVATE */
 
-
 static void
 asnCacheStart(int as)
 {
@@ -247,9 +249,9 @@ asnCacheStart(int as)
     asState->request = HTTPMSGLOCK(req);
 
     if ((e = storeGetPublic(asres, METHOD_GET)) == NULL) {
-        e = storeCreateEntry(asres, asres, request_flags(), METHOD_GET);
+        e = storeCreateEntry(asres, asres, RequestFlags(), METHOD_GET);
         asState->sc = storeClientListAdd(e, asState);
-        FwdState::fwdStart(-1, e, asState->request);
+        FwdState::fwdStart(Comm::ConnectionPointer(), e, asState->request);
     } else {
 
         e->lock();
@@ -292,11 +294,11 @@ asHandleReply(void *data, StoreIOBuffer result)
         asStateFree(asState);
         return;
     } else if (result.flags.error) {
-        debugs(53, 1, "asHandleReply: Called with Error set and size=" << (unsigned int) result.length);
+        debugs(53, DBG_IMPORTANT, "asHandleReply: Called with Error set and size=" << (unsigned int) result.length);
         asStateFree(asState);
         return;
     } else if (HTTP_OK != e->getReply()->sline.status) {
-        debugs(53, 1, "WARNING: AS " << asState->as_number << " whois request failed");
+        debugs(53, DBG_IMPORTANT, "WARNING: AS " << asState->as_number << " whois request failed");
         asStateFree(asState);
         return;
     }
@@ -309,9 +311,9 @@ asHandleReply(void *data, StoreIOBuffer result)
 
     while ((size_t)(s - buf) < result.length + asState->reqofs && *s != '\0') {
         while (*s && xisspace(*s))
-            s++;
+            ++s;
 
-        for (t = s; *t; t++) {
+        for (t = s; *t; ++t) {
             if (xisspace(*t))
                 break;
         }
@@ -341,7 +343,7 @@ asHandleReply(void *data, StoreIOBuffer result)
      * Next, copy the left over data, from s to s + leftoversz to the
      * beginning of the buffer
      */
-    xmemmove(buf, s, leftoversz);
+    memmove(buf, s, leftoversz);
 
     /*
      * Next, update our offset and reqofs, and kick off a copy if required
@@ -387,22 +389,19 @@ asStateFree(void *data)
     cbdataFree(asState);
 }
 
-
 /**
  * add a network (addr, mask) to the radix tree, with matching AS number
  */
 static int
 asnAddNet(char *as_string, int as_number)
 {
-    rtentry_t *e;
-
     struct squid_radix_node *rn;
     CbDataList<int> **Tail = NULL;
     CbDataList<int> *q = NULL;
     as_info *asinfo = NULL;
 
-    IpAddress mask;
-    IpAddress addr;
+    Ip::Address mask;
+    Ip::Address addr;
     char *t;
     int bitl;
 
@@ -429,9 +428,7 @@ asnAddNet(char *as_string, int as_number)
 
     debugs(53, 3, "asnAddNet: called for " << addr << "/" << mask );
 
-    e = (rtentry_t *)xmalloc(sizeof(rtentry_t));
-
-    memset(e, '\0', sizeof(rtentry_t));
+    rtentry_t *e = (rtentry_t *)xcalloc(1, sizeof(rtentry_t));
 
     e->e_addr.addr = addr;
 
@@ -508,8 +505,6 @@ destroyRadixNodeInfo(as_info * e_info)
         data = data->next;
         delete prev;
     }
-
-    delete data;
 }
 
 static int
@@ -520,8 +515,8 @@ printRadixNode(struct squid_radix_node *rn, void *_sentry)
     CbDataList<int> *q;
     as_info *asinfo;
     char buf[MAX_IPSTRLEN];
-    IpAddress addr;
-    IpAddress mask;
+    Ip::Address addr;
+    Ip::Address mask;
 
     assert(e);
     assert(e->e_info);
@@ -549,7 +544,7 @@ ACLASN::~ACLASN()
 
 bool
 
-ACLASN::match(IpAddress toMatch)
+ACLASN::match(Ip::Address toMatch)
 {
     return asnMatchIp(data, toMatch);
 }
@@ -592,7 +587,7 @@ ACLASN::parse()
     }
 }
 
-ACLData<IpAddress> *
+ACLData<Ip::Address> *
 ACLASN::clone() const
 {
     if (data)
@@ -603,18 +598,18 @@ ACLASN::clone() const
 
 /* explicit template instantiation required for some systems */
 
-template class ACLStrategised<IpAddress>;
+template class ACLStrategised<Ip::Address>;
 
 ACL::Prototype ACLASN::SourceRegistryProtoype(&ACLASN::SourceRegistryEntry_, "src_as");
 
-ACLStrategised<IpAddress> ACLASN::SourceRegistryEntry_(new ACLASN, ACLSourceASNStrategy::Instance(), "src_as");
+ACLStrategised<Ip::Address> ACLASN::SourceRegistryEntry_(new ACLASN, ACLSourceASNStrategy::Instance(), "src_as");
 
 ACL::Prototype ACLASN::DestinationRegistryProtoype(&ACLASN::DestinationRegistryEntry_, "dst_as");
 
-ACLStrategised<IpAddress> ACLASN::DestinationRegistryEntry_(new ACLASN, ACLDestinationASNStrategy::Instance(), "dst_as");
+ACLStrategised<Ip::Address> ACLASN::DestinationRegistryEntry_(new ACLASN, ACLDestinationASNStrategy::Instance(), "dst_as");
 
 int
-ACLSourceASNStrategy::match (ACLData<IpAddress> * &data, ACLFilledChecklist *checklist)
+ACLSourceASNStrategy::match (ACLData<Ip::Address> * &data, ACLFilledChecklist *checklist)
 {
     return data->match(checklist->src_addr);
 }
@@ -627,27 +622,26 @@ ACLSourceASNStrategy::Instance()
 
 ACLSourceASNStrategy ACLSourceASNStrategy::Instance_;
 
-
 int
 ACLDestinationASNStrategy::match (ACLData<MatchType> * &data, ACLFilledChecklist *checklist)
 {
     const ipcache_addrs *ia = ipcache_gethostbyname(checklist->request->GetHost(), IP_LOOKUP_IF_MISS);
 
     if (ia) {
-        for (int k = 0; k < (int) ia->count; k++) {
+        for (int k = 0; k < (int) ia->count; ++k) {
             if (data->match(ia->in_addrs[k]))
                 return 1;
         }
 
         return 0;
 
-    } else if (!checklist->request->flags.destinationIPLookedUp()) {
+    } else if (!checklist->request->flags.destinationIpLookedUp) {
         /* No entry in cache, lookup not attempted */
         /* XXX FIXME: allow accessing the acl name here */
         debugs(28, 3, "asnMatchAcl: Can't yet compare '" << "unknown" /*name*/ << "' ACL for '" << checklist->request->GetHost() << "'");
         checklist->changeState (DestinationIPLookup::Instance());
     } else {
-        IpAddress noaddr;
+        Ip::Address noaddr;
         noaddr.SetNoAddr();
         return data->match(noaddr);
     }

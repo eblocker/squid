@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 77    Delay Pools
  * AUTHOR: Robert Collins <robertc@squid-cache.org>
  *
@@ -36,12 +34,10 @@
 #ifndef DELAYUSER_H
 #define DELAYUSER_H
 
-#include "config.h"
+#if USE_DELAY_POOLS && USE_AUTH
 
-#if DELAY_POOLS
-
-#include "squid.h"
 #include "auth/Gadgets.h"
+#include "auth/User.h"
 #include "CompositePoolNode.h"
 #include "DelayIdComposite.h"
 #include "DelayBucket.h"
@@ -59,10 +55,10 @@ public:
     void operator delete (void *);
 
     void stats(StoreEntry *)const;
-    DelayUserBucket(AuthUser *);
+    DelayUserBucket(Auth::User::Pointer);
     ~DelayUserBucket();
     DelayBucket theBucket;
-    AuthUser *authUser;
+    Auth::User::Pointer authUser;
 };
 
 /// \ingroup DelayPoolsAPI
@@ -91,7 +87,7 @@ private:
     public:
         void *operator new(size_t);
         void operator delete (void *);
-        Id (RefCount<DelayUser>, AuthUser *);
+        Id(RefCount<DelayUser>, Auth::User::Pointer);
         ~Id();
         virtual int bytesWanted (int min, int max) const;
         virtual void bytesIn(int qty);
@@ -107,5 +103,5 @@ private:
     Splay<DelayUserBucket::Pointer> buckets;
 };
 
-#endif /* DELAY_POOLS */
+#endif /* USE_DELAY_POOLS && USE_AUTH */
 #endif /* DELAYUSER_H */

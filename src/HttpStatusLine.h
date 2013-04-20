@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
  * ----------------------------------------------------------
@@ -36,13 +34,9 @@
 class Packer;
 class String;
 
-/* for SQUIDCEXTERN */
-#include "config.h"
-
-/* for http_status and protocol_t */
-#include "enums.h"
-
+#include "HttpStatusCode.h"
 #include "HttpVersion.h"
+#include "anyp/ProtocolType.h"
 #include "SquidString.h"
 
 /**
@@ -57,10 +51,10 @@ public:
 
     /**
      * By rights protocol name should be a constant "HTTP", with no need for this field to exist.
-     * However there are protocols which violate HTTP by sending their wn custom formats
-     * back with other protocol names (ICY streaming format being the current major problem)
+     * However there are protocols which violate HTTP by sending their own custom formats
+     * back with other protocol names (ICY streaming format being the current major problem).
      */
-    protocol_t protocol;
+    AnyP::ProtocolType protocol;
 
     HttpVersion version;     ///< breakdown of protocol version labels: 0.9 1.0 1.1
     http_status status;      ///< status code. ie 200 404
@@ -68,17 +62,19 @@ public:
 };
 
 /* init/clean */
-SQUIDCEXTERN void httpStatusLineInit(HttpStatusLine * sline);
-SQUIDCEXTERN void httpStatusLineClean(HttpStatusLine * sline);
+void httpStatusLineInit(HttpStatusLine * sline);
+void httpStatusLineClean(HttpStatusLine * sline);
 /* set/get values */
-SQUIDCEXTERN void httpStatusLineSet(HttpStatusLine * sline, HttpVersion version,
-                                    http_status status, const char *reason);
-SQUIDCEXTERN const char *httpStatusLineReason(const HttpStatusLine * sline);
+void httpStatusLineSet(HttpStatusLine * sline, HttpVersion version,
+                       http_status status, const char *reason);
+const char *httpStatusLineReason(const HttpStatusLine * sline);
 /* parse/pack */
 /* parse a 0-terminating buffer and fill internal structires; returns true on success */
-SQUIDCEXTERN int httpStatusLineParse(HttpStatusLine * sline, const String &protoPrefix,
-                                     const char *start, const char *end);
+int httpStatusLineParse(HttpStatusLine * sline, const String &protoPrefix,
+                        const char *start, const char *end);
 /* pack fields using Packer */
-SQUIDCEXTERN void httpStatusLinePackInto(const HttpStatusLine * sline, Packer * p);
+void httpStatusLinePackInto(const HttpStatusLine * sline, Packer * p);
+
+const char *httpStatusString(http_status status);
 
 #endif /* SQUID_HTTPSTATUSLINE_H */

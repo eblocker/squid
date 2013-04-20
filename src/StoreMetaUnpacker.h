@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
  * ----------------------------------------------------------
@@ -35,15 +33,13 @@
 class StoreMeta;
 class StoreEntry;
 
-/* for ssize_t, SQUIDCEXTERN */
-#include "config.h"
-
 class StoreMetaUnpacker
 {
 
 public:
     StoreMetaUnpacker (const char *buf, ssize_t bufferLength, int *hdrlen);
     StoreMeta *createStoreMeta();
+    bool isBufferZero(); ///< all-zeros buffer, implies !isBufferSane
     bool isBufferSane();
 
 private:
@@ -68,10 +64,10 @@ private:
 /*
  * store_swapmeta.c
  */
-SQUIDCEXTERN char *storeSwapMetaPack(StoreMeta * tlv_list, int *length);
-SQUIDCEXTERN StoreMeta *storeSwapMetaBuild(StoreEntry * e);
-SQUIDCEXTERN StoreMeta *storeSwapMetaUnpack(const char *buf, int *hdrlen);
-SQUIDCEXTERN void storeSwapTLVFree(StoreMeta * n);
+char *storeSwapMetaPack(StoreMeta * tlv_list, int *length);
+StoreMeta *storeSwapMetaBuild(StoreEntry * e);
+StoreMeta *storeSwapMetaUnpack(const char *buf, int *hdrlen);
+void storeSwapTLVFree(StoreMeta * n);
 StoreMeta ** storeSwapTLVAdd(int type, const void *ptr, size_t len, StoreMeta ** tail);
 
 #endif /* SQUID_TYPELENGTHVALUEUNPACKER_H */

@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 86    ESI processing
  * AUTHOR: Robert Collins
  *
@@ -36,10 +34,9 @@
 #ifndef SQUID_ESIINCLUDE_H
 #define SQUID_ESIINCLUDE_H
 
-#include "squid.h"
-#include "esi/Segment.h"
-#include "esi/Element.h"
 #include "esi/Context.h"
+#include "esi/Element.h"
+#include "esi/Segment.h"
 
 class ESIInclude;
 typedef RefCount<ESIInclude> ESIIncludePtr;
@@ -90,7 +87,7 @@ public:
     ESISegment::Pointer altcontent;
     ESIVarState *varState;
     char *srcurl, *alturl;
-    void fail(ESIStreamContext::Pointer);
+    void includeFail(ESIStreamContext::Pointer);
     void finish();
 
 private:

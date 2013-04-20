@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  * DEBUG: section 87    Client-side Stream routines.
  * AUTHOR: Robert Collins
  *
@@ -107,7 +105,6 @@
 
 /// \ingroup ClientStreamInternal
 CBDATA_TYPE(clientStreamNode);
-
 
 /* Local functions */
 static FREE clientStreamFree;

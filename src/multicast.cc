@@ -1,7 +1,4 @@
-
 /*
- * $Id$
- *
  * DEBUG: section 07    Multicast
  * AUTHOR: Martin Hamilton
  *
@@ -34,6 +31,12 @@
  */
 
 #include "squid.h"
+#include "comm/Connection.h"
+#include "Debug.h"
+// XXX: for icpIncomingConn - need to pass it as a generic parameter.
+#include "ICP.h"
+#include "ipcache.h"
+#include "multicast.h"
 
 int
 mcastSetTtl(int fd, int mcast_ttl)
@@ -42,7 +45,7 @@ mcastSetTtl(int fd, int mcast_ttl)
     char ttl = (char) mcast_ttl;
 
     if (setsockopt(fd, IPPROTO_IP, IP_MULTICAST_TTL, &ttl, 1) < 0)
-        debugs(50, 1, "comm_set_mcast_ttl: FD " << fd << ", TTL: " << mcast_ttl << ": " << xstrerror());
+        debugs(50, DBG_IMPORTANT, "comm_set_mcast_ttl: FD " << fd << ", TTL: " << mcast_ttl << ": " << xstrerror());
 
 #endif
 
@@ -53,19 +56,15 @@ void
 mcastJoinGroups(const ipcache_addrs *ia, const DnsLookupDetails &, void *datanotused)
 {
 #ifdef IP_MULTICAST_TTL
-    int fd = theInIcpConnection;
-
     struct ip_mreq mr;
     int i;
-    int x;
-    char c = 0;
 
     if (ia == NULL) {
-        debugs(7, 0, "comm_join_mcast_groups: Unknown host");
+        debugs(7, DBG_CRITICAL, "comm_join_mcast_groups: Unknown host");
         return;
     }
 
-    for (i = 0; i < (int) ia->count; i++) {
+    for (i = 0; i < (int) ia->count; ++i) {
         debugs(7, 9, "Listening for ICP requests on " << ia->in_addrs[i] );
 
         if ( ! ia->in_addrs[i].IsIPv4() ) {
@@ -76,16 +75,13 @@ mcastJoinGroups(const ipcache_addrs *ia, const DnsLookupDetails &, void *datanot
         ia->in_addrs[i].GetInAddr(mr.imr_multiaddr);
 
         mr.imr_interface.s_addr = INADDR_ANY;
-        x = setsockopt(fd, IPPROTO_IP, IP_ADD_MEMBERSHIP,
-                       (char *) &mr, sizeof(struct ip_mreq));
 
-        if (x < 0)
-            debugs(7, 1, "comm_join_mcast_groups: FD " << fd << ", IP=" << ia->in_addrs[i]);
+        if (setsockopt(icpIncomingConn->fd, IPPROTO_IP, IP_ADD_MEMBERSHIP, (char *) &mr, sizeof(struct ip_mreq)) < 0)
+            debugs(7, DBG_IMPORTANT, "ERROR: Join failed for " << icpIncomingConn << ", Multicast IP=" << ia->in_addrs[i]);
 
-        x = setsockopt(fd, IPPROTO_IP, IP_MULTICAST_LOOP, &c, 1);
-
-        if (x < 0)
-            debugs(7, 1, "Can't disable multicast loopback: " << xstrerror());
+        char c = 0;
+        if (setsockopt(icpIncomingConn->fd, IPPROTO_IP, IP_MULTICAST_LOOP, &c, 1) < 0)
+            debugs(7, DBG_IMPORTANT, "ERROR: " << icpIncomingConn << " can't disable multicast loopback: " << xstrerror());
     }
 
 #endif

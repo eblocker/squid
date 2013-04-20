@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  * DEBUG: section 77    Delay Pools
  * AUTHOR: Robert Collins <robertc@squid-cache.org>
  * Based upon original delay pools code by
@@ -37,12 +35,11 @@
  * Copyright (c) 2003, Robert Collins <robertc@squid-cache.org>
  */
 
-#include "config.h"
-
-#if DELAY_POOLS
 #include "squid.h"
-#include "NullDelayId.h"
+
+#if USE_DELAY_POOLS
 #include "DelayPools.h"
+#include "NullDelayId.h"
 
 void *
 NullDelayId::operator new(size_t size)
@@ -58,5 +55,4 @@ NullDelayId::operator delete (void *address)
     ::operator delete (address);
 }
 
-#endif
-
+#endif /* USE_DELAY_POOLS */

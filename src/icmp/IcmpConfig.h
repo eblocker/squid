@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 03    Configuration Settings
  * AUTHOR: Amos Jeffries
  *
@@ -36,12 +34,6 @@
  */
 #ifndef ICMPCONFIG_H
 #define ICMPCONFIG_H
-
-#include "config.h"
-
-#if HAVE_STDLIB_H
-#include <stdlib.h>
-#endif
 
 /**
  * Squid pinger Configuration settings

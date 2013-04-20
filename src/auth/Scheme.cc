@@ -1,7 +1,4 @@
-
 /*
- * $Id$
- *
  * DEBUG: section 29    Authenticator
  * AUTHOR: Robert Collins
  *
@@ -38,58 +35,58 @@
 #include "auth/Scheme.h"
 #include "auth/Gadgets.h"
 #include "auth/Config.h"
+#include "globals.h"
 
-Vector<AuthScheme*> *AuthScheme::_Schemes = NULL;
+Vector<Auth::Scheme::Pointer> *Auth::Scheme::_Schemes = NULL;
 
 void
-AuthScheme::AddScheme(AuthScheme &instance)
+Auth::Scheme::AddScheme(Auth::Scheme::Pointer instance)
 {
     iterator i = GetSchemes().begin();
 
     while (i != GetSchemes().end()) {
-        assert(strcmp((*i)->type(), instance.type()) != 0);
+        assert(strcmp((*i)->type(), instance->type()) != 0);
         ++i;
     }
 
-    GetSchemes().push_back (&instance);
+    GetSchemes().push_back(instance);
 }
 
-AuthScheme *
-AuthScheme::Find(const char *typestr)
+Auth::Scheme::Pointer
+Auth::Scheme::Find(const char *typestr)
 {
     for (iterator i = GetSchemes().begin(); i != GetSchemes().end(); ++i) {
-        if (strcmp ((*i)->type(), typestr) == 0)
+        if (strcmp((*i)->type(), typestr) == 0)
             return *i;
     }
 
-    return NULL;
+    return Auth::Scheme::Pointer(NULL);
 }
 
-Vector<AuthScheme *> const &
-AuthScheme::Schemes()
-{
-    return GetSchemes();
-}
-
-Vector<AuthScheme*> &
-AuthScheme::GetSchemes()
+Vector<Auth::Scheme::Pointer> &
+Auth::Scheme::GetSchemes()
 {
     if (!_Schemes)
-        _Schemes = new Vector<AuthScheme *>;
+        _Schemes = new Vector<Auth::Scheme::Pointer>;
 
     return *_Schemes;
 }
 
-/*
- * called when a graceful shutdown is to occur
- * of each scheme module.
+/**
+ * Called when a graceful shutdown is to occur of each scheme module.
+ * On completion the auth components are to be considered deleted.
+ * None will be available globally. Some may remain around for their
+ * currently active connections to close, but only those active
+ * connections will retain pointers to them.
  */
 void
-AuthScheme::FreeAll()
+Auth::Scheme::FreeAll()
 {
+    assert(shutting_down);
+
     while (GetSchemes().size()) {
-        AuthScheme *scheme = GetSchemes().back();
+        Auth::Scheme::Pointer scheme = GetSchemes().back();
         GetSchemes().pop_back();
-        scheme->done();
+        scheme->shutdownCleanup();
     }
 }

@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG:
  * AUTHOR: Robert Collins
  *
@@ -32,7 +30,8 @@
  *
  */
 
-#include "config.h"
+#include "squid.h"
+#include "html_quote.h"
 
 #if HAVE_STDIO_H
 #include <stdio.h>
@@ -40,8 +39,6 @@
 #if HAVE_STRING_H
 #include <string.h>
 #endif
-
-#include "util.h"
 
 /*
  *  HTML defines these characters as special entities that should be quoted.

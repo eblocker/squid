@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  * DEBUG: none          ETag parsing support
  * AUTHOR: Alex Rousskov
  *
@@ -34,6 +32,11 @@
  */
 
 #include "squid.h"
+#include "ETag.h"
+
+#if HAVE_CSTRING
+#include <cstring>
+#endif
 
 /*
  * Note: ETag is not an http "field" like, for example HttpHdrRange. ETag is a

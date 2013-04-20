@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
  * ----------------------------------------------------------
@@ -42,8 +40,6 @@
 /* explicit template instantiation required for some systems */
 
 template class ACLStrategised<HttpRequestMethod>;
-
-
 
 int
 ACLMethodStrategy::match (ACLData<MatchType> * &data, ACLFilledChecklist *checklist)

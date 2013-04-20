@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
  * ----------------------------------------------------------
  *
@@ -53,7 +51,6 @@ BlockingDiskIOModule::init()
 void
 BlockingDiskIOModule::shutdown()
 {}
-
 
 DiskIOStrategy*
 BlockingDiskIOModule::createStrategy()

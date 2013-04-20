@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  * DEBUG: section 77    Delay Pools
  * AUTHOR: Robert Collins <robertc@squid-cache.org>
  * Based upon original delay pools code by
@@ -37,21 +35,20 @@
  * Copyright (c) 2003, Robert Collins <robertc@squid-cache.org>
  */
 
-#include "config.h"
+#include "squid.h"
 
 /* MS Visual Studio Projects are monolithic, so we need the following
  * #if to exclude the delay pools code from compile process when not needed.
  */
-#if DELAY_POOLS
-
-#include "squid.h"
-#include "DelayId.h"
-#include "client_side_request.h"
+#if USE_DELAY_POOLS
 #include "acl/FilledChecklist.h"
-#include "DelayPools.h"
-#include "DelayPool.h"
-#include "HttpRequest.h"
+#include "client_side_request.h"
 #include "CommRead.h"
+#include "DelayId.h"
+#include "DelayPool.h"
+#include "DelayPools.h"
+#include "HttpRequest.h"
+#include "SquidConfig.h"
 
 DelayId::DelayId () : pool_ (0), compositeId(NULL), markedAsNoDelay(false)
 {}
@@ -105,7 +102,7 @@ DelayId::DelayClient(ClientHttpRequest * http)
         return DelayId();
     }
 
-    for (pool = 0; pool < DelayPools::pools(); pool++) {
+    for (pool = 0; pool < DelayPools::pools(); ++pool) {
 
         /* pools require explicit 'allow' to assign a client into them */
         if (!DelayPools::delay_data[pool].access) {
@@ -126,12 +123,14 @@ DelayId::DelayClient(ClientHttpRequest * http)
         if (http->getConn() != NULL)
             ch.conn(http->getConn());
 
-        if (DelayPools::delay_data[pool].theComposite().getRaw() && ch.fastCheck()) {
+        if (DelayPools::delay_data[pool].theComposite().getRaw() && ch.fastCheck() == ACCESS_ALLOWED) {
 
             DelayId result (pool + 1);
             CompositePoolNode::CompositeSelectionDetails details;
             details.src_addr = ch.src_addr;
+#if USE_AUTH
             details.user = r->auth_user_request;
+#endif
             details.tag = r->tag;
             result.compositePosition(DelayPools::delay_data[pool].theComposite()->id(details));
             return result;
@@ -196,4 +195,4 @@ DelayId::delayRead(DeferredRead const &aRead)
 
 }
 
-#endif /* DELAY_POOLS */
+#endif /* USE_DELAY_POOLS */

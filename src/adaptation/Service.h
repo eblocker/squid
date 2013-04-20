@@ -24,7 +24,7 @@ public:
     typedef String Id;
 
 public:
-    Service(const ServiceConfig &aConfig);
+    explicit Service(const ServiceConfigPointer &aConfig);
     virtual ~Service();
 
     virtual bool probed() const = 0; // see comments above
@@ -32,9 +32,6 @@ public:
     virtual bool up() const = 0; // see comments above
 
     virtual Initiate *makeXactLauncher(HttpMsg *virginHeader, HttpRequest *virginCause) = 0;
-
-    typedef void Callback(void *data, Pointer &service);
-    void callWhenReady(Callback *cb, void *data);
 
     bool wants(const ServiceFilter &filter) const;
 
@@ -44,7 +41,7 @@ public:
     // called by transactions to report service failure
     virtual void noteFailure() = 0;
 
-    const ServiceConfig &cfg() const { return theConfig; }
+    const ServiceConfig &cfg() const { return *theConfig; }
 
     virtual void finalize(); // called after creation
 
@@ -55,20 +52,20 @@ public:
     virtual bool detached() const = 0;
 
 protected:
-    ServiceConfig &writeableCfg() { return theConfig; }
+    ServiceConfig &writeableCfg() { return *theConfig; }
 
 private:
-    ServiceConfig theConfig;
+    ServiceConfigPointer theConfig;
 };
 
 typedef Service::Pointer ServicePointer;
 
 typedef Vector<Adaptation::ServicePointer> Services;
-extern Services &AllServices();
-extern ServicePointer FindService(const Service::Id &key);
+Services &AllServices();
+ServicePointer FindService(const Service::Id &key);
 
 /// detach all adaptation services from current configuration
-extern void DetachServices();
+void DetachServices();
 
 } // namespace Adaptation
 

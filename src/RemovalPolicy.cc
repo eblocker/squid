@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  * DEBUG: none          Common Removal Policy
  * AUTHOR: Robert Collins
  *
@@ -33,7 +31,9 @@
  *
  */
 
+#include "squid.h"
 #include "RemovalPolicy.h"
+
 CBDATA_CLASS_INIT(RemovalPolicy);
 CBDATA_CLASS_INIT(RemovalPolicyWalker);
 CBDATA_CLASS_INIT(RemovalPurgeWalker);

@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section --    Refcount allocator
  * AUTHOR:  Robert Collins
  *
@@ -32,10 +30,8 @@
  *
  */
 
-#ifndef _SQUID_REFCOUNT_H_
-#define _SQUID_REFCOUNT_H_
-
-#include "config.h"
+#ifndef SQUID_REFCOUNT_H_
+#define SQUID_REFCOUNT_H_
 
 #if HAVE_IOSTREAM
 #include <iostream>
@@ -69,13 +65,9 @@ public:
 
     bool operator !() const { return !p_; }
 
-    C const * operator-> () const {return p_; }
+    C * operator-> () const {return const_cast<C *>(p_); }
 
-    C * operator-> () {return const_cast<C *>(p_); }
-
-    C const & operator * () const {return *p_; }
-
-    C & operator * () {return *const_cast<C *>(p_); }
+    C & operator * () const {return *const_cast<C *>(p_); }
 
     C const * getRaw() const {return p_; }
 
@@ -114,12 +106,12 @@ private:
 struct RefCountable_ {
     RefCountable_():count_(0) {}
 
-    virtual ~RefCountable_() {}
+    virtual ~RefCountable_() { assert(count_ == 0); }
 
     /* Not private, to allow class hierarchies */
     void RefCountReference() const {
 #if REFCOUNT_DEBUG
-        debug (0,1)("Incrementing this %p from count %u\n",this,count_);
+        old_debug(0,1)("Incrementing this %p from count %u\n",this,count_);
 #endif
 
         ++count_;
@@ -127,7 +119,7 @@ struct RefCountable_ {
 
     unsigned RefCountDereference() const {
 #if REFCOUNT_DEBUG
-        debug (0,1)("Decrementing this %p from count %u\n",this,count_);
+        old_debug(0,1)("Decrementing this %p from count %u\n",this,count_);
 #endif
 
         return --count_;
@@ -150,4 +142,4 @@ inline std::ostream &operator <<(std::ostream &os, const RefCount<C> &p)
         return os << "NULL";
 }
 
-#endif /* _SQUID_REFCOUNT_H_ */
+#endif /* SQUID_REFCOUNT_H_ */

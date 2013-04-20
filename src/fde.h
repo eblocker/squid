@@ -31,9 +31,29 @@
 #define SQUID_FDE_H
 
 #include "comm.h"
-#include "ip/IpAddress.h"
+#include "defines.h"
+#include "ip/Address.h"
+
+#if USE_SSL
+#include <openssl/ssl.h>
+#endif
+
+#if USE_DELAY_POOLS
+class ClientInfo;
+#endif
 
 class PconnPool;
+class dwrite_q;
+class _fde_disk
+{
+public:
+    DWCB *wrt_handle;
+    void *wrt_handle_data;
+    dwrite_q *write_q;
+    dwrite_q *write_q_tail;
+    off_t offset;
+    _fde_disk() { memset(this, 0, sizeof(_fde_disk)); }
+};
 
 class fde
 {
@@ -52,16 +72,24 @@ public:
     bool readPending(int);
     void noteUse(PconnPool *);
 
+public:
+
+    /// global table of FD and their state.
+    static fde* Table;
+
     unsigned int type;
     unsigned short remote_port;
 
-    IpAddress local_addr;
-    unsigned char tos;
+    Ip::Address local_addr;
+    tos_t tosToServer;          /**< The TOS value for packets going towards the server.
+                                        See also tosFromServer. */
+    nfmark_t nfmarkToServer;    /**< The netfilter mark for packets going towards the server.
+                                        See also nfmarkFromServer. */
     int sock_family;
     char ipaddr[MAX_IPSTRLEN];            /* dotted decimal address of peer */
     char desc[FD_DESC_SZ];
 
-    struct {
+    struct _fde_flags {
         unsigned int open:1;
         unsigned int close_request:1; // file_ or comm_close has been called
         unsigned int write_daemon:1;
@@ -85,15 +113,19 @@ public:
         PconnPool *pool;
     } pconn;
 
+#if USE_DELAY_POOLS
+    ClientInfo * clientInfo;/* pointer to client info used in client write limiter or NULL if not present */
+#endif
     unsigned epoll_state;
 
-    struct _fde_disk disk;
+    _fde_disk disk;
     PF *read_handler;
     void *read_data;
     PF *write_handler;
     void *write_data;
     AsyncCall::Pointer timeoutHandler;
     time_t timeout;
+    time_t writeStart;
     void *lifetime_data;
     AsyncCall::Pointer closeHandler;
     AsyncCall::Pointer halfClosedReader; /// read handler for half-closed fds
@@ -104,26 +136,72 @@ public:
     SSL *ssl;
     SSL_CTX *dynamicSslContext; ///< cached and then freed when fd is closed
 #endif
-#ifdef _SQUID_MSWIN_
+#if _SQUID_MSWIN_
     struct {
         long handle;
     } win32;
 #endif
-#if USE_ZPH_QOS
-    unsigned char upstreamTOS;			/* see FwdState::dispatch()  */
-#endif
+    tos_t tosFromServer;                /**< Stores the TOS flags of the packets from the remote server.
+                                            See FwdState::dispatch(). Note that this differs to
+                                            tosToServer in that this is the value we *receive* from the,
+                                            connection, whereas tosToServer is the value to set on packets
+                                            *leaving* Squid.  */
+    unsigned int nfmarkFromServer;      /**< Stores the Netfilter mark value of the connection from the remote
+                                            server. See FwdState::dispatch(). Note that this differs to
+                                            nfmarkToServer in that this is the value we *receive* from the,
+                                            connection, whereas nfmarkToServer is the value to set on packets
+                                            *leaving* Squid.   */
 
 private:
     /** Clear the fde class back to NULL equivalent. */
     inline void clear() {
+        type = 0;
+        remote_port = 0;
+        local_addr.SetEmpty();
+        tosToServer = '\0';
+        nfmarkToServer = 0;
+        sock_family = 0;
+        memset(ipaddr, '\0', MAX_IPSTRLEN);
+        memset(desc,'\0',FD_DESC_SZ);
+        memset(&flags,0,sizeof(_fde_flags));
+        bytes_read = 0;
+        bytes_written = 0;
+        pconn.uses = 0;
+        pconn.pool = NULL;
+#if USE_DELAY_POOLS
+        clientInfo = NULL;
+#endif
+        epoll_state = 0;
+        read_handler = NULL;
+        read_data = NULL;
+        write_handler = NULL;
+        write_data = NULL;
         timeoutHandler = NULL;
+        timeout = 0;
+        writeStart = 0;
+        lifetime_data = NULL;
         closeHandler = NULL;
         halfClosedReader = NULL;
-        // XXX: the following memset may corrupt or leak new or changed members
-        memset(this, 0, sizeof(fde));
-        local_addr.SetEmpty(); // IpAddress likes to be setup nicely.
+        wstate = NULL;
+        read_method = NULL;
+        write_method = NULL;
+#if USE_SSL
+        ssl = NULL;
+        dynamicSslContext = NULL;
+#endif
+#if _SQUID_MSWIN_
+        win32.handle = NULL;
+#endif
+        tosFromServer = '\0';
+        nfmarkFromServer = 0;
     }
-
 };
+
+#define fd_table fde::Table
+
+int fdNFree(void);
+
+#define FD_READ_METHOD(fd, buf, len) (*fd_table[fd].read_method)(fd, buf, len)
+#define FD_WRITE_METHOD(fd, buf, len) (*fd_table[fd].write_method)(fd, buf, len)
 
 #endif /* SQUID_FDE_H */

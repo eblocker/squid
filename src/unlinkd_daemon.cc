@@ -1,7 +1,4 @@
-
 /*
- * $Id$
- *
  * DEBUG: section --    Unlink Daemon
  * AUTHOR: Duane Wessels
  *
@@ -36,6 +33,10 @@
 #define SQUID_HELPER 1
 
 #include "squid.h"
+
+#if HAVE_PATHS_H
+#include <paths.h>
+#endif
 
 /**
  \defgroup unlinkd unlinkd
@@ -76,9 +77,11 @@ main(int argc, char *argv[])
     setbuf(stdin, NULL);
     setbuf(stdout, NULL);
     close(2);
-    open(_PATH_DEVNULL, O_RDWR);
+    if (open(_PATH_DEVNULL, O_RDWR) < 0) {
+        ; // the irony of having to close(2) earlier is that we cannot report this failure.
+    }
 
-    while (fgets(buf, UNLINK_BUF_LEN, stdin)) {
+    while (fgets(buf, sizeof(buf), stdin)) {
         if ((t = strchr(buf, '\n')))
             *t = '\0';
         x = unlink(buf);
@@ -88,5 +91,5 @@ main(int argc, char *argv[])
             printf("OK\n");
     }
 
-    exit(0);
+    return 0;
 }

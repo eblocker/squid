@@ -40,7 +40,15 @@ check_PROGRAMS =
 @USE_LOADABLE_MODULES_TRUE@am__append_1 = $(INCLTDL)
 subdir = src/adaptation/ecap
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
-am__aclocal_m4_deps = $(top_srcdir)/acinclude.m4 \
+am__aclocal_m4_deps = $(top_srcdir)/acinclude/init.m4 \
+	$(top_srcdir)/acinclude/squid-util.m4 \
+	$(top_srcdir)/acinclude/compiler-flags.m4 \
+	$(top_srcdir)/acinclude/os-deps.m4 \
+	$(top_srcdir)/acinclude/krb5.m4 $(top_srcdir)/acinclude/pam.m4 \
+	$(top_srcdir)/acinclude/pkg.m4 \
+	$(top_srcdir)/acinclude/lib-checks.m4 \
+	$(top_srcdir)/acinclude/ax_cxx_compile_stdcxx_0x.m4 \
+	$(top_srcdir)/acinclude/ax_cxx_0x_types.m4 \
 	$(top_srcdir)/configure.ac
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
@@ -49,10 +57,16 @@ CONFIG_HEADER = $(top_builddir)/include/autoconf.h
 CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
 LTLIBRARIES = $(noinst_LTLIBRARIES)
-libecap_la_LIBADD =
-am_libecap_la_OBJECTS = Config.lo Host.lo MessageRep.lo ServiceRep.lo \
-	XactionRep.lo
-libecap_la_OBJECTS = $(am_libecap_la_OBJECTS)
+am__DEPENDENCIES_1 =
+libsquid_ecap_la_DEPENDENCIES = $(am__DEPENDENCIES_1)
+am_libsquid_ecap_la_OBJECTS = libsquid_ecap_la-Config.lo \
+	libsquid_ecap_la-Host.lo libsquid_ecap_la-MessageRep.lo \
+	libsquid_ecap_la-ServiceRep.lo libsquid_ecap_la-XactionRep.lo
+libsquid_ecap_la_OBJECTS = $(am_libsquid_ecap_la_OBJECTS)
+libsquid_ecap_la_LINK = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) \
+	$(LIBTOOLFLAGS) --mode=link $(CXXLD) \
+	$(libsquid_ecap_la_CXXFLAGS) $(CXXFLAGS) $(AM_LDFLAGS) \
+	$(LDFLAGS) -o $@
 DEFAULT_INCLUDES = 
 depcomp = $(SHELL) $(top_srcdir)/cfgaux/depcomp
 am__depfiles_maybe = depfiles
@@ -75,8 +89,8 @@ CCLD = $(CC)
 LINK = $(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
 	--mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) $(AM_LDFLAGS) \
 	$(LDFLAGS) -o $@
-SOURCES = $(libecap_la_SOURCES)
-DIST_SOURCES = $(libecap_la_SOURCES)
+SOURCES = $(libsquid_ecap_la_SOURCES)
+DIST_SOURCES = $(libsquid_ecap_la_SOURCES)
 ETAGS = etags
 CTAGS = ctags
 am__tty_colors = \
@@ -96,9 +110,8 @@ AUTOHEADER = @AUTOHEADER@
 AUTOMAKE = @AUTOMAKE@
 AWK = @AWK@
 BASIC_AUTH_HELPERS = @BASIC_AUTH_HELPERS@
+BZR = @BZR@
 CACHE_EFFECTIVE_USER = @CACHE_EFFECTIVE_USER@
-CACHE_HTTP_PORT = @CACHE_HTTP_PORT@
-CACHE_ICP_PORT = @CACHE_ICP_PORT@
 CC = @CC@
 CCDEPMODE = @CCDEPMODE@
 CFLAGS = @CFLAGS@
@@ -113,8 +126,10 @@ CXXCPP = @CXXCPP@
 CXXDEPMODE = @CXXDEPMODE@
 CXXFLAGS = @CXXFLAGS@
 CYGPATH_W = @CYGPATH_W@
+DEFAULT_HOSTS = @DEFAULT_HOSTS@
 DEFAULT_LOG_DIR = @DEFAULT_LOG_DIR@
-DEFAULT_PIDFILE = @DEFAULT_PIDFILE@
+DEFAULT_PID_FILE = @DEFAULT_PID_FILE@
+DEFAULT_SWAP_DIR = @DEFAULT_SWAP_DIR@
 DEFS = @DEFS@
 DEPDIR = @DEPDIR@
 DIGEST_AUTH_HELPERS = @DIGEST_AUTH_HELPERS@
@@ -125,16 +140,18 @@ DISK_OS_LIBS = @DISK_OS_LIBS@
 DISK_PROGRAMS = @DISK_PROGRAMS@
 DSYMUTIL = @DSYMUTIL@
 DUMPBIN = @DUMPBIN@
-ECAPLIB = @ECAPLIB@
 ECAP_LIBS = @ECAP_LIBS@
 ECHO_C = @ECHO_C@
 ECHO_N = @ECHO_N@
 ECHO_T = @ECHO_T@
 EGREP = @EGREP@
 EPOLL_LIBS = @EPOLL_LIBS@
+EUILIB = @EUILIB@
 EXEEXT = @EXEEXT@
 EXPATLIB = @EXPATLIB@
 EXTERNAL_ACL_HELPERS = @EXTERNAL_ACL_HELPERS@
+EXT_LIBECAP_CFLAGS = @EXT_LIBECAP_CFLAGS@
+EXT_LIBECAP_LIBS = @EXT_LIBECAP_LIBS@
 FALSE = @FALSE@
 FGREP = @FGREP@
 GREP = @GREP@
@@ -146,7 +163,11 @@ INSTALL_DATA = @INSTALL_DATA@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
 INSTALL_SCRIPT = @INSTALL_SCRIPT@
 INSTALL_STRIP_PROGRAM = @INSTALL_STRIP_PROGRAM@
+KRB5INCS = @KRB5INCS@
+KRB5LIBS = @KRB5LIBS@
+LBERLIB = @LBERLIB@
 LD = @LD@
+LDAPLIB = @LDAPLIB@
 LDFLAGS = @LDFLAGS@
 LIBADD_DL = @LIBADD_DL@
 LIBADD_DLD_LINK = @LIBADD_DLD_LINK@
@@ -158,11 +179,10 @@ LIBS = @LIBS@
 LIBSASL = @LIBSASL@
 LIBTOOL = @LIBTOOL@
 LIB_DB = @LIB_DB@
-LIB_LBER = @LIB_LBER@
-LIB_LDAP = @LIB_LDAP@
 LIPO = @LIPO@
 LN = @LN@
 LN_S = @LN_S@
+LOG_DAEMON_HELPERS = @LOG_DAEMON_HELPERS@
 LTDLDEPS = @LTDLDEPS@
 LTDLINCL = @LTDLINCL@
 LTDLOPEN = @LTDLOPEN@
@@ -182,7 +202,6 @@ NMEDIT = @NMEDIT@
 NTLM_AUTH_HELPERS = @NTLM_AUTH_HELPERS@
 OBJDUMP = @OBJDUMP@
 OBJEXT = @OBJEXT@
-OPT_DEFAULT_HOSTS = @OPT_DEFAULT_HOSTS@
 OTOOL = @OTOOL@
 OTOOL64 = @OTOOL64@
 PACKAGE = @PACKAGE@
@@ -194,7 +213,12 @@ PACKAGE_URL = @PACKAGE_URL@
 PACKAGE_VERSION = @PACKAGE_VERSION@
 PATH_SEPARATOR = @PATH_SEPARATOR@
 PERL = @PERL@
+PKG_CONFIG = @PKG_CONFIG@
+PKG_CONFIG_LIBDIR = @PKG_CONFIG_LIBDIR@
+PKG_CONFIG_PATH = @PKG_CONFIG_PATH@
 PO2HTML = @PO2HTML@
+PO2TEXT = @PO2TEXT@
+POD2MAN = @POD2MAN@
 RANLIB = @RANLIB@
 REGEXLIB = @REGEXLIB@
 REPL_LIBS = @REPL_LIBS@
@@ -216,7 +240,9 @@ STORE_LIBS_TO_ADD = @STORE_LIBS_TO_ADD@
 STORE_LIBS_TO_BUILD = @STORE_LIBS_TO_BUILD@
 STORE_TESTS = @STORE_TESTS@
 STRIP = @STRIP@
+TR = @TR@
 TRUE = @TRUE@
+URL_REWRITE_HELPERS = @URL_REWRITE_HELPERS@
 VERSION = @VERSION@
 WIN32_PSAPI = @WIN32_PSAPI@
 XMLLIB = @XMLLIB@
@@ -229,6 +255,7 @@ abs_top_srcdir = @abs_top_srcdir@
 ac_ct_CC = @ac_ct_CC@
 ac_ct_CXX = @ac_ct_CXX@
 ac_ct_DUMPBIN = @ac_ct_DUMPBIN@
+ac_krb5_config = @ac_krb5_config@
 am__include = @am__include@
 am__leading_dot = @am__leading_dot@
 am__quote = @am__quote@
@@ -283,10 +310,15 @@ AM_CFLAGS = $(SQUID_CFLAGS)
 AM_CXXFLAGS = $(SQUID_CXXFLAGS)
 CLEANFILES = testHeaders
 TESTS = testHeaders
-INCLUDES = -I$(top_srcdir) -I$(top_srcdir)/include -I$(top_srcdir)/src \
-	-I$(top_builddir)/include $(SQUID_CPPUNIT_INC) $(am__append_1)
-noinst_LTLIBRARIES = libecap.la
-libecap_la_SOURCES = \
+INCLUDES = -I$(top_srcdir) -I$(top_srcdir)/include -I$(top_srcdir)/lib \
+	-I$(top_srcdir)/src -I$(top_builddir)/include \
+	$(SQUID_CPPUNIT_INC) $(KRB5INCS) $(am__append_1)
+@ENABLE_XPROF_STATS_FALSE@LIBPROFILER = 
+@ENABLE_XPROF_STATS_TRUE@LIBPROFILER = $(top_builddir)/lib/profiler/libprofiler.la
+COMPAT_LIB = -L$(top_builddir)/compat -lcompat-squid $(LIBPROFILER)
+subst_perlshell = sed -e 's,[@]PERL[@],$(PERL),g' <$(srcdir)/$@.pl.in >$@ || ($(RM) -f $@ ; exit 1)
+noinst_LTLIBRARIES = libsquid-ecap.la
+libsquid_ecap_la_SOURCES = \
 	Config.h \
 	Config.cc \
 	Host.h \
@@ -300,6 +332,10 @@ libecap_la_SOURCES = \
 	\
 	Registry.h
 
+
+# add libecap using its pkg-config-produced configuration variables
+libsquid_ecap_la_CXXFLAGS = $(EXT_LIBECAP_CFLAGS)
+libsquid_ecap_la_LIBADD = $(EXT_LIBECAP_LIBS) 
 all: all-am
 
 .SUFFIXES:
@@ -343,8 +379,8 @@ clean-noinstLTLIBRARIES:
 	  echo "rm -f \"$${dir}/so_locations\""; \
 	  rm -f "$${dir}/so_locations"; \
 	done
-libecap.la: $(libecap_la_OBJECTS) $(libecap_la_DEPENDENCIES) 
-	$(CXXLINK)  $(libecap_la_OBJECTS) $(libecap_la_LIBADD) $(LIBS)
+libsquid-ecap.la: $(libsquid_ecap_la_OBJECTS) $(libsquid_ecap_la_DEPENDENCIES) 
+	$(libsquid_ecap_la_LINK)  $(libsquid_ecap_la_OBJECTS) $(libsquid_ecap_la_LIBADD) $(LIBS)
 
 clean-checkPROGRAMS:
 	@list='$(check_PROGRAMS)'; test -n "$$list" || exit 0; \
@@ -361,11 +397,11 @@ mostlyclean-compile:
 distclean-compile:
 	-rm -f *.tab.c
 
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Config.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Host.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/MessageRep.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ServiceRep.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/XactionRep.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsquid_ecap_la-Config.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsquid_ecap_la-Host.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsquid_ecap_la-MessageRep.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsquid_ecap_la-ServiceRep.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsquid_ecap_la-XactionRep.Plo@am__quote@
 
 .cc.o:
 @am__fastdepCXX_TRUE@	$(CXXCOMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
@@ -387,6 +423,41 @@ distclean-compile:
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='$<' object='$@' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(LTCXXCOMPILE) -c -o $@ $<
+
+libsquid_ecap_la-Config.lo: Config.cc
+@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libsquid_ecap_la_CXXFLAGS) $(CXXFLAGS) -MT libsquid_ecap_la-Config.lo -MD -MP -MF $(DEPDIR)/libsquid_ecap_la-Config.Tpo -c -o libsquid_ecap_la-Config.lo `test -f 'Config.cc' || echo '$(srcdir)/'`Config.cc
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/libsquid_ecap_la-Config.Tpo $(DEPDIR)/libsquid_ecap_la-Config.Plo
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='Config.cc' object='libsquid_ecap_la-Config.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libsquid_ecap_la_CXXFLAGS) $(CXXFLAGS) -c -o libsquid_ecap_la-Config.lo `test -f 'Config.cc' || echo '$(srcdir)/'`Config.cc
+
+libsquid_ecap_la-Host.lo: Host.cc
+@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libsquid_ecap_la_CXXFLAGS) $(CXXFLAGS) -MT libsquid_ecap_la-Host.lo -MD -MP -MF $(DEPDIR)/libsquid_ecap_la-Host.Tpo -c -o libsquid_ecap_la-Host.lo `test -f 'Host.cc' || echo '$(srcdir)/'`Host.cc
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/libsquid_ecap_la-Host.Tpo $(DEPDIR)/libsquid_ecap_la-Host.Plo
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='Host.cc' object='libsquid_ecap_la-Host.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libsquid_ecap_la_CXXFLAGS) $(CXXFLAGS) -c -o libsquid_ecap_la-Host.lo `test -f 'Host.cc' || echo '$(srcdir)/'`Host.cc
+
+libsquid_ecap_la-MessageRep.lo: MessageRep.cc
+@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libsquid_ecap_la_CXXFLAGS) $(CXXFLAGS) -MT libsquid_ecap_la-MessageRep.lo -MD -MP -MF $(DEPDIR)/libsquid_ecap_la-MessageRep.Tpo -c -o libsquid_ecap_la-MessageRep.lo `test -f 'MessageRep.cc' || echo '$(srcdir)/'`MessageRep.cc
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/libsquid_ecap_la-MessageRep.Tpo $(DEPDIR)/libsquid_ecap_la-MessageRep.Plo
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='MessageRep.cc' object='libsquid_ecap_la-MessageRep.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libsquid_ecap_la_CXXFLAGS) $(CXXFLAGS) -c -o libsquid_ecap_la-MessageRep.lo `test -f 'MessageRep.cc' || echo '$(srcdir)/'`MessageRep.cc
+
+libsquid_ecap_la-ServiceRep.lo: ServiceRep.cc
+@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libsquid_ecap_la_CXXFLAGS) $(CXXFLAGS) -MT libsquid_ecap_la-ServiceRep.lo -MD -MP -MF $(DEPDIR)/libsquid_ecap_la-ServiceRep.Tpo -c -o libsquid_ecap_la-ServiceRep.lo `test -f 'ServiceRep.cc' || echo '$(srcdir)/'`ServiceRep.cc
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/libsquid_ecap_la-ServiceRep.Tpo $(DEPDIR)/libsquid_ecap_la-ServiceRep.Plo
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='ServiceRep.cc' object='libsquid_ecap_la-ServiceRep.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libsquid_ecap_la_CXXFLAGS) $(CXXFLAGS) -c -o libsquid_ecap_la-ServiceRep.lo `test -f 'ServiceRep.cc' || echo '$(srcdir)/'`ServiceRep.cc
+
+libsquid_ecap_la-XactionRep.lo: XactionRep.cc
+@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libsquid_ecap_la_CXXFLAGS) $(CXXFLAGS) -MT libsquid_ecap_la-XactionRep.lo -MD -MP -MF $(DEPDIR)/libsquid_ecap_la-XactionRep.Tpo -c -o libsquid_ecap_la-XactionRep.lo `test -f 'XactionRep.cc' || echo '$(srcdir)/'`XactionRep.cc
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/libsquid_ecap_la-XactionRep.Tpo $(DEPDIR)/libsquid_ecap_la-XactionRep.Plo
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='XactionRep.cc' object='libsquid_ecap_la-XactionRep.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libsquid_ecap_la_CXXFLAGS) $(CXXFLAGS) -c -o libsquid_ecap_la-XactionRep.lo `test -f 'XactionRep.cc' || echo '$(srcdir)/'`XactionRep.cc
 
 mostlyclean-libtool:
 	-rm -f *.lo

@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
  * ----------------------------------------------------------
@@ -48,7 +46,6 @@
  * interface. The initiator (or its associate) is expected to send and/or
  * receive the HTTP body.
  */
-
 
 class ChunkedCodingParser;
 
@@ -106,7 +103,6 @@ private:
     State theState;
 };
 
-
 // maintains preview-related sizes
 
 class Preview
@@ -157,6 +153,7 @@ public:
 
     // service waiting
     void noteServiceReady();
+    void noteServiceAvailable();
 
 public:
     InOut virgin;
@@ -164,6 +161,11 @@ public:
 
     // bypasses exceptions if needed and possible
     virtual void callException(const std::exception &e);
+
+    /// record error detail in the virgin request if possible
+    virtual void detailError(int errDetail);
+    // Icap::Xaction API
+    virtual void clearError();
 
 private:
     virtual void start();
@@ -196,6 +198,7 @@ private:
     bool virginBodyEndReached(const VirginBodyAct &act) const;
 
     void makeRequestHeaders(MemBuf &buf);
+    void makeAllowHeader(MemBuf &buf);
     void makeUsernameHeader(const HttpRequest *request, MemBuf &buf);
     void addLastRequestChunk(MemBuf &buf);
     void openChunk(MemBuf &buf, size_t chunkSize, bool ieof);
@@ -206,6 +209,9 @@ private:
     void decideOnPreview();
     void decideOnRetries();
     bool shouldAllow204();
+    bool shouldAllow206any();
+    bool shouldAllow206in();
+    bool shouldAllow206out();
     bool canBackupEverything() const;
 
     void prepBackup(size_t expectedSize);
@@ -226,6 +232,7 @@ private:
     bool validate200Ok();
     void handle200Ok();
     void handle204NoContent();
+    void handle206PartialContent();
     void handleUnknownScode();
 
     void bypassFailure();
@@ -234,6 +241,7 @@ private:
     void disableBypass(const char *reason, bool includeGroupBypass);
 
     void prepEchoing();
+    void prepPartialBodyEchoing(uint64_t pos);
     void echoMore();
 
     virtual bool doneAll() const;
@@ -268,7 +276,16 @@ private:
     bool canStartBypass; // enables bypass of transaction failures
     bool protectGroupBypass; // protects ServiceGroup-wide bypass of failures
 
-    uint64_t replyBodySize; ///< dechunked ICAP reply body size
+    /**
+     * size of HTTP header in ICAP reply or -1 if there is not any encapsulated
+     * message data
+     */
+    int64_t replyHttpHeaderSize;
+    /**
+     * size of dechunked HTTP body in ICAP reply or -1 if there is not any
+     * encapsulated message data
+     */
+    int64_t replyHttpBodySize;
 
     int adaptHistoryId; ///< adaptation history slot reservation
 
@@ -282,6 +299,10 @@ private:
 
         bool serviceWaiting; // waiting for ICAP service options
         bool allowedPostview204; // mmust handle 204 No Content outside preview
+        bool allowedPostview206; // must handle 206 Partial Content outside preview
+        bool allowedPreview206; // must handle 206 Partial Content inside preview
+        bool readyForUob; ///< got a 206 response and expect a use-origin-body
+        bool waitedForService; ///< true if was queued at least once
 
         // will not write anything [else] to the ICAP server connection
         bool doneWriting() const { return writing == writingReallyDone; }
@@ -289,7 +310,8 @@ private:
         // will not use virgin.body_pipe
         bool doneConsumingVirgin() const {
             return writing >= writingAlmostDone
-                   && (sending == sendingAdapted || sending == sendingDone);
+                   && ((sending == sendingAdapted && !readyForUob) ||
+                       sending == sendingDone);
         }
 
         // parsed entire ICAP response from the ICAP server
@@ -338,7 +360,6 @@ protected:
 private:
     CBDATA_CLASS2(ModXactLauncher);
 };
-
 
 } // namespace Icap
 } // namespace Adaptation

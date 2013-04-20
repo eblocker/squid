@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
  * ----------------------------------------------------------
@@ -35,7 +33,7 @@
 #ifndef SQUID_DELAYID_H
 #define SQUID_DELAYID_H
 
-#if DELAY_POOLS
+#if USE_DELAY_POOLS
 
 class ClientHttpRequest;
 #include "DelayIdComposite.h"
@@ -66,5 +64,5 @@ private:
     bool markedAsNoDelay;
 };
 
-#endif /* DELAY_POOLS */
+#endif /* USE_DELAY_POOLS */
 #endif /* SQUID_DELAYID_H */

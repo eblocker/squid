@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 59    auto-growing Memory Buffer with printf
  * AUTHOR: Alex Rousskov
  *
@@ -41,7 +39,7 @@
  * Rationale:
  * ----------
  *
- * Here is how one would comm_write an object without MemBuffer:
+ * Here is how one would Comm::Write an object without MemBuffer:
  *
  * {
  * -- allocate:
@@ -53,7 +51,7 @@
  * ...
  *
  * -- write
- * comm_write(buf, free, ...);
+ * Comm::Write(buf, free, ...);
  * }
  *
  * The whole "packing" idea is quite messy: We are given a buffer of fixed
@@ -91,7 +89,7 @@
  * ...
  *
  * -- write
- * comm_write_mbuf(fd, buf, handler, data);
+ * Comm::Write(fd, buf, callback);
  *
  * -- *iff* you did not give the buffer away, free it yourself
  * -- buf.clean();
@@ -99,10 +97,10 @@
  \endverbatim
  */
 
-/* if you have configure you can use this */
-#if defined(HAVE_CONFIG_H)
-#include "config.h"
-#endif
+#include "squid.h"
+#include "Mem.h"
+#include "MemBuf.h"
+#include "profiler/Profiler.h"
 
 #ifdef VA_COPY
 #undef VA_COPY
@@ -112,9 +110,6 @@
 #elif defined HAVE___VA_COPY
 #define VA_COPY __va_copy
 #endif
-
-#include "squid.h"
-#include "MemBuf.h"
 
 /* local constants */
 
@@ -130,7 +125,6 @@ MemBuf::init()
 {
     init(MEM_BUF_INIT_SIZE, MEM_BUF_MAX_SIZE);
 }
-
 
 /** init with specific sizes */
 void
@@ -217,7 +211,7 @@ void MemBuf::consume(mb_size_t shiftSize)
     PROF_start(MemBuf_consume);
     if (shiftSize > 0) {
         if (shiftSize < cSize)
-            xmemmove(buf, buf + shiftSize, cSize - shiftSize);
+            memmove(buf, buf + shiftSize, cSize - shiftSize);
 
         size -= shiftSize;
 
@@ -251,9 +245,7 @@ void MemBuf::append(const char *newContent, mb_size_t sz)
             grow(size + sz + 1);
 
         assert(size + sz <= capacity); /* paranoid */
-
-        xmemcpy(space(), newContent, sz);
-
+        memcpy(space(), newContent, sz);
         appended(sz);
     }
     PROF_stop(MemBuf_append);
@@ -290,7 +282,6 @@ MemBuf::Printf(const char *fmt,...)
     vPrintf(fmt, args);
     va_end(args);
 }
-
 
 /**
  * vPrintf for other printf()'s to use; calls vsnprintf, extends buf if needed
@@ -342,7 +333,7 @@ MemBuf::vPrintf(const char *fmt, va_list vargs)
     if (!size || buf[size - 1]) {
         assert(!buf[size]);
     } else {
-        size--;
+        --size;
     }
 }
 
@@ -408,7 +399,6 @@ MemBuf::grow(mb_size_t min_cap)
     PROF_stop(MemBuf_grow);
 }
 
-
 /* Reports */
 
 /**
@@ -421,6 +411,6 @@ memBufReport(MemBuf * mb)
     mb->Printf("memBufReport is not yet implemented @?@\n");
 }
 
-#ifndef _USE_INLINE_
+#if !_USE_INLINE_
 #include "MemBuf.cci"
 #endif

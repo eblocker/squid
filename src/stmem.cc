@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  * DEBUG: section 19    Store Memory Primitives
  * AUTHOR: Harvest Derived
  *
@@ -35,10 +33,11 @@
  */
 
 #include "squid.h"
-#include "stmem.h"
+#include "Generic.h"
 #include "mem_node.h"
 #include "MemObject.h"
-#include "Generic.h"
+#include "profiler/Profiler.h"
+#include "stmem.h"
 
 /*
  * NodeGet() is called to get the data buffer to pass to storeIOWrite().
@@ -85,13 +84,14 @@ mem_hdr::freeContent()
 {
     nodes.destroy(SplayNode<mem_node *>::DefaultFree);
     inmem_hi = 0;
+    debugs(19, 9, HERE << this << " hi: " << inmem_hi);
 }
 
 bool
 mem_hdr::unlink(mem_node *aNode)
 {
     if (aNode->write_pending) {
-        debugs(0, 0, "cannot unlink mem_node " << aNode << " while write_pending");
+        debugs(0, DBG_CRITICAL, "cannot unlink mem_node " << aNode << " while write_pending");
         return false;
     }
 
@@ -104,8 +104,7 @@ int64_t
 mem_hdr::freeDataUpto(int64_t target_offset)
 {
     /* keep the last one to avoid change to other part of code */
-
-    SplayNode<mem_node*> const * theStart = nodes.start();
+    SplayNode<mem_node*> const * theStart;
 
     while ((theStart = nodes.start())) {
         if (theStart == nodes.finish())
@@ -142,14 +141,17 @@ mem_hdr::writeAvailable(mem_node *aNode, int64_t location, size_t amount, char c
     assert (location - aNode->nodeBuffer.offset == (int64_t)aNode->nodeBuffer.length);
     size_t copyLen = min(amount, aNode->space());
 
-    xmemcpy(aNode->nodeBuffer.data + aNode->nodeBuffer.length, source, copyLen);
+    memcpy(aNode->nodeBuffer.data + aNode->nodeBuffer.length, source, copyLen);
 
+    debugs(19, 9, HERE << this << " hi: " << inmem_hi);
     if (inmem_hi <= location)
         inmem_hi = location + copyLen;
 
     /* Adjust the ptr and len according to what was deposited in the page */
     aNode->nodeBuffer.length += copyLen;
 
+    debugs(19, 9, HERE << this << " hi: " << inmem_hi);
+    debugs(19, 9, HERE << this << " hi: " << endOffset());
     return copyLen;
 }
 
@@ -176,7 +178,7 @@ mem_hdr::makeAppendSpace()
 void
 mem_hdr::internalAppend(const char *data, int len)
 {
-    debugs(19, 6, "memInternalAppend: len " << len);
+    debugs(19, 6, "memInternalAppend: " << this << " len " << len);
 
     while (len > 0) {
         makeAppendSpace();
@@ -194,6 +196,7 @@ mem_hdr::internalAppend(const char *data, int len)
 mem_node *
 mem_hdr::getBlockContainingLocation (int64_t location) const
 {
+    // Optimize: do not create a whole mem_node just to store location
     mem_node target (location);
     target.nodeBuffer.length = 1;
     mem_node *const *result = nodes.find (&target, NodeCompare);
@@ -218,7 +221,7 @@ mem_hdr::copyAvailable(mem_node *aNode, int64_t location, size_t amount, char *t
 
     size_t copyLen = min(amount, aNode->nodeBuffer.length - copyOffset);
 
-    xmemcpy(target, aNode->nodeBuffer.data + copyOffset, copyLen);
+    memcpy(target, aNode->nodeBuffer.data + copyOffset, copyLen);
 
     return copyLen;
 }
@@ -245,12 +248,12 @@ mem_hdr::copy(StoreIOBuffer const &target) const
 {
 
     assert(target.range().end > target.range().start);
-    debugs(19, 6, "memCopy: " << target.range());
+    debugs(19, 6, "memCopy: " << this << " " << target.range());
 
     /* we shouldn't ever ask for absent offsets */
 
     if (nodes.size() == 0) {
-        debugs(19, 1, "mem_hdr::copy: No data to read");
+        debugs(19, DBG_IMPORTANT, "mem_hdr::copy: No data to read");
         debugDump();
         assert (0);
         return 0;
@@ -263,7 +266,7 @@ mem_hdr::copy(StoreIOBuffer const &target) const
     mem_node *p = getBlockContainingLocation(target.offset);
 
     if (!p) {
-        debugs(19, 1, "memCopy: could not find start of " << target.range() <<
+        debugs(19, DBG_IMPORTANT, "memCopy: could not find start of " << target.range() <<
                " in memory.");
         debugDump();
         fatal("Squid has attempted to read data from memory that is not present. This is an indication of of (pre-3.0) code that hasn't been updated to deal with sparse objects in memory. Squid should coredump.allowing to review the cause. Immediately preceeding this message is a dump of the available data in the format [start,end). The [ means from the value, the ) means up to the value. I.e. [1,5) means that there are 4 bytes of data, at offsets 1,2,3,4.\n");
@@ -356,15 +359,14 @@ mem_hdr::nodeToRecieve(int64_t offset)
     return candidate;
 }
 
-
 bool
 mem_hdr::write (StoreIOBuffer const &writeBuffer)
 {
     PROF_start(mem_hdr_write);
-    debugs(19, 6, "mem_hdr::write: " << writeBuffer.range() << " object end " << endOffset());
+    debugs(19, 6, "mem_hdr::write: " << this << " " << writeBuffer.range() << " object end " << endOffset());
 
     if (unionNotEmpty(writeBuffer)) {
-        debugs(19,0,"mem_hdr::write: writeBuffer: " << writeBuffer.range());
+        debugs(19, DBG_CRITICAL, "mem_hdr::write: writeBuffer: " << writeBuffer.range());
         debugDump();
         fatal("Attempt to overwrite already in-memory data. Preceeding this there should be a mem_hdr::write output that lists the attempted write, and the currently present data. Please get a 'backtrace full' from this error - using the generated core, and file a bug report with the squid developers including the last 10 lines of cache.log and the backtrace.\n");
         PROF_stop(mem_hdr_write);
@@ -391,7 +393,9 @@ mem_hdr::write (StoreIOBuffer const &writeBuffer)
 }
 
 mem_hdr::mem_hdr() : inmem_hi(0)
-{}
+{
+    debugs(19, 9, HERE << this << " hi: " << inmem_hi);
+}
 
 mem_hdr::~mem_hdr()
 {
@@ -417,8 +421,8 @@ mem_hdr::NodeCompare(mem_node * const &left, mem_node * const &right)
 void
 mem_hdr::dump() const
 {
-    debugs(20, 1, "mem_hdr: " << (void *)this << " nodes.start() " << nodes.start());
-    debugs(20, 1, "mem_hdr: " << (void *)this << " nodes.finish() " << nodes.finish());
+    debugs(20, DBG_IMPORTANT, "mem_hdr: " << (void *)this << " nodes.start() " << nodes.start());
+    debugs(20, DBG_IMPORTANT, "mem_hdr: " << (void *)this << " nodes.finish() " << nodes.finish());
 }
 
 size_t

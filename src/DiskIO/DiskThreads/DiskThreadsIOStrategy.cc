@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  * DEBUG: section 79    Squid-side Disk I/O functions.
  * AUTHOR: Robert Collins
  *
@@ -36,12 +34,13 @@
 
 #include "squid.h"
 
-#include "CacheManager.h"
-#include "DiskThreadsIOStrategy.h"
 #include "DiskThreadsDiskFile.h"
-/* for statfs */
-#include "Store.h"
+#include "DiskThreadsIOStrategy.h"
 #include "fde.h"
+#include "mgr/Registration.h"
+#include "SquidConfig.h"
+#include "StatCounters.h"
+#include "Store.h"
 
 void
 DiskThreadsIOStrategy::init(void)
@@ -65,9 +64,8 @@ DiskThreadsIOStrategy::init(void)
 void
 DiskThreadsIOStrategy::registerWithCacheManager(void)
 {
-    CacheManager::GetInstance()->
-    registerAction("squidaio_counts", "Async IO Function Counters",
-                   aioStats, 0, 1);
+    Mgr::RegisterAction("squidaio_counts", "Async IO Function Counters",
+                        aioStats, 0, 1);
 }
 
 void
@@ -93,7 +91,7 @@ DiskThreadsIOStrategy::callback()
     int retval = 0;
 
     assert(initialised);
-    squidaio_counts.check_callback++;
+    ++squidaio_counts.check_callback;
 
     for (;;) {
         if ((resultp = squidaio_poll_done()) == NULL)
@@ -166,7 +164,7 @@ DiskThreadsIOStrategy::callback()
         if (ctrlp->operation == _AIO_READ)
             squidaio_xfree(ctrlp->bufp, ctrlp->len);
 
-        squidaio_ctrl_pool->free(ctrlp);
+        squidaio_ctrl_pool->freeOne(ctrlp);
     }
 
     return retval;
@@ -189,7 +187,10 @@ DiskThreadsIOStrategy::sync()
     debugs(32, 2, "aioSync: done");
 }
 
-DiskThreadsIOStrategy::DiskThreadsIOStrategy() :  initialised (false) {}
+DiskThreadsIOStrategy::DiskThreadsIOStrategy() :
+        initialised(false),
+        squidaio_ctrl_pool(NULL)
+{}
 
 void
 DiskThreadsIOStrategy::aioStats(StoreEntry * sentry)
@@ -254,9 +255,15 @@ DiskThreadsIOStrategy::newFile (char const *path)
     return new DiskThreadsDiskFile (path, this);
 }
 
+bool
+DiskThreadsIOStrategy::unlinkdUseful() const
+{
+    return false;
+}
+
 void
 DiskThreadsIOStrategy::unlinkFile(char const *path)
 {
-    statCounter.syscalls.disk.unlinks++;
+    ++statCounter.syscalls.disk.unlinks;
     aioUnlink(path, NULL, NULL);
 }

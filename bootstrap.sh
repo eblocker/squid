@@ -30,7 +30,7 @@ find_variant()
   shift
   versions="$*"
   for version in $versions; do
-    for variant in "" "-${version}" "`echo $version | sed -e 's/\.//g'`"; do
+    for variant in "" "${version}" "-${version}" "`echo $version | sed -e 's/\.//g'`"; do
       if check_version $tool ${tool}${variant} $version; then
 	found="${variant}"
 	break
@@ -72,18 +72,11 @@ bootstrap() {
 }
 
 bootstrap_libtoolize() {
-    ltver=$1
+    tool=$1
 
-    # TODO: when we have libtool2, tell libtoolize where to put its files
-    # instead of manualy moving files from ltdl to lib/libLtdl
-    if egrep -q '^[[:space:]]*AC_LIBLTDL_' configure.ac
-    then
-	ltdl="--ltdl"
-    else
-        ltdl=""
-    fi
+    ltdl="--ltdl"
 
-    bootstrap libtoolize$ltver $ltdl --force --copy --automake
+    bootstrap $tool $ltdl --force --copy --automake
 
     # customize generated libltdl, if any
     if test -d libltdl
@@ -100,31 +93,38 @@ bootstrap_libtoolize() {
     fi
 }
 
+# On MAC OS X, GNU libtool is named 'glibtool':
+if [ `uname -s 2>/dev/null` = 'Darwin' ]
+then
+  LIBTOOL_BIN="glibtool"
+else
+  LIBTOOL_BIN="libtool"
+fi
+
 # Adjust paths of required autool packages
 amver=`find_variant automake ${amversions}`
 acver=`find_variant autoconf ${acversions}`
-ltver=`find_variant libtool ${ltversions}`
+ltver=`find_variant ${LIBTOOL_BIN} ${ltversions}`
 
 # Produce debug output about what version actually found.
 amversion=`show_version automake "${amver}"`
 acversion=`show_version autoconf "${acver}"`
-ltversion=`show_version libtool "${ltver}"`
+ltversion=`show_version ${LIBTOOL_BIN} "${ltver}"`
 
 # Find the libtool path to get the right aclocal includes
-ltpath=`find_path libtool$ltver`
+ltpath=`find_path ${LIBTOOL_BIN}${ltver}`
 
 # Set environment variable to tell automake which autoconf to use.
 AUTOCONF="autoconf${acver}" ; export AUTOCONF
 
 echo "automake ($amversion) : automake$amver"
 echo "autoconf ($acversion) : autoconf$acver"
-echo "libtool  ($ltversion) : libtool$ltver"
+echo "libtool  ($ltversion) : ${LIBTOOL_BIN}${ltver}"
 echo "libtool path : $ltpath"
 
 for dir in \
 	"" \
-	lib/libTrie \
-	helpers/negotiate_auth/squid_kerb_auth
+	lib/libTrie
 do
     if [ -z "$dir" ] || [ -d $dir ]; then
 	if (
@@ -135,7 +135,7 @@ do
 	elif [ ! -f $dir/configure ]; then
 	    # Make sure cfgaux exists
 	    mkdir -p cfgaux
-            
+
             if test -n "$ltpath"; then
               acincludeflag="-I $ltpath/../share/aclocal"
             else
@@ -145,7 +145,7 @@ do
 	    # Bootstrap the autotool subsystems
 	    bootstrap aclocal$amver $acincludeflag
 	    bootstrap autoheader$acver
-	    bootstrap_libtoolize $ltver
+	    bootstrap_libtoolize ${LIBTOOL_BIN}ize${ltver}
 	    bootstrap automake$amver --foreign --add-missing --copy -f
 	    bootstrap autoconf$acver --force
 	fi ); then
@@ -155,6 +155,9 @@ do
 	fi
     fi
 done
+
+# Make a copy of SPONSORS we can package
+sed -e 's/@Squid-[0-9\.]*://' <SPONSORS.list > SPONSORS || (rm -f SPONSORS && exit 1)
 
 # Fixup autoconf recursion using --silent/--quiet option
 # autoconf should inherit this option whe recursing into subdirectories

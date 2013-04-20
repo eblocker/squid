@@ -1,24 +1,32 @@
 include $(top_srcdir)/src/Common.am
+include $(top_srcdir)/src/TestHeaders.am
 
-## we need our local files too (but avoid -I. at all costs)
-INCLUDES += -I$(srcdir)
+SUBDIRS = $(AUTH_MODULES)
+DIST_SUBDIRS = basic digest negotiate ntlm
 
-noinst_LTLIBRARIES = libauth.la libacls.la $(AUTH_LIBS_TO_BUILD)
-EXTRA_LTLIBRARIES = libbasic.la libdigest.la libntlm.la libnegotiate.la
+noinst_LTLIBRARIES = libauth.la libacls.la
+## not needed? $(AUTH_LIBS_TO_BUILD)
+## EXTRA_LTLIBRARIES = libdigest.la libntlm.la libnegotiate.la
 
 ## authentication framework; this library is always built
 libauth_la_SOURCES = \
+	Type.h \
+	Type.cc \
 	Config.cc \
 	Config.h \
+	CredentialState.cc \
+	CredentialState.h \
+	Gadgets.cc \
+	Gadgets.h \
 	Scheme.cc \
 	Scheme.h \
+	State.h \
+	State.cc \
 	User.h \
 	User.cci \
 	User.cc \
 	UserRequest.h \
-	UserRequest.cc \
-	Gadgets.cc \
-	Gadgets.h
+	UserRequest.cc
 
 libauth_la_LIBADD = $(AUTH_LIBS_TO_BUILD)
 libauth_la_DEPENDENCIES = $(AUTH_LIBS_TO_BUILD)
@@ -31,44 +39,13 @@ libacls_la_SOURCES = \
 	AclMaxUserIp.cc \
 	AclMaxUserIp.h \
 	AclProxyAuth.cc \
-	AclProxyAuth.h	
+	AclProxyAuth.h \
+	AuthAclState.h
 
+CredentialState.cc: CredentialState.h $(top_srcdir)/src/mk-string-arrays.awk
+	$(AWK) -f $(top_srcdir)/src/mk-string-arrays.awk < $(srcdir)/CredentialState.h > $@ || (rm -f $@ ; exit 1)
 
-libbasic_la_SOURCES = \
-	basic/basicScheme.cc \
-	basic/basicScheme.h \
-	basic/auth_basic.cc \
-	basic/auth_basic.h
+Type.cc: Type.h $(top_srcdir)/src/mk-string-arrays.awk
+	$(AWK) -f $(top_srcdir)/src/mk-string-arrays.awk < $(srcdir)/Type.h > $@ || (rm -f $@ ; exit 1)
 
-libdigest_la_SOURCES = \
-	digest/digestScheme.cc \
-	digest/digestScheme.h \
-	digest/auth_digest.cc \
-	digest/auth_digest.h
-
-libntlm_la_SOURCES = \
-	ntlm/ntlmScheme.cc \
-	ntlm/ntlmScheme.h \
-	ntlm/auth_ntlm.cc \
-	ntlm/auth_ntlm.h
-
-libnegotiate_la_SOURCES = \
-	negotiate/negotiateScheme.cc \
-	negotiate/negotiateScheme.h \
-	negotiate/auth_negotiate.cc \
-	negotiate/auth_negotiate.h
-
-
-TESTS += testHeaders
-
-## Special Universal .h dependency test script
-## aborts if error encountered
-testHeaders: $(top_srcdir)/src/auth/*.h $(top_srcdir)/src/auth/basic/*.h $(top_srcdir)/src/auth/digest/*.h $(top_srcdir)/src/auth/ntlm/*.h $(top_srcdir)/src/auth/negotiate/*.h
-	$(SHELL) $(top_srcdir)/test-suite/testheaders.sh "$(CXXCOMPILE)" "$(top_srcdir)/src/auth/" || exit 1
-	$(SHELL) $(top_srcdir)/test-suite/testheaders.sh "$(CXXCOMPILE)" "$(top_srcdir)/src/auth/basic" || exit 1
-	$(SHELL) $(top_srcdir)/test-suite/testheaders.sh "$(CXXCOMPILE)" "$(top_srcdir)/src/auth/digest" || exit 1
-	$(SHELL) $(top_srcdir)/test-suite/testheaders.sh "$(CXXCOMPILE)" "$(top_srcdir)/src/auth/ntlm" || exit 1
-	$(SHELL) $(top_srcdir)/test-suite/testheaders.sh "$(CXXCOMPILE)" "$(top_srcdir)/src/auth/negotiate" || exit 1
-
-CLEANFILES += testHeaders
-.PHONY: testHeaders
+CLEANFILES += CredentialState.cc Type.cc

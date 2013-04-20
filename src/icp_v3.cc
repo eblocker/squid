@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 12    Internet Cache Protocol (ICP)
  * AUTHOR: Duane Wessels
  *
@@ -56,10 +54,10 @@ public:
 
 /// \ingroup ServerProtocolICPInternal3
 static void
-doV3Query(int fd, IpAddress &from, char *buf, icp_common_t header)
+doV3Query(int fd, Ip::Address &from, char *buf, icp_common_t header)
 {
     /* We have a valid packet */
-    char *url = buf + sizeof(icp_common_t) + sizeof(u_int32_t);
+    char *url = buf + sizeof(icp_common_t) + sizeof(uint32_t);
     HttpRequest *icp_request = icpGetRequest (url, header.reqnum, fd, from);
 
     if (!icp_request)
@@ -105,11 +103,10 @@ ICP3State::created(StoreEntry *newEntry)
     delete this;
 }
 
-
 /// \ingroup ServerProtocolICPInternal3
 /* Currently Harvest cached-2.x uses ICP_VERSION_3 */
 void
-icpHandleIcpV3(int fd, IpAddress&from, char *buf, int len)
+icpHandleIcpV3(int fd, Ip::Address &from, char *buf, int len)
 {
     if (len <= 0) {
         debugs(12, 3, "icpHandleIcpV3: ICP message is too small");
@@ -150,7 +147,7 @@ icpHandleIcpV3(int fd, IpAddress&from, char *buf, int len)
         break;
 
     default:
-        debugs(12, 0, "icpHandleIcpV3: UNKNOWN OPCODE: " << header.opcode << " from " << from);
+        debugs(12, DBG_CRITICAL, "icpHandleIcpV3: UNKNOWN OPCODE: " << header.opcode << " from " << from);
         break;
     }
 }

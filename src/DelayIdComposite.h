@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  * DEBUG: section 77    Delay Pools
  * AUTHOR: Robert Collins <robertc@squid-cache.org>
  * Based upon original delay pools code by
@@ -36,13 +34,11 @@
  *
  * Copyright (c) 2003, Robert Collins <robertc@squid-cache.org>
  */
-
-#include "config.h"
-
 #ifndef DELAYIDCOMPOSITE_H
 #define DELAYIDCOMPOSITE_H
-#if DELAY_POOLS
-#include "squid.h"
+
+#if USE_DELAY_POOLS
+#include "fatal.h"
 #include "RefCount.h"
 
 class DeferredRead;
@@ -60,5 +56,5 @@ public:
     virtual void delayRead(DeferredRead const &) {fatal("Not implemented");}
 };
 
-#endif
+#endif /* USE_DELAY_POOLS */
 #endif /* DELAYIDCOMPOSITE_H */

@@ -2,24 +2,28 @@
 #include "Module.h"
 #if defined(HAVE_FS_UFS) || defined(HAVE_FS_AUFS) || defined(HAVE_FS_DISKD)
 #include "fs/ufs/StoreFSufs.h"
-#include "fs/ufs/ufscommon.h"
+#include "fs/ufs/UFSSwapDir.h"
 #endif
 
-#ifdef HAVE_FS_COSS
+#if HAVE_FS_COSS
 #include "fs/coss/StoreFScoss.h"
 #endif
 
-#ifdef HAVE_FS_UFS
-static StoreFSufs<UFSSwapDir> *UfsInstance;
+#if HAVE_FS_UFS
+static Fs::Ufs::StoreFSufs<Fs::Ufs::UFSSwapDir> *UfsInstance;
 #endif
 
-#ifdef HAVE_FS_AUFS
-static StoreFSufs<UFSSwapDir> *AufsInstance;
+#if HAVE_FS_AUFS
+static Fs::Ufs::StoreFSufs<Fs::Ufs::UFSSwapDir> *AufsInstance;
 #endif
 
+#if HAVE_FS_DISKD
+static Fs::Ufs::StoreFSufs<Fs::Ufs::UFSSwapDir> *DiskdInstance;
+#endif
 
-#ifdef HAVE_FS_DISKD
-static StoreFSufs<UFSSwapDir> *DiskdInstance;
+#if HAVE_FS_ROCK
+#include "fs/rock/RockStoreFileSystem.h"
+static Rock::StoreFileSystem *RockInstance = NULL;
 #endif
 
 /* TODO: Modify coss code to:
@@ -27,43 +31,47 @@ static StoreFSufs<UFSSwapDir> *DiskdInstance;
  * (b) declare the StoreFScoss::stats  as static and
  * (c) merge the StoreFScoss::stat() method with the static
  *     StoreFScoss::Stats() */
-#ifdef HAVE_FS_COSS
+#if HAVE_FS_COSS
 StoreFScoss &CossInstance = StoreFScoss::GetInstance();
 #endif
-
 
 void Fs::Init()
 {
 
-#ifdef HAVE_FS_UFS
-    UfsInstance = new StoreFSufs<UFSSwapDir>("Blocking", "ufs");
+#if HAVE_FS_UFS
+    UfsInstance = new Fs::Ufs::StoreFSufs<Fs::Ufs::UFSSwapDir>("Blocking", "ufs");
 #endif
 
-#ifdef HAVE_FS_AUFS
-    AufsInstance = new StoreFSufs<UFSSwapDir>("DiskThreads", "aufs");;
+#if HAVE_FS_AUFS
+    AufsInstance = new Fs::Ufs::StoreFSufs<Fs::Ufs::UFSSwapDir>("DiskThreads", "aufs");;
 #endif
 
+#if HAVE_FS_DISKD
+    DiskdInstance = new Fs::Ufs::StoreFSufs<Fs::Ufs::UFSSwapDir>("DiskDaemon", "diskd");;
+#endif
 
-#ifdef HAVE_FS_DISKD
-    DiskdInstance = new StoreFSufs<UFSSwapDir>("DiskDaemon", "diskd");;
+#if HAVE_FS_ROCK
+    RockInstance = new Rock::StoreFileSystem();
 #endif
 
 }
 
-
 void Fs::Clean()
 {
-#ifdef HAVE_FS_UFS
+#if HAVE_FS_UFS
     delete UfsInstance;
 #endif
 
-#ifdef HAVE_FS_AUFS
+#if HAVE_FS_AUFS
     delete AufsInstance;
 #endif
 
-
-#ifdef HAVE_FS_DISKD
+#if HAVE_FS_DISKD
     delete DiskdInstance;
+#endif
+
+#if HAVE_FS_ROCK
+    delete RockInstance;
 #endif
 
 }

@@ -1,18 +1,13 @@
-#ifndef SQUID_CONFIG_H
-#include "config.h"
-#endif
-
 #ifndef SQUID_OS_LINUX_H
 #define SQUID_OS_LINUX_H
 
-#ifdef _SQUID_LINUX_
+#if _SQUID_LINUX_
 
 /****************************************************************************
  *--------------------------------------------------------------------------*
  * DO *NOT* MAKE ANY CHANGES below here unless you know what you're doing...*
  *--------------------------------------------------------------------------*
  ****************************************************************************/
-
 
 #if USE_ASYNC_IO
 #define _SQUID_LINUX_THREADS_
@@ -25,7 +20,6 @@
 #define res_init  __res_init
 #define HAVE_RES_INIT  HAVE___RES_INIT
 #endif
-
 
 /*
  * sys/capability.h is only needed in Linux apparently.

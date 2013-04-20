@@ -1,7 +1,4 @@
-
 /*
- * $Id$
- *
  * DEBUG: section 61    Redirector
  * AUTHOR: Duane Wessels
  *
@@ -34,17 +31,27 @@
  */
 
 #include "squid.h"
-#include "auth/UserRequest.h"
-#include "CacheManager.h"
-#include "Store.h"
-#include "fde.h"
-#include "client_side_request.h"
 #include "acl/Checklist.h"
-#include "HttpRequest.h"
 #include "client_side.h"
 #include "client_side_reply.h"
+#include "client_side_request.h"
+#include "comm/Connection.h"
+#include "fde.h"
+#include "fqdncache.h"
+#include "globals.h"
+#include "HttpRequest.h"
 #include "helper.h"
+#include "mgr/Registration.h"
+#include "redirect.h"
 #include "rfc1738.h"
+#include "SquidConfig.h"
+#include "Store.h"
+#if USE_AUTH
+#include "auth/UserRequest.h"
+#endif
+#if USE_SSL
+#include "ssl/support.h"
+#endif
 
 /// url maximum lengh + extra informations passed to redirector
 #define MAX_REDIRECTOR_REQUEST_STRLEN (MAX_URL + 1024)
@@ -53,7 +60,7 @@ typedef struct {
     void *data;
     char *orig_url;
 
-    IpAddress client_addr;
+    Ip::Address client_addr;
     const char *client_ident;
     const char *method_s;
     RH *handler;
@@ -129,7 +136,7 @@ redirectStart(ClientHttpRequest * http, RH * handler, void *data)
 
     if (Config.onoff.redirector_bypass && redirectors->stats.queue_size) {
         /* Skip redirector if there is one request queued */
-        n_bypassed++;
+        ++n_bypassed;
         handler(data, NULL);
         return;
     }
@@ -141,10 +148,12 @@ redirectStart(ClientHttpRequest * http, RH * handler, void *data)
     else
         r->client_addr.SetNoAddr();
     r->client_ident = NULL;
+#if USE_AUTH
     if (http->request->auth_user_request != NULL) {
         r->client_ident = http->request->auth_user_request->username();
         debugs(61, 5, HERE << "auth-user=" << (r->client_ident?r->client_ident:"NULL"));
     }
+#endif
 
     // HttpRequest initializes with null_string. So we must check both defined() and size()
     if (!r->client_ident && http->request->extacl_user.defined() && http->request->extacl_user.size()) {
@@ -152,15 +161,15 @@ redirectStart(ClientHttpRequest * http, RH * handler, void *data)
         debugs(61, 5, HERE << "acl-user=" << (r->client_ident?r->client_ident:"NULL"));
     }
 
-    if (!r->client_ident && (conn != NULL && conn->rfc931[0])) {
-        r->client_ident = conn->rfc931;
+    if (!r->client_ident && conn != NULL && conn->clientConnection != NULL && conn->clientConnection->rfc931[0]) {
+        r->client_ident = conn->clientConnection->rfc931;
         debugs(61, 5, HERE << "ident-user=" << (r->client_ident?r->client_ident:"NULL"));
     }
 
 #if USE_SSL
 
-    if (!r->client_ident && conn != NULL) {
-        r->client_ident = sslGetUserEmail(fd_table[conn->fd].ssl);
+    if (!r->client_ident && conn != NULL && Comm::IsConnOpen(conn->clientConnection)) {
+        r->client_ident = sslGetUserEmail(fd_table[conn->clientConnection->fd].ssl);
         debugs(61, 5, HERE << "ssl-user=" << (r->client_ident?r->client_ident:"NULL"));
     }
 #endif
@@ -198,15 +207,20 @@ redirectStart(ClientHttpRequest * http, RH * handler, void *data)
         clientStreamNode *node = (clientStreamNode *)http->client_stream.tail->prev->data;
         clientReplyContext *repContext = dynamic_cast<clientReplyContext *>(node->data.getRaw());
         assert (repContext);
-        IpAddress tmpnoaddr;
+        Ip::Address tmpnoaddr;
         tmpnoaddr.SetNoAddr();
         repContext->setReplyToError(ERR_GATEWAY_FAILURE, status,
                                     http->request->method, NULL,
-                                    http->getConn() != NULL ? http->getConn()->peer : tmpnoaddr,
+                                    http->getConn() != NULL && http->getConn()->clientConnection != NULL ?
+                                    http->getConn()->clientConnection->remote : tmpnoaddr,
                                     http->request,
                                     NULL,
+#if USE_AUTH
                                     http->getConn() != NULL && http->getConn()->auth_user_request != NULL ?
                                     http->getConn()->auth_user_request : http->request->auth_user_request);
+#else
+                                    NULL);
+#endif
 
         node = (clientStreamNode *)http->client_stream.tail->data;
         clientStreamRead(node, http, node->readBuffer);
@@ -220,8 +234,7 @@ redirectStart(ClientHttpRequest * http, RH * handler, void *data)
 static void
 redirectRegisterWithCacheManager(void)
 {
-    CacheManager::GetInstance()->
-    registerAction("redirector", "URL Redirector Stats", redirectStats, 0, 1);
+    Mgr::RegisterAction("redirector", "URL Redirector Stats", redirectStats, 0, 1);
 }
 
 void
@@ -235,13 +248,11 @@ redirectInit(void)
         return;
 
     if (redirectors == NULL)
-        redirectors = helperCreate("redirector");
+        redirectors = new helper("redirector");
 
     redirectors->cmdline = Config.Program.redirect;
 
-    redirectors->n_to_start = Config.redirectChildren;
-
-    redirectors->concurrency = Config.redirectConcurrency;
+    redirectors->childs.updateLimits(Config.redirectChildren);
 
     redirectors->ipc_type = IPC_STREAM;
 
@@ -264,7 +275,6 @@ redirectShutdown(void)
     if (!shutting_down)
         return;
 
-    helperFree(redirectors);
-
+    delete redirectors;
     redirectors = NULL;
 }

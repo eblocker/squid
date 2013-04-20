@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
  * ----------------------------------------------------------
@@ -33,19 +31,23 @@
 #ifndef SQUID_MEMOBJECT_H
 #define SQUID_MEMOBJECT_H
 
+#include "CommRead.h"
+#include "dlink.h"
+#include "HttpRequestMethod.h"
+#include "RemovalPolicy.h"
+#include "stmem.h"
 #include "StoreIOBuffer.h"
 #include "StoreIOState.h"
-#include "stmem.h"
-#include "CommRead.h"
-#include "RemovalPolicy.h"
-#include "HttpRequestMethod.h"
+
+#if USE_DELAY_POOLS
+#include "DelayId.h"
+#endif
 
 typedef void STMCB (void *data, StoreIOBuffer wroteBuffer);
 
 class store_client;
-#if DELAY_POOLS
-#include "DelayId.h"
-#endif
+class HttpRequest;
+class HttpReply;
 
 class MemObject
 {
@@ -58,12 +60,19 @@ public:
     MemObject(char const *, char const *);
     ~MemObject();
 
+    /// replaces construction-time URLs with correct ones; see hidden_mem_obj
+    void resetUrls(char const *aUrl, char const *aLog_url);
+
     void write(StoreIOBuffer, STMCB *, void *);
     void unlinkRequest();
     HttpReply const *getReply() const;
     void replaceHttpReply(HttpReply *newrep);
     void stat (MemBuf * mb) const;
     int64_t endOffset () const;
+    void markEndOfReplyHeaders(); ///< sets _reply->hdr_sz to endOffset()
+    /// negative if unknown; otherwise, expected object_sz, expected endOffset
+    /// maximum, and stored reply headers+body size (all three are the same)
+    int64_t expectedReplySize() const;
     int64_t size() const;
     void reset();
     int64_t lowestMemReaderOffset() const;
@@ -73,17 +82,16 @@ public:
      * better
      */
     int64_t objectBytesOnDisk() const;
-    int64_t policyLowestOffsetToKeep() const;
+    int64_t policyLowestOffsetToKeep(bool swap) const;
+    int64_t availableForSwapOut() const; ///< buffered bytes we have not swapped out yet
     void trimSwappable();
     void trimUnSwappable();
     bool isContiguous() const;
-    int mostBytesWanted(int max) const;
+    int mostBytesWanted(int max, bool ignoreDelayPools) const;
     void setNoDelay(bool const newValue);
-#if DELAY_POOLS
-
+#if USE_DELAY_POOLS
     DelayId mostBytesAllowed() const;
 #endif
-
 
 #if URL_CHECKSUM_DEBUG
 
@@ -107,9 +115,12 @@ public:
     {
 
     public:
-        int64_t queue_offset;     /* relative to in-mem data */
-        mem_node *memnode;      /* which node we're currently paging out */
+        int64_t queue_offset; ///< number of bytes sent to SwapDir for writing
         StoreIOState::Pointer sio;
+
+        /// Decision states for StoreEntry::swapoutPossible() and related code.
+        typedef enum { swNeedsCheck = 0, swImpossible = -1, swPossible = +1 } Decision;
+        Decision decision; ///< current decision state
     };
 
     SwapOut swapout;

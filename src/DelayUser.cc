@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  * DEBUG: section 77    Delay Pools
  * AUTHOR: Robert Collins <robertc@squid-cache.org>
  *
@@ -35,13 +33,13 @@
  * Copyright (c) 2003, Robert Collins <robertc@squid-cache.org>
  */
 
-#include "config.h"
-
-#if DELAY_POOLS
 #include "squid.h"
-#include "DelayUser.h"
-#include "auth/UserRequest.h"
+
+#if USE_DELAY_POOLS && USE_AUTH
 #include "auth/User.h"
+#include "auth/UserRequest.h"
+#include "comm/Connection.h"
+#include "DelayUser.h"
 #include "NullDelayId.h"
 #include "Store.h"
 
@@ -180,22 +178,20 @@ DelayUserBucket::operator new(size_t size)
 }
 
 void
-DelayUserBucket::operator delete (void *address)
+DelayUserBucket::operator delete(void *address)
 {
-    DelayPools::MemoryUsed -= sizeof (DelayUserBucket);
-    ::operator delete (address);
+    DelayPools::MemoryUsed -= sizeof(DelayUserBucket);
+    ::operator delete(address);
 }
 
-DelayUserBucket::DelayUserBucket(AuthUser *aUser) : authUser (aUser)
+DelayUserBucket::DelayUserBucket(Auth::User::Pointer aUser) : authUser(aUser)
 {
     debugs(77, 3, "DelayUserBucket::DelayUserBucket");
-
-    authUser->lock();
 }
 
 DelayUserBucket::~DelayUserBucket()
 {
-    authUser->unlock();
+    authUser = NULL;
     debugs(77, 3, "DelayUserBucket::~DelayUserBucket");
 }
 
@@ -203,10 +199,10 @@ void
 DelayUserBucket::stats (StoreEntry *entry) const
 {
     storeAppendPrintf(entry, " %s:", authUser->username());
-    theBucket.stats (entry);
+    theBucket.stats(entry);
 }
 
-DelayUser::Id::Id(DelayUser::Pointer aDelayUser,AuthUser *aUser) : theUser(aDelayUser)
+DelayUser::Id::Id(DelayUser::Pointer aDelayUser, Auth::User::Pointer aUser) : theUser(aDelayUser)
 {
     theBucket = new DelayUserBucket(aUser);
     DelayUserBucket::Pointer const *existing = theUser->buckets.find(theBucket, DelayUserCmp);
@@ -237,4 +233,4 @@ DelayUser::Id::bytesIn(int qty)
     theBucket->theBucket.bytesIn(qty);
 }
 
-#endif
+#endif /* USE_DELAY_POOLS && USE_AUTH */

@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
  * ----------------------------------------------------------
@@ -36,9 +34,6 @@ class StoreEntry;
 
 // WTF?
 typedef class StoreMeta tlv;
-
-/* for size_t, SQUIDCEXTERN */
-#include "config.h"
 
 /**
  \ingroup SwapStoreAPI
@@ -127,10 +122,6 @@ enum {
      */
     STORE_META_STD_LFS,
 
-    /**
-     \deprecated
-     * Object size, not implemented, squid26 compatibility
-     */
     STORE_META_OBJSIZE,
 
     STORE_META_STOREURL,	/* the store url, if different to the normal URL */
@@ -160,10 +151,10 @@ public:
 };
 
 /// \ingroup SwapStoreAPI
-SQUIDCEXTERN char *storeSwapMetaPack(tlv * tlv_list, int *length);
+char *storeSwapMetaPack(tlv * tlv_list, int *length);
 /// \ingroup SwapStoreAPI
-SQUIDCEXTERN tlv *storeSwapMetaBuild(StoreEntry * e);
+tlv *storeSwapMetaBuild(StoreEntry * e);
 /// \ingroup SwapStoreAPI
-SQUIDCEXTERN void storeSwapTLVFree(tlv * n);
+void storeSwapTLVFree(tlv * n);
 
 #endif /* SQUID_TYPELENGTHVALUE_H */

@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  * DEBUG: section 19    Store Memory Primitives
  * AUTHOR: Robert Collins
  *
@@ -65,8 +63,12 @@ memNodeWriteComplete(void* d)
     n->write_pending = 0;
 }
 
-mem_node::mem_node(int64_t offset):nodeBuffer(0,offset,data)
-{}
+mem_node::mem_node(int64_t offset) :
+        nodeBuffer(0,offset,data),
+        write_pending(0)
+{
+    *data = 0;
+}
 
 mem_node::~mem_node()
 {}

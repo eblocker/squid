@@ -1,8 +1,4 @@
-/*
- * $Id$
- */
-
-#include "config.h"
+#include "squid.h"
 #include "util.h"
 
 #if HAVE_STDIO_H
@@ -14,16 +10,9 @@
 #if HAVE_CTYPE_H
 #include <ctype.h>
 #endif
-#if HAVE_SYS_TYPES_H
-#include <sys/types.h>
-#endif
 #if HAVE_TIME_H
 #include <time.h>
 #endif
-#if HAVE_SYS_TIME_H
-#include <sys/time.h>
-#endif
-
 
 #define ASCII_DIGIT(c) ((c)-48)
 

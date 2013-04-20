@@ -2,8 +2,6 @@
 #ifndef SQUID_SNMP_MSG_H
 #define SQUID_SNMP_MSG_H
 
-#include "config.h"
-
 /**********************************************************************
  *
  *           Copyright 1997 by Carnegie Mellon University
@@ -28,9 +26,9 @@
  *
  * Author: Ryan Troll <ryan+@andrew.cmu.edu>
  *
- * $Id$
- *
  **********************************************************************/
+
+#include "snmp_pdu.h"
 
 #define SNMP_VERSION_1	    0	/* RFC 1157 */
 #define SNMP_VERSION_2	    1	/* RFC 1901 */

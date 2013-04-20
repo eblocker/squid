@@ -1,7 +1,4 @@
-
 /*
- * $Id$
- *
  * DEBUG:
  * AUTHOR: Harvest Derived
  *
@@ -33,8 +30,8 @@
  *
  */
 
-#include "config.h"
-
+#include "squid.h"
+#include "rfc1123.h"
 
 /*
  *  Adapted from HTSUtils.c in CERN httpd 3.0 (http://info.cern.ch/httpd/)
@@ -43,26 +40,15 @@
 #if HAVE_STDIO_H
 #include <stdio.h>
 #endif
-#if HAVE_STDLIB_H
-#include <stdlib.h>
-#endif
 #if HAVE_STRING_H
 #include <string.h>
 #endif
 #if HAVE_CTYPE_H
 #include <ctype.h>
 #endif
-#if HAVE_SYS_TYPES_H
-#include <sys/types.h>
-#endif
 #if HAVE_TIME_H
 #include <time.h>
 #endif
-#if HAVE_SYS_TIME_H
-#include <sys/time.h>
-#endif
-
-#include "util.h"
 
 #define RFC850_STRFTIME "%A, %d-%b-%y %H:%M:%S GMT"
 #define RFC1123_STRFTIME "%a, %d %b %Y %H:%M:%S GMT"
@@ -74,7 +60,6 @@ static const char *month_names[12] = {
     "Jan", "Feb", "Mar", "Apr", "May", "Jun",
     "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
 };
-
 
 static int
 make_num(const char *s)
@@ -208,7 +193,7 @@ parse_rfc1123(const char *str)
     if (!tm)
         return -1;
     tm->tm_isdst = -1;
-#ifdef HAVE_TIMEGM
+#if HAVE_TIMEGM
     t = timegm(tm);
 #elif HAVE_TM_TM_GMTOFF
     t = mktime(tm);
@@ -221,14 +206,8 @@ parse_rfc1123(const char *str)
     t = mktime(tm);
     if (t != -1) {
         time_t dst = 0;
-#if defined (_TIMEZONE)
-#elif defined (_timezone)
-#elif defined(_SQUID_AIX_)
-#elif defined(_SQUID_CYGWIN_)
-#elif defined(_SQUID_MSWIN_)
-#elif defined(_SQUID_SGI_)
-#else
-    extern long timezone;
+#if !(defined(_TIMEZONE) || defined(_timezone) || _SQUID_AIX_ || _SQUID_WINDOWS_ || _SQUID_SGI_)
+        extern long timezone;
 #endif
         /*
          * The following assumes a fixed DST offset of 1 hour,
@@ -236,7 +215,7 @@ parse_rfc1123(const char *str)
          */
         if (tm->tm_isdst > 0)
             dst = -3600;
-#if defined ( _timezone) || defined(_SQUID_WIN32_)
+#if defined(_timezone) || _SQUID_WINDOWS_
         t -= (_timezone + dst);
 #else
     t -= (timezone + dst);
@@ -255,48 +234,6 @@ mkrfc1123(time_t t)
 
     buf[0] = '\0';
     strftime(buf, 127, RFC1123_STRFTIME, gmt);
-    return buf;
-}
-
-const char *
-mkhttpdlogtime(const time_t * t)
-{
-    static char buf[128];
-
-    struct tm *gmt = gmtime(t);
-
-#ifndef USE_GMT
-    int gmt_min, gmt_hour, gmt_yday, day_offset;
-    size_t len;
-    struct tm *lt;
-    int min_offset;
-
-    /* localtime & gmtime may use the same static data */
-    gmt_min = gmt->tm_min;
-    gmt_hour = gmt->tm_hour;
-    gmt_yday = gmt->tm_yday;
-
-    lt = localtime(t);
-
-    day_offset = lt->tm_yday - gmt_yday;
-    /* wrap round on end of year */
-    if (day_offset > 1)
-        day_offset = -1;
-    else if (day_offset < -1)
-        day_offset = 1;
-
-    min_offset = day_offset * 1440 + (lt->tm_hour - gmt_hour) * 60
-                 + (lt->tm_min - gmt_min);
-
-    len = strftime(buf, 127 - 5, "%d/%b/%Y:%H:%M:%S ", lt);
-    snprintf(buf + len, 128 - len, "%+03d%02d",
-             (min_offset / 60) % 24,
-             min_offset % 60);
-#else /* USE_GMT */
-    buf[0] = '\0';
-    strftime(buf, 127, "%d/%b/%Y:%H:%M:%S -000", gmt);
-#endif /* USE_GMT */
-
     return buf;
 }
 

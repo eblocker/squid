@@ -1,5 +1,3 @@
-#include "config.h"
-
 #include "squid.h"
 #include "TestSwapDir.h"
 
@@ -9,6 +7,18 @@ TestSwapDir::maxSize() const
     return 3;
 }
 
+uint64_t
+TestSwapDir::currentSize() const
+{
+    return 2;
+}
+
+uint64_t
+TestSwapDir::currentCount() const
+{
+    return 2;
+}
+
 void
 TestSwapDir::stat(StoreEntry &) const
 {
@@ -16,16 +26,23 @@ TestSwapDir::stat(StoreEntry &) const
 }
 
 void
-TestSwapDir::reconfigure(int, char*)
+TestSwapDir::reconfigure()
 {}
 
 void
 TestSwapDir::init()
 {}
 
-int
-TestSwapDir::canStore(const StoreEntry&) const
+bool
+TestSwapDir::unlinkdUseful() const
 {
+    return false;
+}
+
+bool
+TestSwapDir::canStore(const StoreEntry &, int64_t, int &load) const
+{
+    load = 0;
     return true;
 }
 

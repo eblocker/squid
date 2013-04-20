@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
  * ----------------------------------------------------------
@@ -34,10 +32,10 @@
  */
 
 #include "squid.h"
-#include "ProtoPort.h"
 #include "acl/MyPortName.h"
 #include "acl/StringData.h"
 #include "acl/Checklist.h"
+#include "anyp/PortCfg.h"
 #include "HttpRequest.h"
 
 /* for ConnStateData */

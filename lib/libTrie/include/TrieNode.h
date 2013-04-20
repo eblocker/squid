@@ -27,10 +27,6 @@
  * For C bindings see Trei.h
  */
 
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
-
 /* C bindings */
 #ifndef   __cplusplus
 
@@ -88,7 +84,7 @@ private:
 
 #endif /* __cplusplus */
 
-#ifdef _USE_INLINE_
+#if _USE_INLINE_
 #include "TrieNode.cci"
 #endif
 

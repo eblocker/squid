@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 20    Storage Manager Logging Functions
  * AUTHOR: Duane Wessels
  *
@@ -33,10 +31,14 @@
  */
 
 #include "squid.h"
-#include "Store.h"
-#include "MemObject.h"
+#include "format/Token.h"
 #include "HttpReply.h"
-#include "CacheManager.h"
+#include "log/File.h"
+#include "MemObject.h"
+#include "mgr/Registration.h"
+#include "Store.h"
+#include "store_log.h"
+#include "SquidConfig.h"
 #include "SquidTime.h"
 
 static const char *storeLogTags[] = {
@@ -66,10 +68,10 @@ storeLog(int tag, const StoreEntry * e)
     if (NULL == storelog)
         return;
 
-    storeLogTagsCounts[tag]++;
+    ++storeLogTagsCounts[tag];
     if (mem != NULL) {
         if (mem->log_url == NULL) {
-            debugs(20, 1, "storeLog: NULL log_url for " << mem->url);
+            debugs(20, DBG_IMPORTANT, "storeLog: NULL log_url for " << mem->url);
             mem->dump();
             mem->log_url = xstrdup(mem->url);
         }
@@ -83,7 +85,8 @@ storeLog(int tag, const StoreEntry * e)
 
         String ctype=(reply->content_type.size() ? reply->content_type.termedBuf() : str_unknown);
 
-        logfilePrintf(storelog, "%9d.%03d %-7s %02d %08X %s %4d %9d %9d %9d " SQUIDSTRINGPH " %"PRId64"/%"PRId64" %s %s\n",
+        logfileLineStart(storelog);
+        logfilePrintf(storelog, "%9d.%03d %-7s %02d %08X %s %4d %9d %9d %9d " SQUIDSTRINGPH " %" PRId64 "/%" PRId64 " %s %s\n",
                       (int) current_time.tv_sec,
                       (int) current_time.tv_usec / 1000,
                       storeLogTags[tag],
@@ -99,8 +102,10 @@ storeLog(int tag, const StoreEntry * e)
                       e->contentLen(),
                       RequestMethodStr(mem->method),
                       mem->log_url);
+        logfileLineEnd(storelog);
     } else {
         /* no mem object. Most RELEASE cases */
+        logfileLineStart(storelog);
         logfilePrintf(storelog, "%9d.%03d %-7s %02d %08X %s   ?         ?         ?         ? ?/? ?/? ? ?\n",
                       (int) current_time.tv_sec,
                       (int) current_time.tv_usec / 1000,
@@ -108,6 +113,7 @@ storeLog(int tag, const StoreEntry * e)
                       e->swap_dirn,
                       e->swap_filen,
                       e->getMD5Text());
+        logfileLineEnd(storelog);
     }
 }
 
@@ -134,9 +140,8 @@ storeLogClose(void)
 static void
 storeLogRegisterWithCacheManager(void)
 {
-    CacheManager::GetInstance()->
-    registerAction("store_log_tags", "Histogram of store.log tags",
-                   storeLogTagsHist, 0, 1);
+    Mgr::RegisterAction("store_log_tags", "Histogram of store.log tags",
+                        storeLogTagsHist, 0, 1);
 }
 
 void
@@ -145,7 +150,7 @@ storeLogOpen(void)
     storeLogRegisterWithCacheManager();
 
     if (Config.Log.store == NULL || strcmp(Config.Log.store, "none") == 0) {
-        debugs(20, 1, "Store logging disabled");
+        debugs(20, DBG_IMPORTANT, "Store logging disabled");
         return;
     }
 
@@ -156,7 +161,7 @@ void
 storeLogTagsHist(StoreEntry *e)
 {
     int tag;
-    for (tag = 0; tag <= STORE_LOG_SWAPOUTFAIL; tag++) {
+    for (tag = 0; tag <= STORE_LOG_SWAPOUTFAIL; ++tag) {
         storeAppendPrintf(e, "%s %d\n",
                           storeLogTags[tag],
                           storeLogTagsCounts[tag]);

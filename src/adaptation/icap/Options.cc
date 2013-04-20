@@ -1,13 +1,15 @@
 #include "squid.h"
-#include "wordlist.h"
-#include "HttpReply.h"
-#include "adaptation/icap/Options.h"
-#include "TextException.h"
 #include "adaptation/icap/Config.h"
+#include "adaptation/icap/Options.h"
+#include "base/TextException.h"
+#include "HttpReply.h"
 #include "SquidTime.h"
+#include "StrList.h"
+#include "wordlist.h"
 
 Adaptation::Icap::Options::Options(): error("unconfigured"),
         max_connections(-1), allow204(false),
+        allow206(false),
         preview(-1), theTTL(-1)
 {
     theTransfers.preview.name = "Transfer-Preview";
@@ -97,6 +99,8 @@ void Adaptation::Icap::Options::configure(const HttpReply *reply)
     }
 
     cfgIntHeader(h, "Max-Connections", max_connections);
+    if (max_connections == 0)
+        debugs(93, DBG_IMPORTANT, "WARNING: Max-Connections is set to zero! ");
 
     cfgIntHeader(h, "Options-TTL", theTTL);
 
@@ -107,6 +111,9 @@ void Adaptation::Icap::Options::configure(const HttpReply *reply)
 
     if (h->hasListMember(HDR_ALLOW, "204", ','))
         allow204 = true;
+
+    if (h->hasListMember(HDR_ALLOW, "206", ','))
+        allow206 = true;
 
     cfgIntHeader(h, "Preview", preview);
 
@@ -147,7 +154,6 @@ void Adaptation::Icap::Options::cfgTransferList(const HttpHeader *h, TransferLis
 
     list.report(5, "Adaptation::Icap::Options::cfgTransferList: ");
 }
-
 
 /* Adaptation::Icap::Options::TransferList */
 
@@ -199,8 +205,11 @@ void Adaptation::Icap::Options::TransferList::parse(const String &buf, bool &fou
     while (strListGetItem(&buf, ',', &item, &ilen, &pos)) {
         if (ilen == 1 && *item == '*')
             foundStar = true;
-        else
-            add(xstrndup(item, ilen+1));
+        else {
+            const char *tmp = xstrndup(item, ilen+1);
+            add(tmp);
+            xfree(tmp);
+        }
     }
 }
 

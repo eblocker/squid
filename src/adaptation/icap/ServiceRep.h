@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
  * ----------------------------------------------------------
@@ -35,11 +33,15 @@
 #define SQUID_ICAPSERVICEREP_H
 
 #include "cbdata.h"
+#include "FadingCounter.h"
 #include "adaptation/Service.h"
 #include "adaptation/forward.h"
 #include "adaptation/Initiator.h"
 #include "adaptation/icap/Elements.h"
-
+#include "base/AsyncJobCalls.h"
+#include "comm.h"
+#include "pconn.h"
+#include <deque>
 
 namespace Adaptation
 {
@@ -77,7 +79,6 @@ class OptXact;
  * auto-destroyed by refcounting when no longer used.
  */
 
-
 class ServiceRep : public RefCountable, public Adaptation::Service,
         public Adaptation::Initiator
 {
@@ -86,24 +87,36 @@ public:
     typedef RefCount<ServiceRep> Pointer;
 
 public:
-    ServiceRep(const Adaptation::ServiceConfig &config);
+    explicit ServiceRep(const ServiceConfigPointer &aConfig);
     virtual ~ServiceRep();
 
     virtual void finalize();
 
     virtual bool probed() const; // see comments above
     virtual bool up() const; // see comments above
+    bool availableForNew() const; ///< a new transaction may start communicating with the service
+    bool availableForOld() const; ///< a transaction notified about connection slot availability may start communicating with the service
 
     virtual Initiate *makeXactLauncher(HttpMsg *virginHeader, HttpRequest *virginCause);
 
+    void callWhenAvailable(AsyncCall::Pointer &cb, bool priority = false);
     void callWhenReady(AsyncCall::Pointer &cb);
 
     // the methods below can only be called on an up() service
     bool wantsUrl(const String &urlPath) const;
     bool wantsPreview(const String &urlPath, size_t &wantedSize) const;
     bool allows204() const;
+    bool allows206() const;
+    Comm::ConnectionPointer getConnection(bool isRetriable, bool &isReused);
+    void putConnection(const Comm::ConnectionPointer &conn, bool isReusable, bool sendReset, const char *comment);
+    void noteConnectionUse(const Comm::ConnectionPointer &conn);
+    void noteConnectionFailed(const char *comment);
 
     void noteFailure(); // called by transactions to report service failure
+
+    void noteNewWaiter() {theAllWaiters++;} ///< New xaction waiting for service to be up or available
+    void noteGoneWaiter(); ///< An xaction is not waiting any more for service to be available
+    bool existWaiters() const {return (theAllWaiters > 0);} ///< if there are xactions waiting for the service to be available
 
     //AsyncJob virtual methods
     virtual bool doneAll() const { return Adaptation::Initiator::doneAll() && false;}
@@ -117,8 +130,7 @@ public: // treat these as private, they are for callbacks only
     void noteTimeToNotify();
 
     // receive either an ICAP OPTIONS response header or an abort message
-    virtual void noteAdaptationAnswer(HttpMsg *msg);
-    virtual void noteAdaptationQueryAbort(bool);
+    virtual void noteAdaptationAnswer(const Answer &answer);
 
 private:
     // stores Prepare() callback info
@@ -129,14 +141,26 @@ private:
     };
 
     typedef Vector<Client> Clients;
+    // TODO: rename to theUpWaiters
     Clients theClients; // all clients waiting for a call back
 
     Options *theOptions;
     CbcPointer<Adaptation::Initiate> theOptionsFetcher; // pending ICAP OPTIONS transaction
     time_t theLastUpdate; // time the options were last updated
 
-    static const int TheSessionFailureLimit;
-    int theSessionFailures;
+    /// FIFO queue of xactions waiting for a connection slot and not yet notified
+    /// about it; xaction is removed when notification is scheduled
+    std::deque<Client> theNotificationWaiters;
+    int theBusyConns;   ///< number of connections given to active transactions
+    /// number of xactions waiting for a connection slot (notified and not)
+    /// the number is decreased after the xaction receives notification
+    int theAllWaiters;
+    int theMaxConnections; ///< the maximum allowed connections to the service
+    // TODO: use a better type like the FadingCounter for connOverloadReported
+    mutable bool connOverloadReported; ///< whether we reported exceeding theMaxConnections
+    IdleConnList *theIdleConns; ///< idle persistent connection pool
+
+    FadingCounter theSessionFailures;
     const char *isSuspended; // also stores suspension reason for debugging
 
     bool notifying; // may be true in any state except for the initial
@@ -162,6 +186,21 @@ private:
 
     void announceStatusChange(const char *downPhrase, bool important) const;
 
+    /// Set the maximum allowed connections for the service
+    void setMaxConnections();
+    /// The number of connections which excess the Max-Connections limit
+    int excessConnections() const;
+    /**
+     * The available connections slots to the ICAP server
+     \return the available slots, or -1 if there is no limit on allowed connections
+     */
+    int availableConnections() const;
+    /**
+     * If there are xactions waiting for the service to be available, notify
+     * as many xactions as the available connections slots.
+     */
+    void busyCheckpoint();
+
     const char *status() const;
 
     mutable bool wasAnnouncedUp; // prevent sequential same-state announcements
@@ -169,6 +208,18 @@ private:
     CBDATA_CLASS2(ServiceRep);
 };
 
+class ModXact;
+/// Custom dialer to call Service::noteNewWaiter and noteGoneWaiter
+/// to maintain Service idea of waiting and being-notified transactions.
+class ConnWaiterDialer: public NullaryMemFunT<ModXact>
+{
+public:
+    typedef NullaryMemFunT<ModXact> Parent;
+    ServiceRep::Pointer theService;
+    ConnWaiterDialer(const CbcPointer<ModXact> &xact, Parent::Method aHandler);
+    ConnWaiterDialer(const Adaptation::Icap::ConnWaiterDialer &aConnWaiter);
+    ~ConnWaiterDialer();
+};
 
 } // namespace Icap
 } // namespace Adaptation

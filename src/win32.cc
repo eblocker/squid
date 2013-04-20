@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * Windows support
  * AUTHOR: Guido Serassio <serassio@squid-cache.org>
  * inspired by previous work by Romeo Anghelache & Eric Stern.
@@ -35,8 +33,9 @@
 
 #include "squid.h"
 #include "squid_windows.h"
+#include "win32.h"
 
-#ifdef _SQUID_MSWIN_
+#if _SQUID_MSWIN_
 #if HAVE_WIN32_PSAPI
 #include <psapi.h>
 #endif
@@ -49,15 +48,14 @@ SQUIDCEXTERN LPCRITICAL_SECTION dbg_mutex;
 void WIN32_ExceptionHandlerCleanup(void);
 static LPTOP_LEVEL_EXCEPTION_FILTER Win32_Old_ExceptionHandler = NULL;
 
-
 int WIN32_pipe(int handles[2])
 {
     int new_socket;
     fde *F = NULL;
 
-    IpAddress localhost;
-    IpAddress handle0;
-    IpAddress handle1;
+    Ip::Address localhost;
+    Ip::Address handle0;
+    Ip::Address handle1;
     struct addrinfo *AI = NULL;
 
     localhost.SetLocalhost();
@@ -70,7 +68,7 @@ int WIN32_pipe(int handles[2])
 
     handles[0] = handles[1] = -1;
 
-    statCounter.syscalls.sock.sockets++;
+    ++statCounter.syscalls.sock.sockets;
 
     handle0 = localhost;
     handle0.SetPort(0);
@@ -159,9 +157,8 @@ int WIN32_getrusage(int who, struct rusage *usage)
     return 0;
 }
 
-
-int Win32__WSAFDIsSet(int fd, fd_set FAR * set
-                     )
+int
+Win32__WSAFDIsSet(int fd, fd_set FAR * set)
 {
     fde *F = &fd_table[fd];
     SOCKET s = F->win32.handle;
@@ -195,7 +192,6 @@ LONG CALLBACK WIN32_ExceptionHandler(EXCEPTION_POINTERS* ep)
 
     return EXCEPTION_CONTINUE_SEARCH;
 }
-
 
 void WIN32_ExceptionHandlerInit()
 {

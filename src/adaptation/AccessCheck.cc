@@ -1,16 +1,17 @@
 #include "squid.h"
-#include "structs.h"
-
-#include "ConfigParser.h"
-#include "HttpRequest.h"
-#include "HttpReply.h"
 #include "acl/FilledChecklist.h"
-#include "adaptation/Service.h"
-#include "adaptation/ServiceGroups.h"
+#include "adaptation/AccessCheck.h"
 #include "adaptation/AccessRule.h"
 #include "adaptation/Config.h"
-#include "adaptation/AccessCheck.h"
-
+#include "adaptation/Initiator.h"
+#include "adaptation/Service.h"
+#include "adaptation/ServiceGroups.h"
+#include "base/AsyncJobCalls.h"
+#include "base/TextException.h"
+#include "ConfigParser.h"
+#include "globals.h"
+#include "HttpReply.h"
+#include "HttpRequest.h"
 
 /** \cond AUTODOCS-IGNORE */
 cbdata_type Adaptation::AccessCheck::CBDATA_AccessCheck = CBDATA_UNKNOWN;
@@ -18,13 +19,13 @@ cbdata_type Adaptation::AccessCheck::CBDATA_AccessCheck = CBDATA_UNKNOWN;
 
 bool
 Adaptation::AccessCheck::Start(Method method, VectPoint vp,
-                               HttpRequest *req, HttpReply *rep, AccessCheckCallback *cb, void *cbdata)
+                               HttpRequest *req, HttpReply *rep, Adaptation::Initiator *initiator)
 {
 
     if (Config::Enabled) {
         // the new check will call the callback and delete self, eventually
         AsyncJob::Start(new AccessCheck( // we do not store so not a CbcPointer
-                            ServiceFilter(method, vp, req, rep), cb, cbdata));
+                            ServiceFilter(method, vp, req, rep), initiator));
         return true;
     }
 
@@ -33,11 +34,9 @@ Adaptation::AccessCheck::Start(Method method, VectPoint vp,
 }
 
 Adaptation::AccessCheck::AccessCheck(const ServiceFilter &aFilter,
-                                     AccessCheckCallback *aCallback,
-                                     void *aCallbackData):
+                                     Adaptation::Initiator *initiator):
         AsyncJob("AccessCheck"), filter(aFilter),
-        callback(aCallback),
-        callback_data(cbdataReference(aCallbackData)),
+        theInitiator(initiator),
         acl_checklist(NULL)
 {
 #if ICAP_CLIENT
@@ -57,15 +56,37 @@ Adaptation::AccessCheck::~AccessCheck()
     if (h != NULL)
         h->stop("ACL");
 #endif
-    if (callback_data)
-        cbdataReferenceDone(callback_data);
 }
 
 void
 Adaptation::AccessCheck::start()
 {
     AsyncJob::start();
-    check();
+
+    if (!usedDynamicRules())
+        check();
+}
+
+/// returns true if previous services configured dynamic chaining "rules"
+bool
+Adaptation::AccessCheck::usedDynamicRules()
+{
+    Adaptation::History::Pointer ah = filter.request->adaptHistory();
+    if (!ah)
+        return false; // dynamic rules not enabled or not triggered
+
+    DynamicGroupCfg services;
+    if (!ah->extractFutureServices(services)) { // clears history
+        debugs(85,9, HERE << "no service-proposed rules stored");
+        return false; // earlier service did not plan for the future
+    }
+
+    debugs(85,3, HERE << "using stored service-proposed rules: " << services);
+
+    ServiceGroupPointer g = new DynamicServiceChain(services, filter);
+    callBack(g);
+    Must(done());
+    return true;
 }
 
 /// Walk the access rules list to find rules with applicable service groups
@@ -115,34 +136,33 @@ Adaptation::AccessCheck::checkCandidates()
 }
 
 void
-Adaptation::AccessCheck::AccessCheckCallbackWrapper(int answer, void *data)
+Adaptation::AccessCheck::AccessCheckCallbackWrapper(allow_t answer, void *data)
 {
     debugs(93, 8, HERE << "callback answer=" << answer);
     AccessCheck *ac = (AccessCheck*)data;
 
-    /** \todo AYJ 2008-06-12: If answer == ACCESS_REQ_PROXY_AUTH
+    /** \todo AYJ 2008-06-12: If answer == ACCESS_AUTH_REQUIRED
      * we should be kicking off an authentication before continuing
      * with this request. see bug 2400 for details.
      */
 
     // convert to async call to get async call protections and features
-    typedef UnaryMemFunT<AccessCheck, int> MyDialer;
+    typedef UnaryMemFunT<AccessCheck, allow_t> MyDialer;
     AsyncCall::Pointer call =
         asyncCall(93,7, "Adaptation::AccessCheck::noteAnswer",
-                  MyDialer(ac, &Adaptation::AccessCheck::noteAnswer,
-                           answer==ACCESS_ALLOWED));
+                  MyDialer(ac, &Adaptation::AccessCheck::noteAnswer, answer));
     ScheduleCallHere(call);
 
 }
 
 /// process the results of the ACL check
 void
-Adaptation::AccessCheck::noteAnswer(int answer)
+Adaptation::AccessCheck::noteAnswer(allow_t answer)
 {
     Must(!candidates.empty()); // the candidate we were checking must be there
     debugs(93,5, HERE << topCandidate() << " answer=" << answer);
 
-    if (answer) { // the rule matched
+    if (answer == ACCESS_ALLOWED) { // the rule matched
         ServiceGroupPointer g = topGroup();
         if (g != NULL) { // the corresponding group found
             callBack(g);
@@ -162,11 +182,8 @@ void
 Adaptation::AccessCheck::callBack(const ServiceGroupPointer &g)
 {
     debugs(93,3, HERE << g);
-
-    void *validated_cbdata;
-    if (cbdataReferenceValidDone(callback_data, &validated_cbdata)) {
-        callback(g, validated_cbdata);
-    }
+    CallJobHere1(93, 5, theInitiator, Adaptation::Initiator,
+                 noteAdaptationAclCheckDone, g);
     mustStop("done"); // called back or will never be able to call back
 }
 

@@ -1,8 +1,6 @@
 #ifndef SQUID_SNMP_ASN1_H
 #define SQUID_SNMP_ASN1_H
 
-#include "config.h"
-
 /*
  * Definitions for Abstract Syntax Notation One, ASN.1
  * As defined in ISO/IS 8824 and ISO/IS 8825
@@ -29,8 +27,6 @@
  * WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION,
  * ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS
  * SOFTWARE.
- *
- * $Id$
  *
  **********************************************************************/
 

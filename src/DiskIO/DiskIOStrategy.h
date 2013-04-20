@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
  * ----------------------------------------------------------
  *
@@ -33,8 +31,7 @@
 #ifndef SQUID_DISKIOSTRATEGY_H
 #define SQUID_DISKIOSTRATEGY_H
 
-#include "squid.h"
-
+#include "Store.h"
 #include "RefCount.h"
 
 class DiskFile;
@@ -58,6 +55,9 @@ public:
 
     /** flush all IO operations  */
     virtual void sync() {}
+
+    /** whether the IO Strategy can use unlinkd */
+    virtual bool unlinkdUseful() const = 0;
 
     /** unlink a file by path */
     virtual void unlinkFile(char const *) = 0;
@@ -91,6 +91,8 @@ public:
     virtual RefCount<DiskFile> newFile (char const *path) {return io->newFile(path); }
 
     virtual void sync() { io->sync(); }
+
+    virtual bool unlinkdUseful() const { return io->unlinkdUseful(); }
 
     virtual void unlinkFile (char const *path) { io->unlinkFile(path); }
 

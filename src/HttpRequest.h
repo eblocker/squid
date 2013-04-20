@@ -1,7 +1,4 @@
-
 /*
- * $Id$
- *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
  * ----------------------------------------------------------
@@ -34,29 +31,32 @@
 #ifndef SQUID_HTTPREQUEST_H
 #define SQUID_HTTPREQUEST_H
 
-#include "HttpMsg.h"
-#include "client_side.h"
+#include "base/CbcPointer.h"
+#include "Debug.h"
+#include "err_type.h"
 #include "HierarchyLogEntry.h"
+#include "HttpMsg.h"
 #include "HttpRequestMethod.h"
+#include "RequestFlags.h"
+
+#if USE_AUTH
+#include "auth/UserRequest.h"
+#endif
 #if USE_ADAPTATION
 #include "adaptation/History.h"
 #endif
 #if ICAP_CLIENT
 #include "adaptation/icap/History.h"
 #endif
+#if USE_SQUID_EUI
+#include "eui/Eui48.h"
+#include "eui/Eui64.h"
+#endif
+
+class ConnStateData;
 
 /*  Http Request */
-//DEAD?: extern int httpRequestHdrAllowedByName(http_hdr_type id);
-extern void httpRequestPack(void *obj, Packer *p);
-
-// TODO: Move these three to access_log.h or AccessLogEntry.h
-#if USE_ADAPTATION
-extern bool alLogformatHasAdaptToken;
-#endif
-#if ICAP_CLIENT
-extern bool alLogformatHasIcapToken;
-#endif
-extern int LogfileStatus;
+void httpRequestPack(void *obj, Packer *p);
 
 class HttpHdrRange;
 class DnsLookupDetails;
@@ -69,7 +69,7 @@ public:
 
     MEMPROXY_CLASS(HttpRequest);
     HttpRequest();
-    HttpRequest(const HttpRequestMethod& aMethod, protocol_t aProtocol, const char *aUrlpath);
+    HttpRequest(const HttpRequestMethod& aMethod, AnyP::ProtocolType aProtocol, const char *aUrlpath);
     ~HttpRequest();
     virtual void reset();
 
@@ -78,7 +78,7 @@ public:
         return static_cast<HttpRequest*>(HttpMsg::_lock());
     };
 
-    void initHTTP(const HttpRequestMethod& aMethod, protocol_t aProtocol, const char *aUrlpath);
+    void initHTTP(const HttpRequestMethod& aMethod, AnyP::ProtocolType aProtocol, const char *aUrlpath);
 
     virtual HttpRequest *clone() const;
 
@@ -86,6 +86,9 @@ public:
     bool cacheable() const;
 
     bool conditional() const; ///< has at least one recognized If-* header
+
+    /// whether the client is likely to be able to handle a 1xx reply
+    bool canHandle1xx() const;
 
     /* Now that we care what host contains it is better off being protected. */
     /* HACK: These two methods are only inline to get around Makefile dependancies */
@@ -102,6 +105,7 @@ public:
             debugs(23, 3, "HttpRequest::SetHost() given IP: " << host_addr);
             host_is_numeric = 1;
         }
+        safe_free(canonical); // force its re-build
     };
     inline const char* GetHost(void) const { return host; };
     inline int GetHostIsNumeric(void) const { return host_is_numeric; };
@@ -111,6 +115,8 @@ public:
     Adaptation::History::Pointer adaptLogHistory() const;
     /// Returns possibly nil history, creating it if requested
     Adaptation::History::Pointer adaptHistory(bool createIfNone = false) const;
+    /// Makes their history ours, throwing on conflicts
+    void adaptHistoryImport(const HttpRequest &them);
 #endif
 #if ICAP_CLIENT
     /// Returns possibly nil history, creating it if icap logging is enabled
@@ -118,6 +124,11 @@ public:
 #endif
 
     void recordLookup(const DnsLookupDetails &detail);
+
+    /// sets error detail if no earlier detail was available
+    void detailError(err_type aType, int aDetail);
+    /// clear error details, useful for retries/repeats
+    void clearError();
 
 protected:
     void clean();
@@ -133,12 +144,6 @@ private:
     char host[SQUIDHOSTNAMELEN];
     int host_is_numeric;
 
-    /***
-     * The client side connection data of pinned connections for the client side
-     * request related objects
-     */
-    ConnStateData *pinned_connection;
-
 #if USE_ADAPTATION
     mutable Adaptation::History::Pointer adaptHistory_; ///< per-HTTP transaction info
 #endif
@@ -147,17 +152,17 @@ private:
 #endif
 
 public:
-    IpAddress host_addr;
-
-    AuthUserRequest *auth_user_request;
-
+    Ip::Address host_addr;
+#if USE_AUTH
+    Auth::UserRequest::Pointer auth_user_request;
+#endif
     unsigned short port;
 
     String urlpath;
 
     char *canonical;
 
-    request_flags flags;
+    RequestFlags flags;
 
     HttpHdrRange *range;
 
@@ -165,21 +170,24 @@ public:
 
     int imslen;
 
-    IpAddress client_addr;
+    Ip::Address client_addr;
 
 #if FOLLOW_X_FORWARDED_FOR
-    IpAddress indirect_client_addr;
+    Ip::Address indirect_client_addr;
 #endif /* FOLLOW_X_FORWARDED_FOR */
 
-    IpAddress my_addr;
+    Ip::Address my_addr;
 
     HierarchyLogEntry hier;
 
     int dnsWait; ///< sum of DNS lookup delays in milliseconds, for %dt
 
     err_type errType;
+    int errDetail; ///< errType-specific detail about the transaction error
 
     char *peer_login;		/* Configured peer login:password */
+
+    char *peer_host;           /* Selected peer host*/
 
     time_t lastmod;		/* Used on refreshes */
 
@@ -226,20 +234,21 @@ public:
 
     static HttpRequest * CreateFromUrl(char * url);
 
-    void setPinnedConnection(ConnStateData *conn) {
-        pinned_connection = cbdataReference(conn);
-    }
+    ConnStateData *pinnedConnection();
 
-    ConnStateData *pinnedConnection() {
-        return pinned_connection;
-    }
+    /**
+     * The client connection manager, if known;
+     * Used for any response actions needed directly to the client.
+     * ie 1xx forwarding or connection pinning state changes
+     */
+    CbcPointer<ConnStateData> clientConnectionManager;
 
-    void releasePinnedConnection() {
-        cbdataReferenceDone(pinned_connection);
-    }
+    int64_t getRangeOffsetLimit(); /* the result of this function gets cached in rangeOffsetLimit */
 
 private:
     const char *packableURI(bool full_uri) const;
+
+    mutable int64_t rangeOffsetLimit;  /* caches the result of getRangeOffsetLimit */
 
 protected:
     virtual void packFirstLineInto(Packer * p, bool full_uri) const;

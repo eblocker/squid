@@ -1,4 +1,5 @@
 
+section
 section --    CGI Cache Manager
 section --    External DISKD process implementation.
 section --    Refcount allocator
@@ -17,6 +18,9 @@ section 03    Configuration File Parsing
 section 03    Configuration Settings
 section 04    Error Generation
 section 05    Comm
+section 05    Disk I/O pipe manager
+section 05    Listener Socket Handler
+section 05    Socket Connection Opener
 section 05    Socket Functions
 section 06    Disk I/O Routines
 section 07    Multicast
@@ -29,14 +33,17 @@ section 13    High Level Memory Pool Management
 section 14    IP Cache
 section 14    IP Storage and Handling
 section 15    Neighbor Routines
+section 16    Cache Manager API
 section 16    Cache Manager Objects
 section 17    Request Forwarding
 section 18    Cache Manager Statistics
 section 19    Store Memory Primitives
+section 20    Memory Cache
 section 20    Storage Manager
 section 20    Storage Manager Heap-based replacement
 section 20    Storage Manager Logging Functions
 section 20    Storage Manager MD5 Cache Keys
+section 20    Storage Manager Statistics
 section 20    Storage Manager Swapfile Metadata
 section 20    Storage Manager Swapfile Unpacker
 section 20    Storage Manager Swapin Functions
@@ -68,8 +75,6 @@ section 38    Network Measurement Database
 section 39    Cache Array Routing Protocol
 section 39    Peer source hash based selection
 section 39    Peer user hash based selection
-section 40    Referer Logging
-section 40    User-Agent Logging
 section 41    Event Processing
 section 42    ICMP Pinger program
 section 43    AIOPS
@@ -77,6 +82,13 @@ section 43    Windows AIOPS
 section 44    Peer Selection Algorithm
 section 45    Callback Data Registry
 section 46    Access Log
+section 46    Access Log - Apache combined format
+section 46    Access Log - Apache common format
+section 46    Access Log - Squid Custom format
+section 46    Access Log - Squid ICAP Logging
+section 46    Access Log - Squid format
+section 46    Access Log - Squid referer format
+section 46    Access Log - Squid useragent format
 section 47    Store COSS Directory Routines
 section 47    Store Directory Routines
 section 48    Persistent Connections
@@ -103,7 +115,6 @@ section 65    HTTP Cache Control Header
 section 66    HTTP Header Tools
 section 67    String
 section 68    HTTP Content-Range Header
-section 69    HTTP Header: Extension Field
 section 70    Cache Digest
 section 71    Store Digest Manager
 section 72    Peer Digest Routines
@@ -119,6 +130,7 @@ section 79    Squid-side DISKD I/O functions.
 section 79    Squid-side Disk I/O functions.
 section 79    Storage Manager COSS Interface
 section 79    Storage Manager UFS Interface
+section 79   Disk IO Routines
 section 80    WCCP Support
 section 81    CPU Profiling Routines
 section 81    Store HEAP Removal Policies
@@ -131,6 +143,8 @@ section 86    ESI Expressions
 section 86    ESI processing
 section 87    Client-side Stream routines.
 section 88    Client-side Reply Routines
+section 89    EUI-48 Lookup
+section 89    EUI-64 Handling
 section 89    NAT / IP Interception
 section 90    HTTP Cache Control Header
 section 90    Storage Manager Client-Side Interface

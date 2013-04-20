@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 00    Client Database
  * AUTHOR: Duane Wessels
  *
@@ -33,43 +31,79 @@
  */
 
 #include "squid.h"
+#include "client_db.h"
 #include "event.h"
-#include "CacheManager.h"
+#include "format/Token.h"
 #include "ClientInfo.h"
-#include "ip/IpAddress.h"
+#include "fqdncache.h"
+#include "ip/Address.h"
+#include "log/access_log.h"
+#include "Mem.h"
+#include "mgr/Registration.h"
+#include "SquidConfig.h"
 #include "SquidMath.h"
 #include "SquidTime.h"
+#include "StatCounters.h"
 #include "Store.h"
+#include "tools.h"
 
+#if SQUID_SNMP
+#include "snmp_core.h"
+#endif
 
 static hash_table *client_table = NULL;
 
-static ClientInfo *clientdbAdd(const IpAddress &addr);
+static ClientInfo *clientdbAdd(const Ip::Address &addr);
 static FREE clientdbFreeItem;
 static void clientdbStartGC(void);
 static void clientdbScheduledGC(void *);
 
+#if USE_DELAY_POOLS
+static int max_clients = 32768;
+#else
 static int max_clients = 32;
+#endif
+
 static int cleanup_running = 0;
 static int cleanup_scheduled = 0;
 static int cleanup_removed;
 
+#if USE_DELAY_POOLS
+#define CLIENT_DB_HASH_SIZE 65357
+#else
 #define CLIENT_DB_HASH_SIZE 467
+#endif
 
 static ClientInfo *
 
-clientdbAdd(const IpAddress &addr)
+clientdbAdd(const Ip::Address &addr)
 {
     ClientInfo *c;
     char *buf = new char[MAX_IPSTRLEN];
     c = (ClientInfo *)memAllocate(MEM_CLIENT_INFO);
     c->hash.key = addr.NtoA(buf,MAX_IPSTRLEN);
     c->addr = addr;
+#if USE_DELAY_POOLS
+    /* setup default values for client write limiter */
+    c->writeLimitingActive=false;
+    c->writeSpeedLimit=0;
+    c->bucketSize = 0;
+    c->firstTimeConnection=true;
+    c->quotaQueue = NULL;
+    c->rationedQuota = 0;
+    c->rationedCount = 0;
+    c->selectWaiting = false;
+    c->eventWaiting = false;
+
+    /* get current time */
+    getCurrentTime();
+    c->prevTime=current_dtime;/* put current time to have something sensible here */
+#endif
     hash_join(client_table, &c->hash);
-    statCounter.client_http.clients++;
+    ++statCounter.client_http.clients;
 
     if ((statCounter.client_http.clients > max_clients) && !cleanup_running && cleanup_scheduled < 2) {
-        cleanup_scheduled++;
+        ++cleanup_scheduled;
         eventAdd("client_db garbage collector", clientdbScheduledGC, NULL, 90, 0);
     }
 
@@ -79,8 +113,7 @@ clientdbAdd(const IpAddress &addr)
 static void
 clientdbRegisterWithCacheManager(void)
 {
-    CacheManager::GetInstance()->
-    registerAction("client_list", "Cache Client List", clientdbDump, 0, 1);
+    Mgr::RegisterAction("client_list", "Cache Client List", clientdbDump, 0, 1);
 }
 
 void
@@ -92,11 +125,33 @@ clientdbInit(void)
         return;
 
     client_table = hash_create((HASHCMP *) strcmp, CLIENT_DB_HASH_SIZE, hash_string);
-
 }
 
+#if USE_DELAY_POOLS
+/* returns ClientInfo for given IP addr
+   Returns NULL if no such client (or clientdb turned off)
+   (it is assumed that clientdbEstablished will be called before and create client record if needed)
+*/
+ClientInfo * clientdbGetInfo(const Ip::Address &addr)
+{
+    char key[MAX_IPSTRLEN];
+    ClientInfo *c;
+
+    if (!Config.onoff.client_db)
+        return NULL;
+
+    addr.NtoA(key,MAX_IPSTRLEN);
+
+    c = (ClientInfo *) hash_lookup(client_table, key);
+    if (c==NULL) {
+        debugs(77, DBG_IMPORTANT,"Client db does not contain information for given IP address "<<(const char*)key);
+        return NULL;
+    }
+    return c;
+}
+#endif
 void
-clientdbUpdate(const IpAddress &addr, log_type ltype, protocol_t p, size_t size)
+clientdbUpdate(const Ip::Address &addr, log_type ltype, AnyP::ProtocolType p, size_t size)
 {
     char key[MAX_IPSTRLEN];
     ClientInfo *c;
@@ -114,16 +169,16 @@ clientdbUpdate(const IpAddress &addr, log_type ltype, protocol_t p, size_t size)
     if (c == NULL)
         debug_trap("clientdbUpdate: Failed to add entry");
 
-    if (p == PROTO_HTTP) {
-        c->Http.n_requests++;
-        c->Http.result_hist[ltype]++;
+    if (p == AnyP::PROTO_HTTP) {
+        ++ c->Http.n_requests;
+        ++ c->Http.result_hist[ltype];
         kb_incr(&c->Http.kbytes_out, size);
 
         if (logTypeIsATcpHit(ltype))
             kb_incr(&c->Http.hit_kbytes_out, size);
-    } else if (p == PROTO_ICP) {
-        c->Icp.n_requests++;
-        c->Icp.result_hist[ltype]++;
+    } else if (p == AnyP::PROTO_ICP) {
+        ++ c->Icp.n_requests;
+        ++ c->Icp.result_hist[ltype];
         kb_incr(&c->Icp.kbytes_out, size);
 
         if (LOG_UDP_HIT == ltype)
@@ -140,7 +195,7 @@ clientdbUpdate(const IpAddress &addr, log_type ltype, protocol_t p, size_t size)
  * -1.  To get the current value, simply call with delta = 0.
  */
 int
-clientdbEstablished(const IpAddress &addr, int delta)
+clientdbEstablished(const Ip::Address &addr, int delta)
 {
     char key[MAX_IPSTRLEN];
     ClientInfo *c;
@@ -167,7 +222,7 @@ clientdbEstablished(const IpAddress &addr, int delta)
 #define CUTOFF_SECONDS 3600
 int
 
-clientdbCutoffDenied(const IpAddress &addr)
+clientdbCutoffDenied(const Ip::Address &addr)
 {
     char key[MAX_IPSTRLEN];
     int NR;
@@ -207,12 +262,12 @@ clientdbCutoffDenied(const IpAddress &addr)
     if (p < 95.0)
         return 0;
 
-    debugs(1, 0, "WARNING: Probable misconfigured neighbor at " << key);
+    debugs(1, DBG_CRITICAL, "WARNING: Probable misconfigured neighbor at " << key);
 
-    debugs(1, 0, "WARNING: " << ND << " of the last " << NR <<
+    debugs(1, DBG_CRITICAL, "WARNING: " << ND << " of the last " << NR <<
            " ICP replies are DENIED");
 
-    debugs(1, 0, "WARNING: No replies will be sent for the next " <<
+    debugs(1, DBG_CRITICAL, "WARNING: No replies will be sent for the next " <<
            CUTOFF_SECONDS << " seconds");
 
     c->cutoff.time = squid_curtime;
@@ -263,7 +318,7 @@ clientdbDump(StoreEntry * sentry)
             if (LOG_UDP_HIT == l)
                 icp_hits += c->Icp.result_hist[l];
 
-            storeAppendPrintf(sentry, "        %-20.20s %7d %3d%%\n",log_tags[l], c->Icp.result_hist[l], Math::intPercent(c->Icp.result_hist[l], c->Icp.n_requests));
+            storeAppendPrintf(sentry, "        %-20.20s %7d %3d%%\n",Format::log_tags[l], c->Icp.result_hist[l], Math::intPercent(c->Icp.result_hist[l], c->Icp.n_requests));
         }
 
         storeAppendPrintf(sentry, "    HTTP Requests %d\n", c->Http.n_requests);
@@ -279,7 +334,7 @@ clientdbDump(StoreEntry * sentry)
 
             storeAppendPrintf(sentry,
                               "        %-20.20s %7d %3d%%\n",
-                              log_tags[l],
+                              Format::log_tags[l],
                               c->Http.result_hist[l],
                               Math::intPercent(c->Http.result_hist[l], c->Http.n_requests));
         }
@@ -299,6 +354,14 @@ clientdbFreeItem(void *data)
 {
     ClientInfo *c = (ClientInfo *)data;
     safe_free(c->hash.key);
+
+#if USE_DELAY_POOLS
+    if (CommQuotaQueue *q = c->quotaQueue) {
+        q->clientInfo = NULL;
+        delete q; // invalidates cbdata, cancelling any pending kicks
+    }
+#endif
+
     memFree(c, MEM_CLIENT_INFO);
 }
 
@@ -349,9 +412,9 @@ clientdbGC(void *unused)
 
         clientdbFreeItem(c);
 
-        statCounter.client_http.clients--;
+        --statCounter.client_http.clients;
 
-        cleanup_removed++;
+        ++cleanup_removed;
     }
 
     if (bucket < CLIENT_DB_HASH_SIZE)
@@ -381,8 +444,8 @@ clientdbStartGC(void)
 
 #if SQUID_SNMP
 
-IpAddress *
-client_entry(IpAddress *current)
+Ip::Address *
+client_entry(Ip::Address *current)
 {
     ClientInfo *c = NULL;
     char key[MAX_IPSTRLEN];
@@ -415,7 +478,7 @@ snmp_meshCtblFn(variable_list * Var, snint * ErrP)
 {
     char key[MAX_IPSTRLEN];
     ClientInfo *c = NULL;
-    IpAddress keyIp;
+    Ip::Address keyIp;
 
     *ErrP = SNMP_ERR_NOERROR;
     MemBuf tmp;

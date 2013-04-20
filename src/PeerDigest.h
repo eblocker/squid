@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
  * ----------------------------------------------------------
@@ -34,13 +32,15 @@
 #ifndef   SQUID_PEERDIGEST_H
 #define   SQUID_PEERDIGEST_H
 
-#include "squid.h"
-
 #if USE_CACHE_DIGESTS
 
 #include "cbdata.h"
+/* for CacheDigestGuessStats */
+#include "StatCounters.h"
 
-struct _Version {
+class Version
+{
+public:
     short int current;		/* current version */
     short int required;		/* minimal version that can safely handle current version */
 };
@@ -61,7 +61,13 @@ public:
     int reserved[32 - 6];
 };
 
-struct _DigestFetchState {
+class HttpRequest;
+class PeerDigest;
+class store_client;
+
+class DigestFetchState
+{
+public:
     PeerDigest *pd;
     StoreEntry *entry;
     StoreEntry *old_entry;
@@ -92,7 +98,7 @@ public:
     void *operator new (size_t);
     void operator delete(void *);
 
-    struct peer *peer;          /**< pointer back to peer structure, argh */
+    CachePeer *peer;          /**< pointer back to peer structure, argh */
     CacheDigest *cd;            /**< actual digest structure */
     String host;                /**< copy of peer->host */
     const char *req_result;     /**< text status of the last request */
@@ -116,7 +122,7 @@ public:
     } times;
 
     struct {
-        cd_guess_stats guess;
+        CacheDigestGuessStats guess;
         int used_count;
 
         struct {
@@ -130,6 +136,11 @@ private:
 };
 
 extern const Version CacheDigestVer;
+
+PeerDigest *peerDigestCreate(CachePeer * p);
+void peerDigestNeeded(PeerDigest * pd);
+void peerDigestNotePeerGone(PeerDigest * pd);
+void peerDigestStatsReport(const PeerDigest * pd, StoreEntry * e);
 
 #endif /* USE_CACHE_DIGESTS */
 

@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 77    Delay Pools
  * AUTHOR: Robert Collins <robertc@squid-cache.org>
  *
@@ -36,11 +34,8 @@
 #ifndef DELAYTAGGED_H
 #define DELAYTAGGED_H
 
-#include "config.h"
+#if USE_DELAY_POOLS
 
-#if DELAY_POOLS
-
-#include "squid.h"
 #include "auth/Gadgets.h"
 #include "CompositePoolNode.h"
 #include "DelayIdComposite.h"
@@ -108,5 +103,5 @@ private:
     Splay<DelayTaggedBucket::Pointer> buckets;
 };
 
-#endif /* DELAY_POOLS */
+#endif /* USE_DELAY_POOLS */
 #endif /* DELAYTAGGED_H */

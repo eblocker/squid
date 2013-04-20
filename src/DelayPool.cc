@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 77    Delay Pools
  * AUTHOR: Robert Collins <robertc@squid-cache.org>
  * Based upon original delay pools code by
@@ -36,9 +34,9 @@
  * Copyright (c) 2003, Robert Collins <robertc@squid-cache.org>
  */
 
-#include "config.h"
+#include "squid.h"
 
-#if DELAY_POOLS
+#if USE_DELAY_POOLS
 #include "DelayPool.h"
 #include "CommonPool.h"
 #include "acl/Acl.h"
@@ -118,4 +116,4 @@ CompositePoolNode::kickReads()
     deferredReads.kickReads(-1);
 }
 
-#endif
+#endif /* USE_DELAY_POOLS */

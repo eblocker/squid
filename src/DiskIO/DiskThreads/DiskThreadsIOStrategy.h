@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  * DEBUG: section 79    Squid-side Disk I/O functions.
  * AUTHOR: Robert Collins
  *
@@ -54,6 +52,7 @@ public:
     virtual bool shedLoad();
     virtual int load();
     virtual RefCount<DiskFile> newFile(char const *path);
+    virtual bool unlinkdUseful() const;
     virtual void unlinkFile (char const *);
     virtual int callback();
     virtual void sync();

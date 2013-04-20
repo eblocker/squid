@@ -1,11 +1,7 @@
-#ifndef SQUID_CONFIG_H
-#include "config.h"
-#endif
-
 #ifndef SQUID_OS_DRAGONFLY_H
 #define SQUID_OS_DRAGONFLY_H
 
-#ifdef _SQUID_DRAGONFLY_
+#if _SQUID_DRAGONFLY_
 
 /****************************************************************************
  *--------------------------------------------------------------------------*
@@ -19,7 +15,6 @@
 #if defined(HAVE_MALLOC_H)
 #undef HAVE_MALLOC_H
 #endif
-
 
 #endif /* _SQUID_DRAGONFLY_ */
 #endif /* SQUID_OS_DRAGONFLY_H */

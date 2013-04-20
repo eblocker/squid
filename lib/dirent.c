@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * Implement dirent-style opendir(), readdir(), closedir(), rewinddir(),
  * seekdir() and telldir on Windows - Based on mingw-runtime package sources.
  * AUTHOR: Guido Serassio <serassio@squid-cache.org>
@@ -48,10 +46,12 @@
  *
  */
 
-#include "util.h"
+#include "squid.h"
 
 /* The following code section is part of the native Windows Squid port */
-#if defined(_SQUID_MSWIN_)
+#if _SQUID_MSWIN_
+
+#include "util.h"
 #include <stdlib.h>
 #include <errno.h>
 #include <string.h>
@@ -63,7 +63,6 @@
 
 #define SUFFIX	("*")
 #define	SLASH	("\\")
-
 
 /*
  * opendir
@@ -147,7 +146,6 @@ opendir(const CHAR * szPath)
     return nd;
 }
 
-
 /*
  * readdir
  *
@@ -208,7 +206,6 @@ readdir(DIR * dirp) {
     }
     return (struct dirent *) 0;
 }
-
 
 /*
  * closedir

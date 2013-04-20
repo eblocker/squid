@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 47    Store Directory Routines
  * AUTHOR: Robert Collins
  *
@@ -32,12 +30,19 @@
  *
  * Copyright (c) 2003, Robert Collins <robertc@squid-cache.org>
  */
-
+#include "squid.h"
 #include "BlockingFile.h"
+#include "Debug.h"
+#include "defines.h"
+#include "globals.h"
 #include "DiskIO/IORequestor.h"
 #include "DiskIO/ReadRequest.h"
 #include "DiskIO/WriteRequest.h"
+#include "disk.h"
 
+#if HAVE_ERRNO_H
+#include <errno.h>
+#endif
 CBDATA_CLASS_INIT(BlockingFile);
 
 void *
@@ -82,7 +87,7 @@ BlockingFile::open(int flags, mode_t mode, RefCount<IORequestor> callback)
         error(true);
     } else {
         closed = false;
-        store_open_disk_fd++;
+        ++store_open_disk_fd;
         debugs(79, 3, "BlockingFile::open: opened FD " << fd);
     }
 
@@ -100,13 +105,12 @@ BlockingFile::create(int flags, mode_t mode, RefCount<IORequestor> callback)
     open(flags, mode, callback);
 }
 
-
 void BlockingFile::doClose()
 {
     if (fd > -1) {
         closed = true;
         file_close(fd);
-        store_open_disk_fd--;
+        --store_open_disk_fd;
         fd = -1;
     }
 }
@@ -146,6 +150,7 @@ BlockingFile::read(ReadRequest *aRequest)
     assert (fd > -1);
     assert (ioRequestor.getRaw());
     readRequest = aRequest;
+    debugs(79, 3, HERE << aRequest->len << " for FD " << fd << " at " << aRequest->offset);
     file_read(fd, aRequest->buf, aRequest->len, aRequest->offset, ReadDone, this);
 }
 
@@ -160,7 +165,7 @@ BlockingFile::ReadDone(int fd, const char *buf, int len, int errflag, void *my_d
 void
 BlockingFile::write(WriteRequest *aRequest)
 {
-    debugs(79, 3, "storeUfsWrite: FD " << fd);
+    debugs(79, 3, HERE << aRequest->len << " for FD " << fd << " at " << aRequest->offset);
     writeRequest = aRequest;
     file_write(fd,
                aRequest->offset,
@@ -216,13 +221,13 @@ void
 BlockingFile::writeDone(int rvfd, int errflag, size_t len)
 {
     assert (rvfd == fd);
-    debugs(79, 3, "storeUfsWriteDone: FD " << fd << ", len " << len);
+    debugs(79, 3, HERE << "FD " << fd << ", len " << len);
 
     WriteRequest::Pointer result = writeRequest;
     writeRequest = NULL;
 
     if (errflag) {
-        debugs(79, 0, "storeUfsWriteDone: got failure (" << errflag << ")");
+        debugs(79, DBG_CRITICAL, "storeUfsWriteDone: got failure (" << errflag << ")");
         doClose();
         ioRequestor->writeCompleted (DISK_ERROR,0, result);
         return;

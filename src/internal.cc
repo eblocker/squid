@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  * DEBUG: section 76    Internal Squid Object handling
  * AUTHOR: Duane, Alex, Henrik
  *
@@ -34,25 +32,30 @@
  */
 
 #include "squid.h"
+#include "CacheManager.h"
+#include "comm/Connection.h"
 #include "errorpage.h"
+#include "icmp/net_db.h"
 #include "Store.h"
 #include "HttpRequest.h"
 #include "HttpReply.h"
 #include "MemBuf.h"
+#include "SquidConfig.h"
 #include "SquidTime.h"
+#include "tools.h"
+#include "URL.h"
 #include "wordlist.h"
-#include "icmp/net_db.h"
 
 /* called when we "miss" on an internal object;
  * generate known dynamic objects,
  * return HTTP_NOT_FOUND for others
  */
 void
-internalStart(HttpRequest * request, StoreEntry * entry)
+internalStart(const Comm::ConnectionPointer &clientConn, HttpRequest * request, StoreEntry * entry)
 {
     ErrorState *err;
     const char *upath = request->urlpath.termedBuf();
-    debugs(76, 3, "internalStart: " << request->client_addr << " requesting '" << upath << "'");
+    debugs(76, 3, HERE << clientConn << " requesting '" << upath << "'");
 
     if (0 == strcmp(upath, "/squid-internal-dynamic/netdb")) {
         netdbBinaryExchange(entry);
@@ -69,10 +72,12 @@ internalStart(HttpRequest * request, StoreEntry * entry)
         entry->replaceHttpReply(reply);
         entry->append(msgbuf, strlen(msgbuf));
         entry->complete();
+    } else if (0 == strncmp(upath, "/squid-internal-mgr/", 20)) {
+        CacheManager::GetInstance()->Start(clientConn, request, entry);
     } else {
         debugObj(76, 1, "internalStart: unknown request:\n",
                  request, (ObjPackMethod) & httpRequestPack);
-        err = errorCon(ERR_INVALID_REQ, HTTP_NOT_FOUND, request);
+        err = new ErrorState(ERR_INVALID_REQ, HTTP_NOT_FOUND, request);
         errorAppendEntry(entry, err);
     }
 }
@@ -102,7 +107,7 @@ internalRemoteUri(const char *host, unsigned short port, const char *dir, const 
     Tolower(lc_host);
 
     /* check for an IP address and format appropriately if found */
-    IpAddress test = lc_host;
+    Ip::Address test = lc_host;
     if ( !test.IsAnyAddr() ) {
         test.ToHostname(lc_host,SQUIDHOSTNAMELEN);
     }
@@ -125,7 +130,7 @@ internalRemoteUri(const char *host, unsigned short port, const char *dir, const 
     mb.Printf("http://%s", lc_host);
 
     /* append port if not default */
-    if (port && port != urlDefaultPort(PROTO_HTTP))
+    if (port && port != urlDefaultPort(AnyP::PROTO_HTTP))
         mb.Printf(":%d", port);
 
     if (dir)

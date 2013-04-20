@@ -38,25 +38,29 @@
  */
 #if (USE_SQUID_ESI == 1)
 
-#include "esi/Esi.h"
-#include "clientStream.h"
 #include "client_side_request.h"
+#include "client_side.h"
+#include "clientStream.h"
+#include "comm/Connection.h"
 #include "errorpage.h"
-#include "esi/Segment.h"
-#include "esi/Element.h"
+#include "esi/Assign.h"
+#include "esi/Attempt.h"
 #include "esi/Context.h"
+#include "esi/Element.h"
+#include "esi/Esi.h"
+#include "esi/Except.h"
+#include "esi/Expression.h"
+#include "esi/Segment.h"
+#include "esi/VarState.h"
 #include "HttpHdrSc.h"
 #include "HttpHdrScTarget.h"
 #include "HttpReply.h"
-#include "esi/Attempt.h"
-#include "esi/Except.h"
-#include "client_side.h"
-#include "esi/VarState.h"
-#include "esi/Assign.h"
-#include "esi/Expression.h"
 #include "HttpRequest.h"
+#include "ip/Address.h"
+#include "Mem.h"
 #include "MemBuf.h"
-#include "ip/IpAddress.h"
+#include "profiler/Profiler.h"
+#include "SquidConfig.h"
 
 /* quick reference on behaviour here.
  * The ESI specification 1.0 requires the ESI processor to be able to
@@ -97,7 +101,6 @@ bool operator == (ESIElement const *lhs, ESIElement::Pointer const &rhs)
 }
 
 typedef ESIContext::esiKick_t esiKick_t;
-
 
 /* some core operators */
 
@@ -142,7 +145,6 @@ public:
 CBDATA_TYPE (esiRemove);
 static FREE esiRemoveFree;
 static ESIElement * esiRemoveNew(void);
-
 
 /* esiTry */
 
@@ -267,14 +269,12 @@ bool ESIContext::reading() const
     return reading_;
 }
 
-
 ESIStreamContext::ESIStreamContext() : finished(false), include (NULL), localbuffer (new ESISegment), buffer (NULL)
 {}
 
 /* Local functions */
 /* ESIContext */
 static ESIContext *ESIContextNew(HttpReply *, clientStreamNode *, ClientHttpRequest *);
-
 
 void *
 ESIContext::operator new(size_t byteCount)
@@ -483,7 +483,6 @@ esiStreamRead (clientStreamNode *thisNode, ClientHttpRequest *http)
         return;
     }
 
-
     if (context->flags.oktosend && context->flags.finished) {
         StoreIOBuffer tempBuffer;
         assert (!context->outbound.getRaw());
@@ -640,7 +639,7 @@ ESIContext::send ()
     assert (len != 0 || rep != NULL);
 
     if (len) {
-        xmemcpy (next->readBuffer.data, &outbound->buf[outbound_offset], len);
+        memcpy(next->readBuffer.data, &outbound->buf[outbound_offset], len);
 
         if (len + outbound_offset == outbound->len) {
             ESISegment::Pointer temp = outbound->next;
@@ -676,7 +675,6 @@ ESIContext::send ()
 
     if (len == 0)
         len = 1; /* tell the caller we sent something (because we sent headers */
-
 
     cbdataReferenceDone (templock);
 
@@ -798,7 +796,7 @@ esiProcessStream (clientStreamNode *thisNode, ClientHttpRequest *http, HttpReply
                    &context->incoming->buf[context->incoming->len] <<
                    " because our buffer was not used");
 
-            xmemcpy (&context->incoming->buf[context->incoming->len], receivedData.data, len);
+            memcpy(&context->incoming->buf[context->incoming->len], receivedData.data, len);
             context->incoming->len += len;
 
             if (context->incoming->len == HTTP_REQBUF_SZ) {
@@ -809,7 +807,7 @@ esiProcessStream (clientStreamNode *thisNode, ClientHttpRequest *http, HttpReply
 
             if (len != receivedData.length) {
                 /* capture the remnants */
-                xmemcpy (context->incoming->buf, &receivedData.data[len], receivedData.length - len);
+                memcpy(context->incoming->buf, &receivedData.data[len], receivedData.length - len);
                 context->incoming->len = receivedData.length - len;
             }
 
@@ -970,7 +968,10 @@ ESIContext::ParserState::top()
     return stack[stackdepth-1];
 }
 
-ESIContext::ParserState::ParserState() : inited_ (false)
+ESIContext::ParserState::ParserState() :
+        stackdepth(0),
+        parsing(0),
+        inited_(false)
 {}
 
 bool
@@ -988,11 +989,12 @@ ESIContext::addStackElement (ESIElement::Pointer element)
     debugs(86, 5, "ESIContext::addStackElement: About to add ESI Node " << element.getRaw());
 
     if (!parserState.top()->addElement(element)) {
-        debugs(86, 1, "ESIContext::addStackElement: failed to add esi node, probable error in ESI template");
+        debugs(86, DBG_IMPORTANT, "ESIContext::addStackElement: failed to add esi node, probable error in ESI template");
         flags.error = 1;
     } else {
         /* added ok, push onto the stack */
-        parserState.stack[parserState.stackdepth++] = element;
+        parserState.stack[parserState.stackdepth] = element;
+        ++parserState.stackdepth;
     }
 }
 
@@ -1023,12 +1025,15 @@ ESIContext::start(const char *el, const char **attr, size_t attrCount)
         position = localbuf + strlen (localbuf);
 
         for (i = 0; i < specifiedattcount && attr[i]; i += 2) {
-            *position++ = ' ';
+            *position = ' ';
+            ++position;
             /* TODO: handle thisNode gracefully */
             assert (xstrncpy (position, attr[i], sizeof(localbuf) + (position - localbuf)));
             position += strlen (position);
-            *position++ = '=';
-            *position++ = '\"';
+            *position = '=';
+            ++position;
+            *position = '\"';
+            ++position;
             const char *chPtr = attr[i + 1];
             char ch;
             while ((ch = *chPtr++) != '\0') {
@@ -1036,14 +1041,17 @@ ESIContext::start(const char *el, const char **attr, size_t attrCount)
                     assert( xstrncpy(position, "&quot;", sizeof(localbuf) + (position-localbuf)) );
                     position += 6;
                 } else {
-                    *(position++) = ch;
+                    *position = ch;
+                    ++position;
                 }
             }
             position += strlen (position);
-            *position++ = '\"';
+            *position = '\"';
+            ++position;
         }
 
-        *position++ = '>';
+        *position = '>';
+        ++position;
         *position = '\0';
 
         addLiteral (localbuf, position - localbuf);
@@ -1133,7 +1141,8 @@ ESIContext::end(const char *el)
         localbuf[1] = '/';
         assert (xstrncpy (&localbuf[2], el, sizeof(localbuf) - 3));
         position = localbuf + strlen (localbuf);
-        *position++ = '>';
+        *position = '>';
+        ++position;
         *position = '\0';
         addLiteral (localbuf, position - localbuf);
         break;
@@ -1190,13 +1199,13 @@ ESIContext::parserComment (const char *s)
         if (!tempParser->parse("<div>", 5,0) ||
                 !tempParser->parse(s + 3, strlen(s) - 3, 0) ||
                 !tempParser->parse("</div>",6,1)) {
-            debugs(86, 0, "ESIContext::parserComment: Parsing fragment '" << s + 3 << "' failed.");
+            debugs(86, DBG_CRITICAL, "ESIContext::parserComment: Parsing fragment '" << s + 3 << "' failed.");
             setError();
             char tempstr[1024];
             snprintf(tempstr, 1023, "ESIContext::parserComment: Parse error at line %ld:\n%s\n",
                      tempParser->lineNumber(),
                      tempParser->errorString());
-            debugs(86, 0, "" << tempstr << "");
+            debugs(86, DBG_CRITICAL, "" << tempstr << "");
 
             setErrorMessage(tempstr);
         }
@@ -1210,7 +1219,7 @@ ESIContext::parserComment (const char *s)
         len = strlen (s);
 
         if (len > sizeof (localbuf) - 9) {
-            debugs(86, 0, "ESIContext::parserComment: Truncating long comment");
+            debugs(86, DBG_CRITICAL, "ESIContext::parserComment: Truncating long comment");
             len = sizeof (localbuf) - 9;
         }
 
@@ -1232,7 +1241,7 @@ ESIContext::addLiteral (const char *s, int len)
     ESIElement::Pointer element (new esiLiteral (this, s, len));
 
     if (!parserState.top()->addElement(element)) {
-        debugs(86, 1, "ESIContext::addLiteral: failed to add esi node, probable error in ESI template");
+        debugs(86, DBG_IMPORTANT, "ESIContext::addLiteral: failed to add esi node, probable error in ESI template");
         flags.error = 1;
     }
 }
@@ -1258,7 +1267,7 @@ ESIContext::parseOneBuffer()
         snprintf (tempstr, 1023, "esiProcess: Parse error at line %ld:\n%s\n",
                   parserState.theParser->lineNumber(),
                   parserState.theParser->errorString());
-        debugs(86, 0, "" << tempstr << "");
+        debugs(86, DBG_CRITICAL, "" << tempstr << "");
 
         setErrorMessage(tempstr);
 
@@ -1282,7 +1291,8 @@ ESIContext::parse()
     if (!parserState.stackdepth) {
         debugs(86, 5, "empty parser stack, inserting the top level node");
         assert (tree.getRaw());
-        parserState.stack[parserState.stackdepth++] = tree;
+        parserState.stack[parserState.stackdepth] = tree;
+        ++parserState.stackdepth;
     }
 
     if (rep && !parserState.inited())
@@ -1373,7 +1383,7 @@ ESIContext::process ()
             break;
 
         case ESI_PROCESS_FAILED:
-            debugs(86, 0, "esiProcess: tree Processed FAILED");
+            debugs(86, DBG_CRITICAL, "esiProcess: tree Processed FAILED");
             setError();
 
             setErrorMessage("esiProcess: ESI template Processing failed.");
@@ -1441,8 +1451,7 @@ ESIContext::freeResources ()
     /* don't touch incoming, it's a pointer into buffered anyway */
 }
 
-extern ErrorState *clientBuildError (err_type, http_status, char const *, IpAddress &, HttpRequest *);
-
+ErrorState *clientBuildError (err_type, http_status, char const *, Ip::Address &, HttpRequest *);
 
 /* This can ONLY be used before we have sent *any* data to the client */
 void
@@ -1459,19 +1468,20 @@ ESIContext::fail ()
     /* don't honour range requests - for errors we send it all */
     flags.error = 1;
     /* create an error object */
-    ErrorState * err = clientBuildError(errorpage, errorstatus, NULL, http->getConn()->peer, http->request);
+    // XXX: with the in-direction on remote IP. does the http->getConn()->clientConnection exist?
+    ErrorState * err = clientBuildError(errorpage, errorstatus, NULL, http->getConn()->clientConnection->remote, http->request);
     err->err_msg = errormessage;
     errormessage = NULL;
     rep = err->BuildHttpReply();
-    assert (rep->body.mb->contentSize() >= 0);
-    size_t errorprogress = rep->body.mb->contentSize();
+    assert (rep->body.hasContent());
+    size_t errorprogress = rep->body.contentSize();
     /* Tell esiSend where to start sending from */
     outbound_offset = 0;
     /* copy the membuf from the reply to outbound */
 
-    while (errorprogress < (size_t)rep->body.mb->contentSize()) {
+    while (errorprogress < (size_t)rep->body.contentSize()) {
         appendOutboundData(new ESISegment);
-        errorprogress += outboundtail->append(rep->body.mb->content() + errorprogress, rep->body.mb->contentSize() - errorprogress);
+        errorprogress += outboundtail->append(rep->body.content() + errorprogress, rep->body.contentSize() - errorprogress);
     }
 
     /* the esiCode now thinks that the error is the outbound,
@@ -1547,6 +1557,7 @@ esiLiteral::finish()
 esiLiteral::esiLiteral(ESIContext *context, const char *s, int numberOfCharacters)
 {
     assert (s);
+    flags.donevars = 0;
     buffer = new ESISegment;
     ESISegment::Pointer local = buffer;
     size_t start = 0;
@@ -1563,7 +1574,7 @@ esiLiteral::esiLiteral(ESIContext *context, const char *s, int numberOfCharacter
         remainingCharacters -= len;
     }
 
-    varState = cbdataReference (context->varState);
+    varState = cbdataReference(context->varState);
 }
 
 void
@@ -1698,11 +1709,15 @@ esiTry::~esiTry()
     debugs(86, 5, "esiTry::~esiTry " << this);
 }
 
-esiTry::esiTry(esiTreeParentPtr aParent) : parent (aParent) , exceptbuffer(NULL)
-{}
+esiTry::esiTry(esiTreeParentPtr aParent) :
+        parent(aParent),
+        exceptbuffer(NULL)
+{
+    memset(&flags, 0, sizeof(flags));
+}
 
 void
-esiTry::render (ESISegment::Pointer output)
+esiTry::render(ESISegment::Pointer output)
 {
     /* Try renders from it's children */
     assert (this);
@@ -1738,7 +1753,7 @@ esiTry::addElement(ESIElement::Pointer element)
 
     if (dynamic_cast<esiAttempt*>(element.getRaw())) {
         if (attempt.getRaw()) {
-            debugs(86, 1, "esiTryAdd: Failed for " << this << " - try allready has an attempt node (section 3.4)");
+            debugs(86, DBG_IMPORTANT, "esiTryAdd: Failed for " << this << " - try allready has an attempt node (section 3.4)");
             return false;
         }
 
@@ -1748,7 +1763,7 @@ esiTry::addElement(ESIElement::Pointer element)
 
     if (dynamic_cast<esiExcept*>(element.getRaw())) {
         if (except.getRaw()) {
-            debugs(86, 1, "esiTryAdd: Failed for " << this << " - try already has an except node (section 3.4)");
+            debugs(86, DBG_IMPORTANT, "esiTryAdd: Failed for " << this << " - try already has an except node (section 3.4)");
             return false;
         }
 
@@ -1756,7 +1771,7 @@ esiTry::addElement(ESIElement::Pointer element)
         return true;
     }
 
-    debugs(86, 1, "esiTryAdd: Failed to add element " << element.getRaw() << " to try " << this << ", incorrect element type (see section 3.4)");
+    debugs(86, DBG_IMPORTANT, "esiTryAdd: Failed to add element " << element.getRaw() << " to try " << this << ", incorrect element type (see section 3.4)");
     return false;
 }
 
@@ -1776,12 +1791,12 @@ esiTry::process (int dovars)
     assert (this);
 
     if (!attempt.getRaw()) {
-        debugs(86, 0, "esiTryProcess: Try has no attempt element - ESI template is invalid (section 3.4)");
+        debugs(86, DBG_CRITICAL, "esiTryProcess: Try has no attempt element - ESI template is invalid (section 3.4)");
         return ESI_PROCESS_FAILED;
     }
 
     if (!except.getRaw()) {
-        debugs(86, 0, "esiTryProcess: Try has no except element - ESI template is invalid (section 3.4)");
+        debugs(86, DBG_CRITICAL, "esiTryProcess: Try has no except element - ESI template is invalid (section 3.4)");
         return ESI_PROCESS_FAILED;
     }
 
@@ -2046,13 +2061,13 @@ esiChoose::addElement(ESIElement::Pointer element)
 
     /* Some elements require specific parents */
     if (!(dynamic_cast<esiWhen*>(element.getRaw()) || dynamic_cast<esiOtherwise*>(element.getRaw()))) {
-        debugs(86, 0, "esiChooseAdd: invalid child node for esi:choose (section 3.3)");
+        debugs(86, DBG_CRITICAL, "esiChooseAdd: invalid child node for esi:choose (section 3.3)");
         return false;
     }
 
     if (dynamic_cast<esiOtherwise*>(element.getRaw())) {
         if (otherwise.getRaw()) {
-            debugs(86, 0, "esiChooseAdd: only one otherwise node allowed for esi:choose (section 3.3)");
+            debugs(86, DBG_CRITICAL, "esiChooseAdd: only one otherwise node allowed for esi:choose (section 3.3)");
             return false;
         }
 
@@ -2062,12 +2077,13 @@ esiChoose::addElement(ESIElement::Pointer element)
 
         debugs (86,3, "esiChooseAdd: Added a new element, elements = " << elements.size());
 
-        if (chosenelement == -1)
-            if ((dynamic_cast<esiWhen *>(element.getRaw()))->
-                    testsTrue()) {
+        if (chosenelement == -1) {
+            const esiWhen * topElement=dynamic_cast<esiWhen *>(element.getRaw());
+            if (topElement && topElement->testsTrue()) {
                 chosenelement = elements.size() - 1;
                 debugs (86,3, "esiChooseAdd: Chose element " << elements.size());
             }
+        }
     }
 
     return true;
@@ -2080,8 +2096,8 @@ esiChoose::selectElement()
         return;
 
     for (size_t counter = 0; counter < elements.size(); ++counter) {
-        if ((dynamic_cast<esiWhen *>(elements[counter].getRaw()))->
-                testsTrue()) {
+        const esiWhen *el = dynamic_cast<esiWhen *>(elements[counter].getRaw());
+        if (el && el->testsTrue()) {
             chosenelement = counter;
             debugs (86,3, "esiChooseAdd: Chose element " << counter + 1);
             return;
@@ -2204,7 +2220,6 @@ esiChoose::provideData (ESISegment::Pointer data, ESIElement*source)
     parent->provideData (data, this);
 }
 
-
 esiChoose::esiChoose(esiChoose const &old) : chosenelement(-1), otherwise (NULL), parent (NULL)
 {
     for (size_t counter = 0; counter < old.elements.size(); ++counter) {
@@ -2296,7 +2311,7 @@ ElementList::pop_front (size_t const count)
     if (!count)
         return;
 
-    xmemmove (elements, &elements[count], (elementcount - count)  * sizeof (ESIElement::Pointer));
+    memmove(elements, &elements[count], (elementcount - count)  * sizeof (ESIElement::Pointer));
 
     elementcount -= count;
 }
@@ -2319,9 +2334,12 @@ ElementList::size() const
 }
 
 /* esiWhen */
-esiWhen::esiWhen (esiTreeParentPtr aParent, int attrcount, const char **attr,ESIVarState *aVar) : esiSequence (aParent)
+esiWhen::esiWhen(esiTreeParentPtr aParent, int attrcount, const char **attr,ESIVarState *aVar) :
+        esiSequence(aParent),
+        testValue(false),
+        unevaluatedExpression(NULL),
+        varState(NULL)
 {
-    varState = NULL;
     char const *expression = NULL;
 
     for (int loopCounter = 0; loopCounter < attrcount && attr[loopCounter]; loopCounter += 2) {
@@ -2335,7 +2353,7 @@ esiWhen::esiWhen (esiTreeParentPtr aParent, int attrcount, const char **attr,ESI
             /* ignore mistyped attributes.
              * TODO:? error on these for user feedback - config parameter needed
              */
-            debugs(86, 1, "Found misttyped attribute on ESI When clause");
+            debugs(86, DBG_IMPORTANT, "Found misttyped attribute on ESI When clause");
         }
     }
 
@@ -2364,7 +2382,7 @@ esiWhen::evaluate()
     if (!unevaluatedExpression)
         return;
 
-    assert (varState);
+    assert(varState);
 
     varState->feedData(unevaluatedExpression, strlen (unevaluatedExpression));
 
@@ -2375,14 +2393,14 @@ esiWhen::evaluate()
     safe_free (expression);
 }
 
-esiWhen::esiWhen(esiWhen const &old) : esiSequence (old)
+esiWhen::esiWhen(esiWhen const &old) :
+        esiSequence(old),
+        testValue(false),
+        unevaluatedExpression(NULL),
+        varState(NULL)
 {
-    unevaluatedExpression = NULL;
-
     if (old.unevaluatedExpression)
         unevaluatedExpression = xstrdup(old.unevaluatedExpression);
-
-    varState = NULL;
 }
 
 ESIElement::Pointer
@@ -2430,19 +2448,19 @@ esiEnableProcessing (HttpReply *rep)
     int rv = 0;
 
     if (rep->surrogate_control) {
-        HttpHdrScTarget *sctusable = httpHdrScGetMergedTarget (rep->surrogate_control,
-                                     Config.Accel.surrogate_id);
+        HttpHdrScTarget *sctusable =
+            rep->surrogate_control->getMergedTarget(Config.Accel.surrogate_id);
 
-        if (!sctusable || sctusable->content.size() == 0)
+        if (!sctusable || !sctusable->hasContent())
             /* Nothing generic or targeted at us, or no
              * content processing requested
              */
             return 0;
 
-        if (sctusable->content.pos("ESI/1.0") != NULL)
+        if (sctusable->content().pos("ESI/1.0") != NULL)
             rv = 1;
 
-        httpHdrScTargetDestroy (sctusable);
+        delete sctusable;
     }
 
     return rv;

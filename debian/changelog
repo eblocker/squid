@@ -1,3 +1,15 @@
+squid3 (3.1.20-2.1) unstable; urgency=high
+
+  * Non-maintainer upload
+
+  * Urgency high due to security fixes
+
+  * debian/patches/30-CVE-2012-5643-CVE-2013-0189.patch
+    - Added upstream fix for squid-cgi (cachemgr) memory leaks and denial of
+      service vulnerability (Closes: #696187)
+
+ -- Michael Stapelberg <stapelberg@debian.org>  Tue, 05 Feb 2013 23:16:27 +0100
+
 squid3 (3.1.20-2) unstable; urgency=low
 
   * debian/patches/20-ipv6-fix

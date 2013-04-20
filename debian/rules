@@ -27,7 +27,7 @@ DEB_CONFIGURE_EXTRA_FLAGS := --datadir=/usr/share/squid3 \
 		--enable-underscores \
 		--enable-icap-client \
 		--enable-follow-x-forwarded-for \
-		--enable-auth="basic,digest,ntlm,negotiate" \
+		--enable-auth \
 		--enable-basic-auth-helpers="LDAP,MSNT,NCSA,PAM,SASL,SMB,YP,DB,POP3,getpwnam,squid_radius_auth,multi-domain-NTLM" \
 		--enable-ntlm-auth-helpers="smb_lm," \
 		--enable-digest-auth-helpers="ldap,password" \
@@ -37,6 +37,7 @@ DEB_CONFIGURE_EXTRA_FLAGS := --datadir=/usr/share/squid3 \
 		--enable-esi \
 		--enable-zph-qos \
 		--enable-wccpv2 \
+		--enable-ecap \
 		--disable-translation \
 		--with-logdir=/var/log/squid3 \
 		--with-pidfile=/var/run/squid3.pid \

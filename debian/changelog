@@ -12,6 +12,9 @@ squid3 (3.3.3-1) UNRELEASED; urgency=low
   * debian/source
     - Enabled ECAP support
 
+  * debian/watch
+    - Updated for 3.3
+
  -- Luigi Gangitano <luigi@debian.org>  Sat, 20 Apr 2013 20:02:11 +0200
 
 squid3 (3.1.20-2.2) unstable; urgency=low

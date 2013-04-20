@@ -1,3 +1,13 @@
+squid3 (3.1.20-2.2) unstable; urgency=low
+
+  * Non-maintainer upload.
+  * Add fix-701123-regression-in-cachemgr.patch patch.
+    Fix missing bits in the fix for CVE-2012-5643 and CVE-2013-0189 causing
+    cachemgr.cgi crashing when authentication credentials are supplied.
+    Thanks to Amos Jeffries <amos@treenet.co.nz> (Closes: #701123)
+
+ -- Salvatore Bonaccorso <carnil@debian.org>  Sat, 23 Feb 2013 13:44:48 +0100
+
 squid3 (3.1.20-2.1) unstable; urgency=high
 
   * Non-maintainer upload

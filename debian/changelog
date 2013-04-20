@@ -1,6 +1,10 @@
 squid3 (3.3.3-1) UNRELEASED; urgency=low
 
   * New upstream release
+    - Removed upstream patches
+      + debian/patches/20-ipv6-fix
+      + debian/patches/30-CVE-2012-5643-CVE-2013-0189.patch
+      + debian/patches/fix-701123-regression-in-cachemgr.patch
 
   * debian/control
     - Added dependency on libecap2-dev

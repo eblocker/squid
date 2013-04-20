@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
  * ----------------------------------------------------------
  *
@@ -31,6 +29,7 @@
  * Copyright (c) 2003 Robert Collins <robertc@squid-cache.org>
  */
 
+#include "squid.h"
 #include "WriteRequest.h"
 
 CBDATA_CLASS_INIT(WriteRequest);

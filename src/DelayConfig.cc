@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  * DEBUG: section 77    Delay Pools
  * AUTHOR: Robert Collins <robertc@squid-cache.org>
  * Based upon original delay pools code by
@@ -37,17 +35,16 @@
  * Copyright (c) 2003, Robert Collins <robertc@squid-cache.org>
  */
 
-#include "config.h"
-
-#if DELAY_POOLS
 #include "squid.h"
-#include "DelayConfig.h"
-#include "ConfigParser.h"
-#include "DelayPools.h"
-#include "DelayPool.h"
-#include "Store.h"
+
+#if USE_DELAY_POOLS
 #include "acl/Acl.h"
 #include "acl/Gadgets.h"
+#include "ConfigParser.h"
+#include "DelayConfig.h"
+#include "DelayPool.h"
+#include "DelayPools.h"
+#include "Store.h"
 
 void
 DelayConfig::parsePoolCount()
@@ -65,7 +62,7 @@ DelayConfig::parsePoolClass()
     ConfigParser::ParseUShort(&pool);
 
     if (pool < 1 || pool > DelayPools::pools()) {
-        debugs(3, 0, "parse_delay_pool_class: Ignoring pool " << pool << " not in 1 .. " << DelayPools::pools());
+        debugs(3, DBG_CRITICAL, "parse_delay_pool_class: Ignoring pool " << pool << " not in 1 .. " << DelayPools::pools());
         return;
     }
 
@@ -73,11 +70,11 @@ DelayConfig::parsePoolClass()
     ConfigParser::ParseUShort(&delay_class_);
 
     if (delay_class_ < 1 || delay_class_ > 5) {
-        debugs(3, 0, "parse_delay_pool_class: Ignoring pool " << pool << " class " << delay_class_ << " not in 1 .. 5");
+        debugs(3, DBG_CRITICAL, "parse_delay_pool_class: Ignoring pool " << pool << " class " << delay_class_ << " not in 1 .. 5");
         return;
     }
 
-    pool--;
+    --pool;
 
     DelayPools::delay_data[pool].createPool(delay_class_);
 }
@@ -89,14 +86,14 @@ DelayConfig::parsePoolRates()
     ConfigParser::ParseUShort(&pool);
 
     if (pool < 1 || pool > DelayPools::pools()) {
-        debugs(3, 0, "parse_delay_pool_rates: Ignoring pool " << pool << " not in 1 .. " << DelayPools::pools());
+        debugs(3, DBG_CRITICAL, "parse_delay_pool_rates: Ignoring pool " << pool << " not in 1 .. " << DelayPools::pools());
         return;
     }
 
-    pool--;
+    --pool;
 
     if (!DelayPools::delay_data[pool].theComposite().getRaw()) {
-        debugs(3, 0, "parse_delay_pool_rates: Ignoring pool " << pool + 1 << " attempt to set rates with class not set");
+        debugs(3, DBG_CRITICAL, "parse_delay_pool_rates: Ignoring pool " << pool + 1 << " attempt to set rates with class not set");
         return;
     }
 
@@ -111,7 +108,7 @@ DelayConfig::parsePoolAccess(ConfigParser &parser)
     ConfigParser::ParseUShort(&pool);
 
     if (pool < 1 || pool > DelayPools::pools()) {
-        debugs(3, 0, "parse_delay_pool_rates: Ignoring pool " << pool << " not in 1 .. " << DelayPools::pools());
+        debugs(3, DBG_CRITICAL, "parse_delay_pool_rates: Ignoring pool " << pool << " not in 1 .. " << DelayPools::pools());
         return;
     }
 
@@ -138,8 +135,8 @@ DelayConfig::dumpPoolCount(StoreEntry * entry, const char *name) const
 
     storeAppendPrintf(entry, "%s %d\n", name, DelayPools::pools());
 
-    for (i = 0; i < DelayPools::pools(); i++)
+    for (i = 0; i < DelayPools::pools(); ++i)
         DelayPools::delay_data[i].dump (entry, i);
 }
 
-#endif
+#endif /* USE_DELAY_POOLS */

@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  * DEBUG: section 03    Configuration File Parsing
  * AUTHOR: Harvest Derived
  *
@@ -33,6 +31,7 @@
  *
  */
 
+#include "squid.h"
 #include "wordlist.h"
 #include "MemBuf.h"
 

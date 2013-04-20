@@ -1,4 +1,5 @@
-#include "config.h"
+#define SQUID_UNIT_TEST 1
+#include "squid.h"
 
 #include <cppunit/TestAssert.h>
 
@@ -11,32 +12,6 @@
 #endif
 
 CPPUNIT_TEST_SUITE_REGISTRATION( testURL );
-
-/* stub functions to link successfully */
-void
-shut_down(int)
-{}
-
-void
-reconfigure(int)
-{}
-
-#include "comm.h"
-void
-commSetSelect(int, unsigned int, PF *, void *, time_t)
-{}
-
-void
-commResetSelect(int)
-{}
-
-comm_err_t
-comm_select(int)
-{
-    return COMM_ERR__END__; // invalid result.
-}
-
-/* end stubs */
 
 /* init memory pools */
 
@@ -54,11 +29,11 @@ void
 testURL::testConstructScheme()
 {
     URLScheme empty_scheme;
-    URL protoless_url(PROTO_NONE);
+    URL protoless_url(AnyP::PROTO_NONE);
     CPPUNIT_ASSERT_EQUAL(empty_scheme, protoless_url.getScheme());
 
-    URLScheme ftp_scheme(PROTO_FTP);
-    URL ftp_url(PROTO_FTP);
+    URLScheme ftp_scheme(AnyP::PROTO_FTP);
+    URL ftp_url(AnyP::PROTO_FTP);
     CPPUNIT_ASSERT_EQUAL(ftp_scheme, ftp_url.getScheme());
 }
 

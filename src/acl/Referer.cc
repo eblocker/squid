@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 28    Access Control
  * AUTHOR: Duane Wessels
  *
@@ -42,5 +40,4 @@
 /* explicit template instantiation required for some systems */
 
 template class ACLRequestHeaderStrategy<HDR_REFERER>;
-
 

@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 41    Event Processing
  * AUTHOR: Henrik Nordstrom
  *
@@ -32,13 +30,16 @@
  *
  */
 
+#include "squid.h"
+#include "compat/drand48.h"
 #include "event.h"
-#include "CacheManager.h"
+#include "mgr/Registration.h"
 #include "Store.h"
 #include "SquidTime.h"
+#include "profiler/Profiler.h"
+#include "tools.h"
 
 /* The list of event processes */
-
 
 static OBJH eventDump;
 static const char *last_event_ran = NULL;
@@ -107,7 +108,6 @@ EventDialer::print(std::ostream &os) const
     os << ')';
 }
 
-
 ev_entry::ev_entry(char const * aName, EVH * aFunction, void * aArgument, double evWhen,
                    int aWeight, bool haveArgument) : name(aName), func(aFunction),
         arg(haveArgument ? cbdataReference(aArgument) : aArgument), when(evWhen), weight(aWeight),
@@ -152,8 +152,7 @@ eventDelete(EVH * func, void *arg)
 void
 eventInit(void)
 {
-    CacheManager::GetInstance()->
-    registerAction("events", "Event Queue", eventDump, 0, 1);
+    Mgr::RegisterAction("events", "Event Queue", eventDump, 0, 1);
 }
 
 static void

@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * AUTHOR: Joachim Bauch (mail@joachim-bauch.de)
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
@@ -39,8 +37,6 @@
 
 #ifndef SQUID_ESILIBXML2PARSER_H
 #define SQUID_ESILIBXML2PARSER_H
-
-#include "config.h"
 
 #if USE_SQUID_ESI && HAVE_LIBXML2
 

@@ -1,7 +1,4 @@
-
 /*
- * $Id$
- *
  * Low level DNS protocol routines
  * AUTHOR: Amos Jeffries, Rafael Martinez Torres
  *
@@ -56,7 +53,8 @@
  *
  */
 
-#include "config.h"
+#include "squid.h"
+#include "compat/inet_pton.h"
 #include "util.h"
 
 #if HAVE_STDIO_H
@@ -65,14 +63,8 @@
 #if HAVE_UNISTD_H
 #include <unistd.h>
 #endif
-#if HAVE_STDLIB_H
-#include <stdlib.h>
-#endif
 #if HAVE_MEMORY_H
 #include <memory.h>
-#endif
-#if HAVE_SYS_TYPES_H
-#include <sys/types.h>
 #endif
 #if HAVE_ASSERT_H
 #include <assert.h>
@@ -85,6 +77,7 @@
 #endif
 
 #include "rfc3596.h"
+#include "rfc2671.h"
 
 #ifndef SQUID_RFC1035_H
 #error RFC3596 Library depends on RFC1035
@@ -99,7 +92,7 @@
  * Returns the size of the query
  */
 ssize_t
-rfc3596BuildHostQuery(const char *hostname, char *buf, size_t sz, unsigned short qid, rfc1035_query * query, int qtype)
+rfc3596BuildHostQuery(const char *hostname, char *buf, size_t sz, unsigned short qid, rfc1035_query * query, int qtype, ssize_t edns_sz)
 {
     static rfc1035_message h;
     size_t offset = 0;
@@ -109,12 +102,15 @@ rfc3596BuildHostQuery(const char *hostname, char *buf, size_t sz, unsigned short
     h.rd = 1;
     h.opcode = 0;               /* QUERY */
     h.qdcount = (unsigned int) 1;
+    h.arcount = (edns_sz > 0 ? 1 : 0);
     offset += rfc1035HeaderPack(buf + offset, sz - offset, &h);
     offset += rfc1035QuestionPack(buf + offset,
                                   sz - offset,
                                   hostname,
                                   qtype,
                                   RFC1035_CLASS_IN);
+    if (edns_sz > 0)
+        offset += rfc2671RROptPack(buf + offset, sz - offset, edns_sz);
 
     if (query) {
         query->qtype = qtype;
@@ -135,9 +131,9 @@ rfc3596BuildHostQuery(const char *hostname, char *buf, size_t sz, unsigned short
  * \return the size of the query
  */
 ssize_t
-rfc3596BuildAQuery(const char *hostname, char *buf, size_t sz, unsigned short qid, rfc1035_query * query)
+rfc3596BuildAQuery(const char *hostname, char *buf, size_t sz, unsigned short qid, rfc1035_query * query, ssize_t edns_sz)
 {
-    return rfc3596BuildHostQuery(hostname, buf, sz, qid, query, RFC1035_TYPE_A);
+    return rfc3596BuildHostQuery(hostname, buf, sz, qid, query, RFC1035_TYPE_A, edns_sz);
 }
 
 /**
@@ -149,11 +145,10 @@ rfc3596BuildAQuery(const char *hostname, char *buf, size_t sz, unsigned short qi
  * \return the size of the query
  */
 ssize_t
-rfc3596BuildAAAAQuery(const char *hostname, char *buf, size_t sz, unsigned short qid, rfc1035_query * query)
+rfc3596BuildAAAAQuery(const char *hostname, char *buf, size_t sz, unsigned short qid, rfc1035_query * query, ssize_t edns_sz)
 {
-    return rfc3596BuildHostQuery(hostname, buf, sz, qid, query, RFC1035_TYPE_AAAA);
+    return rfc3596BuildHostQuery(hostname, buf, sz, qid, query, RFC1035_TYPE_AAAA, edns_sz);
 }
-
 
 /**
  * Builds a message buffer with a QUESTION to lookup PTR records
@@ -164,7 +159,7 @@ rfc3596BuildAAAAQuery(const char *hostname, char *buf, size_t sz, unsigned short
  * \return the size of the query
  */
 ssize_t
-rfc3596BuildPTRQuery4(const struct in_addr addr, char *buf, size_t sz, unsigned short qid, rfc1035_query * query)
+rfc3596BuildPTRQuery4(const struct in_addr addr, char *buf, size_t sz, unsigned short qid, rfc1035_query * query, ssize_t edns_sz)
 {
     static char rev[RFC1035_MAXHOSTNAMESZ];
     unsigned int i;
@@ -176,11 +171,11 @@ rfc3596BuildPTRQuery4(const struct in_addr addr, char *buf, size_t sz, unsigned 
              (i >> 16) & 255,
              (i >> 24) & 255);
 
-    return rfc3596BuildHostQuery(rev, buf, sz, qid, query, RFC1035_TYPE_PTR);
+    return rfc3596BuildHostQuery(rev, buf, sz, qid, query, RFC1035_TYPE_PTR, edns_sz);
 }
 
 ssize_t
-rfc3596BuildPTRQuery6(const struct in6_addr addr, char *buf, size_t sz, unsigned short qid, rfc1035_query * query)
+rfc3596BuildPTRQuery6(const struct in6_addr addr, char *buf, size_t sz, unsigned short qid, rfc1035_query * query, ssize_t edns_sz)
 {
     static char rev[RFC1035_MAXHOSTNAMESZ];
     const uint8_t* r = addr.s6_addr;
@@ -195,9 +190,8 @@ rfc3596BuildPTRQuery6(const struct in6_addr addr, char *buf, size_t sz, unsigned
 
     snprintf(p,10,"ip6.arpa.");
 
-    return rfc3596BuildHostQuery(rev, buf, sz, qid, query, RFC1035_TYPE_PTR);
+    return rfc3596BuildHostQuery(rev, buf, sz, qid, query, RFC1035_TYPE_PTR, edns_sz);
 }
-
 
 #if DRIVER
 
@@ -207,18 +201,19 @@ rfc3596BuildPTRQuery6(const struct in6_addr addr, char *buf, size_t sz, unsigned
 #  undef main(a,b)
 
 #include <sys/socket.h>
-#include <sys/time.h>
 
 int
 main(int argc, char *argv[])
 {
-    char input[512];
-    char buf[512];
-    char rbuf[512];
-    size_t sz = 512;
+#define PACKET_BUFSZ		1024
+    char input[PACKET_BUFSZ];
+    char buf[PACKET_BUFSZ];
+    char rbuf[PACKET_BUFSZ];
+    size_t sz = PACKET_BUFSZ;
     unsigned short sid, sidb;
     int s;
     int rl;
+    ssize_t edns_max = -1;
 
     struct sockaddr* S;
     int var = 1;
@@ -236,8 +231,11 @@ main(int argc, char *argv[])
             prefer = AF_INET;
         else if (argv[var][1] == '6')
             prefer = AF_INET6;
+        else if (argv[var][1] == 'E')
+            edns_max = atoi(argv[var++]);
         else {
-            fprintf(stderr, "usage: %s [-6|-4] ip port\n", argv[0]);
+            fprintf(stderr, "usage: %s [-6|-4] [-E packet-size] ip port\n", argv[0]);
+            fprintf(stderr, "  EDNS packets my be up to %d\n", PACKET_BUFSZ);
             return 1;
         }
 
@@ -251,7 +249,6 @@ main(int argc, char *argv[])
         return 1;
     }
 
-
     memset(&S, '\0', sizeof(S));
 
     if (prefer == 6) {
@@ -261,46 +258,44 @@ main(int argc, char *argv[])
         ((struct sockaddr_in6 *)S)->sin6_family = AF_INET6;
         ((struct sockaddr_in6 *)S)->sin6_port = htons(atoi(argv[var+1]));
 
-        if ( ! xinet_pton(AF_INET6, argv[var], &((struct sockaddr_in6 *)S)->sin6_addr.s_addr) )
+        if ( ! inet_pton(AF_INET6, argv[var], &((struct sockaddr_in6 *)S)->sin6_addr.s_addr) ) {
+            perror("listen address");
+            return 1;
+        }
+
+        s = socket(PF_INET6, SOCK_DGRAM, 0);
+    } else {
+        S = (struct sockaddr *) new sockaddr_in;
+        memset(S,0,sizeof(struct sockaddr_in));
+
+        ((struct sockaddr_in *)S)->sin_family = AF_INET;
+        ((struct sockaddr_in *)S)->sin_port = htons(atoi(argv[var+1]));
+
+        if ( ! inet_pton(AF_INET, argv[var], &((struct sockaddr_in *)S)->sin_addr.s_addr) )
             perror("listen address");
         return 1;
     }
-
-    s = socket(PF_INET6, SOCK_DGRAM, 0);
-}
-else
-{
-    S = (struct sockaddr *) new sockaddr_in;
-    memset(S,0,sizeof(struct sockaddr_in));
-
-    ((struct sockaddr_in *)S)->sin_family = AF_INET;
-    ((struct sockaddr_in *)S)->sin_port = htons(atoi(argv[var+1]));
-
-    if ( ! xinet_pton(AF_INET, argv[var], &((struct sockaddr_in *)S)->sin_addr.s_addr) )
-        perror("listen address");
-    return 1;
-}
 }
 
-while (fgets(input, 512, stdin))
+while (fgets(input, PACKET_BUFSZ, stdin))
 {
 
     struct in6_addr junk6;
 
     struct in_addr junk4;
     strtok(input, "\r\n");
-    memset(buf, '\0', 512);
-    sz = 512;
+    memset(buf, '\0', PACKET_BUFSZ);
+    sz = PACKET_BUFSZ;
 
-    if (xinet_pton(AF_INET6, input, &junk6)) {
-        sid = rfc1035BuildPTRQuery6(junk6, buf, &sz);
+    if (inet_pton(AF_INET6, input, &junk6)) {
+        sid = rfc1035BuildPTRQuery6(junk6, buf, &sz, edns_max);
         sidb=0;
-    } else if (xinet_pton(AF_INET, input, &junk4)) {
-        sid = rfc1035BuildPTRQuery4(junk4, buf, &sz);
+    } else if (inet_pton(AF_INET, input, &junk4)) {
+        sid = rfc1035BuildPTRQuery4(junk4, buf, &sz, edns_max);
         sidb=0;
     } else {
-        sid = rfc1035BuildAAAAQuery(input, buf, &sz);
-        sidb = rfc1035BuildAQuery(input, buf, &sz);
+        sid = rfc1035BuildAAAAQuery(input, buf, &sz, edns_max);
+        sidb = rfc1035BuildAQuery(input, buf, &sz, edns_max);
     }
 
     sendto(s, buf, sz, 0, S, sizeof(*S));
@@ -321,8 +316,8 @@ while (fgets(input, 512, stdin))
         continue;
     }
 
-    memset(rbuf, '\0', 512);
-    rl = recv(s, rbuf, 512, 0);
+    memset(rbuf, '\0', PACKET_BUFSZ);
+    rl = recv(s, rbuf, PACKET_BUFSZ, 0);
     {
         unsigned short rid = 0;
         int i;
@@ -334,7 +329,7 @@ while (fgets(input, 512, stdin))
                                  &rid);
 
         if (n < 0) {
-            printf("ERROR %d\n", rfc1035_errno);
+            printf("ERROR %d\n", -n);
         } else if (rid != sid && rid != sidb) {
             printf("ERROR, ID mismatch (%#hx, %#hx)\n", sid, rid);
             printf("ERROR, ID mismatch (%#hx, %#hx)\n", sidb, rid);
@@ -372,6 +367,6 @@ while (fgets(input, 512, stdin))
 }
 
 return 0;
-       }
+}
 
 #endif

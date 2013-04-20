@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  * DEBUG: section 77    Delay Pools
  * AUTHOR: Robert Collins <robertc@squid-cache.org>
  * Based upon original delay pools code by
@@ -37,12 +35,12 @@
  * Copyright (c) 2003, Robert Collins <robertc@squid-cache.org>
  */
 
-#include "config.h"
-
-#if DELAY_POOLS
 #include "squid.h"
-#include "DelayVector.h"
+
+#if USE_DELAY_POOLS
+#include "comm/Connection.h"
 #include "CommRead.h"
+#include "DelayVector.h"
 
 void *
 DelayVector::operator new(size_t size)

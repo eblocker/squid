@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
  * ----------------------------------------------------------
@@ -34,11 +32,14 @@
 #ifndef SQUID_HTTPHIERARCHYLOGENTRY_H
 #define SQUID_HTTPHIERARCHYLOGENTRY_H
 
-#include "ip/IpAddress.h"
+#include "comm/Connection.h"
+#include "hier_code.h"
+#include "HttpStatusCode.h"
+#include "lookup_t.h"
 #include "rfc2181.h"
 #include "PingData.h"
 
-/** todo Cleanup: break hier_code type out. We don't need the rest. */
+/* for http_status */
 #include "enums.h"
 
 class HierarchyLogEntry
@@ -46,6 +47,13 @@ class HierarchyLogEntry
 
 public:
     HierarchyLogEntry();
+    ~HierarchyLogEntry() { tcpServer = NULL; };
+
+    /// Record details from a new server connection.
+    /// call this whenever the destination server changes.
+    void note(const Comm::ConnectionPointer &server, const char *requestedHost);
+
+public:
     hier_code code;
     char host[SQUIDHOSTNAMELEN];
     ping_data ping;
@@ -63,9 +71,8 @@ public:
     int64_t peer_response_time; ///< last peer response delay
     timeval first_conn_start; ///< first connection use among all peers
     int64_t total_response_time; ///< cumulative for all peers
-    IpAddress peer_local_addr; ///< local IP:port of the last server-side connection
+    Comm::ConnectionPointer tcpServer; ///< TCP/IP level details of the last server-side connection
+    int64_t bodyBytesRead;  ///< number of body bytes received from the next hop or -1
 };
-
-extern void hierarchyNote(HierarchyLogEntry *, hier_code, const char *);
 
 #endif /* SQUID_HTTPHIERARCHYLOGENTRY_H */

@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
  * ----------------------------------------------------------
@@ -32,14 +30,16 @@
 #ifndef SQUID_HTTPREPLY_H
 #define SQUID_HTTPREPLY_H
 
+#include "HttpBody.h"
 #include "HttpMsg.h"
+#include "HttpRequest.h"
 #include "HttpStatusLine.h"
 
-extern void httpReplyInitModule(void);
+void httpReplyInitModule(void);
 
 #if DEAD_CODE
 /** do everything in one call: init, set, pack, clean, return MemBuf */
-extern MemBuf *httpPackedReply(HttpVersion ver, http_status status, const char *ctype, int64_t clen, time_t lmt, time_t expires);
+MemBuf *httpPackedReply(HttpVersion ver, http_status status, const char *ctype, int64_t clen, time_t lmt, time_t expires);
 #endif
 
 /* Sync changes here with HttpReply.cc */

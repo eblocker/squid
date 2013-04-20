@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  * DEBUG: section 70    Cache Digest
  * AUTHOR: Alex Rousskov
  *
@@ -34,9 +32,15 @@
  */
 
 #include "squid.h"
+#include "md5.h"
+#include "Mem.h"
+#include "StatCounters.h"
 #include "Store.h"
+#include "store_key_md5.h"
 
 #if USE_CACHE_DIGESTS
+
+#include "CacheDigest.h"
 
 /* local types */
 
@@ -51,7 +55,7 @@ typedef struct {
 static void cacheDigestHashKey(const CacheDigest * cd, const cache_key * key);
 
 /* static array used by cacheDigestHashKey for optimization purposes */
-static u_int32_t hashed_keys[4];
+static uint32_t hashed_keys[4];
 
 static void
 cacheDigestInit(CacheDigest * cd, int capacity, int bpe)
@@ -102,7 +106,7 @@ cacheDigestClone(const CacheDigest * cd)
     clone->count = cd->count;
     clone->del_count = cd->del_count;
     assert(cd->mask_size == clone->mask_size);
-    xmemcpy(clone->mask, cd->mask, cd->mask_size);
+    memcpy(clone->mask, cd->mask, cd->mask_size);
     return clone;
 }
 
@@ -158,35 +162,35 @@ cacheDigestAdd(CacheDigest * cd, const cache_key * key)
 
         if (!CBIT_TEST(cd->mask, hashed_keys[0])) {
             CBIT_SET(cd->mask, hashed_keys[0]);
-            on_xition_cnt++;
+            ++on_xition_cnt;
         }
 
         if (!CBIT_TEST(cd->mask, hashed_keys[1])) {
             CBIT_SET(cd->mask, hashed_keys[1]);
-            on_xition_cnt++;
+            ++on_xition_cnt;
         }
 
         if (!CBIT_TEST(cd->mask, hashed_keys[2])) {
             CBIT_SET(cd->mask, hashed_keys[2]);
-            on_xition_cnt++;
+            ++on_xition_cnt;
         }
 
         if (!CBIT_TEST(cd->mask, hashed_keys[3])) {
             CBIT_SET(cd->mask, hashed_keys[3]);
-            on_xition_cnt++;
+            ++on_xition_cnt;
         }
 
-        statHistCount(&statCounter.cd.on_xition_count, on_xition_cnt);
+        statCounter.cd.on_xition_count.count(on_xition_cnt);
     }
 #endif
-    cd->count++;
+    ++ cd->count;
 }
 
 void
 cacheDigestDel(CacheDigest * cd, const cache_key * key)
 {
     assert(cd && key);
-    cd->del_count++;
+    ++ cd->del_count;
     /* we do not support deletions from the digest */
 }
 
@@ -207,16 +211,16 @@ cacheDigestStats(const CacheDigest * cd, CacheDigestStats * stats)
         const int is_on = 0 != CBIT_TEST(cd->mask, pos);
 
         if (is_on)
-            on_count++;
+            ++on_count;
 
         if (is_on != cur_seq_type || !pos) {
             seq_len_sum += cur_seq_len;
-            seq_count++;
+            ++seq_count;
             cur_seq_type = is_on;
             cur_seq_len = 0;
         }
 
-        cur_seq_len++;
+        ++cur_seq_len;
     }
 
     stats->bit_count = cd->mask_size * 8;
@@ -235,30 +239,30 @@ cacheDigestBitUtil(const CacheDigest * cd)
 }
 
 void
-cacheDigestGuessStatsUpdate(cd_guess_stats * stats, int real_hit, int guess_hit)
+cacheDigestGuessStatsUpdate(CacheDigestGuessStats * stats, int real_hit, int guess_hit)
 {
     assert(stats);
 
     if (real_hit) {
         if (guess_hit)
-            stats->true_hits++;
+            ++stats->trueHits;
         else
-            stats->false_misses++;
+            ++stats->falseMisses;
     } else {
         if (guess_hit)
-            stats->false_hits++;
+            ++stats->falseHits;
         else
-            stats->true_misses++;
+            ++stats->trueMisses;
     }
 }
 
 void
-cacheDigestGuessStatsReport(const cd_guess_stats * stats, StoreEntry * sentry, const char *label)
+cacheDigestGuessStatsReport(const CacheDigestGuessStats * stats, StoreEntry * sentry, const char *label)
 {
-    const int true_count = stats->true_hits + stats->true_misses;
-    const int false_count = stats->false_hits + stats->false_misses;
-    const int hit_count = stats->true_hits + stats->false_hits;
-    const int miss_count = stats->true_misses + stats->false_misses;
+    const int true_count = stats->trueHits + stats->trueMisses;
+    const int false_count = stats->falseHits + stats->falseMisses;
+    const int hit_count = stats->trueHits + stats->falseHits;
+    const int miss_count = stats->trueMisses + stats->falseMisses;
     const int tot_count = true_count + false_count;
 
     assert(label);
@@ -273,19 +277,19 @@ cacheDigestGuessStatsReport(const cd_guess_stats * stats, StoreEntry * sentry, c
     storeAppendPrintf(sentry, "guess\t hit\t\t miss\t\t total\t\t\n");
     storeAppendPrintf(sentry, " \t #\t %%\t #\t %%\t #\t %%\t\n");
     storeAppendPrintf(sentry, "true\t %d\t %.2f\t %d\t %.2f\t %d\t %.2f\n",
-                      stats->true_hits, xpercent(stats->true_hits, tot_count),
-                      stats->true_misses, xpercent(stats->true_misses, tot_count),
+                      stats->trueHits, xpercent(stats->trueHits, tot_count),
+                      stats->trueMisses, xpercent(stats->trueMisses, tot_count),
                       true_count, xpercent(true_count, tot_count));
     storeAppendPrintf(sentry, "false\t %d\t %.2f\t %d\t %.2f\t %d\t %.2f\n",
-                      stats->false_hits, xpercent(stats->false_hits, tot_count),
-                      stats->false_misses, xpercent(stats->false_misses, tot_count),
+                      stats->falseHits, xpercent(stats->falseHits, tot_count),
+                      stats->falseMisses, xpercent(stats->falseMisses, tot_count),
                       false_count, xpercent(false_count, tot_count));
     storeAppendPrintf(sentry, "all\t %d\t %.2f\t %d\t %.2f\t %d\t %.2f\n",
                       hit_count, xpercent(hit_count, tot_count),
                       miss_count, xpercent(miss_count, tot_count),
                       tot_count, xpercent(tot_count, tot_count));
     storeAppendPrintf(sentry, "\tclose_hits: %d ( %d%%) /* cd said hit, doc was in the peer cache, but we got a miss */\n",
-                      stats->close_hits, xpercentInt(stats->close_hits, stats->false_hits));
+                      stats->closeHits, xpercentInt(stats->closeHits, stats->falseHits));
 }
 
 void
@@ -328,7 +332,7 @@ cacheDigestHashKey(const CacheDigest * cd, const cache_key * key)
     const unsigned int bit_count = cd->mask_size * 8;
     unsigned int tmp_keys[4];
     /* we must memcpy to ensure alignment */
-    xmemcpy(tmp_keys, key, sizeof(tmp_keys));
+    memcpy(tmp_keys, key, sizeof(tmp_keys));
     hashed_keys[0] = htonl(tmp_keys[0]) % bit_count;
     hashed_keys[1] = htonl(tmp_keys[1]) % bit_count;
     hashed_keys[2] = htonl(tmp_keys[2]) % bit_count;

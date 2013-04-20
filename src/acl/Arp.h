@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
  * ----------------------------------------------------------
@@ -39,9 +37,9 @@
 #include "acl/Checklist.h"
 #include "splay.h"
 
-/// \ingroup ACLAPI
-struct acl_arp_data {
-    char eth[6];
+namespace Eui
+{
+class Eui48;
 };
 
 /// \ingroup ACLAPI
@@ -66,7 +64,7 @@ public:
 protected:
     static Prototype RegistryProtoype;
     static ACLARP RegistryEntry_;
-    SplayNode<acl_arp_data *> *data;
+    SplayNode<Eui::Eui48 *> *data;
     char const *class_;
 };
 

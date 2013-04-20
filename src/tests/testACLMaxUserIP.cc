@@ -1,6 +1,9 @@
 #define SQUID_UNIT_TEST 1
 
 #include "squid.h"
+
+#if USE_AUTH
+
 #include "testACLMaxUserIP.h"
 #include "auth/AclMaxUserIp.h"
 
@@ -9,15 +12,6 @@
 #endif
 
 CPPUNIT_TEST_SUITE_REGISTRATION( testACLMaxUserIP );
-
-// Stubs so this will build.
-#include "event.h"
-void
-eventAdd(const char *name, EVH * func, void *arg, double when, int, bool cbdata)
-{
-// CALLED as setUp no-op
-//    fatal("eventAdd. Not implemented.");
-}
 
 void
 testACLMaxUserIP::testDefaults()
@@ -30,7 +24,6 @@ testACLMaxUserIP::testDefaults()
     /* an unparsed acl must not be valid - there is no sane default */
     CPPUNIT_ASSERT(!anACL.valid());
 }
-
 
 void
 testACLMaxUserIP::testParseLine()
@@ -48,3 +41,5 @@ testACLMaxUserIP::testParseLine()
     CPPUNIT_ASSERT(anACL.valid());
     xfree(line);
 }
+
+#endif /* USE_AUTH */

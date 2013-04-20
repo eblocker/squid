@@ -1,7 +1,4 @@
-#error COSS Support is not stable yet in Squid-3. Please do not use.
 /*
- * $Id$
- *
  * DEBUG: section 47    Store Directory Routines
  * AUTHOR: Robert Collins
  *
@@ -34,9 +31,10 @@
  * Copyright (c) 2003, Robert Collins <robertc@squid-cache.org>
  */
 
+#include "squid.h"
 #include "StoreFileSystem.h"
 #include "StoreFScoss.h"
-#include "CacheManager.h"
+#include "mgr/Registration.h"
 #include "Store.h"
 #include "CossSwapDir.h"
 #include "store_coss.h"
@@ -87,7 +85,7 @@ StoreFScoss::setup()
 void
 StoreFScoss::registerWithCacheManager()
 {
-    CacheManager::GetInstance()->registerAction("coss", "COSS Stats", Stats, 0, 1);
+    Mgr::RegisterAction("coss", "COSS Stats", Stats, 0, 1);
 }
 
 void

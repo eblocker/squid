@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  * DEBUG: section 75    WHOIS protocol
  * AUTHOR: Duane Wessels, Kostas Anagnostakis
  *
@@ -34,13 +32,21 @@
  */
 
 #include "squid.h"
+#include "comm.h"
+#include "comm/Write.h"
 #include "errorpage.h"
-#include "Store.h"
 #include "HttpReply.h"
 #include "HttpRequest.h"
-#include "comm.h"
 #include "HttpRequest.h"
 #include "forward.h"
+#include "SquidConfig.h"
+#include "StatCounters.h"
+#include "Store.h"
+#include "tools.h"
+
+#if HAVE_ERRNO_H
+#include <errno.h>
+#endif
 
 #define WHOIS_PORT 43
 
@@ -49,7 +55,7 @@ class WhoisState
 
 public:
     ~WhoisState();
-    void readReply (int fd, char *aBuffer, size_t aBufferLength, comm_err_t flag, int xerrno);
+    void readReply(const Comm::ConnectionPointer &, char *aBuffer, size_t aBufferLength, comm_err_t flag, int xerrno);
     void setReplyToOK(StoreEntry *sentry);
     StoreEntry *entry;
     HttpRequest *request;
@@ -58,8 +64,8 @@ public:
     bool dataWritten;
 };
 
-static PF whoisClose;
-static PF whoisTimeout;
+static CLCB whoisClose;
+static CTCB whoisTimeout;
 static IOCB whoisReadReply;
 
 /* PUBLIC */
@@ -72,7 +78,7 @@ WhoisState::~WhoisState()
 }
 
 static void
-whoisWriteComplete(int fd, char *buf, size_t size, comm_err_t flag, int xerrno, void *data)
+whoisWriteComplete(const Comm::ConnectionPointer &, char *buf, size_t size, comm_err_t flag, int xerrno, void *data)
 {
     xfree(buf);
 }
@@ -81,7 +87,6 @@ void
 whoisStart(FwdState * fwd)
 {
     WhoisState *p;
-    int fd = fwd->server_fd;
     char *buf;
     size_t l;
     CBDATA_INIT_TYPE(WhoisState);
@@ -92,7 +97,7 @@ whoisStart(FwdState * fwd)
     p->dataWritten = false;
 
     p->entry->lock();
-    comm_add_close_handler(fd, whoisClose, p);
+    comm_add_close_handler(fwd->serverConnection()->fd, whoisClose, p);
 
     l = p->request->urlpath.size() + 3;
 
@@ -101,26 +106,32 @@ whoisStart(FwdState * fwd)
     String str_print=p->request->urlpath.substr(1,p->request->urlpath.size());
     snprintf(buf, l, SQUIDSTRINGPH"\r\n", SQUIDSTRINGPRINT(str_print));
 
-    comm_write(fd, buf, strlen(buf), whoisWriteComplete, p, NULL);
-    comm_read(fd, p->buf, BUFSIZ, whoisReadReply, p);
-    commSetTimeout(fd, Config.Timeout.read, whoisTimeout, p);
+    AsyncCall::Pointer writeCall = commCbCall(5,5, "whoisWriteComplete",
+                                   CommIoCbPtrFun(whoisWriteComplete, p));
+    Comm::Write(fwd->serverConnection(), buf, strlen(buf), writeCall, NULL);
+    AsyncCall::Pointer readCall = commCbCall(5,4, "whoisReadReply",
+                                  CommIoCbPtrFun(whoisReadReply, p));
+    comm_read(fwd->serverConnection(), p->buf, BUFSIZ, readCall);
+    AsyncCall::Pointer timeoutCall = commCbCall(5, 4, "whoisTimeout",
+                                     CommTimeoutCbPtrFun(whoisTimeout, p));
+    commSetConnTimeout(fwd->serverConnection(), Config.Timeout.read, timeoutCall);
 }
 
 /* PRIVATE */
 
 static void
-whoisTimeout(int fd, void *data)
+whoisTimeout(const CommTimeoutCbParams &io)
 {
-    WhoisState *p = (WhoisState *)data;
-    debugs(75, 1, "whoisTimeout: " << p->entry->url()  );
-    whoisClose(fd, p);
+    WhoisState *p = static_cast<WhoisState *>(io.data);
+    debugs(75, 3, HERE << io.conn << ", URL " << p->entry->url());
+    io.conn->close();
 }
 
 static void
-whoisReadReply(int fd, char *buf, size_t len, comm_err_t flag, int xerrno, void *data)
+whoisReadReply(const Comm::ConnectionPointer &conn, char *buf, size_t len, comm_err_t flag, int xerrno, void *data)
 {
     WhoisState *p = (WhoisState *)data;
-    p->readReply(fd, buf, len, flag, xerrno);
+    p->readReply(conn, buf, len, flag, xerrno);
 }
 
 void
@@ -133,27 +144,28 @@ WhoisState::setReplyToOK(StoreEntry *sentry)
 }
 
 void
-WhoisState::readReply (int fd, char *aBuffer, size_t aBufferLength, comm_err_t flag, int xerrno)
+WhoisState::readReply(const Comm::ConnectionPointer &conn, char *aBuffer, size_t aBufferLength, comm_err_t flag, int xerrno)
 {
     /* Bail out early on COMM_ERR_CLOSING - close handlers will tidy up for us */
     if (flag == COMM_ERR_CLOSING)
         return;
 
     aBuffer[aBufferLength] = '\0';
-    debugs(75, 3, "whoisReadReply: FD " << fd << " read " << aBufferLength << " bytes");
+    debugs(75, 3, HERE << conn << " read " << aBufferLength << " bytes");
     debugs(75, 5, "{" << aBuffer << "}");
 
     if (flag != COMM_OK) {
-        debugs(50, 2, "whoisReadReply: FD " << fd << ": read failure: " << xstrerror() << ".");
+        debugs(50, 2, HERE  << conn << ": read failure: " << xstrerror() << ".");
 
         if (ignoreErrno(errno)) {
-            comm_read(fd, aBuffer, BUFSIZ, whoisReadReply, this);
+            AsyncCall::Pointer call = commCbCall(5,4, "whoisReadReply",
+                                                 CommIoCbPtrFun(whoisReadReply, this));
+            comm_read(conn, aBuffer, BUFSIZ, call);
         } else {
-            ErrorState *err;
-            err = errorCon(ERR_READ_ERROR, HTTP_INTERNAL_SERVER_ERROR, fwd->request);
-            err->xerrno = errno;
+            ErrorState *err = new ErrorState(ERR_READ_ERROR, HTTP_INTERNAL_SERVER_ERROR, fwd->request);
+            err->xerrno = xerrno;
             fwd->fail(err);
-            comm_close(fd);
+            conn->close();
         }
         return;
     }
@@ -162,15 +174,17 @@ WhoisState::readReply (int fd, char *aBuffer, size_t aBufferLength, comm_err_t f
         if (!dataWritten)
             setReplyToOK(entry);
 
-        kb_incr(&statCounter.server.all.kbytes_in, aBufferLength);
-        kb_incr(&statCounter.server.http.kbytes_in, aBufferLength);
+        kb_incr(&(statCounter.server.all.kbytes_in), aBufferLength);
+        kb_incr(&(statCounter.server.http.kbytes_in), aBufferLength);
 
         /* No range support, we always grab it all */
         dataWritten = true;
         entry->append(aBuffer, aBufferLength);
         entry->flush();
 
-        comm_read(fd, aBuffer, BUFSIZ, whoisReadReply, this);
+        AsyncCall::Pointer call = commCbCall(5,4, "whoisReadReply",
+                                             CommIoCbPtrFun(whoisReadReply, this));
+        comm_read(conn, aBuffer, BUFSIZ, call);
         return;
     }
 
@@ -183,14 +197,14 @@ WhoisState::readReply (int fd, char *aBuffer, size_t aBufferLength, comm_err_t f
 
     fwd->complete();
     debugs(75, 3, "whoisReadReply: Done: " << entry->url());
-    comm_close(fd);
+    conn->close();
 }
 
 static void
-whoisClose(int fd, void *data)
+whoisClose(const CommCloseCbParams &params)
 {
-    WhoisState *p = (WhoisState *)data;
-    debugs(75, 3, "whoisClose: FD " << fd);
+    WhoisState *p = (WhoisState *)params.data;
+    debugs(75, 3, "whoisClose: FD " << params.fd);
     p->entry->unlock();
     cbdataFree(p);
 }

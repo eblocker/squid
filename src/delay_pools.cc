@@ -39,32 +39,32 @@
  \ingroup DelayPoolsAPI
  */
 
-#include "config.h"
-
-#if DELAY_POOLS
 #include "squid.h"
-#include "CacheManager.h"
-#include "DelaySpec.h"
-#include "DelayPools.h"
-#include "event.h"
-#include "StoreClient.h"
-#include "Store.h"
-#include "MemObject.h"
-#include "client_side_request.h"
-#include "ConfigParser.h"
-#include "DelayId.h"
+
+#if USE_DELAY_POOLS
 #include "Array.h"
-#include "SquidString.h"
-#include "SquidTime.h"
+#include "client_side_request.h"
+#include "comm/Connection.h"
 #include "CommonPool.h"
 #include "CompositePoolNode.h"
-#include "DelayPool.h"
-#include "DelayVector.h"
-#include "NullDelayId.h"
+#include "ConfigParser.h"
 #include "DelayBucket.h"
-#include "DelayUser.h"
+#include "DelayId.h"
+#include "DelayPool.h"
+#include "DelayPools.h"
+#include "DelaySpec.h"
 #include "DelayTagged.h"
-#include "ip/IpAddress.h"
+#include "DelayUser.h"
+#include "DelayVector.h"
+#include "event.h"
+#include "ip/Address.h"
+#include "MemObject.h"
+#include "mgr/Registration.h"
+#include "NullDelayId.h"
+#include "SquidString.h"
+#include "SquidTime.h"
+#include "StoreClient.h"
+#include "Store.h"
 
 /// \ingroup DelayPoolsInternal
 long DelayPools::MemoryUsed = 0;
@@ -159,7 +159,7 @@ protected:
 
     virtual char const *label() const = 0;
 
-    virtual unsigned int makeKey(IpAddress &src_addr) const = 0;
+    virtual unsigned int makeKey(Ip::Address &src_addr) const = 0;
 
     DelaySpec spec;
 
@@ -190,7 +190,7 @@ public:
 
 protected:
     virtual char const *label() const {return "Individual";}
-    virtual unsigned int makeKey(IpAddress &src_addr) const;
+    virtual unsigned int makeKey(Ip::Address &src_addr) const;
 };
 
 /// \ingroup DelayPoolsInternal
@@ -203,7 +203,7 @@ public:
 
 protected:
     virtual char const *label() const {return "Network";}
-    virtual unsigned int makeKey (IpAddress &src_addr) const;
+    virtual unsigned int makeKey (Ip::Address &src_addr) const;
 };
 
 /* don't use remote storage for these */
@@ -247,9 +247,9 @@ protected:
 
     virtual char const *label() const {return "Individual";}
 
-    virtual unsigned int makeKey (IpAddress &src_addr) const;
+    virtual unsigned int makeKey(Ip::Address &src_addr) const;
 
-    unsigned char makeHostKey (IpAddress &src_addr) const;
+    unsigned char makeHostKey(Ip::Address &src_addr) const;
 
     DelaySpec spec;
     VectorMap<unsigned char, ClassCBucket> buckets;
@@ -340,7 +340,9 @@ CommonPool::Factory(unsigned char _class, CompositePoolNode::Pointer& compositeC
             temp->push_back (new Aggregate);
             temp->push_back (new ClassCNetPool);
             temp->push_back (new ClassCHostPool);
+#if USE_AUTH
             temp->push_back (new DelayUser);
+#endif
         }
         break;
 
@@ -366,7 +368,7 @@ ClassCBucket::update (DelaySpec const &rate, int incr)
     /* If we aren't active, don't try to update us ! */
     assert (rate.restore_bps != -1);
 
-    for (unsigned char j = 0; j < individuals.size(); ++j)
+    for (unsigned int j = 0; j < individuals.size(); ++j)
         individuals.values[j].update (rate, incr);
 }
 
@@ -543,8 +545,7 @@ unsigned short DelayPools::pools_ (0);
 void
 DelayPools::RegisterWithCacheManager(void)
 {
-    CacheManager::GetInstance()->
-    registerAction("delay", "Delay Pool Levels", Stats, 0, 1);
+    Mgr::RegisterAction("delay", "Delay Pool Levels", Stats, 0, 1);
 }
 
 void
@@ -553,7 +554,6 @@ DelayPools::Init()
     LastUpdate = getCurrentTime();
     RegisterWithCacheManager();
 }
-
 
 void
 DelayPools::InitDelayData()
@@ -670,7 +670,7 @@ void
 DelayPools::pools(unsigned short newPools)
 {
     if (pools()) {
-        debugs(3, 0, "parse_delay_pool_count: multiple delay_pools lines, aborting all previous delay_pools config");
+        debugs(3, DBG_CRITICAL, "parse_delay_pool_count: multiple delay_pools lines, aborting all previous delay_pools config");
         FreePools();
     }
 
@@ -741,7 +741,7 @@ VectorPool::stats(StoreEntry * sentry)
 
     storeAppendPrintf(sentry, "\t\tCurrent:");
 
-    for (unsigned int i = 0; i < buckets.size(); i++) {
+    for (unsigned int i = 0; i < buckets.size(); ++i) {
         storeAppendPrintf(sentry, " %d:", buckets.key_map[i]);
         buckets.values[i].stats(sentry);
     }
@@ -855,7 +855,7 @@ VectorPool::Id::bytesIn(int qty)
 }
 
 unsigned int
-IndividualPool::makeKey (IpAddress &src_addr) const
+IndividualPool::makeKey(Ip::Address &src_addr) const
 {
     /* IPv4 required for this pool */
     if ( !src_addr.IsIPv4() )
@@ -881,7 +881,7 @@ ClassCNetPool::operator delete (void *address)
 }
 
 unsigned int
-ClassCNetPool::makeKey (IpAddress &src_addr) const
+ClassCNetPool::makeKey(Ip::Address &src_addr) const
 {
     /* IPv4 required for this pool */
     if ( !src_addr.IsIPv4() )
@@ -891,7 +891,6 @@ ClassCNetPool::makeKey (IpAddress &src_addr) const
     src_addr.GetInAddr(net);
     return ( (ntohl(net.s_addr) >> 8) & 0xff);
 }
-
 
 ClassCHostPool::ClassCHostPool()
 {
@@ -954,7 +953,7 @@ ClassCHostPool::keyAllocated (unsigned char const key) const
 }
 
 unsigned char
-ClassCHostPool::makeHostKey (IpAddress &src_addr) const
+ClassCHostPool::makeHostKey(Ip::Address &src_addr) const
 {
     /* IPv4 required for this pool */
     if ( !src_addr.IsIPv4() )
@@ -967,7 +966,7 @@ ClassCHostPool::makeHostKey (IpAddress &src_addr) const
 }
 
 unsigned int
-ClassCHostPool::makeKey (IpAddress &src_addr) const
+ClassCHostPool::makeKey(Ip::Address &src_addr) const
 {
     /* IPv4 required for this pool */
     if ( !src_addr.IsIPv4() )
@@ -1035,5 +1034,4 @@ ClassCHostPool::Id::bytesIn(int qty)
     theClassCHost->buckets.values[theNet].individuals.values[theHost].bytesIn (qty);
 }
 
-#endif
-
+#endif /* USE_DELAY_POOLS */

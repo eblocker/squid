@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * AUTHOR: Harvest Derived
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
@@ -34,45 +32,20 @@
 #ifndef SQUID_UTIL_H
 #define SQUID_UTIL_H
 
-#include "config.h"
-
 #if HAVE_STDIO_H
 #include <stdio.h>
 #endif
 #if HAVE_TIME_H
 #include <time.h>
 #endif
-#if HAVE_SYS_TIME_H
-#include <sys/time.h>
-#endif
 #if HAVE_ARPA_INET_H
 #include <arpa/inet.h>
 #endif
 
-#if defined(_SQUID_FREEBSD_)
-#define _etext etext
-#endif
-
-SQUIDCEXTERN const char *mkhttpdlogtime(const time_t *);
-SQUIDCEXTERN const char *mkrfc1123(time_t);
-SQUIDCEXTERN char *uudecode(const char *);
-SQUIDCEXTERN char *xstrdup(const char *);
-SQUIDCEXTERN char *xstrndup(const char *, size_t);
-SQUIDCEXTERN const char *xstrerr(int xerrno);
-SQUIDCEXTERN const char *xstrerror(void);
-SQUIDCEXTERN int tvSubMsec(struct timeval, struct timeval);
 SQUIDCEXTERN int tvSubUsec(struct timeval, struct timeval);
 SQUIDCEXTERN double tvSubDsec(struct timeval, struct timeval);
-SQUIDCEXTERN char *xstrncpy(char *, const char *, size_t);
-SQUIDCEXTERN size_t xcountws(const char *str);
-SQUIDCEXTERN time_t parse_rfc1123(const char *str);
-SQUIDCEXTERN void *xcalloc(size_t, size_t);
-SQUIDCEXTERN void *xmalloc(size_t);
-SQUIDCEXTERN void *xrealloc(void *, size_t);
 SQUIDCEXTERN void Tolower(char *);
-SQUIDCEXTERN void xfree(void *);
-SQUIDCEXTERN void xxfree(const void *);
-#ifdef __cplusplus
+#if defined(__cplusplus)
 /*
  * Any code using libstdc++ must have externally resolvable overloads
  * for void * operator new - which means in the .o for the binary,
@@ -80,7 +53,7 @@ SQUIDCEXTERN void xxfree(const void *);
  * so, look in the translation unit containing main() in squid
  * for the extern version in squid
  */
-#ifndef _SQUID_EXTERNNEW_
+#if !defined(_SQUID_EXTERNNEW_)
 #if defined(__GNUC_STDC_INLINE__) || defined(__GNUC_GNU_INLINE__)
 #define _SQUID_EXTERNNEW_ extern inline __attribute__((gnu_inline))
 #else
@@ -90,20 +63,9 @@ SQUIDCEXTERN void xxfree(const void *);
 #include "SquidNew.h"
 #endif
 
-/* charset.c */
-SQUIDCEXTERN char *latin1_to_utf8(char *out, size_t size, const char *in);
-
-/* html.c */
-SQUIDCEXTERN char *html_quote(const char *);
-
-#if XMALLOC_STATISTICS
-SQUIDCEXTERN void malloc_statistics(void (*)(int, int, int, void *), void *);
-#endif
-
 #if XMALLOC_TRACE
 #define xmalloc(size) (xmalloc_func="xmalloc",xmalloc_line=__LINE__,xmalloc_file=__FILE__,xmalloc(size))
 #define xfree(ptr) (xmalloc_func="xfree",xmalloc_line=__LINE__,xmalloc_file=__FILE__,xfree(ptr))
-#define xxfree(ptr) (xmalloc_func="xxfree",xmalloc_line=__LINE__,xmalloc_file=__FILE__,xxfree(ptr))
 #define xrealloc(ptr,size) (xmalloc_func="xrealloc",xmalloc_line=__LINE__,xmalloc_file=__FILE__,xrealloc(ptr,size))
 #define xcalloc(n,size) (xmalloc_func="xcalloc",xmalloc_line=__LINE__,xmalloc_file=__FILE__,xcalloc(n,size))
 #define xstrdup(ptr) (xmalloc_func="xstrdup",xmalloc_line=__LINE__,xmalloc_file=__FILE__,xstrdup(ptr))
@@ -116,9 +78,6 @@ extern void xmalloc_find_leaks(void);
 #endif
 
 SQUIDCEXTERN time_t parse_iso3307_time(const char *buf);
-SQUIDCEXTERN char *base64_decode(const char *coded);
-SQUIDCEXTERN const char *base64_encode(const char *decoded);
-SQUIDCEXTERN const char *base64_encode_bin(const char *data, int len);
 
 SQUIDCEXTERN double xpercent(double part, double whole);
 SQUIDCEXTERN int xpercentInt(double part, double whole);
@@ -126,10 +85,6 @@ SQUIDCEXTERN double xdiv(double nom, double denom);
 
 SQUIDCEXTERN const char *xitoa(int num);
 SQUIDCEXTERN const char *xint64toa(int64_t num);
-
-#if !HAVE_DRAND48
-SQUIDCEXTERN double drand48(void);
-#endif
 
 typedef struct {
     size_t count;
@@ -150,20 +105,19 @@ extern void gb_flush(gb_t *);  /* internal, do not use this */
 /*
  * Returns the amount of known allocated memory
  */
-double statMemoryAccounted(void);
+int statMemoryAccounted(void);
+
+SQUIDCEXTERN unsigned int RoundTo(const unsigned int num, const unsigned int what);
 
 /* Windows Port */
 /* win32lib.c */
-#ifdef _SQUID_MSWIN_
+#if _SQUID_MSWIN_
 SQUIDCEXTERN int chroot (const char *);
-SQUIDCEXTERN int ftruncate(int, off_t);
-#ifndef HAVE_GETTIMEOFDAY
+#if !HAVE_GETTIMEOFDAY
 SQUIDCEXTERN int gettimeofday(struct timeval * ,void *);
 #endif
 SQUIDCEXTERN int kill(pid_t, int);
 SQUIDCEXTERN int statfs(const char *, struct statfs *);
-SQUIDCEXTERN int truncate(const char *, off_t);
-SQUIDCEXTERN const char * wsastrerror(int);
 SQUIDCEXTERN struct passwd *getpwnam(char *);
 SQUIDCEXTERN struct group *getgrnam(char *);
 SQUIDCEXTERN uid_t geteuid(void);
@@ -174,7 +128,6 @@ SQUIDCEXTERN gid_t getgid(void);
 SQUIDCEXTERN gid_t getegid(void);
 SQUIDCEXTERN int setgid(gid_t);
 SQUIDCEXTERN int setegid(gid_t);
-SQUIDCEXTERN const char *WIN32_strerror(int);
 SQUIDCEXTERN void WIN32_maperror(unsigned long);
 #endif
 #endif /* SQUID_UTIL_H */

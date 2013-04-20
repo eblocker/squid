@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
  * ----------------------------------------------------------
@@ -29,39 +27,46 @@
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
  *
  */
-#ifndef SQUID_AUTHCONFIG_H
-#define SQUID_AUTHCONFIG_H
+#ifndef SQUID_AUTH_CONFIG_H
+#define SQUID_AUTH_CONFIG_H
 
-class AuthUserRequest;
+#if USE_AUTH
+
+#include "auth/UserRequest.h"
+#include "HelperChildConfig.h"
+
 class StoreEntry;
 class HttpReply;
 class HttpRequest;
+class wordlist;
 
 /* for http_hdr_type parameters-by-value */
 #include "HttpHeader.h"
 
+namespace Auth
+{
 
 /**
- \ingroup AuthAPI
- \par
+ * \ingroup AuthAPI
+ * \par
  * I am the configuration for an auth scheme.
  * Currently each scheme has only one instance of me,
  * but this may change.
- \par
+ * \par
  * This class is treated like a ref counted class.
  * If the children ever stop being singletons, implement the
  * ref counting...
  */
-class AuthConfig
+class Config
 {
 
 public:
-    static AuthUserRequest *CreateAuthUser (const char *proxy_auth);
+    static UserRequest::Pointer CreateAuthUser(const char *proxy_auth);
 
-    static AuthConfig *Find(const char *proxy_auth);
-    AuthConfig() {}
+    static Config *Find(const char *proxy_auth);
+    Config() : authenticateChildren(20), authenticateProgram(NULL) {}
 
-    virtual ~AuthConfig() {}
+    virtual ~Config() {}
 
     /**
      * Used by squid to determine whether the auth module has successfully initialised itself with the current configuration.
@@ -76,12 +81,12 @@ public:
      \par
      * Responsible for decoding the passed authentication header, creating or
      * linking to a AuthUser object and for storing any needed details to complete
-     * authentication in AuthUserRequest::authenticate().
+     * authentication in Auth::UserRequest::authenticate().
      *
      \param proxy_auth	Login Pattern to parse.
      \retval *		Details needed to authenticate.
      */
-    virtual AuthUserRequest *decode(char const *proxy_auth) = 0;
+    virtual UserRequest::Pointer decode(char const *proxy_auth) = 0;
 
     /**
      * squid is finished with this config, release any unneeded resources.
@@ -103,21 +108,42 @@ public:
     virtual bool configured() const = 0;
 
     /**
+     * Shutdown just the auth helpers.
+     * For use by log rotate etc. where auth needs to stay running, with the helpers restarted.
+     */
+    virtual void rotateHelpers(void) = 0;
+
+    /**
      * Responsible for writing to the StoreEntry the configuration parameters that a user
      * would put in a config file to recreate the running configuration.
      */
-    virtual void dump(StoreEntry *, const char *, AuthConfig *) = 0;
+    virtual void dump(StoreEntry *, const char *, Config *) = 0;
 
     /** add headers as needed when challenging for auth */
-    virtual void fixHeader(AuthUserRequest *, HttpReply *, http_hdr_type, HttpRequest *) = 0;
+    virtual void fixHeader(UserRequest::Pointer, HttpReply *, http_hdr_type, HttpRequest *) = 0;
+
     /** prepare to handle requests */
-    virtual void init(AuthConfig *) = 0;
+    virtual void init(Config *) = 0;
+
     /** expose any/all statistics to a CacheManager */
     virtual void registerWithCacheManager(void);
+
     /** parse config options */
-    virtual void parse(AuthConfig *, int, char *) = 0;
+    virtual void parse(Config *, int, char *) = 0;
+
     /** the http string id */
     virtual const char * type() const = 0;
+
+public:
+    HelperChildConfig authenticateChildren;
+    wordlist *authenticateProgram; ///< Helper program to run, includes all parameters
 };
 
+typedef Vector<Config *> ConfigVector;
+
+extern ConfigVector TheConfig;
+
+} // namespace Auth
+
+#endif /* USE_AUTH */
 #endif /* SQUID_AUTHCONFIG_H */

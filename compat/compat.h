@@ -1,7 +1,3 @@
-#ifndef SQUID_CONFIG_H
-#include "config.h"
-#endif
-
 #ifndef _SQUID_COMPAT_H
 #define _SQUID_COMPAT_H
 
@@ -12,13 +8,12 @@
  *
  * This file is meant to collate all those hacks files together and
  * provide a simple include for them in the core squid headers
- * (presently squid.h and config.h)
+ * (presently squid.h)
  *
  * It should not be included directly in any of the squid sources.
  * If your code requires any symbols from here you should be importing
- * config.h/squid.h at the top line of your .cc or .h file.
+ * squid.h at the top line of your .cc file.
  */
-
 
 /******************************************************/
 /* Define the _SQUID_TYPE_ based on a guess of the OS */
@@ -26,13 +21,24 @@
 /******************************************************/
 #include "compat/osdetect.h"
 
+/* ugly hack. But we need to set this REALLY soon in the header */
+#if _SQUID_SOLARIS_ && !defined(__GNUC__) && !defined(__GNUG__)
+#ifndef __EXTENSIONS__
+#define __EXTENSIONS__ 1
+#endif
+#ifndef _XOPEN_SOURCE
+#define _XOPEN_SOURCE 1
+#endif
+#ifndef _XOPEN_SOURCE_EXTENDED
+#define _XOPEN_SOURCE_EXTENDED 1
+#endif
+#endif
 
 /*****************************************************/
 /* FDSETSIZE is messy and needs to be done before    */
 /* sys/types.h are defined.                          */
 /*****************************************************/
 #include "compat/fdsetsize.h"
-
 
 /*****************************************************/
 /* Global type re-definitions                        */
@@ -42,7 +48,7 @@
 /** On linux this must be defined to get PRId64 and friends */
 #define __STDC_FORMAT_MACROS
 
-#include "squid_types.h"
+#include "compat/types.h"
 
 /*****************************************************/
 /* per-OS hacks. One file per OS.                    */
@@ -56,6 +62,7 @@
 #include "compat/os/linux.h"
 #include "compat/os/macosx.h"
 #include "compat/os/mswin.h"
+#include "compat/os/netbsd.h"
 #include "compat/os/next.h"
 #include "compat/os/openbsd.h"
 #include "compat/os/os2.h"
@@ -64,7 +71,6 @@
 #include "compat/os/solaris.h"
 #include "compat/os/sunos.h"
 #include "compat/os/windows.h"
-
 
 /*****************************************************/
 /* portabilities shared between all platforms and    */
@@ -82,6 +88,9 @@
 /* component-specific portabilities                  */
 /*****************************************************/
 
+/* helper debugging requires some hacks to be clean */
+#include "compat/debug.h"
+
 /* Valgrind API macros changed between two versions squid supports */
 #include "compat/valgrind.h"
 
@@ -95,5 +104,10 @@
  */
 #include "compat/GnuRegex.h"
 
+/* some functions are unsafe to be used in Squid. */
+#include "compat/unsafe.h"
+
+/* cppunit is not quite C++0x compatible yet */
+#include "compat/cppunit.h"
 
 #endif /* _SQUID_COMPAT_H */

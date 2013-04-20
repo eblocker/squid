@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  * DEBUG: section 82    External ACL
  * AUTHOR: Henrik Nordstrom, MARA Systems AB
  *
@@ -69,7 +67,7 @@ ExternalACLEntry::operator delete (void *address)
 ExternalACLEntry::ExternalACLEntry()
 {
     lru.next = lru.prev = NULL;
-    result = 0;
+    result = ACCESS_DENIED;
     date = 0;
     def = NULL;
 }
@@ -84,9 +82,10 @@ ExternalACLEntry::update(ExternalACLEntryData const &someData)
 {
     date = squid_curtime;
     result = someData.result;
-
+#if USE_AUTH
     user = someData.user;
     password = someData.password;
+#endif
     message = someData.message;
     tag = someData.tag;
     log = someData.log;

@@ -1,7 +1,4 @@
-
 /*
- * $Id$
- *
  * DEBUG: section 10    Gopher
  * AUTHOR: Harvest Derived
  *
@@ -30,23 +27,32 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
- *
  */
 
 #include "squid.h"
-#include "errorpage.h"
-#include "Store.h"
-#include "HttpRequest.h"
-#include "HttpReply.h"
 #include "comm.h"
-#if DELAY_POOLS
+#include "comm/Write.h"
+#include "errorpage.h"
+#include "fd.h"
+#include "forward.h"
+#include "globals.h"
+#include "html_quote.h"
+#include "HttpReply.h"
+#include "HttpRequest.h"
+#include "Mem.h"
+#include "MemBuf.h"
+#include "mime.h"
+#include "rfc1738.h"
+#include "SquidConfig.h"
+#include "SquidTime.h"
+#include "StatCounters.h"
+#include "Store.h"
+#include "tools.h"
+
+#if USE_DELAY_POOLS
 #include "DelayPools.h"
 #include "MemObject.h"
 #endif
-#include "MemBuf.h"
-#include "forward.h"
-#include "rfc1738.h"
-#include "SquidTime.h"
 
 /**
  \defgroup ServerProtocolGopherInternal Server-Side Gopher Internals
@@ -133,20 +139,20 @@ typedef struct gopher_ds {
     int cso_recno;
     int len;
     char *buf;			/* pts to a 4k page */
-    int fd;
+    Comm::ConnectionPointer serverConn;
     HttpRequest *req;
     FwdState::Pointer fwd;
     char replybuf[BUFSIZ];
 } GopherStateData;
 
-static PF gopherStateFree;
+static CLCB gopherStateFree;
 static void gopherMimeCreate(GopherStateData *);
 static void gopher_request_parse(const HttpRequest * req,
                                  char *type_id,
                                  char *request);
 static void gopherEndHTML(GopherStateData *);
 static void gopherToHTML(GopherStateData *, char *inbuf, int len);
-static PF gopherTimeout;
+static CTCB gopherTimeout;
 static IOCB gopherReadReply;
 static IOCB gopherSendComplete;
 static PF gopherSendRequest;
@@ -159,9 +165,9 @@ static char def_gopher_text[] = "text/plain";
 
 /// \ingroup ServerProtocolGopherInternal
 static void
-gopherStateFree(int fdnotused, void *data)
+gopherStateFree(const CommCloseCbParams &params)
 {
-    GopherStateData *gopherState = (GopherStateData *)data;
+    GopherStateData *gopherState = (GopherStateData *)params.data;
 
     if (gopherState == NULL)
         return;
@@ -271,7 +277,7 @@ gopher_request_parse(const HttpRequest * req, char *type_id, char *request)
         request[0] = '\0';
 
     if (path && (*path == '/'))
-        path++;
+        ++path;
 
     if (!path || !*path) {
         *type_id = GOPHER_DIRECTORY;
@@ -445,31 +451,31 @@ gopherToHTML(GopherStateData * gopherState, char *inbuf, int len)
         int left = len - (pos - inbuf);
         lpos = (char *)memchr(pos, '\n', left);
         if (lpos) {
-            lpos++;             /* Next line is after \n */
+            ++lpos;             /* Next line is after \n */
             llen = lpos - pos;
         } else {
             llen = left;
         }
         if (gopherState->len + llen >= TEMP_BUF_SIZE) {
-            debugs(10, 1, "GopherHTML: Buffer overflow. Lost some data on URL: " << entry->url()  );
+            debugs(10, DBG_IMPORTANT, "GopherHTML: Buffer overflow. Lost some data on URL: " << entry->url()  );
             llen = TEMP_BUF_SIZE - gopherState->len - 1;
         }
         if (!lpos) {
             /* there is no complete line in inbuf */
             /* copy it to temp buffer */
             /* note: llen is adjusted above */
-            xmemcpy(gopherState->buf + gopherState->len, pos, llen);
+            memcpy(gopherState->buf + gopherState->len, pos, llen);
             gopherState->len += llen;
             break;
         }
         if (gopherState->len != 0) {
             /* there is something left from last tx. */
-            xmemcpy(line, gopherState->buf, gopherState->len);
-            xmemcpy(line + gopherState->len, pos, llen);
+            memcpy(line, gopherState->buf, gopherState->len);
+            memcpy(line + gopherState->len, pos, llen);
             llen += gopherState->len;
             gopherState->len = 0;
         } else {
-            xmemcpy(line, pos, llen);
+            memcpy(line, pos, llen);
         }
         line[llen + 1] = '\0';
         /* move input to next line */
@@ -489,16 +495,19 @@ gopherToHTML(GopherStateData * gopherState, char *inbuf, int len)
 
         case gopher_ds::HTML_DIR: {
             tline = line;
-            gtype = *tline++;
+            gtype = *tline;
+            ++tline;
             name = tline;
             selector = strchr(tline, TAB);
 
             if (selector) {
-                *selector++ = '\0';
+                *selector = '\0';
+                ++selector;
                 host = strchr(selector, TAB);
 
                 if (host) {
-                    *host++ = '\0';
+                    *host = '\0';
+                    ++host;
                     port = strchr(host, TAB);
 
                     if (port) {
@@ -629,7 +638,6 @@ gopherToHTML(GopherStateData * gopherState, char *inbuf, int len)
             break;
         }			/* HTML_DIR, HTML_INDEX_RESULT */
 
-
         case gopher_ds::HTML_CSO_RESULT: {
             if (line[0] == '-') {
                 int code, recno;
@@ -689,7 +697,6 @@ gopherToHTML(GopherStateData * gopherState, char *inbuf, int len)
                     break;
                 }
 
-
                 }
             }
 
@@ -714,15 +721,15 @@ gopherToHTML(GopherStateData * gopherState, char *inbuf, int len)
 
 /// \ingroup ServerProtocolGopherInternal
 static void
-gopherTimeout(int fd, void *data)
+gopherTimeout(const CommTimeoutCbParams &io)
 {
-    GopherStateData *gopherState = (GopherStateData *)data;
-    StoreEntry *entry = gopherState->entry;
-    debugs(10, 4, "gopherTimeout: FD " << fd << ": '" << entry->url() << "'" );
+    GopherStateData *gopherState = static_cast<GopherStateData *>(io.data);
+    debugs(10, 4, HERE << io.conn << ": '" << gopherState->entry->url() << "'" );
 
-    gopherState->fwd->fail(errorCon(ERR_READ_TIMEOUT, HTTP_GATEWAY_TIMEOUT, gopherState->fwd->request));
+    gopherState->fwd->fail(new ErrorState(ERR_READ_TIMEOUT, HTTP_GATEWAY_TIMEOUT, gopherState->fwd->request));
 
-    comm_close(fd);
+    if (Comm::IsConnOpen(io.conn))
+        io.conn->close();
 }
 
 /**
@@ -731,16 +738,14 @@ gopherTimeout(int fd, void *data)
  * Read until error or connection closed.
  */
 static void
-gopherReadReply(int fd, char *buf, size_t len, comm_err_t flag, int xerrno, void *data)
+gopherReadReply(const Comm::ConnectionPointer &conn, char *buf, size_t len, comm_err_t flag, int xerrno, void *data)
 {
     GopherStateData *gopherState = (GopherStateData *)data;
     StoreEntry *entry = gopherState->entry;
     int clen;
     int bin;
     size_t read_sz = BUFSIZ;
-    int do_next_read = 0;
-#if DELAY_POOLS
-
+#if USE_DELAY_POOLS
     DelayId delayId = entry->mem_obj->mostBytesAllowed();
 #endif
 
@@ -753,56 +758,60 @@ gopherReadReply(int fd, char *buf, size_t len, comm_err_t flag, int xerrno, void
     assert(buf == gopherState->replybuf);
 
     if (EBIT_TEST(entry->flags, ENTRY_ABORTED)) {
-        comm_close(fd);
+        gopherState->serverConn->close();
         return;
     }
 
-    errno = 0;
-#if DELAY_POOLS
-
+#if USE_DELAY_POOLS
     read_sz = delayId.bytesWanted(1, read_sz);
 #endif
 
     /* leave one space for \0 in gopherToHTML */
 
     if (flag == COMM_OK && len > 0) {
-#if DELAY_POOLS
+#if USE_DELAY_POOLS
         delayId.bytesIn(len);
 #endif
 
-        kb_incr(&statCounter.server.all.kbytes_in, len);
-        kb_incr(&statCounter.server.other.kbytes_in, len);
+        kb_incr(&(statCounter.server.all.kbytes_in), len);
+        kb_incr(&(statCounter.server.other.kbytes_in), len);
     }
 
-    debugs(10, 5, "gopherReadReply: FD " << fd << " read len=" << len);
+    debugs(10, 5, HERE << conn << " read len=" << len);
 
     if (flag == COMM_OK && len > 0) {
-        commSetTimeout(fd, Config.Timeout.read, NULL, NULL);
-        IOStats.Gopher.reads++;
+        AsyncCall::Pointer nil;
+        commSetConnTimeout(conn, Config.Timeout.read, nil);
+        ++IOStats.Gopher.reads;
 
-        for (clen = len - 1, bin = 0; clen; bin++)
+        for (clen = len - 1, bin = 0; clen; ++bin)
             clen >>= 1;
 
-        IOStats.Gopher.read_hist[bin]++;
+        ++IOStats.Gopher.read_hist[bin];
+
+        HttpRequest *req = gopherState->fwd->request;
+        if (req->hier.bodyBytesRead < 0)
+            req->hier.bodyBytesRead = 0;
+
+        req->hier.bodyBytesRead += len;
     }
 
-    if (flag != COMM_OK || len < 0) {
-        debugs(50, 1, "gopherReadReply: error reading: " << xstrerror());
+    if (flag != COMM_OK) {
+        debugs(50, DBG_IMPORTANT, "gopherReadReply: error reading: " << xstrerror());
 
-        if (ignoreErrno(errno)) {
-            do_next_read = 1;
+        if (ignoreErrno(xerrno)) {
+            AsyncCall::Pointer call = commCbCall(5,4, "gopherReadReply",
+                                                 CommIoCbPtrFun(gopherReadReply, gopherState));
+            comm_read(conn, buf, read_sz, call);
         } else {
-            ErrorState *err;
-            err = errorCon(ERR_READ_ERROR, HTTP_INTERNAL_SERVER_ERROR, gopherState->fwd->request);
-            err->xerrno = errno;
+            ErrorState *err = new ErrorState(ERR_READ_ERROR, HTTP_INTERNAL_SERVER_ERROR, gopherState->fwd->request);
+            err->xerrno = xerrno;
             gopherState->fwd->fail(err);
-            comm_close(fd);
-            do_next_read = 0;
+            gopherState->serverConn->close();
         }
     } else if (len == 0 && entry->isEmpty()) {
-        gopherState->fwd->fail(errorCon(ERR_ZERO_SIZE_OBJECT, HTTP_SERVICE_UNAVAILABLE, gopherState->fwd->request));
-        comm_close(fd);
-        do_next_read = 0;
+        gopherState->fwd->fail(new ErrorState(ERR_ZERO_SIZE_OBJECT, HTTP_SERVICE_UNAVAILABLE, gopherState->fwd->request));
+        gopherState->serverConn->close();
     } else if (len == 0) {
         /* Connection closed; retrieval done. */
         /* flush the rest of data in temp buf if there is one. */
@@ -811,28 +820,19 @@ gopherReadReply(int fd, char *buf, size_t len, comm_err_t flag, int xerrno, void
             gopherEndHTML(gopherState);
 
         entry->timestampsSet();
-
         entry->flush();
-
         gopherState->fwd->complete();
-
-        comm_close(fd);
-
-        do_next_read = 0;
+        gopherState->serverConn->close();
     } else {
         if (gopherState->conversion != gopher_ds::NORMAL) {
             gopherToHTML(gopherState, buf, len);
         } else {
             entry->append(buf, len);
         }
-
-        do_next_read = 1;
+        AsyncCall::Pointer call = commCbCall(5,4, "gopherReadReply",
+                                             CommIoCbPtrFun(gopherReadReply, gopherState));
+        comm_read(conn, buf, read_sz, call);
     }
-
-    if (do_next_read)
-        comm_read(fd, buf, read_sz, gopherReadReply, gopherState);
-
-    return;
 }
 
 /**
@@ -840,26 +840,26 @@ gopherReadReply(int fd, char *buf, size_t len, comm_err_t flag, int xerrno, void
  * This will be called when request write is complete. Schedule read of reply.
  */
 static void
-gopherSendComplete(int fd, char *buf, size_t size, comm_err_t errflag, int xerrno, void *data)
+gopherSendComplete(const Comm::ConnectionPointer &conn, char *buf, size_t size, comm_err_t errflag, int xerrno, void *data)
 {
     GopherStateData *gopherState = (GopherStateData *) data;
     StoreEntry *entry = gopherState->entry;
-    debugs(10, 5, "gopherSendComplete: FD " << fd << " size: " << size << " errflag: " << errflag);
+    debugs(10, 5, HERE << conn << " size: " << size << " errflag: " << errflag);
 
     if (size > 0) {
-        fd_bytes(fd, size, FD_WRITE);
-        kb_incr(&statCounter.server.all.kbytes_out, size);
-        kb_incr(&statCounter.server.other.kbytes_out, size);
+        fd_bytes(conn->fd, size, FD_WRITE);
+        kb_incr(&(statCounter.server.all.kbytes_out), size);
+        kb_incr(&(statCounter.server.other.kbytes_out), size);
     }
 
     if (errflag) {
         ErrorState *err;
-        err = errorCon(ERR_WRITE_ERROR, HTTP_SERVICE_UNAVAILABLE, gopherState->fwd->request);
-        err->xerrno = errno;
+        err = new ErrorState(ERR_WRITE_ERROR, HTTP_SERVICE_UNAVAILABLE, gopherState->fwd->request);
+        err->xerrno = xerrno;
         err->port = gopherState->fwd->request->port;
         err->url = xstrdup(entry->url());
         gopherState->fwd->fail(err);
-        comm_close(fd);
+        gopherState->serverConn->close();
 
         if (buf)
             memFree(buf, MEM_4K_BUF);	/* Allocated by gopherSendRequest. */
@@ -902,9 +902,9 @@ gopherSendComplete(int fd, char *buf, size_t size, comm_err_t errflag, int xerrn
     }
 
     /* Schedule read reply. */
-    AsyncCall::Pointer call =  commCbCall(10,5, "gopherReadReply",
+    AsyncCall::Pointer call =  commCbCall(5,5, "gopherReadReply",
                                           CommIoCbPtrFun(gopherReadReply, gopherState));
-    entry->delayAwareRead(fd, gopherState->replybuf, BUFSIZ, call);
+    entry->delayAwareRead(conn, gopherState->replybuf, BUFSIZ, call);
 
     if (buf)
         memFree(buf, MEM_4K_BUF);	/* Allocated by gopherSendRequest. */
@@ -924,7 +924,7 @@ gopherSendRequest(int fd, void *data)
         const char *t = strchr(gopherState->request, '?');
 
         if (t != NULL)
-            t++;		/* skip the ? */
+            ++t;		/* skip the ? */
         else
             t = "";
 
@@ -940,8 +940,10 @@ gopherSendRequest(int fd, void *data)
         snprintf(buf, 4096, "%s\r\n", gopherState->request);
     }
 
-    debugs(10, 5, "gopherSendRequest: FD " << fd);
-    comm_write(fd, buf, strlen(buf), gopherSendComplete, gopherState, NULL);
+    debugs(10, 5, HERE << gopherState->serverConn);
+    AsyncCall::Pointer call = commCbCall(5,5, "gopherSendComplete",
+                                         CommIoCbPtrFun(gopherSendComplete, gopherState));
+    Comm::Write(gopherState->serverConn, buf, strlen(buf), call, NULL);
 
     if (EBIT_TEST(gopherState->entry->flags, ENTRY_CACHABLE))
         gopherState->entry->setPublicKey();	/* Make it public */
@@ -954,7 +956,6 @@ CBDATA_TYPE(GopherStateData);
 void
 gopherStart(FwdState * fwd)
 {
-    int fd = fwd->server_fd;
     StoreEntry *entry = fwd->entry;
     GopherStateData *gopherState;
     CBDATA_INIT_TYPE(GopherStateData);
@@ -968,15 +969,15 @@ gopherStart(FwdState * fwd)
 
     debugs(10, 3, "gopherStart: " << entry->url()  );
 
-    statCounter.server.all.requests++;
+    ++ statCounter.server.all.requests;
 
-    statCounter.server.other.requests++;
+    ++ statCounter.server.other.requests;
 
     /* Parse url. */
     gopher_request_parse(fwd->request,
                          &gopherState->type_id, gopherState->request);
 
-    comm_add_close_handler(fd, gopherStateFree, gopherState);
+    comm_add_close_handler(fwd->serverConnection()->fd, gopherStateFree, gopherState);
 
     if (((gopherState->type_id == GOPHER_INDEX) || (gopherState->type_id == GOPHER_CSO))
             && (strchr(gopherState->request, '?') == NULL)) {
@@ -996,12 +997,12 @@ gopherStart(FwdState * fwd)
 
         gopherToHTML(gopherState, (char *) NULL, 0);
         fwd->complete();
-        comm_close(fd);
         return;
     }
 
-    gopherState->fd = fd;
-    gopherState->fwd = fwd;
-    gopherSendRequest(fd, gopherState);
-    commSetTimeout(fd, Config.Timeout.read, gopherTimeout, gopherState);
+    gopherState->serverConn = fwd->serverConnection();
+    gopherSendRequest(fwd->serverConnection()->fd, gopherState);
+    AsyncCall::Pointer timeoutCall = commCbCall(5, 4, "gopherTimeout",
+                                     CommTimeoutCbPtrFun(gopherTimeout, gopherState));
+    commSetConnTimeout(fwd->serverConnection(), Config.Timeout.read, timeoutCall);
 }

@@ -2,8 +2,6 @@
 #ifndef SQUID_SNMP_SESSION_H
 #define SQUID_SNMP_SESSION_H
 
-#include "config.h"
-
 /**********************************************************************
  *
  *           Copyright 1997 by Carnegie Mellon University
@@ -25,8 +23,6 @@
  * WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION,
  * ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS
  * SOFTWARE.
- *
- * $Id$
  *
  **********************************************************************/
 

@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  * DEBUG: section 19    Store Memory Primitives
  * AUTHOR: Robert Collins
  *
@@ -38,10 +36,20 @@
 #include "stmem.h"
 #include "mem_node.h"
 #include "Generic.h"
+#include "base/TextException.h"
 
 #if HAVE_IOSTREAM
 #include <iostream>
 #endif
+#if HAVE_SSTREAM
+#include <sstream>
+#endif
+
+/*For  a reason required on some platforms */
+unsigned int TextException::FileNameHash(const char *fname)
+{
+    return 0;
+}
 
 void
 testLowAndHigh()

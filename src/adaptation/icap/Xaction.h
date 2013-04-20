@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
  * ----------------------------------------------------------
@@ -34,15 +32,20 @@
 #ifndef SQUID_ICAPXACTION_H
 #define SQUID_ICAPXACTION_H
 
-#include "comm.h"
+#include "comm/forward.h"
 #include "CommCalls.h"
 #include "MemBuf.h"
 #include "adaptation/icap/ServiceRep.h"
 #include "adaptation/Initiate.h"
 #include "AccessLogEntry.h"
 #include "HttpReply.h"
+#include "ipcache.h"
 
 class CommConnectCbParams;
+namespace Comm
+{
+class ConnOpener;
+}
 
 namespace Adaptation
 {
@@ -96,9 +99,13 @@ protected:
     virtual void handleCommTimedout();
     virtual void handleCommClosed();
 
+    /// record error detail if possible
+    virtual void detailError(int errDetail) {}
+
     void openConnection();
     void closeConnection();
     void dieOnConnectionFailure();
+    bool haveConnection() const;
 
     void scheduleRead();
     void scheduleWrite(MemBuf &buf);
@@ -129,12 +136,16 @@ public:
     // custom exception handling and end-of-call checks
     virtual void callException(const std::exception  &e);
     virtual void callEnd();
+    /// clear stored error details, if any; used for retries/repeats
+    virtual void clearError() {}
+    void dnsLookupDone(const ipcache_addrs *ia);
 
 protected:
     // logging
     void setOutcome(const XactOutcome &xo);
     virtual void finalizeLogInfo();
 
+public:
     ServiceRep &service();
 
 private:
@@ -142,7 +153,7 @@ private:
     void maybeLog();
 
 protected:
-    int connection;     // FD of the ICAP server connection
+    Comm::ConnectionPointer connection;     ///< ICAP server connection
     Adaptation::Icap::ServiceRep::Pointer theService;
 
     /*
@@ -173,16 +184,17 @@ protected:
     AsyncCall::Pointer writer;
     AsyncCall::Pointer closer;
 
-    AccessLogEntry al;
+    AccessLogEntry::Pointer alep; ///< icap.log entry
+    AccessLogEntry &al; ///< short for *alep
 
     timeval icap_tr_start;     /*time when the ICAP transaction was created */
     timeval icap_tio_start;    /*time when the first ICAP request byte was scheduled for sending*/
     timeval icap_tio_finish;   /*time when the last byte of the ICAP responsewas received*/
 
 private:
+    Comm::ConnOpener *cs;
     //CBDATA_CLASS2(Xaction);
 };
-
 
 } // namespace Icap
 } // namespace Adaptation

@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 37    ICMP Routines
  * AUTHOR: Duane Wessels, Amos Jeffries
  *
@@ -34,12 +32,8 @@
 #ifndef _INCLUDE_ICMPV4_H
 #define _INCLUDE_ICMPV4_H
 
-#include "config.h"
 #include "Icmp.h"
 
-#if HAVE_NETINET_IN_SYSTM_H
-#include <netinet/in_systm.h>
-#endif
 #if HAVE_NETINET_IN_H
 #include <netinet/in.h>
 #endif
@@ -50,17 +44,13 @@
 #include <netinet/ip_icmp.h>
 #endif
 
-#ifndef _SQUID_LINUX_
-#ifndef _SQUID_CYGWIN_
-#ifndef _SQUID_MSWIN_
+#if !_SQUID_LINUX_ && !_SQUID_WINDOWS_
 #define icmphdr icmp
 #define iphdr ip
 #endif
-#endif
-#endif
 
 /* Linux uses its own field names. */
-#if defined (_SQUID_LINUX_)
+#if _SQUID_LINUX_
 #ifdef icmp_id
 #undef icmp_id
 #endif
@@ -85,20 +75,20 @@
 #define ip_dst daddr
 #endif
 
-
 /* Native Windows port doesn't have netinet support, so we emulate it.
    At this time, Cygwin lacks icmp support in its include files, so we need
    to use the native Windows port definitions.
  */
 
-#ifdef _SQUID_WIN32_
-
+#if _SQUID_WINDOWS_
 #include "fde.h"
 
-#ifdef _SQUID_MSWIN_
+#if _SQUID_MSWIN_
 
 #if HAVE_WINSOCK2_H
 #include <winsock2.h>
+#elif HAVE_WINSOCK_H
+#include <winsock.h>
 #endif
 #include <process.h>
 
@@ -107,30 +97,30 @@
 /* IP Header */
 typedef struct iphdr {
 
-u_int8_t  ip_vhl:
+uint8_t  ip_vhl:
     4;          /* Length of the header in dwords */
 
-u_int8_t  version:
+uint8_t  version:
     4;  /* Version of IP                  */
-    u_int8_t  tos;              /* Type of service                */
-    u_int16_t total_len;        /* Length of the packet in dwords */
-    u_int16_t ident;            /* unique identifier              */
-    u_int16_t flags;            /* Flags                          */
-    u_int8_t  ip_ttl;           /* Time to live                   */
-    u_int8_t  proto;            /* Protocol number (TCP, UDP etc) */
-    u_int16_t checksum;         /* IP checksum                    */
-    u_int32_t source_ip;
-    u_int32_t dest_ip;
+    uint8_t  tos;              /* Type of service                */
+    uint16_t total_len;        /* Length of the packet in dwords */
+    uint16_t ident;            /* unique identifier              */
+    uint16_t flags;            /* Flags                          */
+    uint8_t  ip_ttl;           /* Time to live                   */
+    uint8_t  proto;            /* Protocol number (TCP, UDP etc) */
+    uint16_t checksum;         /* IP checksum                    */
+    uint32_t source_ip;
+    uint32_t dest_ip;
 } iphdr;
 
 /* ICMP header */
 typedef struct icmphdr {
-    u_int8_t  icmp_type;        /* ICMP packet type                 */
-    u_int8_t  icmp_code;        /* Type sub code                    */
-    u_int16_t icmp_cksum;
-    u_int16_t icmp_id;
-    u_int16_t icmp_seq;
-    u_int32_t timestamp;        /* not part of ICMP, but we need it */
+    uint8_t  icmp_type;        /* ICMP packet type                 */
+    uint8_t  icmp_code;        /* Type sub code                    */
+    uint16_t icmp_cksum;
+    uint16_t icmp_id;
+    uint16_t icmp_seq;
+    uint32_t timestamp;        /* not part of ICMP, but we need it */
 } icmphdr;
 
 #endif  /* _SQUID_MSWIN_ */
@@ -170,7 +160,7 @@ public:
     virtual int Open();
 
 #if USE_ICMP
-    virtual void SendEcho(IpAddress &, int, const char*, int);
+    virtual void SendEcho(Ip::Address &, int, const char*, int);
     virtual void Recv(void);
 #endif
 };
@@ -178,7 +168,7 @@ public:
 #if USE_ICMP
 
 /// pinger helper contains one of these as a global object.
-SQUIDCEXTERN Icmp4 icmp4;
+extern Icmp4 icmp4;
 
 #endif /* USE_ICMP && SQUID_HELPER */
 

@@ -23,7 +23,14 @@ SOFTWARE.
 /*
  * parse.c
  */
-#include "config.h"
+#include "squid.h"
+#include "asn1.h"
+#include "cache_snmp.h"
+#include "parse.h"
+#include "snmp_debug.h"
+#include "snmp_pdu.h"
+#include "snmp_vars.h"
+#include "util.h"
 
 #include <stdio.h>
 
@@ -47,10 +54,10 @@ SOFTWARE.
 #if HAVE_MEMORY_H
 #include <memory.h>
 #endif
-#ifdef HAVE_STRING_H
+#if HAVE_STRING_H
 #include <string.h>
 #endif
-#ifdef HAVE_STRINGS_H
+#if HAVE_STRINGS_H
 #include <strings.h>
 #endif
 #if HAVE_BSTRING_H
@@ -74,16 +81,10 @@ SOFTWARE.
 #if HAVE_ASSERT_H
 #include <assert.h>
 #endif
+#if HAVE_ERRNO_H
+#include <errno.h>
+#endif
 
-
-#include "asn1.h"
-#include "snmp_vars.h"
-#include "parse.h"
-#include "snmp_debug.h"
-
-#include "util.h"
-
-#include "cache_snmp.h"
 /*
  * This is one element of an object identifier with either an integer subidentifier,
  * or a textual string label, or both.
@@ -160,7 +161,6 @@ struct tok {
     int hash;			/* hash of name */
     struct tok *next;		/* pointer to next in hash table */
 };
-
 
 struct tok tokens[] = {
     {"obsolete", sizeof("obsolete") - 1, OBSOLETE},
@@ -258,7 +258,6 @@ init_node_hash(struct node *nodes)
     }
 }
 
-
 static void
 print_error(const char *string, const char *token, int type)
 {
@@ -271,7 +270,7 @@ print_error(const char *string, const char *token, int type)
         snmplib_debug(0, "%s: On or around line %d\n", string, Line);
 }
 
-#ifdef TEST
+#if TEST
 print_subtree(tree, count)
 struct snmp_mib_tree *tree;
 int count;
@@ -406,7 +405,7 @@ do_subtree(struct snmp_mib_tree *root, struct node **nodes)
         np->enums = NULL;	/* so we don't free them later */
         if (root->child_list == NULL) {
             root->child_list = tp;
-        } else {
+        } else if (peer) {
             peer->next_peer = tp;
         }
         peer = tp;
@@ -424,7 +423,7 @@ do_subtree(struct snmp_mib_tree *root, struct node **nodes)
         xfree(oldnp);
 }
 
-#ifndef TEST
+#if !TEST
 static
 #endif
 struct snmp_mib_tree *
@@ -447,7 +446,7 @@ build_tree(struct node *nodes) {
     init_node_hash(nodes);
     /* XXX nodes isn't needed in do_subtree() ??? */
     do_subtree(tp, &nodes);
-#ifdef TEST
+#if TEST
     print_subtree(tp, 0);
 #endif /* TEST */
     /* If any nodes are left, the tree is probably inconsistent */
@@ -469,7 +468,6 @@ build_tree(struct node *nodes) {
     }
     return tp;
 }
-
 
 /*
  * Parses a token from the file.  The type of the token parsed is returned,
@@ -611,7 +609,6 @@ getoid(register FILE *fp, register struct subid *SubOid, int length)
     }
     return count;
 
-
 }
 
 static void
@@ -626,6 +623,16 @@ free_node(struct node *np)
         xfree((char *) tep);
     }
     xfree((char *) np);
+}
+
+static void
+free_node_list(struct node *nl)
+{
+    while (nl) {
+        struct node *t = nl->next;
+        free_node(nl);
+        nl = t;
+    }
 }
 
 /*
@@ -660,9 +667,9 @@ parse_objectid(FILE *fp, char *name) {
                 op++, nop++) {
             /* every node must have parent's name and child's name or number */
             if (op->label && (nop->label || (nop->subid != -1))) {
-                strcpy(np->parent, op->label);
+                strncpy(np->parent, op->label, sizeof(np->parent) - 1);
                 if (nop->label)
-                    strcpy(np->label, nop->label);
+                    strncpy(np->label, nop->label, sizeof(np->label) - 1);
                 if (nop->subid != -1)
                     np->subid = nop->subid;
                 np->type = 0;
@@ -683,8 +690,8 @@ parse_objectid(FILE *fp, char *name) {
          */
         if (count == (length - 2)) {
             if (op->label) {
-                strcpy(np->parent, op->label);
-                strcpy(np->label, name);
+                strncpy(np->parent, op->label, sizeof(np->parent));
+                strncpy(np->label, name, sizeof(np->label));
                 if (nop->subid != -1)
                     np->subid = nop->subid;
                 else
@@ -693,12 +700,14 @@ parse_objectid(FILE *fp, char *name) {
                 free_node(np);
                 if (oldnp)
                     oldnp->next = NULL;
-                else
+                else {
+                    free_node_list(root); // we need to clear the newly allocated list
                     return NULL;
+                }
             }
         } else {
             print_error("Missing end of oid", (char *) NULL, type);
-            free_node(np);	/* the last node allocated wasn't used */
+            free_node_list(root); // we need to clear the newly allocated list
             if (oldnp)
                 oldnp->next = NULL;
             return NULL;
@@ -948,9 +957,12 @@ parse_objecttype(register FILE *fp, char *name) {
     length = getoid(fp, SubOid, 32);
     if (length > 1 && length <= 32) {
         /* just take the last pair in the oid list */
-        if (SubOid[length - 2].label)
+        if (SubOid[length - 2].label) {
             strncpy(np->parent, SubOid[length - 2].label, 64);
-        strcpy(np->label, name);
+            np->parent[63] = '\0';
+        }
+        strncpy(np->label, name, sizeof(np->label));
+        np->label[sizeof(np->label) - 1] = '\0';
         if (SubOid[length - 1].subid != -1)
             np->subid = SubOid[length - 1].subid;
         else
@@ -969,12 +981,11 @@ parse_objecttype(register FILE *fp, char *name) {
     return np;
 }
 
-
 /*
  * Parses a mib file and returns a linked list of nodes found in the file.
  * Returns NULL on error.
  */
-#ifndef TEST
+#if !TEST
 static
 #endif
 struct node *
@@ -993,9 +1004,11 @@ parse(FILE *fp) {
                 return root;
             }
             print_error(token, "is a reserved word", type);
+            free_node_list(root);
             return NULL;
         }
         strncpy(name, token, 64);
+        name[63] = '\0';
         type = get_token(fp, token);
         if (type == OBJTYPE) {
             if (root == NULL) {
@@ -1009,6 +1022,7 @@ parse(FILE *fp) {
                 np->next = parse_objecttype(fp, name);
                 if (np->next == NULL) {
                     print_error("Bad parse of objecttype", (char *) NULL, type);
+                    free_node_list(root);
                     return NULL;
                 }
             }
@@ -1027,6 +1041,7 @@ parse(FILE *fp) {
                 np->next = parse_objectid(fp, name);
                 if (np->next == NULL) {
                     print_error("Bad parse of object type", (char *) NULL, type);
+                    free_node_list(root);
                     return NULL;
                 }
             }
@@ -1039,10 +1054,11 @@ parse(FILE *fp) {
             break;
         } else {
             print_error("Bad operator", (char *) NULL, type);
+            free_node_list(root);
             return NULL;
         }
     }
-#ifdef TEST
+#if TEST
     {
         struct enum_list *ep;
 
@@ -1079,18 +1095,20 @@ read_mib(char *filename) {
             strlen("DUMMY")));
     if (!p) {
         snmplib_debug(0, "Bad MIB version or tag missing, install original!\n");
+        fclose(fp);
         return NULL;
     }
     if (!strcmp(mbuf, "DUMMY")) {
         snmplib_debug(0, "You need to update your MIB!\n");
+        fclose(fp);
         return NULL;
     }
     nodes = parse(fp);
+    fclose(fp);
     if (!nodes) {
         snmplib_debug(0, "Mib table is bad.  Exiting\n");
         return NULL;
     }
     tree = build_tree(nodes);
-    fclose(fp);
     return (tree);
 }

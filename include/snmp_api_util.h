@@ -1,10 +1,7 @@
-/*
- * $Id$
- */
 #ifndef SQUID_SNMP_API_UTIL_H
 #define SQUID_SNMP_API_UTIL_H
 
-/* NP: required for typedef ipaddr and indirect config.h */
+/* NP: required for typedef ipaddr */
 #include "snmp_pdu.h"
 
 /***********************************************************
@@ -79,7 +76,7 @@ struct snmp_internal_session {
 #undef timerisset
 #define timerisset(tvp) ((tvp)->tv_sec || (tvp)->tv_usec)
 
-#ifdef HAVE_SRAND
+#if HAVE_SRAND
 #define random rand
 #define srandom srand
 #endif /* HAVE_SRAND */

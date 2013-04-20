@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
  * ----------------------------------------------------------
@@ -34,6 +32,8 @@
 
 #ifndef SQUID_EXTUSER_H
 #define SQUID_EXTUSER_H
+
+#if USE_AUTH
 
 #include "acl/Acl.h"
 #include "acl/Checklist.h"
@@ -70,4 +70,5 @@ private:
 
 MEMPROXY_CLASS_INLINE(ACLExtUser);
 
+#endif /* USE_AUTH */
 #endif /* SQUID_EXTUSER_H */

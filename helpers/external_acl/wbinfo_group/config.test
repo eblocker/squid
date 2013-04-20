@@ -7,7 +7,7 @@ do
     fi
 done
 if test "$samba_found" = "no"; then
-    echo "WARNING: Samba wbinfo not found in default location. wbinfo_group.pl may not work on this machine"
+    echo "WARNING: Samba wbinfo not found in default location. ext_wbinfo_group_acl may not work on this machine"
 fi
 for perlprefix in /usr /usr/local /opt /opt/perl
 do

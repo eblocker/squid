@@ -30,49 +30,88 @@
 #ifndef SQUID_HTTPACCESSLOGENTRY_H
 #define SQUID_HTTPACCESSLOGENTRY_H
 
+#include "anyp/PortCfg.h"
+#include "comm/Connection.h"
 #include "HttpVersion.h"
 #include "HttpRequestMethod.h"
 #include "HierarchyLogEntry.h"
-#include "ip/IpAddress.h"
+#include "icp_opcode.h"
+#include "ip/Address.h"
 #include "HttpRequestMethod.h"
 #if ICAP_CLIENT
 #include "adaptation/icap/Elements.h"
+#endif
+#include "RefCount.h"
+#if USE_SSL
+#include "ssl/gadgets.h"
 #endif
 
 /* forward decls */
 class HttpReply;
 class HttpRequest;
+class CustomLog;
 
-class AccessLogEntry
+class AccessLogEntry: public RefCountable
 {
 
 public:
-    AccessLogEntry() : url(NULL) , reply(NULL), request(NULL),
+    typedef RefCount<AccessLogEntry> Pointer;
+
+    AccessLogEntry() : url(NULL), tcpClient(), reply(NULL), request(NULL),
             adapted_request(NULL) {}
+    ~AccessLogEntry();
+
+    /// Fetch the client IP log string into the given buffer.
+    /// Knows about several alternate locations of the IP
+    /// including indirect forwarded-for IP if configured to log that
+    void getLogClientIp(char *buf, size_t bufsz) const;
 
     const char *url;
 
+    /// TCP/IP level details about the client connection
+    Comm::ConnectionPointer tcpClient;
+    // TCP/IP level details about the server or peer connection
+    // are stored in hier.tcpServer
+
+    /** \brief This subclass holds log info for HTTP protocol
+     * \todo Inner class declarations should be moved outside
+     * \todo details of HTTP held in the parent class need moving into here.
+     */
     class HttpDetails
     {
 
     public:
-        HttpDetails() : method(METHOD_NONE), code(0), content_type(NULL) {}
+        HttpDetails() : method(METHOD_NONE), code(0), content_type(NULL),
+                timedout(false), aborted(false) {}
 
         HttpRequestMethod method;
         int code;
         const char *content_type;
         HttpVersion version;
+        bool timedout; ///< terminated due to a lifetime or I/O timeout
+        bool aborted; ///< other abnormal termination (e.g., I/O error)
+
+        /// compute suffix for the status access.log field
+        const char *statusSfx() const {
+            return timedout ? "_TIMEDOUT" : (aborted ? "_ABORTED" : "");
+        }
     } http;
 
-    class ICPDetails
+    /** \brief This subclass holds log info for ICP protocol
+     * \todo Inner class declarations should be moved outside
+     */
+    class IcpDetails
     {
 
     public:
-        ICPDetails() : opcode(ICP_INVALID) {}
+        IcpDetails() : opcode(ICP_INVALID) {}
 
         icp_opcode opcode;
     } icp;
 
+    /** \brief This subclass holds log info for HTCP protocol
+     * \todo Inner class declarations should be moved outside
+     */
     class HtcpDetails
     {
     public:
@@ -81,6 +120,23 @@ public:
         const char *opcode;
     } htcp;
 
+#if USE_SSL
+    /// logging information specific to the SSL protocol
+    class SslDetails
+    {
+    public:
+        SslDetails();
+
+        const char *user; ///< emailAddress from the SSL client certificate
+        int bumpMode; ///< whether and how the request was SslBumped
+    } ssl;
+#endif
+
+    /** \brief This subclass holds log info for Squid internal stats
+     * \todo Inner class declarations should be moved outside
+     * \todo some details relevant to particular protocols need shuffling to other sub-classes
+     * \todo this object field need renaming to 'squid' or something.
+     */
     class CacheDetails
     {
 
@@ -96,14 +152,15 @@ public:
                 msec(0),
                 rfc931 (NULL),
                 authuser (NULL),
-                extuser(NULL)
+                extuser(NULL),
 #if USE_SSL
-                ,ssluser(NULL)
+                ssluser(NULL),
 #endif
-        {;
+                port(NULL) {
+            ;
         }
 
-        IpAddress caddr;
+        Ip::Address caddr;
         int64_t requestSize;
         int64_t replySize;
         int requestHeadersSize; ///< received, including request line
@@ -118,35 +175,48 @@ public:
 #if USE_SSL
 
         const char *ssluser;
+        Ssl::X509_Pointer sslClientCert; ///< cert received from the client
 #endif
+        AnyP::PortCfg *port;
 
     } cache;
 
+    /** \brief This subclass holds log info for various headers in raw format
+     * \todo shuffle this to the relevant protocol section.
+     */
     class Headers
     {
 
     public:
         Headers() : request(NULL),
                 adapted_request(NULL),
-
-#if ICAP_CLIENT
-                icap(NULL),
-#endif
                 reply(NULL) {}
 
         char *request; //< virgin HTTP request headers
 
         char *adapted_request; //< HTTP request headers after adaptation and redirection
 
-
-#if ICAP_CLIENT
-        char * icap;    ///< last matching ICAP response header.
-#endif
         char *reply;
     } headers;
 
+#if USE_ADAPTATION
+    /** \brief This subclass holds general adaptation log info.
+     * \todo Inner class declarations should be moved outside.
+     */
+    class AdaptationDetails
+    {
+
+    public:
+        AdaptationDetails(): last_meta(NULL) {}
+
+        /// image of the last ICAP response header or eCAP meta received
+        char *last_meta;
+    } adapt;
+#endif
+
     // Why is this a sub-class and not a set of real "private:" fields?
     // It looks like its duplicating HTTPRequestMethod anyway!
+    // TODO: shuffle this to the relevant protocol section OR replace with request->method
     class Private
     {
 
@@ -160,7 +230,6 @@ public:
     HttpRequest *request; //< virgin HTTP request
     HttpRequest *adapted_request; //< HTTP request after adaptation and redirection
 
-
 #if ICAP_CLIENT
     /** \brief This subclass holds log info for ICAP part of request
      *  \todo Inner class declarations should be moved outside
@@ -168,14 +237,19 @@ public:
     class IcapLogEntry
     {
     public:
-        IcapLogEntry():request(NULL),reply(NULL),outcome(Adaptation::Icap::xoUnknown),trTime(0),ioTime(0),resStatus(HTTP_STATUS_NONE) {}
+        IcapLogEntry():bodyBytesRead(-1),request(NULL),reply(NULL),outcome(Adaptation::Icap::xoUnknown),trTime(0),ioTime(0),resStatus(HTTP_STATUS_NONE) {}
 
-        IpAddress hostAddr; ///< ICAP server IP address
+        Ip::Address hostAddr; ///< ICAP server IP address
         String serviceName;        ///< ICAP service name
         String reqUri;             ///< ICAP Request-URI
         Adaptation::Icap::ICAP::Method reqMethod; ///< ICAP request method
         int64_t bytesSent;       ///< number of bytes sent to ICAP server so far
         int64_t bytesRead;       ///< number of bytes read from ICAP server so far
+        /**
+         * number of ICAP body bytes read from ICAP server or -1 for no encapsulated
+         * message data in ICAP reply (eg 204 responses)
+         */
+        int64_t bodyBytesRead;
         HttpRequest* request;    ///< ICAP request
         HttpReply* reply;        ///< ICAP reply
 
@@ -200,18 +274,13 @@ public:
 
 class ACLChecklist;
 class StoreEntry;
-class logformat_token;
 
 /* Should be in 'AccessLog.h' as the driver */
-extern void accessLogLogTo(customlog* log, AccessLogEntry* al, ACLChecklist* checklist = NULL);
-extern void accessLogLog(AccessLogEntry *, ACLChecklist * checklist);
-extern void accessLogRotate(void);
-extern void accessLogClose(void);
-extern void accessLogInit(void);
-extern void accessLogFreeMemory(AccessLogEntry * aLogEntry);
-extern const char *accessLogTime(time_t);
-extern int accessLogParseLogFormat(logformat_token ** fmt, char *def);
-extern void accessLogDumpLogFormat(StoreEntry * entry, const char *name, logformat * definitions);
-extern void accessLogFreeLogFormat(logformat_token ** fmt);
+void accessLogLogTo(CustomLog* log, AccessLogEntry::Pointer &al, ACLChecklist* checklist = NULL);
+void accessLogLog(AccessLogEntry::Pointer &, ACLChecklist * checklist);
+void accessLogRotate(void);
+void accessLogClose(void);
+void accessLogInit(void);
+const char *accessLogTime(time_t);
 
 #endif /* SQUID_HTTPACCESSLOGENTRY_H */

@@ -44,7 +44,15 @@ EXTRA_PROGRAMS = pinger$(EXEEXT) testIcmp$(EXEEXT)
 libexec_PROGRAMS = $(am__EXEEXT_1)
 subdir = src/icmp
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
-am__aclocal_m4_deps = $(top_srcdir)/acinclude.m4 \
+am__aclocal_m4_deps = $(top_srcdir)/acinclude/init.m4 \
+	$(top_srcdir)/acinclude/squid-util.m4 \
+	$(top_srcdir)/acinclude/compiler-flags.m4 \
+	$(top_srcdir)/acinclude/os-deps.m4 \
+	$(top_srcdir)/acinclude/krb5.m4 $(top_srcdir)/acinclude/pam.m4 \
+	$(top_srcdir)/acinclude/pkg.m4 \
+	$(top_srcdir)/acinclude/lib-checks.m4 \
+	$(top_srcdir)/acinclude/ax_cxx_compile_stdcxx_0x.m4 \
+	$(top_srcdir)/acinclude/ax_cxx_0x_types.m4 \
 	$(top_srcdir)/configure.ac
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
@@ -65,15 +73,20 @@ PROGRAMS = $(libexec_PROGRAMS)
 am_pinger_OBJECTS = IcmpPinger.$(OBJEXT) Icmp4.$(OBJEXT) \
 	Icmp6.$(OBJEXT) pinger.$(OBJEXT)
 nodist_pinger_OBJECTS = debug.$(OBJEXT) globals.$(OBJEXT) \
-	time.$(OBJEXT) SquidConfig.$(OBJEXT) SquidNew.$(OBJEXT)
+	time.$(OBJEXT) SquidConfig.$(OBJEXT) SquidNew.$(OBJEXT) \
+	stub_HelperChildConfig.$(OBJEXT)
 pinger_OBJECTS = $(am_pinger_OBJECTS) $(nodist_pinger_OBJECTS)
-am__DEPENDENCIES_1 =
+@ENABLE_XPROF_STATS_TRUE@am__DEPENDENCIES_1 = $(top_builddir)/lib/profiler/libprofiler.la
+am__DEPENDENCIES_2 = $(am__DEPENDENCIES_1)
+am__DEPENDENCIES_3 =
+pinger_DEPENDENCIES = libicmp-core.la ../ip/libip.la \
+	$(am__DEPENDENCIES_2) $(am__DEPENDENCIES_3)
 pinger_LINK = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
 	--mode=link $(CXXLD) $(AM_CXXFLAGS) $(CXXFLAGS) \
 	$(pinger_LDFLAGS) $(LDFLAGS) -o $@
 am_testIcmp_OBJECTS = testIcmp.$(OBJEXT)
-nodist_testIcmp_OBJECTS = testMain.$(OBJEXT) time.$(OBJEXT) \
-	test_tools.$(OBJEXT) globals.$(OBJEXT)
+nodist_testIcmp_OBJECTS = testMain.$(OBJEXT) stub_debug.$(OBJEXT) \
+	time.$(OBJEXT) test_tools.$(OBJEXT) globals.$(OBJEXT)
 testIcmp_OBJECTS = $(am_testIcmp_OBJECTS) $(nodist_testIcmp_OBJECTS)
 testIcmp_LINK = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) \
 	$(LIBTOOLFLAGS) --mode=link $(CXXLD) $(AM_CXXFLAGS) \
@@ -124,9 +137,8 @@ AUTOHEADER = @AUTOHEADER@
 AUTOMAKE = @AUTOMAKE@
 AWK = @AWK@
 BASIC_AUTH_HELPERS = @BASIC_AUTH_HELPERS@
+BZR = @BZR@
 CACHE_EFFECTIVE_USER = @CACHE_EFFECTIVE_USER@
-CACHE_HTTP_PORT = @CACHE_HTTP_PORT@
-CACHE_ICP_PORT = @CACHE_ICP_PORT@
 CC = @CC@
 CCDEPMODE = @CCDEPMODE@
 CFLAGS = @CFLAGS@
@@ -141,8 +153,10 @@ CXXCPP = @CXXCPP@
 CXXDEPMODE = @CXXDEPMODE@
 CXXFLAGS = @CXXFLAGS@
 CYGPATH_W = @CYGPATH_W@
+DEFAULT_HOSTS = @DEFAULT_HOSTS@
 DEFAULT_LOG_DIR = @DEFAULT_LOG_DIR@
-DEFAULT_PIDFILE = @DEFAULT_PIDFILE@
+DEFAULT_PID_FILE = @DEFAULT_PID_FILE@
+DEFAULT_SWAP_DIR = @DEFAULT_SWAP_DIR@
 
 # TODO: get rid of this when config filename is no longer a global constant.
 #	its only here so the testIcmp will link .
@@ -156,16 +170,18 @@ DISK_OS_LIBS = @DISK_OS_LIBS@
 DISK_PROGRAMS = @DISK_PROGRAMS@
 DSYMUTIL = @DSYMUTIL@
 DUMPBIN = @DUMPBIN@
-ECAPLIB = @ECAPLIB@
 ECAP_LIBS = @ECAP_LIBS@
 ECHO_C = @ECHO_C@
 ECHO_N = @ECHO_N@
 ECHO_T = @ECHO_T@
 EGREP = @EGREP@
 EPOLL_LIBS = @EPOLL_LIBS@
+EUILIB = @EUILIB@
 EXEEXT = @EXEEXT@
 EXPATLIB = @EXPATLIB@
 EXTERNAL_ACL_HELPERS = @EXTERNAL_ACL_HELPERS@
+EXT_LIBECAP_CFLAGS = @EXT_LIBECAP_CFLAGS@
+EXT_LIBECAP_LIBS = @EXT_LIBECAP_LIBS@
 FALSE = @FALSE@
 FGREP = @FGREP@
 GREP = @GREP@
@@ -177,7 +193,11 @@ INSTALL_DATA = @INSTALL_DATA@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
 INSTALL_SCRIPT = @INSTALL_SCRIPT@
 INSTALL_STRIP_PROGRAM = @INSTALL_STRIP_PROGRAM@
+KRB5INCS = @KRB5INCS@
+KRB5LIBS = @KRB5LIBS@
+LBERLIB = @LBERLIB@
 LD = @LD@
+LDAPLIB = @LDAPLIB@
 LDFLAGS = @LDFLAGS@
 LIBADD_DL = @LIBADD_DL@
 LIBADD_DLD_LINK = @LIBADD_DLD_LINK@
@@ -189,11 +209,10 @@ LIBS = @LIBS@
 LIBSASL = @LIBSASL@
 LIBTOOL = @LIBTOOL@
 LIB_DB = @LIB_DB@
-LIB_LBER = @LIB_LBER@
-LIB_LDAP = @LIB_LDAP@
 LIPO = @LIPO@
 LN = @LN@
 LN_S = @LN_S@
+LOG_DAEMON_HELPERS = @LOG_DAEMON_HELPERS@
 LTDLDEPS = @LTDLDEPS@
 LTDLINCL = @LTDLINCL@
 LTDLOPEN = @LTDLOPEN@
@@ -213,7 +232,6 @@ NMEDIT = @NMEDIT@
 NTLM_AUTH_HELPERS = @NTLM_AUTH_HELPERS@
 OBJDUMP = @OBJDUMP@
 OBJEXT = @OBJEXT@
-OPT_DEFAULT_HOSTS = @OPT_DEFAULT_HOSTS@
 OTOOL = @OTOOL@
 OTOOL64 = @OTOOL64@
 PACKAGE = @PACKAGE@
@@ -225,7 +243,12 @@ PACKAGE_URL = @PACKAGE_URL@
 PACKAGE_VERSION = @PACKAGE_VERSION@
 PATH_SEPARATOR = @PATH_SEPARATOR@
 PERL = @PERL@
+PKG_CONFIG = @PKG_CONFIG@
+PKG_CONFIG_LIBDIR = @PKG_CONFIG_LIBDIR@
+PKG_CONFIG_PATH = @PKG_CONFIG_PATH@
 PO2HTML = @PO2HTML@
+PO2TEXT = @PO2TEXT@
+POD2MAN = @POD2MAN@
 RANLIB = @RANLIB@
 REGEXLIB = @REGEXLIB@
 REPL_LIBS = @REPL_LIBS@
@@ -247,7 +270,9 @@ STORE_LIBS_TO_ADD = @STORE_LIBS_TO_ADD@
 STORE_LIBS_TO_BUILD = @STORE_LIBS_TO_BUILD@
 STORE_TESTS = @STORE_TESTS@
 STRIP = @STRIP@
+TR = @TR@
 TRUE = @TRUE@
+URL_REWRITE_HELPERS = @URL_REWRITE_HELPERS@
 VERSION = @VERSION@
 WIN32_PSAPI = @WIN32_PSAPI@
 XMLLIB = @XMLLIB@
@@ -260,6 +285,7 @@ abs_top_srcdir = @abs_top_srcdir@
 ac_ct_CC = @ac_ct_CC@
 ac_ct_CXX = @ac_ct_CXX@
 ac_ct_DUMPBIN = @ac_ct_DUMPBIN@
+ac_krb5_config = @ac_krb5_config@
 am__include = @am__include@
 am__leading_dot = @am__leading_dot@
 am__quote = @am__quote@
@@ -313,8 +339,13 @@ top_srcdir = @top_srcdir@
 AM_CFLAGS = $(SQUID_CFLAGS)
 AM_CXXFLAGS = $(SQUID_CXXFLAGS)
 CLEANFILES = testHeaders
-INCLUDES = -I$(top_srcdir) -I$(top_srcdir)/include -I$(top_srcdir)/src \
-	-I$(top_builddir)/include $(SQUID_CPPUNIT_INC) $(am__append_1)
+INCLUDES = -I$(top_srcdir) -I$(top_srcdir)/include -I$(top_srcdir)/lib \
+	-I$(top_srcdir)/src -I$(top_builddir)/include \
+	$(SQUID_CPPUNIT_INC) $(KRB5INCS) $(am__append_1)
+@ENABLE_XPROF_STATS_FALSE@LIBPROFILER = 
+@ENABLE_XPROF_STATS_TRUE@LIBPROFILER = $(top_builddir)/lib/profiler/libprofiler.la
+COMPAT_LIB = -L$(top_builddir)/compat -lcompat-squid $(LIBPROFILER)
+subst_perlshell = sed -e 's,[@]PERL[@],$(PERL),g' <$(srcdir)/$@.pl.in >$@ || ($(RM) -f $@ ; exit 1)
 @ENABLE_PINGER_FALSE@PINGER = 
 
 # ICMP Specific Configurations
@@ -355,18 +386,15 @@ nodist_pinger_SOURCES = \
 	$(top_builddir)/src/globals.cc \
 	$(top_srcdir)/src/time.cc \
 	$(top_srcdir)/src/SquidConfig.cc \
-	$(top_srcdir)/src/SquidNew.cc
+	$(top_srcdir)/src/SquidNew.cc \
+	$(top_srcdir)/src/tests/stub_HelperChildConfig.cc
 
 pinger_LDFLAGS = $(LIBADD_DL)
 pinger_LDADD = \
 	libicmp-core.la \
 	../ip/libip.la \
-	$(XTRA_LIBS) \
-	$(top_builddir)/lib/libmiscutil.a
-
-pinger_DEPENDENCIES = \
-	libicmp-core.la \
-	$(top_builddir)/lib/libmiscutil.a
+	$(COMPAT_LIB) \
+	$(XTRA_LIBS)
 
 
 # Its used by pinger so SHOULD NOT require more dependancies! :-(
@@ -378,6 +406,7 @@ testIcmp_SOURCES = \
 nodist_testIcmp_SOURCES = \
 	$(top_srcdir)/src/tests/testMain.cc \
 	$(top_srcdir)/src/SquidTime.h \
+	$(top_srcdir)/src/tests/stub_debug.cc \
 	$(top_srcdir)/src/time.cc \
 	$(top_srcdir)/test-suite/test_tools.cc \
 	$(top_builddir)/src/globals.cc
@@ -386,15 +415,12 @@ testIcmp_LDFLAGS = $(LIBADD_DL)
 testIcmp_LDADD = \
 	$(SQUID_CPPUNIT_LIBS) \
 	$(SQUID_CPPUNIT_LA) \
-	$(XTRA_LIBS) \
 	libicmp-core.la \
 	../ip/libip.la \
-	$(top_builddir)/lib/libmiscutil.a
+	$(COMPAT_LIB) \
+	$(XTRA_LIBS)
 
-testIcmp_DEPENDENCIES = $(SQUID_CPPUNIT_LA) \
-	libicmp-core.la \
-	$(top_builddir)/lib/libmiscutil.a
-
+testIcmp_DEPENDENCIES = $(SQUID_CPPUNIT_LA)
 all: all-am
 
 .SUFFIXES:
@@ -518,6 +544,8 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/globals.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/net_db.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pinger.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/stub_HelperChildConfig.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/stub_debug.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/testIcmp.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/testMain.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_tools.Po@am__quote@
@@ -614,6 +642,20 @@ SquidNew.obj: $(top_srcdir)/src/SquidNew.cc
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o SquidNew.obj `if test -f '$(top_srcdir)/src/SquidNew.cc'; then $(CYGPATH_W) '$(top_srcdir)/src/SquidNew.cc'; else $(CYGPATH_W) '$(srcdir)/$(top_srcdir)/src/SquidNew.cc'; fi`
 
+stub_HelperChildConfig.o: $(top_srcdir)/src/tests/stub_HelperChildConfig.cc
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT stub_HelperChildConfig.o -MD -MP -MF $(DEPDIR)/stub_HelperChildConfig.Tpo -c -o stub_HelperChildConfig.o `test -f '$(top_srcdir)/src/tests/stub_HelperChildConfig.cc' || echo '$(srcdir)/'`$(top_srcdir)/src/tests/stub_HelperChildConfig.cc
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/stub_HelperChildConfig.Tpo $(DEPDIR)/stub_HelperChildConfig.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='$(top_srcdir)/src/tests/stub_HelperChildConfig.cc' object='stub_HelperChildConfig.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o stub_HelperChildConfig.o `test -f '$(top_srcdir)/src/tests/stub_HelperChildConfig.cc' || echo '$(srcdir)/'`$(top_srcdir)/src/tests/stub_HelperChildConfig.cc
+
+stub_HelperChildConfig.obj: $(top_srcdir)/src/tests/stub_HelperChildConfig.cc
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT stub_HelperChildConfig.obj -MD -MP -MF $(DEPDIR)/stub_HelperChildConfig.Tpo -c -o stub_HelperChildConfig.obj `if test -f '$(top_srcdir)/src/tests/stub_HelperChildConfig.cc'; then $(CYGPATH_W) '$(top_srcdir)/src/tests/stub_HelperChildConfig.cc'; else $(CYGPATH_W) '$(srcdir)/$(top_srcdir)/src/tests/stub_HelperChildConfig.cc'; fi`
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/stub_HelperChildConfig.Tpo $(DEPDIR)/stub_HelperChildConfig.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='$(top_srcdir)/src/tests/stub_HelperChildConfig.cc' object='stub_HelperChildConfig.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o stub_HelperChildConfig.obj `if test -f '$(top_srcdir)/src/tests/stub_HelperChildConfig.cc'; then $(CYGPATH_W) '$(top_srcdir)/src/tests/stub_HelperChildConfig.cc'; else $(CYGPATH_W) '$(srcdir)/$(top_srcdir)/src/tests/stub_HelperChildConfig.cc'; fi`
+
 testMain.o: $(top_srcdir)/src/tests/testMain.cc
 @am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT testMain.o -MD -MP -MF $(DEPDIR)/testMain.Tpo -c -o testMain.o `test -f '$(top_srcdir)/src/tests/testMain.cc' || echo '$(srcdir)/'`$(top_srcdir)/src/tests/testMain.cc
 @am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/testMain.Tpo $(DEPDIR)/testMain.Po
@@ -627,6 +669,20 @@ testMain.obj: $(top_srcdir)/src/tests/testMain.cc
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='$(top_srcdir)/src/tests/testMain.cc' object='testMain.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o testMain.obj `if test -f '$(top_srcdir)/src/tests/testMain.cc'; then $(CYGPATH_W) '$(top_srcdir)/src/tests/testMain.cc'; else $(CYGPATH_W) '$(srcdir)/$(top_srcdir)/src/tests/testMain.cc'; fi`
+
+stub_debug.o: $(top_srcdir)/src/tests/stub_debug.cc
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT stub_debug.o -MD -MP -MF $(DEPDIR)/stub_debug.Tpo -c -o stub_debug.o `test -f '$(top_srcdir)/src/tests/stub_debug.cc' || echo '$(srcdir)/'`$(top_srcdir)/src/tests/stub_debug.cc
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/stub_debug.Tpo $(DEPDIR)/stub_debug.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='$(top_srcdir)/src/tests/stub_debug.cc' object='stub_debug.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o stub_debug.o `test -f '$(top_srcdir)/src/tests/stub_debug.cc' || echo '$(srcdir)/'`$(top_srcdir)/src/tests/stub_debug.cc
+
+stub_debug.obj: $(top_srcdir)/src/tests/stub_debug.cc
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT stub_debug.obj -MD -MP -MF $(DEPDIR)/stub_debug.Tpo -c -o stub_debug.obj `if test -f '$(top_srcdir)/src/tests/stub_debug.cc'; then $(CYGPATH_W) '$(top_srcdir)/src/tests/stub_debug.cc'; else $(CYGPATH_W) '$(srcdir)/$(top_srcdir)/src/tests/stub_debug.cc'; fi`
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/stub_debug.Tpo $(DEPDIR)/stub_debug.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='$(top_srcdir)/src/tests/stub_debug.cc' object='stub_debug.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o stub_debug.obj `if test -f '$(top_srcdir)/src/tests/stub_debug.cc'; then $(CYGPATH_W) '$(top_srcdir)/src/tests/stub_debug.cc'; else $(CYGPATH_W) '$(srcdir)/$(top_srcdir)/src/tests/stub_debug.cc'; fi`
 
 test_tools.o: $(top_srcdir)/test-suite/test_tools.cc
 @am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT test_tools.o -MD -MP -MF $(DEPDIR)/test_tools.Tpo -c -o test_tools.o `test -f '$(top_srcdir)/test-suite/test_tools.cc' || echo '$(srcdir)/'`$(top_srcdir)/test-suite/test_tools.cc

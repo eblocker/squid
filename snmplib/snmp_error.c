@@ -26,12 +26,11 @@
  *
  **********************************************************************/
 
-#include "config.h"
+#include "squid.h"
 
 #include <stdio.h>
 
 #include "snmp_error.h"
-
 
 static const char *error_string[25] = {
     /* 0x00 - 0x05 */

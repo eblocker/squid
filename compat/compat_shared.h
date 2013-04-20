@@ -1,7 +1,3 @@
-#ifndef SQUID_CONFIG_H
-#include "config.h"
-#endif
-
 #ifndef _SQUID_COMPAT_SHARED_H
 #define _SQUID_COMPAT_SHARED_H
 
@@ -17,6 +13,14 @@
  * of the requirements for wrapping your hack for safe portability.
  */
 
+#ifdef __cplusplus
+/*
+ * Define an error display handler override.
+ * If error_notify is set by the linked program it will be used by the local
+ * portability functions. Otherwise perror() will be used.
+ */
+extern void (*failure_notify) (const char *);
+#endif
 
 /*
  * sys/resource.h and sys/time.h are apparently order-dependant.
@@ -35,7 +39,6 @@
 #if HAVE_DIRENT_H
 #include <dirent.h>
 #define NAMLEN(dirent) strlen((dirent)->d_name)
-
 #else /* if not HAVE_DIRENT_H */
 #define dirent direct
 #define NAMLEN(dirent) (dirent)->d_namlen
@@ -83,8 +86,6 @@
 # error Unknown select loop model!
 #endif
 
-
-
 #if !HAVE_STRUCT_RUSAGE
 /**
  * If we don't have getrusage() then we create a fake structure
@@ -99,7 +100,6 @@ struct rusage {
     int ru_majflt;
 };
 #endif /* !HAVE_STRUCT_RUSAGE */
-
 
 #ifndef min
 #ifdef __cplusplus
@@ -144,43 +144,11 @@ max(A const & lhs, A const & rhs)
 #endif /* max */
 
 /**
- * tempnam() not provided by all systems
- * TODO: detect WHICH systems and move to their OS-specific compat files
- */
-#if !HAVE_TEMPNAM
-#include "tempnam.h"
-#endif
-
-/**
- * strsep() not provided by all systems
- * TODO: detect WHICH systems and move to their OS-specific compat files
- */
-#if !HAVE_STRSEP
-#include "strsep.h"
-#endif
-
-/**
- * strtoll() not provided by all systems
- * TODO: detect WHICH systems and move to their OS-specific compat files
- */
-#if !HAVE_STRTOLL
-#include "strtoll.h"
-#endif
-
-/**
  * Common shared definition of what whitespace consists of for string tests
  */
 #define w_space     " \t\n\r"
 
-/**
- * initgroups() not provided by all systems
- * TODO: detect WHICH systems and move to their OS-specific compat files
- */
-#if !HAVE_INITGROUPS
-#include "initgroups.h"
-#endif
-
-
+#ifndef SQUID_NONBLOCK
 /* REQUIRED for the below logics. If they move this needs to as well */
 #if HAVE_FCNTL_H
 #include <fcntl.h>
@@ -197,7 +165,7 @@ max(A const & lhs, A const & rhs)
 /** O_NDELAY is our fallback. */
 #define SQUID_NONBLOCK O_NDELAY
 #endif
-
+#endif
 
 /**
  * Signalling flags are apparently not always provided.
@@ -220,9 +188,73 @@ max(A const & lhs, A const & rhs)
 #define SA_RESETHAND SA_ONESHOT
 #endif
 
-/* NULL is not always provided. */
-#ifndef NULL
-#define NULL ((void *)0)
+/**
+ * com_err.h is a C header and needs explicit shielding, but not
+ * all other system headers including this care to do so.
+ */
+#ifdef __cplusplus
+#if HAVE_ET_COM_ERR_H
+extern "C" {
+#include <et/com_err.h>
+}
+#elif HAVE_COM_ERR_H
+extern "C" {
+#include <com_err.h>
+}
+#endif
+#endif
+
+/*
+ * Several function definitions which we provide for security and code safety.
+ */
+#include "compat/xalloc.h"
+#include "compat/xstrerror.h"
+#include "compat/xstring.h"
+#include "compat/xstrto.h"
+#include "compat/xis.h"
+
+/*
+ * strtoll() is needed. Squid provides a portable definition.
+ */
+#include "compat/strtoll.h"
+
+#if !HAVE_MEMCPY
+#if HAVE_BCOPY
+#define memcpy(d,s,n) bcopy((s),(d),(n))
+#elif HAVE_MEMMOVE
+#define memcpy(d,s,n) memmove((d),(s),(n))
+#endif
+#endif
+
+#if !HAVE_MEMMOVE && HAVE_BCOPY
+#define memmove(d,s,n) bcopy((s),(d),(n))
+#endif
+
+/*
+ * strnstr() is needed. The OS may not provide a working copy.
+ */
+#if HAVE_STRNSTR
+/* If strnstr exists and is usable we do so. */
+#define squid_strnstr(a,b,c)    strnstr(a,b,c)
+#else
+/* If not we have our own copy imported from FreeBSD */
+const char * squid_strnstr(const char *s, const char *find, size_t slen);
+#endif
+
+#if __GNUC__
+#if !defined(PRINTF_FORMAT_ARG1)
+#define PRINTF_FORMAT_ARG1 __attribute__ ((format (printf, 1, 2)))
+#endif
+#if !defined(PRINTF_FORMAT_ARG2)
+#define PRINTF_FORMAT_ARG2 __attribute__ ((format (printf, 2, 3)))
+#endif
+#if !defined(PRINTF_FORMAT_ARG3)
+#define PRINTF_FORMAT_ARG3 __attribute__ ((format (printf, 3, 4)))
+#endif
+#else /* !__GNU__ */
+#define PRINTF_FORMAT_ARG1
+#define PRINTF_FORMAT_ARG2
+#define PRINTF_FORMAT_ARG3
 #endif
 
 #endif /* _SQUID_COMPAT_SHARED_H */

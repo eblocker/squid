@@ -17,19 +17,20 @@
  *
  */
 
+#include "config.h"
 #include "TrieNode.h"
 #include "TrieCharTransform.h"
-#ifdef HAVE_UNISTD_H
+#if HAVE_UNISTD_H
 #include <unistd.h>
 #endif
 
-TrieNode::TrieNode () : _privateData (NULL)
+TrieNode::TrieNode() : _privateData(NULL)
 {
     for (int i = 0; i < 256; ++i)
         internal[i] = NULL;
 }
 
-TrieNode::~TrieNode ()
+TrieNode::~TrieNode()
 {
     for (int i = 0; i < 256; ++i)
         delete internal[i];
@@ -37,20 +38,17 @@ TrieNode::~TrieNode ()
 
 /* as for find */
 bool
-
-TrieNode::add
-(char const *aString, size_t theLength, void *privatedata, TrieCharTransform *transform)
+TrieNode::add(char const *aString, size_t theLength, void *privatedata, TrieCharTransform *transform)
 {
     /* We trust that privatedata and existant keys have already been checked */
 
     if (theLength) {
-        int index = transform ? (*transform) (*aString): *aString;
+        int index = transform ? (*transform)(*aString): *aString;
 
         if (!internal[index])
             internal[index] = new TrieNode;
 
-        return internal[index]->add
-               (aString + 1, theLength - 1, privatedata, transform);
+        return internal[index]->add(aString + 1, theLength - 1, privatedata, transform);
     } else {
         /* terminal node */
 
@@ -63,6 +61,6 @@ TrieNode::add
     }
 }
 
-#ifndef _USE_INLINE_
+#if !_USE_INLINE_
 #include "TrieNode.cci"
 #endif

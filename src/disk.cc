@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 06    Disk I/O Routines
  * AUTHOR: Harvest Derived
  *
@@ -33,13 +31,24 @@
  */
 
 #include "squid.h"
+#include "comm/Loops.h"
+#include "disk.h"
+#include "fd.h"
 #include "fde.h"
+#include "globals.h"
+#include "Mem.h"
 #include "MemBuf.h"
+#include "profiler/Profiler.h"
+#include "StatCounters.h"
+
+#if HAVE_ERRNO_H
+#include <errno.h>
+#endif
 
 static PF diskHandleRead;
 static PF diskHandleWrite;
 
-#if defined(_SQUID_WIN32_) || defined(_SQUID_OS2_)
+#if _SQUID_WINDOWS_ || _SQUID_OS2_
 static int
 diskWriteIsComplete(int fd)
 {
@@ -52,6 +61,12 @@ void
 disk_init(void)
 {
     (void) 0;
+}
+
+/* hack needed on SunStudio to avoid linkage convention mismatch */
+static void cxx_xfree(void *ptr)
+{
+    xfree(ptr);
 }
 
 /*
@@ -71,7 +86,7 @@ file_open(const char *path, int mode)
 
     fd = open(path, mode, 0644);
 
-    statCounter.syscalls.disk.opens++;
+    ++ statCounter.syscalls.disk.opens;
 
     if (fd < 0) {
         debugs(50, 3, "file_open: error opening file " << path << ": " << xstrerror());
@@ -85,7 +100,6 @@ file_open(const char *path, int mode)
     PROF_stop(file_open);
     return fd;
 }
-
 
 /* close a disk file. */
 void
@@ -103,25 +117,18 @@ file_close(int fd)
     }
 
     if (F->flags.write_daemon) {
-#if defined(_SQUID_WIN32_) || defined(_SQUID_OS2_)
+#if _SQUID_WINDOWS_ || _SQUID_OS2_
         /*
          * on some operating systems, you can not delete or rename
          * open files, so we won't allow delayed close.
          */
-
         while (!diskWriteIsComplete(fd))
             diskHandleWrite(fd, NULL);
-
 #else
-
         F->flags.close_request = 1;
-
         debugs(6, 2, "file_close: FD " << fd << ", delaying close");
-
         PROF_stop(file_close);
-
         return;
-
 #endif
 
     }
@@ -144,7 +151,7 @@ file_close(int fd)
 
     fd_close(fd);
 
-    statCounter.syscalls.disk.closes++;
+    ++ statCounter.syscalls.disk.closes;
 
     PROF_stop(file_close);
 }
@@ -160,12 +167,8 @@ file_close(int fd)
  * select() loop.       --SLF
  */
 static void
-
-diskCombineWrites(struct _fde_disk *fdd)
+diskCombineWrites(_fde_disk *fdd)
 {
-    int len = 0;
-    dwrite_q *q = NULL;
-    dwrite_q *wq = NULL;
     /*
      * We need to combine multiple write requests on an FD's write
      * queue But only if we don't need to seek() in between them, ugh!
@@ -173,12 +176,12 @@ diskCombineWrites(struct _fde_disk *fdd)
      */
 
     if (fdd->write_q != NULL && fdd->write_q->next != NULL) {
-        len = 0;
+        int len = 0;
 
-        for (q = fdd->write_q; q != NULL; q = q->next)
+        for (dwrite_q *q = fdd->write_q; q != NULL; q = q->next)
             len += q->len - q->buf_offset;
 
-        wq = (dwrite_q *)memAllocate(MEM_DWRITE_Q);
+        dwrite_q *wq = (dwrite_q *)memAllocate(MEM_DWRITE_Q);
 
         wq->buf = (char *)xmalloc(len);
 
@@ -188,23 +191,21 @@ diskCombineWrites(struct _fde_disk *fdd)
 
         wq->next = NULL;
 
-        wq->free_func = xfree;
+        wq->free_func = cxx_xfree;
 
-        do {
-            q = fdd->write_q;
+        while (fdd->write_q != NULL) {
+            dwrite_q *q = fdd->write_q;
+
             len = q->len - q->buf_offset;
-            xmemcpy(wq->buf + wq->len, q->buf + q->buf_offset, len);
+            memcpy(wq->buf + wq->len, q->buf + q->buf_offset, len);
             wq->len += len;
             fdd->write_q = q->next;
 
             if (q->free_func)
-                (q->free_func) (q->buf);
+                q->free_func(q->buf);
 
-            if (q) {
-                memFree(q, MEM_DWRITE_Q);
-                q = NULL;
-            }
-        } while (fdd->write_q != NULL);
+            memFree(q, MEM_DWRITE_Q);
+        };
 
         fdd->write_q_tail = wq;
 
@@ -219,7 +220,7 @@ diskHandleWrite(int fd, void *notused)
     int len = 0;
     fde *F = &fd_table[fd];
 
-    struct _fde_disk *fdd = &F->disk;
+    _fde_disk *fdd = &F->disk;
     dwrite_q *q = fdd->write_q;
     int status = DISK_OK;
     int do_close;
@@ -237,12 +238,14 @@ diskHandleWrite(int fd, void *notused)
 
     assert(fdd->write_q->len > fdd->write_q->buf_offset);
 
-    debugs(6, 3, "diskHandleWrite: FD " << fd << " writing " << (fdd->write_q->len - fdd->write_q->buf_offset) << " bytes");
+    debugs(6, 3, "diskHandleWrite: FD " << fd << " writing " <<
+           (fdd->write_q->len - fdd->write_q->buf_offset) << " bytes at " <<
+           fdd->write_q->file_offset);
 
     errno = 0;
 
     if (fdd->write_q->file_offset != -1)
-        lseek(fd, fdd->write_q->file_offset, SEEK_SET);
+        lseek(fd, fdd->write_q->file_offset, SEEK_SET); /* XXX ignore return? */
 
     len = FD_WRITE_METHOD(fd,
                           fdd->write_q->buf + fdd->write_q->buf_offset,
@@ -250,14 +253,14 @@ diskHandleWrite(int fd, void *notused)
 
     debugs(6, 3, "diskHandleWrite: FD " << fd << " len = " << len);
 
-    statCounter.syscalls.disk.writes++;
+    ++ statCounter.syscalls.disk.writes;
 
     fd_bytes(fd, len, FD_WRITE);
 
     if (len < 0) {
         if (!ignoreErrno(errno)) {
             status = errno == ENOSPC ? DISK_NO_SPACE_LEFT : DISK_ERROR;
-            debugs(50, 1, "diskHandleWrite: FD " << fd << ": disk write error: " << xstrerror());
+            debugs(50, DBG_IMPORTANT, "diskHandleWrite: FD " << fd << ": disk write error: " << xstrerror());
 
             /*
              * If there is no write callback, then this file is
@@ -285,7 +288,7 @@ diskHandleWrite(int fd, void *notused)
                 fdd->write_q = q->next;
 
                 if (q->free_func)
-                    (q->free_func) (q->buf);
+                    q->free_func(q->buf);
 
                 if (q) {
                     memFree(q, MEM_DWRITE_Q);
@@ -302,10 +305,9 @@ diskHandleWrite(int fd, void *notused)
         q->buf_offset += len;
 
         if (q->buf_offset > q->len)
-            debugs(50, 1, "diskHandleWriteComplete: q->buf_offset > q->len (" <<
+            debugs(50, DBG_IMPORTANT, "diskHandleWriteComplete: q->buf_offset > q->len (" <<
                    q << "," << (int) q->buf_offset << ", " << q->len << ", " <<
                    len << " FD " << fd << ")");
-
 
         assert(q->buf_offset <= q->len);
 
@@ -314,7 +316,7 @@ diskHandleWrite(int fd, void *notused)
             fdd->write_q = q->next;
 
             if (q->free_func)
-                (q->free_func) (q->buf);
+                q->free_func(q->buf);
 
             if (q) {
                 memFree(q, MEM_DWRITE_Q);
@@ -329,7 +331,7 @@ diskHandleWrite(int fd, void *notused)
     } else {
         /* another block is queued */
         diskCombineWrites(fdd);
-        commSetSelect(fd, COMM_SELECT_WRITE, diskHandleWrite, NULL, 0);
+        Comm::SetSelect(fd, COMM_SELECT_WRITE, diskHandleWrite, NULL, 0);
         F->flags.write_daemon = 1;
     }
 
@@ -357,7 +359,6 @@ diskHandleWrite(int fd, void *notused)
 
     PROF_stop(diskHandleWrite);
 }
-
 
 /* write block to a file */
 /* write back queue. Only one writer at a time. */
@@ -439,10 +440,14 @@ diskHandleRead(int fd, void *data)
 
     PROF_start(diskHandleRead);
 
+#if WRITES_MAINTAIN_DISK_OFFSET
     if (F->disk.offset != ctrl_dat->offset) {
+#else
+    {
+#endif
         debugs(6, 3, "diskHandleRead: FD " << fd << " seeking to offset " << ctrl_dat->offset);
         lseek(fd, ctrl_dat->offset, SEEK_SET);	/* XXX ignore return? */
-        statCounter.syscalls.disk.seeks++;
+        ++ statCounter.syscalls.disk.seeks;
         F->disk.offset = ctrl_dat->offset;
     }
 
@@ -452,18 +457,18 @@ diskHandleRead(int fd, void *data)
     if (len > 0)
         F->disk.offset += len;
 
-    statCounter.syscalls.disk.reads++;
+    ++ statCounter.syscalls.disk.reads;
 
     fd_bytes(fd, len, FD_READ);
 
     if (len < 0) {
         if (ignoreErrno(errno)) {
-            commSetSelect(fd, COMM_SELECT_READ, diskHandleRead, ctrl_dat, 0);
+            Comm::SetSelect(fd, COMM_SELECT_READ, diskHandleRead, ctrl_dat, 0);
             PROF_stop(diskHandleRead);
             return;
         }
 
-        debugs(50, 1, "diskHandleRead: FD " << fd << ": " << xstrerror());
+        debugs(50, DBG_IMPORTANT, "diskHandleRead: FD " << fd << ": " << xstrerror());
         len = 0;
         rc = DISK_ERROR;
     } else if (len == 0) {
@@ -479,7 +484,6 @@ diskHandleRead(int fd, void *data)
 
     PROF_stop(diskHandleRead);
 }
-
 
 /* start read operation */
 /* buffer must be allocated from the caller.
@@ -506,10 +510,10 @@ file_read(int fd, char *buf, int req_len, off_t offset, DRCB * handler, void *cl
 void
 safeunlink(const char *s, int quiet)
 {
-    statCounter.syscalls.disk.unlinks++;
+    ++ statCounter.syscalls.disk.unlinks;
 
     if (unlink(s) < 0 && !quiet)
-        debugs(50, 1, "safeunlink: Couldn't delete " << s << ": " << xstrerror());
+        debugs(50, DBG_IMPORTANT, "safeunlink: Couldn't delete " << s << ": " << xstrerror());
 }
 
 /*
@@ -521,11 +525,8 @@ int
 xrename(const char *from, const char *to)
 {
     debugs(21, 2, "xrename: renaming " << from << " to " << to);
-#if defined (_SQUID_OS2_) || defined (_SQUID_WIN32_)
-
-    remove
-    (to);
-
+#if _SQUID_OS2_ || _SQUID_WINDOWS_
+    remove(to);
 #endif
 
     if (0 == rename(from, to))

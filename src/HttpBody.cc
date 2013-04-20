@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  * DEBUG: section 56    HTTP Message Body
  * AUTHOR: Alex Rousskov
  *
@@ -34,43 +32,40 @@
  */
 
 #include "squid.h"
+#include "HttpBody.h"
 #include "MemBuf.h"
 
+HttpBody::HttpBody() : mb(new MemBuf)
+{}
 
-void
-httpBodyInit(HttpBody * body)
+HttpBody::~HttpBody()
 {
-    body->mb = new MemBuf;
+    delete mb;
 }
 
 void
-httpBodyClean(HttpBody * body)
+HttpBody::clear()
 {
-    assert(body);
-
-    if (!body->mb->isNull())
-        body->mb->clean();
-
-    delete body->mb;
-
-    body->mb = NULL;
+    mb->clean();
 }
 
 /* set body by absorbing mb */
 void
-httpBodySet(HttpBody * body, MemBuf * mb)
+HttpBody::setMb(MemBuf * mb_)
 {
-    assert(body);
-    assert(body->mb->isNull());
-    delete body->mb;
-    body->mb = mb;		/* absorb */
+    delete mb;
+    /* note: protection against assign-to-self is not needed
+     * as MemBuf doesn't have a copy-constructor. If such a constructor
+     * is ever added, add such protection here.
+     */
+    mb = mb_;		/* absorb */
 }
 
 void
-httpBodyPackInto(const HttpBody * body, Packer * p)
+HttpBody::packInto(Packer * p) const
 {
-    assert(body && p);
+    assert(p);
 
-    if (body->mb->contentSize())
-        packerAppend(p, body->mb->content(), body->mb->contentSize());
+    if (mb->contentSize())
+        packerAppend(p, mb->content(), mb->contentSize());
 }

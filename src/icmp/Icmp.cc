@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 37    ICMP Routines
  * AUTHOR: Duane Wessels, Amos Jeffries
  *
@@ -69,7 +67,8 @@ Icmp::CheckSum(unsigned short *ptr, int size)
     sum = 0;
 
     while (size > 1) {
-        sum += *ptr++;
+        sum += *ptr;
+        ++ptr;
         size -= 2;
     }
 
@@ -107,7 +106,7 @@ Icmp::ipHops(int ttl)
 }
 
 void
-Icmp::Log(const IpAddress &addr, const u_int8_t type, const char* pkt_str, const int rtt, const int hops)
+Icmp::Log(const Ip::Address &addr, const uint8_t type, const char* pkt_str, const int rtt, const int hops)
 {
     debugs(42, 2, "pingerLog: " << std::setw(9) << current_time.tv_sec  <<
            "." << std::setfill('0') << std::setw(6) <<

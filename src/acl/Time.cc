@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 28    Access Control
  * AUTHOR: Duane Wessels
  *
@@ -38,7 +36,6 @@
 #include "acl/Time.h"
 #include "acl/TimeData.h"
 #include "SquidTime.h"
-
 
 int
 ACLTimeStrategy::match (ACLData<MatchType> * &data, ACLFilledChecklist *checklist)

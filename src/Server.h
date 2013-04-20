@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  * AUTHOR: Duane Wessels
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
@@ -39,11 +37,13 @@
 #include "BodyPipe.h"
 #include "base/AsyncJob.h"
 #include "CommCalls.h"
-
 #if USE_ADAPTATION
 #include "adaptation/forward.h"
 #include "adaptation/Initiator.h"
 #endif
+
+class HttpMsg;
+class HttpReply;
 
 /**
  * ServerStateData is a common base for server-side classes such as
@@ -66,8 +66,8 @@ public:
     ServerStateData(FwdState *);
     virtual ~ServerStateData();
 
-    /// \return primary or "request data connection" fd
-    virtual int dataDescriptor() const = 0;
+    /// \return primary or "request data connection"
+    virtual const Comm::ConnectionPointer & dataConnection() const = 0;
 
     // BodyConsumer: consume request body or adapted response body.
     // The implementation just calls the corresponding HTTP or ICAP handle*()
@@ -86,29 +86,20 @@ public:
     virtual  HttpRequest *originalRequest();
 
 #if USE_ADAPTATION
-    void adaptationAclCheckDone(Adaptation::ServiceGroupPointer group);
-    static void adaptationAclCheckDoneWrapper(Adaptation::ServiceGroupPointer group, void *data);
-
-    // ICAPInitiator: start an ICAP transaction and receive adapted headers.
-    virtual void noteAdaptationAnswer(HttpMsg *message);
-    virtual void noteAdaptationQueryAbort(bool final);
+    // Adaptation::Initiator API: start an ICAP transaction and receive adapted headers.
+    virtual void noteAdaptationAnswer(const Adaptation::Answer &answer);
+    virtual void noteAdaptationAclCheckDone(Adaptation::ServiceGroupPointer group);
 
     // BodyProducer: provide virgin response body to ICAP.
     virtual void noteMoreBodySpaceAvailable(BodyPipe::Pointer );
     virtual void noteBodyConsumerAborted(BodyPipe::Pointer );
 #endif
+    virtual bool getMoreRequestBody(MemBuf &buf);
     virtual void processReplyBody() = 0;
 
 //AsyncJob virtual methods
     virtual void swanSong();
-    virtual bool doneAll() const {
-        return
-#if USE_ADAPTATION
-            Adaptation::Initiator::doneAll() &&
-            BodyProducer::doneAll() &&
-#endif
-            BodyConsumer::doneAll() && false;
-    }
+    virtual bool doneAll() const;
 
 public: // should be protected
     void serverComplete();     /**< call when no server communication is expected */
@@ -128,8 +119,6 @@ protected:
     void handleRequestBodyProductionEnded();
     virtual void handleRequestBodyProducerAborted() = 0;
 
-    /// whether it is not too late to write to the server
-    bool canSend(int fd) const;
     // sending of the request body to the server
     void sendMoreRequestBody();
     // has body; kids overwrite to increment I/O stats counters
@@ -153,7 +142,9 @@ protected:
     void handleAdaptedBodyProductionEnded();
     void handleAdaptedBodyProducerAborted();
 
+    void handleAdaptedHeader(HttpMsg *msg);
     void handleAdaptationCompleted();
+    void handleAdaptationBlocked(const Adaptation::Answer &answer);
     void handleAdaptationAborted(bool bypassable = false);
 
     /// called by StoreEntry when it has more buffer space available
@@ -176,6 +167,8 @@ protected:
     void storeReplyBody(const char *buf, ssize_t len);
     size_t replyBodySpace(const MemBuf &readBuf, const size_t minSpace) const;
 
+    void adjustBodyBytesRead(const int64_t delta);
+
     // These should be private
     int64_t currentOffset;	/**< Our current offset in the StoreEntry */
     MemBuf *responseBodyBuffer;	/**< Data temporarily buffered for ICAP */
@@ -187,7 +180,7 @@ public: // should not be
 
 protected:
     BodyPipe::Pointer requestBodySource;  /**< to consume request body */
-    AsyncCall::Pointer requestSender;     /**< set if we are expecting comm_write to call us back */
+    AsyncCall::Pointer requestSender;     /**< set if we are expecting Comm::Write to call us back */
 
 #if USE_ADAPTATION
     BodyPipe::Pointer virginBodyDestination;  /**< to provide virgin response body */
@@ -197,9 +190,9 @@ protected:
     bool adaptationAccessCheckPending;
     bool startedAdaptation;
 #endif
+    bool receivedWholeRequestBody; ///< handleRequestBodyProductionEnded called
 
 private:
-    void quitIfAllDone();            /**< successful termination */
     void sendBodyIsTooLargeError();
     void maybePurgeOthers();
 

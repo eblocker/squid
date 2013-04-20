@@ -21,7 +21,8 @@ ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS
 SOFTWARE.
 ******************************************************************/
 
-#include "config.h"
+#define SQUID_NO_STRING_BUFFER_PROTECT 1
+#include "squid.h"
 
 #include <stdio.h>
 
@@ -45,10 +46,10 @@ SOFTWARE.
 #if HAVE_MEMORY_H
 #include <memory.h>
 #endif
-#ifdef HAVE_STRING_H
+#if HAVE_STRING_H
 #include <string.h>
 #endif
-#ifdef HAVE_STRINGS_H
+#if HAVE_STRINGS_H
 #include <strings.h>
 #endif
 #if HAVE_BSTRING_H
@@ -97,7 +98,6 @@ init_mib(char *file)
     if (file != NULL)
         Mib = read_mib(file);
 }
-
 
 static struct snmp_mib_tree *
 find_rfc1066_mib(struct snmp_mib_tree *root) {

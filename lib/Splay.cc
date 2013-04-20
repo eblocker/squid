@@ -1,11 +1,9 @@
 /*
- * $Id$
- *
  * based on ftp://ftp.cs.cmu.edu/user/sleator/splaying/top-down-splay.c
  * http://bobo.link.cs.cmu.edu/cgi-bin/splay/splay-cgi.pl
  */
 
-#include "config.h"
+#include "squid.h"
 
 #if HAVE_STDIO_H
 #include <stdio.h>

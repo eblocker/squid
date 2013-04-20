@@ -1,11 +1,7 @@
-#ifndef SQUID_CONFIG_H
-#include "config.h"
-#endif
-
 #ifndef SQUID_OS_MACOSX_H
 #define SQUID_OS_MACOSX_H
 
-#ifdef _SQUID_APPLE_
+#if _SQUID_APPLE_
 
 /****************************************************************************
  *--------------------------------------------------------------------------*
@@ -21,6 +17,13 @@
 //#define s6_addr8  __u6_addr.__u6_addr8
 //#define s6_addr16 __u6_addr.__u6_addr16
 #define s6_addr32 __u6_addr.__u6_addr32
+
+#include "compat/cmsg.h"
+
+// MacOS GCC 4.0.1 and 4.2.1 supply __GNUC_GNU_INLINE__ but do not actually define  __attribute__((gnu_inline))
+#if defined(__cplusplus) && !defined(_SQUID_EXTERNNEW_)
+#define _SQUID_EXTERNNEW_ extern inline
+#endif
 
 #endif /* _SQUID_APPLE_ */
 #endif /* SQUID_OS_MACOSX_H */

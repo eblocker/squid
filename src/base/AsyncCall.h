@@ -1,13 +1,9 @@
-/*
- * $Id$
- */
-
 #ifndef SQUID_ASYNCCALL_H
 #define SQUID_ASYNCCALL_H
 
-//#include "cbdata.h"
+#include "base/InstanceId.h"
 #include "event.h"
-//#include "TextException.h"
+#include "RefCount.h"
 
 /**
  \defgroup AsynCallsAPI Async-Calls API
@@ -72,7 +68,7 @@ public:
     const char *const name;
     const int debugSection;
     const int debugLevel;
-    const unsigned int id;
+    const InstanceId<AsyncCall> id;
 
 protected:
     virtual bool canFire();
@@ -83,7 +79,10 @@ protected:
 
 private:
     const char *isCanceled; // set to the cancelation reason by cancel()
-    static unsigned int TheLastId;
+
+    // not implemented to prevent nil calls from being passed around and unknowingly scheduled, for now.
+    AsyncCall();
+    AsyncCall(const AsyncCall &);
 };
 
 inline
@@ -122,6 +121,12 @@ public:
                const Dialer &aDialer): AsyncCall(aDebugSection, aDebugLevel, aName),
             dialer(aDialer) {}
 
+    AsyncCallT(const AsyncCallT<Dialer> &o):
+            AsyncCall(o.debugSection, o.debugLevel, o.name),
+            dialer(o.dialer) {}
+
+    ~AsyncCallT() {}
+
     CallDialer *getDialer() { return &dialer; }
 
 protected:
@@ -132,6 +137,9 @@ protected:
     virtual void fire() { dialer.dial(*this); }
 
     Dialer dialer;
+
+private:
+    AsyncCallT & operator=(const AsyncCallT &); // not defined. call assignments not permitted.
 };
 
 template <class Dialer>
@@ -144,10 +152,9 @@ asyncCall(int aDebugSection, int aDebugLevel, const char *aName,
 }
 
 /** Call scheduling helper. Use ScheduleCallHere if you can. */
-extern bool ScheduleCall(const char *fileName, int fileLine, AsyncCall::Pointer &call);
+bool ScheduleCall(const char *fileName, int fileLine, AsyncCall::Pointer &call);
 
 /** Call scheduling helper. */
 #define ScheduleCallHere(call) ScheduleCall(__FILE__, __LINE__, (call))
-
 
 #endif /* SQUID_ASYNCCALL_H */

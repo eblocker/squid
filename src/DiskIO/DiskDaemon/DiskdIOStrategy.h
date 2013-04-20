@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 79    Squid-side DISKD I/O functions.
  * AUTHOR: Duane Wessels
  *
@@ -35,8 +33,6 @@
 
 #ifndef __STORE_DISKDIOSTRATEGY_H__
 #define __STORE_DISKDIOSTRATEGY_H__
-
-#include "config.h"
 
 struct diomsg;
 
@@ -78,6 +74,7 @@ public:
     virtual bool shedLoad();
     virtual int load();
     virtual RefCount<DiskFile> newFile(char const *path);
+    virtual bool unlinkdUseful() const;
     virtual void unlinkFile (char const *);
     virtual ConfigOption *getOptionTree() const;
     virtual void init();

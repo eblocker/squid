@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 20    Storage Manager
  * AUTHOR: Robert Collins
  *
@@ -32,20 +30,17 @@
  *
  */
 
-#include "config.h"
-
-
-#if DELAY_POOLS
-
 #include "squid.h"
+
+#if USE_DELAY_POOLS
 #include "DelayId.h"
 
+#define STUB_API "stub_DelayId.cc"
+#include "tests/STUB.h"
+
 DelayId::DelayId() {}
-
-void
-DelayId::delayRead(DeferredRead const&)
-{}
-
 DelayId::~DelayId() {}
 
-#endif
+void DelayId::delayRead(DeferredRead const&) STUB_NOP
+
+#endif /* USE_DELAY_POOLS */

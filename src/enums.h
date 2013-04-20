@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
  * ----------------------------------------------------------
@@ -34,8 +32,6 @@
 #ifndef SQUID_ENUMS_H
 #define SQUID_ENUMS_H
 
-#include "HttpStatusCode.h"
-
 typedef enum {
     LOG_TAG_NONE,
     LOG_TCP_HIT,
@@ -52,9 +48,7 @@ typedef enum {
     LOG_TCP_DENIED,
     LOG_TCP_DENIED_REPLY,
     LOG_TCP_OFFLINE_HIT,
-#if LOG_TCP_REDIRECTS
     LOG_TCP_REDIRECT,
-#endif
     LOG_UDP_HIT,
     LOG_UDP_MISS,
     LOG_UDP_DENIED,
@@ -64,55 +58,13 @@ typedef enum {
     LOG_TYPE_MAX
 } log_type;
 
-typedef enum {
-    ERR_NONE,
-    ERR_READ_TIMEOUT,
-    ERR_LIFETIME_EXP,
-    ERR_READ_ERROR,
-    ERR_WRITE_ERROR,
-    ERR_SHUTTING_DOWN,
-    ERR_CONNECT_FAIL,
-    ERR_SECURE_CONNECT_FAIL,
-    ERR_INVALID_REQ,
-    ERR_UNSUP_REQ,
-    ERR_INVALID_URL,
-    ERR_SOCKET_FAILURE,
-    ERR_DNS_FAIL,
-    ERR_CANNOT_FORWARD,
-    ERR_FORWARDING_DENIED,
-    ERR_NO_RELAY,
-    ERR_ZERO_SIZE_OBJECT,
-    ERR_PRECONDITION_FAILED,
-    ERR_FTP_DISABLED,
-    ERR_FTP_FAILURE,
-    ERR_URN_RESOLVE,
-    ERR_ACCESS_DENIED,
-    ERR_CACHE_ACCESS_DENIED,
-    ERR_CACHE_MGR_ACCESS_DENIED,
-    ERR_SQUID_SIGNATURE,	/* not really an error */
-    ERR_FTP_PUT_CREATED,	/* !error,a note that the file was created */
-    ERR_FTP_PUT_MODIFIED,	/* modified, !created */
-    ERR_FTP_PUT_ERROR,
-    ERR_FTP_NOT_FOUND,
-    ERR_FTP_FORBIDDEN,
-    ERR_FTP_UNAVAILABLE,
-    ERR_ONLY_IF_CACHED_MISS,	/* failure to satisfy only-if-cached request */
-    ERR_TOO_BIG,
-    TCP_RESET,
-    ERR_ESI,                    /* Failure to perform ESI processing */
-    ERR_INVALID_RESP,
-    ERR_ICAP_FAILURE,
-    ERR_UNSUP_HTTPVERSION,     /* HTTP version is not supported */
-    ERR_GATEWAY_FAILURE,
-    ERR_MAX
-} err_type;
-
 enum fd_type {
     FD_NONE,
     FD_LOG,
     FD_FILE,
     FD_SOCKET,
     FD_PIPE,
+    FD_MSGHDR,
     FD_UNKNOWN
 };
 
@@ -127,12 +79,6 @@ typedef enum {
     PEER_PARENT,
     PEER_MULTICAST
 } peer_t;
-
-typedef enum {
-    LOOKUP_NONE,
-    LOOKUP_HIT,
-    LOOKUP_MISS
-} lookup_t;
 
 typedef enum {
     CC_BADHDR = -1,
@@ -162,62 +108,6 @@ typedef enum {
     SC_ENUM_END
 } http_hdr_sc_type;
 
-typedef enum {
-    HIER_NONE,
-    HIER_DIRECT,
-    SIBLING_HIT,
-    PARENT_HIT,
-    DEFAULT_PARENT,
-    SINGLE_PARENT,
-    FIRSTUP_PARENT,
-    FIRST_PARENT_MISS,
-    CLOSEST_PARENT_MISS,
-    CLOSEST_PARENT,
-    CLOSEST_DIRECT,
-    NO_DIRECT_FAIL,
-    SOURCE_FASTEST,
-    ROUNDROBIN_PARENT,
-#if USE_CACHE_DIGESTS
-    CD_PARENT_HIT,
-    CD_SIBLING_HIT,
-#endif
-    CARP,
-    ANY_OLD_PARENT,
-    USERHASH_PARENT,
-    SOURCEHASH_PARENT,
-    PINNED,
-    HIER_MAX
-} hier_code;
-
-/// \ingroup ServerProtocolICPAPI
-typedef enum {
-    ICP_INVALID,
-    ICP_QUERY,
-    ICP_HIT,
-    ICP_MISS,
-    ICP_ERR,
-    ICP_SEND,
-    ICP_SENDA,
-    ICP_DATABEG,
-    ICP_DATA,
-    ICP_DATAEND,
-    ICP_SECHO,
-    ICP_DECHO,
-    ICP_NOTIFY,
-    ICP_INVALIDATE,
-    ICP_DELETE,
-    ICP_UNUSED15,
-    ICP_UNUSED16,
-    ICP_UNUSED17,
-    ICP_UNUSED18,
-    ICP_UNUSED19,
-    ICP_UNUSED20,
-    ICP_MISS_NOFETCH,
-    ICP_DENIED,
-    ICP_HIT_OBJ,
-    ICP_END
-} icp_opcode;
-
 typedef enum _mem_status_t {
     NOT_IN_MEMORY,
     IN_MEMORY
@@ -245,27 +135,6 @@ typedef enum {
     STORE_MEM_CLIENT,
     STORE_DISK_CLIENT
 } store_client_t;
-
-typedef enum {
-    PROTO_NONE,
-    PROTO_HTTP,
-    PROTO_FTP,
-    PROTO_COAP,
-    PROTO_COAPS,
-    PROTO_GOPHER,
-    PROTO_WAIS,
-    PROTO_CACHEOBJ,
-    PROTO_ICP,
-#if USE_HTCP
-    PROTO_HTCP,
-#endif
-    PROTO_URN,
-    PROTO_WHOIS,
-    PROTO_INTERNAL,
-    PROTO_HTTPS,
-    PROTO_ICY,
-    PROTO_MAX
-} protocol_t;
 
 /*
  * These are for StoreEntry->flag, which is defined as a SHORT
@@ -308,22 +177,6 @@ typedef enum {
     STREAM_FAILED
 } clientStream_status_t;
 
-typedef enum {
-    AUTH_ACL_CHALLENGE = -2,
-    AUTH_ACL_HELPER = -1,
-    AUTH_ACL_CANNOT_AUTHENTICATE = 0,
-    AUTH_AUTHENTICATED = 1
-} auth_acl_t;
-
-typedef enum {
-    AUTH_UNKNOWN,		/* default */
-    AUTH_BASIC,
-    AUTH_NTLM,
-    AUTH_DIGEST,
-    AUTH_NEGOTIATE,
-    AUTH_BROKEN			/* known type, but broken data */
-} auth_type_t;
-
 /* stateful helper callback response codes */
 typedef enum {
     S_HELPER_UNKNOWN,
@@ -337,8 +190,7 @@ enum {
     SNMP_C_USER,
     SNMP_C_COMMUNITY
 };
-
-#endif
+#endif /* SQUID_SNMP */
 
 typedef enum {
     MEM_NONE,
@@ -356,21 +208,22 @@ typedef enum {
     MEM_CLIENT_INFO,
     MEM_LINK_LIST,
     MEM_DLINK_NODE,
-    MEM_DONTFREE,
     MEM_DREAD_CTRL,
     MEM_DWRITE_Q,
-    MEM_FQDNCACHE_ENTRY,
-    MEM_FWD_SERVER,
-    MEM_HTTP_HDR_CC,
     MEM_HTTP_HDR_CONTENT_RANGE,
-    MEM_IPCACHE_ENTRY,
     MEM_MD5_DIGEST,
     MEM_NETDBENTRY,
     MEM_NET_DB_NAME,
     MEM_RELIST,
-#if !USE_DNSSERVERS
+    // IMPORTANT: leave this here. pools above are initialized early with memInit()
+    MEM_DONTFREE,
+    // following pools are initialized late by their component if needed (or never)
+    MEM_FQDNCACHE_ENTRY,
+    MEM_FWD_SERVER,
+#if !USE_DNSHELPER
     MEM_IDNS_QUERY,
 #endif
+    MEM_IPCACHE_ENTRY,
     MEM_MAX
 } mem_type;
 
@@ -382,15 +235,6 @@ enum {
     STORE_LOG_SWAPOUTFAIL
 };
 
-typedef enum {
-    SWAP_LOG_NOP,
-    SWAP_LOG_ADD,
-    SWAP_LOG_DEL,
-    SWAP_LOG_VERSION,
-    SWAP_LOG_MAX
-} swap_log_op;
-
-
 /* parse state of HttpReply or HttpRequest */
 typedef enum {
     psReadyToParseStartLine = 0,
@@ -398,7 +242,6 @@ typedef enum {
     psParsed,
     psError
 } HttpMsgParseState;
-
 
 enum {
     PCTILE_HTTP,
@@ -454,9 +297,8 @@ enum {
     ROR_REPLY
 };
 
-
 /* CygWin & Windows NT Port */
-#ifdef _SQUID_WIN32_
+#if _SQUID_WINDOWS_
 /*
  * Supported Windows OS types codes
  */
@@ -473,20 +315,7 @@ enum {
     _WIN_OS_WINLON,
     _WIN_OS_WIN7
 };
-
-#endif
-
-typedef enum {
-    CLF_UNKNOWN,
-    CLF_AUTO,
-    CLF_CUSTOM,
-    CLF_SQUID,
-    CLF_COMMON,
-#if ICAP_CLIENT
-    CLF_ICAP_SQUID,
-#endif
-    CLF_NONE
-} customlog_type;
+#endif /* _SQUID_WINDOWS_ */
 
 enum {
     DISABLE_PMTU_OFF,
@@ -496,13 +325,12 @@ enum {
 
 #if USE_HTCP
 /*
- * This should be in htcp.h but because neighborsHtcpClear is defined in
- * protos.h it has to be here.
+ * TODO: This should be in htcp.h
  */
 typedef enum {
     HTCP_CLR_PURGE,
     HTCP_CLR_INVALIDATION
 } htcp_clr_reason;
-#endif
+#endif /* USE_HTCP */
 
 #endif /* SQUID_ENUMS_H */

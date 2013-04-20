@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 37    ICMP Routines
  * AUTHOR: Duane Wessels, Amos Jeffries
  *
@@ -33,8 +31,6 @@
  */
 #ifndef _INCLUDE_ICMPPINGER_H
 #define _INCLUDE_ICMPPINGER_H
-
-#include "config.h"
 #include "Icmp.h"
 
 /**
@@ -62,7 +58,7 @@ public:
 
 private:
     // unused in IcmpPinger
-    virtual void SendEcho(IpAddress &to, int opcode, const char *payload, int len) {};
+    virtual void SendEcho(Ip::Address &to, int opcode, const char *payload, int len) {};
 
     /**
      * Control channel(s) to squid.
@@ -76,7 +72,7 @@ private:
 #if USE_ICMP
 
 /// pinger helper contains one of these as a global object.
-SQUIDCEXTERN IcmpPinger control;
+extern IcmpPinger control;
 
 #endif
 

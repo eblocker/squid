@@ -3,16 +3,16 @@
  */
 
 #include "squid.h"
-#include "TextException.h"
-#include "HttpRequest.h"
-#include "HttpReply.h"
-#include "HttpMsg.h"
+#include "adaptation/Answer.h"
 #include "adaptation/Config.h"
 #include "adaptation/Iterator.h"
 #include "adaptation/Service.h"
 #include "adaptation/ServiceFilter.h"
 #include "adaptation/ServiceGroups.h"
-
+#include "base/TextException.h"
+#include "HttpRequest.h"
+#include "HttpReply.h"
+#include "HttpMsg.h"
 
 Adaptation::Iterator::Iterator(
     HttpMsg *aMsg, HttpRequest *aCause,
@@ -51,10 +51,16 @@ void Adaptation::Iterator::step()
     Must(!theLauncher);
 
     if (thePlan.exhausted()) { // nothing more to do
-        sendAnswer(theMsg);
+        sendAnswer(Answer::Forward(theMsg));
         Must(done());
         return;
     }
+
+    HttpRequest *request = dynamic_cast<HttpRequest*>(theMsg);
+    if (!request)
+        request = theCause;
+    assert(request);
+    request->clearError();
 
     if (iterations > Adaptation::Config::service_iteration_limit) {
         debugs(93,DBG_CRITICAL, "Adaptation iterations limit (" <<
@@ -74,7 +80,26 @@ void Adaptation::Iterator::step()
     Must(!done());
 }
 
-void Adaptation::Iterator::noteAdaptationAnswer(HttpMsg *aMsg)
+void
+Adaptation::Iterator::noteAdaptationAnswer(const Answer &answer)
+{
+    switch (answer.kind) {
+    case Answer::akForward:
+        handleAdaptedHeader(answer.message);
+        break;
+
+    case Answer::akBlock:
+        handleAdaptationBlock(answer);
+        break;
+
+    case Answer::akError:
+        handleAdaptationError(answer.final);
+        break;
+    }
+}
+
+void
+Adaptation::Iterator::handleAdaptedHeader(HttpMsg *aMsg)
 {
     // set theCause if we switched to request satisfaction mode
     if (!theCause) { // probably sent a request message
@@ -106,7 +131,16 @@ void Adaptation::Iterator::noteInitiatorAborted()
     mustStop("initiator gone");
 }
 
-void Adaptation::Iterator::noteAdaptationQueryAbort(bool final)
+void Adaptation::Iterator::handleAdaptationBlock(const Answer &answer)
+{
+    debugs(93,5, HERE << "blocked by " << answer);
+    clearAdaptation(theLauncher);
+    updatePlan(false);
+    sendAnswer(answer);
+    mustStop("blocked");
+}
+
+void Adaptation::Iterator::handleAdaptationError(bool final)
 {
     debugs(93,5, HERE << "final: " << final << " plan: " << thePlan);
     clearAdaptation(theLauncher);
@@ -130,7 +164,7 @@ void Adaptation::Iterator::noteAdaptationQueryAbort(bool final)
 
     if (canIgnore && srcIntact && adapted) {
         debugs(85,3, HERE << "responding with older adapted msg");
-        sendAnswer(theMsg);
+        sendAnswer(Answer::Forward(theMsg));
         mustStop("sent older adapted msg");
         return;
     }
@@ -163,8 +197,10 @@ bool Adaptation::Iterator::updatePlan(bool adopt)
     Must(r);
 
     Adaptation::History::Pointer ah = r->adaptHistory();
-    if (!ah)
+    if (!ah) {
+        debugs(85,9, HERE << "no history to store a service-proposed plan");
         return false; // the feature is not enabled or is not triggered
+    }
 
     String services;
     if (!ah->extractNextServices(services)) { // clears history
@@ -178,8 +214,19 @@ bool Adaptation::Iterator::updatePlan(bool adopt)
     }
 
     debugs(85,3, HERE << "retiring old plan: " << thePlan);
-    theGroup = new DynamicServiceChain(services, theGroup); // refcounted
-    thePlan = ServicePlan(theGroup, filter());
+
+    Adaptation::ServiceFilter filter = this->filter();
+    DynamicGroupCfg current, future;
+    DynamicServiceChain::Split(filter, services, current, future);
+
+    if (!future.empty()) {
+        ah->setFutureServices(future);
+        debugs(85,3, HERE << "noted future service-proposed plan: " << future);
+    }
+
+    // use the current config even if it is empty; we must replace the old plan
+    theGroup = new DynamicServiceChain(current, filter); // refcounted
+    thePlan = ServicePlan(theGroup, filter);
     debugs(85,3, HERE << "adopted service-proposed plan: " << thePlan);
     return true;
 }

@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
  * ----------------------------------------------------------
@@ -31,18 +29,24 @@
  * Copyright (c) 2003, Robert Collins <robertc@squid-cache.org>
  */
 
-#ifndef SQUID_AUTHUSER_H
-#define SQUID_AUTHUSER_H
+#ifndef SQUID_AUTH_USER_H
+#define SQUID_AUTH_USER_H
 
-class AuthUserRequest;
-class AuthConfig;
-class AuthUserHashPointer;
+#if USE_AUTH
 
-/* for auth_type_t */
-#include "enums.h"
-
-#include "ip/IpAddress.h"
+#include "auth/CredentialState.h"
+#include "auth/Type.h"
 #include "dlink.h"
+#include "ip/Address.h"
+#include "RefCount.h"
+
+class AuthUserHashPointer;
+class StoreEntry;
+
+namespace Auth
+{
+
+class Config;
 
 /**
  *  \ingroup AuthAPI
@@ -52,67 +56,88 @@ class AuthUserHashPointer;
  * structure is the cached ACL match results. This structure, is private to
  * the authentication framework.
  */
-class AuthUser
+class User : public RefCountable
 {
-
 public:
+    typedef RefCount<User> Pointer;
+
     /* extra fields for proxy_auth */
     /* auth_type and auth_module are deprecated. Do Not add new users of these fields.
      * Aim to remove shortly
      */
     /** \deprecated this determines what scheme owns the user data. */
-    auth_type_t auth_type;
+    Auth::Type auth_type;
     /** the config for this user */
-    AuthConfig *config;
-    /** we only have one username associated with a given auth_user struct */
-    AuthUserHashPointer *usernamehash;
+    Auth::Config *config;
     /** we may have many proxy-authenticate strings that decode to the same user */
     dlink_list proxy_auth_list;
     dlink_list proxy_match_cache;
     size_t ipcount;
     long expiretime;
-    /** how many references are outstanding to this instance */
-    size_t references;
-    /** the auth_user_request structures that link to this. Yes it could be a splaytree
-     * but how many requests will a single username have in parallel? */
-    dlink_list requests;
 
+public:
     static void cacheInit();
     static void CachedACLsReset();
 
-    void absorb(AuthUser *from);
-    virtual ~AuthUser();
+    void absorb(Auth::User::Pointer from);
+    virtual ~User();
     _SQUID_INLINE_ char const *username() const;
     _SQUID_INLINE_ void username(char const *);
-    void clearIp();
-    void removeIp(IpAddress);
-    void addIp(IpAddress);
-    _SQUID_INLINE_ void addRequest(AuthUserRequest *);
 
-    void lock();
-    void unlock();
+    /**
+     * How long these credentials are still valid for.
+     * Negative numbers means already expired.
+     */
+    virtual int32_t ttl() const = 0;
+
+    /* Manage list of IPs using this username */
+    void clearIp();
+    void removeIp(Ip::Address);
+    void addIp(Ip::Address);
 
     void addToNameCache();
+    static void UsernameCacheStats(StoreEntry * output);
 
-protected:
-    AuthUser (AuthConfig *);
+    CredentialState credentials() const;
+    void credentials(CredentialState);
 
 private:
-    static void cacheCleanup (void *unused);
+    /**
+     * The current state these credentials are in:
+     *   Unchecked
+     *   Authenticated
+     *   Pending helper result
+     *   Handshake happening in stateful auth.
+     *   Failed auth
+     */
+    CredentialState credentials_state;
+
+protected:
+    User(Auth::Config *);
+
+private:
+    /**
+     * Garbage Collection for the username cache.
+     */
+    static void cacheCleanup(void *unused);
+    static time_t last_discard; /// Time of last username cache garbage collection.
 
     /**
      * DPW 2007-05-08
      * The username_ memory will be allocated via
      * xstrdup().  It is our responsibility.
      */
-    char const *username_;
+    const char *username_;
 
     /** what ip addresses has this user been seen at?, plus a list length cache */
     dlink_list ip_list;
 };
 
-#ifdef _USE_INLINE_
+} // namespace Auth
+
+#if _USE_INLINE_
 #include "auth/User.cci"
 #endif
 
-#endif /* SQUID_AUTHUSER_H */
+#endif /* USE_AUTH */
+#endif /* SQUID_AUTH_USER_H */

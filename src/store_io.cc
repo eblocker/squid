@@ -1,19 +1,10 @@
 #include "squid.h"
 #include "Store.h"
 #include "MemObject.h"
+#include "SquidConfig.h"
 #include "SwapDir.h"
 
-static struct {
-
-    struct {
-        int calls;
-        int select_fail;
-        int create_fail;
-        int success;
-    } create;
-} store_io_stats;
-
-OBJH storeIOStats;
+StoreIoStats store_io_stats;
 
 /*
  * submit a request to create a cache object for writing.
@@ -25,39 +16,31 @@ StoreIOState::Pointer
 storeCreate(StoreEntry * e, StoreIOState::STFNCB * file_callback, StoreIOState::STIOCB * close_callback, void *callback_data)
 {
     assert (e);
-    ssize_t objsize;
-    sdirno dirn;
-    RefCount<SwapDir> SD;
 
-    store_io_stats.create.calls++;
-    /* This is just done for logging purposes */
-    objsize = e->objectLen();
-
-    if (objsize != -1)
-        objsize += e->mem_obj->swap_hdr_sz;
+    ++store_io_stats.create.calls;
 
     /*
      * Pick the swapdir
      * We assume that the header has been packed by now ..
      */
-    dirn = storeDirSelectSwapDir(e);
+    const sdirno dirn = storeDirSelectSwapDir(e);
 
     if (dirn == -1) {
-        debugs(20, 2, "storeCreate: no valid swapdirs for this object");
-        store_io_stats.create.select_fail++;
+        debugs(20, 2, "storeCreate: no swapdirs for " << *e);
+        ++store_io_stats.create.select_fail;
         return NULL;
     }
 
-    debugs(20, 2, "storeCreate: Selected dir '" << dirn << "' for obj size '" << objsize << "'");
-    SD = dynamic_cast<SwapDir *>(INDEXSD(dirn));
+    debugs(20, 2, "storeCreate: Selected dir " << dirn << " for " << *e);
+    SwapDir *SD = dynamic_cast<SwapDir *>(INDEXSD(dirn));
 
     /* Now that we have a fs to use, call its storeCreate function */
     StoreIOState::Pointer sio = SD->createStoreIO(*e, file_callback, close_callback, callback_data);
 
     if (sio == NULL)
-        store_io_stats.create.create_fail++;
+        ++store_io_stats.create.create_fail;
     else
-        store_io_stats.create.success++;
+        ++store_io_stats.create.success;
 
     return sio;
 }
@@ -73,7 +56,7 @@ storeOpen(StoreEntry * e, StoreIOState::STFNCB * file_callback, StoreIOState::ST
 }
 
 void
-storeClose(StoreIOState::Pointer sio)
+storeClose(StoreIOState::Pointer sio, int how)
 {
     if (sio->flags.closing) {
         debugs(20,3,HERE << "storeClose: flags.closing already set, bailing");
@@ -82,8 +65,8 @@ storeClose(StoreIOState::Pointer sio)
 
     sio->flags.closing = 1;
 
-    debugs(20,3,HERE << "storeClose: calling sio->close()");
-    sio->close();
+    debugs(20,3,HERE << "storeClose: calling sio->close(" << how << ")");
+    sio->close(how);
 }
 
 void
@@ -96,18 +79,4 @@ void
 storeIOWrite(StoreIOState::Pointer sio, char const *buf, size_t size, off_t offset, FREE * free_func)
 {
     sio->write(buf,size,offset,free_func);
-}
-
-/*
- * Make this non-static so we can register
- * it from storeInit();
- */
-void
-storeIOStats(StoreEntry * sentry)
-{
-    storeAppendPrintf(sentry, "Store IO Interface Stats\n");
-    storeAppendPrintf(sentry, "create.calls %d\n", store_io_stats.create.calls);
-    storeAppendPrintf(sentry, "create.select_fail %d\n", store_io_stats.create.select_fail);
-    storeAppendPrintf(sentry, "create.create_fail %d\n", store_io_stats.create.create_fail);
-    storeAppendPrintf(sentry, "create.success %d\n", store_io_stats.create.success);
 }

@@ -39,10 +39,18 @@ DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in \
 check_PROGRAMS =
 @USE_LOADABLE_MODULES_TRUE@am__append_1 = $(INCLTDL)
 @ENABLE_SSL_TRUE@am__append_2 = $(SSL_ACLS)
-@ENABLE_ARP_ACL_TRUE@am__append_3 = $(ARP_ACLS)
+@USE_SQUID_EUI_TRUE@am__append_3 = $(ARP_ACLS)
 subdir = src/acl
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
-am__aclocal_m4_deps = $(top_srcdir)/acinclude.m4 \
+am__aclocal_m4_deps = $(top_srcdir)/acinclude/init.m4 \
+	$(top_srcdir)/acinclude/squid-util.m4 \
+	$(top_srcdir)/acinclude/compiler-flags.m4 \
+	$(top_srcdir)/acinclude/os-deps.m4 \
+	$(top_srcdir)/acinclude/krb5.m4 $(top_srcdir)/acinclude/pam.m4 \
+	$(top_srcdir)/acinclude/pkg.m4 \
+	$(top_srcdir)/acinclude/lib-checks.m4 \
+	$(top_srcdir)/acinclude/ax_cxx_compile_stdcxx_0x.m4 \
+	$(top_srcdir)/acinclude/ax_cxx_0x_types.m4 \
 	$(top_srcdir)/configure.ac
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
@@ -57,41 +65,46 @@ am__libacls_la_SOURCES_DIST = IntRange.cc IntRange.h RegexData.cc \
 	TimeData.cc TimeData.h Asn.cc Asn.h Browser.cc Browser.h \
 	DestinationAsn.h DestinationDomain.cc DestinationDomain.h \
 	DestinationIp.cc DestinationIp.h DomainData.cc DomainData.h \
-	ExtUser.cc ExtUser.h HttpHeaderData.cc HttpHeaderData.h \
+	ExtUser.cc ExtUser.h HierCodeData.cc HierCodeData.h \
+	HierCode.cc HierCode.h HttpHeaderData.cc HttpHeaderData.h \
 	HttpRepHeader.cc HttpRepHeader.h HttpReqHeader.cc \
 	HttpReqHeader.h HttpStatus.cc HttpStatus.h Ip.cc Ip.h \
-	MaxConnection.cc MaxConnection.h Method.cc MethodData.cc \
-	MethodData.h Method.h MyIp.cc MyIp.h MyPort.cc MyPort.h \
+	LocalIp.cc LocalIp.h LocalPort.cc LocalPort.h MaxConnection.cc \
+	MaxConnection.h Method.cc MethodData.cc MethodData.h Method.h \
 	MyPortName.cc MyPortName.h PeerName.cc PeerName.h Protocol.cc \
-	ProtocolData.cc ProtocolData.h Protocol.h Referer.cc Referer.h \
-	ReplyHeaderStrategy.h ReplyMimeType.cc ReplyMimeType.h \
-	RequestHeaderStrategy.h RequestMimeType.cc RequestMimeType.h \
-	SourceAsn.h SourceDomain.cc SourceDomain.h SourceIp.cc \
-	SourceIp.h Tag.cc Tag.h Url.cc Url.h UrlPath.cc UrlPath.h \
-	UrlPort.cc UrlPort.h UserData.cc UserData.h Gadgets.cc \
-	Gadgets.h CertificateData.cc CertificateData.h Certificate.cc \
-	Certificate.h SslError.cc SslError.h SslErrorData.cc \
-	SslErrorData.h Arp.cc Arp.h
+	ProtocolData.cc ProtocolData.h Protocol.h Random.cc Random.h \
+	Referer.cc Referer.h ReplyHeaderStrategy.h ReplyMimeType.cc \
+	ReplyMimeType.h RequestHeaderStrategy.h RequestMimeType.cc \
+	RequestMimeType.h SourceAsn.h SourceDomain.cc SourceDomain.h \
+	SourceIp.cc SourceIp.h Tag.cc Tag.h Url.cc Url.h UrlLogin.cc \
+	UrlLogin.h UrlPath.cc UrlPath.h UrlPort.cc UrlPort.h \
+	UserData.cc UserData.h AclNameList.h AclDenyInfoList.h \
+	Gadgets.cc Gadgets.h AclSizeLimit.h CertificateData.cc \
+	CertificateData.h Certificate.cc Certificate.h SslError.cc \
+	SslError.h SslErrorData.cc SslErrorData.h Arp.cc Arp.h \
+	Eui64.cc Eui64.h
 am__objects_1 = CertificateData.lo Certificate.lo SslError.lo \
 	SslErrorData.lo
 @ENABLE_SSL_TRUE@am__objects_2 = $(am__objects_1)
-am__objects_3 = Arp.lo
-@ENABLE_ARP_ACL_TRUE@am__objects_4 = $(am__objects_3)
+am__objects_3 = Arp.lo Eui64.lo
+@USE_SQUID_EUI_TRUE@am__objects_4 = $(am__objects_3)
 am_libacls_la_OBJECTS = IntRange.lo RegexData.lo StringData.lo Time.lo \
 	TimeData.lo Asn.lo Browser.lo DestinationDomain.lo \
-	DestinationIp.lo DomainData.lo ExtUser.lo HttpHeaderData.lo \
-	HttpRepHeader.lo HttpReqHeader.lo HttpStatus.lo Ip.lo \
-	MaxConnection.lo Method.lo MethodData.lo MyIp.lo MyPort.lo \
-	MyPortName.lo PeerName.lo Protocol.lo ProtocolData.lo \
-	Referer.lo ReplyMimeType.lo RequestMimeType.lo SourceDomain.lo \
-	SourceIp.lo Tag.lo Url.lo UrlPath.lo UrlPort.lo UserData.lo \
-	Gadgets.lo $(am__objects_2) $(am__objects_4)
+	DestinationIp.lo DomainData.lo ExtUser.lo HierCodeData.lo \
+	HierCode.lo HttpHeaderData.lo HttpRepHeader.lo \
+	HttpReqHeader.lo HttpStatus.lo Ip.lo LocalIp.lo LocalPort.lo \
+	MaxConnection.lo Method.lo MethodData.lo MyPortName.lo \
+	PeerName.lo Protocol.lo ProtocolData.lo Random.lo Referer.lo \
+	ReplyMimeType.lo RequestMimeType.lo SourceDomain.lo \
+	SourceIp.lo Tag.lo Url.lo UrlLogin.lo UrlPath.lo UrlPort.lo \
+	UserData.lo Gadgets.lo $(am__objects_2) $(am__objects_4)
 libacls_la_OBJECTS = $(am_libacls_la_OBJECTS)
 libapi_la_LIBADD =
 am_libapi_la_OBJECTS = Acl.lo Checklist.lo
 libapi_la_OBJECTS = $(am_libapi_la_OBJECTS)
 libstate_la_LIBADD =
-am_libstate_la_OBJECTS = Strategised.lo FilledChecklist.lo
+am_libstate_la_OBJECTS = Strategised.lo FilledChecklist.lo \
+	AclAddress.lo
 libstate_la_OBJECTS = $(am_libstate_la_OBJECTS)
 DEFAULT_INCLUDES = 
 depcomp = $(SHELL) $(top_srcdir)/cfgaux/depcomp
@@ -139,9 +152,8 @@ AUTOHEADER = @AUTOHEADER@
 AUTOMAKE = @AUTOMAKE@
 AWK = @AWK@
 BASIC_AUTH_HELPERS = @BASIC_AUTH_HELPERS@
+BZR = @BZR@
 CACHE_EFFECTIVE_USER = @CACHE_EFFECTIVE_USER@
-CACHE_HTTP_PORT = @CACHE_HTTP_PORT@
-CACHE_ICP_PORT = @CACHE_ICP_PORT@
 CC = @CC@
 CCDEPMODE = @CCDEPMODE@
 CFLAGS = @CFLAGS@
@@ -156,8 +168,10 @@ CXXCPP = @CXXCPP@
 CXXDEPMODE = @CXXDEPMODE@
 CXXFLAGS = @CXXFLAGS@
 CYGPATH_W = @CYGPATH_W@
+DEFAULT_HOSTS = @DEFAULT_HOSTS@
 DEFAULT_LOG_DIR = @DEFAULT_LOG_DIR@
-DEFAULT_PIDFILE = @DEFAULT_PIDFILE@
+DEFAULT_PID_FILE = @DEFAULT_PID_FILE@
+DEFAULT_SWAP_DIR = @DEFAULT_SWAP_DIR@
 DEFS = @DEFS@
 DEPDIR = @DEPDIR@
 DIGEST_AUTH_HELPERS = @DIGEST_AUTH_HELPERS@
@@ -168,16 +182,18 @@ DISK_OS_LIBS = @DISK_OS_LIBS@
 DISK_PROGRAMS = @DISK_PROGRAMS@
 DSYMUTIL = @DSYMUTIL@
 DUMPBIN = @DUMPBIN@
-ECAPLIB = @ECAPLIB@
 ECAP_LIBS = @ECAP_LIBS@
 ECHO_C = @ECHO_C@
 ECHO_N = @ECHO_N@
 ECHO_T = @ECHO_T@
 EGREP = @EGREP@
 EPOLL_LIBS = @EPOLL_LIBS@
+EUILIB = @EUILIB@
 EXEEXT = @EXEEXT@
 EXPATLIB = @EXPATLIB@
 EXTERNAL_ACL_HELPERS = @EXTERNAL_ACL_HELPERS@
+EXT_LIBECAP_CFLAGS = @EXT_LIBECAP_CFLAGS@
+EXT_LIBECAP_LIBS = @EXT_LIBECAP_LIBS@
 FALSE = @FALSE@
 FGREP = @FGREP@
 GREP = @GREP@
@@ -189,7 +205,11 @@ INSTALL_DATA = @INSTALL_DATA@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
 INSTALL_SCRIPT = @INSTALL_SCRIPT@
 INSTALL_STRIP_PROGRAM = @INSTALL_STRIP_PROGRAM@
+KRB5INCS = @KRB5INCS@
+KRB5LIBS = @KRB5LIBS@
+LBERLIB = @LBERLIB@
 LD = @LD@
+LDAPLIB = @LDAPLIB@
 LDFLAGS = @LDFLAGS@
 LIBADD_DL = @LIBADD_DL@
 LIBADD_DLD_LINK = @LIBADD_DLD_LINK@
@@ -201,11 +221,10 @@ LIBS = @LIBS@
 LIBSASL = @LIBSASL@
 LIBTOOL = @LIBTOOL@
 LIB_DB = @LIB_DB@
-LIB_LBER = @LIB_LBER@
-LIB_LDAP = @LIB_LDAP@
 LIPO = @LIPO@
 LN = @LN@
 LN_S = @LN_S@
+LOG_DAEMON_HELPERS = @LOG_DAEMON_HELPERS@
 LTDLDEPS = @LTDLDEPS@
 LTDLINCL = @LTDLINCL@
 LTDLOPEN = @LTDLOPEN@
@@ -225,7 +244,6 @@ NMEDIT = @NMEDIT@
 NTLM_AUTH_HELPERS = @NTLM_AUTH_HELPERS@
 OBJDUMP = @OBJDUMP@
 OBJEXT = @OBJEXT@
-OPT_DEFAULT_HOSTS = @OPT_DEFAULT_HOSTS@
 OTOOL = @OTOOL@
 OTOOL64 = @OTOOL64@
 PACKAGE = @PACKAGE@
@@ -237,7 +255,12 @@ PACKAGE_URL = @PACKAGE_URL@
 PACKAGE_VERSION = @PACKAGE_VERSION@
 PATH_SEPARATOR = @PATH_SEPARATOR@
 PERL = @PERL@
+PKG_CONFIG = @PKG_CONFIG@
+PKG_CONFIG_LIBDIR = @PKG_CONFIG_LIBDIR@
+PKG_CONFIG_PATH = @PKG_CONFIG_PATH@
 PO2HTML = @PO2HTML@
+PO2TEXT = @PO2TEXT@
+POD2MAN = @POD2MAN@
 RANLIB = @RANLIB@
 REGEXLIB = @REGEXLIB@
 REPL_LIBS = @REPL_LIBS@
@@ -259,7 +282,9 @@ STORE_LIBS_TO_ADD = @STORE_LIBS_TO_ADD@
 STORE_LIBS_TO_BUILD = @STORE_LIBS_TO_BUILD@
 STORE_TESTS = @STORE_TESTS@
 STRIP = @STRIP@
+TR = @TR@
 TRUE = @TRUE@
+URL_REWRITE_HELPERS = @URL_REWRITE_HELPERS@
 VERSION = @VERSION@
 WIN32_PSAPI = @WIN32_PSAPI@
 XMLLIB = @XMLLIB@
@@ -272,6 +297,7 @@ abs_top_srcdir = @abs_top_srcdir@
 ac_ct_CC = @ac_ct_CC@
 ac_ct_CXX = @ac_ct_CXX@
 ac_ct_DUMPBIN = @ac_ct_DUMPBIN@
+ac_krb5_config = @ac_krb5_config@
 am__include = @am__include@
 am__leading_dot = @am__leading_dot@
 am__quote = @am__quote@
@@ -326,8 +352,13 @@ AM_CFLAGS = $(SQUID_CFLAGS)
 AM_CXXFLAGS = $(SQUID_CXXFLAGS)
 CLEANFILES = testHeaders
 TESTS = testHeaders
-INCLUDES = -I$(top_srcdir) -I$(top_srcdir)/include -I$(top_srcdir)/src \
-	-I$(top_builddir)/include $(SQUID_CPPUNIT_INC) $(am__append_1)
+INCLUDES = -I$(top_srcdir) -I$(top_srcdir)/include -I$(top_srcdir)/lib \
+	-I$(top_srcdir)/src -I$(top_builddir)/include \
+	$(SQUID_CPPUNIT_INC) $(KRB5INCS) $(am__append_1)
+@ENABLE_XPROF_STATS_FALSE@LIBPROFILER = 
+@ENABLE_XPROF_STATS_TRUE@LIBPROFILER = $(top_builddir)/lib/profiler/libprofiler.la
+COMPAT_LIB = -L$(top_builddir)/compat -lcompat-squid $(LIBPROFILER)
+subst_perlshell = sed -e 's,[@]PERL[@],$(PERL),g' <$(srcdir)/$@.pl.in >$@ || ($(RM) -f $@ ; exit 1)
 noinst_LTLIBRARIES = libapi.la libstate.la libacls.la
 libapi_la_SOURCES = \
 	Acl.cc \
@@ -340,27 +371,31 @@ libstate_la_SOURCES = \
 	Strategy.h \
 	Strategised.cc \
 	Strategised.h \
-	\
 	FilledChecklist.cc \
-	FilledChecklist.h
+	FilledChecklist.h \
+	AclAddress.h \
+	AclAddress.cc
 
 libacls_la_SOURCES = IntRange.cc IntRange.h RegexData.cc RegexData.h \
 	StringData.cc StringData.h Time.cc Time.h TimeData.cc \
 	TimeData.h Asn.cc Asn.h Browser.cc Browser.h DestinationAsn.h \
 	DestinationDomain.cc DestinationDomain.h DestinationIp.cc \
 	DestinationIp.h DomainData.cc DomainData.h ExtUser.cc \
-	ExtUser.h HttpHeaderData.cc HttpHeaderData.h HttpRepHeader.cc \
+	ExtUser.h HierCodeData.cc HierCodeData.h HierCode.cc \
+	HierCode.h HttpHeaderData.cc HttpHeaderData.h HttpRepHeader.cc \
 	HttpRepHeader.h HttpReqHeader.cc HttpReqHeader.h HttpStatus.cc \
-	HttpStatus.h Ip.cc Ip.h MaxConnection.cc MaxConnection.h \
-	Method.cc MethodData.cc MethodData.h Method.h MyIp.cc MyIp.h \
-	MyPort.cc MyPort.h MyPortName.cc MyPortName.h PeerName.cc \
-	PeerName.h Protocol.cc ProtocolData.cc ProtocolData.h \
-	Protocol.h Referer.cc Referer.h ReplyHeaderStrategy.h \
-	ReplyMimeType.cc ReplyMimeType.h RequestHeaderStrategy.h \
-	RequestMimeType.cc RequestMimeType.h SourceAsn.h \
-	SourceDomain.cc SourceDomain.h SourceIp.cc SourceIp.h Tag.cc \
-	Tag.h Url.cc Url.h UrlPath.cc UrlPath.h UrlPort.cc UrlPort.h \
-	UserData.cc UserData.h Gadgets.cc Gadgets.h $(am__append_2) \
+	HttpStatus.h Ip.cc Ip.h LocalIp.cc LocalIp.h LocalPort.cc \
+	LocalPort.h MaxConnection.cc MaxConnection.h Method.cc \
+	MethodData.cc MethodData.h Method.h MyPortName.cc MyPortName.h \
+	PeerName.cc PeerName.h Protocol.cc ProtocolData.cc \
+	ProtocolData.h Protocol.h Random.cc Random.h Referer.cc \
+	Referer.h ReplyHeaderStrategy.h ReplyMimeType.cc \
+	ReplyMimeType.h RequestHeaderStrategy.h RequestMimeType.cc \
+	RequestMimeType.h SourceAsn.h SourceDomain.cc SourceDomain.h \
+	SourceIp.cc SourceIp.h Tag.cc Tag.h Url.cc Url.h UrlLogin.cc \
+	UrlLogin.h UrlPath.cc UrlPath.h UrlPort.cc UrlPort.h \
+	UserData.cc UserData.h AclNameList.h AclDenyInfoList.h \
+	Gadgets.cc Gadgets.h AclSizeLimit.h $(am__append_2) \
 	$(am__append_3)
 EXTRA_libacls_la_SOURCES = $(SSL_ACLS) $(ARP_ACLS)
 SSL_ACLS = \
@@ -373,7 +408,7 @@ SSL_ACLS = \
         SslErrorData.cc \
         SslErrorData.h
 
-ARP_ACLS = Arp.cc Arp.h
+ARP_ACLS = Arp.cc Arp.h Eui64.cc Eui64.h
 all: all-am
 
 .SUFFIXES:
@@ -440,6 +475,7 @@ distclean-compile:
 	-rm -f *.tab.c
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Acl.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/AclAddress.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Arp.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Asn.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Browser.Plo@am__quote@
@@ -449,24 +485,28 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/DestinationDomain.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/DestinationIp.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/DomainData.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Eui64.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ExtUser.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/FilledChecklist.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Gadgets.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/HierCode.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/HierCodeData.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/HttpHeaderData.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/HttpRepHeader.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/HttpReqHeader.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/HttpStatus.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/IntRange.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Ip.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/LocalIp.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/LocalPort.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/MaxConnection.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Method.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/MethodData.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/MyIp.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/MyPort.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/MyPortName.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/PeerName.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Protocol.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ProtocolData.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Random.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Referer.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/RegexData.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ReplyMimeType.Plo@am__quote@
@@ -481,6 +521,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Time.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/TimeData.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Url.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/UrlLogin.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/UrlPath.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/UrlPort.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/UserData.Plo@am__quote@

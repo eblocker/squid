@@ -32,23 +32,20 @@
 #ifndef   SQUID_TIME_H
 #define   SQUID_TIME_H
 
-#include "config.h"
+#include "rfc1123.h"
 
 #if HAVE_TIME_H
 #include <time.h>
 #endif
-#if HAVE_SYS_TIME_H
-#include <sys/time.h>
-#endif
-
+/* NP: sys/time.h is provided by libcompat */
 
 /* globals for accessing time */
 extern struct timeval current_time;
 extern double current_dtime;
-
-extern time_t squid_curtime;	/* 0 */
+extern time_t squid_curtime;
 
 time_t getCurrentTime(void);
+int tvSubMsec(struct timeval, struct timeval);
 
 /** event class for doing synthetic time etc */
 class TimeEngine
@@ -60,5 +57,26 @@ public:
     /** tick the clock - update from the OS or other time source, */
     virtual void tick();
 };
+
+namespace Time
+{
+
+/** Display time as a formatted human-readable string.
+ * Time syntax is
+ * "YYYY/MM/DD hh:mm:ss"
+ *
+ * Output is only valid until next call to this function.
+ */
+const char *FormatStrf(time_t t);
+
+/** Display time as a formatted human-readable string.
+ * Time string syntax used is that of Apache httpd.
+ * "DD/MMM/YYYY:hh:mm:ss zzzz"
+ *
+ * Output is only valid until next call to this function.
+ */
+const char *FormatHttpd(time_t t);
+
+} // namespace Time
 
 #endif /* SQUID_TIME_H */

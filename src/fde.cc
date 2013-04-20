@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  * DEBUG: none          FDE
  * AUTHOR: Robert Collins
  *
@@ -34,10 +32,13 @@
  */
 
 #include "squid.h"
+#include "comm.h"
 #include "fde.h"
+#include "globals.h"
 #include "SquidTime.h"
 #include "Store.h"
-#include "comm.h"
+
+fde *fde::Table = NULL;
 
 bool
 fde::readPending(int fdNumber)
@@ -54,13 +55,13 @@ fde::dumpStats (StoreEntry &dumpEntry, int fdNumber)
     if (!flags.open)
         return;
 
-#ifdef _SQUID_MSWIN_
+#if _SQUID_MSWIN_
 
-    storeAppendPrintf(&dumpEntry, "%4d 0x%-8lX %-6.6s %4d %7"PRId64"%c %7"PRId64"%c %-21s %s\n",
+    storeAppendPrintf(&dumpEntry, "%4d 0x%-8lX %-6.6s %4d %7" PRId64 "%c %7" PRId64 "%c %-21s %s\n",
                       fdNumber,
                       win32.handle,
 #else
-    storeAppendPrintf(&dumpEntry, "%4d %-6.6s %4d %7"PRId64"%c %7"PRId64"%c %-21s %s\n",
+    storeAppendPrintf(&dumpEntry, "%4d %-6.6s %4d %7" PRId64 "%c %7" PRId64 "%c %-21s %s\n",
                       fdNumber,
 #endif
                       fdTypeStr[type],
@@ -78,7 +79,7 @@ fde::DumpStats (StoreEntry *dumpEntry)
 {
     int i;
     storeAppendPrintf(dumpEntry, "Active file descriptors:\n");
-#ifdef _SQUID_MSWIN_
+#if _SQUID_MSWIN_
 
     storeAppendPrintf(dumpEntry, "%-4s %-10s %-6s %-4s %-7s* %-7s* %-21s %s\n",
                       "File",
@@ -93,13 +94,13 @@ fde::DumpStats (StoreEntry *dumpEntry)
                       "Nwrite",
                       "Remote Address",
                       "Description");
-#ifdef _SQUID_MSWIN_
+#if _SQUID_MSWIN_
     storeAppendPrintf(dumpEntry, "---- ---------- ------ ---- -------- -------- --------------------- ------------------------------\n");
 #else
     storeAppendPrintf(dumpEntry, "---- ------ ---- -------- -------- --------------------- ------------------------------\n");
 #endif
 
-    for (i = 0; i < Squid_MaxFD; i++) {
+    for (i = 0; i < Squid_MaxFD; ++i) {
         fd_table[i].dumpStats(*dumpEntry, i);
     }
 }
@@ -123,6 +124,6 @@ fde::remoteAddr() const
 void
 fde::noteUse(PconnPool *pool)
 {
-    pconn.uses++;
+    ++ pconn.uses;
     pconn.pool = pool;
 }

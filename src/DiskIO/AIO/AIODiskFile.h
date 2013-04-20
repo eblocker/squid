@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
  * ----------------------------------------------------------
  *
@@ -33,13 +31,12 @@
 #ifndef SQUID_AIODISKFILE_H
 #define SQUID_AIODISKFILE_H
 
-#include "config.h"
-
 #if USE_DISKIO_AIO
 
 #include "DiskIO/DiskFile.h"
 #include "async_io.h"
 #include "cbdata.h"
+#include "SquidString.h"
 
 class AIODiskIOStrategy;
 
@@ -73,7 +70,6 @@ public:
     virtual bool ioInProgress() const;
 
 private:
-    CBDATA_CLASS(AIODiskFile);
     void error(bool const &);
     int fd;
     String path;
@@ -81,6 +77,7 @@ private:
     RefCount<IORequestor> ioRequestor;
     bool closed;
     bool error_;
+    CBDATA_CLASS(AIODiskFile);
 };
 
 #endif /* USE_DISKIO_AIO */

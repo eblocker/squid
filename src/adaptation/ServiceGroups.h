@@ -56,6 +56,7 @@ public:
     String kind;
     Id id;
     Store services;
+    Store removedServices;///< the disabled services in the case ecap or icap is disabled
 
     Method method; /// based on the first added service
     VectPoint point; /// based on the first added service
@@ -100,9 +101,12 @@ protected:
 class DynamicServiceChain: public ServiceChain
 {
 public:
-    DynamicServiceChain(const String &srvcs, const ServiceGroupPointer prev);
-};
+    DynamicServiceChain(const DynamicGroupCfg &cfg, const ServiceFilter &f);
 
+    /// separates dynamic services matching current location from future ones
+    static void Split(const ServiceFilter &filter, const String &ids,
+                      DynamicGroupCfg &current, DynamicGroupCfg &future);
+};
 
 /** iterates services stored in a group; iteration is not linear because we
     need to both replace failed services and advance to the next chain link */
@@ -138,9 +142,8 @@ std::ostream &operator <<(std::ostream &os, const ServicePlan &p)
 }
 
 typedef Vector<ServiceGroupPointer> Groups;
-extern Groups &AllGroups();
-extern ServiceGroupPointer FindGroup(const ServiceGroup::Id &id);
-
+Groups &AllGroups();
+ServiceGroupPointer FindGroup(const ServiceGroup::Id &id);
 
 } // namespace Adaptation
 

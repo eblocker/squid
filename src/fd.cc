@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  * DEBUG: section 51    Filedescriptor Functions
  * AUTHOR: Duane Wessels
  *
@@ -34,17 +32,31 @@
  */
 
 #include "squid.h"
-#include "fde.h"
-#include "SquidTime.h"
+#include "comm/Loops.h"
 #include "Debug.h"
+#include "fd.h"
+#include "fde.h"
+#include "globals.h"
+#include "profiler/Profiler.h"
+#include "SquidTime.h"
+
+// Solaris and possibly others lack MSG_NOSIGNAL optimization
+// TODO: move this into compat/? Use a dedicated compat file to avoid dragging
+// sys/types.h and sys/socket.h into the rest of Squid??
+#ifndef MSG_NOSIGNAL
+#define MSG_NOSIGNAL 0
+#endif
 
 int default_read_method(int, char *, int);
 int default_write_method(int, const char *, int);
-#ifdef _SQUID_MSWIN_
+#if _SQUID_MSWIN_
 int socket_read_method(int, char *, int);
 int socket_write_method(int, const char *, int);
 int file_read_method(int, char *, int);
 int file_write_method(int, const char *, int);
+#else
+int msghdr_read_method(int, char *, int);
+int msghdr_write_method(int, const char *, int);
 #endif
 
 const char *fdTypeStr[] = {
@@ -53,6 +65,7 @@ const char *fdTypeStr[] = {
     "File",
     "Socket",
     "Pipe",
+    "MsgHdr",
     "Unknown"
 };
 
@@ -84,7 +97,7 @@ fdUpdateBiggest(int fd, int opening)
     assert(!opening);
 
     while (Biggest_FD >= 0 && !fd_table[Biggest_FD].flags.open)
-        Biggest_FD--;
+        --Biggest_FD;
 }
 
 void
@@ -92,21 +105,24 @@ fd_close(int fd)
 {
     fde *F = &fd_table[fd];
 
+    assert(fd >= 0);
+    assert(F->flags.open == 1);
+
     if (F->type == FD_FILE) {
         assert(F->read_handler == NULL);
         assert(F->write_handler == NULL);
     }
 
     debugs(51, 3, "fd_close FD " << fd << " " << F->desc);
-    commSetSelect(fd, COMM_SELECT_READ, NULL, NULL, 0);
-    commSetSelect(fd, COMM_SELECT_WRITE, NULL, NULL, 0);
+    Comm::SetSelect(fd, COMM_SELECT_READ, NULL, NULL, 0);
+    Comm::SetSelect(fd, COMM_SELECT_WRITE, NULL, NULL, 0);
     F->flags.open = 0;
     fdUpdateBiggest(fd, 0);
-    Number_FD--;
+    --Number_FD;
     *F = fde();
 }
 
-#ifdef _SQUID_MSWIN_
+#if _SQUID_MSWIN_
 
 int
 socket_read_method(int fd, char *buf, int len)
@@ -169,6 +185,24 @@ default_write_method(int fd, const char *buf, int len)
     return i;
 }
 
+int
+msghdr_read_method(int fd, char *buf, int len)
+{
+    PROF_start(read);
+    const int i = recvmsg(fd, reinterpret_cast<msghdr*>(buf), MSG_DONTWAIT);
+    PROF_stop(read);
+    return i;
+}
+
+int
+msghdr_write_method(int fd, const char *buf, int len)
+{
+    PROF_start(write);
+    const int i = sendmsg(fd, reinterpret_cast<const msghdr*>(buf), MSG_NOSIGNAL);
+    PROF_stop(write);
+    return i > 0 ? len : i; // len is imprecise but the caller expects a match
+}
+
 #endif
 
 void
@@ -179,7 +213,7 @@ fd_open(int fd, unsigned int type, const char *desc)
     F = &fd_table[fd];
 
     if (F->flags.open) {
-        debugs(51, 1, "WARNING: Closing open FD " << std::setw(4) << fd);
+        debugs(51, DBG_IMPORTANT, "WARNING: Closing open FD " << std::setw(4) << fd);
         fd_close(fd);
     }
 
@@ -188,7 +222,7 @@ fd_open(int fd, unsigned int type, const char *desc)
     F->type = type;
     F->flags.open = 1;
     F->epoll_state = 0;
-#ifdef _SQUID_MSWIN_
+#if _SQUID_MSWIN_
 
     F->win32.handle = _get_osfhandle(fd);
 
@@ -213,9 +247,18 @@ fd_open(int fd, unsigned int type, const char *desc)
     }
 
 #else
-    F->read_method = &default_read_method;
+    switch (type) {
 
-    F->write_method = &default_write_method;
+    case FD_MSGHDR:
+        F->read_method = &msghdr_read_method;
+        F->write_method = &msghdr_write_method;
+        break;
+
+    default:
+        F->read_method = &default_read_method;
+        F->write_method = &default_write_method;
+        break;
+    }
 
 #endif
 
@@ -224,7 +267,7 @@ fd_open(int fd, unsigned int type, const char *desc)
     if (desc)
         xstrncpy(F->desc, desc, FD_DESC_SZ);
 
-    Number_FD++;
+    ++Number_FD;
 }
 
 void
@@ -256,7 +299,7 @@ fdDumpOpen(void)
     int i;
     fde *F;
 
-    for (i = 0; i < Squid_MaxFD; i++) {
+    for (i = 0; i < Squid_MaxFD; ++i) {
         F = &fd_table[i];
 
         if (!F->flags.open)
@@ -265,7 +308,7 @@ fdDumpOpen(void)
         if (i == fileno(debug_log))
             continue;
 
-        debugs(51, 1, "Open FD "<< std::left<< std::setw(10) <<
+        debugs(51, DBG_IMPORTANT, "Open FD "<< std::left<< std::setw(10) <<
                (F->bytes_read && F->bytes_written ? "READ/WRITE" :
                 F->bytes_read ? "READING" : F->bytes_written ? "WRITING" :
                 "UNSTARTED")  <<
@@ -319,13 +362,13 @@ fdAdjustReserved(void)
 
     if (newReserve > x) {
         /* perhaps this should be fatal()? -DW */
-        debugs(51, 0, "WARNING: This machine has a serious shortage of filedescriptors.");
+        debugs(51, DBG_CRITICAL, "WARNING: This machine has a serious shortage of filedescriptors.");
         newReserve = x;
     }
 
     if (Squid_MaxFD - newReserve < min(256, Squid_MaxFD / 2))
         fatalf("Too few filedescriptors available in the system (%d usable of %d).\n", Squid_MaxFD - newReserve, Squid_MaxFD);
 
-    debugs(51, 0, "Reserved FD adjusted from " << RESERVED_FD << " to " << newReserve << " due to failures");
+    debugs(51, DBG_CRITICAL, "Reserved FD adjusted from " << RESERVED_FD << " to " << newReserve << " due to failures");
     RESERVED_FD = newReserve;
 }

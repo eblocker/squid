@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 21    Misc Functions
  * AUTHOR: Harvest Derived
  *
@@ -33,17 +31,41 @@
  */
 
 #include "squid.h"
-#include "ProtoPort.h"
-#include "SwapDir.h"
+#include "base/Subscription.h"
+#include "client_side.h"
+#include "disk.h"
 #include "fde.h"
+#include "fqdncache.h"
+#include "htcp.h"
+#include "ICP.h"
+#include "ip/Intercept.h"
+#include "ip/QosConfig.h"
 #include "MemBuf.h"
-#include "wordlist.h"
+#include "anyp/PortCfg.h"
+#include "SquidConfig.h"
 #include "SquidMath.h"
 #include "SquidTime.h"
-#include "ip/IpIntercept.h"
+#include "ipc/Kids.h"
+#include "ipc/Coordinator.h"
+#include "ipcache.h"
+#include "tools.h"
+#include "SwapDir.h"
+#include "wordlist.h"
 
 #if HAVE_SYS_PRCTL_H
 #include <sys/prctl.h>
+#endif
+#if HAVE_SYS_STAT_H
+#include <sys/stat.h>
+#endif
+#if HAVE_SYS_WAIT_H
+#include <sys/wait.h>
+#endif
+#if HAVE_GRP_H
+#include <grp.h>
+#endif
+#if HAVE_ERRNO_H
+#include <errno.h>
 #endif
 
 #define DEAD_MSG "\
@@ -56,21 +78,19 @@ and report the trace back to squid-bugs@squid-cache.org.\n\
 \n\
 Thanks!\n"
 
-static void fatal_common(const char *);
-static void fatalvf(const char *fmt, va_list args);
 static void mail_warranty(void);
 #if MEM_GEN_TRACE
-extern void log_trace_done();
-extern void log_trace_init(char *);
+void log_trace_done();
+void log_trace_init(char *);
 #endif
 static void restoreCapabilities(int keep);
+int DebugSignal = -1;
 
-#ifdef _SQUID_LINUX_
+#if _SQUID_LINUX_
 /* Workaround for crappy glic header files */
 SQUIDCEXTERN int backtrace(void *, int);
 SQUIDCEXTERN void backtrace_symbols_fd(void *, int, int);
 SQUIDCEXTERN int setresuid(uid_t, uid_t, uid_t);
-
 #else /* _SQUID_LINUX_ */
 /* needed on Opensolaris for backtrace_symbols_fd */
 #if HAVE_EXECINFO_H
@@ -79,24 +99,19 @@ SQUIDCEXTERN int setresuid(uid_t, uid_t, uid_t);
 
 #endif /* _SQUID_LINUX */
 
-SQUIDCEXTERN void (*failure_notify) (const char *);
-
 void
 releaseServerSockets(void)
 {
-    int i;
-    /* Release the main ports as early as possible */
+    // Release the main ports as early as possible
 
-    for (i = 0; i < NHttpSockets; i++) {
-        if (HttpSockets[i] >= 0)
-            close(HttpSockets[i]);
-    }
+    // clear both http_port and https_port lists.
+    clientHttpConnectionsClose();
 
-    if (theInIcpConnection >= 0)
-        close(theInIcpConnection);
+    // clear icp_port's
+    icpClosePorts();
 
-    if (theOutIcpConnection >= 0 && theOutIcpConnection != theInIcpConnection)
-        close(theOutIcpConnection);
+    // XXX: Why not the HTCP, SNMP, DNS ports as well?
+    // XXX: why does this differ from main closeServerConnections() anyway ?
 }
 
 static char *
@@ -112,28 +127,27 @@ mail_warranty(void)
 {
     FILE *fp = NULL;
     static char command[256];
-#if HAVE_MKSTEMP
 
+    const mode_t prev_umask=umask(S_IRWXU);
+
+#if HAVE_MKSTEMP
     char filename[] = "/tmp/squid-XXXXXX";
     int tfd = mkstemp(filename);
-
-    if (tfd < 0)
+    if (tfd < 0 || (fp = fdopen(tfd, "w")) == NULL) {
+        umask(prev_umask);
         return;
-
-    if ((fp = fdopen(tfd, "w")) == NULL)
-        return;
-
+    }
 #else
-
     char *filename;
-
-    if ((filename = tempnam(NULL, APP_SHORTNAME)) == NULL)
+    // XXX tempnam is obsolete since POSIX.2008-1
+    // tmpfile is not an option, we want the created files to stick around
+    if ((filename = tempnam(NULL, APP_SHORTNAME)) == NULL ||
+            (fp = fopen(filename, "w")) == NULL) {
+        umask(prev_umask);
         return;
-
-    if ((fp = fopen(filename, "w")) == NULL)
-        return;
-
+    }
 #endif
+    umask(prev_umask);
 
     if (Config.EmailFrom)
         fprintf(fp, "From: %s\n", Config.EmailFrom);
@@ -141,16 +155,15 @@ mail_warranty(void)
         fprintf(fp, "From: %s@%s\n", APP_SHORTNAME, uniqueHostname());
 
     fprintf(fp, "To: %s\n", Config.adminEmail);
-
     fprintf(fp, "Subject: %s\n", dead_msg());
-
     fclose(fp);
 
     snprintf(command, 256, "%s %s < %s", Config.EmailProgram, Config.adminEmail, filename);
-
     if (system(command)) {}		/* XXX should avoid system(3) */
-
     unlink(filename);
+#if !HAVE_MKSTEMP
+    xfree(filename); // tempnam() requires us to free its allocation
+#endif
 }
 
 void
@@ -174,7 +187,7 @@ dumpMallocStats(void)
 
     mp = mallinfo();
 
-    fprintf(debug_log, "Memory usage for "APP_SHORTNAME" via mallinfo():\n");
+    fprintf(debug_log, "Memory usage for " APP_SHORTNAME " via mallinfo():\n");
 
     fprintf(debug_log, "\ttotal space in arena:  %6ld KB\n",
             (long)mp.arena >> 10);
@@ -267,18 +280,9 @@ int
 
 rusage_maxrss(struct rusage *r)
 {
-#if defined(_SQUID_SGI_) && _ABIAPI
+#if _SQUID_SGI_ && _ABIAPI
     return r->ru_pad[0];
-#elif defined(_SQUID_SGI_)
-
-    return r->ru_maxrss;
-#elif defined(_SQUID_OSF_)
-
-    return r->ru_maxrss;
-#elif defined(_SQUID_AIX_)
-
-    return r->ru_maxrss;
-#elif defined(BSD4_4)
+#elif _SQUID_SGI_|| _SQUID_OSF_ || _SQUID_AIX_ || defined(BSD4_4)
 
     return r->ru_maxrss;
 #elif defined(HAVE_GETPAGESIZE) && HAVE_GETPAGESIZE != 0
@@ -297,14 +301,13 @@ int
 
 rusage_pagefaults(struct rusage *r)
 {
-#if defined(_SQUID_SGI_) && _ABIAPI
+#if _SQUID_SGI_ && _ABIAPI
     return r->ru_pad[5];
 #else
 
     return r->ru_majflt;
 #endif
 }
-
 
 void
 PrintRusage(void)
@@ -322,7 +325,6 @@ PrintRusage(void)
             rusage_pagefaults(&rusage));
 }
 
-
 void
 death(int sig)
 {
@@ -333,8 +335,8 @@ death(int sig)
     else
         fprintf(debug_log, "FATAL: Received signal %d...dying.\n", sig);
 
-#ifdef PRINT_STACK_TRACE
-#ifdef _SQUID_HPUX_
+#if PRINT_STACK_TRACE
+#if _SQUID_HPUX_
     {
         extern void U_STACK_TRACE(void);	/* link with -lcl */
         fflush(debug_log);
@@ -343,7 +345,7 @@ death(int sig)
     }
 
 #endif /* _SQUID_HPUX_ */
-#if defined(_SQUID_SOLARIS_) && HAVE_LIBOPCOM_STACK
+#if _SQUID_SOLARIS_ && HAVE_LIBOPCOM_STACK
     {				/* get ftp://opcom.sun.ca/pub/tars/opcom_stack.tar.gz and */
         extern void opcom_stack_trace(void);	/* link with -lopcom_stack */
         fflush(debug_log);
@@ -352,7 +354,7 @@ death(int sig)
         fflush(stdout);
     }
 
-#endif /* _SQUID_SOLARIS_  and HAVE_LIBOPCOM_STACK */
+#endif /* _SQUID_SOLARIS_and HAVE_LIBOPCOM_STACK */
 #if HAVE_BACKTRACE_SYMBOLS_FD
     {
         static void *(callarray[8192]);
@@ -364,7 +366,7 @@ death(int sig)
 #endif
 #endif /* PRINT_STACK_TRACE */
 
-#if SA_RESETHAND == 0 && !defined(_SQUID_MSWIN_)
+#if SA_RESETHAND == 0 && !_SQUID_MSWIN_
     signal(SIGSEGV, SIG_DFL);
 
     signal(SIGBUS, SIG_DFL);
@@ -392,21 +394,29 @@ death(int sig)
         puts(dead_msg());
     }
 
-    if (shutting_down)
-        exit(1);
-
     abort();
 }
 
+void
+BroadcastSignalIfAny(int& sig)
+{
+    if (sig > 0) {
+        if (IamCoordinatorProcess())
+            Ipc::Coordinator::Instance()->broadcastSignal(sig);
+        sig = -1;
+    }
+}
 
 void
 sigusr2_handle(int sig)
 {
     static int state = 0;
-    /* no debug() here; bad things happen if the signal is delivered during _db_print() */
+    /* no debugs() here; bad things happen if the signal is delivered during _db_print() */
+
+    DebugSignal = sig;
 
     if (state == 0) {
-#ifndef MEM_GEN_TRACE
+#if !MEM_GEN_TRACE
         Debug::parseOptions("ALL,7");
 #else
 
@@ -415,7 +425,7 @@ sigusr2_handle(int sig)
 
         state = 1;
     } else {
-#ifndef MEM_GEN_TRACE
+#if !MEM_GEN_TRACE
         Debug::parseOptions(Debug::debugOptions);
 #else
 
@@ -427,111 +437,9 @@ sigusr2_handle(int sig)
 
 #if !HAVE_SIGACTION
     if (signal(sig, sigusr2_handle) == SIG_ERR)	/* reinstall */
-        debugs(50, 0, "signal: sig=" << sig << " func=sigusr2_handle: " << xstrerror());
+        debugs(50, DBG_CRITICAL, "signal: sig=" << sig << " func=sigusr2_handle: " << xstrerror());
 
 #endif
-}
-
-static void
-fatal_common(const char *message)
-{
-#if HAVE_SYSLOG
-    syslog(LOG_ALERT, "%s", message);
-#endif
-
-    fprintf(debug_log, "FATAL: %s\n", message);
-
-    if (Debug::log_stderr > 0 && debug_log != stderr)
-        fprintf(stderr, "FATAL: %s\n", message);
-
-    fprintf(debug_log, "Squid Cache (Version %s): Terminated abnormally.\n",
-            version_string);
-
-    fflush(debug_log);
-
-    PrintRusage();
-
-    dumpMallocStats();
-}
-
-/* fatal */
-void
-fatal(const char *message)
-{
-    /* suppress secondary errors from the dying */
-    shutting_down = 1;
-
-    releaseServerSockets();
-    /* check for store_dirs_rebuilding because fatal() is often
-     * used in early initialization phases, long before we ever
-     * get to the store log. */
-
-    /* XXX: this should be turned into a callback-on-fatal, or
-     * a mandatory-shutdown-event or something like that.
-     * - RBC 20060819
-     */
-
-    /*
-     * DPW 2007-07-06
-     * Call leave_suid() here to make sure that swap.state files
-     * are written as the effective user, rather than root.  Squid
-     * may take on root privs during reconfigure.  If squid.conf
-     * contains a "Bungled" line, fatal() will be called when the
-     * process still has root privs.
-     */
-    leave_suid();
-
-    if (0 == StoreController::store_dirs_rebuilding)
-        storeDirWriteCleanLogs(0);
-
-    fatal_common(message);
-
-    exit(1);
-}
-
-/* printf-style interface for fatal */
-void
-fatalf(const char *fmt,...)
-{
-    va_list args;
-    va_start(args, fmt);
-    fatalvf(fmt, args);
-    va_end(args);
-}
-
-
-/* used by fatalf */
-static void
-fatalvf(const char *fmt, va_list args)
-{
-    static char fatal_str[BUFSIZ];
-    vsnprintf(fatal_str, sizeof(fatal_str), fmt, args);
-    fatal(fatal_str);
-}
-
-/* fatal with dumping core */
-void
-fatal_dump(const char *message)
-{
-    failure_notify = NULL;
-    releaseServerSockets();
-
-    if (message)
-        fatal_common(message);
-
-    /*
-     * Call leave_suid() here to make sure that swap.state files
-     * are written as the effective user, rather than root.  Squid
-     * may take on root privs during reconfigure.  If squid.conf
-     * contains a "Bungled" line, fatal() will be called when the
-     * process still has root privs.
-     */
-    leave_suid();
-
-    if (opt_catch_signals)
-        storeDirWriteCleanLogs(0);
-
-    abort();
 }
 
 void
@@ -546,8 +454,8 @@ debug_trap(const char *message)
 void
 sig_child(int sig)
 {
-#ifndef _SQUID_MSWIN_
-#ifdef _SQUID_NEXT_
+#if !_SQUID_MSWIN_
+#if _SQUID_NEXT_
     union wait status;
 #else
 
@@ -557,13 +465,13 @@ sig_child(int sig)
     pid_t pid;
 
     do {
-#ifdef _SQUID_NEXT_
+#if _SQUID_NEXT_
         pid = wait3(&status, WNOHANG, NULL);
 #else
 
         pid = waitpid(-1, &status, WNOHANG);
 #endif
-        /* no debug() here; bad things happen if the signal is delivered during _db_print() */
+        /* no debugs() here; bad things happen if the signal is delivered during _db_print() */
 #if HAVE_SIGACTION
 
     } while (pid > 0);
@@ -579,13 +487,19 @@ sig_child(int sig)
 #endif
 }
 
+void
+sig_shutdown(int sig)
+{
+    shutting_down = 1;
+}
+
 const char *
 getMyHostname(void)
 {
     LOCAL_ARRAY(char, host, SQUIDHOSTNAMELEN + 1);
     static int present = 0;
     struct addrinfo *AI = NULL;
-    IpAddress sa;
+    Ip::Address sa;
 
     if (Config.visibleHostname != NULL)
         return Config.visibleHostname;
@@ -601,7 +515,7 @@ getMyHostname(void)
 #if USE_SSL
 
     if (Config.Sockaddr.https && sa.IsAnyAddr())
-        sa = Config.Sockaddr.https->http.s;
+        sa = Config.Sockaddr.https->s;
 
 #endif
 
@@ -613,7 +527,7 @@ getMyHostname(void)
 
         sa.GetAddrInfo(AI);
         /* we are looking for a name. */
-        if (xgetnameinfo(AI->ai_addr, AI->ai_addrlen, host, SQUIDHOSTNAMELEN, NULL, 0, NI_NAMEREQD ) == 0) {
+        if (getnameinfo(AI->ai_addr, AI->ai_addrlen, host, SQUIDHOSTNAMELEN, NULL, 0, NI_NAMEREQD ) == 0) {
             /* DNS lookup successful */
             /* use the official name from DNS lookup */
             debugs(50, 4, "getMyHostname: resolved " << sa << " to '" << host << "'");
@@ -639,7 +553,7 @@ getMyHostname(void)
         memset(&hints, 0, sizeof(addrinfo));
         hints.ai_flags = AI_CANONNAME;
 
-        if (xgetaddrinfo(host, NULL, NULL, &AI) == 0) {
+        if (getaddrinfo(host, NULL, NULL, &AI) == 0) {
             /* DNS lookup successful */
             /* use the official name from DNS lookup */
             debugs(50, 6, "getMyHostname: '" << host << "' has DNS resolution.");
@@ -647,7 +561,7 @@ getMyHostname(void)
 
             /* AYJ: do we want to flag AI_ALL and cache the result anywhere. ie as our local host IPs? */
             if (AI) {
-                xfreeaddrinfo(AI);
+                freeaddrinfo(AI);
                 AI = NULL;
             }
 
@@ -691,7 +605,7 @@ leave_suid(void)
 #endif
 
         if (setgid(Config2.effectiveGroupID) < 0)
-            debugs(50, 0, "ALERT: setgid: " << xstrerror());
+            debugs(50, DBG_CRITICAL, "ALERT: setgid: " << xstrerror());
 
     }
 
@@ -707,10 +621,10 @@ leave_suid(void)
     if (!Config.effectiveGroup) {
 
         if (setgid(Config2.effectiveGroupID) < 0)
-            debugs(50, 0, "ALERT: setgid: " << xstrerror());
+            debugs(50, DBG_CRITICAL, "ALERT: setgid: " << xstrerror());
 
         if (initgroups(Config.effectiveUser, Config2.effectiveGroupID) < 0) {
-            debugs(50, 0, "ALERT: initgroups: unable to set groups for User " <<
+            debugs(50, DBG_CRITICAL, "ALERT: initgroups: unable to set groups for User " <<
                    Config.effectiveUser << " and Group " <<
                    (unsigned) Config2.effectiveGroupID << "");
         }
@@ -719,17 +633,17 @@ leave_suid(void)
 #if HAVE_SETRESUID
 
     if (setresuid(Config2.effectiveUserID, Config2.effectiveUserID, 0) < 0)
-        debugs(50, 0, "ALERT: setresuid: " << xstrerror());
+        debugs(50, DBG_CRITICAL, "ALERT: setresuid: " << xstrerror());
 
 #elif HAVE_SETEUID
 
     if (seteuid(Config2.effectiveUserID) < 0)
-        debugs(50, 0, "ALERT: seteuid: " << xstrerror());
+        debugs(50, DBG_CRITICAL, "ALERT: seteuid: " << xstrerror());
 
 #else
 
     if (setuid(Config2.effectiveUserID) < 0)
-        debugs(50, 0, "ALERT: setuid: " << xstrerror());
+        debugs(50, DBG_CRITICAL, "ALERT: setuid: " << xstrerror());
 
 #endif
 
@@ -747,10 +661,10 @@ leave_suid(void)
 void
 enter_suid(void)
 {
-    debugs(21, 3, "enter_suid: PID " << getpid() << " taking root priveleges");
+    debugs(21, 3, "enter_suid: PID " << getpid() << " taking root privileges");
 #if HAVE_SETRESUID
-
-    setresuid((uid_t)-1, 0, (uid_t)-1);
+    if (setresuid((uid_t)-1, 0, (uid_t)-1) < 0)
+        debugs (21, 3, "enter_suid: setresuid failed: " << xstrerror ());
 #else
 
     setuid(0);
@@ -775,10 +689,11 @@ no_suid(void)
     uid = geteuid();
     debugs(21, 3, "no_suid: PID " << getpid() << " giving up root priveleges forever");
 
-    setuid(0);
+    if (setuid(0) < 0)
+        debugs(50, DBG_IMPORTANT, "WARNING: no_suid: setuid(0): " << xstrerror());
 
     if (setuid(uid) < 0)
-        debugs(50, 1, "no_suid: setuid: " << xstrerror());
+        debugs(50, DBG_IMPORTANT, "ERROR: no_suid: setuid(" << uid << "): " << xstrerror());
 
     restoreCapabilities(0);
 
@@ -790,6 +705,92 @@ no_suid(void)
 #endif
 }
 
+bool
+IamMasterProcess()
+{
+    return KidIdentifier == 0;
+}
+
+bool
+IamWorkerProcess()
+{
+    // when there is only one process, it has to be the worker
+    if (opt_no_daemon || Config.workers == 0)
+        return true;
+
+    return TheProcessKind == pkWorker;
+}
+
+bool
+IamDiskProcess()
+{
+    return TheProcessKind == pkDisker;
+}
+
+bool
+InDaemonMode()
+{
+    return !opt_no_daemon && Config.workers > 0;
+}
+
+bool
+UsingSmp()
+{
+    return InDaemonMode() && NumberOfKids() > 1;
+}
+
+bool
+IamCoordinatorProcess()
+{
+    return TheProcessKind == pkCoordinator;
+}
+
+bool
+IamPrimaryProcess()
+{
+    // when there is only one process, it has to be primary
+    if (opt_no_daemon || Config.workers == 0)
+        return true;
+
+    // when there is a master and worker process, the master delegates
+    // primary functions to its only kid
+    if (NumberOfKids() == 1)
+        return IamWorkerProcess();
+
+    // in SMP mode, multiple kids delegate primary functions to the coordinator
+    return IamCoordinatorProcess();
+}
+
+int
+NumberOfKids()
+{
+    // no kids in no-daemon mode
+    if (!InDaemonMode())
+        return 0;
+
+    // XXX: detect and abort when called before workers/cache_dirs are parsed
+
+    const int rockDirs = Config.cacheSwap.n_strands;
+
+    const bool needCoord = Config.workers > 1 || rockDirs > 0;
+    return (needCoord ? 1 : 0) + Config.workers + rockDirs;
+}
+
+String
+ProcessRoles()
+{
+    String roles = "";
+    if (IamMasterProcess())
+        roles.append(" master");
+    if (IamCoordinatorProcess())
+        roles.append(" coordinator");
+    if (IamWorkerProcess())
+        roles.append(" worker");
+    if (IamDiskProcess())
+        roles.append(" disker");
+    return roles;
+}
+
 void
 writePidFile(void)
 {
@@ -797,6 +798,9 @@ writePidFile(void)
     const char *f = NULL;
     mode_t old_umask;
     char buf[32];
+
+    if (!IamPrimaryProcess())
+        return;
 
     if ((f = Config.pidFilename) == NULL)
         return;
@@ -815,7 +819,7 @@ writePidFile(void)
     leave_suid();
 
     if (fd < 0) {
-        debugs(50, 0, "" << f << ": " << xstrerror());
+        debugs(50, DBG_CRITICAL, "" << f << ": " << xstrerror());
         debug_trap("Could not write pid file");
         return;
     }
@@ -824,7 +828,6 @@ writePidFile(void)
     FD_WRITE_METHOD(fd, buf, strlen(buf));
     file_close(fd);
 }
-
 
 pid_t
 readPidFile(void)
@@ -924,7 +927,7 @@ setMaxFD(void)
 void
 setSystemLimits(void)
 {
-#if HAVE_SETRLIMIT && defined(RLIMIT_NOFILE) && !defined(_SQUID_CYGWIN_)
+#if HAVE_SETRLIMIT && defined(RLIMIT_NOFILE) && !_SQUID_CYGWIN_
     /* limit system filedescriptors to our own limit */
 
     /* On Linux with 64-bit file support the sys/resource.h header
@@ -965,7 +968,7 @@ setSystemLimits(void)
 
 #if HAVE_SETRLIMIT && defined(RLIMIT_VMEM)
     if (getrlimit(RLIMIT_VMEM, &rl) < 0) {
-        debugs(50, 0, "getrlimit: RLIMIT_VMEM: " << xstrerror());
+        debugs(50, DBG_CRITICAL, "getrlimit: RLIMIT_VMEM: " << xstrerror());
     } else if (rl.rlim_max > rl.rlim_cur) {
         rl.rlim_cur = rl.rlim_max;	/* set it to the max */
 
@@ -988,10 +991,10 @@ squid_signal(int sig, SIGHDLR * func, int flags)
     sigemptyset(&sa.sa_mask);
 
     if (sigaction(sig, &sa, NULL) < 0)
-        debugs(50, 0, "sigaction: sig=" << sig << " func=" << func << ": " << xstrerror());
+        debugs(50, DBG_CRITICAL, "sigaction: sig=" << sig << " func=" << func << ": " << xstrerror());
 
 #else
-#ifdef _SQUID_MSWIN_
+#if _SQUID_MSWIN_
     /*
     On Windows, only SIGINT, SIGILL, SIGFPE, SIGTERM, SIGBREAK, SIGABRT and SIGSEGV signals
     are supported, so we must care of don't call signal() for other value.
@@ -1081,13 +1084,12 @@ parseEtcHosts(void)
     fp = fopen(Config.etcHostsPath, "r");
 
     if (fp == NULL) {
-        debugs(1, 1, "parseEtcHosts: " << Config.etcHostsPath << ": " << xstrerror());
+        debugs(1, DBG_IMPORTANT, "parseEtcHosts: " << Config.etcHostsPath << ": " << xstrerror());
         return;
     }
 
-#ifdef _SQUID_WIN32_
+#if _SQUID_WINDOWS_
     setmode(fileno(fp), O_TEXT);
-
 #endif
 
     while (fgets(buf, 1024, fp)) {	/* for each line */
@@ -1131,8 +1133,9 @@ parseEtcHosts(void)
             /* For IPV6 addresses also check for a colon */
             if (Config.appendDomain && !strchr(lt, '.') && !strchr(lt, ':')) {
                 /* I know it's ugly, but it's only at reconfig */
-                strncpy(buf2, lt, 512);
-                strncat(buf2, Config.appendDomain, 512 - strlen(lt) - 1);
+                strncpy(buf2, lt, sizeof(buf2)-1);
+                strncat(buf2, Config.appendDomain, sizeof(buf2) - strlen(lt) - 1);
+                buf2[sizeof(buf2)-1] = '\0';
                 host = buf2;
             } else {
                 host = lt;
@@ -1161,19 +1164,27 @@ parseEtcHosts(void)
 int
 getMyPort(void)
 {
-    if (Config.Sockaddr.http)
-        return Config.Sockaddr.http->s.GetPort();
+    AnyP::PortCfg *p = NULL;
+    if ((p = Config.Sockaddr.http)) {
+        // skip any special interception ports
+        while (p && (p->intercepted || p->spoof_client_ip))
+            p = p->next;
+        if (p)
+            return p->s.GetPort();
+    }
 
 #if USE_SSL
-
-    if (Config.Sockaddr.https)
-        return Config.Sockaddr.https->http.s.GetPort();
-
+    if ((p = Config.Sockaddr.https)) {
+        // skip any special interception ports
+        while (p && (p->intercepted || p->spoof_client_ip))
+            p = p->next;
+        if (p)
+            return p->s.GetPort();
+    }
 #endif
 
-    fatal("No port defined");
-
-    return 0;			/* NOT REACHED */
+    debugs(21, DBG_CRITICAL, "ERROR: No forward-proxy ports configured.");
+    return 0; // Invalid port. This will result in invalid URLs on bad configurations.
 }
 
 /*
@@ -1210,12 +1221,12 @@ strwordquote(MemBuf * mb, const char *str)
 
         case '\n':
             mb->append("\\n", 2);
-            str++;
+            ++str;
             break;
 
         case '\r':
             mb->append("\\r", 2);
-            str++;
+            ++str;
             break;
 
         case '\0':
@@ -1224,7 +1235,7 @@ strwordquote(MemBuf * mb, const char *str)
         default:
             mb->append("\\", 1);
             mb->append(str, 1);
-            str++;
+            ++str;
             break;
         }
     }
@@ -1236,10 +1247,10 @@ strwordquote(MemBuf * mb, const char *str)
 void
 keepCapabilities(void)
 {
-#if HAVE_PRCTL && defined(PR_SET_KEEPCAPS) && USE_LIBCAP
+#if USE_LIBCAP && HAVE_PRCTL && defined(PR_SET_KEEPCAPS)
 
     if (prctl(PR_SET_KEEPCAPS, 1, 0, 0, 0)) {
-        IpInterceptor.StopTransparency("capability setting has failed.");
+        Ip::Interceptor.StopTransparency("capability setting has failed.");
     }
 #endif
 }
@@ -1255,18 +1266,16 @@ restoreCapabilities(int keep)
     else
         caps = cap_init();
     if (!caps) {
-        IpInterceptor.StopTransparency("Can't get current capabilities");
+        Ip::Interceptor.StopTransparency("Can't get current capabilities");
     } else {
         int ncaps = 0;
         int rc = 0;
         cap_value_t cap_list[10];
-        cap_list[ncaps++] = CAP_NET_BIND_SERVICE;
-
-        if (IpInterceptor.TransparentActive()) {
-            cap_list[ncaps++] = CAP_NET_ADMIN;
-#if LINUX_TPROXY2
-            cap_list[ncaps++] = CAP_NET_BROADCAST;
-#endif
+        cap_list[ncaps] = CAP_NET_BIND_SERVICE;
+        ++ncaps;
+        if (Ip::Interceptor.TransparentActive() || Ip::Qos::TheConfig.isHitNfmarkActive() || Ip::Qos::TheConfig.isAclNfmarkActive()) {
+            cap_list[ncaps] = CAP_NET_ADMIN;
+            ++ncaps;
         }
 
         cap_clear_flag(caps, CAP_EFFECTIVE);
@@ -1274,21 +1283,11 @@ restoreCapabilities(int keep)
         rc |= cap_set_flag(caps, CAP_PERMITTED, ncaps, cap_list, CAP_SET);
 
         if (rc || cap_set_proc(caps) != 0) {
-            IpInterceptor.StopTransparency("Error enabling needed capabilities.");
+            Ip::Interceptor.StopTransparency("Error enabling needed capabilities.");
         }
         cap_free(caps);
     }
-#elif defined(_SQUID_LINUX_)
-    IpInterceptor.StopTransparency("Missing needed capability support.");
+#elif _SQUID_LINUX_
+    Ip::Interceptor.StopTransparency("Missing needed capability support.");
 #endif /* HAVE_SYS_CAPABILITY_H */
-}
-
-void *
-xmemset(void *dst, int val, size_t sz)
-{
-    // do debugs output
-    debugs(63, 9, "memset: dst=" << dst << ", val=" << val << ", bytes=" << sz);
-
-    // call the system one to do the actual work ~safely.
-    return memset(dst, val, sz);
 }

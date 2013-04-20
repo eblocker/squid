@@ -1,22 +1,24 @@
+#define SQUID_UNIT_TEST 1
 #include "squid.h"
 #include "testCoss.h"
 #include "Store.h"
 #include "SwapDir.h"
 #include "DiskIO/DiskIOModule.h"
-#include "fs/ufs/ufscommon.h"
 #include "fs/coss/CossSwapDir.h"
 #include "Mem.h"
 #include "MemObject.h"
 #include "HttpHeader.h"
 #include "HttpReply.h"
+#include "RequestFlags.h"
 #include "StoreFileSystem.h"
 #include "testStoreSupport.h"
+#include "SquidConfig.h"
 
 #if HAVE_STDEXCEPT
 #include <stdexcept>
 #endif
 
-#define TESTDIR "testCoss__testCossSearch"
+#define TESTDIR "testCoss_Store"
 
 CPPUNIT_TEST_SUITE_REGISTRATION( testCoss );
 
@@ -79,9 +81,7 @@ testCoss::testCossCreate()
     if (0 > system ("rm -rf " TESTDIR))
         throw std::runtime_error("Failed to clean test work directory");
 
-    StorePointer aRoot (new StoreController);
-
-    Store::Root(aRoot);
+    Store::Root(new StoreController);
 
     SwapDirPointer aStore (new CossSwapDir());
 
@@ -110,9 +110,9 @@ testCoss::testCossCreate()
 
     /* TODO: check the size */
 
-    free_cachedir(&Config.cacheSwap);
-
     Store::Root(NULL);
+
+    free_cachedir(&Config.cacheSwap);
 
     /* todo: here we should test a dirty rebuild */
 
@@ -145,9 +145,7 @@ testCoss::testCossSearch()
     if (0 > system ("rm -rf " TESTDIR))
         throw std::runtime_error("Failed to clean test work directory");
 
-    StorePointer aRoot (new StoreController);
-
-    Store::Root(aRoot);
+    Store::Root(new StoreController);
 
     SwapDirPointer aStore (new CossSwapDir());
 
@@ -191,7 +189,7 @@ testCoss::testCossSearch()
     /* add an entry */
     {
         /* Create "vary" base object */
-        request_flags flags;
+        RequestFlags flags;
         flags.cachable = 1;
         StoreEntry *pe = storeCreateEntry("dummy url", "dummy log url", flags, METHOD_GET);
         HttpReply *rep = (HttpReply *) pe->getReply();	// bypass const
@@ -256,9 +254,9 @@ testCoss::testCossSearch()
     CPPUNIT_ASSERT(search->isDone() == true);
     CPPUNIT_ASSERT(search->currentItem() == NULL);
 
-    free_cachedir(&Config.cacheSwap);
-
     Store::Root(NULL);
+
+    free_cachedir(&Config.cacheSwap);
 
     /* todo: here we should test a dirty rebuild */
 
@@ -279,8 +277,7 @@ testCoss::testDefaultEngine()
     if (0 > system ("rm -rf " TESTDIR))
         throw std::runtime_error("Failed to clean test work directory");
 
-    StorePointer aRoot (new StoreController);
-    Store::Root(aRoot);
+    Store::Root(new StoreController);
     SwapDirPointer aStore (new CossSwapDir());
     addSwapDir(aStore);
     commonInit();
@@ -293,8 +290,8 @@ testCoss::testDefaultEngine()
     safe_free(config_line);
     CPPUNIT_ASSERT(aStore->io != NULL);
 
-    free_cachedir(&Config.cacheSwap);
     Store::Root(NULL);
+    free_cachedir(&Config.cacheSwap);
     if (0 > system ("rm -rf " TESTDIR))
         throw std::runtime_error("Failed to clean test work directory");
 }

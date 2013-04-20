@@ -30,19 +30,13 @@
  *
  */
 
-#include "config.h"
+#include "squid.h"
 
 #if HAVE_UNISTD_H
 #include <unistd.h>
 #endif
-#if HAVE_STDLIB_H
-#include <stdlib.h>
-#endif
 #if HAVE_STDIO_H
 #include <stdio.h>
-#endif
-#if HAVE_SYS_TYPES_H
-#include <sys/types.h>
 #endif
 #if HAVE_CTYPE_H
 #include <ctype.h>
@@ -64,8 +58,7 @@
 #if HAVE_MEMORY_H
 #include <memory.h>
 #endif
-#if HAVE_NETDB_H && !defined(_SQUID_NETDB_H_)	/* protect NEXTSTEP */
-#define _SQUID_NETDB_H_
+#if HAVE_NETDB_H
 #include <netdb.h>
 #endif
 #if HAVE_PWD_H
@@ -79,12 +72,6 @@
 #endif
 #if HAVE_SYS_PARAM_H
 #include <sys/param.h>
-#endif
-#if HAVE_SYS_TIME_H
-#include <sys/time.h>
-#endif
-#if HAVE_SYS_RESOURCE_H
-#include <sys/resource.h>	/* needs sys/time.h above it */
 #endif
 #if HAVE_SYS_SOCKET_H
 #include <sys/socket.h>
@@ -107,23 +94,20 @@
 #if HAVE_LIBC_H
 #include <libc.h>
 #endif
-#ifdef HAVE_SYS_SYSCALL_H
+#if HAVE_SYS_SYSCALL_H
 #include <sys/syscall.h>
 #endif
-#ifdef HAVE_STRING_H
+#if HAVE_STRING_H
 #include <string.h>
 #endif
-#ifdef HAVE_STRINGS_H
+#if HAVE_STRINGS_H
 #include <strings.h>
 #endif
 #if HAVE_BSTRING_H
 #include <bstring.h>
 #endif
-#ifdef HAVE_CRYPT_H
+#if HAVE_CRYPT_H
 #include <crypt.h>
-#endif
-#if HAVE_SYS_SELECT_H
-#include <sys/select.h>
 #endif
 #if HAVE_GETOPT_H
 #include <getopt.h>
@@ -135,8 +119,6 @@
 #if HAVE_RESOLV_H
 #include <resolv.h>
 #endif
-
-#include "util.h"
 
 /**
  \defgroup dnsserver dnsserver
@@ -162,8 +144,6 @@ usage: dnsserver -Dhv -s nameserver
 	               must be an IP address, -s option may be repeated
  \endverbatim
  */
-
-#include "ip/IpAddress.h"
 
 #if LIBRESOLV_DNS_TTL_HACK
 /// \ingroup dnsserver
@@ -225,11 +205,11 @@ lookup(const char *buf)
     hints.ai_flags = AI_CANONNAME;
     for (;;) {
         if (AI != NULL) {
-            xfreeaddrinfo(AI);
+            freeaddrinfo(AI);
             AI = NULL;
         }
 
-        if ( 0 == (res = xgetaddrinfo(buf,NULL,&hints,&AI)) )
+        if ( 0 == (res = getaddrinfo(buf,NULL,&hints,&AI)) )
             break;
 
         if (res != EAI_AGAIN)
@@ -275,17 +255,17 @@ lookup(const char *buf)
                 /* annoying inet_ntop breaks the nice code by requiring the in*_addr */
                 switch (aiptr->ai_family) {
                 case AF_INET:
-                    xinet_ntop(aiptr->ai_family, &((struct sockaddr_in*)aiptr->ai_addr)->sin_addr, ntoabuf, sizeof(ntoabuf));
+                    inet_ntop(aiptr->ai_family, &((struct sockaddr_in*)aiptr->ai_addr)->sin_addr, ntoabuf, sizeof(ntoabuf));
                     break;
                 case AF_INET6:
-                    xinet_ntop(aiptr->ai_family, &((struct sockaddr_in6*)aiptr->ai_addr)->sin6_addr, ntoabuf, sizeof(ntoabuf));
+                    inet_ntop(aiptr->ai_family, &((struct sockaddr_in6*)aiptr->ai_addr)->sin6_addr, ntoabuf, sizeof(ntoabuf));
                     break;
                 default:
                     aiptr = aiptr->ai_next;
                     continue;
                 }
                 printf(" %s", ntoabuf);
-                i++;
+                ++i;
                 aiptr = aiptr->ai_next;
             }
 
@@ -299,7 +279,7 @@ lookup(const char *buf)
          */
         if (NULL != AI && NULL != AI->ai_addr) {
             for (;;) {
-                if ( 0 == (res = xgetnameinfo(AI->ai_addr, AI->ai_addrlen, ntoabuf, sizeof(ntoabuf), NULL,0,0)) )
+                if ( 0 == (res = getnameinfo(AI->ai_addr, AI->ai_addrlen, ntoabuf, sizeof(ntoabuf), NULL,0,0)) )
                     break;
 
                 if (res != EAI_AGAIN)
@@ -335,26 +315,26 @@ lookup(const char *buf)
         break;
 
     case EAI_FAIL:
-        printf("$fail DNS Domain/IP '%s' does not exist: %s.\n", buf, xgai_strerror(res));
+        printf("$fail DNS Domain/IP '%s' does not exist: %s.\n", buf, gai_strerror(res));
         break;
 
 #if defined(EAI_NODATA) || defined(EAI_NONAME)
-#ifdef EAI_NODATA
+#if EAI_NODATA
         /* deprecated. obsolete on some OS */
     case EAI_NODATA:
 #endif
-#ifdef EAI_NONAME
+#if EAI_NONAME
     case EAI_NONAME:
 #endif
-        printf("$fail DNS Domain/IP '%s' exists without any FQDN/IPs: %s.\n", buf, xgai_strerror(res));
+        printf("$fail DNS Domain/IP '%s' exists without any FQDN/IPs: %s.\n", buf, gai_strerror(res));
         break;
 #endif
     default:
-        printf("$fail A system error occured looking up Domain/IP '%s': %s.\n", buf, xgai_strerror(res));
+        printf("$fail A system error occured looking up Domain/IP '%s': %s.\n", buf, gai_strerror(res));
     }
 
     if (AI != NULL)
-        xfreeaddrinfo(AI);
+        freeaddrinfo(AI);
 }
 
 /**
@@ -371,11 +351,11 @@ usage(void)
            );
 }
 
-#ifdef _SQUID_RES_NSADDR6_LARRAY
+#if defined(_SQUID_RES_NSADDR6_LARRAY)
 /// \ingroup dnsserver
 #define _SQUID_RES_NSADDR6_LIST(i)	_SQUID_RES_NSADDR6_LARRAY[i].sin6_addr
 #endif
-#ifdef _SQUID_RES_NSADDR6_LPTR
+#if defined(_SQUID_RES_NSADDR6_LPTR)
 /// \ingroup dnsserver
 #define _SQUID_RES_NSADDR6_LIST(i)	_SQUID_RES_NSADDR6_LPTR[i]->sin6_addr
 #endif
@@ -390,7 +370,7 @@ usage(void)
 void
 squid_res_setservers(int reset)
 {
-#if defined(_SQUID_FREEBSD_) && defined(_SQUID_RES_NSADDR6_COUNT)
+#if _SQUID_FREEBSD_ && defined(_SQUID_RES_NSADDR6_COUNT)
     /* Only seems to be valid on FreeBSD 5.5 where _res_ext was provided without an ns6addr counter! */
     /* Gone again on FreeBSD 6.2 along with _res_ext itself in any form. */
     int ns6count = 0;
@@ -448,7 +428,7 @@ squid_res_setservers(int reset)
         if (_SQUID_RES_NSADDR_COUNT == MAXNS) {
             fprintf(stderr, "Too many -s options, only %d are allowed\n", MAXNS);
         } else {
-            _SQUID_RES_NSADDR_COUNT++;
+            ++ _SQUID_RES_NSADDR_COUNT;
             memcpy(&_SQUID_RES_NSADDR6_LIST(_SQUID_RES_NSADDR6_COUNT++), &((struct sockaddr_in6*)AI->ai_addr)->sin6_addr, sizeof(struct in6_addr));
         }
 #else
@@ -464,7 +444,6 @@ squid_res_setservers(int reset)
 
 #endif /* HAVE_RES_INIT */
 }
-
 
 /**
  * \ingroup dnsserver
@@ -518,7 +497,7 @@ main(int argc, char *argv[])
         }
     }
 
-#ifdef _SQUID_MSWIN_
+#if _SQUID_MSWIN_
     {
         WSADATA wsaData;
 
@@ -532,7 +511,7 @@ main(int argc, char *argv[])
         memset(request, '\0', REQ_SZ);
 
         if (fgets(request, REQ_SZ, stdin) == NULL) {
-#ifdef _SQUID_MSWIN_
+#if _SQUID_MSWIN_
             WSACleanup();
 #endif
             exit(1);

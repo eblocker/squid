@@ -1,10 +1,5 @@
-/*
- * $Id$
- */
 #ifndef SQUID_HASH_H
 #define SQUID_HASH_H
-
-#include "config.h"
 
 typedef void HASHFREE(void *);
 typedef int HASHCMP(const void *, const void *);

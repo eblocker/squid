@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 79    Disk IO Routines
  * AUTHOR: Robert Collins
  *
@@ -33,14 +31,21 @@
  * Copyright (c) 2003, Robert Collins <robertc@squid-cache.org>
  */
 
-
 #include "squid.h"
+#include "disk.h"
 #include "DiskThreadsDiskFile.h"
-#include "Store.h"
-#include "Generic.h"
 #include "DiskIO/IORequestor.h"
 #include "DiskIO/ReadRequest.h"
 #include "DiskIO/WriteRequest.h"
+#include "fd.h"
+#include "Generic.h"
+#include "globals.h"
+#include "StatCounters.h"
+#include "Store.h"
+
+#if HAVE_ERRNO_H
+#include <errno.h>
+#endif
 
 /* === PUBLIC =========================================================== */
 
@@ -83,7 +88,7 @@ DiskThreadsDiskFile::~DiskThreadsDiskFile()
 void
 DiskThreadsDiskFile::open(int flags, mode_t mode, RefCount<IORequestor> callback)
 {
-    statCounter.syscalls.disk.opens++;
+    ++statCounter.syscalls.disk.opens;
 #if !ASYNC_OPEN
 
     fd = file_open(path_, flags);
@@ -95,7 +100,7 @@ DiskThreadsDiskFile::open(int flags, mode_t mode, RefCount<IORequestor> callback
     }
 
 #endif
-    Opening_FD++;
+    ++Opening_FD;
 
     ioRequestor = callback;
 
@@ -118,7 +123,7 @@ DiskThreadsDiskFile::read(ReadRequest * request)
     debugs(79, 3, "DiskThreadsDiskFile::read: " << this << ", size " << request->len);
     assert (fd > -1);
     assert (ioRequestor.getRaw());
-    statCounter.syscalls.disk.reads++;
+    ++statCounter.syscalls.disk.reads;
     ++inProgressIOs;
 #if ASYNC_READ
 
@@ -132,7 +137,7 @@ DiskThreadsDiskFile::read(ReadRequest * request)
 void
 DiskThreadsDiskFile::create(int flags, mode_t mode, RefCount<IORequestor> callback)
 {
-    statCounter.syscalls.disk.opens++;
+    ++statCounter.syscalls.disk.opens;
 #if !ASYNC_CREATE
 
     int fd = file_open(path_, flags);
@@ -144,7 +149,7 @@ DiskThreadsDiskFile::create(int flags, mode_t mode, RefCount<IORequestor> callba
     }
 
 #endif
-    Opening_FD++;
+    ++Opening_FD;
 
     ioRequestor = callback;
 
@@ -178,17 +183,17 @@ void
 DiskThreadsDiskFile::openDone(int unused, const char *unused2, int anFD, int errflag)
 {
     debugs(79, 3, "DiskThreadsDiskFile::openDone: FD " << anFD << ", errflag " << errflag);
-    Opening_FD--;
+    --Opening_FD;
 
     fd = anFD;
 
     if (errflag || fd < 0) {
         errno = errflag;
-        debugs(79, 0, "DiskThreadsDiskFile::openDone: " << xstrerror());
-        debugs(79, 1, "\t" << path_);
+        debugs(79, DBG_CRITICAL, "DiskThreadsDiskFile::openDone: " << xstrerror());
+        debugs(79, DBG_IMPORTANT, "\t" << path_);
         errorOccured = true;
     } else {
-        store_open_disk_fd++;
+        ++store_open_disk_fd;
         commSetCloseOnExec(fd);
         fd_open(fd, FD_FILE, path_);
     }
@@ -203,7 +208,7 @@ DiskThreadsDiskFile::openDone(int unused, const char *unused2, int anFD, int err
 void DiskThreadsDiskFile::doClose()
 {
     if (fd > -1) {
-        statCounter.syscalls.disk.closes++;
+        ++statCounter.syscalls.disk.closes;
 #if ASYNC_CLOSE
 
         aioClose(fd);
@@ -214,7 +219,7 @@ void DiskThreadsDiskFile::doClose()
         file_close(fd);
 #endif
 
-        store_open_disk_fd--;
+        --store_open_disk_fd;
         fd = -1;
     }
 }
@@ -230,7 +235,7 @@ DiskThreadsDiskFile::close()
         ioRequestor->closeCompleted();
         return;
     } else {
-        debugs(79,0,HERE << "DiskThreadsDiskFile::close: " <<
+        debugs(79, DBG_CRITICAL, HERE << "DiskThreadsDiskFile::close: " <<
                "did NOT close because ioInProgress() is true.  now what?");
     }
 }
@@ -246,7 +251,7 @@ void
 DiskThreadsDiskFile::write(WriteRequest * writeRequest)
 {
     debugs(79, 3, "DiskThreadsDiskFile::write: FD " << fd);
-    statCounter.syscalls.disk.writes++;
+    ++statCounter.syscalls.disk.writes;
     ++inProgressIOs;
 #if ASYNC_WRITE
 
@@ -355,7 +360,8 @@ DiskThreadsDiskFile::writeDone(int rvfd, int errflag, size_t len, RefCount<Write
 
     debugs(79, 3, "DiskThreadsDiskFile::writeDone: FD " << fd << ", len " << len << ", err=" << errflag);
 
-    assert(++loop_detect < 10);
+    ++loop_detect;
+    assert(loop_detect < 10);
 
     --inProgressIOs;
 

@@ -1,24 +1,29 @@
-#include "config.h"
-#include "testUfs.h"
-#include "Store.h"
-#include "SwapDir.h"
+#define SQUID_UNIT_TEST 1
+#include "squid.h"
+
 #include "DiskIO/DiskIOModule.h"
-#include "fs/ufs/ufscommon.h"
-#include "Mem.h"
-#include "MemObject.h"
+#include "fs/ufs/UFSSwapDir.h"
+#include "globals.h"
 #include "HttpHeader.h"
 #include "HttpReply.h"
+#include "Mem.h"
+#include "MemObject.h"
+#include "RequestFlags.h"
+#include "SquidConfig.h"
+#include "Store.h"
+#include "SwapDir.h"
 #include "testStoreSupport.h"
+#include "testUfs.h"
 
 #if HAVE_STDEXCEPT
 #include <stdexcept>
 #endif
 
-#define TESTDIR "testUfs__testUfsSearch"
+#define TESTDIR "testUfs_Store"
 
 CPPUNIT_TEST_SUITE_REGISTRATION( testUfs );
 
-typedef RefCount<UFSSwapDir> SwapDirPointer;
+typedef RefCount<Fs::Ufs::UFSSwapDir> SwapDirPointer;
 extern REMOVALPOLICYCREATE createRemovalPolicy_lru;	/* XXX fails with --enable-removal-policies=heap */
 
 static void
@@ -86,19 +91,16 @@ testUfs::testUfsSearch()
     if (0 > system ("rm -rf " TESTDIR))
         throw std::runtime_error("Failed to clean test work directory");
 
-    StorePointer aRoot (new StoreController);
+    Store::Root(new StoreController);
 
-    Store::Root(aRoot);
+    SwapDirPointer aStore (new Fs::Ufs::UFSSwapDir("ufs", "Blocking"));
 
-    SwapDirPointer aStore (new UFSSwapDir("ufs", "Blocking"));
-
-    aStore->IO = new UFSStrategy(DiskIOModule::Find("Blocking")->createStrategy());
+    aStore->IO = new Fs::Ufs::UFSStrategy(DiskIOModule::Find("Blocking")->createStrategy());
 
     addSwapDir(aStore);
 
     commonInit();
     mem_policy = createRemovalPolicy(Config.replPolicy);
-
 
     char *path=xstrdup(TESTDIR);
 
@@ -109,6 +111,7 @@ testUfs::testUfsSearch()
     strtok(config_line, w_space);
 
     aStore->parse(0, path);
+    store_maxobjsize = 1024*1024*2;
 
     safe_free(path);
 
@@ -139,11 +142,11 @@ testUfs::testUfsSearch()
     /* add an entry */
     {
         /* Create "vary" base object */
-        request_flags flags;
+        RequestFlags flags;
         flags.cachable = 1;
         StoreEntry *pe = storeCreateEntry("dummy url", "dummy log url", flags, METHOD_GET);
         HttpReply *rep = (HttpReply *) pe->getReply();	// bypass const
-        rep->setHeaders(HTTP_OK, "dummy test object", "x-squid-internal/test", -1, -1, squid_curtime + 100000);
+        rep->setHeaders(HTTP_OK, "dummy test object", "x-squid-internal/test", 0, -1, squid_curtime + 100000);
 
         pe->setPublicKey();
 
@@ -204,11 +207,12 @@ testUfs::testUfsSearch()
     CPPUNIT_ASSERT(search->isDone() == true);
     CPPUNIT_ASSERT(search->currentItem() == NULL);
 
+    Store::Root(NULL);
+
     free_cachedir(&Config.cacheSwap);
 
     /* todo: here we should test a dirty rebuild */
 
-    Store::Root(NULL);
     safe_free(Config.replPolicy->type);
     delete Config.replPolicy;
 
@@ -231,9 +235,8 @@ testUfs::testUfsDefaultEngine()
     // objects such as "StorePointer aRoot" from being called.
     CPPUNIT_ASSERT(!store_table); // or StoreHashIndex ctor will abort below
 
-    StorePointer aRoot (new StoreController);
-    Store::Root(aRoot);
-    SwapDirPointer aStore (new UFSSwapDir("ufs", "Blocking"));
+    Store::Root(new StoreController);
+    SwapDirPointer aStore (new Fs::Ufs::UFSSwapDir("ufs", "Blocking"));
     addSwapDir(aStore);
     commonInit();
     Config.replPolicy = new RemovalPolicySettings;
@@ -248,8 +251,8 @@ testUfs::testUfsDefaultEngine()
     safe_free(config_line);
     CPPUNIT_ASSERT(aStore->IO->io != NULL);
 
-    free_cachedir(&Config.cacheSwap);
     Store::Root(NULL);
+    free_cachedir(&Config.cacheSwap);
     safe_free(Config.replPolicy->type);
     delete Config.replPolicy;
 

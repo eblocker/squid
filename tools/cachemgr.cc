@@ -30,23 +30,20 @@
  *
  */
 
-#include "config.h"
+#include "squid.h"
+#include "base64.h"
 #include "getfullhostname.h"
-#include "ip/IpAddress.h"
+#include "html_quote.h"
+#include "ip/Address.h"
+#include "rfc1123.h"
 #include "rfc1738.h"
 #include "util.h"
 
 #if HAVE_UNISTD_H
 #include <unistd.h>
 #endif
-#if HAVE_STDLIB_H
-#include <stdlib.h>
-#endif
 #if HAVE_STDIO_H
 #include <stdio.h>
-#endif
-#if HAVE_SYS_TYPES_H
-#include <sys/types.h>
 #endif
 #if HAVE_CTYPE_H
 #include <ctype.h>
@@ -68,8 +65,7 @@
 #if HAVE_MEMORY_H
 #include <memory.h>
 #endif
-#if HAVE_NETDB_H && !defined(_SQUID_NETDB_H_)	/* protect NEXTSTEP */
-#define _SQUID_NETDB_H_
+#if HAVE_NETDB_H
 #include <netdb.h>
 #endif
 #if HAVE_PWD_H
@@ -83,12 +79,6 @@
 #endif
 #if HAVE_SYS_PARAM_H
 #include <sys/param.h>
-#endif
-#if HAVE_SYS_TIME_H
-#include <sys/time.h>
-#endif
-#if HAVE_SYS_RESOURCE_H
-#include <sys/resource.h>	/* needs sys/time.h above it */
 #endif
 #if HAVE_SYS_SOCKET_H
 #include <sys/socket.h>
@@ -123,9 +113,6 @@
 #if HAVE_CRYPT_H
 #include <crypt.h>
 #endif
-#if HAVE_SYS_SELECT_H
-#include <sys/select.h>
-#endif
 #if HAVE_FNMATCH_H
 extern "C" {
 #include <fnmatch.h>
@@ -144,18 +131,9 @@ typedef struct {
     char *user_name;
     char *passwd;
     char *pub_auth;
+    char *workers;
+    char *processes;
 } cachemgr_request;
-
-/*
- * Debugging macros (info goes to error_log on your web server)
- * Note: do not run cache manager with non zero debugging level
- *       if you do not debug, it may write a lot of [sensitive]
- *       information to your error log.
- */
-
-/* debugging level 0 (disabled) - 3 (max) */
-#define DEBUG_LEVEL 0
-#define debug(level) if ((level) <= DEBUG_LEVEL && DEBUG_LEVEL > 0)
 
 /*
  * Static variables and constants
@@ -168,7 +146,6 @@ static time_t now;
 /*
  * Function prototypes
  */
-#define safe_free(str) { if (str) { xfree(str); (str) = NULL; } }
 static const char *safe_str(const char *str);
 static const char *xstrtok(char **str, char del);
 static void print_trailer(void);
@@ -187,7 +164,7 @@ static const char *make_auth_header(const cachemgr_request * req);
 
 static int check_target_acl(const char *hostname, int port);
 
-#ifdef _SQUID_MSWIN_
+#if _SQUID_MSWIN_
 static int s_iInitCount = 0;
 
 int Win32SockInit(void)
@@ -197,7 +174,7 @@ int Win32SockInit(void)
     int err;
 
     if (s_iInitCount > 0) {
-        s_iInitCount++;
+        ++s_iInitCount;
         return (0);
     } else if (s_iInitCount < 0)
         return (s_iInitCount);
@@ -219,7 +196,7 @@ int Win32SockInit(void)
         return (s_iInitCount);
     }
 
-    s_iInitCount++;
+    ++s_iInitCount;
     return (s_iInitCount);
 }
 
@@ -231,7 +208,7 @@ void Win32SockCleanup(void)
     return;
 }
 
-#endif /* ifdef _SQUID_MSWIN_ */
+#endif
 
 static const char *
 safe_str(const char *str)
@@ -267,7 +244,7 @@ xstrtok(char **str, char del)
             tok[--len] = '\0';
 
         while (xisspace(*tok))
-            tok++;
+            ++tok;
 
         return tok;
     } else
@@ -296,13 +273,40 @@ auth_html(const char *host, int port, const char *user_name)
     if (!host || !strlen(host))
         host = "";
 
+    fp = fopen("cachemgr.conf", "r");
+
+    if (fp == NULL)
+        fp = fopen(DEFAULT_CACHEMGR_CONFIG, "r");
+
+    if (fp == NULL)
+        printf("X-Error: message=\"Unable to open config %s\"", DEFAULT_CACHEMGR_CONFIG);
+
     printf("Content-Type: text/html\r\n\r\n");
 
     printf("<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.01 Transitional//EN\" \"http://www.w3.org/TR/html4/loose.dtd\">\n");
 
     printf("<HTML><HEAD><TITLE>Cache Manager Interface</TITLE>\n");
 
-    printf("<STYLE type=\"text/css\"><!--BODY{background-color:#ffffff;font-family:verdana,sans-serif}--></STYLE></HEAD>\n");
+    printf("<STYLE type=\"text/css\"><!--BODY{background-color:#ffffff;font-family:verdana,sans-serif}--></STYLE>\n");
+
+    printf("<script type=\"text/javascript\">\n");
+    printf("function TS(t, s) {\n");
+    printf(" var x = new XMLHttpRequest();\n");
+    printf(" x.open('GET', 'http' + s + '://' + t + '/squid-internal-mgr/', true);\n");
+    printf(" x.onreadystatechange=function() {\n");
+    printf("  if (x.readyState==4) {\n");
+    printf("   if ((x.status>=200 && x.status <= 299) || x.status==401) {\n");
+    printf("    var v = x.getResponseHeader('Server');\n");
+    printf("    if (v.substring(0,8) == 'squid/3.' && (v[8]=='H' || parseInt(v.substring(8)) >= 2)) {\n");
+    printf("     var d = document.getElementById('H' + s + 'mgr');\n");
+    printf("     if (d.innerHTML == '') d.innerHTML = '<h2>HTTP' + (s=='s'?'S':'') + ' Managed Proxies</h2>';\n");
+    printf("     d.innerHTML = d.innerHTML + '<p>Host: <a href=\"http' + s + '://' + t + '/squid-internal-mgr/\">' + t + '</a></p>';\n");
+    printf(" }}}}\n");
+    printf(" x.send(null);\n");
+    printf("}\n");
+    printf("</script>\n");
+
+    printf("</HEAD>\n");
 
     printf("<BODY><H1>Cache Manager Interface</H1>\n");
 
@@ -312,15 +316,13 @@ auth_html(const char *host, int port, const char *user_name)
 
     printf("<HR noshade size=\"1px\">\n");
 
+    printf("<div id=\"Hsmgr\"></div>\n");
+    printf("<div id=\"Hmgr\"></div>\n");
+    printf("<div id=\"Cmgr\">\n");
+    printf("<h2>CGI Managed Proxies</h2>\n");
     printf("<FORM METHOD=\"POST\" ACTION=\"%s\">\n", script_name);
 
     printf("<TABLE BORDER=\"0\" CELLPADDING=\"10\" CELLSPACING=\"1\">\n");
-
-
-    fp = fopen("cachemgr.conf", "r");
-
-    if (fp == NULL)
-        fp = fopen(DEFAULT_CACHEMGR_CONFIG, "r");
 
     if (fp != NULL) {
         int servers = 0;
@@ -348,17 +350,16 @@ auth_html(const char *host, int port, const char *user_name)
 
             if (comment)
                 while (*comment == ' ' || *comment == '\t')
-                    comment++;
+                    ++comment;
 
             if (!comment || !*comment)
                 comment = server;
 
-            if (!servers) {
-                printf("<TR><TH ALIGN=\"left\">Cache Server:</TH><TD><SELECT NAME=\"server\">\n");
-            }
+            if (!servers)
+                printf("<TR><TH ALIGN=\"left\">Cache Server:</TH><TD><SELECT id=\"server\" NAME=\"server\">\n");
 
             printf("<OPTION VALUE=\"%s\"%s>%s</OPTION>\n", server, (servers || *host) ? "" : " SELECTED", comment);
-            servers++;
+            ++servers;
         }
 
         if (servers) {
@@ -399,7 +400,14 @@ auth_html(const char *host, int port, const char *user_name)
 
     printf("<INPUT TYPE=\"submit\" VALUE=\"Continue...\">\n");
 
-    printf("</FORM>\n");
+    printf("</FORM></div>\n");
+
+    printf("<script type=\"text/javascript\">\n");
+    printf("var s = document.getElementById(\"server\");\n");
+    printf("for (var i = 0; i < s.childElementCount; i++) {\n");
+    printf(" TS(s.children[i].value, '');\n");
+    printf(" TS(s.children[i].value, 's');\n");
+    printf("}</script>\n");
 
     print_trailer();
 }
@@ -556,8 +564,8 @@ munge_other_line(const char *buf, cachemgr_request * req)
         const char *cell = xstrtok(&x, '\t');
 
         while (x && *x == '\t') {
-            column_span++;
-            x++;
+            ++column_span;
+            ++x;
         }
 
         l += snprintf(html + l, sizeof(html) - l, "<%s colspan=\"%d\" align=\"%s\">%s</%s>",
@@ -570,7 +578,7 @@ munge_other_line(const char *buf, cachemgr_request * req)
     /* record ends */
     snprintf(html + l, sizeof(html) - l, "</tr>\n");
     next_is_header = is_header && strstr(buf, "\t\t");
-    table_line_num++;
+    ++table_line_num;
     return html;
 }
 
@@ -586,12 +594,15 @@ munge_action_line(const char *_buf, cachemgr_request * req)
     if ((p = strchr(x, '\n')))
         *p = '\0';
     action = xstrtok(&x, '\t');
+    if (!action) {
+        xfree(buf);
+        return "";
+    }
     description = xstrtok(&x, '\t');
     if (!description)
         description = action;
-    if (!action)
-        return "";
     snprintf(html, sizeof(html), " <a href=\"%s\">%s</a>", menu_url(req, action), description);
+    xfree(buf);
     return html;
 }
 
@@ -599,7 +610,7 @@ static int
 read_reply(int s, cachemgr_request * req)
 {
     char buf[4 * 1024];
-#ifdef _SQUID_MSWIN_
+#if _SQUID_MSWIN_
 
     int reply;
     char *tmpfile = tempnam(NULL, "tmp0000");
@@ -623,7 +634,7 @@ read_reply(int s, cachemgr_request * req)
         parse_menu = 1;
 
     if (fp == NULL) {
-#ifdef _SQUID_MSWIN_
+#if _SQUID_MSWIN_
         perror(tmpfile);
         xfree(tmpfile);
 #else
@@ -635,7 +646,7 @@ read_reply(int s, cachemgr_request * req)
         return 1;
     }
 
-#ifdef _SQUID_MSWIN_
+#if _SQUID_MSWIN_
 
     while ((reply=recv(s, buf , sizeof(buf), 0)) > 0)
         fwrite(buf, 1, reply, fp);
@@ -774,7 +785,7 @@ read_reply(int s, cachemgr_request * req)
     }
 
     fclose(fp);
-#ifdef _SQUID_MSWIN_
+#if _SQUID_MSWIN_
 
     remove(tmpfile);
     xfree(tmpfile);
@@ -791,7 +802,7 @@ process_request(cachemgr_request * req)
 
     char ipbuf[MAX_IPSTRLEN];
     struct addrinfo *AI = NULL;
-    IpAddress S;
+    Ip::Address S;
     int s;
     int l;
 
@@ -820,7 +831,7 @@ process_request(cachemgr_request * req)
     }
 
     if (!check_target_acl(req->hostname, req->port)) {
-        snprintf(buf, 1024, "target %s:%d not allowed in cachemgr.conf\n", req->hostname, req->port);
+        snprintf(buf, sizeof(buf), "target %s:%d not allowed in cachemgr.conf\n", req->hostname, req->port);
         error_html(buf);
         return 1;
     }
@@ -832,7 +843,7 @@ process_request(cachemgr_request * req)
     } else if ((S = req->hostname))
         (void) 0;
     else {
-        snprintf(buf, 1024, "Unknown host: %s\n", req->hostname);
+        snprintf(buf, sizeof(buf), "Unknown host: %s\n", req->hostname);
         error_html(buf);
         return 1;
     }
@@ -846,36 +857,40 @@ process_request(cachemgr_request * req)
 #else
     if ((s = socket(PF_INET, SOCK_STREAM, 0)) < 0) {
 #endif
-        snprintf(buf, 1024, "socket: %s\n", xstrerror());
+        snprintf(buf, sizeof(buf), "socket: %s\n", xstrerror());
         error_html(buf);
+        S.FreeAddrInfo(AI);
         return 1;
     }
 
     if (connect(s, AI->ai_addr, AI->ai_addrlen) < 0) {
-        snprintf(buf, 1024, "connect %s: %s\n",
+        snprintf(buf, sizeof(buf), "connect %s: %s\n",
                  S.ToURL(ipbuf,MAX_IPSTRLEN),
                  xstrerror());
         error_html(buf);
         S.FreeAddrInfo(AI);
+        close(s);
         return 1;
     }
 
     S.FreeAddrInfo(AI);
 
     l = snprintf(buf, sizeof(buf),
-                 "GET cache_object://%s/%s HTTP/1.0\r\n"
+                 "GET cache_object://%s/%s%s%s HTTP/1.0\r\n"
                  "User-Agent: cachemgr.cgi/%s\r\n"
                  "Accept: */*\r\n"
                  "%s"			/* Authentication info or nothing */
                  "\r\n",
                  req->hostname,
                  req->action,
+                 req->workers? "?workers=" : (req->processes ? "?processes=" : ""),
+                 req->workers? req->workers : (req->processes ? req->processes: ""),
                  VERSION,
                  make_auth_header(req));
     if (write(s, buf, l) < 0) {
-        debug(1) fprintf(stderr, "ERROR: (%d) writing request: '%s'\n", errno, buf);
+        fprintf(stderr,"ERROR: (%d) writing request: '%s'\n", errno, buf);
     } else {
-        debug(1) fprintf(stderr, "wrote request: '%s'\n", buf);
+        debug("wrote request: '%s'\n", buf);
     }
     return read_reply(s, req);
 }
@@ -887,7 +902,7 @@ main(int argc, char *argv[])
     cachemgr_request *req;
 
     now = time(NULL);
-#ifdef _SQUID_MSWIN_
+#if _SQUID_MSWIN_
 
     Win32SockInit();
     atexit(Win32SockCleanup);
@@ -908,6 +923,31 @@ main(int argc, char *argv[])
     if ((s = getenv("SCRIPT_NAME")) != NULL)
         script_name = xstrdup(s);
 
+    char **args = argv;
+    while (argc > 1 && args[1][0] == '-') {
+//        const char *value = "";
+        char option = args[1][1];
+        switch (option) {
+        case 'd':
+            debug_enabled = 1;
+            break;
+        default:
+#if 0 // unused for now.
+            if (strlen(args[1]) > 2) {
+                value = args[1] + 2;
+            } else if (argc > 2) {
+                value = args[2];
+                ++args;
+                --argc;
+            } else
+                value = "";
+#endif
+            break;
+        }
+        ++args;
+        --argc;
+    }
+
     req = read_request();
 
     return process_request(req);
@@ -917,8 +957,6 @@ static char *
 read_post_request(void)
 {
     char *s;
-    char *buf;
-    int len;
 
     if ((s = getenv("REQUEST_METHOD")) == NULL)
         return NULL;
@@ -929,15 +967,34 @@ read_post_request(void)
     if ((s = getenv("CONTENT_LENGTH")) == NULL)
         return NULL;
 
-    if ((len = atoi(s)) <= 0)
+    if (*s == '-') // negative length content huh?
         return NULL;
 
-    buf = (char *)xmalloc(len + 1);
+    uint64_t len;
 
-    if (fread(buf, len, 1, stdin) == 0)
+    char *endptr = s+ strlen(s);
+    if ((len = strtoll(s, &endptr, 10)) <= 0)
         return NULL;
 
-    buf[len] = '\0';
+    // limit the input to something reasonable.
+    // 4KB should be enough for the GET/POST data length, but may be extended.
+    size_t bufLen = (len < 4096 ? len : 4095);
+    char *buf = (char *)xmalloc(bufLen + 1);
+
+    size_t readLen = fread(buf, 1, bufLen, stdin);
+    if (readLen == 0) {
+        xfree(buf);
+        return NULL;
+    }
+    buf[readLen] = '\0';
+    len -= readLen;
+
+    // purge the remainder of the request entity
+    while (len > 0 && readLen) {
+        char temp[65535];
+        readLen = fread(temp, 1, 65535, stdin);
+        len -= readLen;
+    }
 
     return buf;
 }
@@ -970,7 +1027,7 @@ read_request(void)
     else
         return NULL;
 
-#ifdef _SQUID_MSWIN_
+#if _SQUID_MSWIN_
 
     if (strlen(buf) == 0 || strlen(buf) == 4000)
 #else
@@ -978,7 +1035,7 @@ read_request(void)
     if (strlen(buf) == 0)
 #endif
     {
-        free(buf);
+        xfree(buf);
         return NULL;
     }
 
@@ -990,7 +1047,8 @@ read_request(void)
         if ((q = strchr(t, '=')) == NULL)
             continue;
 
-        *q++ = '\0';
+        *q = '\0';
+        ++q;
 
         rfc1738_unescape(t);
 
@@ -1010,6 +1068,10 @@ read_request(void)
             req->pub_auth = xstrdup(q), decode_pub_auth(req);
         else if (0 == strcasecmp(t, "operation"))
             req->action = xstrdup(q);
+        else if (0 == strcasecmp(t, "workers") && strlen(q))
+            req->workers = xstrdup(q);
+        else if (0 == strcasecmp(t, "processes") && strlen(q))
+            req->processes = xstrdup(q);
     }
 
     if (req->server && !req->hostname) {
@@ -1021,11 +1083,10 @@ read_request(void)
     }
 
     make_pub_auth(req);
-    debug(1) fprintf(stderr, "cmgr: got req: host: '%s' port: %d uname: '%s' passwd: '%s' auth: '%s' oper: '%s'\n",
-                     safe_str(req->hostname), req->port, safe_str(req->user_name), safe_str(req->passwd), safe_str(req->pub_auth), safe_str(req->action));
+    debug("cmgr: got req: host: '%s' port: %d uname: '%s' passwd: '%s' auth: '%s' oper: '%s' workers: '%s' processes: '%s'\n",
+          safe_str(req->hostname), req->port, safe_str(req->user_name), safe_str(req->passwd), safe_str(req->pub_auth), safe_str(req->action), safe_str(req->workers), safe_str(req->processes));
     return req;
 }
-
 
 /* Routines to support authentication */
 
@@ -1038,23 +1099,23 @@ make_pub_auth(cachemgr_request * req)
 {
     static char buf[1024];
     safe_free(req->pub_auth);
-    debug(3) fprintf(stderr, "cmgr: encoding for pub...\n");
+    debug("cmgr: encoding for pub...\n");
 
     if (!req->passwd || !strlen(req->passwd))
         return;
 
     /* host | time | user | passwd */
-    snprintf(buf, sizeof(buf), "%s|%d|%s|%s",
-             req->hostname,
-             (int) now,
-             req->user_name ? req->user_name : "",
-             req->passwd);
+    const int bufLen = snprintf(buf, sizeof(buf), "%s|%d|%s|%s",
+                                req->hostname,
+                                (int) now,
+                                req->user_name ? req->user_name : "",
+                                req->passwd);
+    debug("cmgr: pre-encoded for pub: %s\n", buf);
 
-    debug(3) fprintf(stderr, "cmgr: pre-encoded for pub: %s\n", buf);
-
-    debug(3) fprintf(stderr, "cmgr: encoded: '%s'\n", base64_encode(buf));
-
-    req->pub_auth = xstrdup(base64_encode(buf));
+    const int encodedLen = base64_encode_len(bufLen);
+    req->pub_auth = (char *) xmalloc(encodedLen);
+    base64_encode_str(req->pub_auth, encodedLen, buf, bufLen);
+    debug("cmgr: encoded: '%s'\n", req->pub_auth);
 }
 
 static void
@@ -1066,48 +1127,62 @@ decode_pub_auth(cachemgr_request * req)
     const char *user_name;
     const char *passwd;
 
-    debug(2) fprintf(stderr, "cmgr: decoding pub: '%s'\n", safe_str(req->pub_auth));
+    debug("cmgr: decoding pub: '%s'\n", safe_str(req->pub_auth));
     safe_free(req->passwd);
 
     if (!req->pub_auth || strlen(req->pub_auth) < 4 + strlen(safe_str(req->hostname)))
         return;
 
-    buf = xstrdup(base64_decode(req->pub_auth));
+    const int decodedLen = base64_decode_len(req->pub_auth);
+    buf = (char*)xmalloc(decodedLen);
+    base64_decode(buf, decodedLen, req->pub_auth);
 
-    debug(3) fprintf(stderr, "cmgr: length ok\n");
+    debug("cmgr: length ok\n");
 
     /* parse ( a lot of memory leaks, but that is cachemgr style :) */
-    if ((host_name = strtok(buf, "|")) == NULL)
+    if ((host_name = strtok(buf, "|")) == NULL) {
+        xfree(buf);
         return;
+    }
 
-    debug(3) fprintf(stderr, "cmgr: decoded host: '%s'\n", host_name);
+    debug("cmgr: decoded host: '%s'\n", host_name);
 
-    if ((time_str = strtok(NULL, "|")) == NULL)
+    if ((time_str = strtok(NULL, "|")) == NULL) {
+        xfree(buf);
         return;
+    }
 
-    debug(3) fprintf(stderr, "cmgr: decoded time: '%s' (now: %d)\n", time_str, (int) now);
+    debug("cmgr: decoded time: '%s' (now: %d)\n", time_str, (int) now);
 
-    if ((user_name = strtok(NULL, "|")) == NULL)
+    if ((user_name = strtok(NULL, "|")) == NULL) {
+        xfree(buf);
         return;
+    }
 
-    debug(3) fprintf(stderr, "cmgr: decoded uname: '%s'\n", user_name);
+    debug("cmgr: decoded uname: '%s'\n", user_name);
 
-    if ((passwd = strtok(NULL, "|")) == NULL)
+    if ((passwd = strtok(NULL, "|")) == NULL) {
+        xfree(buf);
         return;
+    }
 
-    debug(2) fprintf(stderr, "cmgr: decoded passwd: '%s'\n", passwd);
+    debug("cmgr: decoded passwd: '%s'\n", passwd);
 
     /* verify freshness and validity */
-    if (atoi(time_str) + passwd_ttl < now)
+    if (atoi(time_str) + passwd_ttl < now) {
+        xfree(buf);
         return;
+    }
 
-    if (strcasecmp(host_name, req->hostname))
+    if (strcasecmp(host_name, req->hostname)) {
+        xfree(buf);
         return;
+    }
 
-    debug(1) fprintf(stderr, "cmgr: verified auth. info.\n");
+    debug("cmgr: verified auth. info.\n");
 
     /* ok, accept */
-    xfree(req->user_name);
+    safe_free(req->user_name);
 
     req->user_name = xstrdup(user_name);
 
@@ -1128,16 +1203,20 @@ make_auth_header(const cachemgr_request * req)
 {
     static char buf[1024];
     size_t stringLength = 0;
-    const char *str64;
 
     if (!req->passwd)
         return "";
 
-    snprintf(buf, sizeof(buf), "%s:%s",
-             req->user_name ? req->user_name : "",
-             req->passwd);
+    int bufLen = snprintf(buf, sizeof(buf), "%s:%s",
+                          req->user_name ? req->user_name : "",
+                          req->passwd);
 
-    str64 = base64_encode(buf);
+    int encodedLen = base64_encode_len(bufLen);
+    if (encodedLen <= 0)
+        return "";
+
+    char *str64 = static_cast<char*>(xmalloc(encodedLen));
+    base64_encode_str(str64, encodedLen, buf, bufLen);
 
     stringLength += snprintf(buf, sizeof(buf), "Authorization: Basic %s\r\n", str64);
 
@@ -1145,6 +1224,7 @@ make_auth_header(const cachemgr_request * req)
 
     snprintf(&buf[stringLength], sizeof(buf) - stringLength, "Proxy-Authorization: Basic %s\r\n", str64);
 
+    xfree(str64);
     return buf;
 }
 

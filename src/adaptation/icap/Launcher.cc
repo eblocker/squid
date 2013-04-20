@@ -3,16 +3,17 @@
  */
 
 #include "squid.h"
-#include "TextException.h"
-#include "HttpRequest.h"
-#include "HttpReply.h"
 #include "acl/FilledChecklist.h"
-#include "HttpMsg.h"
+#include "adaptation/Answer.h"
 #include "adaptation/icap/Launcher.h"
 #include "adaptation/icap/Xaction.h"
 #include "adaptation/icap/ServiceRep.h"
 #include "adaptation/icap/Config.h"
-
+#include "base/TextException.h"
+#include "globals.h"
+#include "HttpMsg.h"
+#include "HttpRequest.h"
+#include "HttpReply.h"
 
 Adaptation::Icap::Launcher::Launcher(const char *aTypeName,
                                      Adaptation::ServicePointer &aService):
@@ -42,20 +43,26 @@ void Adaptation::Icap::Launcher::launchXaction(const char *xkind)
     debugs(93,4, HERE << "launching " << xkind << " xaction #" << theLaunches);
     Adaptation::Icap::Xaction *x = createXaction();
     x->attempts = theLaunches;
-    if (theLaunches > 1)
+    if (theLaunches > 1) {
+        x->clearError();
         x->disableRetries();
+    }
     if (theLaunches >= TheConfig.repeat_limit)
         x->disableRepeats("over icap_retry_limit");
     theXaction = initiateAdaptation(x);
     Must(initiated(theXaction));
 }
 
-void Adaptation::Icap::Launcher::noteAdaptationAnswer(HttpMsg *message)
+void Adaptation::Icap::Launcher::noteAdaptationAnswer(const Answer &answer)
 {
-    sendAnswer(message);
+    debugs(93,5, HERE << "launches: " << theLaunches << " answer: " << answer);
+
+    // XXX: akError is unused by ICAPXaction in favor of noteXactAbort()
+    Must(answer.kind != Answer::akError);
+
+    sendAnswer(answer);
     clearAdaptation(theXaction);
     Must(done());
-    debugs(93,3, HERE << "Adaptation::Icap::Launcher::noteAdaptationAnswer exiting ");
 }
 
 void Adaptation::Icap::Launcher::noteInitiatorAborted()
@@ -65,15 +72,6 @@ void Adaptation::Icap::Launcher::noteInitiatorAborted()
     clearInitiator();
     Must(done()); // should be nothing else to do
 
-}
-
-// XXX: this call is unused by ICAPXaction in favor of ICAPLauncher::noteXactAbort
-void Adaptation::Icap::Launcher::noteAdaptationQueryAbort(bool final)
-{
-    debugs(93,5, HERE << "launches: " << theLaunches << "; final: " << final);
-    clearAdaptation(theXaction);
-
-    Must(done()); // swanSong will notify the initiator
 }
 
 void Adaptation::Icap::Launcher::noteXactAbort(XactAbortInfo info)
@@ -140,7 +138,7 @@ bool Adaptation::Icap::Launcher::canRepeat(Adaptation::Icap::XactAbortInfo &info
         new ACLFilledChecklist(TheConfig.repeat, info.icapRequest, dash_str);
     cl->reply = HTTPMSGLOCK(info.icapReply);
 
-    const bool result = cl->fastCheck();
+    bool result = cl->fastCheck() == ACCESS_ALLOWED;
     delete cl;
     return result;
 }

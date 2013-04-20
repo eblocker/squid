@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 00    Debug Routines
  * AUTHOR: Harvest Derived
  *
@@ -31,18 +29,15 @@
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
  *
  */
-#include "config.h"
+
+#include "squid.h"
 #include "Debug.h"
 #include "SquidTime.h"
 #include "util.h"
+#include "ipc/Kids.h"
 
 /* for shutting_down flag in xassert() */
 #include "globals.h"
-
-/* cope with no squid.h */
-#ifndef MAXPATHLEN
-#define MAXPATHLEN 256
-#endif
 
 char *Debug::debugOptions = NULL;
 int Debug::override_X = 0;
@@ -56,6 +51,7 @@ FILE *debug_log = NULL;
 static char *debug_log_file = NULL;
 static int Ctx_Lock = 0;
 static const char *debugLogTime(void);
+static const char *debugLogKid(void);
 static void ctx_print(void);
 #if HAVE_SYSLOG
 #ifdef LOG_LOCAL4
@@ -66,8 +62,8 @@ static void _db_print_syslog(const char *format, va_list args);
 static void _db_print_stderr(const char *format, va_list args);
 static void _db_print_file(const char *format, va_list args);
 
-#ifdef _SQUID_MSWIN_
-SQUIDCEXTERN LPCRITICAL_SECTION dbg_mutex;
+#if _SQUID_MSWIN_
+extern LPCRITICAL_SECTION dbg_mutex;
 typedef BOOL (WINAPI * PFInitializeCriticalSectionAndSpinCount) (LPCRITICAL_SECTION, DWORD);
 #endif
 
@@ -80,7 +76,7 @@ _db_print(const char *format,...)
     va_list args2;
     va_list args3;
 
-#ifdef _SQUID_MSWIN_
+#if _SQUID_MSWIN_
     /* Multiple WIN32 threads may call this simultaneously */
 
     if (!dbg_mutex) {
@@ -121,8 +117,9 @@ _db_print(const char *format,...)
     va_start(args2, format);
     va_start(args3, format);
 
-    snprintf(f, BUFSIZ, "%s| %s",
+    snprintf(f, BUFSIZ, "%s%s| %s",
              debugLogTime(),
+             debugLogKid(),
              format);
 
     _db_print_file(f, args1);
@@ -132,7 +129,7 @@ _db_print(const char *format,...)
     _db_print_syslog(format, args3);
 #endif
 
-#ifdef _SQUID_MSWIN_
+#if _SQUID_MSWIN_
     LeaveCriticalSection(dbg_mutex);
 #endif
 
@@ -226,7 +223,7 @@ debugArg(const char *arg)
         return;
     }
 
-    for (i = 0; i < MAX_DEBUG_SECTIONS; i++)
+    for (i = 0; i < MAX_DEBUG_SECTIONS; ++i)
         Debug::Levels[i] = l;
 }
 
@@ -256,9 +253,8 @@ debugOpenLog(const char *logfile)
         debug_log = stderr;
     }
 
-#ifdef _SQUID_WIN32_
+#if _SQUID_WINDOWS_
     setmode(fileno(debug_log), O_TEXT);
-
 #endif
 }
 
@@ -397,7 +393,7 @@ _db_set_syslog(const char *facility)
 
         struct syslog_facility_name *n;
 
-        for (n = syslog_facility_names; n->name; n++) {
+        for (n = syslog_facility_names; n->name; ++n) {
             if (strcmp(n->name, facility) == 0) {
                 syslog_facility = n->facility;
                 return;
@@ -429,7 +425,7 @@ Debug::parseOptions(char const *options)
         return;
     }
 
-    for (i = 0; i < MAX_DEBUG_SECTIONS; i++)
+    for (i = 0; i < MAX_DEBUG_SECTIONS; ++i)
         Debug::Levels[i] = 0;
 
     if (options) {
@@ -486,10 +482,10 @@ _db_rotate_log(void)
      */
     /* Rotate numbers 0 through N up one */
     for (int i = Debug::rotateNumber; i > 1;) {
-        i--;
+        --i;
         snprintf(from, MAXPATHLEN, "%s.%d", debug_log_file, i - 1);
         snprintf(to, MAXPATHLEN, "%s.%d", debug_log_file, i);
-#ifdef _SQUID_MSWIN_
+#if _SQUID_MSWIN_
         remove
         (to);
 #endif
@@ -500,14 +496,14 @@ _db_rotate_log(void)
      * You can't rename open files on Microsoft "operating systems"
      * so we close before renaming.
      */
-#ifdef _SQUID_MSWIN_
+#if _SQUID_MSWIN_
     if (debug_log != stderr)
         fclose(debug_log);
 #endif
     /* Rotate the current log to .0 */
     if (Debug::rotateNumber > 0) {
         snprintf(to, MAXPATHLEN, "%s.%d", debug_log_file, 0);
-#ifdef _SQUID_MSWIN_
+#if _SQUID_MSWIN_
         remove
         (to);
 #endif
@@ -547,10 +543,23 @@ debugLogTime(void)
     return buf;
 }
 
+static const char *
+debugLogKid(void)
+{
+    if (KidIdentifier != 0) {
+        static char buf[16];
+        if (!*buf) // optimization: fill only once after KidIdentifier is set
+            snprintf(buf, sizeof(buf), " kid%d", KidIdentifier);
+        return buf;
+    }
+
+    return "";
+}
+
 void
 xassert(const char *msg, const char *file, int line)
 {
-    debugs(0, 0, "assertion failed: " << file << ":" << line << ": \"" << msg << "\"");
+    debugs(0, DBG_CRITICAL, "assertion failed: " << file << ":" << line << ": \"" << msg << "\"");
 
     if (!shutting_down)
         abort();
@@ -649,17 +658,16 @@ static const char *Ctx_Descrs[CTX_MAX_LEVEL + 1];
 /* "safe" get secription */
 static const char *ctx_get_descr(Ctx ctx);
 
-
 Ctx
 ctx_enter(const char *descr)
 {
-    Ctx_Current_Level++;
+    ++Ctx_Current_Level;
 
     if (Ctx_Current_Level <= CTX_MAX_LEVEL)
         Ctx_Descrs[Ctx_Current_Level] = descr;
 
     if (Ctx_Current_Level == Ctx_Warn_Level) {
-        debugs(0, 0, "# ctx: suspiciously deep (" << Ctx_Warn_Level << ") nesting:");
+        debugs(0, DBG_CRITICAL, "# ctx: suspiciously deep (" << Ctx_Warn_Level << ") nesting:");
         Ctx_Warn_Level *= 2;
     }
 
@@ -684,7 +692,7 @@ static void
 ctx_print(void)
 {
     /* lock so _db_print will not call us recursively */
-    Ctx_Lock++;
+    ++Ctx_Lock;
     /* ok, user saw [0,Ctx_Reported_Level] descriptions */
     /* first inform about entries popped since user saw them */
 
@@ -700,14 +708,14 @@ ctx_print(void)
 
     /* report new contexts that were pushed since last report */
     while (Ctx_Reported_Level < Ctx_Current_Level) {
-        Ctx_Reported_Level++;
-        Ctx_Valid_Level++;
+        ++Ctx_Reported_Level;
+        ++Ctx_Valid_Level;
         _db_print("ctx: enter level %2d: '%s'\n", Ctx_Reported_Level,
                   ctx_get_descr(Ctx_Reported_Level));
     }
 
     /* unlock */
-    Ctx_Lock--;
+    --Ctx_Lock;
 }
 
 /* checks for nulls and overflows */
@@ -770,3 +778,26 @@ Debug::xassert(const char *msg, const char *file, int line)
 }
 
 std::ostringstream (*Debug::CurrentDebug)(NULL);
+
+size_t
+BuildPrefixInit()
+{
+    // XXX: This must be kept in sync with the actual debug.cc location
+    const char *ThisFileNameTail = "src/debug.cc";
+
+    const char *file=__FILE__;
+
+    // Disable heuristic if it does not work.
+    if (!strstr(file, ThisFileNameTail))
+        return 0;
+
+    return strlen(file)-strlen(ThisFileNameTail);
+}
+
+const char*
+SkipBuildPrefix(const char* path)
+{
+    static const size_t BuildPrefixLength = BuildPrefixInit();
+
+    return path+BuildPrefixLength;
+}

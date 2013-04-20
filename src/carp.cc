@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  * DEBUG: section 39    Cache Array Routing Protocol
  * AUTHOR: Henrik Nordstrom
  * BASED ON: carp.c by Eric Stern and draft-vinod-carp-v1-03.txt
@@ -35,28 +33,37 @@
  */
 
 #include "squid.h"
-#include "CacheManager.h"
+#include "CachePeer.h"
+#include "HttpRequest.h"
+#include "mgr/Registration.h"
+#include "neighbors.h"
+#include "SquidConfig.h"
 #include "Store.h"
+#include "URL.h"
+#include "URLScheme.h"
+
+#if HAVE_MATH_H
+#include <math.h>
+#endif
 
 #define ROTATE_LEFT(x, n) (((x) << (n)) | ((x) >> (32-(n))))
 
 static int n_carp_peers = 0;
-static peer **carp_peers = NULL;
+static CachePeer **carp_peers = NULL;
 static OBJH carpCachemgr;
 
 static int
 peerSortWeight(const void *a, const void *b)
 {
-    const peer *const *p1 = (const peer *const *)a;
-    const peer *const *p2 = (const peer *const *)b;
+    const CachePeer *const *p1 = (const CachePeer *const *)a;
+    const CachePeer *const *p2 = (const CachePeer *const *)b;
     return (*p1)->weight - (*p2)->weight;
 }
 
 static void
 carpRegisterWithCacheManager(void)
 {
-    CacheManager::GetInstance()->
-    registerAction("carp", "CARP information", carpCachemgr, 0, 1);
+    Mgr::RegisterAction("carp", "CARP information", carpCachemgr, 0, 1);
 }
 
 void
@@ -66,12 +73,12 @@ carpInit(void)
     int K;
     int k;
     double P_last, X_last, Xn;
-    peer *p;
-    peer **P;
+    CachePeer *p;
+    CachePeer **P;
     char *t;
     /* Clean up */
 
-    for (k = 0; k < n_carp_peers; k++) {
+    for (k = 0; k < n_carp_peers; ++k) {
         cbdataReferenceDone(carp_peers[k]);
     }
 
@@ -92,7 +99,7 @@ carpInit(void)
         if (p->weight == 0)
             continue;
 
-        n_carp_peers++;
+        ++n_carp_peers;
 
         W += p->weight;
     }
@@ -100,7 +107,7 @@ carpInit(void)
     if (n_carp_peers == 0)
         return;
 
-    carp_peers = (peer **)xcalloc(n_carp_peers, sizeof(*carp_peers));
+    carp_peers = (CachePeer **)xcalloc(n_carp_peers, sizeof(*carp_peers));
 
     /* Build a list of the found peers and calculate hashes and load factors */
     for (P = carp_peers, p = Config.peers; p; p = p->next) {
@@ -113,7 +120,7 @@ carpInit(void)
         /* calculate this peers hash */
         p->carp.hash = 0;
 
-        for (t = p->name; *t != 0; t++)
+        for (t = p->name; *t != 0; ++t)
             p->carp.hash += ROTATE_LEFT(p->carp.hash, 19) + (unsigned int) *t;
 
         p->carp.hash += p->carp.hash * 0x62531965;
@@ -127,7 +134,8 @@ carpInit(void)
             p->carp.load_factor = 0.0;
 
         /* add it to our list of peers */
-        *P++ = cbdataReference(p);
+        *P = cbdataReference(p);
+        ++P;
     }
 
     /* Sort our list on weight */
@@ -149,7 +157,7 @@ carpInit(void)
 
     X_last = 0.0;		/* Empty X_0, nullifies the first pow statement */
 
-    for (k = 1; k <= K; k++) {
+    for (k = 1; k <= K; ++k) {
         double Kk1 = (double) (K - k + 1);
         p = carp_peers[k - 1];
         p->carp.load_multiplier = (Kk1 * (p->carp.load_factor - P_last)) / Xn;
@@ -161,39 +169,73 @@ carpInit(void)
     }
 }
 
-peer *
+CachePeer *
 carpSelectParent(HttpRequest * request)
 {
     int k;
-    const char *c;
-    peer *p = NULL;
-    peer *tp;
+    CachePeer *p = NULL;
+    CachePeer *tp;
     unsigned int user_hash = 0;
     unsigned int combined_hash;
     double score;
     double high_score = 0;
-    const char *key = NULL;
 
     if (n_carp_peers == 0)
         return NULL;
 
-    key = urlCanonical(request);
-
     /* calculate hash key */
-    debugs(39, 2, "carpSelectParent: Calculating hash for " << key);
+    debugs(39, 2, "carpSelectParent: Calculating hash for " << urlCanonical(request));
 
-    for (c = key; *c != 0; c++)
-        user_hash += ROTATE_LEFT(user_hash, 19) + *c;
-
-    /* select peer */
-    for (k = 0; k < n_carp_peers; k++) {
+    /* select CachePeer */
+    for (k = 0; k < n_carp_peers; ++k) {
+        String key;
         tp = carp_peers[k];
+        if (tp->options.carp_key.set) {
+            //this code follows urlCanonical's pattern.
+            //   corner cases should use the canonical URL
+            if (tp->options.carp_key.scheme) {
+                // temporary, until bug 1961 URL handling is fixed.
+                const URLScheme sch = request->protocol;
+                key.append(sch.const_str());
+                if (key.size()) //if the scheme is not empty
+                    key.append("://");
+            }
+            if (tp->options.carp_key.host) {
+                key.append(request->GetHost());
+            }
+            if (tp->options.carp_key.port) {
+                static char portbuf[7];
+                snprintf(portbuf,7,":%d", request->port);
+                key.append(portbuf);
+            }
+            if (tp->options.carp_key.path) {
+                String::size_type pos;
+                if ((pos=request->urlpath.find('?'))!=String::npos)
+                    key.append(request->urlpath.substr(0,pos));
+                else
+                    key.append(request->urlpath);
+            }
+            if (tp->options.carp_key.params) {
+                String::size_type pos;
+                if ((pos=request->urlpath.find('?'))!=String::npos)
+                    key.append(request->urlpath.substr(pos,request->urlpath.size()));
+            }
+        }
+        // if the url-based key is empty, e.g. because the user is
+        // asking to balance on the path but the request doesn't supply any,
+        // then fall back to canonical URL
+
+        if (key.size()==0)
+            key=urlCanonical(request);
+
+        for (const char *c = key.rawBuf(), *e=key.rawBuf()+key.size(); c < e; ++c)
+            user_hash += ROTATE_LEFT(user_hash, 19) + *c;
         combined_hash = (user_hash ^ tp->carp.hash);
         combined_hash += combined_hash * 0x62531965;
         combined_hash = ROTATE_LEFT(combined_hash, 21);
         score = combined_hash * tp->carp.load_multiplier;
-        debugs(39, 3, "carpSelectParent: " << tp->name << " combined_hash " << combined_hash  <<
-               " score " << std::setprecision(0) << score);
+        debugs(39, 3, "carpSelectParent: key=" << key << " name=" << tp->name << " combined_hash=" << combined_hash  <<
+               " score=" << std::setprecision(0) << score);
 
         if ((score > high_score) && peerHTTPOkay(tp, request)) {
             p = tp;
@@ -210,7 +252,7 @@ carpSelectParent(HttpRequest * request)
 static void
 carpCachemgr(StoreEntry * sentry)
 {
-    peer *p;
+    CachePeer *p;
     int sumfetches = 0;
     storeAppendPrintf(sentry, "%24s %10s %10s %10s %10s\n",
                       "Hostname",

@@ -50,8 +50,6 @@ struct _cossindex {
     dlink_node node;
 };
 
-
-
 /**
  \ingroup COSS
  * Per-storeiostate info
@@ -79,7 +77,7 @@ public:
     off_t st_size;
     void read_(char *buf, size_t size, off_t offset, STRCB * callback, void *callback_data);
     void write(char const *buf, size_t size, off_t offset, FREE * free_func);
-    void close();
+    virtual void close(int);
     void doCallback(int errflag);
     void lockMemBuf();
 
@@ -90,7 +88,6 @@ MEMPROXY_CLASS_INLINE(CossState);
 
 /// \ingroup COSS
 typedef struct _cossindex CossIndexNode;
-
 
 /**
  \ingroup COSS

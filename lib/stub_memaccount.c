@@ -1,12 +1,8 @@
-/*
- * $Id$
- */
-
 /* Stub function for programs not implementing statMemoryAccounted */
-#include "config.h"
+#include "squid.h"
 #include "util.h"
-double
+int
 statMemoryAccounted(void)
 {
-    return -1.0;
+    return -1;
 }

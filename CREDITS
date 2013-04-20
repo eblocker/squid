@@ -1,5 +1,3 @@
-$Id$
-
 ==============================================================================
 
 SQUID Internet Object Cache  http://www.squid-cache.org
@@ -263,6 +261,38 @@ From Linux libc-5.4.46.
 
 ==============================================================================
 
+lib/eui64_aton.h lib/eui64_aton.c:
+
+/*-
+ * Copyright 2004 The Aerospace Corporation.  All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *
+ * 1.  Redistributions of source code must retain the above copyright
+ *     notice, this list of conditions, and the following disclaimer.
+ * 2.  Redistributions in binary form must reproduce the above copyright
+ *     notice, this list of conditions, and the following disclaimer in the
+ *     documentation and/or other materials provided with the distribution.
+ * 3.  The name of The Aerospace Corporation may not be used to endorse or
+ *     promote products derived from this software.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE AEROSPACE CORPORATION "AS IS" AND
+ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED.  IN NO EVENT SHALL THE AEROSPACE CORPORATION BE LIABLE
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+ * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+ * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+ * SUCH DAMAGE.
+ */
+
+==============================================================================
+
 mcast_encode() in src/access_log.c is derived from Mark Atkinson's
 (mark_a@cix.compulink.co.uk) "Tiny Encryption Algorithm".
 http://www.io.com/~paulhart/game/algorithms/tea.html
@@ -306,6 +336,28 @@ lib/strnstr.cc:
  * @(#)strstr.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/string/strnstr.c,v 1.2.2.1 2001/12/09 06:50:03 mike Exp $
  * $DragonFly: src/lib/libc/string/strnstr.c,v 1.4 2006/03/20 17:24:20 dillon Exp $
+ */
+
+==============================================================================
+
+lib/xstrto.cc:
+
+/*
+ * (C) 2000-2006 by the netfilter coreteam <coreteam@netfilter.org>:
+ *
+ *      This program is free software; you can redistribute it and/or modify
+ *      it under the terms of the GNU General Public License as published by
+ *      the Free Software Foundation; either version 2 of the License, or
+ *      (at your option) any later version.
+ *
+ *      This program is distributed in the hope that it will be useful,
+ *      but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *      MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *      GNU General Public License for more details.
+ *
+ *      You should have received a copy of the GNU General Public License
+ *      along with this program; if not, write to the Free Software
+ *      Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
 ==============================================================================
@@ -391,9 +443,183 @@ lib/libTrie/*:
 include/IPAddress.h lib/IPAddress.cc:
 include/rfc3596.h lib/rfc3596.cc:
 src/ICMPv6.h src/ICMPv6.cc:
+helpers/url_rewrite/fake/ fake.h, fake.cc, url_fake_rewrite.sh:
 
- This code is copyright (C) 2007 by Treehouse Networks Ltd
+ This code is copyright (C) 2007-2009 by Treehouse Networks Ltd
  of New Zealand. It is published and Licensed as an extension of
  squid under the same conditions as the main squid application.
+
+==============================================================================
+
+helpers/negotiate_auth/kerberos/ *
+
+/*
+ * -----------------------------------------------------------------------------
+ *
+ * Author: Markus Moeller (markus_moeller at compuserve.com)
+ *
+ * Copyright (C) 2007 Markus Moeller. All rights reserved.
+ *
+ *   This program is free software; you can redistribute it and/or modify
+ *   it under the terms of the GNU General Public License as published by
+ *   the Free Software Foundation; either version 2 of the License, or
+ *   (at your option) any later version.
+ *
+ *   This program is distributed in the hope that it will be useful,
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *   GNU General Public License for more details.
+ *
+ *   You should have received a copy of the GNU General Public License
+ *   along with this program; if not, write to the Free Software
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307, USA.
+ *
+ *   As a special exemption, M Moeller gives permission to link this program
+ *   with MIT, Heimdal or other GSS/Kerberos libraries, and distribute
+ *   the resulting executable, without including the source code for
+ *   the Libraries in the source distribution.
+ *
+ * -----------------------------------------------------------------------------
+ */
+
+==============================================================================
+
+compat/strsep.h, lib/strsep.c
+
+ * Copyright (C) 2004 Free Software Foundation, Inc.
+ * Written by Yoann Vandoorselaere <yoann@prelude-ids.org>
+ * 
+ * The file is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) any later version.
+ * 
+ * This file is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ * 
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this file; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307
+ * USA.
+
+==============================================================================
+
+helpers/external_acl/kerberos_ldap_group/support_ldap.cc
+
+/* get_attributes is partly from OpenLDAP Software <http://www.openldap.org/>.
+ *
+ * Copyright 1998-2009 The OpenLDAP Foundation.
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted only as authorized by the OpenLDAP
+ * Public License.
+ *
+ * A copy of this license is available in the file LICENSE in the
+ * top-level directory of the distribution or, alternatively, at
+ * <http://www.OpenLDAP.org/license.html>.
+ */
+
+==============================================================================
+
+helpers/log_daemon/DB/doc/:
+helpers/log_daemon/DB/log_db_daemon.pl.in:
+
+  Copyright (C) 2008 by Marcello Romani
+
+  This library is free software; you can redistribute it and/or modify
+  it under the same terms as Perl itself, either Perl version 5.8.8 or,
+  at your option, any later version of Perl 5 you may have available.
+
+==============================================================================
+
+icons/SN.png:
+
+  Squid NOW icon - copyright Squid Project
+
+  This work is licensed under the
+  Creative Commons Attribution-NonCommercial-ShareAlike 3.0 Unported Liscence
+  (CC BY-NC-SA 3.0)
+  [ http://creativecommons.org/licenses/by-nc-sa/3.0/ ]
+
+==============================================================================
+
+icons/silk/:
+
+  Silk icon set 1.3
+  _________________________________________
+  Mark James
+  http://www.famfamfam.com/lab/icons/silk/
+  _________________________________________
+
+  This work is licensed under a
+  Creative Commons Attribution 2.5 License.
+  [ http://creativecommons.org/licenses/by/2.5/ ]
+
+  This means you may use it for any purpose,
+  and make any changes you like.
+  All I ask is that you include a link back
+  to this page in your credits.
+
+  Are you using this icon set? Send me an email
+  (including a link or picture if available) to
+  mjames@gmail.com
+
+  Any other questions about this icon set please
+  contact mjames@gmail.com
+
+
+  The icons can also be used under Creative Commons Attribution 3.0 License
+  (Hi Debian folks!) with the following requirements:
+
+    As an author, I would appreciate a reference to my authorship of
+    the Silk icon set contents within a readme file or equivalent
+    documentation for the software which includes the set or a subset
+    of the icons contained within. 
+
+==============================================================================
+
+shm_portable_segment_name_is_path() implementation:
+
+  Derived from boost/interprocess/shared_memory_object.hpp and
+      boost/interprocess/detail/workaround.hpp at http://www.boost.org/
+
+  (C) Copyright Ion Gaztanaga 2005-2009.
+  Distributed under the Boost Software License, Version 1.0
+
+  Boost Software License - Version 1.0 - August 17th, 2003
+
+  Permission is hereby granted, free of charge, to any person or organization
+  obtaining a copy of the software and accompanying documentation covered by
+  this license (the "Software") to use, reproduce, display, distribute,
+  execute, and transmit the Software, and to prepare derivative works of the
+  Software, and to permit third-parties to whom the Software is furnished to
+  do so, all subject to the following:
+
+  The copyright notices in the Software and this entire statement, including
+  the above license grant, this restriction and the following disclaimer,
+  must be included in all copies of the Software, in whole or in part, and
+  all derivative works of the Software, unless such copies or derivative
+  works are solely in the form of machine-executable object code generated by
+  a source language processor.
+
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+  FITNESS FOR A PARTICULAR PURPOSE, TITLE AND NON-INFRINGEMENT. IN NO EVENT
+  SHALL THE COPYRIGHT HOLDERS OR ANYONE DISTRIBUTING THE SOFTWARE BE LIABLE
+  FOR ANY DAMAGES OR OTHER LIABILITY, WHETHER IN CONTRACT, TORT OR OTHERWISE,
+  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+  DEALINGS IN THE SOFTWARE.
+
+==============================================================================
+
+errors/errorpage.css:
+
+ Stylesheet for Squid Error pages
+ Adapted from design by Free CSS Templates
+ http://www.freecsstemplates.org
+ Released for free under a Creative Commons Attribution 2.5 License
 
 ==============================================================================

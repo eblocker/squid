@@ -12,7 +12,7 @@ Depends: ${shlibs:Depends}, ${misc:Depends}, netbase, adduser, logrotate (>= 3.5
 Suggests: squidclient, squid-cgi, resolvconf (>= 0.40), smbclient, ufw
 Description: Full featured Web Proxy cache (HTTP proxy)
  Squid is a high-performance proxy caching server for web clients, supporting
- FTP, gopher, and HTTP data objects.
+ FTP, gopher, ICY and HTTP data objects.
  .
  Squid version 3 is a major rewrite of Squid in C++ and introduces a number of
  new features including ICAP and ESI support.
@@ -24,7 +24,7 @@ Priority: extra
 Depends: squid3 (= ${binary:Version}), ${misc:Depends}
 Description: Full featured Web Proxy cache (HTTP proxy) - Debug symbols
  Squid is a high-performance proxy caching server for web clients, supporting
- FTP, gopher, and HTTP data objects.
+ FTP, gopher, ICY and HTTP data objects.
  .
  Squid version 3 is a major rewrite of Squid in C++ and introduces a number of
  new features including ICAP and ESI support.
@@ -36,7 +36,7 @@ Architecture: all
 Depends: ${misc:Depends}, squid-langpack (>= 20110214-1)
 Description: Full featured Web Proxy cache (HTTP proxy) - common files
  Squid is a high-performance proxy caching server for web clients, supporting
- FTP, gopher, and HTTP data objects.
+ FTP, gopher, ICY and HTTP data objects.
  .
  Squid version 3 is a major rewrite of Squid in C++ and introduces a number of
  new features including ICAP and ESI support.
@@ -51,7 +51,7 @@ Conflicts: squid3-client
 Replaces: squid3-client
 Description: Full featured Web Proxy cache (HTTP proxy) - control utility
  Squid is a high-performance proxy caching server for web clients, supporting
- FTP, gopher, and HTTP data objects.
+ FTP, gopher, ICY and HTTP data objects.
  .
  Squid version 3 is a major rewrite of Squid in C++ and introduces a number of
  new features including ICAP and ESI support.
@@ -67,10 +67,22 @@ Conflicts: squid3-cgi
 Replaces: squid3-cgi
 Description: Full featured Web Proxy cache (HTTP proxy) - control CGI
  Squid is a high-performance proxy caching server for web clients, supporting
- FTP, gopher, and HTTP data objects.
+ FTP, gopher, ICY and HTTP data objects.
  .
  Squid version 3 is a major rewrite of Squid in C++ and introduces a number of
  new features including ICAP and ESI support.
  .
  This package contains a CGI program that can be used to query and administrate 
- a `squid' proxy cache through a web browser.
+ 
+Package: squid-purge
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: Full featured Web Proxy cache (HTTP proxy) - control utility
+ Squid is a high-performance proxy caching server for web clients, supporting
+ FTP, gopher, ICY and HTTP data objects.
+ .
+ Squid version 3 is a major rewrite of Squid in C++ and introduces a number of
+ new features including ICAP and ESI support.
+ .
+ This package contains a small utility that can be used to manage the disk cache
+ from the command line.

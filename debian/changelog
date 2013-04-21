@@ -8,9 +8,11 @@ squid3 (3.3.3-1) UNRELEASED; urgency=low
 
   * debian/control
     - Added dependency on libecap2-dev
+    - Added squid-purge package
 
   * debian/source
     - Enabled ECAP support
+    - Fixed configure invocation to match new syntax
 
   * debian/watch
     - Updated for 3.3

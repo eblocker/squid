@@ -13,6 +13,7 @@ squid3 (3.3.3-1) UNRELEASED; urgency=low
   * debian/source
     - Enabled ECAP support
     - Fixed configure invocation to match new syntax
+    - Removed unneeded rename of helper man pages
 
   * debian/watch
     - Updated for 3.3

@@ -6,6 +6,8 @@ squid3 (3.3.3-1) UNRELEASED; urgency=low
       + debian/patches/30-CVE-2012-5643-CVE-2013-0189.patch
       + debian/patches/fix-701123-regression-in-cachemgr.patch
     - Includes upstream fix for CVE-2009-0801 (Closes: #521052)
+    - Includes upstream fix for rejection of benign request containing variants
+      of double CR (Closes: #669148)
 
   * debian/control
     - Added dependency on libecap2-dev

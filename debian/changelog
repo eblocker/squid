@@ -1,4 +1,4 @@
-squid3 (3.3.3-1) UNRELEASED; urgency=low
+squid3 (3.3.3-1) unstable; urgency=low
 
   * New upstream release (Closes: #694633, #701799, #702540)
     - Removed upstream patches
@@ -26,7 +26,7 @@ squid3 (3.3.3-1) UNRELEASED; urgency=low
   * debian/squid3.logrotate
     - Added check for existing binary in logrotate script (Closes: #703954)
 
- -- Luigi Gangitano <luigi@debian.org>  Sat, 20 Apr 2013 20:02:11 +0200
+ -- Luigi Gangitano <luigi@debian.org>  Sun, 21 Apr 2013 23:51:11 +0200
 
 squid3 (3.1.20-2.2) unstable; urgency=low
 

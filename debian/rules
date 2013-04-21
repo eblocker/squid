@@ -28,14 +28,15 @@ DEB_CONFIGURE_EXTRA_FLAGS := --datadir=/usr/share/squid3 \
 		--enable-icap-client \
 		--enable-follow-x-forwarded-for \
 		--enable-auth-basic="DB,getpwnam,LDAP,MSNT,MSNT-multi-domain,NCSA,NIS,PAM,POP3,RADIUS,SASL,SMB" \
-		--enable-auth-digest="ldap,password" \
-		--enable-auth-negotiate="kerberos" \
+		--enable-auth-digest="file,LDAP" \
+		--enable-auth-negotiate="kerberos,wrapper" \
 		--enable-auth-ntlm="smb_lm" \
-		--enable-external-acl-helpers="ip_user,ldap_group,session,unix_group,wbinfo_group" \
+		--enable-external-acl-helpers="file_userip,kerberos_ldap_group,LDAP_group,session,SQL_session,unix_group,wbinfo_group" \
 		--enable-arp-acl \
 		--enable-url-rewrite-helpers="fake" \
 		--enable-eui \
 		--enable-esi \
+		--enable-icmp \
 		--enable-zph-qos \
 		--enable-ecap \
 		--disable-translation \

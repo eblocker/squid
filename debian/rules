@@ -39,6 +39,7 @@ DEB_CONFIGURE_EXTRA_FLAGS := --datadir=/usr/share/squid3 \
 		--enable-zph-qos \
 		--enable-ecap \
 		--disable-translation \
+		--with-swapdir=/var/spool/squid3 \
 		--with-logdir=/var/log/squid3 \
 		--with-pidfile=/var/run/squid3.pid \
 		--with-filedescriptors=65536 \

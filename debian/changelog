@@ -18,6 +18,7 @@ squid3 (3.3.3-1) UNRELEASED; urgency=low
     - Fixed configure invocation to match new syntax
     - Removed unneeded rename of helper man pages
     - Fixed list of helpers to build, adding fake agents (Closes: #644280)
+      and negotiate wrapper (Closes: #656304)
 
   * debian/watch
     - Updated for 3.3

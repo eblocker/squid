@@ -1,6 +1,6 @@
 squid3 (3.3.3-1) UNRELEASED; urgency=low
 
-  * New upstream release
+  * New upstream release (Closes: #694633, #701799, #702540)
     - Removed upstream patches
       + debian/patches/20-ipv6-fix
       + debian/patches/30-CVE-2012-5643-CVE-2013-0189.patch

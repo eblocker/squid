@@ -17,6 +17,7 @@ squid3 (3.3.3-2) UNRELEASED; urgency=low
     - Removed --enable-arp-acl options obsoleted by --enable-eui
     - Fixed FTBFS on hurd due to missing netfilter support
     - Enabled Rock store type support
+    - Added SETUID bit to pinger program
 
   * debian/watch
     - Fixed pattern to match all the released versions of 3.3 

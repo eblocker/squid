@@ -50,7 +50,8 @@ DEB_HOST_ARCH_OS := $(shell dpkg-architecture -qDEB_HOST_ARCH_OS 2>/dev/null)
 
 ifeq ($(DEB_HOST_ARCH_OS), kfreebsd)
 		DEB_CONFIGURE_EXTRA_FLAGS += --enable-kqueue
-else
+endif
+ifeq ($(DEB_HOST_ARCH_OS), linux)
 		DEB_CONFIGURE_EXTRA_FLAGS += --enable-linux-netfilter
 endif
 

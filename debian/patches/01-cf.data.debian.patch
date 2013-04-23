@@ -20,25 +20,31 @@ Description: Default configuration file for debian
  
  	"utf8" on|off
  	HTTP uses iso-latin-1 as character set, while some authentication
-@@ -477,7 +477,7 @@
+@@ -477,7 +477,10 @@
  	of type proxy_auth.  By default, the NTLM authenticator_program
  	is not used.
  
 -	auth_param ntlm program @DEFAULT_PREFIX@/bin/ntlm_auth
-+	auth_param ntlm program @DEFAULT_PREFIX@/lib/squid3/ntlm_auth
++	NOTE: In Debian the ntlm_auth program is distributed in the winbindd package
++	      which is required for this auth scheme to work
++
++	auth_param ntlm program /usr/bin/ntlm_auth
  
  	"children" numberofchildren [startup=N] [idle=N]
  	The maximum number of authenticator processes to spawn (default 5).
-@@ -518,7 +518,7 @@
+@@ -518,7 +521,10 @@
  	The only supported program for this role is the ntlm_auth
  	program distributed as part of Samba, version 4 or later.
  
 -	auth_param negotiate program @DEFAULT_PREFIX@/bin/ntlm_auth --helper-protocol=gss-spnego
-+	auth_param negotiate program @DEFAULT_PREFIX@/lib/squid3/ntlm_auth --helper-protocol=gss-spnego
++	NOTE: In Debian the ntlm_auth program is distributed in the winbindd package
++	      which is required for this auth scheme to work
++
++	auth_param negotiate program /usr/bin/ntlm_auth --helper-protocol=gss-spnego
  
  	"children" numberofchildren [startup=N] [idle=N]
  	The maximum number of authenticator processes to spawn (default 5).
-@@ -1002,11 +1002,11 @@
+@@ -1002,11 +1008,11 @@
  # Example rule allowing access from your local networks.
  # Adapt to list your (internal) IP networks from where browsing
  # should be allowed
@@ -55,7 +61,7 @@ Description: Default configuration file for debian
  
  acl SSL_ports port 443
  acl Safe_ports port 80		# http
-@@ -1185,7 +1185,7 @@
+@@ -1185,7 +1191,7 @@
  # Example rule allowing access from your local networks.
  # Adapt localnet in the ACL section to list your (internal) IP networks
  # from where browsing should be allowed
@@ -64,7 +70,7 @@ Description: Default configuration file for debian
  http_access allow localhost
  
  # And finally deny all other access to this proxy
-@@ -3775,7 +3775,7 @@
+@@ -3775,7 +3781,7 @@
  
  NAME: logfile_rotate
  TYPE: int
@@ -73,7 +79,7 @@ Description: Default configuration file for debian
  LOC: Config.Log.rotateNumber
  DOC_START
  	Specifies the number of logfile rotations to make when you
-@@ -3794,6 +3794,9 @@
+@@ -3794,6 +3800,9 @@
  
  	Note, from Squid-3.1 this option has no effect on the cache.log,
  	that log can be rotated separately by using debug_options
@@ -83,7 +89,7 @@ Description: Default configuration file for debian
  DOC_END
  
  NAME: emulate_httpd_log
-@@ -7771,8 +7774,8 @@
+@@ -7771,8 +7780,8 @@
  
  	WARNING:
  	  This option will restrict the situations under which IPv6

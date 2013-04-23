@@ -57,6 +57,7 @@ endif
 
 DEB_MAKE_CLEAN_TARGET = distclean
 
+DEB_FIXPERMS_EXCLUDE = /usr/lib/squid3/pinger
 
 install/squid3::
 	install -m 755 -g root -d $(INSTALLDIR)/usr/lib/cgi-bin

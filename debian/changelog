@@ -9,6 +9,9 @@ squid3 (3.3.3-2) UNRELEASED; urgency=low
   * debian/patches/01-cf.data.debian.patch
     - Removed change to visible_hostname defaut value (Closes: #705983)
 
+  * debian/rules
+    - Removed --enable-arp-acl options obsoleted by --enable-eui
+
  -- Luigi Gangitano <luigi@debian.org>  Tue, 23 Apr 2013 15:38:39 +0200
 
 squid3 (3.3.3-1) unstable; urgency=low

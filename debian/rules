@@ -32,7 +32,6 @@ DEB_CONFIGURE_EXTRA_FLAGS := --datadir=/usr/share/squid3 \
 		--enable-auth-negotiate="kerberos,wrapper" \
 		--enable-auth-ntlm="fake,smb_lm" \
 		--enable-external-acl-helpers="file_userip,kerberos_ldap_group,LDAP_group,session,SQL_session,unix_group,wbinfo_group" \
-		--enable-arp-acl \
 		--enable-url-rewrite-helpers="fake" \
 		--enable-eui \
 		--enable-esi \

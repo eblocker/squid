@@ -57,7 +57,7 @@ Description: Full featured Web Proxy cache (HTTP proxy) - control utility
  new features including ICAP and ESI support.
  .
  This package contains a small utility that can be used to get URLs from the 
- command line. It needs to talk to a `squid' proxy server.
+ command line.
 
 Package: squid-cgi
 Architecture: any
@@ -73,6 +73,7 @@ Description: Full featured Web Proxy cache (HTTP proxy) - control CGI
  new features including ICAP and ESI support.
  .
  This package contains a CGI program that can be used to query and administrate 
+ a `squid' proxy cache through a web browser.
  
 Package: squid-purge
 Architecture: any

@@ -4,6 +4,7 @@ squid3 (3.3.3-2) UNRELEASED; urgency=low
 
   * debian/control
     - Added Build-Depend on pkg-config to solve FTBFS when ecap is enabled
+      (Closes: #706025)
     - Fixed package descriptions
     - Added Build-Depend on libnetfilter-conntrack-dev
     - Added Suggests on winbindd for NTLM authentication

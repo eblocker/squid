@@ -14,6 +14,9 @@ squid3 (3.3.3-2) UNRELEASED; urgency=low
     - Removed --enable-arp-acl options obsoleted by --enable-eui
     - Fixed FTBFS on hurd due to missing netfilter support
 
+  * debian/watch
+    - Fixed pattern to match all the released versions of 3.3 
+
  -- Luigi Gangitano <luigi@debian.org>  Tue, 23 Apr 2013 15:38:39 +0200
 
 squid3 (3.3.3-1) unstable; urgency=low

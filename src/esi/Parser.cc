@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 86    ESI processing
  * AUTHOR: Robert Collins
  *
@@ -34,6 +32,7 @@
 
 #include "squid.h"
 #include "esi/Parser.h"
+#include "fatal.h"
 
 char *ESIParser::Type = NULL;
 ESIParser::Register *ESIParser::Parsers = NULL;

@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
  * ----------------------------------------------------------
@@ -34,11 +32,13 @@
 #ifndef SQUID_HTTP_H
 #define SQUID_HTTP_H
 
-#include "StoreIOBuffer.h"
 #include "comm.h"
-#include "forward.h"
+#include "HttpStateFlags.h"
 #include "Server.h"
-#include "ChunkedCodingParser.h"
+
+class ChunkedCodingParser;
+class FwdState;
+class HttpHeader;
 
 class HttpStateData : public ServerStateData
 {
@@ -48,26 +48,26 @@ public:
     ~HttpStateData();
 
     static void httpBuildRequestHeader(HttpRequest * request,
-                                       HttpRequest * orig_request,
                                        StoreEntry * entry,
+                                       const AccessLogEntryPointer &al,
                                        HttpHeader * hdr_out,
-                                       const http_state_flags flags);
+                                       const HttpStateFlags &flags);
 
-    virtual int dataDescriptor() const;
+    virtual const Comm::ConnectionPointer & dataConnection() const;
     /* should be private */
     bool sendRequest();
     void processReplyHeader();
     void processReplyBody();
     void readReply(const CommIoCbParams &io);
     virtual void maybeReadVirginBody(); // read response data from the network
+
+    // Determine whether the response is a cacheable representation
     int cacheableReply();
 
-    peer *_peer;		/* peer request made to */
+    CachePeer *_peer;		/* CachePeer request made to */
     int eof;			/* reached end-of-object? */
     int lastChunk;		/* reached last chunk of a chunk-encoded reply */
-    HttpRequest *orig_request;
-    int fd;
-    http_state_flags flags;
+    HttpStateFlags flags;
     size_t read_sz;
     int header_bytes_read;	// to find end of response,
     int64_t reply_bytes_read;	// without relying on StoreEntry
@@ -79,9 +79,17 @@ public:
     void processSurrogateControl(HttpReply *);
 
 protected:
-    virtual HttpRequest *originalRequest();
+    void processReply();
+    void proceedAfter1xx();
+    void handle1xx(HttpReply *msg);
 
 private:
+    /**
+     * The current server connection.
+     * Maybe open, closed, or NULL.
+     * Use doneWithServer() to check if the server is available for use.
+     */
+    Comm::ConnectionPointer serverConnection;
     AsyncCall::Pointer closeHandler;
     enum ConnectionStatus {
         INCOMPLETE_MSG,
@@ -96,7 +104,9 @@ private:
     bool continueAfterParsingHeader();
     void truncateVirginBody();
 
+    virtual void start();
     virtual void haveParsedReplyHeaders();
+    virtual bool getMoreRequestBody(MemBuf &buf);
     virtual void closeServer(); // end communication with the server
     virtual bool doneWithServer() const; // did we end communication?
     virtual void abortTransaction(const char *reason); // abnormal termination
@@ -107,17 +117,17 @@ private:
 
     void writeReplyBody();
     bool decodeAndWriteReplyBody();
+    bool finishingBrokenPost();
+    bool finishingChunkedRequest();
     void doneSendingRequestBody();
     void requestBodyHandler(MemBuf &);
     virtual void sentRequestBody(const CommIoCbParams &io);
-    void sendComplete(const CommIoCbParams &io);
+    void wroteLast(const CommIoCbParams &io);
+    void sendComplete();
     void httpStateConnClosed(const CommCloseCbParams &params);
     void httpTimeout(const CommTimeoutCbParams &params);
 
-    mb_size_t buildRequestPrefix(HttpRequest * request,
-                                 HttpRequest * orig_request,
-                                 StoreEntry * entry,
-                                 MemBuf * mb);
+    mb_size_t buildRequestPrefix(MemBuf * mb);
     static bool decideIfWeDoRanges (HttpRequest * orig_request);
     bool peerSupportsConnectionPinning() const;
 
@@ -125,5 +135,9 @@ private:
 private:
     CBDATA_CLASS2(HttpStateData);
 };
+
+int httpCachable(const HttpRequestMethod&);
+void httpStart(FwdState *);
+const char *httpMakeVaryMark(HttpRequest * request, HttpReply const * reply);
 
 #endif /* SQUID_HTTP_H */

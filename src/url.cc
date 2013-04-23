@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  * DEBUG: section 23    URL Parsing
  * AUTHOR: Duane Wessels
  *
@@ -33,13 +31,17 @@
  *
  */
 
-#include "URL.h"
+#include "squid.h"
+#include "globals.h"
 #include "HttpRequest.h"
-#include "URLScheme.h"
 #include "rfc1738.h"
+#include "SquidConfig.h"
+#include "SquidString.h"
+#include "URL.h"
+#include "URLScheme.h"
 
 static HttpRequest *urlParseFinish(const HttpRequestMethod& method,
-                                   const protocol_t protocol,
+                                   const AnyP::ProtocolType protocol,
                                    const char *const urlpath,
                                    const char *const host,
                                    const char *const login,
@@ -64,9 +66,9 @@ urlInitialize(void)
 {
     debugs(23, 5, "urlInitialize: Initializing...");
     /* this ensures that the number of protocol strings is the same as
-     * the enum slots allocated because the last enum is always 'TOTAL'.
+     * the enum slots allocated because the last enum is always 'MAX'.
      */
-    assert(strcmp(ProtocolStr[PROTO_MAX], "TOTAL") == 0);
+    assert(strcmp(AnyP::ProtocolType_str[AnyP::PROTO_MAX], "MAX") == 0);
     /*
      * These test that our matchDomainName() function works the
      * way we expect it to.
@@ -96,7 +98,7 @@ urlInitialize(void)
  * backwards compatibility, e defaults to NULL, in which case we
  * assume b is NULL-terminated.
  */
-protocol_t
+AnyP::ProtocolType
 urlParseProtocol(const char *b, const char *e)
 {
     /*
@@ -113,76 +115,76 @@ urlParseProtocol(const char *b, const char *e)
     /* test common stuff first */
 
     if (strncasecmp(b, "http", len) == 0)
-        return PROTO_HTTP;
+        return AnyP::PROTO_HTTP;
 
     if (strncasecmp(b, "ftp", len) == 0)
-        return PROTO_FTP;
+        return AnyP::PROTO_FTP;
 
     if (strncasecmp(b, "https", len) == 0)
-        return PROTO_HTTPS;
+        return AnyP::PROTO_HTTPS;
 
     if (strncasecmp(b, "file", len) == 0)
-        return PROTO_FTP;
+        return AnyP::PROTO_FTP;
 
     if (strncasecmp(b, "coap", len) == 0)
-        return PROTO_COAP;
+        return AnyP::PROTO_COAP;
 
     if (strncasecmp(b, "coaps", len) == 0)
-        return PROTO_COAPS;
+        return AnyP::PROTO_COAPS;
 
     if (strncasecmp(b, "gopher", len) == 0)
-        return PROTO_GOPHER;
+        return AnyP::PROTO_GOPHER;
 
     if (strncasecmp(b, "wais", len) == 0)
-        return PROTO_WAIS;
+        return AnyP::PROTO_WAIS;
 
     if (strncasecmp(b, "cache_object", len) == 0)
-        return PROTO_CACHEOBJ;
+        return AnyP::PROTO_CACHE_OBJECT;
 
     if (strncasecmp(b, "urn", len) == 0)
-        return PROTO_URN;
+        return AnyP::PROTO_URN;
 
     if (strncasecmp(b, "whois", len) == 0)
-        return PROTO_WHOIS;
+        return AnyP::PROTO_WHOIS;
 
     if (strncasecmp(b, "internal", len) == 0)
-        return PROTO_INTERNAL;
+        return AnyP::PROTO_INTERNAL;
 
-    return PROTO_NONE;
+    return AnyP::PROTO_NONE;
 }
 
 int
-urlDefaultPort(protocol_t p)
+urlDefaultPort(AnyP::ProtocolType p)
 {
     switch (p) {
 
-    case PROTO_HTTP:
+    case AnyP::PROTO_HTTP:
         return 80;
 
-    case PROTO_HTTPS:
+    case AnyP::PROTO_HTTPS:
         return 443;
 
-    case PROTO_FTP:
+    case AnyP::PROTO_FTP:
         return 21;
 
-    case PROTO_COAP:
-    case PROTO_COAPS:
+    case AnyP::PROTO_COAP:
+    case AnyP::PROTO_COAPS:
         // coaps:// default is TBA as of draft-ietf-core-coap-08.
         // Assuming IANA policy of allocating same port for base and TLS protocol versions will occur.
         return 5683;
 
-    case PROTO_GOPHER:
+    case AnyP::PROTO_GOPHER:
         return 70;
 
-    case PROTO_WAIS:
+    case AnyP::PROTO_WAIS:
         return 210;
 
-    case PROTO_CACHEOBJ:
+    case AnyP::PROTO_CACHE_OBJECT:
 
-    case PROTO_INTERNAL:
+    case AnyP::PROTO_INTERNAL:
         return CACHE_HTTP_PORT;
 
-    case PROTO_WHOIS:
+    case AnyP::PROTO_WHOIS:
         return 43;
 
     default:
@@ -221,7 +223,7 @@ urlParse(const HttpRequestMethod& method, char *url, HttpRequest *request)
     char *t = NULL;
     char *q = NULL;
     int port;
-    protocol_t protocol = PROTO_NONE;
+    AnyP::ProtocolType protocol = AnyP::PROTO_NONE;
     int l;
     int i;
     const char *src;
@@ -231,7 +233,7 @@ urlParse(const HttpRequestMethod& method, char *url, HttpRequest *request)
     if ((l = strlen(url)) + Config.appendDomainLen > (MAX_URL - 1)) {
         /* terminate so it doesn't overflow other buffers */
         *(url + (MAX_URL >> 1)) = '\0';
-        debugs(23, 1, "urlParse: URL too large (" << l << " bytes)");
+        debugs(23, DBG_IMPORTANT, "urlParse: URL too large (" << l << " bytes)");
         return NULL;
     }
     if (method == METHOD_CONNECT) {
@@ -243,7 +245,7 @@ urlParse(const HttpRequestMethod& method, char *url, HttpRequest *request)
 
     } else if ((method == METHOD_OPTIONS || method == METHOD_TRACE) &&
                strcmp(url, "*") == 0) {
-        protocol = PROTO_HTTP;
+        protocol = AnyP::PROTO_HTTP;
         port = urlDefaultPort(protocol);
         return urlParseFinish(method, protocol, url, host, login, port, request);
     } else if (!strncmp(url, "urn:", 4)) {
@@ -253,7 +255,7 @@ urlParse(const HttpRequestMethod& method, char *url, HttpRequest *request)
         src = url;
         i = 0;
         /* Find first : - everything before is protocol */
-        for (i = 0, dst = proto; i < l && *src != ':'; i++, src++, dst++) {
+        for (i = 0, dst = proto; i < l && *src != ':'; ++i, ++src, ++dst) {
             *dst = *src;
         }
         if (i >= l)
@@ -270,7 +272,7 @@ urlParse(const HttpRequestMethod& method, char *url, HttpRequest *request)
         // bug 1881: If we don't get a "/" then we imply it was there
         // bug 3074: We could just be given a "?" or "#". These also imply "/"
         // bug 3233: whitespace is also a hostname delimiter.
-        for (dst = host; i < l && *src != '/' && *src != '?' && *src != '#' && *src != '\0' && !xisspace(*src); i++, src++, dst++) {
+        for (dst = host; i < l && *src != '/' && *src != '?' && *src != '#' && *src != '\0' && !xisspace(*src); ++i, ++src, ++dst) {
             *dst = *src;
         }
 
@@ -291,7 +293,7 @@ urlParse(const HttpRequestMethod& method, char *url, HttpRequest *request)
             dst = urlpath;
         }
         /* Then everything from / (inclusive) until \r\n or \0 - thats urlpath */
-        for (; i < l && *src != '\r' && *src != '\n' && *src != '\0'; i++, src++, dst++) {
+        for (; i < l && *src != '\r' && *src != '\n' && *src != '\0'; ++i, ++src, ++dst) {
             *dst = *src;
         }
 
@@ -300,7 +302,8 @@ urlParse(const HttpRequestMethod& method, char *url, HttpRequest *request)
             return NULL;
         /* If the URL path is empty we set it to be "/" */
         if (dst == urlpath) {
-            *(dst++) = '/';
+            *dst = '/';
+            ++dst;
         }
         *dst = '\0';
 
@@ -308,11 +311,14 @@ urlParse(const HttpRequestMethod& method, char *url, HttpRequest *request)
         port = urlDefaultPort(protocol);
 
         /* Is there any login information? (we should eventually parse it above) */
-        if ((t = strrchr(host, '@'))) {
-            strcpy((char *) login, (char *) host);
+        t = strrchr(host, '@');
+        if (t != NULL) {
+            strncpy((char *) login, (char *) host, sizeof(login)-1);
+            login[sizeof(login)-1] = '\0';
             t = strrchr(login, '@');
             *t = 0;
-            strcpy((char *) host, t + 1);
+            strncpy((char *) host, t + 1, sizeof(host)-1);
+            host[sizeof(host)-1] = '\0';
         }
 
         /* Is there any host information? (we should eventually parse it above) */
@@ -321,18 +327,20 @@ urlParse(const HttpRequestMethod& method, char *url, HttpRequest *request)
             dst = host;
             /* only for IPv6 sadly, pre-IPv6/URL code can't handle the clean result properly anyway. */
             src = host;
-            src++;
+            ++src;
             l = strlen(host);
             i = 1;
-            for (; i < l && *src != ']' && *src != '\0'; i++, src++, dst++) {
+            for (; i < l && *src != ']' && *src != '\0'; ++i, ++src, ++dst) {
                 *dst = *src;
             }
 
             /* we moved in-place, so truncate the actual hostname found */
-            *(dst++) = '\0';
+            *dst = '\0';
+            ++dst;
 
             /* skip ahead to either start of port, or original EOS */
-            while (*dst != '\0' && *dst != ':') dst++;
+            while (*dst != '\0' && *dst != ':')
+                ++dst;
             t = dst;
         } else {
             t = strrchr(host, ':');
@@ -346,28 +354,30 @@ urlParse(const HttpRequestMethod& method, char *url, HttpRequest *request)
         }
 
         // Bug 3183 sanity check: If scheme is present, host must be too.
-        if (protocol != PROTO_NONE && (host == NULL || *host == '\0')) {
+        if (protocol != AnyP::PROTO_NONE && (host == NULL || *host == '\0')) {
             debugs(23, DBG_IMPORTANT, "SECURITY ALERT: Missing hostname in URL '" << url << "'. see access.log for details.");
             return NULL;
         }
 
         if (t && *t == ':') {
             *t = '\0';
-            t++;
+            ++t;
             port = atoi(t);
         }
     }
 
-    for (t = host; *t; t++)
+    for (t = host; *t; ++t)
         *t = xtolower(*t);
 
     if (stringHasWhitespace(host)) {
         if (URI_WHITESPACE_STRIP == Config.uri_whitespace) {
             t = q = host;
             while (*t) {
-                if (!xisspace(*t))
-                    *q++ = *t;
-                t++;
+                if (!xisspace(*t)) {
+                    *q = *t;
+                    ++q;
+                }
+                ++t;
             }
             *q = '\0';
         }
@@ -376,7 +386,7 @@ urlParse(const HttpRequestMethod& method, char *url, HttpRequest *request)
     debugs(23, 3, "urlParse: Split URL '" << url << "' into proto='" << proto << "', host='" << host << "', port='" << port << "', path='" << urlpath << "'");
 
     if (Config.onoff.check_hostnames && strspn(host, Config.onoff.allow_underscore ? valid_hostname_chars_u : valid_hostname_chars) != strlen(host)) {
-        debugs(23, 1, "urlParse: Illegal character in hostname '" << host << "'");
+        debugs(23, DBG_IMPORTANT, "urlParse: Illegal character in hostname '" << host << "'");
         return NULL;
     }
 
@@ -390,7 +400,7 @@ urlParse(const HttpRequestMethod& method, char *url, HttpRequest *request)
 
     /* reject duplicate or leading dots */
     if (strstr(host, "..") || *host == '.') {
-        debugs(23, 1, "urlParse: Illegal hostname '" << host << "'");
+        debugs(23, DBG_IMPORTANT, "urlParse: Illegal hostname '" << host << "'");
         return NULL;
     }
 
@@ -399,11 +409,11 @@ urlParse(const HttpRequestMethod& method, char *url, HttpRequest *request)
         return NULL;
     }
 
-#ifdef HARDCODE_DENY_PORTS
+#if HARDCODE_DENY_PORTS
     /* These ports are filtered in the default squid.conf, but
      * maybe someone wants them hardcoded... */
     if (port == 7 || port == 9 || port == 19) {
-        debugs(23, 0, "urlParse: Deny access to port " << port);
+        debugs(23, DBG_CRITICAL, "urlParse: Deny access to port " << port);
         return NULL;
     }
 #endif
@@ -432,9 +442,11 @@ urlParse(const HttpRequestMethod& method, char *url, HttpRequest *request)
         default:
             t = q = urlpath;
             while (*t) {
-                if (!xisspace(*t))
-                    *q++ = *t;
-                t++;
+                if (!xisspace(*t)) {
+                    *q = *t;
+                    ++q;
+                }
+                ++t;
             }
             *q = '\0';
         }
@@ -450,7 +462,7 @@ urlParse(const HttpRequestMethod& method, char *url, HttpRequest *request)
  */
 static HttpRequest *
 urlParseFinish(const HttpRequestMethod& method,
-               const protocol_t protocol,
+               const AnyP::ProtocolType protocol,
                const char *const urlpath,
                const char *const host,
                const char *const login,
@@ -474,14 +486,13 @@ static HttpRequest *
 urnParse(const HttpRequestMethod& method, char *urn, HttpRequest *request)
 {
     debugs(50, 5, "urnParse: " << urn);
-
     if (request) {
-        request->initHTTP(method, PROTO_URN, urn + 4);
+        request->initHTTP(method, AnyP::PROTO_URN, urn + 4);
         safe_free(request->canonical);
         return request;
     }
 
-    return new HttpRequest(method, PROTO_URN, urn + 4);
+    return new HttpRequest(method, AnyP::PROTO_URN, urn + 4);
 }
 
 const char *
@@ -494,7 +505,7 @@ urlCanonical(HttpRequest * request)
     if (request->canonical)
         return request->canonical;
 
-    if (request->protocol == PROTO_URN) {
+    if (request->protocol == AnyP::PROTO_URN) {
         snprintf(urlbuf, MAX_URL, "urn:" SQUIDSTRINGPH,
                  SQUIDSTRINGPRINT(request->urlpath));
     } else {
@@ -511,8 +522,9 @@ urlCanonical(HttpRequest * request)
             if (request->port != urlDefaultPort(request->protocol))
                 snprintf(portbuf, 32, ":%d", request->port);
 
+            const URLScheme sch = request->protocol; // temporary, until bug 1961 URL handling is fixed.
             snprintf(urlbuf, MAX_URL, "%s://%s%s%s%s" SQUIDSTRINGPH,
-                     ProtocolStr[request->protocol],
+                     sch.const_str(),
                      request->login,
                      *request->login ? "@" : null_string,
                      request->GetHost(),
@@ -538,7 +550,7 @@ urlCanonicalClean(const HttpRequest * request)
     LOCAL_ARRAY(char, loginbuf, MAX_LOGIN_SZ + 1);
     char *t;
 
-    if (request->protocol == PROTO_URN) {
+    if (request->protocol == AnyP::PROTO_URN) {
         snprintf(buf, MAX_URL, "urn:" SQUIDSTRINGPH,
                  SQUIDSTRINGPRINT(request->urlpath));
     } else {
@@ -568,8 +580,9 @@ urlCanonicalClean(const HttpRequest * request)
                 strcat(loginbuf, "@");
             }
 
+            const URLScheme sch = request->protocol; // temporary, until bug 1961 URL handling is fixed.
             snprintf(buf, MAX_URL, "%s://%s%s%s" SQUIDSTRINGPH,
-                     ProtocolStr[request->protocol],
+                     sch.const_str(),
                      loginbuf,
                      request->GetHost(),
                      portbuf,
@@ -579,8 +592,10 @@ urlCanonicalClean(const HttpRequest * request)
              */
 
             if (Config.onoff.strip_query_terms)
-                if ((t = strchr(buf, '?')))
-                    *(++t) = '\0';
+                if ((t = strchr(buf, '?'))) {
+                    ++t;
+                    *t = '\0';
+                }
 
             break;
         }
@@ -613,7 +628,6 @@ urlCanonicalFakeHttps(const HttpRequest * request)
     return urlCanonicalClean(request);
 }
 
-
 /*
  * Test if a URL is relative.
  *
@@ -632,7 +646,7 @@ urlIsRelative(const char *url)
         return (false);
     }
 
-    for (p = url; *p != '\0' && *p != ':' && *p != '/'; p++);
+    for (p = url; *p != '\0' && *p != ':' && *p != '/'; ++p);
 
     if (*p == ':') {
         return (false);
@@ -663,7 +677,7 @@ urlMakeAbsolute(const HttpRequest * req, const char *relUrl)
 
     char *urlbuf = (char *)xmalloc(MAX_URL * sizeof(char));
 
-    if (req->protocol == PROTO_URN) {
+    if (req->protocol == AnyP::PROTO_URN) {
         snprintf(urlbuf, MAX_URL, "urn:" SQUIDSTRINGPH,
                  SQUIDSTRINGPRINT(req->urlpath));
         return (urlbuf);
@@ -671,9 +685,10 @@ urlMakeAbsolute(const HttpRequest * req, const char *relUrl)
 
     size_t urllen;
 
+    const URLScheme sch = req->protocol; // temporary, until bug 1961 URL handling is fixed.
     if (req->port != urlDefaultPort(req->protocol)) {
         urllen = snprintf(urlbuf, MAX_URL, "%s://%s%s%s:%d",
-                          ProtocolStr[req->protocol],
+                          sch.const_str(),
                           req->login,
                           *req->login ? "@" : null_string,
                           req->GetHost(),
@@ -681,7 +696,7 @@ urlMakeAbsolute(const HttpRequest * req, const char *relUrl)
                          );
     } else {
         urllen = snprintf(urlbuf, MAX_URL, "%s://%s%s%s",
-                          ProtocolStr[req->protocol],
+                          sch.const_str(),
                           req->login,
                           *req->login ? "@" : null_string,
                           req->GetHost()
@@ -695,10 +710,11 @@ urlMakeAbsolute(const HttpRequest * req, const char *relUrl)
         const char *last_slash = strrchr(path, '/');
 
         if (last_slash == NULL) {
-            urlbuf[urllen++] = '/';
+            urlbuf[urllen] = '/';
+            ++urllen;
             strncpy(&urlbuf[urllen], relUrl, MAX_URL - urllen - 1);
         } else {
-            last_slash++;
+            ++last_slash;
             size_t pathlen = last_slash - path;
             if (pathlen > MAX_URL - urllen - 1) {
                 pathlen = MAX_URL - urllen - 1;
@@ -743,7 +759,7 @@ matchDomainName(const char *h, const char *d)
     int hl;
 
     while ('.' == *h)
-        h++;
+        ++h;
 
     hl = strlen(h);
 
@@ -808,7 +824,6 @@ matchDomainName(const char *h, const char *d)
     return (xtolower(h[hl]) - xtolower(d[dl]));
 }
 
-
 /*
  * return true if we can serve requests for this method.
  */
@@ -841,24 +856,24 @@ urlCheckRequest(const HttpRequest * r)
     /* does method match the protocol? */
     switch (r->protocol) {
 
-    case PROTO_URN:
+    case AnyP::PROTO_URN:
 
-    case PROTO_HTTP:
+    case AnyP::PROTO_HTTP:
 
-    case PROTO_CACHEOBJ:
+    case AnyP::PROTO_CACHE_OBJECT:
         rc = 1;
         break;
 
-    case PROTO_FTP:
+    case AnyP::PROTO_FTP:
 
         if (r->method == METHOD_PUT)
             rc = 1;
 
-    case PROTO_GOPHER:
+    case AnyP::PROTO_GOPHER:
 
-    case PROTO_WAIS:
+    case AnyP::PROTO_WAIS:
 
-    case PROTO_WHOIS:
+    case AnyP::PROTO_WHOIS:
         if (r->method == METHOD_GET)
             rc = 1;
         else if (r->method == METHOD_HEAD)
@@ -866,8 +881,8 @@ urlCheckRequest(const HttpRequest * r)
 
         break;
 
-    case PROTO_HTTPS:
-#ifdef USE_SSL
+    case AnyP::PROTO_HTTPS:
+#if USE_SSL
 
         rc = 1;
 
@@ -966,8 +981,8 @@ URLHostName::trimAuth()
     char *t;
 
     if ((t = strrchr(Host, '@'))) {
-        t++;
-        xmemmove(Host, t, strlen(t) + 1);
+        ++t;
+        memmove(Host, t, strlen(t) + 1);
     }
 }
 

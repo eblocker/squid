@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  * DEBUG: section 77    Delay Pools
  * AUTHOR: Robert Collins <robertc@squid-cache.org>
  * Based upon original delay pools code by
@@ -37,13 +35,13 @@
  * Copyright (c) 2003, Robert Collins <robertc@squid-cache.org>
  */
 
-#include "config.h"
-
-#if DELAY_POOLS
 #include "squid.h"
+
+#if USE_DELAY_POOLS
+#include "cache_cf.h"
 #include "DelaySpec.h"
-#include "Store.h"
 #include "Parsing.h"
+#include "Store.h"
 
 DelaySpec::DelaySpec() : restore_bps(-1), max_bytes (-1)
 {}
@@ -57,14 +55,14 @@ DelaySpec::stats (StoreEntry * sentry, char const *label) const
     }
 
     storeAppendPrintf(sentry, "\t%s:\n", label);
-    storeAppendPrintf(sentry, "\t\tMax: %"PRId64"\n", max_bytes);
+    storeAppendPrintf(sentry, "\t\tMax: %" PRId64 "\n", max_bytes);
     storeAppendPrintf(sentry, "\t\tRestore: %d\n", restore_bps);
 }
 
 void
 DelaySpec::dump (StoreEntry *entry) const
 {
-    storeAppendPrintf(entry, " %d/%"PRId64"", restore_bps, max_bytes);
+    storeAppendPrintf(entry, " %d/%" PRId64 "", restore_bps, max_bytes);
 }
 
 void

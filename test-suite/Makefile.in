@@ -14,12 +14,6 @@
 # PARTICULAR PURPOSE.
 
 @SET_MAKE@
-
-#
-#  Makefile for the Squid Object Cache server
-#
-#  $Id$
-#
 VPATH = @srcdir@
 pkgdatadir = $(datadir)/@PACKAGE@
 pkgincludedir = $(includedir)/@PACKAGE@
@@ -54,7 +48,15 @@ EXTRA_PROGRAMS = mem_node_test$(EXEEXT) membanger$(EXEEXT) \
 	splay$(EXEEXT) tcp-banger2$(EXEEXT)
 subdir = test-suite
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
-am__aclocal_m4_deps = $(top_srcdir)/acinclude.m4 \
+am__aclocal_m4_deps = $(top_srcdir)/acinclude/init.m4 \
+	$(top_srcdir)/acinclude/squid-util.m4 \
+	$(top_srcdir)/acinclude/compiler-flags.m4 \
+	$(top_srcdir)/acinclude/os-deps.m4 \
+	$(top_srcdir)/acinclude/krb5.m4 $(top_srcdir)/acinclude/pam.m4 \
+	$(top_srcdir)/acinclude/pkg.m4 \
+	$(top_srcdir)/acinclude/lib-checks.m4 \
+	$(top_srcdir)/acinclude/ax_cxx_compile_stdcxx_0x.m4 \
+	$(top_srcdir)/acinclude/ax_cxx_0x_types.m4 \
 	$(top_srcdir)/configure.ac
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
@@ -64,67 +66,79 @@ CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
 am__EXEEXT_1 = ESIExpressions$(EXEEXT)
 @USE_ESI_TRUE@am__EXEEXT_2 = $(am__EXEEXT_1)
-am__objects_1 = test_tools.$(OBJEXT)
+am__objects_1 = test_tools.$(OBJEXT) stub_debug.$(OBJEXT) \
+	stub_tools.$(OBJEXT) stub_fatal.$(OBJEXT)
 am_ESIExpressions_OBJECTS = ESIExpressions.$(OBJEXT) $(am__objects_1)
 ESIExpressions_OBJECTS = $(am_ESIExpressions_OBJECTS)
-am__DEPENDENCIES_1 = $(top_builddir)/compat/libcompat.la \
-	$(top_builddir)/src/globals.o $(top_builddir)/src/time.o
+@ENABLE_XPROF_STATS_TRUE@am__DEPENDENCIES_1 = $(top_builddir)/lib/profiler/libprofiler.la
+am__DEPENDENCIES_2 = $(am__DEPENDENCIES_1)
+am__DEPENDENCIES_3 =
+am__DEPENDENCIES_4 = $(top_builddir)/src/globals.o \
+	$(top_builddir)/src/time.o $(top_builddir)/lib/libmiscutil.la \
+	$(am__DEPENDENCIES_2) $(am__DEPENDENCIES_3)
 ESIExpressions_DEPENDENCIES = $(top_builddir)/src/esi/Expression.o \
-	$(am__DEPENDENCIES_1)
+	$(am__DEPENDENCIES_4)
 am_MemPoolTest_OBJECTS = MemPoolTest.$(OBJEXT)
 MemPoolTest_OBJECTS = $(am_MemPoolTest_OBJECTS)
 MemPoolTest_LDADD = $(LDADD)
-MemPoolTest_DEPENDENCIES = $(top_builddir)/compat/libcompat.la \
-	$(top_builddir)/src/globals.o $(top_builddir)/src/time.o
+MemPoolTest_DEPENDENCIES = $(top_builddir)/src/globals.o \
+	$(top_builddir)/src/time.o $(top_builddir)/lib/libmiscutil.la \
+	$(am__DEPENDENCIES_2) $(am__DEPENDENCIES_3)
 am_StackTest_OBJECTS = StackTest.$(OBJEXT) $(am__objects_1)
 StackTest_OBJECTS = $(am_StackTest_OBJECTS)
 StackTest_LDADD = $(LDADD)
-StackTest_DEPENDENCIES = $(top_builddir)/compat/libcompat.la \
-	$(top_builddir)/src/globals.o $(top_builddir)/src/time.o
+StackTest_DEPENDENCIES = $(top_builddir)/src/globals.o \
+	$(top_builddir)/src/time.o $(top_builddir)/lib/libmiscutil.la \
+	$(am__DEPENDENCIES_2) $(am__DEPENDENCIES_3)
 am_VirtualDeleteOperator_OBJECTS = VirtualDeleteOperator.$(OBJEXT) \
 	$(am__objects_1)
 VirtualDeleteOperator_OBJECTS = $(am_VirtualDeleteOperator_OBJECTS)
 VirtualDeleteOperator_LDADD = $(LDADD)
-VirtualDeleteOperator_DEPENDENCIES =  \
-	$(top_builddir)/compat/libcompat.la \
-	$(top_builddir)/src/globals.o $(top_builddir)/src/time.o
+VirtualDeleteOperator_DEPENDENCIES = $(top_builddir)/src/globals.o \
+	$(top_builddir)/src/time.o $(top_builddir)/lib/libmiscutil.la \
+	$(am__DEPENDENCIES_2) $(am__DEPENDENCIES_3)
 am_debug_OBJECTS = debug.$(OBJEXT) $(am__objects_1)
 debug_OBJECTS = $(am_debug_OBJECTS)
 debug_LDADD = $(LDADD)
-debug_DEPENDENCIES = $(top_builddir)/compat/libcompat.la \
-	$(top_builddir)/src/globals.o $(top_builddir)/src/time.o
+debug_DEPENDENCIES = $(top_builddir)/src/globals.o \
+	$(top_builddir)/src/time.o $(top_builddir)/lib/libmiscutil.la \
+	$(am__DEPENDENCIES_2) $(am__DEPENDENCIES_3)
 am_mem_hdr_test_OBJECTS = mem_hdr_test.$(OBJEXT) $(am__objects_1)
 mem_hdr_test_OBJECTS = $(am_mem_hdr_test_OBJECTS)
 mem_hdr_test_DEPENDENCIES = $(top_builddir)/src/stmem.o \
-	$(top_builddir)/src/mem_node.o $(am__DEPENDENCIES_1)
+	$(top_builddir)/src/mem_node.o $(am__DEPENDENCIES_4)
 am_mem_node_test_OBJECTS = mem_node_test.$(OBJEXT)
 mem_node_test_OBJECTS = $(am_mem_node_test_OBJECTS)
 mem_node_test_DEPENDENCIES = $(top_builddir)/src/mem_node.o \
-	$(am__DEPENDENCIES_1)
+	$(am__DEPENDENCIES_4)
 membanger_SOURCES = membanger.c
 membanger_OBJECTS = membanger.$(OBJEXT)
 membanger_LDADD = $(LDADD)
-membanger_DEPENDENCIES = $(top_builddir)/compat/libcompat.la \
-	$(top_builddir)/src/globals.o $(top_builddir)/src/time.o
+membanger_DEPENDENCIES = $(top_builddir)/src/globals.o \
+	$(top_builddir)/src/time.o $(top_builddir)/lib/libmiscutil.la \
+	$(am__DEPENDENCIES_2) $(am__DEPENDENCIES_3)
 am_refcount_OBJECTS = refcount.$(OBJEXT)
 refcount_OBJECTS = $(am_refcount_OBJECTS)
 refcount_LDADD = $(LDADD)
-refcount_DEPENDENCIES = $(top_builddir)/compat/libcompat.la \
-	$(top_builddir)/src/globals.o $(top_builddir)/src/time.o
+refcount_DEPENDENCIES = $(top_builddir)/src/globals.o \
+	$(top_builddir)/src/time.o $(top_builddir)/lib/libmiscutil.la \
+	$(am__DEPENDENCIES_2) $(am__DEPENDENCIES_3)
 am_splay_OBJECTS = splay.$(OBJEXT)
 splay_OBJECTS = $(am_splay_OBJECTS)
 splay_LDADD = $(LDADD)
-splay_DEPENDENCIES = $(top_builddir)/compat/libcompat.la \
-	$(top_builddir)/src/globals.o $(top_builddir)/src/time.o
+splay_DEPENDENCIES = $(top_builddir)/src/globals.o \
+	$(top_builddir)/src/time.o $(top_builddir)/lib/libmiscutil.la \
+	$(am__DEPENDENCIES_2) $(am__DEPENDENCIES_3)
 am_syntheticoperators_OBJECTS = syntheticoperators.$(OBJEXT) \
 	$(am__objects_1)
 syntheticoperators_OBJECTS = $(am_syntheticoperators_OBJECTS)
 syntheticoperators_LDADD = $(LDADD)
-syntheticoperators_DEPENDENCIES = $(top_builddir)/compat/libcompat.la \
-	$(top_builddir)/src/globals.o $(top_builddir)/src/time.o
+syntheticoperators_DEPENDENCIES = $(top_builddir)/src/globals.o \
+	$(top_builddir)/src/time.o $(top_builddir)/lib/libmiscutil.la \
+	$(am__DEPENDENCIES_2) $(am__DEPENDENCIES_3)
 tcp_banger2_SOURCES = tcp-banger2.c
 tcp_banger2_OBJECTS = tcp-banger2.$(OBJEXT)
-tcp_banger2_DEPENDENCIES =
+tcp_banger2_DEPENDENCIES = $(top_builddir)/lib/libmiscutil.la
 DEFAULT_INCLUDES = 
 depcomp = $(SHELL) $(top_srcdir)/cfgaux/depcomp
 am__depfiles_maybe = depfiles
@@ -176,9 +190,8 @@ AUTOHEADER = @AUTOHEADER@
 AUTOMAKE = @AUTOMAKE@
 AWK = @AWK@
 BASIC_AUTH_HELPERS = @BASIC_AUTH_HELPERS@
+BZR = @BZR@
 CACHE_EFFECTIVE_USER = @CACHE_EFFECTIVE_USER@
-CACHE_HTTP_PORT = @CACHE_HTTP_PORT@
-CACHE_ICP_PORT = @CACHE_ICP_PORT@
 CC = @CC@
 CCDEPMODE = @CCDEPMODE@
 CFLAGS = @CFLAGS@
@@ -193,8 +206,10 @@ CXXCPP = @CXXCPP@
 CXXDEPMODE = @CXXDEPMODE@
 CXXFLAGS = @CXXFLAGS@
 CYGPATH_W = @CYGPATH_W@
+DEFAULT_HOSTS = @DEFAULT_HOSTS@
 DEFAULT_LOG_DIR = @DEFAULT_LOG_DIR@
-DEFAULT_PIDFILE = @DEFAULT_PIDFILE@
+DEFAULT_PID_FILE = @DEFAULT_PID_FILE@
+DEFAULT_SWAP_DIR = @DEFAULT_SWAP_DIR@
 DEFS = @DEFS@
 DEPDIR = @DEPDIR@
 DIGEST_AUTH_HELPERS = @DIGEST_AUTH_HELPERS@
@@ -205,16 +220,18 @@ DISK_OS_LIBS = @DISK_OS_LIBS@
 DISK_PROGRAMS = @DISK_PROGRAMS@
 DSYMUTIL = @DSYMUTIL@
 DUMPBIN = @DUMPBIN@
-ECAPLIB = @ECAPLIB@
 ECAP_LIBS = @ECAP_LIBS@
 ECHO_C = @ECHO_C@
 ECHO_N = @ECHO_N@
 ECHO_T = @ECHO_T@
 EGREP = @EGREP@
 EPOLL_LIBS = @EPOLL_LIBS@
+EUILIB = @EUILIB@
 EXEEXT = @EXEEXT@
 EXPATLIB = @EXPATLIB@
 EXTERNAL_ACL_HELPERS = @EXTERNAL_ACL_HELPERS@
+EXT_LIBECAP_CFLAGS = @EXT_LIBECAP_CFLAGS@
+EXT_LIBECAP_LIBS = @EXT_LIBECAP_LIBS@
 FALSE = @FALSE@
 FGREP = @FGREP@
 GREP = @GREP@
@@ -226,7 +243,11 @@ INSTALL_DATA = @INSTALL_DATA@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
 INSTALL_SCRIPT = @INSTALL_SCRIPT@
 INSTALL_STRIP_PROGRAM = @INSTALL_STRIP_PROGRAM@
+KRB5INCS = @KRB5INCS@
+KRB5LIBS = @KRB5LIBS@
+LBERLIB = @LBERLIB@
 LD = @LD@
+LDAPLIB = @LDAPLIB@
 LDFLAGS = @LDFLAGS@
 LIBADD_DL = @LIBADD_DL@
 LIBADD_DLD_LINK = @LIBADD_DLD_LINK@
@@ -238,11 +259,10 @@ LIBS = @LIBS@
 LIBSASL = @LIBSASL@
 LIBTOOL = @LIBTOOL@
 LIB_DB = @LIB_DB@
-LIB_LBER = @LIB_LBER@
-LIB_LDAP = @LIB_LDAP@
 LIPO = @LIPO@
 LN = @LN@
 LN_S = @LN_S@
+LOG_DAEMON_HELPERS = @LOG_DAEMON_HELPERS@
 LTDLDEPS = @LTDLDEPS@
 LTDLINCL = @LTDLINCL@
 LTDLOPEN = @LTDLOPEN@
@@ -262,7 +282,6 @@ NMEDIT = @NMEDIT@
 NTLM_AUTH_HELPERS = @NTLM_AUTH_HELPERS@
 OBJDUMP = @OBJDUMP@
 OBJEXT = @OBJEXT@
-OPT_DEFAULT_HOSTS = @OPT_DEFAULT_HOSTS@
 OTOOL = @OTOOL@
 OTOOL64 = @OTOOL64@
 PACKAGE = @PACKAGE@
@@ -274,7 +293,12 @@ PACKAGE_URL = @PACKAGE_URL@
 PACKAGE_VERSION = @PACKAGE_VERSION@
 PATH_SEPARATOR = @PATH_SEPARATOR@
 PERL = @PERL@
+PKG_CONFIG = @PKG_CONFIG@
+PKG_CONFIG_LIBDIR = @PKG_CONFIG_LIBDIR@
+PKG_CONFIG_PATH = @PKG_CONFIG_PATH@
 PO2HTML = @PO2HTML@
+PO2TEXT = @PO2TEXT@
+POD2MAN = @POD2MAN@
 RANLIB = @RANLIB@
 REGEXLIB = @REGEXLIB@
 REPL_LIBS = @REPL_LIBS@
@@ -296,7 +320,9 @@ STORE_LIBS_TO_ADD = @STORE_LIBS_TO_ADD@
 STORE_LIBS_TO_BUILD = @STORE_LIBS_TO_BUILD@
 STORE_TESTS = @STORE_TESTS@
 STRIP = @STRIP@
+TR = @TR@
 TRUE = @TRUE@
+URL_REWRITE_HELPERS = @URL_REWRITE_HELPERS@
 VERSION = @VERSION@
 WIN32_PSAPI = @WIN32_PSAPI@
 XMLLIB = @XMLLIB@
@@ -309,6 +335,7 @@ abs_top_srcdir = @abs_top_srcdir@
 ac_ct_CC = @ac_ct_CC@
 ac_ct_CXX = @ac_ct_CXX@
 ac_ct_DUMPBIN = @ac_ct_DUMPBIN@
+ac_krb5_config = @ac_krb5_config@
 am__include = @am__include@
 am__leading_dot = @am__leading_dot@
 am__quote = @am__quote@
@@ -361,16 +388,21 @@ top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 AM_CFLAGS = $(SQUID_CFLAGS)
 AM_CXXFLAGS = $(SQUID_CXXFLAGS)
-CLEANFILES = 
-INCLUDES = -I$(top_srcdir) -I$(top_srcdir)/include -I$(top_srcdir)/src \
-	-I$(top_builddir)/include $(SQUID_CPPUNIT_INC) $(am__append_1) \
-	-I$(srcdir)
+CLEANFILES = stub_debug.cc stub_tools.cc stub_fatal.cc
+INCLUDES = -I$(top_srcdir) -I$(top_srcdir)/include -I$(top_srcdir)/lib \
+	-I$(top_srcdir)/src -I$(top_builddir)/include \
+	$(SQUID_CPPUNIT_INC) $(KRB5INCS) $(am__append_1) -I$(srcdir)
+@ENABLE_XPROF_STATS_FALSE@LIBPROFILER = 
+@ENABLE_XPROF_STATS_TRUE@LIBPROFILER = $(top_builddir)/lib/profiler/libprofiler.la
+COMPAT_LIB = -L$(top_builddir)/compat -lcompat-squid $(LIBPROFILER)
+subst_perlshell = sed -e 's,[@]PERL[@],$(PERL),g' <$(srcdir)/$@.pl.in >$@ || ($(RM) -f $@ ; exit 1)
 AUTOMAKE_OPTIONS = subdir-objects
 LDADD = \
-	$(top_builddir)/compat/libcompat.la \
-	-L$(top_builddir)/lib -lmiscutil \
 	$(top_builddir)/src/globals.o \
-	$(top_builddir)/src/time.o
+	$(top_builddir)/src/time.o \
+	$(top_builddir)/lib/libmiscutil.la \
+	$(COMPAT_LIB) \
+	$(XTRA_LIBS)
 
 EXTRA_DIST = testheaders.sh
 ESI_ALL_TESTS = \
@@ -378,8 +410,8 @@ ESI_ALL_TESTS = \
 
 @USE_ESI_FALSE@ESI_TESTS = 
 @USE_ESI_TRUE@ESI_TESTS = $(ESI_ALL_TESTS)
-tcp_banger2_LDADD = -L$(top_builddir)/lib -lmiscutil
-DEBUG_SOURCE = test_tools.cc
+tcp_banger2_LDADD = $(top_builddir)/lib/libmiscutil.la
+DEBUG_SOURCE = test_tools.cc stub_debug.cc stub_tools.cc stub_fatal.cc
 debug_SOURCES = debug.cc $(DEBUG_SOURCE)
 ESIExpressions_SOURCES = ESIExpressions.cc $(DEBUG_SOURCE)
 ESIExpressions_LDADD = $(top_builddir)/src/esi/Expression.o \
@@ -388,8 +420,10 @@ ESIExpressions_LDADD = $(top_builddir)/src/esi/Expression.o \
 mem_node_test_SOURCES = mem_node_test.cc
 mem_node_test_LDADD = $(top_builddir)/src/mem_node.o $(LDADD)
 mem_hdr_test_SOURCES = mem_hdr_test.cc $(DEBUG_SOURCE)
-mem_hdr_test_LDADD = $(top_builddir)/src/stmem.o \
-		     $(top_builddir)/src/mem_node.o $(LDADD)
+mem_hdr_test_LDADD = \
+	$(top_builddir)/src/stmem.o \
+	$(top_builddir)/src/mem_node.o \
+	$(LDADD)
 
 MemPoolTest_SOURCES = MemPoolTest.cc
 refcount_SOURCES = refcount.cc
@@ -493,6 +527,9 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/membanger.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/refcount.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/splay.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/stub_debug.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/stub_fatal.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/stub_tools.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/syntheticoperators.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/tcp-banger2.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_tools.Po@am__quote@
@@ -846,6 +883,15 @@ uninstall-am:
 
 
 $(OBJS): $(top_srcdir)/include/version.h $(top_builddir)/include/autoconf.h
+
+stub_debug.cc: $(top_srcdir)/src/tests/stub_debug.cc
+	cp $(top_srcdir)/src/tests/stub_debug.cc .
+
+stub_tools.cc: $(top_srcdir)/src/tests/stub_tools.cc
+	cp $(top_srcdir)/src/tests/stub_tools.cc .
+
+stub_fatal.cc: $(top_srcdir)/src/tests/stub_fatal.cc
+	cp $(top_srcdir)/src/tests/stub_fatal.cc .
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.

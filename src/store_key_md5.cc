@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  * DEBUG: section 20    Storage Manager MD5 Cache Keys
  * AUTHOR: Duane Wessels
  *
@@ -35,6 +33,10 @@
 
 #include "squid.h"
 #include "HttpRequest.h"
+#include "md5.h"
+#include "Mem.h"
+#include "store_key_md5.h"
+#include "URL.h"
 
 static cache_key null_key[SQUID_MD5_DIGEST_LENGTH];
 
@@ -44,7 +46,7 @@ storeKeyText(const cache_key *key)
     static char buf[SQUID_MD5_DIGEST_LENGTH * 2+1];
     int i;
 
-    for (i = 0; i < SQUID_MD5_DIGEST_LENGTH; i++)
+    for (i = 0; i < SQUID_MD5_DIGEST_LENGTH; ++i)
         snprintf(&buf[i*2],sizeof(buf) - i*2, "%02X", *(key + i));
 
     return buf;
@@ -58,7 +60,7 @@ storeKeyScan(const char *buf)
     int j = 0;
     char t[3];
 
-    for (i = 0; i < SQUID_MD5_DIGEST_LENGTH; i++) {
+    for (i = 0; i < SQUID_MD5_DIGEST_LENGTH; ++i) {
         t[0] = *(buf + (j++));
         t[1] = *(buf + (j++));
         t[2] = '\0';
@@ -75,7 +77,7 @@ storeKeyHashCmp(const void *a, const void *b)
     const unsigned char *B = (const unsigned char *)b;
     int i;
 
-    for (i = 0; i < SQUID_MD5_DIGEST_LENGTH; i++) {
+    for (i = 0; i < SQUID_MD5_DIGEST_LENGTH; ++i) {
         if (A[i] < B[i])
             return -1;
 
@@ -155,14 +157,14 @@ cache_key *
 storeKeyDup(const cache_key * key)
 {
     cache_key *dup = (cache_key *)memAllocate(MEM_MD5_DIGEST);
-    xmemcpy(dup, key, SQUID_MD5_DIGEST_LENGTH);
+    memcpy(dup, key, SQUID_MD5_DIGEST_LENGTH);
     return dup;
 }
 
 cache_key *
 storeKeyCopy(cache_key * dst, const cache_key * src)
 {
-    xmemcpy(dst, src, SQUID_MD5_DIGEST_LENGTH);
+    memcpy(dst, src, SQUID_MD5_DIGEST_LENGTH);
     return dst;
 }
 

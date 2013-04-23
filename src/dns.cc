@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  * DEBUG: section 34    Dnsserver interface
  * AUTHOR: Harvest Derived
  *
@@ -34,17 +32,18 @@
  */
 
 #include "squid.h"
+#include "helper.h"
+#include "mgr/Registration.h"
+#include "SquidConfig.h"
+#include "SquidTime.h"
 #include "Store.h"
 #include "wordlist.h"
-#include "SquidTime.h"
-#include "CacheManager.h"
-#include "helper.h"
 
 /* MS VisualStudio Projects are monolitich, so we need the following
    #if to include the external DNS code in compile process when
    using external DNS.
  */
-#if USE_DNSSERVERS
+#if USE_DNSHELPER
 
 static helper *dnsservers = NULL;
 
@@ -58,8 +57,7 @@ dnsStats(StoreEntry * sentry)
 static void
 dnsRegisterWithCacheManager(void)
 {
-    CacheManager::GetInstance()->
-    registerAction("dns", "Dnsserver Statistics", dnsStats, 0, 1);
+    Mgr::RegisterAction("dns", "Dnsserver Statistics", dnsStats, 0, 1);
 }
 
 void
@@ -73,9 +71,9 @@ dnsInit(void)
         return;
 
     if (dnsservers == NULL)
-        dnsservers = helperCreate("dnsserver");
+        dnsservers = new helper("dnsserver");
 
-    dnsservers->n_to_start = Config.dnsChildren;
+    dnsservers->childs.updateLimits(Config.dnsChildren);
 
     dnsservers->ipc_type = IPC_STREAM;
 
@@ -107,8 +105,7 @@ dnsShutdown(void)
     if (!shutting_down)
         return;
 
-    helperFree(dnsservers);
-
+    delete dnsservers;
     dnsservers = NULL;
 }
 
@@ -119,14 +116,18 @@ dnsSubmit(const char *lookup, HLPCB * callback, void *data)
     static time_t first_warn = 0;
     snprintf(buf, 256, "%s\n", lookup);
 
-    if (dnsservers->stats.queue_size >= dnsservers->n_running * 2) {
+    if (dnsservers->stats.queue_size >= (int)dnsservers->childs.n_active && dnsservers->childs.needNew() > 0) {
+        helperOpenServers(dnsservers);
+    }
+
+    if (dnsservers->stats.queue_size >= (int)(dnsservers->childs.n_running * 2)) {
         if (first_warn == 0)
             first_warn = squid_curtime;
 
         if (squid_curtime - first_warn > 3 * 60)
             fatal("DNS servers not responding for 3 minutes");
 
-        debugs(34, 1, "dnsSubmit: queue overload, rejecting " << lookup);
+        debugs(34, DBG_IMPORTANT, "dnsSubmit: queue overload, rejecting " << lookup);
 
         callback(data, (char *)"$fail Temporary network problem, please retry later");
 
@@ -137,7 +138,7 @@ dnsSubmit(const char *lookup, HLPCB * callback, void *data)
     helperSubmit(dnsservers, buf, callback, data);
 }
 
-#ifdef SQUID_SNMP
+#if SQUID_SNMP
 /*
  * The function to return the DNS via SNMP
  */
@@ -165,7 +166,7 @@ snmp_netDnsFn(variable_list * Var, snint * ErrP)
 
     case DNS_SERVERS:
         Answer = snmp_var_new_integer(Var->name, Var->name_length,
-                                      dnsservers->n_running,
+                                      dnsservers->childs.n_running,
                                       SMI_COUNTER32);
         break;
 
@@ -177,5 +178,5 @@ snmp_netDnsFn(variable_list * Var, snint * ErrP)
     return Answer;
 }
 
-#endif /*SQUID_SNMP */
-#endif /* USE_DNSSERVERS */
+#endif /* SQUID_SNMP */
+#endif /* USE_DNSHELPER */

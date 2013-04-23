@@ -1,26 +1,39 @@
-
-/*
- * $Id$
- */
-
 #ifndef SQUID_COMMCALLS_H
 #define SQUID_COMMCALLS_H
 
-#include "comm.h"
-#include "ConnectionDetail.h"
-#include "DnsLookupDetails.h"
 #include "base/AsyncCall.h"
 #include "base/AsyncJobCalls.h"
+#include "comm_err_t.h"
+#include "comm/forward.h"
 
 /* CommCalls implement AsyncCall interface for comm_* callbacks.
  * The classes cover two call dialer kinds:
  *     - A C-style call using a function pointer (depricated);
  *     - A C++-style call to an AsyncJob child.
- * and three comm_* callback kinds:
- *     - accept (IOACB),
- *     - connect (CNCB),
- *     - I/O (IOCB).
+ * and several comm_* callback kinds:
+ *     - accept (IOACB)
+ *     - connect (CNCB)
+ *     - I/O (IOCB)
+ *     - timeout (CTCB)
+ *     - close (CLCB)
+ * and a special callback kind for passing pipe FD, disk FD or fd_table index 'FD' to the handler:
+ *     - FD passing callback (FDECB)
  */
+
+class CommAcceptCbParams;
+typedef void IOACB(const CommAcceptCbParams &params);
+
+typedef void CNCB(const Comm::ConnectionPointer &conn, comm_err_t status, int xerrno, void *data);
+typedef void IOCB(const Comm::ConnectionPointer &conn, char *, size_t size, comm_err_t flag, int xerrno, void *data);
+
+class CommTimeoutCbParams;
+typedef void CTCB(const CommTimeoutCbParams &params);
+
+class CommCloseCbParams;
+typedef void CLCB(const CommCloseCbParams &params);
+
+class FdeCbParams;
+typedef void FDECB(const FdeCbParams &params);
 
 /*
  * TODO: When there are no function-pointer-based callbacks left, all
@@ -31,7 +44,6 @@
  * parameters, which is not trivial when the caller type/kind is not
  * known to comm and there are many kinds of parameters.
  */
-
 
 /* Comm*CbParams classes below handle callback parameters */
 
@@ -51,10 +63,22 @@ public:
 
 public:
     void *data; // cbdata-protected
-    int fd;
-    int xerrno;
-    comm_err_t flag;
 
+    /** The connection which this call pertains to.
+     * \itemize On accept() calls this is the new client connection.
+     * \itemize On connect() finished calls this is the newely opened connection.
+     * \itemize On write calls this is the connection just written to.
+     * \itemize On read calls this is the connection just read from.
+     * \itemize On close calls this describes the connection which is now closed.
+     * \itemize On timeouts this is the connection whose operation timed out.
+     *          NP: timeouts might also return to the connect/read/write handler with COMM_ERR_TIMEOUT.
+     */
+    Comm::ConnectionPointer conn;
+
+    comm_err_t flag;  ///< comm layer result status.
+    int xerrno;      ///< The last errno to occur. non-zero if flag is COMM_ERR.
+
+    int fd; ///< FD which the call was about. Set by the async call creator.
 private:
     // should not be needed and not yet implemented
     CommCommonCbParams &operator =(const CommCommonCbParams &params);
@@ -65,12 +89,6 @@ class CommAcceptCbParams: public CommCommonCbParams
 {
 public:
     CommAcceptCbParams(void *aData);
-
-    void print(std::ostream &os) const;
-
-public:
-    ConnectionDetail details;
-    int nfd; // TODO: rename to fdNew or somesuch
 };
 
 // connect parameters
@@ -80,11 +98,6 @@ public:
     CommConnectCbParams(void *aData);
 
     bool syncWithComm(); // see CommCommonCbParams::syncWithComm
-
-    void print(std::ostream &os) const;
-
-public:
-    DnsLookupDetails dns;
 };
 
 // read/write (I/O) parameters
@@ -114,6 +127,16 @@ public:
     CommTimeoutCbParams(void *aData);
 };
 
+/// Special Calls parameter, for direct use of an FD without a controlling Comm::Connection
+/// This is used for pipe() FD with helpers, and internally by Comm when handling some special FD actions.
+class FdeCbParams: public CommCommonCbParams
+{
+public:
+    FdeCbParams(void *aData);
+    // TODO make this a standalone object with FD value and pointer to fde table entry.
+    // that requires all the existing Comm handlers to be updated first though
+};
+
 // Interface to expose comm callback parameters of all comm dialers.
 // GetCommParams() uses this interface to access comm parameters.
 template <class Params_>
@@ -136,7 +159,6 @@ Params &GetCommParams(AsyncCall::Pointer &call)
     assert(dp);
     return dp->params;
 }
-
 
 // All job dialers with comm parameters are merged into one since they
 // all have exactly one callback argument and differ in Params type only
@@ -169,15 +191,17 @@ protected:
     virtual void doDial() { ((&(*this->job))->*method)(this->params); }
 };
 
-
 // accept (IOACB) dialer
 class CommAcceptCbPtrFun: public CallDialer,
         public CommDialerParamsT<CommAcceptCbParams>
 {
 public:
     typedef CommAcceptCbParams Params;
+    typedef RefCount<CommAcceptCbPtrFun> Pointer;
 
     CommAcceptCbPtrFun(IOACB *aHandler, const CommAcceptCbParams &aParams);
+    CommAcceptCbPtrFun(const CommAcceptCbPtrFun &o);
+
     void dial();
 
     virtual void print(std::ostream &os) const;
@@ -202,7 +226,6 @@ public:
     CNCB *handler;
 };
 
-
 // read/write (IOCB) dialer
 class CommIoCbPtrFun: public CallDialer,
         public CommDialerParamsT<CommIoCbParams>
@@ -219,21 +242,20 @@ public:
     IOCB *handler;
 };
 
-
-// close (PF) dialer
+// close (CLCB) dialer
 class CommCloseCbPtrFun: public CallDialer,
         public CommDialerParamsT<CommCloseCbParams>
 {
 public:
     typedef CommCloseCbParams Params;
 
-    CommCloseCbPtrFun(PF *aHandler, const Params &aParams);
+    CommCloseCbPtrFun(CLCB *aHandler, const Params &aParams);
     void dial();
 
     virtual void print(std::ostream &os) const;
 
 public:
-    PF *handler;
+    CLCB *handler;
 };
 
 class CommTimeoutCbPtrFun:public CallDialer,
@@ -242,13 +264,28 @@ class CommTimeoutCbPtrFun:public CallDialer,
 public:
     typedef CommTimeoutCbParams Params;
 
-    CommTimeoutCbPtrFun(PF *aHandler, const Params &aParams);
+    CommTimeoutCbPtrFun(CTCB *aHandler, const Params &aParams);
     void dial();
 
     virtual void print(std::ostream &os) const;
 
 public:
-    PF *handler;
+    CTCB *handler;
+};
+
+/// FD event (FDECB) dialer
+class FdeCbPtrFun: public CallDialer,
+        public CommDialerParamsT<FdeCbParams>
+{
+public:
+    typedef FdeCbParams Params;
+
+    FdeCbPtrFun(FDECB *aHandler, const Params &aParams);
+    void dial();
+    virtual void print(std::ostream &os) const;
+
+public:
+    FDECB *handler;
 };
 
 // AsyncCall to comm handlers implemented as global functions.
@@ -259,10 +296,17 @@ template <class Dialer>
 class CommCbFunPtrCallT: public AsyncCall
 {
 public:
+    typedef RefCount<CommCbFunPtrCallT<Dialer> > Pointer;
     typedef typename Dialer::Params Params;
 
     inline CommCbFunPtrCallT(int debugSection, int debugLevel,
                              const char *callName, const Dialer &aDialer);
+
+    inline CommCbFunPtrCallT(const CommCbFunPtrCallT &o) :
+            AsyncCall(o.debugSection, o.debugLevel, o.name),
+            dialer(o.dialer) {}
+
+    ~CommCbFunPtrCallT() {}
 
     virtual CallDialer* getDialer() { return &dialer; }
 
@@ -272,6 +316,9 @@ public:
 protected:
     inline virtual bool canFire();
     inline virtual void fire();
+
+private:
+    CommCbFunPtrCallT & operator=(const CommCbFunPtrCallT &); // not defined. not permitted.
 };
 
 // Conveninece wrapper: It is often easier to call a templated function than
@@ -296,7 +343,6 @@ CommCbFunPtrCallT<Dialer>::CommCbFunPtrCallT(int aDebugSection, int aDebugLevel,
         dialer(aDialer)
 {
 }
-
 
 template <class Dialer>
 bool

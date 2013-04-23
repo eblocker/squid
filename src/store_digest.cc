@@ -1,7 +1,4 @@
-
 /*
- * $Id$
- *
  * DEBUG: section 71    Store Digest Manager
  * AUTHOR: Alex Rousskov
  *
@@ -33,7 +30,6 @@
  *
  */
 
-
 /*
  * TODO: We probably do not track all the cases when
  *       storeDigestNoteStoreReady() must be called; this may prevent
@@ -41,17 +37,28 @@
  */
 
 #include "squid.h"
+#include "Debug.h"
 #include "event.h"
-#include "CacheManager.h"
-#if USE_CACHE_DIGESTS
+#include "globals.h"
+#include "mgr/Registration.h"
+#include "store_digest.h"
 
-#include "Store.h"
-#include "HttpRequest.h"
+#if USE_CACHE_DIGESTS
+#include "CacheDigest.h"
 #include "HttpReply.h"
+#include "HttpRequest.h"
+#include "internal.h"
 #include "MemObject.h"
 #include "PeerDigest.h"
+#include "refresh.h"
+#include "SquidConfig.h"
 #include "SquidTime.h"
+#include "Store.h"
 #include "StoreSearch.h"
+
+#if HAVE_MATH_H
+#include <math.h>
+#endif
 
 /*
  * local types
@@ -69,7 +76,6 @@ public:
     int rebuild_count;
     int rewrite_count;
 };
-
 
 typedef struct {
     int del_count;		/* #store entries deleted from store_digest */
@@ -103,8 +109,7 @@ static void storeDigestAdd(const StoreEntry *);
 static void
 storeDigestRegisterWithCacheManager(void)
 {
-    CacheManager::GetInstance()->
-    registerAction("store_digest", "Store Digest", storeDigestReport, 0, 1);
+    Mgr::RegisterAction("store_digest", "Store Digest", storeDigestReport, 0, 1);
 }
 
 /*
@@ -126,13 +131,12 @@ storeDigestInit(void)
     }
 
     store_digest = cacheDigestCreate(cap, Config.digest.bits_per_entry);
-    debugs(71, 1, "Local cache digest enabled; rebuild/rewrite every " <<
+    debugs(71, DBG_IMPORTANT, "Local cache digest enabled; rebuild/rewrite every " <<
            (int) Config.digest.rebuild_period << "/" <<
            (int) Config.digest.rewrite_period << " sec");
 
     memset(&sd_state, 0, sizeof(sd_state));
 #else
-
     store_digest = NULL;
     debugs(71, 3, "Local cache digest is 'off'");
 #endif
@@ -152,6 +156,7 @@ storeDigestNoteStoreReady(void)
 #endif
 }
 
+//TODO: this seems to be dead code. Is it needed?
 void
 storeDigestDel(const StoreEntry * entry)
 {
@@ -166,16 +171,15 @@ storeDigestDel(const StoreEntry * entry)
 
     if (!EBIT_TEST(entry->flags, KEY_PRIVATE)) {
         if (!cacheDigestTest(store_digest,  (const cache_key *)entry->key)) {
-            sd_stats.del_lost_count++;
+            ++sd_stats.del_lost_count;
             debugs(71, 6, "storeDigestDel: lost entry, key: " << entry->getMD5Text() << " url: " << entry->url()  );
         } else {
-            sd_stats.del_count++;
+            ++sd_stats.del_count;
             cacheDigestDel(store_digest,  (const cache_key *)entry->key);
             debugs(71, 6, "storeDigestDel: deled entry, key: " << entry->getMD5Text());
         }
     }
-
-#endif
+#endif //USE_CACHE_DIGESTS
 }
 
 void
@@ -201,7 +205,7 @@ storeDigestReport(StoreEntry * e)
         storeAppendPrintf(e, "store digest: disabled.\n");
     }
 
-#endif
+#endif //USE_CACHE_DIGESTS
 }
 
 /*
@@ -276,19 +280,19 @@ storeDigestAdd(const StoreEntry * entry)
     assert(entry && store_digest);
 
     if (storeDigestAddable(entry)) {
-        sd_stats.add_count++;
+        ++sd_stats.add_count;
 
         if (cacheDigestTest(store_digest, (const cache_key *)entry->key))
-            sd_stats.add_coll_count++;
+            ++sd_stats.add_coll_count;
 
         cacheDigestAdd(store_digest,  (const cache_key *)entry->key);
 
         debugs(71, 6, "storeDigestAdd: added entry, key: " << entry->getMD5Text());
     } else {
-        sd_stats.rej_count++;
+        ++sd_stats.rej_count;
 
         if (cacheDigestTest(store_digest,  (const cache_key *)entry->key))
-            sd_stats.rej_coll_count++;
+            ++sd_stats.rej_coll_count;
     }
 }
 
@@ -300,7 +304,7 @@ storeDigestRebuildStart(void *datanotused)
     /* prevent overlapping if rebuild schedule is too tight */
 
     if (sd_state.rebuild_lock) {
-        debugs(71, 1, "storeDigestRebuildStart: overlap detected, consider increasing rebuild period");
+        debugs(71, DBG_IMPORTANT, "storeDigestRebuildStart: overlap detected, consider increasing rebuild period");
         return;
     }
 
@@ -338,7 +342,7 @@ storeDigestRebuildFinish(void)
 {
     assert(sd_state.rebuild_lock);
     sd_state.rebuild_lock = 0;
-    sd_state.rebuild_count++;
+    ++sd_state.rebuild_count;
     debugs(71, 2, "storeDigestRebuildFinish: done.");
     eventAdd("storeDigestRebuildStart", storeDigestRebuildStart, NULL, (double)
              Config.digest.rebuild_period, 1);
@@ -369,12 +373,11 @@ storeDigestRebuildStep(void *datanotused)
         eventAdd("storeDigestRebuildStep", storeDigestRebuildStep, NULL, 0.0, 1);
 }
 
-
 /* starts swap out sequence for the digest */
 static void
 storeDigestRewriteStart(void *datanotused)
 {
-    request_flags flags;
+    RequestFlags flags;
     char *url;
     StoreEntry *e;
 
@@ -382,7 +385,7 @@ storeDigestRewriteStart(void *datanotused)
     /* prevent overlapping if rewrite schedule is too tight */
 
     if (sd_state.rewrite_lock) {
-        debugs(71, 1, "storeDigestRewrite: overlap detected, consider increasing rewrite period");
+        debugs(71, DBG_IMPORTANT, "storeDigestRewrite: overlap detected, consider increasing rewrite period");
         return;
     }
 
@@ -445,7 +448,7 @@ storeDigestRewriteFinish(StoreEntry * e)
     e->mem_obj->unlinkRequest();
     e->unlock();
     sd_state.rewrite_lock = NULL;
-    sd_state.rewrite_count++;
+    ++sd_state.rewrite_count;
     eventAdd("storeDigestRewriteStart", storeDigestRewriteStart, NULL, (double)
              Config.digest.rewrite_period, 1);
     /* resume pending Rebuild if any */
@@ -508,7 +511,7 @@ storeDigestCalcCap(void)
      * number of _entries_ we want to pre-allocate for.
      */
     const int hi_cap = Store::Root().maxSize() / Config.Store.avgObjectSize;
-    const int lo_cap = 1 + store_swap_size / Config.Store.avgObjectSize;
+    const int lo_cap = 1 + Store::Root().currentSize() / Config.Store.avgObjectSize;
     const int e_count = StoreEntry::inUseCount();
     int cap = e_count ? e_count :hi_cap;
     debugs(71, 2, "storeDigestCalcCap: have: " << e_count << ", want " << cap <<

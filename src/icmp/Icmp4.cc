@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 42    ICMP Pinger program
  * AUTHOR: Duane Wessels, Amos Jeffries
  *
@@ -37,6 +35,7 @@
 
 #if USE_ICMP
 
+#include "leakcheck.h"
 #include "SquidTime.h"
 #include "Icmp4.h"
 #include "IcmpPinger.h"
@@ -79,18 +78,18 @@ Icmp4::Open(void)
     icmp_sock = socket(PF_INET, SOCK_RAW, IPPROTO_ICMP);
 
     if (icmp_sock < 0) {
-        debugs(50, 0, HERE << " icmp_sock: " << xstrerror());
+        debugs(50, DBG_CRITICAL, HERE << " icmp_sock: " << xstrerror());
         return -1;
     }
 
     icmp_ident = getpid() & 0xffff;
-    debugs(42, 1, "pinger: ICMP socket opened.");
+    debugs(42, DBG_IMPORTANT, "pinger: ICMP socket opened.");
 
     return icmp_sock;
 }
 
 void
-Icmp4::SendEcho(IpAddress &to, int opcode, const char *payload, int len)
+Icmp4::SendEcho(Ip::Address &to, int opcode, const char *payload, int len)
 {
     int x;
     LOCAL_ARRAY(char, pkt, MAX_PKT4_SZ);
@@ -117,7 +116,8 @@ Icmp4::SendEcho(IpAddress &to, int opcode, const char *payload, int len)
     icmp->icmp_code = 0;
     icmp->icmp_cksum = 0;
     icmp->icmp_id = icmp_ident;
-    icmp->icmp_seq = (unsigned short) icmp_pkts_sent++;
+    icmp->icmp_seq = (unsigned short) icmp_pkts_sent;
+    ++icmp_pkts_sent;
 
     // Construct ICMP packet data content
     echo = (icmpEchoData *) (icmp + 1);
@@ -130,7 +130,7 @@ Icmp4::SendEcho(IpAddress &to, int opcode, const char *payload, int len)
         if (len > MAX_PAYLOAD)
             len = MAX_PAYLOAD;
 
-        xmemcpy(echo->payload, payload, len);
+        memcpy(echo->payload, payload, len);
 
         icmp_pktsize += len;
     }
@@ -141,7 +141,7 @@ Icmp4::SendEcho(IpAddress &to, int opcode, const char *payload, int len)
     ((sockaddr_in*)S->ai_addr)->sin_port = 0;
     assert(icmp_pktsize <= MAX_PKT4_SZ);
 
-    debugs(42, 2, HERE << "Send ICMP packet to " << to << ".");
+    debugs(42, 5, HERE << "Send ICMP packet to " << to << ".");
 
     x = sendto(icmp_sock,
                (const void *) pkt,
@@ -151,10 +151,11 @@ Icmp4::SendEcho(IpAddress &to, int opcode, const char *payload, int len)
                S->ai_addrlen);
 
     if (x < 0) {
-        debugs(42, 1, HERE << "Error sending to ICMP packet to " << to << ". ERR: " << xstrerror());
+        debugs(42, DBG_IMPORTANT, HERE << "Error sending to ICMP packet to " << to << ". ERR: " << xstrerror());
     }
 
     Log(to, ' ', NULL, 0, 0);
+    to.FreeAddrInfo(S);
 }
 
 void
@@ -171,7 +172,7 @@ Icmp4::Recv(void)
     static pingerReplyData preply;
 
     if (icmp_sock < 0) {
-        debugs(42, 0, HERE << "No socket! Recv() should not be called.");
+        debugs(42, DBG_CRITICAL, HERE << "No socket! Recv() should not be called.");
         return;
     }
 
@@ -220,11 +221,15 @@ Icmp4::Recv(void)
 
     icmp = (struct icmphdr *) (void *) (pkt + iphdrlen);
 
-    if (icmp->icmp_type != ICMP_ECHOREPLY)
+    if (icmp->icmp_type != ICMP_ECHOREPLY) {
+        preply.from.FreeAddrInfo(from);
         return;
+    }
 
-    if (icmp->icmp_id != icmp_ident)
+    if (icmp->icmp_id != icmp_ident) {
+        preply.from.FreeAddrInfo(from);
         return;
+    }
 
     echo = (icmpEchoData *) (void *) (icmp + 1);
 
@@ -241,6 +246,7 @@ Icmp4::Recv(void)
     control.SendResult(preply, (sizeof(pingerReplyData) - MAX_PKT4_SZ + preply.psize) );
 
     Log(preply.from, icmp->icmp_type, icmpPktStr[icmp->icmp_type], preply.rtt, preply.hops);
+    preply.from.FreeAddrInfo(from);
 }
 
 #endif /* USE_ICMP */

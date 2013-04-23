@@ -11,10 +11,7 @@
  * to prevent squid knowing the users password (idea suggested in RFC 2617).
  */
 
-
 /*
- * $Id$
- *
  * DEBUG:
  * AUTHOR: RFC 2617 & Robert Collins
  *
@@ -46,7 +43,7 @@
  *
  */
 
-#include "config.h"
+#include "squid.h"
 #include <string.h>
 #include "rfc2617.h"
 #include "md5.h"
@@ -103,7 +100,6 @@ CvtBin(const HASHHEX Hex, HASH Bin)
         Bin[i] = '\0';
     }
 }
-
 
 /* calculate H(A1) as per spec */
 void

@@ -1,7 +1,4 @@
-
 /*
- * $Id$
- *
  * DEBUG: section 25    MiME Header Parsing
  * AUTHOR: Harvest Derived
  *
@@ -36,13 +33,8 @@
 #include "squid.h"
 
 #define GET_HDR_SZ 1024
-
-/* returns a pointer to a field-value of the first matching field-name */
-char *
-mime_get_header(const char *mime, const char *name)
-{
-    return mime_get_header_field(mime, name, NULL);
-}
+#include "Debug.h"
+#include "profiler/Profiler.h"
 
 /*
  * returns a pointer to a field-value of the first matching field-name where
@@ -71,7 +63,7 @@ mime_get_header_field(const char *mime, const char *name, const char *prefix)
             return NULL;
 
         while (xisspace(*p))
-            p++;
+            ++p;
 
         if (strncasecmp(p, name, namelen))
             continue;
@@ -92,11 +84,15 @@ mime_get_header_field(const char *mime, const char *name, const char *prefix)
 
         q += namelen;
 
-        if (*q == ':')
-            q++, got = 1;
+        if (*q == ':') {
+            ++q;
+            got = 1;
+        }
 
-        while (xisspace(*q))
-            q++, got = 1;
+        while (xisspace(*q)) {
+            ++q;
+            got = 1;
+        }
 
         if (got && prefix) {
             /* we could process list entries here if we had strcasestr(). */
@@ -111,6 +107,13 @@ mime_get_header_field(const char *mime, const char *name, const char *prefix)
     }
 
     return NULL;
+}
+
+/* returns a pointer to a field-value of the first matching field-name */
+char *
+mime_get_header(const char *mime, const char *name)
+{
+    return mime_get_header_field(mime, name, NULL);
 }
 
 size_t
@@ -153,7 +156,7 @@ headersEnd(const char *mime, size_t l)
             break;
         }
 
-        e++;
+        ++e;
     }
     PROF_stop(headersEnd);
 

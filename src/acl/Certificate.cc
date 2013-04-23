@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 28    Access Control
  * AUTHOR: Duane Wessels
  *
@@ -44,9 +42,10 @@
 #include "acl/Certificate.h"
 #include "acl/Checklist.h"
 #include "acl/CertificateData.h"
-#include "fde.h"
+#include "HttpRequest.h"
 #include "client_side.h"
-
+#include "fde.h"
+#include "globals.h"
 
 int
 ACLCertificateStrategy::match (ACLData<MatchType> * &data, ACLFilledChecklist *checklist)

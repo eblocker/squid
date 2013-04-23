@@ -1,20 +1,21 @@
 #include "squid.h"
 #include "icap_log.h"
 #include "AccessLogEntry.h"
+#include "log/CustomLog.h"
+#include "log/File.h"
+#include "log/Formats.h"
+#include "SquidConfig.h"
 
 int IcapLogfileStatus = LOG_DISABLE;
 
 void
 icapLogOpen()
 {
-    customlog *log;
+    CustomLog *log;
 
     for (log = Config.Log.icaplogs; log; log = log->next) {
-        if (log->type == CLF_NONE)
+        if (log->type == Log::Format::CLF_NONE)
             continue;
-
-        if (log->type == CLF_AUTO)
-            log->type = CLF_ICAP_SQUID;
 
         log->logfile = logfileOpen(log->filename, MAX_URL << 1, 1);
 
@@ -25,7 +26,7 @@ icapLogOpen()
 void
 icapLogClose()
 {
-    customlog *log;
+    CustomLog *log;
 
     for (log = Config.Log.icaplogs; log; log = log->next) {
         if (log->logfile) {
@@ -38,14 +39,14 @@ icapLogClose()
 void
 icapLogRotate()
 {
-    for (customlog* log = Config.Log.icaplogs; log; log = log->next) {
+    for (CustomLog* log = Config.Log.icaplogs; log; log = log->next) {
         if (log->logfile) {
             logfileRotate(log->logfile);
         }
     }
 }
 
-void icapLogLog(AccessLogEntry *al, ACLChecklist * checklist)
+void icapLogLog(AccessLogEntry::Pointer &al, ACLChecklist * checklist)
 {
     if (IcapLogfileStatus == LOG_ENABLE)
         accessLogLogTo(Config.Log.icaplogs, al, checklist);

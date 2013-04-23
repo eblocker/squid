@@ -2,17 +2,17 @@ Author: Luigi Gangitano <luigi@debian.org>
 Description: Fix path for cachemgr.cgi default configuration file
 --- a/tools/Makefile.am
 +++ b/tools/Makefile.am
-@@ -34,7 +34,7 @@
- man_MANS = \
- 	squidclient.1
+@@ -68,7 +68,7 @@
+ 
+ ## ##### cachemgr.cgi  #####
  
 -DEFAULT_CACHEMGR_CONFIG = $(sysconfdir)/cachemgr.conf
 +DEFAULT_CACHEMGR_CONFIG = /etc/squid/cachemgr.conf
  
- squidclient_SOURCES = squidclient.cc
- nodist_squidclient_SOURCES=time.cc stub_debug.cc
-@@ -56,6 +56,7 @@
- $(OBJS): $(top_srcdir)/include/version.h ../include/autoconf.h
+ libexec_PROGRAMS = cachemgr$(CGIEXT)
+ 
+@@ -91,6 +91,7 @@
+ ## Shared
  
  install-data-local:
 +	test -z "/etc/squid" || $(MKDIR_P) "$(DESTDIR)/etc/squid"
@@ -21,17 +21,17 @@ Description: Fix path for cachemgr.cgi default configuration file
  	        echo "$@ will not overwrite existing $(DESTDIR)$(DEFAULT_CACHEMGR_CONFIG)" ; \
 --- a/tools/Makefile.in
 +++ b/tools/Makefile.in
-@@ -375,7 +375,7 @@
- man_MANS = \
- 	squidclient.1
+@@ -434,7 +434,7 @@
+ 	test_tools.cc \
+ 	time.cc
  
 -DEFAULT_CACHEMGR_CONFIG = $(sysconfdir)/cachemgr.conf
 +DEFAULT_CACHEMGR_CONFIG = /etc/squid/cachemgr.conf
- squidclient_SOURCES = squidclient.cc
- nodist_squidclient_SOURCES = time.cc stub_debug.cc
- cachemgr__CGIEXT__SOURCES = cachemgr.cc
-@@ -1094,6 +1094,7 @@
- $(OBJS): $(top_srcdir)/include/version.h ../include/autoconf.h
+ cachemgr__CGIEXT__SOURCES = cachemgr.cc \
+ 	stub_debug.cc \
+ 	test_tools.cc \
+@@ -1237,6 +1237,7 @@
+ 	$(SUBSTITUTE) < $(srcdir)/cachemgr.cgi.8.in > $@
  
  install-data-local:
 +	test -z "/etc/squid" || $(MKDIR_P) "$(DESTDIR)/etc/squid"

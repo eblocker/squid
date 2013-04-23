@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
  * ----------------------------------------------------------
@@ -38,7 +36,7 @@
 #include "splay.h"
 #include "acl/Acl.h"
 #include "acl/Data.h"
-#include "ssl_support.h"
+#include "ssl/support.h"
 #include "acl/StringData.h"
 
 /// \ingroup ACLAPI

@@ -1,6 +1,3 @@
-/*
- * $Id$
- */
 #ifndef SQUID_IDENT_H
 #define SQUID_IDENT_H
 
@@ -9,13 +6,10 @@
  \ingroup SquidComponents
  */
 
-#include "config.h"
-
 #if USE_IDENT
 
 #include "cbdata.h"
-
-class IpAddress;
+#include "comm/forward.h"
 
 namespace Ident
 {
@@ -28,7 +22,7 @@ namespace Ident
  * Self-registers with a global ident lookup manager,
  * will call Ident::Init() itself if the manager has not been initialized already.
  */
-void Start(IpAddress &me, IpAddress &my_peer, IDCB * callback, void *cbdata);
+void Start(const Comm::ConnectionPointer &conn, IDCB * callback, void *cbdata);
 
 /**
  \ingroup IdentAPI

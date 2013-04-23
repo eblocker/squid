@@ -7,11 +7,10 @@
 #ifndef __DISKTHREADS_H__
 #define __DISKTHREADS_H__
 
-#include "config.h"
 #include "dlink.h"
 #include "typedefs.h"
 
-#ifdef AUFS_IO_THREADS
+#if AUFS_IO_THREADS
 #define NUMTHREADS AUFS_IO_THREADS
 #else
 #define NUMTHREADS (Config.cacheSwap.n_configured*16)
@@ -119,6 +118,5 @@ struct AIOCounts {
 
 extern AIOCounts squidaio_counts;
 extern dlink_list used_list;
-
 
 #endif

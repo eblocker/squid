@@ -32,8 +32,6 @@
 #ifndef _INCLUDE_ICMPV6_H
 #define _INCLUDE_ICMPV6_H
 
-#include "config.h"
-
 #include "Icmp.h"
 
 #if HAVE_NETINET_IN_H
@@ -74,7 +72,7 @@ public:
     virtual int Open();
 
 #if USE_ICMP
-    virtual void SendEcho(IpAddress &, int, const char*, int);
+    virtual void SendEcho(Ip::Address &, int, const char*, int);
     virtual void Recv(void);
 #endif
 };
@@ -82,7 +80,7 @@ public:
 #if USE_ICMP
 
 /// pinger helper contains one of these as a global object.
-SQUIDCEXTERN Icmp6 icmp6;
+extern Icmp6 icmp6;
 
 #endif /* USE_ICMP && SQUID_HELPER */
 #endif /* _INCLUDE_ICMPV6_H */

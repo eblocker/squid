@@ -31,7 +31,7 @@
  *
  ***************************************************************************/
 
-#include "config.h"
+#include "squid.h"
 
 #include <stdio.h>
 
@@ -55,10 +55,10 @@
 #if HAVE_MEMORY_H
 #include <memory.h>
 #endif
-#ifdef HAVE_STRING_H
+#if HAVE_STRING_H
 #include <string.h>
 #endif
-#ifdef HAVE_STRINGS_H
+#if HAVE_STRINGS_H
 #include <strings.h>
 #endif
 #if HAVE_BSTRING_H
@@ -83,7 +83,6 @@
 #include "asn1.h"
 #include "snmp_api_error.h"
 
-
 u_char *
 asn_build_header(u_char * data,	/* IN - ptr to start of object */
                  int *datalength,		/* IN/OUT - # of valid bytes */
@@ -94,7 +93,6 @@ asn_build_header(u_char * data,	/* IN - ptr to start of object */
     /* Truth is 0 'cause we don't know yet */
     return (asn_build_header_with_truth(data, datalength, type, length, 0));
 }
-
 
 /*
  * asn_parse_int - pulls an int out of an ASN int type.
@@ -409,7 +407,7 @@ asn_parse_string(u_char * data, int *datalength,
         snmp_set_api_error(SNMPERR_ASN_DECODE);
         return (NULL);
     }
-    xmemcpy((char *) string, (char *) bufp, (int) asn_length);
+    memcpy((char *) string, (char *) bufp, (int) asn_length);
     *strlength = (int) asn_length;
     *datalength -= (int) asn_length + (bufp - data);
     return (bufp + asn_length);
@@ -448,11 +446,10 @@ asn_build_string(u_char * data, int *datalength,
         snmp_set_api_error(SNMPERR_ASN_DECODE);
         return (NULL);
     }
-    xmemcpy((char *) data, (char *) string, strlength);
+    memcpy((char *) data, (char *) string, strlength);
     *datalength -= strlength;
     return (data + strlength);
 }
-
 
 /*
  * asn_parse_header - interprets the ID and length of the current object.
@@ -587,7 +584,7 @@ asn_parse_length(u_char * data, u_int * length)
             return (NULL);
         }
         *length = (u_int) 0;
-        xmemcpy((char *) (length), (char *) data + 1, (int) lengthbyte);
+        memcpy((char *) (length), (char *) data + 1, (int) lengthbyte);
         *length = ntohl(*length);
         *length >>= (8 * ((sizeof *length) - lengthbyte));
         return (data + lengthbyte + 1);
@@ -598,7 +595,6 @@ asn_parse_length(u_char * data, u_int * length)
     *length = (int) lengthbyte;
     return (data + 1);
 }
-
 
 u_char *
 asn_build_length(u_char * data, int *datalength,
@@ -818,7 +814,7 @@ asn_build_objid(u_char * data, int *datalength,
         snmp_set_api_error(SNMPERR_ASN_DECODE);
         return (NULL);
     }
-    xmemcpy((char *) data, (char *) buf, asnlength);
+    memcpy((char *) data, (char *) buf, asnlength);
     *datalength -= asnlength;
     return (data + asnlength);
 }
@@ -932,7 +928,7 @@ asn_parse_bitstring(u_char * data, int *datalength,
         snmp_set_api_error(SNMPERR_ASN_DECODE);
         return (NULL);
     }
-    xmemcpy((char *) string, (char *) bufp, (int) asn_length);
+    memcpy((char *) string, (char *) bufp, (int) asn_length);
     *strlength = (int) asn_length;
     *datalength -= (int) asn_length + (bufp - data);
     return (bufp + asn_length);
@@ -973,7 +969,7 @@ asn_build_bitstring(u_char * data, int *datalength,
         snmp_set_api_error(SNMPERR_ASN_ENCODE);
         return (NULL);
     }
-    xmemcpy((char *) data, (char *) string, strlength);
+    memcpy((char *) data, (char *) string, strlength);
     *datalength -= strlength;
     return (data + strlength);
 }

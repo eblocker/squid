@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  *  SQUID_VERSION - String for version id of this distribution
  */
 
@@ -9,7 +7,7 @@
  */
 
 #ifndef SQUID_RELEASE_TIME
-#define SQUID_RELEASE_TIME 1339154416
+#define SQUID_RELEASE_TIME 1363083425
 #endif
 
 #ifndef APP_SHORTNAME

@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 49    SNMP Interface
  * AUTHOR: Kostas Anagnostakis
  *
@@ -33,11 +31,21 @@
  */
 
 #include "squid.h"
+#include "CachePeer.h"
 #include "cache_snmp.h"
-#include "Store.h"
+#include "globals.h"
 #include "mem_node.h"
+#include "neighbors.h"
+#include "snmp_agent.h"
+#include "snmp_core.h"
+#include "StatCounters.h"
+#include "StatHist.h"
+#include "SquidConfig.h"
 #include "SquidMath.h"
 #include "SquidTime.h"
+#include "stat.h"
+#include "Store.h"
+#include "tools.h"
 
 /************************************************************************
 
@@ -67,7 +75,7 @@ snmp_sysFn(variable_list * Var, snint * ErrP)
 
     case SYSSTOR:
         Answer = snmp_var_new_integer(Var->name, Var->name_length,
-                                      store_swap_size,
+                                      Store::Root().currentSize() >> 10,
                                       ASN_INTEGER);
         break;
 
@@ -131,7 +139,7 @@ snmp_confFn(variable_list * Var, snint * ErrP)
 
         case CONF_ST_SWMAXSZ:
             Answer = snmp_var_new_integer(Var->name, Var->name_length,
-                                          (snint) (Store::Root().maxSize() >> 10),
+                                          (snint) (Store::Root().maxSize() >> 20),
                                           ASN_INTEGER);
             break;
 
@@ -190,7 +198,6 @@ snmp_confFn(variable_list * Var, snint * ErrP)
     return Answer;
 }
 
-
 /*
  * cacheMesh group
  *   - cachePeerTable
@@ -200,15 +207,15 @@ snmp_meshPtblFn(variable_list * Var, snint * ErrP)
 {
     variable_list *Answer = NULL;
 
-    IpAddress laddr;
+    Ip::Address laddr;
     char *cp = NULL;
-    peer *p = NULL;
+    CachePeer *p = NULL;
     int cnt = 0;
     debugs(49, 5, "snmp_meshPtblFn: peer " << Var->name[LEN_SQ_MESH + 3] << " requested!");
     *ErrP = SNMP_ERR_NOERROR;
 
     u_int index = Var->name[LEN_SQ_MESH + 3] ;
-    for (p = Config.peers; p != NULL; p = p->next, cnt++) {
+    for (p = Config.peers; p != NULL; p = p->next, ++cnt) {
         if (p->index == index) {
             laddr = p->in_addr ;
             break;
@@ -220,14 +227,12 @@ snmp_meshPtblFn(variable_list * Var, snint * ErrP)
         return NULL;
     }
 
-
     switch (Var->name[LEN_SQ_MESH + 2]) {
     case MESH_PTBL_INDEX: { // FIXME INET6: Should be visible?
         Answer = snmp_var_new_integer(Var->name, Var->name_length,
                                       (snint)p->index, SMI_INTEGER);
     }
     break;
-
 
     case MESH_PTBL_NAME:
         cp = p->host;
@@ -531,7 +536,7 @@ snmp_prfProtoFn(variable_list * Var, snint * ErrP)
 
         case PERF_PROTOSTAT_AGGR_CURSWAP:
             Answer = snmp_var_new_integer(Var->name, Var->name_length,
-                                          (snint) store_swap_size,
+                                          (snint) Store::Root().currentSize() >> 10,
                                           SMI_GAUGE32);
             break;
 
@@ -572,35 +577,35 @@ snmp_prfProtoFn(variable_list * Var, snint * ErrP)
             break;
 
         case PERF_MEDIAN_HTTP_ALL:
-            x = statHistDeltaMedian(&l->client_http.all_svc_time,
-                                    &f->client_http.all_svc_time);
+            x = statHistDeltaMedian(l->client_http.allSvcTime,
+                                    f->client_http.allSvcTime);
             break;
 
         case PERF_MEDIAN_HTTP_MISS:
-            x = statHistDeltaMedian(&l->client_http.miss_svc_time,
-                                    &f->client_http.miss_svc_time);
+            x = statHistDeltaMedian(l->client_http.missSvcTime,
+                                    f->client_http.missSvcTime);
             break;
 
         case PERF_MEDIAN_HTTP_NM:
-            x = statHistDeltaMedian(&l->client_http.nm_svc_time,
-                                    &f->client_http.nm_svc_time);
+            x = statHistDeltaMedian(l->client_http.nearMissSvcTime,
+                                    f->client_http.nearMissSvcTime);
             break;
 
         case PERF_MEDIAN_HTTP_HIT:
-            x = statHistDeltaMedian(&l->client_http.hit_svc_time,
-                                    &f->client_http.hit_svc_time);
+            x = statHistDeltaMedian(l->client_http.hitSvcTime,
+                                    f->client_http.hitSvcTime);
             break;
 
         case PERF_MEDIAN_ICP_QUERY:
-            x = statHistDeltaMedian(&l->icp.query_svc_time, &f->icp.query_svc_time);
+            x = statHistDeltaMedian(l->icp.querySvcTime, f->icp.querySvcTime);
             break;
 
         case PERF_MEDIAN_ICP_REPLY:
-            x = statHistDeltaMedian(&l->icp.reply_svc_time, &f->icp.reply_svc_time);
+            x = statHistDeltaMedian(l->icp.replySvcTime, f->icp.replySvcTime);
             break;
 
         case PERF_MEDIAN_DNS:
-            x = statHistDeltaMedian(&l->dns.svc_time, &f->dns.svc_time);
+            x = statHistDeltaMedian(l->dns.svcTime, f->dns.svcTime);
             break;
 
         case PERF_MEDIAN_RHR:
@@ -612,8 +617,8 @@ snmp_prfProtoFn(variable_list * Var, snint * ErrP)
             break;
 
         case PERF_MEDIAN_HTTP_NH:
-            x = statHistDeltaMedian(&l->client_http.nh_svc_time,
-                                    &f->client_http.nh_svc_time);
+            x = statHistDeltaMedian(l->client_http.nearHitSvcTime,
+                                    f->client_http.nearHitSvcTime);
             break;
 
         default:

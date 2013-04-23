@@ -17,9 +17,10 @@ libstate_la_SOURCES = \
 	Strategy.h \
 	Strategised.cc \
 	Strategised.h \
-	\
 	FilledChecklist.cc \
-	FilledChecklist.h
+	FilledChecklist.h \
+	AclAddress.h \
+	AclAddress.cc
 
 ## data-specific ACLs
 libacls_la_SOURCES = \
@@ -33,7 +34,6 @@ libacls_la_SOURCES = \
 	Time.h \
 	TimeData.cc \
 	TimeData.h \
-	\
 	Asn.cc \
 	Asn.h \
 	Browser.cc \
@@ -47,6 +47,10 @@ libacls_la_SOURCES = \
 	DomainData.h \
 	ExtUser.cc \
 	ExtUser.h \
+	HierCodeData.cc \
+	HierCodeData.h \
+	HierCode.cc \
+	HierCode.h \
 	HttpHeaderData.cc \
 	HttpHeaderData.h \
 	HttpRepHeader.cc \
@@ -57,16 +61,16 @@ libacls_la_SOURCES = \
 	HttpStatus.h \
 	Ip.cc \
 	Ip.h \
+	LocalIp.cc \
+	LocalIp.h \
+	LocalPort.cc \
+	LocalPort.h \
 	MaxConnection.cc \
 	MaxConnection.h \
 	Method.cc \
 	MethodData.cc \
 	MethodData.h \
 	Method.h \
-	MyIp.cc \
-	MyIp.h \
-	MyPort.cc \
-	MyPort.h \
 	MyPortName.cc \
 	MyPortName.h \
 	PeerName.cc \
@@ -75,6 +79,8 @@ libacls_la_SOURCES = \
 	ProtocolData.cc \
 	ProtocolData.h \
 	Protocol.h \
+	Random.cc \
+	Random.h \
 	Referer.cc \
 	Referer.h \
 	ReplyHeaderStrategy.h \
@@ -92,15 +98,19 @@ libacls_la_SOURCES = \
 	Tag.h \
 	Url.cc \
 	Url.h \
+	UrlLogin.cc \
+	UrlLogin.h \
 	UrlPath.cc \
 	UrlPath.h \
 	UrlPort.cc \
 	UrlPort.h \
 	UserData.cc \
 	UserData.h \
-	\
+	AclNameList.h \
+	AclDenyInfoList.h \
 	Gadgets.cc \
-	Gadgets.h
+	Gadgets.h \
+	AclSizeLimit.h
 
 ## Add conditional sources
 ## TODO: move these to their respectful dirs when those dirs are created
@@ -124,9 +134,9 @@ endif
 EXTRA_libacls_la_SOURCES += $(SSL_ACLS)
 
 
-ARP_ACLS = Arp.cc Arp.h
+ARP_ACLS = Arp.cc Arp.h Eui64.cc Eui64.h
 
-if ENABLE_ARP_ACL
+if USE_SQUID_EUI
 libacls_la_SOURCES += $(ARP_ACLS)
 endif
 

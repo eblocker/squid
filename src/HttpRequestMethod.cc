@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  * DEBUG: section 73    HTTP Request
  * AUTHOR: Duane Wessels
  *
@@ -142,12 +140,12 @@ HttpRequestMethod::AddExtension(const char *mstr)
         /* Don't free statically allocated "%EXTnn" string */
         RequestMethodStr[method] = xstrdup(mstr);
 
-        debugs(23, 1, "Extension method '" << mstr << "' added, enum=" << method);
+        debugs(23, DBG_IMPORTANT, "Extension method '" << mstr << "' added, enum=" << method);
 
         return;
     }
 
-    debugs(23, 1, "WARNING: Could not add new extension method '" << mstr << "' due to lack of array space");
+    debugs(23, DBG_IMPORTANT, "WARNING: Could not add new extension method '" << mstr << "' due to lack of array space");
 #endif
 }
 
@@ -160,7 +158,7 @@ HttpRequestMethod::Configure(SquidConfig &cfg)
     while (w) {
         char *s;
 
-        for (s = w->key; *s; s++)
+        for (s = w->key; *s; ++s)
             *s = xtoupper(*s);
 
         AddExtension(w->key);

@@ -20,7 +20,6 @@
  *     might be the way to go.
  */
 
-#include "config.h"
 #include "util.h"
 
 #include "memMeter.h"
@@ -99,7 +98,6 @@ public:
     MemMeter alloc;
     MemMeter inuse;
     MemMeter idle;
-
 
     /** history Allocations */
     mgb_t gb_allocated;
@@ -201,7 +199,7 @@ public:
     /**
      * Free a element allocated by MemAllocator::alloc()
      */
-    virtual void free(void *) = 0;
+    virtual void freeOne(void *) = 0;
 
     virtual char const *objectType() const;
     virtual size_t objectSize() const = 0;
@@ -251,7 +249,7 @@ public:
     /**
      * Free a element allocated by MemAllocatorProxy::alloc()
      */
-    void free(void *);
+    void freeOne(void *);
 
     int inUseCount() const;
     size_t objectSize() const;
@@ -309,7 +307,7 @@ CLASS::operator new (size_t byteCount) \
 void \
 CLASS::operator delete (void *address) \
 { \
-    Pool().free(address); \
+    Pool().freeOne(address); \
 }
 
 /// \ingroup MemPoolsAPI
@@ -331,7 +329,7 @@ public:
     /**
      * Free a element allocated by MemImplementingAllocator::alloc()
      */
-    virtual void free(void *);
+    virtual void freeOne(void *);
 
     virtual bool idleTrigger(int shift) const = 0;
     virtual void clean(time_t maxage) = 0;
@@ -439,6 +437,5 @@ extern int memPoolsTotalAllocated(void);
 MemAllocatorProxy::MemAllocatorProxy(char const *aLabel, size_t const &aSize) : label (aLabel), size(aSize), theAllocator (NULL)
 {
 }
-
 
 #endif /* _MEM_POOL_H_ */

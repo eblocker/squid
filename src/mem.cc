@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 13    High Level Memory Pool Management
  * AUTHOR: Harvest Derived
  *
@@ -33,15 +31,24 @@
  */
 
 #include "squid.h"
-#include "event.h"
-#include "CacheManager.h"
+#include "acl/AclDenyInfoList.h"
+#include "acl/AclNameList.h"
+#include "CacheDigest.h"
 #include "ClientInfo.h"
+#include "disk.h"
+#include "event.h"
+#include "md5.h"
 #include "Mem.h"
+#include "MemBuf.h"
 #include "memMeter.h"
+#include "mgr/Registration.h"
+#include "icmp/net_db.h"
+#include "RegexList.h"
+#include "SquidConfig.h"
+#include "SquidList.h"
+#include "SquidTime.h"
 #include "Store.h"
 #include "StoreEntryStream.h"
-#include "MemBuf.h"
-#include "SquidTime.h"
 
 #if HAVE_IOMANIP
 #include <iomanip>
@@ -50,7 +57,16 @@
 #include <ostream>
 #endif
 
+/* forward declarations */
+static void memFree2K(void *);
+static void memFree4K(void *);
+static void memFree8K(void *);
+static void memFree16K(void *);
+static void memFree32K(void *);
+static void memFree64K(void *);
+
 /* module globals */
+const size_t squidSystemPageSize=getpagesize();
 
 /* local prototypes */
 static void memStringStats(std::ostream &);
@@ -60,8 +76,15 @@ static MemAllocator *MemPools[MEM_MAX];
 static double xm_time = 0;
 static double xm_deltat = 0;
 
+/* all pools are ready to be used */
+static bool MemIsInitialized = false;
+
 /* string pools */
-#define mem_str_pool_count 3
+#define mem_str_pool_count 6
+
+// 4 bytes bigger than the biggest string pool size
+// which is in turn calculated from SmallestStringBeforeMemIsInitialized
+static const size_t SmallestStringBeforeMemIsInitialized = 1024*16+4;
 
 static const struct {
     const char *name;
@@ -77,8 +100,18 @@ StrPoolsAttrs[mem_str_pool_count] = {
         "Medium Strings", MemAllocator::RoundedSize(128),
     },				/* to fit most urls */
     {
-        "Long Strings", MemAllocator::RoundedSize(512)
-    }				/* other */
+        "Long Strings", MemAllocator::RoundedSize(512),
+    },
+    {
+        "1KB Strings", MemAllocator::RoundedSize(1024),
+    },
+    {
+        "4KB Strings", MemAllocator::RoundedSize(4*1024),
+    },
+    {
+        "16KB Strings",
+        MemAllocator::RoundedSize(SmallestStringBeforeMemIsInitialized-4)
+    }
 };
 
 static struct {
@@ -104,7 +137,7 @@ memStringStats(std::ostream &stream)
     stream << "String Pool\t Impact\t\t\n \t (%strings)\t (%volume)\n";
     /* table body */
 
-    for (i = 0; i < mem_str_pool_count; i++) {
+    for (i = 0; i < mem_str_pool_count; ++i) {
         const MemAllocator *pool = StrPools[i].pool;
         const int plevel = pool->getMeter().inuse.level;
         stream << std::setw(20) << std::left << pool->objectType();
@@ -144,9 +177,9 @@ Mem::Stats(StoreEntry * sentry)
         long int leaked = 0, dubious = 0, reachable = 0, suppressed = 0;
         stream << "Valgrind Report:\n";
         stream << "Type\tAmount\n";
-        debugs(13, 1, "Asking valgrind for memleaks");
+        debugs(13, DBG_IMPORTANT, "Asking valgrind for memleaks");
         VALGRIND_DO_LEAK_CHECK;
-        debugs(13, 1, "Getting valgrind statistics");
+        debugs(13, DBG_IMPORTANT, "Getting valgrind statistics");
         VALGRIND_COUNT_LEAKS(leaked, dubious, reachable, suppressed);
         stream << "Leaked\t" << leaked << "\n";
         stream << "Dubious\t" << dubious << "\n";
@@ -162,23 +195,28 @@ Mem::Stats(StoreEntry * sentry)
  */
 
 /*
- * we have a limit on _total_ amount of idle memory so we ignore
- * max_pages for now
+ * we have a limit on _total_ amount of idle memory so we ignore max_pages for now.
+ * Will ignore repeated calls for the same pool type.
+ *
+ * Relies on Mem::Init() having been called beforehand.
  */
 void
 memDataInit(mem_type type, const char *name, size_t size, int max_pages_notused, bool zeroOnPush)
 {
     assert(name && size);
-    assert(MemPools[type] == NULL);
+
+    if (MemPools[type] != NULL)
+        return;
+
     MemPools[type] = memPoolCreate(name, size);
     MemPools[type]->zeroOnPush(zeroOnPush);
 }
-
 
 /* find appropriate pool and use it (pools always init buffer with 0s) */
 void *
 memAllocate(mem_type type)
 {
+    assert(MemPools[type]);
     return MemPools[type]->alloc();
 }
 
@@ -186,18 +224,25 @@ memAllocate(mem_type type)
 void
 memFree(void *p, int type)
 {
-    MemPools[type]->free(p);
+    assert(MemPools[type]);
+    MemPools[type]->freeOne(p);
 }
 
-/* allocate a variable size buffer using best-fit pool */
+/* allocate a variable size buffer using best-fit string pool */
 void *
 memAllocString(size_t net_size, size_t * gross_size)
 {
-    int i;
     MemAllocator *pool = NULL;
     assert(gross_size);
 
-    for (i = 0; i < mem_str_pool_count; i++) {
+    // if pools are not yet ready, make sure that
+    // the requested size is not poolable so that the right deallocator
+    // will be used
+    if (!MemIsInitialized && net_size < SmallestStringBeforeMemIsInitialized)
+        net_size = SmallestStringBeforeMemIsInitialized;
+
+    unsigned int i;
+    for (i = 0; i < mem_str_pool_count; ++i) {
         if (net_size <= StrPoolsAttrs[i].obj_size) {
             pool = StrPools[i].pool;
             break;
@@ -206,12 +251,12 @@ memAllocString(size_t net_size, size_t * gross_size)
 
     *gross_size = pool ? StrPoolsAttrs[i].obj_size : net_size;
     assert(*gross_size >= net_size);
+    // may forget [de]allocations until MemIsInitialized
     memMeterInc(StrCountMeter);
     memMeterAdd(StrVolumeMeter, *gross_size);
     return pool ? pool->alloc() : xcalloc(1, net_size);
 }
 
-extern size_t memStringCount();
 size_t
 memStringCount()
 {
@@ -227,21 +272,23 @@ memStringCount()
 void
 memFreeString(size_t size, void *buf)
 {
-    int i;
     MemAllocator *pool = NULL;
-    assert(size && buf);
+    assert(buf);
 
-    for (i = 0; i < mem_str_pool_count; i++) {
-        if (size <= StrPoolsAttrs[i].obj_size) {
-            assert(size == StrPoolsAttrs[i].obj_size);
-            pool = StrPools[i].pool;
-            break;
+    if (MemIsInitialized) {
+        for (unsigned int i = 0; i < mem_str_pool_count; ++i) {
+            if (size <= StrPoolsAttrs[i].obj_size) {
+                assert(size == StrPoolsAttrs[i].obj_size);
+                pool = StrPools[i].pool;
+                break;
+            }
         }
     }
 
+    // may forget [de]allocations until MemIsInitialized
     memMeterDec(StrCountMeter);
     memMeterDel(StrVolumeMeter, size);
-    pool ? pool->free(buf) : xfree(buf);
+    pool ? pool->freeOne(buf) : xfree(buf);
 }
 
 /* Find the best fit MEM_X_BUF type */
@@ -355,7 +402,7 @@ memConfigure(void)
         new_pool_limit = Config.MemPools.limit;
     else {
         if (Config.MemPools.limit == 0)
-            debugs(13, 1, "memory_pools_limit 0 has been chagned to memory_pools_limit none. Please update your config");
+            debugs(13, DBG_IMPORTANT, "memory_pools_limit 0 has been chagned to memory_pools_limit none. Please update your config");
         new_pool_limit = -1;
     }
 
@@ -367,7 +414,7 @@ memConfigure(void)
      * stderr when doing things like 'squid -k reconfigure'
      */
     if (MemPools::GetInstance().idleLimit() > new_pool_limit)
-        debugs(13, 1, "Shrinking idle mem pools to "<< std::setprecision(3) << toMB(new_pool_limit) << " MB");
+        debugs(13, DBG_IMPORTANT, "Shrinking idle mem pools to "<< std::setprecision(3) << toMB(new_pool_limit) << " MB");
 #endif
 
     MemPools::GetInstance().setIdleLimit(new_pool_limit);
@@ -407,9 +454,9 @@ Mem::Init(void)
     memDataInit(MEM_16K_BUF, "16K Buffer", 16384, 10, false);
     memDataInit(MEM_32K_BUF, "32K Buffer", 32768, 10, false);
     memDataInit(MEM_64K_BUF, "64K Buffer", 65536, 10, false);
-    memDataInit(MEM_ACL_DENY_INFO_LIST, "acl_deny_info_list",
-                sizeof(acl_deny_info_list), 0);
-    memDataInit(MEM_ACL_NAME_LIST, "acl_name_list", sizeof(acl_name_list), 0);
+    memDataInit(MEM_ACL_DENY_INFO_LIST, "AclDenyInfoList",
+                sizeof(AclDenyInfoList), 0);
+    memDataInit(MEM_ACL_NAME_LIST, "acl_name_list", sizeof(AclNameList), 0);
 #if USE_CACHE_DIGESTS
 
     memDataInit(MEM_CACHE_DIGEST, "CacheDigest", sizeof(CacheDigest), 0);
@@ -419,24 +466,24 @@ Mem::Init(void)
     memDataInit(MEM_DLINK_NODE, "dlink_node", sizeof(dlink_node), 10);
     memDataInit(MEM_DREAD_CTRL, "dread_ctrl", sizeof(dread_ctrl), 0);
     memDataInit(MEM_DWRITE_Q, "dwrite_q", sizeof(dwrite_q), 0);
-    memDataInit(MEM_HTTP_HDR_CC, "HttpHdrCc", sizeof(HttpHdrCc), 0);
     memDataInit(MEM_HTTP_HDR_CONTENT_RANGE, "HttpHdrContRange", sizeof(HttpHdrContRange), 0);
     memDataInit(MEM_NETDBENTRY, "netdbEntry", sizeof(netdbEntry), 0);
     memDataInit(MEM_NET_DB_NAME, "net_db_name", sizeof(net_db_name), 0);
-    memDataInit(MEM_RELIST, "relist", sizeof(relist), 0);
+    memDataInit(MEM_RELIST, "RegexList", sizeof(RegexList), 0);
     memDataInit(MEM_CLIENT_INFO, "ClientInfo", sizeof(ClientInfo), 0);
     memDataInit(MEM_MD5_DIGEST, "MD5 digest", SQUID_MD5_DIGEST_LENGTH, 0);
     MemPools[MEM_MD5_DIGEST]->setChunkSize(512 * 1024);
 
     /** Lastly init the string pools. */
-    for (i = 0; i < mem_str_pool_count; i++) {
+    for (i = 0; i < mem_str_pool_count; ++i) {
         StrPools[i].pool = memPoolCreate(StrPoolsAttrs[i].name, StrPoolsAttrs[i].obj_size);
         StrPools[i].pool->zeroOnPush(false);
 
         if (StrPools[i].pool->objectSize() != StrPoolsAttrs[i].obj_size)
-            debugs(13, 1, "Notice: " << StrPoolsAttrs[i].name << " is " << StrPools[i].pool->objectSize() << " bytes instead of requested " << StrPoolsAttrs[i].obj_size << " bytes");
+            debugs(13, DBG_IMPORTANT, "Notice: " << StrPoolsAttrs[i].name << " is " << StrPools[i].pool->objectSize() << " bytes instead of requested " << StrPoolsAttrs[i].obj_size << " bytes");
     }
 
+    MemIsInitialized = true;
     /** \par
      * finally register with the cache manager */
     RegisterWithCacheManager();
@@ -454,8 +501,7 @@ Mem::Report()
 void
 Mem::RegisterWithCacheManager(void)
 {
-    CacheManager::GetInstance()->registerAction("mem", "Memory Utilization",
-            Mem::Stats, 0, 1);
+    Mgr::RegisterAction("mem", "Memory Utilization", Mem::Stats, 0, 1);
 }
 
 mem_type &operator++ (mem_type &aMem)
@@ -471,15 +517,13 @@ mem_type &operator++ (mem_type &aMem)
 void
 memCheckInit(void)
 {
-    mem_type t;
+    mem_type t = MEM_NONE;
 
-    for (t = MEM_NONE, ++t; t < MEM_MAX; ++t) {
-        if (MEM_DONTFREE == t)
-            continue;
-
+    while (++t < MEM_DONTFREE) {
         /*
          * If you hit this assertion, then you forgot to add a
          * memDataInit() line for type 't'.
+         * Or placed the pool type in the wrong section of the enum list.
          */
         assert(MemPools[t]);
     }
@@ -489,7 +533,8 @@ void
 memClean(void)
 {
     MemPoolGlobalStats stats;
-    MemPools::GetInstance().setIdleLimit(0);
+    if (Config.MemPools.limit > 0) // do not reset if disabled or same
+        MemPools::GetInstance().setIdleLimit(0);
     MemPools::GetInstance().clean(0);
     memPoolGetGlobalStats(&stats);
 
@@ -543,6 +588,12 @@ memFree64K(void *p)
     memFree(p, MEM_64K_BUF);
 }
 
+static void
+cxx_xfree(void * ptr)
+{
+    xfree(ptr);
+}
+
 FREE *
 memFreeBufFunc(size_t size)
 {
@@ -569,7 +620,7 @@ memFreeBufFunc(size_t size)
     default:
         memMeterDec(HugeBufCountMeter);
         memMeterDel(HugeBufVolumeMeter, size);
-        return xfree;
+        return cxx_xfree;
     }
 }
 
@@ -597,7 +648,7 @@ Mem::PoolReport(const MemPoolStats * mp_st, const MemPoolMeter * AllMeter, std::
         needed = mp_st->items_inuse / mp_st->chunk_capacity;
 
         if (mp_st->items_inuse % mp_st->chunk_capacity)
-            needed++;
+            ++needed;
 
         excess = mp_st->chunks_inuse - needed;
 
@@ -726,17 +777,20 @@ Mem::Report(std::ostream &stream)
         if (!mp_stats.pool)	/* pool destroyed */
             continue;
 
-        if (mp_stats.pool->getMeter().gb_allocated.count > 0)	/* this pool has been used */
-            sortme[npools++] = mp_stats;
-        else
-            not_used++;
+        if (mp_stats.pool->getMeter().gb_allocated.count > 0) {
+            /* this pool has been used */
+            sortme[npools] = mp_stats;
+            ++npools;
+        } else {
+            ++not_used;
+        }
     }
 
     memPoolIterateDone(&iter);
 
     qsort(sortme, npools, sizeof(*sortme), MemPoolReportSorter);
 
-    for (int i = 0; i< npools; i++) {
+    for (int i = 0; i< npools; ++i) {
         PoolReport(&sortme[i], mp_total.TheMeter, stream);
     }
 

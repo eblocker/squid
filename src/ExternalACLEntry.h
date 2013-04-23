@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  * DEBUG: section 82    External ACL
  * AUTHOR: Henrik Nordstrom, MARA Systems AB
  *
@@ -44,9 +42,12 @@
 #ifndef SQUID_EXTERNALACLENTRY_H
 #define SQUID_EXTERNALACLENTRY_H
 
-
+#include "acl/Acl.h"
 #include "cbdata.h"
+#include "hash.h"
+#include "SquidString.h"
 
+class external_acl;
 /******************************************************************
  * ExternalACLEntryData
  * Core data that ExternalACLEntry manages.
@@ -58,16 +59,18 @@ class ExternalACLEntryData
 {
 
 public:
-    ExternalACLEntryData() : result (-1) {}
+    ExternalACLEntryData() : result(ACCESS_DUNNO) {}
 
-    int result;
+    allow_t result;
+#if USE_AUTH
+    // TODO use an AuthUser to hold this info
     String user;
     String password;
+#endif
     String message;
     String tag;
     String log;
 };
-
 
 /*******************************************************************
  * external_acl cache entry
@@ -86,10 +89,12 @@ public:
 
     void update(ExternalACLEntryData const &);
     dlink_node lru;
-    int result;
+    allow_t result;
     time_t date;
+#if USE_AUTH
     String user;
     String password;
+#endif
     String message;
     String tag;
     String log;

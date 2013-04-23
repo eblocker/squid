@@ -1,10 +1,7 @@
-/*
- * $Id$
- */
+#include "squid.h"
+#include "SquidConfig.h"
 
-// just for the global definition of Config and Config2
-#include "structs.h"
+class SquidConfig Config;
 
-struct SquidConfig Config;
+class SquidConfig2 Config2;
 
-struct SquidConfig2 Config2;

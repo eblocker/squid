@@ -1,7 +1,4 @@
-
 /*
- * $Id$
- *
  * DEBUG: section 00    Announcement Server
  * AUTHOR: Harvest Derived
  *
@@ -32,20 +29,17 @@
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
  *
  */
+#include "squid.h"
 
 #include <stdio.h>
 #include <fcntl.h>
-#include <stdlib.h>
 #include <string.h>
-#include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <unistd.h>
 #include <signal.h>
-
-#include "config.h"
 
 #define RECV_BUF_SIZE 8192
 
@@ -80,7 +74,6 @@ sig_handle(int)
     exit(0);
 }
 
-
 int
 main(int argc, char *argv[])
 {
@@ -93,10 +86,9 @@ main(int argc, char *argv[])
     const char *logfile;
     char ip[4];
 
-    for (len = 0; len < 32; len++) {
+    for (len = 0; len < 32; ++len) {
         signal(len, sig_handle);
     }
-
 
     if (argc > 1)
         logfile = argv[1];
@@ -113,7 +105,6 @@ main(int argc, char *argv[])
     close(2);
     dup(1);
 
-
     IPAddress ipa;
     chat tmp[MAX_HOSTNAMELEN];
     for (;;) {
@@ -125,7 +116,7 @@ main(int argc, char *argv[])
             exit(2);
         }
 
-        xmemcpy(ip, &R.sin_addr.s_addr, 4);
+        memcpy(ip, &R.sin_addr.s_addr, 4);
         hp = gethostbyaddr(ip, 4, AF_INET);
         ipa = R.sin_addr;
         printf("==============================================================================\n");

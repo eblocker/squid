@@ -1,24 +1,13 @@
-#
-#  Makefile for the Squid Object Cache server
-#
-#  $Id$
-#
-#  Uncomment and customize the following to suit your needs:
-#
-
 include $(top_srcdir)/src/Common.am
 
-libexec_PROGRAMS = getpwname_auth
+libexec_PROGRAMS = basic_getpwnam_auth
 
-getpwname_auth_SOURCES = getpwnam_auth.c 
+basic_getpwnam_auth_SOURCES = basic_getpwnam_auth.cc
+basic_getpwnam_auth_LDADD = \
+	$(top_builddir)/lib/libmiscencoding.la \
+	$(COMPAT_LIB) \
+	$(CRYPTLIB)
 
-## we need our local files too (but avoid -I. at all costs)
-INCLUDES += -I$(srcdir)
+man_MANS = basic_getpwnam_auth.8
 
-LDADD = \
-	$(top_builddir)/compat/libcompat.la \
-	-L$(top_builddir)/lib -lmiscutil \
-	$(CRYPTLIB) \
-	$(XTRA_LIBS)
-
-EXTRA_DIST = config.test
+EXTRA_DIST = basic_getpwnam_auth.8 config.test

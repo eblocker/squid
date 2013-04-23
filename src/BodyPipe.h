@@ -1,4 +1,3 @@
-
 #ifndef SQUID_BODY_PIPE_H
 #define SQUID_BODY_PIPE_H
 
@@ -8,9 +7,10 @@
 
 class BodyPipe;
 
-// Interface for those who want to produce body content for others.
-// BodyProducer is expected to create the BodyPipe.
-// One pipe cannot have more than one producer.
+/** Interface for those who want to produce body content for others.
+ * BodyProducer is expected to create the BodyPipe.
+ * One pipe cannot have more than one producer.
+ */
 class BodyProducer: virtual public AsyncJob
 {
 public:
@@ -26,10 +26,11 @@ protected:
     void stopProducingFor(RefCount<BodyPipe> &pipe, bool atEof);
 };
 
-// Interface for those who want to consume body content from others.
-// BodyConsumer is expected to register with an existing BodyPipe
-// by calling BodyPipe::setConsumer().
-// One pipe cannot have more than one consumer.
+/** Interface for those who want to consume body content from others.
+ * BodyConsumer is expected to register with an existing BodyPipe
+ * by calling BodyPipe::setConsumer().
+ * One pipe cannot have more than one consumer.
+ */
 class BodyConsumer: virtual public AsyncJob
 {
 public:
@@ -46,8 +47,9 @@ protected:
     void stopConsumingFrom(RefCount<BodyPipe> &pipe);
 };
 
-// Makes raw buffer checkin/checkout interface efficient and exception-safe.
-// Either append or consume operations can be performed on a checkedout buffer.
+/** Makes raw buffer checkin/checkout interface efficient and exception-safe.
+ * Either append or consume operations can be performed on a checkedout buffer.
+ */
 class BodyPipeCheckout
 {
 public:
@@ -73,9 +75,10 @@ private:
     BodyPipeCheckout &operator =(const BodyPipeCheckout &); // prevent assignment
 };
 
-// Connects those who produces message body content with those who
-// consume it. For example, connects ConnStateData with FtpStateData OR
-// ICAPModXact with HttpStateData.
+/** Connects those who produces message body content with those who
+ * consume it. For example, connects ConnStateData with FtpStateData OR
+ * ICAPModXact with HttpStateData.
+ */
 class BodyPipe: public RefCountable
 {
 public:
@@ -96,6 +99,7 @@ public:
     bool bodySizeKnown() const { return theBodySize >= 0; }
     uint64_t bodySize() const;
     uint64_t consumedSize() const { return theGetSize; }
+    uint64_t producedSize() const { return thePutSize; }
     bool productionEnded() const { return !theProducer; }
 
     // called by producers
@@ -105,6 +109,7 @@ public:
     bool needsMoreData() const { return bodySizeKnown() && unproducedSize() > 0; }
     uint64_t unproducedSize() const; // size of still unproduced data
     bool stillProducing(const Producer::Pointer &producer) const { return theProducer == producer; }
+    void expectProductionEndAfter(uint64_t extraSize); ///< sets or checks body size
 
     // called by consumers
     bool setConsumerIfNotLate(const Consumer::Pointer &aConsumer);

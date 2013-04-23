@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  * DEBUG: section 77    Delay Pools
  * AUTHOR: Robert Collins <robertc@squid-cache.org>
  *
@@ -35,10 +33,10 @@
  * Copyright (c) 2003, Robert Collins <robertc@squid-cache.org>
  */
 
-#include "config.h"
-
-#if DELAY_POOLS
 #include "squid.h"
+
+#if USE_DELAY_POOLS
+#include "comm/Connection.h"
 #include "DelayTagged.h"
 #include "NullDelayId.h"
 #include "Store.h"

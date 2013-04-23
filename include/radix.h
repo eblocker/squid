@@ -1,10 +1,5 @@
-/*
- * $Id$
- */
 #ifndef SQUID_RADIX_H
 #define	SQUID_RADIX_H
-
-#include "config.h"
 
 /*
  * Copyright (c) 1988, 1989, 1993
@@ -119,15 +114,12 @@ struct squid_radix_node_head {
     (void *v, void *mask, struct squid_radix_node_head * head, struct squid_radix_node nodes[]);
 
     struct squid_radix_node *(*rnh_deladdr)	/* remove based on sockaddr */
-
     (void *v, void *mask, struct squid_radix_node_head * head);
 
     struct squid_radix_node *(*rnh_delpkt)	/* remove based on packet hdr */
-
     (void *v, void *mask, struct squid_radix_node_head * head);
 
     struct squid_radix_node *(*rnh_matchaddr)		/* locate based on sockaddr */
-
     (void *v, struct squid_radix_node_head * head);
 
     struct squid_radix_node *(*rnh_lookup)	/* locate based on sockaddr */
@@ -135,16 +127,13 @@ struct squid_radix_node_head {
     (void *v, void *mask, struct squid_radix_node_head * head);
 
     struct squid_radix_node *(*rnh_matchpkt)	/* locate based on packet hdr */
-
     (void *v, struct squid_radix_node_head * head);
 
     int (*rnh_walktree)		/* traverse tree */
-
     (struct squid_radix_node_head * head, int (*f) (struct squid_radix_node *, void *), void *w);
 
     struct squid_radix_node rnh_nodes[3];	/* empty tree for common case */
 };
-
 
 SQUIDCEXTERN void squid_rn_init (void);
 

@@ -4,12 +4,14 @@ include $(top_srcdir)/src/TestHeaders.am
 noinst_LTLIBRARIES = libip.la
 
 libip_la_SOURCES = \
-	IpAddress.h \
-	IpAddress.cc \
-	IpIntercept.h \
-	IpIntercept.cc \
+	forward.h \
+	Address.h \
+	Address.cc \
+	Intercept.h \
+	Intercept.cc \
 	QosConfig.h \
 	QosConfig.cc \
+	Qos.cci \
 	tools.cc \
 	tools.h
 
@@ -18,19 +20,16 @@ check_PROGRAMS += testIpAddress
 TESTS += testIpAddress
 
 testIpAddress_SOURCES= \
-	testIpAddress.cc \
-	testIpAddress.h
-
+	testAddress.cc \
+	testAddress.h
 nodist_testIpAddress_SOURCES= \
-	$(top_srcdir)/src/tests/testMain.cc \
-	$(top_srcdir)/test-suite/test_tools.cc
-
+	$(top_srcdir)/src/tests/stub_debug.cc \
+	$(top_srcdir)/src/tests/stub_tools.cc \
+	$(top_srcdir)/src/tests/testMain.cc
 testIpAddress_LDADD= \
-	$(top_builddir)/compat/libcompat.la \
 	libip.la \
-	-L$(top_builddir)/lib -lmiscutil \
 	$(XTRA_LIBS) \
+	$(COMPAT_LIB) \
 	$(SQUID_CPPUNIT_LA) \
 	$(SQUID_CPPUNIT_LIBS)
-
 testIpAddress_LDFLAGS= $(LIBADD_DL)

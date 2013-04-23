@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  * DEBUG: section 20    Storage Manager Swapfile Metadata
  * AUTHOR: Kostas Anagnostakis
  *
@@ -49,7 +47,7 @@ StoreMeta::validType(char type)
 {
     /* VOID is reserved, and new types have to be added as classes */
     if (type <= STORE_META_VOID || type >= STORE_META_END + 10) {
-        debugs(20, 0, "storeSwapMetaUnpack: bad type (" << type << ")!");
+        debugs(20, DBG_CRITICAL, "storeSwapMetaUnpack: bad type (" << type << ")!");
         return false;
     }
 
@@ -66,7 +64,7 @@ StoreMeta::validType(char type)
             type == STORE_META_KEY_SHA ||
             type == STORE_META_HITMETERING ||
             type == STORE_META_VALID) {
-        debugs(20, 0, "Obsolete and unused type (" << type << ") in disk metadata");
+        debugs(20, DBG_CRITICAL, "Obsolete and unused type (" << type << ") in disk metadata");
         return false;
     }
 
@@ -104,13 +102,12 @@ bool
 StoreMeta::validLength(int aLength) const
 {
     if (!IntRange (MinimumTLVLength, MaximumTLVLength).includes(aLength)) {
-        debugs(20, 0, "storeSwapMetaUnpack: insane length (" << aLength << ")!");
+        debugs(20, DBG_CRITICAL, "storeSwapMetaUnpack: insane length (" << aLength << ")!");
         return false;
     }
 
     return true;
 }
-
 
 StoreMeta *
 StoreMeta::Factory (char type, size_t len, void const *value)
@@ -147,7 +144,7 @@ StoreMeta::Factory (char type, size_t len, void const *value)
         break;
 
     default:
-        debugs(20, 0, "Attempt to create unknown concrete StoreMeta");
+        debugs(20, DBG_CRITICAL, "Attempt to create unknown concrete StoreMeta");
         return NULL;
     }
 
@@ -158,7 +155,7 @@ StoreMeta::Factory (char type, size_t len, void const *value)
 
     result->length = len;
     result->value = xmalloc(len);
-    xmemcpy(result->value, value, len);
+    memcpy(result->value, value, len);
     return result;
 }
 
@@ -205,7 +202,7 @@ StoreMeta::checkConsistency(StoreEntry *e) const
         break;
 
     default:
-        debugs(20, 1, "WARNING: got unused STORE_META type " << getType());
+        debugs(20, DBG_IMPORTANT, "WARNING: got unused STORE_META type " << getType());
         break;
     }
 

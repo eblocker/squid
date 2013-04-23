@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * AUTHOR: Joachim Bauch (mail@joachim-bauch.de)
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
@@ -56,8 +54,8 @@ void esi_startElementSAXFunc(void * ctx, const xmlChar * name, const xmlChar ** 
     xmlChar **tmp = (xmlChar **)atts;
 
     while (tmp && *tmp != NULL) {
-        count++;
-        tmp++;
+        ++count;
+        ++tmp;
     }
 
     // we increased on every key and value

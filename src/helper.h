@@ -33,144 +33,150 @@
 #ifndef SQUID_HELPER_H
 #define SQUID_HELPER_H
 
-#include "squid.h"
+#include "base/AsyncCall.h"
 #include "cbdata.h"
-#include "ip/IpAddress.h"
+#include "comm/forward.h"
+#include "dlink.h"
+#include "ip/Address.h"
+#include "HelperChildConfig.h"
 
 class helper_request;
 
-typedef struct _helper helper;
-
-typedef struct _helper_stateful statefulhelper;
-
-typedef struct _helper_server helper_server;
-
-typedef struct _helper_stateful_server helper_stateful_server;
-
-typedef struct _helper_flags helper_flags;
-
-typedef struct _helper_stateful_flags helper_stateful_flags;
-
 typedef void HLPSCB(void *, void *lastserver, char *buf);
 
-struct _helper {
+class helper
+{
+public:
+    inline helper(const char *name) :
+            cmdline(NULL),
+            id_name(name),
+            ipc_type(0),
+            last_queue_warn(0),
+            last_restart(0),
+            eom('\n') {
+        memset(&stats, 0, sizeof(stats));
+    }
+    ~helper();
+
+public:
     wordlist *cmdline;
     dlink_list servers;
     dlink_list queue;
     const char *id_name;
-    int n_to_start;           ///< Configuration setting of how many helper children should be running
-    int n_running;            ///< Total helper children objects currently existing
-    int n_active;             ///< Count of helper children active (not shutting down)
+    HelperChildConfig childs;    ///< Configuration settings for number running.
     int ipc_type;
-    IpAddress addr;
-    unsigned int concurrency;
+    Ip::Address addr;
     time_t last_queue_warn;
     time_t last_restart;
     char eom;   ///< The char which marks the end of (response) message, normally '\n'
 
-    struct {
+    struct _stats {
         int requests;
         int replies;
         int queue_size;
         int avg_svc_time;
     } stats;
+
+private:
+    CBDATA_CLASS2(helper);
 };
 
-struct _helper_stateful {
-    wordlist *cmdline;
-    dlink_list servers;
-    dlink_list queue;
-    const char *id_name;
-    int n_to_start;           ///< Configuration setting of how many helper children should be running
-    int n_running;            ///< Total helper children objects currently existing
-    int n_active;             ///< Count of helper children active (not shutting down)
-    int ipc_type;
-    IpAddress addr;
+class statefulhelper : public helper
+{
+public:
+    inline statefulhelper(const char *name) : helper(name), datapool(NULL), IsAvailable(NULL), OnEmptyQueue(NULL) {};
+    inline ~statefulhelper() {};
+
+public:
     MemAllocator *datapool;
     HLPSAVAIL *IsAvailable;
     HLPSONEQ *OnEmptyQueue;
-    time_t last_queue_warn;
-    time_t last_restart;
-    char eom;   ///< The char which marks the end of (response) message, normally '\n'
 
-    struct {
-        int requests;
-        int replies;
-        int queue_size;
-        int avg_svc_time;
-    } stats;
+private:
+    CBDATA_CLASS2(statefulhelper);
 };
 
-struct _helper_server {
+/**
+ * Fields shared between stateless and stateful helper servers.
+ */
+class HelperServerBase
+{
+public:
+    /** Closes pipes to the helper safely.
+     * Handles the case where the read and write pipes are the same FD.
+     */
+    void closePipesSafely();
+
+    /** Closes the reading pipe.
+     * If the read and write sockets are the same the write pipe will
+     * also be closed. Otherwise its left open for later handling.
+     */
+    void closeWritePipeSafely();
+
+public:
     int index;
     int pid;
-    IpAddress addr;
-    int rfd;
-    int wfd;
-    MemBuf *wqueue;
-    MemBuf *writebuf;
+    Ip::Address addr;
+    Comm::ConnectionPointer readPipe;
+    Comm::ConnectionPointer writePipe;
+    void *hIpc;
+
     char *rbuf;
     size_t rbuf_sz;
     size_t roffset;
 
     struct timeval dispatch_time;
-
     struct timeval answer_time;
 
     dlink_node link;
-    helper *parent;
-    helper_request **requests;
 
     struct _helper_flags {
-        unsigned int writing:1;
-        unsigned int closing:1;
-        unsigned int shutdown:1;
-    } flags;
-
-    struct {
-        int uses;
-        unsigned int pending;
-    } stats;
-
-    void *hIpc;
-};
-
-class helper_stateful_request;
-
-struct _helper_stateful_server {
-    int index;
-    int pid;
-    IpAddress addr;
-    int rfd;
-    int wfd;
-    /* MemBuf wqueue; */
-    /* MemBuf writebuf; */
-    char *rbuf;
-    size_t rbuf_sz;
-    size_t roffset;
-
-    struct timeval dispatch_time;
-
-    struct timeval answer_time;
-
-    dlink_node link;
-    statefulhelper *parent;
-    helper_stateful_request *request;
-
-    struct _helper_stateful_flags {
         unsigned int busy:1;
+        unsigned int writing:1;
         unsigned int closing:1;
         unsigned int shutdown:1;
         unsigned int reserved:1;
     } flags;
 
     struct {
-        int uses;
-        int submits;
-        int releases;
+        uint64_t uses;     //< requests sent to this helper
+        uint64_t replies;  //< replies received from this helper
+        uint64_t pending;  //< queued lookups waiting to be sent to this helper
+        uint64_t releases; //< times release() has been called on this helper (if stateful)
     } stats;
+    void initStats();
+};
+
+class MemBuf;
+
+class helper_server : public HelperServerBase
+{
+public:
+    MemBuf *wqueue;
+    MemBuf *writebuf;
+
+    helper *parent;
+    helper_request **requests;
+
+private:
+    CBDATA_CLASS2(helper_server);
+};
+
+class helper_stateful_request;
+
+class helper_stateful_server : public HelperServerBase
+{
+public:
+    /* MemBuf wqueue; */
+    /* MemBuf writebuf; */
+
+    statefulhelper *parent;
+    helper_stateful_request *request;
+
     void *data;			/* State data used by the calling routines */
-    void *hIpc;
+
+private:
+    CBDATA_CLASS2(helper_stateful_server);
 };
 
 class helper_request
@@ -201,21 +207,15 @@ public:
 MEMPROXY_CLASS_INLINE(helper_stateful_request);
 
 /* helper.c */
-SQUIDCEXTERN void helperOpenServers(helper * hlp);
-SQUIDCEXTERN void helperStatefulOpenServers(statefulhelper * hlp);
-SQUIDCEXTERN void helperSubmit(helper * hlp, const char *buf, HLPCB * callback, void *data);
-SQUIDCEXTERN void helperStatefulSubmit(statefulhelper * hlp, const char *buf, HLPSCB * callback, void *data, helper_stateful_server * lastserver);
-SQUIDCEXTERN void helperStats(StoreEntry * sentry, helper * hlp, const char *label = NULL);
-SQUIDCEXTERN void helperStatefulStats(StoreEntry * sentry, statefulhelper * hlp, const char *label = NULL);
-SQUIDCEXTERN void helperShutdown(helper * hlp);
-SQUIDCEXTERN void helperStatefulShutdown(statefulhelper * hlp);
-SQUIDCEXTERN helper *helperCreate(const char *);
-SQUIDCEXTERN statefulhelper *helperStatefulCreate(const char *);
-SQUIDCEXTERN void helperFree(helper *);
-SQUIDCEXTERN void helperStatefulFree(statefulhelper *);
-SQUIDCEXTERN void helperStatefulReleaseServer(helper_stateful_server * srv);
-SQUIDCEXTERN void *helperStatefulServerGetData(helper_stateful_server * srv);
-
-
+void helperOpenServers(helper * hlp);
+void helperStatefulOpenServers(statefulhelper * hlp);
+void helperSubmit(helper * hlp, const char *buf, HLPCB * callback, void *data);
+void helperStatefulSubmit(statefulhelper * hlp, const char *buf, HLPSCB * callback, void *data, helper_stateful_server * lastserver);
+void helperStats(StoreEntry * sentry, helper * hlp, const char *label = NULL);
+void helperStatefulStats(StoreEntry * sentry, statefulhelper * hlp, const char *label = NULL);
+void helperShutdown(helper * hlp);
+void helperStatefulShutdown(statefulhelper * hlp);
+void helperStatefulReleaseServer(helper_stateful_server * srv);
+void *helperStatefulServerGetData(helper_stateful_server * srv);
 
 #endif /* SQUID_HELPER_H */

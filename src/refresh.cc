@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  * DEBUG: section 22    Refresh Calculation
  * AUTHOR: Harvest Derived
  *
@@ -38,12 +36,16 @@
 #endif
 
 #include "squid.h"
-#include "CacheManager.h"
-#include "Store.h"
-#include "MemObject.h"
+#include "mgr/Registration.h"
+#include "HttpHdrCc.h"
 #include "HttpRequest.h"
 #include "HttpReply.h"
+#include "MemObject.h"
+#include "RefreshPattern.h"
 #include "SquidTime.h"
+#include "SquidConfig.h"
+#include "Store.h"
+#include "URL.h"
 
 typedef enum {
     rcHTTP,
@@ -86,6 +88,7 @@ enum {
     STALE_EXPIRES,
     STALE_MAX_RULE,
     STALE_LMFACTOR_RULE,
+    STALE_MAX_STALE,
     STALE_DEFAULT = 299
 };
 
@@ -107,16 +110,16 @@ refreshCounts[rcCount];
 #define REFRESH_DEFAULT_PCT	0.20
 #define REFRESH_DEFAULT_MAX	(time_t)259200
 
-static const refresh_t *refreshUncompiledPattern(const char *);
+static const RefreshPattern *refreshUncompiledPattern(const char *);
 static OBJH refreshStats;
-static int refreshStaleness(const StoreEntry * entry, time_t check_time, const time_t age, const refresh_t * R, stale_flags * sf);
+static int refreshStaleness(const StoreEntry * entry, time_t check_time, const time_t age, const RefreshPattern * R, stale_flags * sf);
 
-static refresh_t DefaultRefresh;
+static RefreshPattern DefaultRefresh;
 
-const refresh_t *
+const RefreshPattern *
 refreshLimits(const char *url)
 {
-    const refresh_t *R;
+    const RefreshPattern *R;
 
     for (R = Config.Refresh; R; R = R->next) {
         if (!regexec(&(R->compiled_pattern), url, 0, 0, 0))
@@ -126,10 +129,10 @@ refreshLimits(const char *url)
     return NULL;
 }
 
-static const refresh_t *
+static const RefreshPattern *
 refreshUncompiledPattern(const char *pat)
 {
-    const refresh_t *R;
+    const RefreshPattern *R;
 
     for (R = Config.Refresh; R; R = R->next) {
         if (0 == strcmp(R->pattern, pat))
@@ -155,7 +158,7 @@ refreshUncompiledPattern(const char *pat)
  * times.
  */
 static int
-refreshStaleness(const StoreEntry * entry, time_t check_time, const time_t age, const refresh_t * R, stale_flags * sf)
+refreshStaleness(const StoreEntry * entry, time_t check_time, const time_t age, const RefreshPattern * R, stale_flags * sf)
 {
     /** \par
      * Check for an explicit expiration time (Expires: header).
@@ -229,7 +232,7 @@ refreshStaleness(const StoreEntry * entry, time_t check_time, const time_t age, 
 static int
 refreshCheck(const StoreEntry * entry, HttpRequest * request, time_t delta)
 {
-    const refresh_t *R;
+    const RefreshPattern *R;
     const char *uri = NULL;
     time_t age = 0;
     time_t check_time = squid_curtime + delta;
@@ -264,16 +267,17 @@ refreshCheck(const StoreEntry * entry, HttpRequest * request, time_t delta)
 
     debugs(22, 3, "\tentry->timestamp:\t" << mkrfc1123(entry->timestamp));
 
-    if (request && !request->flags.ignore_cc) {
+    if (request && !request->flags.ignoreCc) {
         const HttpHdrCc *const cc = request->cache_control;
-        if (cc && cc->min_fresh > 0) {
+        if (cc && cc->hasMinFresh()) {
+            const int32_t minFresh=cc->minFresh();
             debugs(22, 3, "\tage + min-fresh:\t" << age << " + " <<
-                   cc->min_fresh << " = " << age + cc->min_fresh);
+                   minFresh << " = " << age + minFresh);
             debugs(22, 3, "\tcheck_time + min-fresh:\t" << check_time << " + "
-                   << cc->min_fresh << " = " <<
-                   mkrfc1123(check_time + cc->min_fresh));
-            age += cc->min_fresh;
-            check_time += cc->min_fresh;
+                   << minFresh << " = " <<
+                   mkrfc1123(check_time + minFresh));
+            age += minFresh;
+            check_time += minFresh;
         }
     }
 
@@ -285,26 +289,26 @@ refreshCheck(const StoreEntry * entry, HttpRequest * request, time_t delta)
 
     // stale-if-error requires any failure be passed thru when its period is over.
     if (request && entry->mem_obj && entry->mem_obj->getReply() && entry->mem_obj->getReply()->cache_control &&
-            EBIT_TEST(entry->mem_obj->getReply()->cache_control->mask, CC_STALE_IF_ERROR) &&
-            entry->mem_obj->getReply()->cache_control->stale_if_error < staleness) {
+            entry->mem_obj->getReply()->cache_control->hasStaleIfError() &&
+            entry->mem_obj->getReply()->cache_control->staleIfError() < staleness) {
 
         debugs(22, 3, "refreshCheck: stale-if-error period expired.");
-        request->flags.fail_on_validation_err = 1;
+        request->flags.failOnValidationError = 1;
     }
 
     if (EBIT_TEST(entry->flags, ENTRY_REVALIDATE) && staleness > -1
-#if HTTP_VIOLATIONS
+#if USE_HTTP_VIOLATIONS
             && !R->flags.ignore_must_revalidate
 #endif
        ) {
         debugs(22, 3, "refreshCheck: YES: Must revalidate stale response");
         if (request)
-            request->flags.fail_on_validation_err = 1;
+            request->flags.failOnValidationError = 1;
         return STALE_MUST_REVALIDATE;
     }
 
     /* request-specific checks */
-    if (request && !request->flags.ignore_cc) {
+    if (request && !request->flags.ignoreCc) {
         HttpHdrCc *cc = request->cache_control;
 
         if (request->flags.ims && (R->flags.refresh_ims || Config.onoff.refresh_all_ims)) {
@@ -313,9 +317,9 @@ refreshCheck(const StoreEntry * entry, HttpRequest * request, time_t delta)
             return STALE_FORCED_RELOAD;
         }
 
-#if HTTP_VIOLATIONS
+#if USE_HTTP_VIOLATIONS
 
-        if (!request->flags.nocache_hack) {
+        if (!request->flags.noCacheHack()) {
             (void) 0;
         } else if (R->flags.ignore_reload) {
             /* The clients no-cache header is ignored */
@@ -327,37 +331,37 @@ refreshCheck(const StoreEntry * entry, HttpRequest * request, time_t delta)
         } else {
             /* The clients no-cache header is not overridden on this request */
             debugs(22, 3, "refreshCheck: YES: client reload");
-            request->flags.nocache = 1;
+            request->flags.noCache = 1;
             return STALE_FORCED_RELOAD;
         }
 
 #endif
         if (NULL != cc) {
-            if (cc->max_age > -1) {
-#if HTTP_VIOLATIONS
-                if (R->flags.ignore_reload && cc->max_age == 0) {
+            if (cc->hasMaxAge()) {
+#if USE_HTTP_VIOLATIONS
+                if (R->flags.ignore_reload && cc->maxAge() == 0) {
                     debugs(22, 3, "refreshCheck: MAYBE: client-max-age = 0 and ignore-reload");
                 } else
 #endif
                 {
-                    if (cc->max_age == 0) {
+                    if (cc->maxAge() == 0) {
                         debugs(22, 3, "refreshCheck: YES: client-max-age = 0");
                         return STALE_EXCEEDS_REQUEST_MAX_AGE_VALUE;
                     }
 
-                    if (age > cc->max_age) {
+                    if (age > cc->maxAge()) {
                         debugs(22, 3, "refreshCheck: YES: age > client-max-age");
                         return STALE_EXCEEDS_REQUEST_MAX_AGE_VALUE;
                     }
                 }
             }
 
-            if (EBIT_TEST(cc->mask, CC_MAX_STALE) && staleness > -1) {
-                if (cc->max_stale < 0) {
+            if (cc->hasMaxStale() && staleness > -1) {
+                if (cc->maxStale()==HttpHdrCc::MAX_STALE_ANY) {
                     /* max-stale directive without a value */
                     debugs(22, 3, "refreshCheck: NO: max-stale wildcard");
                     return FRESH_REQUEST_MAX_STALE_ALL;
-                } else if (staleness < cc->max_stale) {
+                } else if (staleness < cc->maxStale()) {
                     debugs(22, 3, "refreshCheck: NO: staleness < max-stale");
                     return FRESH_REQUEST_MAX_STALE_VALUE;
                 }
@@ -388,9 +392,18 @@ refreshCheck(const StoreEntry * entry, HttpRequest * request, time_t delta)
     /*
      * At this point the response is stale, unless one of
      * the override options kicks in.
+     * NOTE: max-stale config blocks the overrides.
      */
+    int max_stale = (R->max_stale >= 0 ? R->max_stale : Config.maxStale);
+    if ( max_stale >= 0 && staleness > max_stale) {
+        debugs(22, 3, "refreshCheck: YES: max-stale limit");
+        if (request)
+            request->flags.failOnValidationError = 1;
+        return STALE_MAX_STALE;
+    }
+
     if (sf.expires) {
-#if HTTP_VIOLATIONS
+#if USE_HTTP_VIOLATIONS
 
         if (R->flags.override_expire && age < R->min) {
             debugs(22, 3, "refreshCheck: NO: age < min && override-expire");
@@ -405,7 +418,7 @@ refreshCheck(const StoreEntry * entry, HttpRequest * request, time_t delta)
         return STALE_MAX_RULE;
 
     if (sf.lmfactor) {
-#if HTTP_VIOLATIONS
+#if USE_HTTP_VIOLATIONS
 
         if (R->flags.override_lastmod && age < R->min) {
             debugs(22, 3, "refreshCheck: NO: age < min && override-lastmod");
@@ -431,8 +444,8 @@ refreshIsCachable(const StoreEntry * entry)
      * be refreshed.
      */
     int reason = refreshCheck(entry, NULL, Config.minimum_expiry_time);
-    refreshCounts[rcStore].total++;
-    refreshCounts[rcStore].status[reason]++;
+    ++ refreshCounts[rcStore].total;
+    ++ refreshCounts[rcStore].status[reason];
 
     if (reason < STALE_MUST_REVALIDATE)
         /* Does not need refresh. This is certainly cachable */
@@ -479,9 +492,9 @@ int
 refreshCheckHTTP(const StoreEntry * entry, HttpRequest * request)
 {
     int reason = refreshCheck(entry, request, 0);
-    refreshCounts[rcHTTP].total++;
-    refreshCounts[rcHTTP].status[reason]++;
-    request->flags.stale_if_hit = refreshIsStaleIfHit(reason);
+    ++ refreshCounts[rcHTTP].total;
+    ++ refreshCounts[rcHTTP].status[reason];
+    request->flags.staleIfHit = refreshIsStaleIfHit(reason);
     return (Config.onoff.offline || reason < 200) ? 0 : 1;
 }
 
@@ -489,8 +502,8 @@ int
 refreshCheckICP(const StoreEntry * entry, HttpRequest * request)
 {
     int reason = refreshCheck(entry, request, 30);
-    refreshCounts[rcICP].total++;
-    refreshCounts[rcICP].status[reason]++;
+    ++ refreshCounts[rcICP].total;
+    ++ refreshCounts[rcICP].status[reason];
     return (reason < 200) ? 0 : 1;
 }
 
@@ -499,8 +512,8 @@ int
 refreshCheckHTCP(const StoreEntry * entry, HttpRequest * request)
 {
     int reason = refreshCheck(entry, request, 10);
-    refreshCounts[rcHTCP].total++;
-    refreshCounts[rcHTCP].status[reason]++;
+    ++ refreshCounts[rcHTCP].total;
+    ++ refreshCounts[rcHTCP].status[reason];
     return (reason < 200) ? 0 : 1;
 }
 
@@ -513,8 +526,8 @@ refreshCheckDigest(const StoreEntry * entry, time_t delta)
     int reason = refreshCheck(entry,
                               entry->mem_obj ? entry->mem_obj->request : NULL,
                               delta);
-    refreshCounts[rcCDigest].total++;
-    refreshCounts[rcCDigest].status[reason]++;
+    ++ refreshCounts[rcCDigest].total;
+    ++ refreshCounts[rcCDigest].status[reason];
     return (reason < 200) ? 0 : 1;
 }
 
@@ -523,7 +536,7 @@ refreshCheckDigest(const StoreEntry * entry, time_t delta)
 time_t
 getMaxAge(const char *url)
 {
-    const refresh_t *R;
+    const RefreshPattern *R;
     debugs(22, 3, "getMaxAge: '" << url << "'");
 
     if ((R = refreshLimits(url)))
@@ -618,8 +631,7 @@ refreshStats(StoreEntry * sentry)
 static void
 refreshRegisterWithCacheManager(void)
 {
-    CacheManager::GetInstance()->
-    registerAction("refresh", "Refresh Algorithm Statistics", refreshStats, 0, 1);
+    Mgr::RegisterAction("refresh", "Refresh Algorithm Statistics", refreshStats, 0, 1);
 }
 
 void

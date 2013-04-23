@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  * DEBUG: section 20    Storage Manager Swapfile Metadata
  * AUTHOR: Kostas Anagnostakis
  *
@@ -34,10 +32,15 @@
  */
 
 #include "squid.h"
-#include "Store.h"
+#include "md5.h"
 #include "MemObject.h"
+#include "Store.h"
 #include "StoreMeta.h"
 #include "StoreMetaUnpacker.h"
+
+#if HAVE_SYS_WAIT_H
+#include <sys/wait.h>
+#endif
 
 void
 storeSwapTLVFree(tlv * n)
@@ -62,6 +65,7 @@ storeSwapMetaBuild(StoreEntry * e)
     const char *url;
     const char *vary;
     assert(e->mem_obj != NULL);
+    const int64_t objsize = e->mem_obj->expectedReplySize();
     assert(e->swap_status == SWAPOUT_WRITING);
     url = e->url();
     debugs(20, 3, "storeSwapMetaBuild: " << url  );
@@ -86,6 +90,16 @@ storeSwapMetaBuild(StoreEntry * e)
     if (!t) {
         storeSwapTLVFree(TLV);
         return NULL;
+    }
+
+    if (objsize >= 0) {
+        T = StoreMeta::Add(T, t);
+        t = StoreMeta::Factory(STORE_META_OBJSIZE, sizeof(objsize), &objsize);
+
+        if (!t) {
+            storeSwapTLVFree(TLV);
+            return NULL;
+        }
     }
 
     T = StoreMeta::Add(T, t);
@@ -113,7 +127,7 @@ storeSwapMetaPack(tlv * tlv_list, int *length)
     int j = 0;
     char *buf;
     assert(length != NULL);
-    buflen++;			/* STORE_META_OK */
+    ++buflen;			/* STORE_META_OK */
     buflen += sizeof(int);	/* size of header to follow */
 
     for (t = tlv_list; t; t = t->next)
@@ -121,17 +135,19 @@ storeSwapMetaPack(tlv * tlv_list, int *length)
 
     buf = (char *)xmalloc(buflen);
 
-    buf[j++] = (char) STORE_META_OK;
+    buf[j] = (char) STORE_META_OK;
+    ++j;
 
-    xmemcpy(&buf[j], &buflen, sizeof(int));
+    memcpy(&buf[j], &buflen, sizeof(int));
 
     j += sizeof(int);
 
     for (t = tlv_list; t; t = t->next) {
-        buf[j++] = t->getType();
-        xmemcpy(&buf[j], &t->length, sizeof(int));
+        buf[j] = t->getType();
+        ++j;
+        memcpy(&buf[j], &t->length, sizeof(int));
         j += sizeof(int);
-        xmemcpy(&buf[j], t->value, t->length);
+        memcpy(&buf[j], t->value, t->length);
         j += t->length;
     }
 

@@ -1,7 +1,4 @@
-
 /*
- * $Id$
- *
  * DEBUG: section 52    URN Parsing
  * AUTHOR: Kostas Anagnostakis
  *
@@ -35,14 +32,20 @@
 
 #include "squid.h"
 #include "errorpage.h"
-#include "StoreClient.h"
-#include "Store.h"
+#include "forward.h"
+#include "globals.h"
 #include "HttpReply.h"
 #include "HttpRequest.h"
-#include "MemBuf.h"
-#include "forward.h"
-#include "SquidTime.h"
 #include "icmp/net_db.h"
+#include "MemBuf.h"
+#include "mime_header.h"
+#include "RequestFlags.h"
+#include "SquidTime.h"
+#include "Store.h"
+#include "StoreClient.h"
+#include "tools.h"
+#include "URL.h"
+#include "urn.h"
 
 #define	URN_REQBUF_SZ	4096
 
@@ -61,7 +64,6 @@ public:
     void createUriResRequest (String &uri);
 
     virtual ~UrnState();
-
 
     StoreEntry *entry;
     store_client *sc;
@@ -128,8 +130,8 @@ urnFindMinRtt(url_entry * urls, const HttpRequestMethod& m, int *rtt_ret)
     debugs(52, 3, "urnFindMinRtt");
     assert(urls != NULL);
 
-    for (i = 0; NULL != urls[i].url; i++)
-        urlcnt++;
+    for (i = 0; NULL != urls[i].url; ++i)
+        ++urlcnt;
 
     debugs(53, 3, "urnFindMinRtt: Counted " << i << " URLs");
 
@@ -138,7 +140,7 @@ urnFindMinRtt(url_entry * urls, const HttpRequestMethod& m, int *rtt_ret)
         return urls;
     }
 
-    for (i = 0; i < urlcnt; i++) {
+    for (i = 0; i < urlcnt; ++i) {
         u = &urls[i];
         debugs(52, 3, "urnFindMinRtt: " << u->host << " rtt=" << u->rtt);
 
@@ -156,7 +158,7 @@ urnFindMinRtt(url_entry * urls, const HttpRequestMethod& m, int *rtt_ret)
     if (rtt_ret)
         *rtt_ret = min_rtt;
 
-    debugs(52, 1, "urnFindMinRtt: Returning '" <<
+    debugs(52, DBG_IMPORTANT, "urnFindMinRtt: Returning '" <<
            (min_u ? min_u->url : "NONE") << "' RTT " <<
            min_rtt  );
 
@@ -221,7 +223,7 @@ UrnState::setUriResFromRequest(HttpRequest *r)
 
     if (urlres_r == NULL) {
         debugs(52, 3, "urnStart: Bad uri-res URL " << urlres);
-        ErrorState *err = errorCon(ERR_URN_RESOLVE, HTTP_NOT_FOUND, r);
+        ErrorState *err = new ErrorState(ERR_URN_RESOLVE, HTTP_NOT_FOUND, r);
         err->url = urlres;
         urlres = NULL;
         errorAppendEntry(entry, err);
@@ -254,9 +256,9 @@ UrnState::created(StoreEntry *newEntry)
     urlres_e = newEntry;
 
     if (urlres_e->isNull()) {
-        urlres_e = storeCreateEntry(urlres, urlres, request_flags(), METHOD_GET);
+        urlres_e = storeCreateEntry(urlres, urlres, RequestFlags(), METHOD_GET);
         sc = storeClientListAdd(urlres_e, this);
-        FwdState::fwdStart(-1, urlres_e, urlres_r);
+        FwdState::fwdStart(Comm::ConnectionPointer(), urlres_e, urlres_r);
     } else {
 
         urlres_e->lock();
@@ -360,7 +362,7 @@ urnHandleReply(void *data, StoreIOBuffer result)
     k = headersEnd(buf, urnState->reqofs);
 
     if (0 == k) {
-        debugs(52, 1, "urnHandleReply: didn't find end-of-headers for " << e->url()  );
+        debugs(52, DBG_IMPORTANT, "urnHandleReply: didn't find end-of-headers for " << e->url()  );
         urnHandleReplyError(urnState, urlres_e);
         return;
     }
@@ -373,7 +375,7 @@ urnHandleReply(void *data, StoreIOBuffer result)
 
     if (rep->sline.status != HTTP_OK) {
         debugs(52, 3, "urnHandleReply: failed.");
-        err = errorCon(ERR_URN_RESOLVE, HTTP_NOT_FOUND, urnState->request);
+        err = new ErrorState(ERR_URN_RESOLVE, HTTP_NOT_FOUND, urnState->request);
         err->url = xstrdup(e->url());
         errorAppendEntry(e, err);
         delete rep;
@@ -384,18 +386,18 @@ urnHandleReply(void *data, StoreIOBuffer result)
     delete rep;
 
     while (xisspace(*s))
-        s++;
+        ++s;
 
     urls = urnParseReply(s, urnState->request->method);
 
-    for (i = 0; NULL != urls[i].url; i++)
-        urlcnt++;
+    for (i = 0; NULL != urls[i].url; ++i)
+        ++urlcnt;
 
     debugs(53, 3, "urnFindMinRtt: Counted " << i << " URLs");
 
     if (urls == NULL) {		/* unkown URN error */
         debugs(52, 3, "urnTranslateDone: unknown URN " << e->url()  );
-        err = errorCon(ERR_URN_RESOLVE, HTTP_NOT_FOUND, urnState->request);
+        err = new ErrorState(ERR_URN_RESOLVE, HTTP_NOT_FOUND, urnState->request);
         err->url = xstrdup(e->url());
         errorAppendEntry(e, err);
         urnHandleReplyError(urnState, urlres_e);
@@ -412,7 +414,7 @@ urnHandleReply(void *data, StoreIOBuffer result)
                 "<H2>Select URL for %s</H2>\n"
                 "<TABLE BORDER=\"0\" WIDTH=\"100%%\">\n", e->url(), e->url());
 
-    for (i = 0; i < urlcnt; i++) {
+    for (i = 0; i < urlcnt; ++i) {
         u = &urls[i];
         debugs(52, 3, "URL {" << u->url << "}");
         mb->Printf(
@@ -444,12 +446,12 @@ urnHandleReply(void *data, StoreIOBuffer result)
         rep->header.putStr(HDR_LOCATION, min_u->url);
     }
 
-    httpBodySet(&rep->body, mb);
+    rep->body.setMb(mb);
     /* don't clean or delete mb; rep->body owns it now */
     e->replaceHttpReply(rep);
     e->complete();
 
-    for (i = 0; i < urlcnt; i++) {
+    for (i = 0; i < urlcnt; ++i) {
         safe_free(urls[i].url);
         safe_free(urls[i].host);
     }
@@ -482,7 +484,7 @@ urnParseReply(const char *inbuf, const HttpRequestMethod& m)
             old = list;
             n <<= 2;
             list = (url_entry *)xcalloc(n + 1, sizeof(*list));
-            xmemcpy(list, old, i * sizeof(*list));
+            memcpy(list, old, i * sizeof(*list));
             safe_free(old);
         }
 
@@ -505,8 +507,10 @@ urnParseReply(const char *inbuf, const HttpRequestMethod& m)
 
         list[i].url = url;
         list[i].host = xstrdup(host);
+        // TODO: Use storeHas() or lock/unlock entry to avoid creating unlocked
+        // ones.
         list[i].flags.cached = storeGetPublic(url, m) ? 1 : 0;
-        i++;
+        ++i;
     }
 
     debugs(52, 3, "urnParseReply: Found " << i << " URLs");

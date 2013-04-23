@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
  * ----------------------------------------------------------
  *
@@ -33,8 +31,6 @@
 #ifndef SQUID_AIODISKIOSTRATEGY_H
 #define SQUID_AIODISKIOSTRATEGY_H
 
-#include "config.h"
-
 #if USE_DISKIO_AIO
 
 #include "DiskIO/DiskIOStrategy.h"
@@ -54,6 +50,8 @@ public:
     virtual RefCount<DiskFile> newFile (char const *path);
     /* flush all IO operations  */
     virtual void sync();
+    /** whether the IO Strategy can use unlinkd */
+    virtual bool unlinkdUseful() const;
     /* unlink a file by path */
     virtual void unlinkFile (char const *);
 

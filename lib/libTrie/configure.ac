@@ -4,27 +4,26 @@ AC_CONFIG_SRCDIR([src/Trie.cc])
 AM_CONFIG_HEADER([config.h])
 AC_CONFIG_AUX_DIR(cfgaux)
 
-SquidInline="yes"
-
+enable_inline=${enable_inline:=yes}
 AC_ARG_ENABLE(optimizations,
   AC_HELP_STRING([--disable-optimizations],
-                 [Don't compile Squid with compiler optimizations enabled.
+                 [Do not compile Squid with compiler optimizations enabled.
                   Optimization is good for production builds, but not
                   good for debugging. During development, use
                   --disable-optimizations to reduce compilation times
                   and allow easier debugging. This option implicitly
-                  also enabled --disable-inline]),
-[ if test "$enableval" = "no" ; then
+                  also enabled --disable-inline]), [
+  if test "x$enableval" = "xno" ; then
         AC_MSG_NOTICE([Disabling compiler optimizations (-O flag)])
         CFLAGS="`echo $CFLAGS | sed -e 's/-O[[0-9]]*//'`"
         CXXFLAGS="`echo $CXXFLAGS | sed -e 's/-O[[0-9]]*//'`"
-        SquidInline="no"
+        enable_inline="no"
   fi
 ])
 
 AC_ARG_ENABLE(inline,
   AC_HELP_STRING([--disable-inline],
-                 [Don't compile trivial methods as inline. Squid
+                 [Do not compile trivial methods as inline. Squid
                   is coded with much of the code able to be inlined.
                   Inlining is good for production builds, but not
                   good for development. During development, use
@@ -32,20 +31,20 @@ AC_ARG_ENABLE(inline,
                   allow incremental builds to be quick. For
                   production builds, or load tests, use
                   --enable-inline to have squid make all trivial
-                  methods inlinable by the compiler.]),
-[ if test "$enableval" = "no" ; then
-     SquidInline="no"
-   fi
+                  methods inlinable by the compiler.]), [
+  if test "x${enableval}" = "xno" ; then
+    enable_inline=no
+  fi
 ])
-
-if test "$SquidInline" = "yes" ; then
-    AC_DEFINE(_SQUID_INLINE_, inline, [Keyword used by squid for inlining methods])
-    AC_DEFINE(_USE_INLINE_,, [Include inline methods into header file])
+if test "x$enable_inline" = "xyes" ; then
+    AC_DEFINE(_SQUID_INLINE_, inline, 
+      [Keyword used by squid for inlining methods])
+    AC_DEFINE(_USE_INLINE_, 1, [Include inline methods into header file])
 else
     AC_MSG_NOTICE([Inlining optimization disabled])
-    AC_DEFINE(_SQUID_INLINE_,, [Keyword used by squid for inlining methods])
+    AC_DEFINE(_SQUID_INLINE_, [] , [Keyword used by squid for inlining methods])
+    AC_DEFINE(_USE_INLINE_, 0, [Include inline methods into header file])
 fi
-
 
 # Checks for programs.
 AC_PROG_CXX
@@ -56,6 +55,13 @@ AC_PROG_MAKE_SET
 AM_INIT_AUTOMAKE(libTrie, 0.1)
 AM_MAINTAINER_MODE
 AC_PROG_RANLIB
+
+AC_LIBTOOL_DLOPEN
+AC_LIBLTDL_CONVENIENCE
+AC_PROG_LIBTOOL
+AC_LTDL_DLLIB
+AC_SUBST(INCLTDL)
+AC_SUBST(LIBLTDL)
 
 dnl set useful flags
 TRIE_CFLAGS=
@@ -83,8 +89,6 @@ if test "$GCC" = "yes"; then
      TRIE_CXXFLAGS="-Werror $TRIE_CXXFLAGS"
   fi
 
-  AC_TEST_CHECKFORHUGEOBJECTS
-  TRIE_CXXFLAGS="$TRIE_CXXFLAGS $HUGE_OBJECT_FLAG"
 fi
 
 AC_SUBST(TRIE_CFLAGS)

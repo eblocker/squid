@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
  * ----------------------------------------------------------
@@ -37,34 +35,44 @@
 #include "dlink.h"
 #include "HttpHdrScTarget.h"
 
+class StatHist;
+
 /* http surogate control header field */
 
 class HttpHdrSc
 {
 
 public:
+    HttpHdrSc(const HttpHdrSc &);
+    HttpHdrSc() {}
+    ~HttpHdrSc();
+
+    bool parse(const String *str);
+    void packInto(Packer * p) const;
+    void updateStats(StatHist *) const;
+    HttpHdrScTarget * getMergedTarget (const char *ourtarget); //todo: make const?
+    void setMaxAge(char const *target, int max_age);
+    void addTarget(HttpHdrScTarget *t) {
+        dlinkAdd(t, &t->node, &targets);
+    }
+    void addTargetAtTail(HttpHdrScTarget *t) {
+        dlinkAddTail (t, &t->node, &targets);
+    }
+
     MEMPROXY_CLASS(HttpHdrSc);
     dlink_list targets;
+private:
+    HttpHdrScTarget * findTarget (const char *target);
+
 };
 
 MEMPROXY_CLASS_INLINE(HttpHdrSc);
 
 /* Http Surrogate Control Header Field */
-extern void httpHdrScStatDumper(StoreEntry * sentry, int idx, double val, double size, int count);
-extern void httpHdrScInitModule (void);
-extern void httpHdrScCleanModule (void);
-extern HttpHdrSc *httpHdrScCreate(void);
-extern HttpHdrSc *httpHdrScParseCreate(String const *);
-extern void httpHdrScDestroy(HttpHdrSc * sc);
-extern HttpHdrSc *httpHdrScDup(const HttpHdrSc * sc);
-extern void httpHdrScPackInto(const HttpHdrSc * sc, Packer * p);
-extern void httpHdrScJoinWith(HttpHdrSc *, const HttpHdrSc *);
-extern void httpHdrScSetMaxAge(HttpHdrSc *, char const *, int);
-extern void httpHdrScUpdateStats(const HttpHdrSc *, StatHist *);
-extern HttpHdrScTarget * httpHdrScFindTarget (HttpHdrSc *sc, const char *target);
-extern HttpHdrScTarget * httpHdrScGetMergedTarget (HttpHdrSc *sc, const char *ourtarget);
-
-extern void httpHeaderPutSc(HttpHeader *hdr, const HttpHdrSc *sc);
-extern HttpHdrSc *httpHeaderGetSc(const HttpHeader *hdr);
+void httpHdrScStatDumper(StoreEntry * sentry, int idx, double val, double size, int count);
+void httpHdrScInitModule (void);
+void httpHdrScCleanModule (void);
+HttpHdrSc *httpHdrScParseCreate(String const &);
+void httpHdrScSetMaxAge(HttpHdrSc *, char const *, int);
 
 #endif /* SQUID_HTTPHDRSURROGATECONTROL_H */

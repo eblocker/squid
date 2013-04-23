@@ -33,22 +33,18 @@
  *
  * Copyright (c) 2003, Robert Collins <robertc@squid-cache.org>
  */
-
-#include "config.h"
-
 #ifndef COMPOSITEPOOLNODE_H
 #define COMPOSITEPOOLNODE_H
 
-#if DELAY_POOLS
-#include "squid.h"
-#include "DelayPools.h"
-#include "DelayIdComposite.h"
+#if USE_DELAY_POOLS
+#include "auth/UserRequest.h"
 #include "CommRead.h"
-#include "ip/IpAddress.h"
+#include "DelayIdComposite.h"
+#include "DelayPools.h"
+#include "ip/Address.h"
+#include "SquidString.h"
 
 class StoreEntry;
-
-class AuthUserRequest;
 
 /// \ingroup DelayPoolsAPI
 class CompositePoolNode : public RefCountable, public Updateable
@@ -76,8 +72,10 @@ public:
     public:
         CompositeSelectionDetails() {}
 
-        IpAddress src_addr;
-        AuthUserRequest *user;
+        Ip::Address src_addr;
+#if USE_AUTH
+        Auth::UserRequest::Pointer user;
+#endif
         String tag;
     };
 
@@ -86,5 +84,5 @@ protected:
     DeferredReadManager deferredReads;
 };
 
-#endif /* DELAY_POOLS */
+#endif /* USE_DELAY_POOLS */
 #endif /* COMPOSITEPOOLNODE_H */

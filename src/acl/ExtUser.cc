@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 28    Access Control
  * AUTHOR: Duane Wessels
  *
@@ -35,12 +33,14 @@
  */
 
 #include "squid.h"
+
+#if USE_AUTH
+
 #include "acl/ExtUser.h"
 #include "acl/FilledChecklist.h"
 #include "acl/RegexData.h"
 #include "acl/UserData.h"
 #include "client_side.h"
-#include "HttpRequest.h"
 
 ACLExtUser::~ACLExtUser()
 {
@@ -103,3 +103,4 @@ ACLExtUser::clone() const
     return new ACLExtUser(*this);
 }
 
+#endif /* USE_AUTH */

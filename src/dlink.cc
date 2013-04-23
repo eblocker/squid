@@ -1,14 +1,8 @@
-/*
- * $Id$
- */
-#include "config.h"
+#include "squid.h"
 #include "dlink.h"
 
 /* dlink are Mem-pooled */
 #include "MemPool.h"
-/* for xstrdup() */
-#include "util.h"
-
 
 dlink_list ClientActiveRequests;
 
@@ -31,7 +25,7 @@ dlinkNodeDelete(dlink_node * m)
     if (m == NULL)
         return;
 
-    dlink_node_pool->free(m);
+    dlink_node_pool->freeOne(m);
 }
 
 void

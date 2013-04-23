@@ -1,7 +1,4 @@
-
 /*
- * $Id$
- *
  * DEBUG: section 73    HTTP Request
  * AUTHOR: Duane Wessels
  *
@@ -35,11 +32,27 @@
  */
 
 #include "squid.h"
-#include "HttpRequest.h"
-#include "auth/UserRequest.h"
+#include "AccessLogEntry.h"
+#include "acl/AclSizeLimit.h"
+#include "acl/FilledChecklist.h"
+#include "client_side.h"
+#include "DnsLookupDetails.h"
+#include "err_detail_type.h"
+#include "globals.h"
+#include "gopher.h"
+#include "http.h"
+#include "HttpHdrCc.h"
 #include "HttpHeaderRange.h"
+#include "HttpRequest.h"
+#include "log/Config.h"
 #include "MemBuf.h"
+#include "SquidConfig.h"
 #include "Store.h"
+#include "URL.h"
+
+#if USE_AUTH
+#include "auth/UserRequest.h"
+#endif
 #if ICAP_CLIENT
 #include "adaptation/icap/icap_log.h"
 #endif
@@ -49,7 +62,7 @@ HttpRequest::HttpRequest() : HttpMsg(hoRequest)
     init();
 }
 
-HttpRequest::HttpRequest(const HttpRequestMethod& aMethod, protocol_t aProtocol, const char *aUrlpath) : HttpMsg(hoRequest)
+HttpRequest::HttpRequest(const HttpRequestMethod& aMethod, AnyP::ProtocolType aProtocol, const char *aUrlpath) : HttpMsg(hoRequest)
 {
     static unsigned int id = 1;
     debugs(93,7, HERE << "constructed, this=" << this << " id=" << ++id);
@@ -64,7 +77,7 @@ HttpRequest::~HttpRequest()
 }
 
 void
-HttpRequest::initHTTP(const HttpRequestMethod& aMethod, protocol_t aProtocol, const char *aUrlpath)
+HttpRequest::initHTTP(const HttpRequestMethod& aMethod, AnyP::ProtocolType aProtocol, const char *aUrlpath)
 {
     method = aMethod;
     protocol = aProtocol;
@@ -75,13 +88,14 @@ void
 HttpRequest::init()
 {
     method = METHOD_NONE;
-    protocol = PROTO_NONE;
+    protocol = AnyP::PROTO_NONE;
     urlpath = NULL;
     login[0] = '\0';
     host[0] = '\0';
     host_is_numeric = -1;
+#if USE_AUTH
     auth_user_request = NULL;
-    pinned_connection = NULL;
+#endif
     port = 0;
     canonical = NULL;
     memset(&flags, '\0', sizeof(flags));
@@ -95,13 +109,16 @@ HttpRequest::init()
     // hier
     dnsWait = -1;
     errType = ERR_NONE;
+    errDetail = ERR_DETAIL_NONE;
     peer_login = NULL;		// not allocated/deallocated by this class
     peer_domain = NULL;		// not allocated/deallocated by this class
     vary_headers = NULL;
     myportname = null_string;
     tag = null_string;
+#if USE_AUTH
     extacl_user = null_string;
     extacl_passwd = null_string;
+#endif
     extacl_log = null_string;
     extacl_message = null_string;
     pstate = psReadyToParseStartLine;
@@ -114,6 +131,7 @@ HttpRequest::init()
 #if ICAP_CLIENT
     icapHistory_ = NULL;
 #endif
+    rangeOffsetLimit = -2; //a value of -2 means not checked yet
 }
 
 void
@@ -122,9 +140,9 @@ HttpRequest::clean()
     // we used to assert that the pipe is NULL, but now the request only
     // points to a pipe that is owned and initiated by another object.
     body_pipe = NULL;
-
-    AUTHUSERREQUESTUNLOCK(auth_user_request, "request");
-
+#if USE_AUTH
+    auth_user_request = NULL;
+#endif
     safe_free(canonical);
 
     safe_free(vary_headers);
@@ -134,7 +152,7 @@ HttpRequest::clean()
     header.clean();
 
     if (cache_control) {
-        httpHdrCcDestroy(cache_control);
+        delete cache_control;
         cache_control = NULL;
     }
 
@@ -143,17 +161,13 @@ HttpRequest::clean()
         range = NULL;
     }
 
-    if (pinned_connection)
-        cbdataReferenceDone(pinned_connection);
-
     myportname.clean();
 
     tag.clean();
-
+#if USE_AUTH
     extacl_user.clean();
-
     extacl_passwd.clean();
-
+#endif
     extacl_log.clean();
 
     extacl_message.clean();
@@ -208,14 +222,54 @@ HttpRequest::clone() const
 
     copy->myportname = myportname;
     copy->tag = tag;
+#if USE_AUTH
     copy->extacl_user = extacl_user;
     copy->extacl_passwd = extacl_passwd;
+#endif
     copy->extacl_log = extacl_log;
     copy->extacl_message = extacl_message;
 
     assert(copy->inheritProperties(this));
 
     return copy;
+}
+
+bool
+HttpRequest::inheritProperties(const HttpMsg *aMsg)
+{
+    const HttpRequest* aReq = dynamic_cast<const HttpRequest*>(aMsg);
+    if (!aReq)
+        return false;
+
+    client_addr = aReq->client_addr;
+#if FOLLOW_X_FORWARDED_FOR
+    indirect_client_addr = aReq->indirect_client_addr;
+#endif
+    my_addr = aReq->my_addr;
+
+    dnsWait = aReq->dnsWait;
+
+#if USE_ADAPTATION
+    adaptHistory_ = aReq->adaptHistory();
+#endif
+#if ICAP_CLIENT
+    icapHistory_ = aReq->icapHistory();
+#endif
+
+    // This may be too conservative for the 204 No Content case
+    // may eventually need cloneNullAdaptationImmune() for that.
+    flags = aReq->flags.cloneAdaptationImmune();
+
+    errType = aReq->errType;
+    errDetail = aReq->errDetail;
+#if USE_AUTH
+    auth_user_request = aReq->auth_user_request;
+#endif
+
+    // main property is which connection the request was received on (if any)
+    clientConnectionManager = aReq->clientConnectionManager;
+
+    return true;
 }
 
 /**
@@ -265,12 +319,12 @@ HttpRequest::parseFirstLine(const char *start, const char *end)
         end = ver - 1;
 
         while (xisspace(*end)) // find prev non-space
-            end--;
+            --end;
 
-        end++;                 // back to space
+        ++end;                 // back to space
 
         if (2 != sscanf(ver + 5, "%d.%d", &http_ver.major, &http_ver.minor)) {
-            debugs(73, 1, "parseRequestLine: Invalid HTTP identifier.");
+            debugs(73, DBG_IMPORTANT, "parseRequestLine: Invalid HTTP identifier.");
             return false;
         }
     } else {
@@ -367,34 +421,12 @@ HttpRequest::hdrCacheInit()
     range = header.getRange();
 }
 
-/* request_flags */
-bool
-request_flags::resetTCP() const
-{
-    return reset_tcp != 0;
-}
-
-void
-request_flags::setResetTCP()
-{
-    debugs(73, 9, "request_flags::setResetTCP");
-    reset_tcp = 1;
-}
-
-void
-request_flags::clearResetTCP()
-{
-    debugs(73, 9, "request_flags::clearResetTCP");
-    reset_tcp = 0;
-}
-
 #if ICAP_CLIENT
 Adaptation::Icap::History::Pointer
 HttpRequest::icapHistory() const
 {
     if (!icapHistory_) {
-        if ((LogfileStatus == LOG_ENABLE && alLogformatHasIcapToken) ||
-                IcapLogfileStatus == LOG_ENABLE) {
+        if (Log::TheConfig.hasIcapToken || IcapLogfileStatus == LOG_ENABLE) {
             icapHistory_ = new Adaptation::Icap::History();
             debugs(93,4, HERE << "made " << icapHistory_ << " for " << this);
         }
@@ -419,9 +451,18 @@ HttpRequest::adaptHistory(bool createIfNone) const
 Adaptation::History::Pointer
 HttpRequest::adaptLogHistory() const
 {
-    const bool loggingNeedsHistory = (LogfileStatus == LOG_ENABLE) &&
-                                     alLogformatHasAdaptToken; // TODO: make global to remove this method?
-    return HttpRequest::adaptHistory(loggingNeedsHistory);
+    return HttpRequest::adaptHistory(Log::TheConfig.hasAdaptToken);
+}
+
+void
+HttpRequest::adaptHistoryImport(const HttpRequest &them)
+{
+    if (!adaptHistory_) {
+        adaptHistory_ = them.adaptHistory_; // may be nil
+    } else {
+        // check that histories did not diverge
+        Must(!them.adaptHistory_ || them.adaptHistory_ == adaptHistory_);
+    }
 }
 
 #endif
@@ -432,31 +473,32 @@ HttpRequest::multipartRangeRequest() const
     return (range && range->specs.count > 1);
 }
 
-void
-request_flags::destinationIPLookupCompleted()
-{
-    destinationIPLookedUp_ = true;
-}
-
-bool
-request_flags::destinationIPLookedUp() const
-{
-    return destinationIPLookedUp_;
-}
-
-request_flags
-request_flags::cloneAdaptationImmune() const
-{
-    // At the time of writing, all flags where either safe to copy after
-    // adaptation or were not set at the time of the adaptation. If there
-    // are flags that are different, they should be cleared in the clone.
-    return *this;
-}
-
 bool
 HttpRequest::bodyNibbled() const
 {
     return body_pipe != NULL && body_pipe->consumedSize() > 0;
+}
+
+void
+HttpRequest::detailError(err_type aType, int aDetail)
+{
+    if (errType || errDetail)
+        debugs(11, 5, HERE << "old error details: " << errType << '/' << errDetail);
+    debugs(11, 5, HERE << "current error details: " << aType << '/' << aDetail);
+    // checking type and detail separately may cause inconsistency, but
+    // may result in more details available if they only become available later
+    if (!errType)
+        errType = aType;
+    if (!errDetail)
+        errDetail = aDetail;
+}
+
+void
+HttpRequest::clearError()
+{
+    debugs(11, 7, HERE << "old error details: " << errType << '/' << errDetail);
+    errType = ERR_NONE;
+    errDetail = ERR_DETAIL_NONE;
 }
 
 const char *HttpRequest::packableURI(bool full_uri) const
@@ -536,7 +578,14 @@ HttpRequest::CreateFromUrl(char * url)
 bool
 HttpRequest::cacheable() const
 {
-    if (protocol == PROTO_HTTP)
+    // Intercepted request with Host: header which cannot be trusted.
+    // Because it failed verification, or someone bypassed the security tests
+    // we cannot cache the reponse for sharing between clients.
+    // TODO: update cache to store for particular clients only (going to same Host: and destination IP)
+    if (!flags.hostVerified && (flags.intercepted || flags.spoofClientIp))
+        return false;
+
+    if (protocol == AnyP::PROTO_HTTP)
         return httpCachable(method);
 
     /*
@@ -551,10 +600,10 @@ HttpRequest::cacheable() const
      * XXX POST may be cached sometimes.. ignored
      * for now
      */
-    if (protocol == PROTO_GOPHER)
+    if (protocol == AnyP::PROTO_GOPHER)
         return gopherCachable(this);
 
-    if (protocol == PROTO_CACHEOBJ)
+    if (protocol == AnyP::PROTO_CACHE_OBJECT)
         return false;
 
     return true;
@@ -568,43 +617,8 @@ HttpRequest::conditional() const
            header.has(HDR_IF_NONE_MATCH);
 }
 
-bool HttpRequest::inheritProperties(const HttpMsg *aMsg)
-{
-    const HttpRequest* aReq = dynamic_cast<const HttpRequest*>(aMsg);
-    if (!aReq)
-        return false;
-
-    client_addr = aReq->client_addr;
-#if FOLLOW_X_FORWARDED_FOR
-    indirect_client_addr = aReq->indirect_client_addr;
-#endif
-    my_addr = aReq->my_addr;
-
-    dnsWait = aReq->dnsWait;
-
-#if USE_ADAPTATION
-    adaptHistory_ = aReq->adaptHistory();
-#endif
-#if ICAP_CLIENT
-    icapHistory_ = aReq->icapHistory();
-#endif
-
-    // This may be too conservative for the 204 No Content case
-    // may eventually need cloneNullAdaptationImmune() for that.
-    flags = aReq->flags.cloneAdaptationImmune();
-
-    if (aReq->auth_user_request) {
-        auth_user_request = aReq->auth_user_request;
-        AUTHUSERREQUESTLOCK(auth_user_request, "inheritProperties");
-    }
-
-    if (aReq->pinned_connection) {
-        pinned_connection = cbdataReference(aReq->pinned_connection);
-    }
-    return true;
-}
-
-void HttpRequest::recordLookup(const DnsLookupDetails &dns)
+void
+HttpRequest::recordLookup(const DnsLookupDetails &dns)
 {
     if (dns.wait >= 0) { // known delay
         if (dnsWait >= 0) // have recorded DNS wait before
@@ -612,4 +626,51 @@ void HttpRequest::recordLookup(const DnsLookupDetails &dns)
         else
             dnsWait = dns.wait;
     }
+}
+
+int64_t
+HttpRequest::getRangeOffsetLimit()
+{
+    /* -2 is the starting value of rangeOffsetLimit.
+     * If it is -2, that means we haven't checked it yet.
+     *  Otherwise, return the current value */
+    if (rangeOffsetLimit != -2)
+        return rangeOffsetLimit;
+
+    rangeOffsetLimit = 0; // default value for rangeOffsetLimit
+
+    ACLFilledChecklist ch(NULL, this, NULL);
+    ch.src_addr = client_addr;
+    ch.my_addr =  my_addr;
+
+    for (AclSizeLimit *l = Config.rangeOffsetLimit; l; l = l -> next) {
+        /* if there is no ACL list or if the ACLs listed match use this limit value */
+        if (!l->aclList || ch.fastCheck(l->aclList) == ACCESS_ALLOWED) {
+            debugs(58, 4, HERE << "rangeOffsetLimit=" << rangeOffsetLimit);
+            rangeOffsetLimit = l->size; // may be -1
+            break;
+        }
+    }
+
+    return rangeOffsetLimit;
+}
+
+bool
+HttpRequest::canHandle1xx() const
+{
+    // old clients do not support 1xx unless they sent Expect: 100-continue
+    // (we reject all other HDR_EXPECT values so just check for HDR_EXPECT)
+    if (http_ver <= HttpVersion(1,0) && !header.has(HDR_EXPECT))
+        return false;
+
+    // others must support 1xx control messages
+    return true;
+}
+
+ConnStateData *
+HttpRequest::pinnedConnection()
+{
+    if (clientConnectionManager.valid() && clientConnectionManager->pinning.pinned)
+        return clientConnectionManager.get();
+    return NULL;
 }

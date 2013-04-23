@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  * DEBUG: section 32    Asynchronous Disk I/O
  * AUTHOR: Pete Bentley <pete@demon.net>
  * AUTHOR: Stewart Forster <slf@connect.com.au>
@@ -57,7 +55,7 @@ aioOpen(const char *path, int oflag, mode_t mode, AIOCB * callback, void *callba
     squidaio_ctrl_t *ctrlp;
 
     assert(DiskThreadsIOStrategy::Instance.initialised);
-    squidaio_counts.open_start++;
+    ++squidaio_counts.open_start;
     ctrlp = (squidaio_ctrl_t *)DiskThreadsIOStrategy::Instance.squidaio_ctrl_pool->alloc();
     ctrlp->fd = -2;
     ctrlp->done_handler = callback;
@@ -75,7 +73,7 @@ aioClose(int fd)
     squidaio_ctrl_t *ctrlp;
 
     assert(DiskThreadsIOStrategy::Instance.initialised);
-    squidaio_counts.close_start++;
+    ++squidaio_counts.close_start;
     aioCancel(fd);
     ctrlp = (squidaio_ctrl_t *)DiskThreadsIOStrategy::Instance.squidaio_ctrl_pool->alloc();
     ctrlp->fd = fd;
@@ -95,7 +93,7 @@ aioCancel(int fd)
     dlink_node *m, *next;
 
     assert(DiskThreadsIOStrategy::Instance.initialised);
-    squidaio_counts.cancel++;
+    ++squidaio_counts.cancel;
 
     for (m = used_list.head; m; m = next) {
         next = m->next;
@@ -110,7 +108,7 @@ aioCancel(int fd)
             AIOCB *callback = ctrlp->done_handler;
             void *cbdata;
             ctrlp->done_handler = NULL;
-            debugs(32, 1, "this be aioCancel. Danger ahead!");
+            debugs(32, DBG_IMPORTANT, "this be aioCancel. Danger ahead!");
 
             if (cbdataReferenceValidDone(ctrlp->done_handler_data, &cbdata))
                 callback(fd, cbdata, NULL, -2, -2);
@@ -125,10 +123,9 @@ aioCancel(int fd)
         }
 
         dlinkDelete(m, &used_list);
-        DiskThreadsIOStrategy::Instance.squidaio_ctrl_pool->free(ctrlp);
+        DiskThreadsIOStrategy::Instance.squidaio_ctrl_pool->freeOne(ctrlp);
     }
 }
-
 
 void
 aioWrite(int fd, off_t offset, char *bufp, size_t len, AIOCB * callback, void *callback_data, FREE * free_func)
@@ -137,7 +134,7 @@ aioWrite(int fd, off_t offset, char *bufp, size_t len, AIOCB * callback, void *c
     int seekmode;
 
     assert(DiskThreadsIOStrategy::Instance.initialised);
-    squidaio_counts.write_start++;
+    ++squidaio_counts.write_start;
     ctrlp = (squidaio_ctrl_t *)DiskThreadsIOStrategy::Instance.squidaio_ctrl_pool->alloc();
     ctrlp->fd = fd;
     ctrlp->done_handler = callback;
@@ -158,7 +155,6 @@ aioWrite(int fd, off_t offset, char *bufp, size_t len, AIOCB * callback, void *c
     dlinkAdd(ctrlp, &ctrlp->node, &used_list);
 }				/* aioWrite */
 
-
 void
 aioRead(int fd, off_t offset, size_t len, AIOCB * callback, void *callback_data)
 {
@@ -166,7 +162,7 @@ aioRead(int fd, off_t offset, size_t len, AIOCB * callback, void *callback_data)
     int seekmode;
 
     assert(DiskThreadsIOStrategy::Instance.initialised);
-    squidaio_counts.read_start++;
+    ++squidaio_counts.read_start;
     ctrlp = (squidaio_ctrl_t *)DiskThreadsIOStrategy::Instance.squidaio_ctrl_pool->alloc();
     ctrlp->fd = fd;
     ctrlp->done_handler = callback;
@@ -195,7 +191,7 @@ aioStat(char *path, struct stat *sb, AIOCB * callback, void *callback_data)
     squidaio_ctrl_t *ctrlp;
 
     assert(DiskThreadsIOStrategy::Instance.initialised);
-    squidaio_counts.stat_start++;
+    ++squidaio_counts.stat_start;
     ctrlp = (squidaio_ctrl_t *)DiskThreadsIOStrategy::Instance.squidaio_ctrl_pool->alloc();
     ctrlp->fd = -2;
     ctrlp->done_handler = callback;
@@ -212,7 +208,7 @@ aioUnlink(const char *path, AIOCB * callback, void *callback_data)
 {
     squidaio_ctrl_t *ctrlp;
     assert(DiskThreadsIOStrategy::Instance.initialised);
-    squidaio_counts.unlink_start++;
+    ++squidaio_counts.unlink_start;
     ctrlp = (squidaio_ctrl_t *)DiskThreadsIOStrategy::Instance.squidaio_ctrl_pool->alloc();
     ctrlp->fd = -2;
     ctrlp->done_handler = callback;

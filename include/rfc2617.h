@@ -12,10 +12,7 @@
  * to prevent squid knowing the users password (idea suggested in RFC 2617).
  */
 
-
 /*
- * $Id$
- *
  * DEBUG:
  * AUTHOR: RFC 2617 & Robert Collins
  *
@@ -49,40 +46,45 @@
 #ifndef SQUID_RFC2617_H
 #define SQUID_RFC2617_H
 
-#include "config.h"
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #define HASHLEN 16
-typedef char HASH[HASHLEN];
+    typedef char HASH[HASHLEN];
 #define HASHHEXLEN 32
-typedef char HASHHEX[HASHHEXLEN + 1];
+    typedef char HASHHEX[HASHHEXLEN + 1];
 
-/* calculate H(A1) as per HTTP Digest spec */
-SQUIDCEXTERN void DigestCalcHA1(
-    const char *pszAlg,
-    const char *pszUserName,
-    const char *pszRealm,
-    const char *pszPassword,
-    const char *pszNonce,
-    const char *pszCNonce,
-    HASH HA1,
-    HASHHEX SessionKey
-);
+    /* calculate H(A1) as per HTTP Digest spec */
+    extern void DigestCalcHA1(
+        const char *pszAlg,
+        const char *pszUserName,
+        const char *pszRealm,
+        const char *pszPassword,
+        const char *pszNonce,
+        const char *pszCNonce,
+        HASH HA1,
+        HASHHEX SessionKey
+    );
 
-/* calculate request-digest/response-digest as per HTTP Digest spec */
-SQUIDCEXTERN void DigestCalcResponse(
-    const HASHHEX HA1,		/* H(A1) */
-    const char *pszNonce,	/* nonce from server */
-    const char *pszNonceCount,	/* 8 hex digits */
-    const char *pszCNonce,	/* client nonce */
-    const char *pszQop,		/* qop-value: "", "auth", "auth-int" */
-    const char *pszMethod,	/* method from the request */
-    const char *pszDigestUri,	/* requested URL */
-    const HASHHEX HEntity,	/* H(entity body) if qop="auth-int" */
-    HASHHEX Response		/* request-digest or response-digest */
-);
+    /* calculate request-digest/response-digest as per HTTP Digest spec */
+    extern void DigestCalcResponse(
+        const HASHHEX HA1,		/* H(A1) */
+        const char *pszNonce,	/* nonce from server */
+        const char *pszNonceCount,	/* 8 hex digits */
+        const char *pszCNonce,	/* client nonce */
+        const char *pszQop,		/* qop-value: "", "auth", "auth-int" */
+        const char *pszMethod,	/* method from the request */
+        const char *pszDigestUri,	/* requested URL */
+        const HASHHEX HEntity,	/* H(entity body) if qop="auth-int" */
+        HASHHEX Response		/* request-digest or response-digest */
+    );
 
-SQUIDCEXTERN void CvtHex(const HASH Bin, HASHHEX Hex);
+    extern void CvtHex(const HASH Bin, HASHHEX Hex);
 
-SQUIDCEXTERN void CvtBin(const HASHHEX Hex, HASH Bin);
+    extern void CvtBin(const HASHHEX Hex, HASH Bin);
 
+#ifdef __cplusplus
+}
+#endif
 #endif /* SQUID_RFC2617_H */

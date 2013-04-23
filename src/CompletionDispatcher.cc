@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
  * ----------------------------------------------------------
@@ -31,4 +29,5 @@
  *
  */
 
+#include "squid.h"
 #include "CompletionDispatcher.h"

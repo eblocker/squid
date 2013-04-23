@@ -1,7 +1,4 @@
-
 /*
- * $Id$
- *
  * Low level DNS protocol routines
  * AUTHOR: Duane Wessels
  *
@@ -39,23 +36,20 @@
  * UDP replies with TC set should be retried via TCP
  */
 
-#include "config.h"
+#include "squid.h"
 #include "util.h"
 
 #if HAVE_STDIO_H
 #include <stdio.h>
 #endif
+#if HAVE_STRING_H
+#include <string.h>
+#endif
 #if HAVE_UNISTD_H
 #include <unistd.h>
 #endif
-#if HAVE_STDLIB_H
-#include <stdlib.h>
-#endif
 #if HAVE_MEMORY_H
 #include <memory.h>
-#endif
-#if HAVE_SYS_TYPES_H
-#include <sys/types.h>
 #endif
 #if HAVE_ASSERT_H
 #include <assert.h>
@@ -71,6 +65,7 @@
 #endif
 
 #include "rfc1035.h"
+#include "rfc2671.h"
 
 #define RFC1035_MAXLABELSZ 63
 #define rfc1035_unpack_error 15
@@ -80,11 +75,6 @@
 #else
 #define RFC1035_UNPACK_DEBUG  (void)0
 #endif
-
-
-
-int rfc1035_errno;
-const char *rfc1035_error_message;
 
 /*
  * rfc1035HeaderPack()
@@ -352,6 +342,50 @@ rfc1035NameUnpack(const char *buf, size_t sz, unsigned int *off, unsigned short 
 }
 
 /*
+ * rfc1035RRPack()
+ *
+ * Packs a RFC1035 Resource Record into a message buffer from 'RR'.
+ * The caller must allocate and free RR->rdata and RR->name!
+ *
+ * Updates the new message buffer.
+ *
+ * Returns the number of bytes added to the buffer or 0 for error.
+ */
+int
+rfc1035RRPack(char *buf, const size_t sz, const rfc1035_rr * RR)
+{
+    unsigned int off;
+    uint16_t s;
+    uint32_t i;
+
+    off = rfc1035NamePack(buf, sz, RR->name);
+
+    /*
+     * Make sure the remaining message has enough octets for the
+     * rest of the RR fields.
+     */
+    if ((off + sizeof(s)*3 + sizeof(i) + RR->rdlength) > sz) {
+        return 0;
+    }
+    s = htons(RR->type);
+    memcpy(buf + off, &s, sizeof(s));
+    off += sizeof(s);
+    s = htons(RR->_class);
+    memcpy(buf + off, &s, sizeof(s));
+    off += sizeof(s);
+    i = htonl(RR->ttl);
+    memcpy(buf + off, &i, sizeof(i));
+    off += sizeof(i);
+    s = htons(RR->rdlength);
+    memcpy(buf + off, &s, sizeof(s));
+    off += sizeof(s);
+    memcpy(buf + off, &(RR->rdata), RR->rdlength);
+    off += RR->rdlength;
+    assert(off <= sz);
+    return off;
+}
+
+/*
  * rfc1035RRUnpack()
  *
  * Unpacks a RFC1035 Resource Record into 'RR' from a message buffer.
@@ -439,39 +473,41 @@ rfc1035RRUnpack(const char *buf, size_t sz, unsigned int *off, rfc1035_rr * RR)
     return 0;
 }
 
-static void
-rfc1035SetErrno(int n)
+const char *
+rfc1035ErrorMessage(int n)
 {
-    switch (rfc1035_errno = n) {
+    if (n < 0)
+        n = -n;
+    switch (n) {
     case 0:
-        rfc1035_error_message = "No error condition";
+        return "No error condition";
         break;
     case 1:
-        rfc1035_error_message = "Format Error: The name server was "
-                                "unable to interpret the query.";
+        return "Format Error: The name server was "
+               "unable to interpret the query.";
         break;
     case 2:
-        rfc1035_error_message = "Server Failure: The name server was "
-                                "unable to process this query.";
+        return "Server Failure: The name server was "
+               "unable to process this query.";
         break;
     case 3:
-        rfc1035_error_message = "Name Error: The domain name does "
-                                "not exist.";
+        return "Name Error: The domain name does "
+               "not exist.";
         break;
     case 4:
-        rfc1035_error_message = "Not Implemented: The name server does "
-                                "not support the requested kind of query.";
+        return "Not Implemented: The name server does "
+               "not support the requested kind of query.";
         break;
     case 5:
-        rfc1035_error_message = "Refused: The name server refuses to "
-                                "perform the specified operation.";
+        return "Refused: The name server refuses to "
+               "perform the specified operation.";
         break;
     case rfc1035_unpack_error:
-        rfc1035_error_message = "The DNS reply message is corrupt or could "
-                                "not be safely parsed.";
+        return "The DNS reply message is corrupt or could "
+               "not be safely parsed.";
         break;
     default:
-        rfc1035_error_message = "Unknown Error";
+        return "Unknown Error";
         break;
     }
 }
@@ -591,17 +627,13 @@ rfc1035MessageUnpack(const char *buf,
     msg = (rfc1035_message*)xcalloc(1, sizeof(*msg));
     if (rfc1035HeaderUnpack(buf + off, sz - off, &off, msg)) {
         RFC1035_UNPACK_DEBUG;
-        rfc1035SetErrno(rfc1035_unpack_error);
         xfree(msg);
         return -rfc1035_unpack_error;
     }
-    rfc1035_errno = 0;
-    rfc1035_error_message = NULL;
     i = (unsigned int) msg->qdcount;
     if (i != 1) {
         /* This can not be an answer to our queries.. */
         RFC1035_UNPACK_DEBUG;
-        rfc1035SetErrno(rfc1035_unpack_error);
         xfree(msg);
         return -rfc1035_unpack_error;
     }
@@ -609,7 +641,6 @@ rfc1035MessageUnpack(const char *buf,
     for (j = 0; j < i; j++) {
         if (rfc1035QueryUnpack(buf, sz, &off, &querys[j])) {
             RFC1035_UNPACK_DEBUG;
-            rfc1035SetErrno(rfc1035_unpack_error);
             rfc1035MessageDestroy(&msg);
             return -rfc1035_unpack_error;
         }
@@ -617,8 +648,7 @@ rfc1035MessageUnpack(const char *buf,
     *answer = msg;
     if (msg->rcode) {
         RFC1035_UNPACK_DEBUG;
-        rfc1035SetErrno((int) msg->rcode);
-        return -rfc1035_errno;
+        return -msg->rcode;
     }
     if (msg->ancount == 0)
         return 0;
@@ -642,7 +672,6 @@ rfc1035MessageUnpack(const char *buf,
          */
         rfc1035MessageDestroy(&msg);
         *answer = NULL;
-        rfc1035SetErrno(rfc1035_unpack_error);
         return -rfc1035_unpack_error;
     }
     return nr;
@@ -659,7 +688,7 @@ rfc1035MessageUnpack(const char *buf,
  * Returns the size of the query
  */
 ssize_t
-rfc1035BuildAQuery(const char *hostname, char *buf, size_t sz, unsigned short qid, rfc1035_query * query)
+rfc1035BuildAQuery(const char *hostname, char *buf, size_t sz, unsigned short qid, rfc1035_query * query, ssize_t edns_sz)
 {
     static rfc1035_message h;
     size_t offset = 0;
@@ -669,12 +698,15 @@ rfc1035BuildAQuery(const char *hostname, char *buf, size_t sz, unsigned short qi
     h.rd = 1;
     h.opcode = 0;		/* QUERY */
     h.qdcount = (unsigned int) 1;
+    h.arcount = (edns_sz > 0 ? 1 : 0);
     offset += rfc1035HeaderPack(buf + offset, sz - offset, &h);
     offset += rfc1035QuestionPack(buf + offset,
                                   sz - offset,
                                   hostname,
                                   RFC1035_TYPE_A,
                                   RFC1035_CLASS_IN);
+    if (edns_sz > 0)
+        offset += rfc2671RROptPack(buf + offset, sz - offset, edns_sz);
     if (query) {
         query->qtype = RFC1035_TYPE_A;
         query->qclass = RFC1035_CLASS_IN;
@@ -695,7 +727,7 @@ rfc1035BuildAQuery(const char *hostname, char *buf, size_t sz, unsigned short qi
  * Returns the size of the query
  */
 ssize_t
-rfc1035BuildPTRQuery(const struct in_addr addr, char *buf, size_t sz, unsigned short qid, rfc1035_query * query)
+rfc1035BuildPTRQuery(const struct in_addr addr, char *buf, size_t sz, unsigned short qid, rfc1035_query * query, ssize_t edns_sz)
 {
     static rfc1035_message h;
     size_t offset = 0;
@@ -713,12 +745,15 @@ rfc1035BuildPTRQuery(const struct in_addr addr, char *buf, size_t sz, unsigned s
     h.rd = 1;
     h.opcode = 0;		/* QUERY */
     h.qdcount = (unsigned int) 1;
+    h.arcount = (edns_sz > 0 ? 1 : 0);
     offset += rfc1035HeaderPack(buf + offset, sz - offset, &h);
     offset += rfc1035QuestionPack(buf + offset,
                                   sz - offset,
                                   rev,
                                   RFC1035_TYPE_PTR,
                                   RFC1035_CLASS_IN);
+    if (edns_sz > 0)
+        offset += rfc2671RROptPack(buf + offset, sz - offset, edns_sz);
     if (query) {
         query->qtype = RFC1035_TYPE_PTR;
         query->qclass = RFC1035_CLASS_IN;
@@ -742,14 +777,13 @@ rfc1035SetQueryID(char *buf, unsigned short qid)
 
 #if DRIVER
 #include <sys/socket.h>
-#include <sys/time.h>
 int
 main(int argc, char *argv[])
 {
-    char input[512];
-    char buf[512];
-    char rbuf[512];
-    size_t sz = 512;
+    char input[SQUID_DNS_BUFSZ];
+    char buf[SQUID_DNS_BUFSZ];
+    char rbuf[SQUID_DNS_BUFSZ];
+    size_t sz = SQUID_DNS_BUFSZ;
     unsigned short sid;
     int s;
     int rl;
@@ -769,11 +803,11 @@ main(int argc, char *argv[])
     S.sin_family = AF_INET;
     S.sin_port = htons(atoi(argv[2]));
     S.sin_addr.s_addr = inet_addr(argv[1]);
-    while (fgets(input, 512, stdin)) {
+    while (fgets(input, RFC1035_DEFAULT_PACKET_SZ, stdin)) {
         struct in_addr junk;
         strtok(input, "\r\n");
-        memset(buf, '\0', 512);
-        sz = 512;
+        memset(buf, '\0', RFC1035_DEFAULT_PACKET_SZ);
+        sz = RFC1035_DEFAULT_PACKET_SZ;
         if (inet_pton(AF_INET, input, &junk)) {
             sid = rfc1035BuildPTRQuery(junk, buf, &sz);
         } else {
@@ -793,8 +827,8 @@ main(int argc, char *argv[])
             printf("TIMEOUT\n");
             continue;
         }
-        memset(rbuf, '\0', 512);
-        rl = recv(s, rbuf, 512, 0);
+        memset(rbuf, '\0', RFC1035_DEFAULT_PACKET_SZ);
+        rl = recv(s, rbuf, RFC1035_DEFAULT_PACKET_SZ, 0);
         {
             unsigned short rid = 0;
             int i;
@@ -805,7 +839,7 @@ main(int argc, char *argv[])
                                      &answers,
                                      &rid);
             if (n < 0) {
-                printf("ERROR %d\n", rfc1035_errno);
+                printf("ERROR %d\n", -n);
             } else if (rid != sid) {
                 printf("ERROR, ID mismatch (%#hx, %#hx)\n", sid, rid);
             } else {

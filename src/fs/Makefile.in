@@ -40,7 +40,15 @@ check_PROGRAMS =
 @USE_LOADABLE_MODULES_TRUE@am__append_1 = $(INCLTDL)
 subdir = src/fs
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
-am__aclocal_m4_deps = $(top_srcdir)/acinclude.m4 \
+am__aclocal_m4_deps = $(top_srcdir)/acinclude/init.m4 \
+	$(top_srcdir)/acinclude/squid-util.m4 \
+	$(top_srcdir)/acinclude/compiler-flags.m4 \
+	$(top_srcdir)/acinclude/os-deps.m4 \
+	$(top_srcdir)/acinclude/krb5.m4 $(top_srcdir)/acinclude/pam.m4 \
+	$(top_srcdir)/acinclude/pkg.m4 \
+	$(top_srcdir)/acinclude/lib-checks.m4 \
+	$(top_srcdir)/acinclude/ax_cxx_compile_stdcxx_0x.m4 \
+	$(top_srcdir)/acinclude/ax_cxx_0x_types.m4 \
 	$(top_srcdir)/configure.ac
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
@@ -62,9 +70,14 @@ libdiskd_la_OBJECTS = $(am_libdiskd_la_OBJECTS)
 am__DEPENDENCIES_1 =
 am_libfs_la_OBJECTS = Module.lo
 libfs_la_OBJECTS = $(am_libfs_la_OBJECTS)
+librock_la_LIBADD =
+am_librock_la_OBJECTS = RockIoState.lo RockIoRequests.lo \
+	RockRebuild.lo RockStoreFileSystem.lo RockSwapDir.lo
+librock_la_OBJECTS = $(am_librock_la_OBJECTS)
 libufs_la_LIBADD =
-am_libufs_la_OBJECTS = StoreFSufs.lo store_dir_ufs.lo store_io_ufs.lo \
-	ufscommon.lo
+am_libufs_la_OBJECTS = StoreFSufs.lo UFSStoreState.lo UFSSwapDir.lo \
+	UFSStrategy.lo StoreSearchUFS.lo UFSSwapLogParser.lo \
+	RebuildState.lo
 libufs_la_OBJECTS = $(am_libufs_la_OBJECTS)
 DEFAULT_INCLUDES = 
 depcomp = $(SHELL) $(top_srcdir)/cfgaux/depcomp
@@ -90,10 +103,10 @@ LINK = $(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
 	$(LDFLAGS) -o $@
 SOURCES = $(libaufs_la_SOURCES) $(libcoss_la_SOURCES) \
 	$(libdiskd_la_SOURCES) $(libfs_la_SOURCES) \
-	$(libufs_la_SOURCES)
+	$(librock_la_SOURCES) $(libufs_la_SOURCES)
 DIST_SOURCES = $(libaufs_la_SOURCES) $(libcoss_la_SOURCES) \
 	$(libdiskd_la_SOURCES) $(libfs_la_SOURCES) \
-	$(libufs_la_SOURCES)
+	$(librock_la_SOURCES) $(libufs_la_SOURCES)
 ETAGS = etags
 CTAGS = ctags
 am__tty_colors = \
@@ -113,9 +126,8 @@ AUTOHEADER = @AUTOHEADER@
 AUTOMAKE = @AUTOMAKE@
 AWK = @AWK@
 BASIC_AUTH_HELPERS = @BASIC_AUTH_HELPERS@
+BZR = @BZR@
 CACHE_EFFECTIVE_USER = @CACHE_EFFECTIVE_USER@
-CACHE_HTTP_PORT = @CACHE_HTTP_PORT@
-CACHE_ICP_PORT = @CACHE_ICP_PORT@
 CC = @CC@
 CCDEPMODE = @CCDEPMODE@
 CFLAGS = @CFLAGS@
@@ -130,8 +142,10 @@ CXXCPP = @CXXCPP@
 CXXDEPMODE = @CXXDEPMODE@
 CXXFLAGS = @CXXFLAGS@
 CYGPATH_W = @CYGPATH_W@
+DEFAULT_HOSTS = @DEFAULT_HOSTS@
 DEFAULT_LOG_DIR = @DEFAULT_LOG_DIR@
-DEFAULT_PIDFILE = @DEFAULT_PIDFILE@
+DEFAULT_PID_FILE = @DEFAULT_PID_FILE@
+DEFAULT_SWAP_DIR = @DEFAULT_SWAP_DIR@
 DEFS = @DEFS@
 DEPDIR = @DEPDIR@
 DIGEST_AUTH_HELPERS = @DIGEST_AUTH_HELPERS@
@@ -142,16 +156,18 @@ DISK_OS_LIBS = @DISK_OS_LIBS@
 DISK_PROGRAMS = @DISK_PROGRAMS@
 DSYMUTIL = @DSYMUTIL@
 DUMPBIN = @DUMPBIN@
-ECAPLIB = @ECAPLIB@
 ECAP_LIBS = @ECAP_LIBS@
 ECHO_C = @ECHO_C@
 ECHO_N = @ECHO_N@
 ECHO_T = @ECHO_T@
 EGREP = @EGREP@
 EPOLL_LIBS = @EPOLL_LIBS@
+EUILIB = @EUILIB@
 EXEEXT = @EXEEXT@
 EXPATLIB = @EXPATLIB@
 EXTERNAL_ACL_HELPERS = @EXTERNAL_ACL_HELPERS@
+EXT_LIBECAP_CFLAGS = @EXT_LIBECAP_CFLAGS@
+EXT_LIBECAP_LIBS = @EXT_LIBECAP_LIBS@
 FALSE = @FALSE@
 FGREP = @FGREP@
 GREP = @GREP@
@@ -163,7 +179,11 @@ INSTALL_DATA = @INSTALL_DATA@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
 INSTALL_SCRIPT = @INSTALL_SCRIPT@
 INSTALL_STRIP_PROGRAM = @INSTALL_STRIP_PROGRAM@
+KRB5INCS = @KRB5INCS@
+KRB5LIBS = @KRB5LIBS@
+LBERLIB = @LBERLIB@
 LD = @LD@
+LDAPLIB = @LDAPLIB@
 LDFLAGS = @LDFLAGS@
 LIBADD_DL = @LIBADD_DL@
 LIBADD_DLD_LINK = @LIBADD_DLD_LINK@
@@ -175,11 +195,10 @@ LIBS = @LIBS@
 LIBSASL = @LIBSASL@
 LIBTOOL = @LIBTOOL@
 LIB_DB = @LIB_DB@
-LIB_LBER = @LIB_LBER@
-LIB_LDAP = @LIB_LDAP@
 LIPO = @LIPO@
 LN = @LN@
 LN_S = @LN_S@
+LOG_DAEMON_HELPERS = @LOG_DAEMON_HELPERS@
 LTDLDEPS = @LTDLDEPS@
 LTDLINCL = @LTDLINCL@
 LTDLOPEN = @LTDLOPEN@
@@ -199,7 +218,6 @@ NMEDIT = @NMEDIT@
 NTLM_AUTH_HELPERS = @NTLM_AUTH_HELPERS@
 OBJDUMP = @OBJDUMP@
 OBJEXT = @OBJEXT@
-OPT_DEFAULT_HOSTS = @OPT_DEFAULT_HOSTS@
 OTOOL = @OTOOL@
 OTOOL64 = @OTOOL64@
 PACKAGE = @PACKAGE@
@@ -211,7 +229,12 @@ PACKAGE_URL = @PACKAGE_URL@
 PACKAGE_VERSION = @PACKAGE_VERSION@
 PATH_SEPARATOR = @PATH_SEPARATOR@
 PERL = @PERL@
+PKG_CONFIG = @PKG_CONFIG@
+PKG_CONFIG_LIBDIR = @PKG_CONFIG_LIBDIR@
+PKG_CONFIG_PATH = @PKG_CONFIG_PATH@
 PO2HTML = @PO2HTML@
+PO2TEXT = @PO2TEXT@
+POD2MAN = @POD2MAN@
 RANLIB = @RANLIB@
 REGEXLIB = @REGEXLIB@
 REPL_LIBS = @REPL_LIBS@
@@ -233,7 +256,9 @@ STORE_LIBS_TO_ADD = @STORE_LIBS_TO_ADD@
 STORE_LIBS_TO_BUILD = @STORE_LIBS_TO_BUILD@
 STORE_TESTS = @STORE_TESTS@
 STRIP = @STRIP@
+TR = @TR@
 TRUE = @TRUE@
+URL_REWRITE_HELPERS = @URL_REWRITE_HELPERS@
 VERSION = @VERSION@
 WIN32_PSAPI = @WIN32_PSAPI@
 XMLLIB = @XMLLIB@
@@ -246,6 +271,7 @@ abs_top_srcdir = @abs_top_srcdir@
 ac_ct_CC = @ac_ct_CC@
 ac_ct_CXX = @ac_ct_CXX@
 ac_ct_DUMPBIN = @ac_ct_DUMPBIN@
+ac_krb5_config = @ac_krb5_config@
 am__include = @am__include@
 am__leading_dot = @am__leading_dot@
 am__quote = @am__quote@
@@ -300,10 +326,14 @@ AM_CFLAGS = $(SQUID_CFLAGS)
 AM_CXXFLAGS = $(SQUID_CXXFLAGS)
 CLEANFILES = testHeaders
 TESTS = testHeaders
-INCLUDES = -I$(top_srcdir) -I$(top_srcdir)/include -I$(top_srcdir)/src \
-	-I$(top_builddir)/include $(SQUID_CPPUNIT_INC) $(am__append_1) \
-	-I$(srcdir)
-EXTRA_LTLIBRARIES = libaufs.la libdiskd.la libcoss.la libufs.la
+INCLUDES = -I$(top_srcdir) -I$(top_srcdir)/include -I$(top_srcdir)/lib \
+	-I$(top_srcdir)/src -I$(top_builddir)/include \
+	$(SQUID_CPPUNIT_INC) $(KRB5INCS) $(am__append_1) -I$(srcdir)
+@ENABLE_XPROF_STATS_FALSE@LIBPROFILER = 
+@ENABLE_XPROF_STATS_TRUE@LIBPROFILER = $(top_builddir)/lib/profiler/libprofiler.la
+COMPAT_LIB = -L$(top_builddir)/compat -lcompat-squid $(LIBPROFILER)
+subst_perlshell = sed -e 's,[@]PERL[@],$(PERL),g' <$(srcdir)/$@.pl.in >$@ || ($(RM) -f $@ ; exit 1)
+EXTRA_LTLIBRARIES = libaufs.la libdiskd.la libcoss.la libufs.la librock.la
 noinst_LTLIBRARIES = $(STORE_LIBS_TO_BUILD) libfs.la
 
 # aufs is a "fake" legacy store
@@ -326,11 +356,31 @@ libcoss_la_SOURCES = \
 libufs_la_SOURCES = \
 	ufs/StoreFSufs.h \
 	ufs/StoreFSufs.cc \
-	ufs/store_dir_ufs.cc \
-	ufs/store_io_ufs.cc \
-	ufs/ufscommon.cci \
-	ufs/ufscommon.cc \
-	ufs/ufscommon.h 
+	ufs/UFSStoreState.cc \
+	ufs/UFSSwapDir.cc \
+	ufs/UFSSwapDir.h \
+	ufs/UFSStrategy.cc \
+	ufs/UFSStrategy.h \
+	ufs/UFSStoreState.h \
+	ufs/StoreSearchUFS.h \
+	ufs/StoreSearchUFS.cc \
+	ufs/UFSSwapLogParser.h \
+	ufs/UFSSwapLogParser.cc \
+	ufs/RebuildState.h \
+	ufs/RebuildState.cc
+
+librock_la_SOURCES = \
+	rock/RockDbCell.h \
+	rock/RockIoState.cc \
+	rock/RockIoState.h \
+	rock/RockIoRequests.cc \
+	rock/RockIoRequests.h \
+	rock/RockRebuild.cc \
+	rock/RockRebuild.h \
+	rock/RockStoreFileSystem.cc \
+	rock/RockStoreFileSystem.h \
+	rock/RockSwapDir.cc \
+	rock/RockSwapDir.h
 
 libfs_la_SOURCES = Module.cc Module.h
 libfs_la_LIBADD = $(STORE_LIBS_TO_BUILD)
@@ -389,6 +439,8 @@ libdiskd.la: $(libdiskd_la_OBJECTS) $(libdiskd_la_DEPENDENCIES)
 	$(CXXLINK)  $(libdiskd_la_OBJECTS) $(libdiskd_la_LIBADD) $(LIBS)
 libfs.la: $(libfs_la_OBJECTS) $(libfs_la_DEPENDENCIES) 
 	$(CXXLINK)  $(libfs_la_OBJECTS) $(libfs_la_LIBADD) $(LIBS)
+librock.la: $(librock_la_OBJECTS) $(librock_la_DEPENDENCIES) 
+	$(CXXLINK)  $(librock_la_OBJECTS) $(librock_la_LIBADD) $(LIBS)
 libufs.la: $(libufs_la_OBJECTS) $(libufs_la_DEPENDENCIES) 
 	$(CXXLINK)  $(libufs_la_OBJECTS) $(libufs_la_LIBADD) $(LIBS)
 
@@ -408,15 +460,23 @@ distclean-compile:
 	-rm -f *.tab.c
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Module.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/RebuildState.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/RockIoRequests.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/RockIoState.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/RockRebuild.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/RockStoreFileSystem.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/RockSwapDir.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/StoreFSaufs.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/StoreFScoss.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/StoreFSdiskd.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/StoreFSufs.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/StoreSearchUFS.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/UFSStoreState.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/UFSStrategy.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/UFSSwapDir.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/UFSSwapLogParser.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/store_dir_coss.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/store_dir_ufs.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/store_io_coss.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/store_io_ufs.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ufscommon.Plo@am__quote@
 
 .cc.o:
 @am__fastdepCXX_TRUE@	$(CXXCOMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
@@ -474,6 +534,41 @@ StoreFSdiskd.lo: diskd/StoreFSdiskd.cc
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o StoreFSdiskd.lo `test -f 'diskd/StoreFSdiskd.cc' || echo '$(srcdir)/'`diskd/StoreFSdiskd.cc
 
+RockIoState.lo: rock/RockIoState.cc
+@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT RockIoState.lo -MD -MP -MF $(DEPDIR)/RockIoState.Tpo -c -o RockIoState.lo `test -f 'rock/RockIoState.cc' || echo '$(srcdir)/'`rock/RockIoState.cc
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/RockIoState.Tpo $(DEPDIR)/RockIoState.Plo
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='rock/RockIoState.cc' object='RockIoState.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o RockIoState.lo `test -f 'rock/RockIoState.cc' || echo '$(srcdir)/'`rock/RockIoState.cc
+
+RockIoRequests.lo: rock/RockIoRequests.cc
+@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT RockIoRequests.lo -MD -MP -MF $(DEPDIR)/RockIoRequests.Tpo -c -o RockIoRequests.lo `test -f 'rock/RockIoRequests.cc' || echo '$(srcdir)/'`rock/RockIoRequests.cc
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/RockIoRequests.Tpo $(DEPDIR)/RockIoRequests.Plo
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='rock/RockIoRequests.cc' object='RockIoRequests.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o RockIoRequests.lo `test -f 'rock/RockIoRequests.cc' || echo '$(srcdir)/'`rock/RockIoRequests.cc
+
+RockRebuild.lo: rock/RockRebuild.cc
+@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT RockRebuild.lo -MD -MP -MF $(DEPDIR)/RockRebuild.Tpo -c -o RockRebuild.lo `test -f 'rock/RockRebuild.cc' || echo '$(srcdir)/'`rock/RockRebuild.cc
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/RockRebuild.Tpo $(DEPDIR)/RockRebuild.Plo
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='rock/RockRebuild.cc' object='RockRebuild.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o RockRebuild.lo `test -f 'rock/RockRebuild.cc' || echo '$(srcdir)/'`rock/RockRebuild.cc
+
+RockStoreFileSystem.lo: rock/RockStoreFileSystem.cc
+@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT RockStoreFileSystem.lo -MD -MP -MF $(DEPDIR)/RockStoreFileSystem.Tpo -c -o RockStoreFileSystem.lo `test -f 'rock/RockStoreFileSystem.cc' || echo '$(srcdir)/'`rock/RockStoreFileSystem.cc
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/RockStoreFileSystem.Tpo $(DEPDIR)/RockStoreFileSystem.Plo
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='rock/RockStoreFileSystem.cc' object='RockStoreFileSystem.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o RockStoreFileSystem.lo `test -f 'rock/RockStoreFileSystem.cc' || echo '$(srcdir)/'`rock/RockStoreFileSystem.cc
+
+RockSwapDir.lo: rock/RockSwapDir.cc
+@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT RockSwapDir.lo -MD -MP -MF $(DEPDIR)/RockSwapDir.Tpo -c -o RockSwapDir.lo `test -f 'rock/RockSwapDir.cc' || echo '$(srcdir)/'`rock/RockSwapDir.cc
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/RockSwapDir.Tpo $(DEPDIR)/RockSwapDir.Plo
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='rock/RockSwapDir.cc' object='RockSwapDir.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o RockSwapDir.lo `test -f 'rock/RockSwapDir.cc' || echo '$(srcdir)/'`rock/RockSwapDir.cc
+
 StoreFSufs.lo: ufs/StoreFSufs.cc
 @am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT StoreFSufs.lo -MD -MP -MF $(DEPDIR)/StoreFSufs.Tpo -c -o StoreFSufs.lo `test -f 'ufs/StoreFSufs.cc' || echo '$(srcdir)/'`ufs/StoreFSufs.cc
 @am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/StoreFSufs.Tpo $(DEPDIR)/StoreFSufs.Plo
@@ -481,26 +576,47 @@ StoreFSufs.lo: ufs/StoreFSufs.cc
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o StoreFSufs.lo `test -f 'ufs/StoreFSufs.cc' || echo '$(srcdir)/'`ufs/StoreFSufs.cc
 
-store_dir_ufs.lo: ufs/store_dir_ufs.cc
-@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT store_dir_ufs.lo -MD -MP -MF $(DEPDIR)/store_dir_ufs.Tpo -c -o store_dir_ufs.lo `test -f 'ufs/store_dir_ufs.cc' || echo '$(srcdir)/'`ufs/store_dir_ufs.cc
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/store_dir_ufs.Tpo $(DEPDIR)/store_dir_ufs.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='ufs/store_dir_ufs.cc' object='store_dir_ufs.lo' libtool=yes @AMDEPBACKSLASH@
+UFSStoreState.lo: ufs/UFSStoreState.cc
+@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT UFSStoreState.lo -MD -MP -MF $(DEPDIR)/UFSStoreState.Tpo -c -o UFSStoreState.lo `test -f 'ufs/UFSStoreState.cc' || echo '$(srcdir)/'`ufs/UFSStoreState.cc
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/UFSStoreState.Tpo $(DEPDIR)/UFSStoreState.Plo
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='ufs/UFSStoreState.cc' object='UFSStoreState.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o store_dir_ufs.lo `test -f 'ufs/store_dir_ufs.cc' || echo '$(srcdir)/'`ufs/store_dir_ufs.cc
+@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o UFSStoreState.lo `test -f 'ufs/UFSStoreState.cc' || echo '$(srcdir)/'`ufs/UFSStoreState.cc
 
-store_io_ufs.lo: ufs/store_io_ufs.cc
-@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT store_io_ufs.lo -MD -MP -MF $(DEPDIR)/store_io_ufs.Tpo -c -o store_io_ufs.lo `test -f 'ufs/store_io_ufs.cc' || echo '$(srcdir)/'`ufs/store_io_ufs.cc
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/store_io_ufs.Tpo $(DEPDIR)/store_io_ufs.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='ufs/store_io_ufs.cc' object='store_io_ufs.lo' libtool=yes @AMDEPBACKSLASH@
+UFSSwapDir.lo: ufs/UFSSwapDir.cc
+@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT UFSSwapDir.lo -MD -MP -MF $(DEPDIR)/UFSSwapDir.Tpo -c -o UFSSwapDir.lo `test -f 'ufs/UFSSwapDir.cc' || echo '$(srcdir)/'`ufs/UFSSwapDir.cc
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/UFSSwapDir.Tpo $(DEPDIR)/UFSSwapDir.Plo
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='ufs/UFSSwapDir.cc' object='UFSSwapDir.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o store_io_ufs.lo `test -f 'ufs/store_io_ufs.cc' || echo '$(srcdir)/'`ufs/store_io_ufs.cc
+@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o UFSSwapDir.lo `test -f 'ufs/UFSSwapDir.cc' || echo '$(srcdir)/'`ufs/UFSSwapDir.cc
 
-ufscommon.lo: ufs/ufscommon.cc
-@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT ufscommon.lo -MD -MP -MF $(DEPDIR)/ufscommon.Tpo -c -o ufscommon.lo `test -f 'ufs/ufscommon.cc' || echo '$(srcdir)/'`ufs/ufscommon.cc
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/ufscommon.Tpo $(DEPDIR)/ufscommon.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='ufs/ufscommon.cc' object='ufscommon.lo' libtool=yes @AMDEPBACKSLASH@
+UFSStrategy.lo: ufs/UFSStrategy.cc
+@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT UFSStrategy.lo -MD -MP -MF $(DEPDIR)/UFSStrategy.Tpo -c -o UFSStrategy.lo `test -f 'ufs/UFSStrategy.cc' || echo '$(srcdir)/'`ufs/UFSStrategy.cc
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/UFSStrategy.Tpo $(DEPDIR)/UFSStrategy.Plo
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='ufs/UFSStrategy.cc' object='UFSStrategy.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o ufscommon.lo `test -f 'ufs/ufscommon.cc' || echo '$(srcdir)/'`ufs/ufscommon.cc
+@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o UFSStrategy.lo `test -f 'ufs/UFSStrategy.cc' || echo '$(srcdir)/'`ufs/UFSStrategy.cc
+
+StoreSearchUFS.lo: ufs/StoreSearchUFS.cc
+@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT StoreSearchUFS.lo -MD -MP -MF $(DEPDIR)/StoreSearchUFS.Tpo -c -o StoreSearchUFS.lo `test -f 'ufs/StoreSearchUFS.cc' || echo '$(srcdir)/'`ufs/StoreSearchUFS.cc
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/StoreSearchUFS.Tpo $(DEPDIR)/StoreSearchUFS.Plo
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='ufs/StoreSearchUFS.cc' object='StoreSearchUFS.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o StoreSearchUFS.lo `test -f 'ufs/StoreSearchUFS.cc' || echo '$(srcdir)/'`ufs/StoreSearchUFS.cc
+
+UFSSwapLogParser.lo: ufs/UFSSwapLogParser.cc
+@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT UFSSwapLogParser.lo -MD -MP -MF $(DEPDIR)/UFSSwapLogParser.Tpo -c -o UFSSwapLogParser.lo `test -f 'ufs/UFSSwapLogParser.cc' || echo '$(srcdir)/'`ufs/UFSSwapLogParser.cc
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/UFSSwapLogParser.Tpo $(DEPDIR)/UFSSwapLogParser.Plo
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='ufs/UFSSwapLogParser.cc' object='UFSSwapLogParser.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o UFSSwapLogParser.lo `test -f 'ufs/UFSSwapLogParser.cc' || echo '$(srcdir)/'`ufs/UFSSwapLogParser.cc
+
+RebuildState.lo: ufs/RebuildState.cc
+@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT RebuildState.lo -MD -MP -MF $(DEPDIR)/RebuildState.Tpo -c -o RebuildState.lo `test -f 'ufs/RebuildState.cc' || echo '$(srcdir)/'`ufs/RebuildState.cc
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/RebuildState.Tpo $(DEPDIR)/RebuildState.Plo
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='ufs/RebuildState.cc' object='RebuildState.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o RebuildState.lo `test -f 'ufs/RebuildState.cc' || echo '$(srcdir)/'`ufs/RebuildState.cc
 
 mostlyclean-libtool:
 	-rm -f *.lo
@@ -808,10 +924,11 @@ coss/all: libcoss.la
 coss/clean: clean
 ufs/all: libufs.la
 ufs/clean: clean
+rock/all: librock.la
+rock/clean: clean
 
-testHeaders: $(srcdir)/ufs/*.h $(srcdir)/coss/*.h
-	$(SHELL) $(top_srcdir)/test-suite/testheaders.sh "$(CXXCOMPILE)" "$(srcdir)/ufs" || exit 1
-	$(SHELL) $(top_srcdir)/test-suite/testheaders.sh "$(CXXCOMPILE)" "$(srcdir)/coss" || exit 1
+testHeaders: $(srcdir)/ufs/*.h $(srcdir)/coss/*.h $(srcdir)/rock/*.h
+	$(SHELL) $(top_srcdir)/test-suite/testheaders.sh "$(CXXCOMPILE)" $^ || exit 1
 
 .PHONY: testHeaders
 

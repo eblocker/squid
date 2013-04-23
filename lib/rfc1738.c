@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG:
  * AUTHOR: Harvest Derived
  *
@@ -32,9 +30,8 @@
  *
  */
 
-#include "config.h"
+#include "squid.h"
 #include "rfc1738.h"
-#include "util.h"
 
 #if HAVE_STDIO_H
 #include <stdio.h>

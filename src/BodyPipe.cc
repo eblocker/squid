@@ -1,8 +1,8 @@
 
 #include "squid.h"
 #include "base/AsyncJobCalls.h"
+#include "base/TextException.h"
 #include "BodyPipe.h"
-#include "TextException.h"
 
 CBDATA_CLASS_INIT(BodyPipe);
 
@@ -10,24 +10,25 @@ CBDATA_CLASS_INIT(BodyPipe);
 // data from a BodyPipe
 class BodySink: public BodyConsumer
 {
-    bool done;
 public:
-    BodySink():AsyncJob("BodySink"), done(false) {}
-    virtual ~BodySink() {}
+    BodySink(const BodyPipe::Pointer &bp): AsyncJob("BodySink"), body_pipe(bp) {}
+    virtual ~BodySink() { assert(!body_pipe); }
 
     virtual void noteMoreBodyDataAvailable(BodyPipe::Pointer bp) {
         size_t contentSize = bp->buf().contentSize();
         bp->consume(contentSize);
     }
     virtual void noteBodyProductionEnded(BodyPipe::Pointer bp) {
-        stopConsumingFrom(bp);
-        done = true;
+        stopConsumingFrom(body_pipe);
     }
     virtual void noteBodyProducerAborted(BodyPipe::Pointer bp) {
-        stopConsumingFrom(bp);
-        done = true;
+        stopConsumingFrom(body_pipe);
     }
-    bool doneAll() const {return done && AsyncJob::doneAll();}
+    bool doneAll() const {return !body_pipe && AsyncJob::doneAll();}
+
+private:
+    BodyPipe::Pointer body_pipe; ///< the pipe we are consuming from
+
     CBDATA_CLASS2(BodySink);
 };
 
@@ -97,7 +98,6 @@ BodyConsumerDialer::canDial(AsyncCall &call)
     return true;
 }
 
-
 /* BodyProducer */
 
 // inform the pipe that we are done and clear the Pointer
@@ -110,8 +110,6 @@ void BodyProducer::stopProducingFor(RefCount<BodyPipe> &pipe, bool atEof)
     pipe = NULL;
 }
 
-
-
 /* BodyConsumer */
 
 // inform the pipe that we are done and clear the Pointer
@@ -122,7 +120,6 @@ void BodyConsumer::stopConsumingFrom(RefCount<BodyPipe> &pipe)
     pipe->clearConsumer();
     pipe = NULL;
 }
-
 
 /* BodyPipe */
 
@@ -180,6 +177,15 @@ bool BodyPipe::exhausted() const
 uint64_t BodyPipe::unproducedSize() const
 {
     return bodySize() - thePutSize; // bodySize() asserts that size is known
+}
+
+void BodyPipe::expectProductionEndAfter(uint64_t size)
+{
+    const uint64_t expectedSize = thePutSize + size;
+    if (bodySizeKnown())
+        Must(bodySize() == expectedSize);
+    else
+        theBodySize = expectedSize;
 }
 
 void
@@ -258,14 +264,28 @@ BodyPipe::clearConsumer()
 void
 BodyPipe::expectNoConsumption()
 {
-    Must(!theConsumer);
+    // We may be called multiple times because multiple jobs on the consumption
+    // chain may realize that there will be no more setConsumer() calls (e.g.,
+    // consuming code and retrying code). It is both difficult and not really
+    // necessary for them to coordinate their expectNoConsumption() calls.
+
+    // As a consequence, we may be called when we are auto-consuming already.
+
     if (!abortedConsumption && !exhausted()) {
+        // Before we abort, any regular consumption should be over and auto
+        // consumption must not be started.
+        Must(!theConsumer);
+
         AsyncCall::Pointer call= asyncCall(91, 7,
                                            "BodyProducer::noteBodyConsumerAborted",
                                            BodyProducerDialer(theProducer,
                                                               &BodyProducer::noteBodyConsumerAborted, this));
         ScheduleCallHere(call);
         abortedConsumption = true;
+
+        // in case somebody enabled auto-consumption before regular one aborted
+        if (mustAutoConsume)
+            startAutoConsumption();
     }
 }
 
@@ -308,7 +328,7 @@ BodyPipe::startAutoConsumption()
 {
     Must(mustAutoConsume);
     Must(!theConsumer);
-    theConsumer = new BodySink;
+    theConsumer = new BodySink(this);
     debugs(91,7, HERE << "starting auto consumption" << status());
     scheduleBodyDataNotification();
 }
@@ -382,7 +402,6 @@ BodyPipe::postAppend(size_t size)
         clearProducer(true); // reached end-of-body
 }
 
-
 void
 BodyPipe::scheduleBodyDataNotification()
 {
@@ -423,9 +442,9 @@ const char *BodyPipe::status() const
 
     outputBuffer.append(" [", 2);
 
-    outputBuffer.Printf("%"PRIu64"<=%"PRIu64, theGetSize, thePutSize);
+    outputBuffer.Printf("%" PRIu64 "<=%" PRIu64, theGetSize, thePutSize);
     if (theBodySize >= 0)
-        outputBuffer.Printf("<=%"PRId64, theBodySize);
+        outputBuffer.Printf("<=%" PRId64, theBodySize);
     else
         outputBuffer.append("<=?", 3);
 
@@ -450,7 +469,6 @@ const char *BodyPipe::status() const
 
     return outputBuffer.content();
 }
-
 
 /* BodyPipeCheckout */
 
@@ -478,7 +496,6 @@ BodyPipeCheckout::checkIn()
     pipe.checkIn(*this);
     checkedIn = true;
 }
-
 
 BodyPipeCheckout::BodyPipeCheckout(const BodyPipeCheckout &c): pipe(c.pipe),
         buf(c.buf), offset(c.offset), checkedOutSize(c.checkedOutSize),

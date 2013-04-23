@@ -5,7 +5,7 @@ namespace Ip
 {
 
 /// Probe to discover IPv6 capabilities
-extern void ProbeTransport(void);
+void ProbeTransport(void);
 
 /* Squids notion of IPv6 stack types and state */
 #define IPV6_OFF  0
@@ -16,6 +16,6 @@ extern void ProbeTransport(void);
 /// Whether IPv6 is supported and type of support.
 extern int EnableIpv6;
 
-}; // namespace Ip
+} // namespace Ip
 
 #endif /* _SQUID_SRC_IP_TOOLS_H */

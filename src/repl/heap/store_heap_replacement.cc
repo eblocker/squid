@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  * DEBUG: section 20    Storage Manager Heap-based replacement
  * AUTHOR: John Dilley
  *
@@ -48,6 +46,10 @@
 #include "MemObject.h"
 #include "SquidTime.h"
 
+#if HAVE_MATH_H
+#include <math.h>
+#endif
+
 /*
  * Key generation function to implement the LFU-DA policy (Least
  * Frequently Used with Dynamic Aging).  Similar to classical LFU
@@ -93,7 +95,6 @@ HeapKeyGen_StoreEntry_LFUDA(void *entry, double heap_age)
 
     return (double) key;
 }
-
 
 /*
  * Key generation function to implement the GDS-Frequency policy.

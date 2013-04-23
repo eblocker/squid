@@ -1,22 +1,14 @@
-#
-#  Makefile for the Squid Object Cache server
-#
-#  $Id$
-#
-#  Uncomment and customize the following to suit your needs:
-#
-
 include $(top_srcdir)/src/Common.am
 
-libexec_SCRIPTS	= smb_auth.sh
-libexec_PROGRAMS = smb_auth
-smb_auth_CFLAGS = -DHELPERSCRIPT=\"$(libexecdir)/smb_auth.sh\"
-EXTRA_DIST = smb_auth.sh COPYING-2.0 config.test
+if !ENABLE_WIN32SPECIFIC
+libexec_SCRIPTS	= basic_smb_auth.sh
+libexec_PROGRAMS = basic_smb_auth
+endif 
+basic_smb_auth_SOURCES= basic_smb_auth.cc
+basic_smb_auth_CXXFLAGS = -DHELPERSCRIPT=\"$(libexecdir)/basic_smb_auth.sh\"
+basic_smb_auth_LDADD = \
+		$(top_builddir)/lib/libmiscencoding.la \
+		$(COMPAT_LIB) \
+		$(XTRA_LIBS)
 
-## we need our local files too (but avoid -I. at all costs)
-INCLUDES += -I$(srcdir)
-
-LDADD = \
-	$(top_builddir)/compat/libcompat.la \
-	-L$(top_builddir)/lib -lmiscutil \
-	$(XTRA_LIBS)
+EXTRA_DIST = basic_smb_auth.sh COPYING-2.0 config.test

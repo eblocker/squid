@@ -1,9 +1,8 @@
 /*
- * $Id$
- *
  * DEBUG: section 05    Comm
  */
-
+#include "squid.h"
+#include "globals.h" /* for Squid_MaxFD */
 #include "DescriptorSet.h"
 
 // pre-allocates descriptor store and index for Squid_MaxFD descriptors
@@ -37,7 +36,8 @@ DescriptorSet::add(int fd)
         return false; // already have it
 
     assert(size_ < capacity_); // \todo: replace with Must()
-    const int pos = size_++;
+    const int pos = size_;
+    ++size_;
     index_[fd] = pos;
     descriptors_[pos] = fd;
     return true; // really added

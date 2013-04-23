@@ -1,3 +1,33 @@
+squid3 (3.3.3-1) unstable; urgency=low
+
+  * New upstream release (Closes: #694633, #701799, #702540)
+    - Removed upstream patches
+      + debian/patches/20-ipv6-fix
+      + debian/patches/30-CVE-2012-5643-CVE-2013-0189.patch
+      + debian/patches/fix-701123-regression-in-cachemgr.patch
+    - Includes upstream fix for CVE-2009-0801 (Closes: #521052)
+    - Includes upstream fix for rejection of benign request containing variants
+      of double CR (Closes: #669148)
+
+  * debian/control
+    - Added dependency on libecap2-dev
+    - Added squid-purge package
+
+  * debian/source
+    - Enabled ECAP support
+    - Fixed configure invocation to match new syntax
+    - Removed unneeded rename of helper man pages
+    - Fixed list of helpers to build, adding fake agents (Closes: #644280)
+      and negotiate wrapper (Closes: #656304)
+
+  * debian/watch
+    - Updated for 3.3
+
+  * debian/squid3.logrotate
+    - Added check for existing binary in logrotate script (Closes: #703954)
+
+ -- Luigi Gangitano <luigi@debian.org>  Sun, 21 Apr 2013 23:51:11 +0200
+
 squid3 (3.1.20-2.2) unstable; urgency=low
 
   * Non-maintainer upload.

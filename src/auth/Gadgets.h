@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
  * ----------------------------------------------------------
@@ -33,40 +31,48 @@
 #ifndef SQUID_AUTH_GADGETS_H
 #define SQUID_AUTH_GADGETS_H
 
+#if USE_AUTH
+
 #include "hash.h"
 #include "MemPool.h"
-#include "typedefs.h" /* for authConfig */
-
-class AuthUser;
+#include "auth/Config.h"
+#include "auth/User.h"
 
 /**
  \ingroup AuthAPI
  *
- * This is used to link auth_users into the username cache.
+ * This is used to link AuthUsers objects into the username cache.
  * Because some schemes may link in aliases to a user,
  * the link is not part of the AuthUser structure itself.
  *
- \todo Inheritance in a struct? this should be a class.
+ * Code must not hold onto copies of these objects.
+ * They may exist only so long as the AuthUser being referenced
+ * is recorded in the cache. Any caller using hash_remove_link
+ * must then delete the AuthUserHashPointer.
  */
-struct AuthUserHashPointer : public hash_link {
+class AuthUserHashPointer : public hash_link
+{
     /* first two items must be same as hash_link */
 
 public:
-    static void removeFromCache (void *anAuthUserHashPointer);
     MEMPROXY_CLASS(AuthUserHashPointer);
 
-    AuthUserHashPointer(AuthUser *);
+    AuthUserHashPointer(Auth::User::Pointer);
+    ~AuthUserHashPointer() { auth_user = NULL; };
 
-    AuthUser *user() const;
+    Auth::User::Pointer user() const;
 
 private:
-    AuthUser *auth_user;
+    Auth::User::Pointer auth_user;
 };
 
 MEMPROXY_CLASS_INLINE(AuthUserHashPointer);
 
+namespace Auth
+{
+class Scheme;
+}
 class ConnStateData;
-class AuthScheme;
 class StoreEntry;
 
 /**
@@ -75,30 +81,32 @@ class StoreEntry;
  */
 typedef void AUTHSSTATS(StoreEntry *);
 
-/**
- \ingroup AuthAPI
- * subsumed by the C++ interface
- \todo does 'subsumed' mean deprecated use a C++ API call?
+/// \ingroup AuthAPI
+void authenticateInit(Auth::ConfigVector *);
+
+/** \ingroup AuthAPI
+ * Remove all idle authentication state. Intended for use by reconfigure.
+ *
+ * Removes the username cache contents and global configuration state.
+ * Stops just short of detaching the auth components completely.
+ *
+ * Currently active requests should finish. Howevee new requests will not use
+ * authentication unless something causes the global config to be rebuilt.
+ * Such as a configure load action adding config and re-running authenticateInit().
  */
-extern void authenticateAuthUserMerge(AuthUser *, AuthUser *);
+void authenticateReset(void);
+
+void authenticateRotate(void);
 
 /// \ingroup AuthAPI
-extern void authenticateInit(authConfig *);
+void authenticateFreeProxyAuthUserACLResults(void *data);
 /// \ingroup AuthAPI
-extern void authenticateShutdown(void);
+int authenticateActiveSchemeCount(void);
 /// \ingroup AuthAPI
-extern int authenticateAuthUserInuse(AuthUser * auth_user);
+int authenticateSchemeCount(void);
 
 /// \ingroup AuthAPI
-extern void authenticateFreeProxyAuthUserACLResults(void *data);
-/// \ingroup AuthAPI
-extern int authenticateActiveSchemeCount(void);
-/// \ingroup AuthAPI
-extern int authenticateSchemeCount(void);
+void authenticateOnCloseConnection(ConnStateData * conn);
 
-/// \ingroup AuthAPI
-extern void authenticateUserCacheRestart(void);
-/// \ingroup AuthAPI
-extern void authenticateOnCloseConnection(ConnStateData * conn);
-
+#endif /* USE_AUTH */
 #endif /* SQUID_AUTH_GADGETS_H */

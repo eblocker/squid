@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 28    Access Control
  * AUTHOR: Duane Wessels
  *
@@ -39,6 +37,7 @@
 #include "acl/Checklist.h"
 #include "acl/RegexData.h"
 #include "rfc1738.h"
+#include "src/URL.h"
 
 int
 ACLUrlStrategy::match (ACLData<char const *> * &data, ACLFilledChecklist *checklist)

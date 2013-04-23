@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 00    UFS Store Dump Tool
  * AUTHOR: Robert Collins
  *
@@ -32,11 +30,14 @@
  *
  */
 
-#include "config.h"
+#include "squid.h"
 #include "StoreMeta.h"
 #include "StoreMetaUnpacker.h"
 #include "Store.h"
+#include "store_key_md5.h"
 #include "Generic.h"
+#include "mgr/Registration.h"
+
 #undef malloc
 #undef free
 
@@ -70,16 +71,8 @@ storeAppendPrintf(StoreEntry * e, const char *fmt,...)
     va_end(args);
 }
 
-#include "CacheManager.h"
-CacheManager*
-CacheManager::GetInstance()
-{
-    assert(false);
-    return NULL;
-}
-
 void
-CacheManager::registerAction(char const * action, char const * desc, OBJH * handler, int pw_req_flag, int atomic) {}
+Mgr::RegisterAction(char const * action, char const * desc, OBJH * handler, int pw_req_flag, int atomic) {}
 
 /* MinGW needs also a stub of death() */
 void
@@ -194,7 +187,6 @@ main(int argc, char *argv[])
         DumpStoreMeta dumper;
 
         for_each(*metadata, dumper);
-
 
         return 0;
     } catch (std::runtime_error error) {

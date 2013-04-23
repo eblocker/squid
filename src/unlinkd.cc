@@ -1,7 +1,4 @@
-
 /*
- * $Id$
- *
  * DEBUG: section 02    Unlink Daemon
  * AUTHOR: Duane Wessels
  *
@@ -34,9 +31,18 @@
  */
 
 #include "squid.h"
-#include "SquidTime.h"
+
+#if USE_UNLINKD
+#include "disk.h"
+#include "fd.h"
 #include "fde.h"
+#include "globals.h"
 #include "xusleep.h"
+#include "SquidIpc.h"
+#include "SquidTime.h"
+#include "StatCounters.h"
+#include "SwapDir.h"
+#include "tools.h"
 
 /* This code gets linked to Squid */
 
@@ -106,9 +112,9 @@ unlinkdUnlink(const char *path)
         if (bytes_read > 0) {
             rbuf[bytes_read] = '\0';
 
-            for (i = 0; i < bytes_read; i++)
+            for (i = 0; i < bytes_read; ++i)
                 if ('\n' == rbuf[i])
-                    queuelen--;
+                    --queuelen;
 
             assert(queuelen >= 0);
         }
@@ -117,36 +123,37 @@ unlinkdUnlink(const char *path)
     l = strlen(path);
     assert(l < MAXPATHLEN);
     xstrncpy(buf, path, MAXPATHLEN);
-    buf[l++] = '\n';
+    buf[l] = '\n';
+    ++l;
     bytes_written = write(unlinkd_wfd, buf, l);
 
     if (bytes_written < 0) {
-        debugs(2, 1, "unlinkdUnlink: write FD " << unlinkd_wfd << " failed: " << xstrerror());
+        debugs(2, DBG_IMPORTANT, "unlinkdUnlink: write FD " << unlinkd_wfd << " failed: " << xstrerror());
         safeunlink(path, 0);
         return;
     } else if (bytes_written != l) {
-        debugs(2, 1, "unlinkdUnlink: FD " << unlinkd_wfd << " only wrote " << bytes_written << " of " << l << " bytes");
+        debugs(2, DBG_IMPORTANT, "unlinkdUnlink: FD " << unlinkd_wfd << " only wrote " << bytes_written << " of " << l << " bytes");
         safeunlink(path, 0);
         return;
     }
 
-    statCounter.unlink.requests++;
+    ++statCounter.unlink.requests;
     /*
     * Increment this syscalls counter here, even though the syscall
     * is executed by the helper process.  We try to be consistent
     * in counting unlink operations.
     */
-    statCounter.syscalls.disk.unlinks++;
-    queuelen++;
+    ++statCounter.syscalls.disk.unlinks;
+    ++queuelen;
 }
 
 void
 unlinkdClose(void)
-#ifdef _SQUID_MSWIN_
+#if _SQUID_MSWIN_
 {
 
     if (unlinkd_wfd > -1) {
-        debugs(2, 1, "Closing unlinkd pipe on FD " << unlinkd_wfd);
+        debugs(2, DBG_IMPORTANT, "Closing unlinkd pipe on FD " << unlinkd_wfd);
         shutdown(unlinkd_wfd, SD_BOTH);
         comm_close(unlinkd_wfd);
 
@@ -156,13 +163,12 @@ unlinkdClose(void)
         unlinkd_wfd = -1;
 
         unlinkd_rfd = -1;
-    } else
-        debugs(2, 0, "unlinkdClose: WARNING: unlinkd_wfd is " << unlinkd_wfd);
+    }
 
     if (hIpc) {
         if (WaitForSingleObject(hIpc, 5000) != WAIT_OBJECT_0) {
             getCurrentTime();
-            debugs(2, 1, "unlinkdClose: WARNING: (unlinkd," << pid << "d) didn't exit in 5 seconds");
+            debugs(2, DBG_IMPORTANT, "unlinkdClose: WARNING: (unlinkd," << pid << "d) didn't exit in 5 seconds");
         }
 
         CloseHandle(hIpc);
@@ -174,7 +180,7 @@ unlinkdClose(void)
     if (unlinkd_wfd < 0)
         return;
 
-    debugs(2, 1, "Closing unlinkd pipe on FD " << unlinkd_wfd);
+    debugs(2, DBG_IMPORTANT, "Closing unlinkd pipe on FD " << unlinkd_wfd);
 
     file_close(unlinkd_wfd);
 
@@ -188,21 +194,37 @@ unlinkdClose(void)
 
 #endif
 
+bool
+unlinkdNeeded(void)
+{
+    // we should start unlinkd if there are any cache_dirs using it
+    for (int i = 0; i < Config.cacheSwap.n_configured; ++i) {
+        const RefCount<SwapDir> sd = Config.cacheSwap.swapDirs[i];
+        if (sd->unlinkdUseful())
+            return true;
+    }
+
+    return false;
+}
+
 void
 unlinkdInit(void)
 {
+    if (unlinkd_wfd >= 0)
+        return; // unlinkd already started
+
     const char *args[2];
-    IpAddress localhost;
+    Ip::Address localhost;
 
     args[0] = "(unlinkd)";
     args[1] = NULL;
     localhost.SetLocalhost();
 
     pid = ipcCreate(
-#if USE_POLL && defined(_SQUID_OSF_)
+#if USE_POLL && _SQUID_OSF_
               /* pipes and poll() don't get along on DUNIX -DW */
               IPC_STREAM,
-#elif defined(_SQUID_MSWIN_)
+#elif _SQUID_MSWIN_
               /* select() will fail on a pipe */
               IPC_TCP_SOCKET,
 #else
@@ -226,9 +248,8 @@ unlinkdInit(void)
 
     fd_note(unlinkd_rfd, "unlinkd -> squid");
 
-    commSetTimeout(unlinkd_rfd, -1, NULL, NULL);
-
-    commSetTimeout(unlinkd_wfd, -1, NULL, NULL);
+    commUnsetFdTimeout(unlinkd_rfd);
+    commUnsetFdTimeout(unlinkd_wfd);
 
     /*
     * unlinkd_rfd should already be non-blocking because of
@@ -242,12 +263,13 @@ unlinkdInit(void)
     if (FD_PIPE == fd_table[unlinkd_wfd].type)
         commUnsetNonBlocking(unlinkd_wfd);
 
-    debugs(2, 1, "Unlinkd pipe opened on FD " << unlinkd_wfd);
+    debugs(2, DBG_IMPORTANT, "Unlinkd pipe opened on FD " << unlinkd_wfd);
 
-#ifdef _SQUID_MSWIN_
+#if _SQUID_MSWIN_
 
     debugs(2, 4, "Unlinkd handle: 0x" << std::hex << hIpc << std::dec << ", PID: " << pid);
 
 #endif
 
 }
+#endif /* USE_UNLINKD */

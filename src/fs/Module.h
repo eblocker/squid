@@ -4,9 +4,9 @@
 namespace Fs
 {
 
-extern void Init();
-extern void Clean();
+void Init();
+void Clean();
 
-}; // namespace Fs
+} // namespace Fs
 
 #endif /* SQUID_FS_MODULE_H */

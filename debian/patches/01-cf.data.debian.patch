@@ -83,15 +83,6 @@ Description: Default configuration file for debian
  DOC_END
  
  NAME: emulate_httpd_log
-@@ -5268,7 +5271,7 @@
- NAME: visible_hostname
- TYPE: string
- LOC: Config.visibleHostname
--DEFAULT: none
-+DEFAULT: localhost
- DOC_START
- 	If you want to present a special hostname in error messages, etc,
- 	define this.  Otherwise, the return value of gethostname()
 @@ -7771,8 +7774,8 @@
  
  	WARNING:
@@ -99,7 +90,7 @@ Description: Default configuration file for debian
 -	  connectivity is used (and tested). Hiding network problems
 -	  which would otherwise be detected and warned about.
 +	  connectivity is used (and tested), potentially hiding network
-+	  problem swhich would otherwise be detected and warned about.
++	  problems which would otherwise be detected and warned about.
  DOC_END
  
  NAME: ipcache_size

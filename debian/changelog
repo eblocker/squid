@@ -1,7 +1,7 @@
-squid3 (3.3.4-1) UNRELEASED; urgency=low
+squid3 (3.3.4-1) unstable; urgency=low
 
   * New upstream release
-    - Added support fro SHA passwords in ncsa_auth (Closes: #652010)
+    - Added support for SHA passwords in ncsa_auth (Closes: #652010)
 
   * debian/squid3.lintian-overrides
     - Added override for pinger setuid bin

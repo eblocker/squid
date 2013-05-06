@@ -1,4 +1,4 @@
-AC_INIT([Squid Web Proxy],[3.3.3],[http://bugs.squid-cache.org/],[squid])
+AC_INIT([Squid Web Proxy],[3.3.4],[http://bugs.squid-cache.org/],[squid])
 AC_PREREQ(2.61)
 AC_CONFIG_HEADERS([include/autoconf.h])
 AC_CONFIG_AUX_DIR(cfgaux)
@@ -259,7 +259,7 @@ case $withval in
 ])
 AC_SUBST(DEFAULT_SWAP_DIR)
 
-if test "x$GCC" = "xyes"; then
+if test "$squid_cv_compiler" = "gcc"; then
   GCCVER=`$CC -v 2>&1 | awk '$2 ==  "version" {print $3}'`
   GCCVER2=`echo $GCCVER | awk '{print $1 * 100}'`
   case "$host" in
@@ -276,7 +276,7 @@ fi
 
 dnl Set Default CFLAGS
 if test "x$PRESET_CFLAGS" = "x"; then
-  if test "x$GCC" = "xyes"; then
+  if test "$squid_cv_compiler" = "gcc"; then
     case "$host" in
       *-sun-sunos*)
         # sunos has too many warnings for this to be useful
@@ -310,7 +310,7 @@ if test "x$PRESET_CFLAGS" = "x"; then
 fi
 
 dnl set squid required flags
-if test "x$GCC" = "xyes"; then
+if test "$squid_cv_compiler" = "gcc"; then
   case "$squid_host_os" in
   mingw)
 dnl Guido Serassio (serassio@squid-cache.org) 20070811
@@ -588,6 +588,16 @@ for module in $squid_disk_module_candidates none; do
               if test "x$GCC" = "xyes" -a "x$PRESET_LDFLAGS" = "x" ; then
                 LDFLAGS="$LDFLAGS -pthread"
               fi
+            fi
+            ;;
+          openbsd)
+            if test `echo "$squid_host_os_version" | tr -d .` -lt 52 ; then
+                AC_MSG_NOTICE(pthread library requires OpenBSD 5.2 or later)
+                squid_opt_use_diskthreads="no"
+            else
+              SQUID_CFLAGS="$SQUID_CFLAGS -D_REENTRANT"
+              SQUID_CXXFLAGS="$SQUID_CXXFLAGS -D_REENTRANT"
+              LDFLAGS="$LDFLAGS -lpthread"
             fi
             ;;
           solaris)

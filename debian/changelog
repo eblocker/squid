@@ -6,6 +6,9 @@ squid3 (3.3.4-1) UNRELEASED; urgency=low
   * debian/squid3.lintian-overrides
     - Added override for pinger setuid bin
 
+  * debian/watch
+    - Fixed pattern to skip the last dot
+
  -- Luigi Gangitano <luigi@debian.org>  Mon, 06 May 2013 16:46:33 +0200
 
 squid3 (3.3.3-2) unstable; urgency=low

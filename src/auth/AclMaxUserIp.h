@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
  * ----------------------------------------------------------
@@ -35,10 +33,11 @@
 #ifndef SQUID_ACLMAXUSERIP_H
 #define SQUID_ACLMAXUSERIP_H
 
+#if USE_AUTH
+
 #include "acl/Acl.h"
 #include "acl/Checklist.h"
-
-class AuthUserRequest;
+#include "auth/UserRequest.h"
 
 /// \ingroup ACLAPI
 class ACLMaxUserIP : public ACL
@@ -69,7 +68,7 @@ private:
     static Prototype RegistryProtoype;
     static ACLMaxUserIP RegistryEntry_;
 
-    int match(AuthUserRequest *, IpAddress const &);
+    int match(Auth::UserRequest::Pointer, Ip::Address const &);
     char const *class_;
     int maximum;
 
@@ -82,4 +81,5 @@ private:
 
 MEMPROXY_CLASS_INLINE(ACLMaxUserIP);
 
+#endif /* USE_AUTH */
 #endif /* SQUID_ACLMAXUSERIP_H */

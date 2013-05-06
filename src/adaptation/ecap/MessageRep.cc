@@ -5,13 +5,15 @@
 #include "HttpRequest.h"
 #include "HttpReply.h"
 #include "BodyPipe.h"
-#include "TextException.h"
 #include <libecap/common/names.h>
 #include <libecap/common/area.h>
 #include <libecap/common/version.h>
+#include <libecap/common/named_values.h>
 #include "adaptation/ecap/MessageRep.h"
 #include "adaptation/ecap/XactionRep.h"
 #include "adaptation/ecap/Host.h" /* for protocol constants */
+#include "base/TextException.h"
+#include "URL.h"
 
 /* HeaderRep */
 
@@ -66,6 +68,17 @@ Adaptation::Ecap::HeaderRep::removeAny(const Name &name)
         theMessage.content_length = theHeader.getInt64(HDR_CONTENT_LENGTH);
 }
 
+void
+Adaptation::Ecap::HeaderRep::visitEach(libecap::NamedValueVisitor &visitor) const
+{
+    HttpHeaderPos pos = HttpHeaderInitPos;
+    while (HttpHeaderEntry *e = theHeader.getEntry(&pos)) {
+        const Name name(e->name.termedBuf()); // optimize: find std Names
+        name.assignHostId(e->id);
+        visitor.visit(name, Value(e->value.rawBuf(), e->value.size()));
+    }
+}
+
 libecap::Area
 Adaptation::Ecap::HeaderRep::image() const
 {
@@ -98,7 +111,6 @@ Adaptation::Ecap::HeaderRep::TranslateHeaderId(const Name &name)
     return HDR_OTHER;
 }
 
-
 /* FirstLineRep */
 
 Adaptation::Ecap::FirstLineRep::FirstLineRep(HttpMsg &aMessage): theMessage(aMessage)
@@ -124,38 +136,42 @@ Adaptation::Ecap::FirstLineRep::protocol() const
 {
     // TODO: optimize?
     switch (theMessage.protocol) {
-    case PROTO_HTTP:
+    case AnyP::PROTO_HTTP:
         return libecap::protocolHttp;
-    case PROTO_HTTPS:
+    case AnyP::PROTO_HTTPS:
         return libecap::protocolHttps;
-    case PROTO_FTP:
+    case AnyP::PROTO_FTP:
         return libecap::protocolFtp;
-    case PROTO_GOPHER:
+    case AnyP::PROTO_GOPHER:
         return libecap::protocolGopher;
-    case PROTO_WAIS:
+    case AnyP::PROTO_WAIS:
         return libecap::protocolWais;
-    case PROTO_WHOIS:
+    case AnyP::PROTO_WHOIS:
         return libecap::protocolWhois;
-    case PROTO_URN:
+    case AnyP::PROTO_URN:
         return libecap::protocolUrn;
-    case PROTO_ICP:
+    case AnyP::PROTO_ICP:
         return protocolIcp;
 #if USE_HTCP
-    case PROTO_HTCP:
+    case AnyP::PROTO_HTCP:
         return protocolHtcp;
 #endif
-    case PROTO_CACHEOBJ:
+    case AnyP::PROTO_CACHE_OBJECT:
         return protocolCacheObj;
-    case PROTO_INTERNAL:
+    case AnyP::PROTO_INTERNAL:
         return protocolInternal;
-    case PROTO_ICY:
-        return Name();
-    case PROTO_NONE:
+    case AnyP::PROTO_ICY:
+        return protocolIcy;
+    case AnyP::PROTO_COAP:
+    case AnyP::PROTO_COAPS: // use 'unknown' until libecap supports coap:// and coaps://
+    case AnyP::PROTO_UNKNOWN:
+        return protocolUnknown; // until we remember the protocol image
+    case AnyP::PROTO_NONE:
         return Name();
 
-    case PROTO_MAX:
+    case AnyP::PROTO_MAX:
         break; // should not happen
-        // no default to catch PROTO_ additions
+        // no default to catch AnyP::PROTO_ additions
     }
     Must(false); // not reached
     return Name();
@@ -168,14 +184,13 @@ Adaptation::Ecap::FirstLineRep::protocol(const Name &p)
     theMessage.protocol = TranslateProtocolId(p);
 }
 
-protocol_t
+AnyP::ProtocolType
 Adaptation::Ecap::FirstLineRep::TranslateProtocolId(const Name &name)
 {
     if (name.assignedHostId())
-        return static_cast<protocol_t>(name.hostId());
-    return PROTO_NONE; // no PROTO_OTHER
+        return static_cast<AnyP::ProtocolType>(name.hostId());
+    return AnyP::PROTO_UNKNOWN;
 }
-
 
 /* RequestHeaderRep */
 
@@ -267,7 +282,6 @@ Adaptation::Ecap::RequestLineRep::protocol(const Name &p)
     FirstLineRep::protocol(p);
 }
 
-
 /* ReplyHeaderRep */
 
 Adaptation::Ecap::StatusLineRep::StatusLineRep(HttpReply &aMessage):
@@ -346,7 +360,6 @@ Adaptation::Ecap::BodyRep::bodySize() const
 {
     return !theBody ? BodySize() : BodySize(theBody->bodySize());
 }
-
 
 /* MessageRep */
 

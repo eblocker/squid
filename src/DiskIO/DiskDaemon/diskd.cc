@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section --    External DISKD process implementation.
  * AUTHOR: Harvest Derived
  *
@@ -32,14 +30,19 @@
  *
  */
 
-#include "config.h"
 #include "squid.h"
+#include "DiskIO/DiskDaemon/diomsg.h"
+#include "hash.h"
 
+#if HAVE_ERRNO_H
+#include <errno.h>
+#endif
 #include <sys/ipc.h>
 #include <sys/msg.h>
 #include <sys/shm.h>
-
-#include "DiskIO/DiskDaemon/diomsg.h"
+#if HAVE_IOSTREAM
+#include <iostream>
+#endif
 
 void
 xassert(const char *msg, const char *file, int line)
@@ -88,15 +91,16 @@ do_open(diomsg * r, int len, const char *buf)
 
     fs = (file_state *)xcalloc(1, sizeof(*fs));
     fs->id = r->id;
-    fs->key = &fs->id;		/* gack */
+    fs->key = &fs->id;          /* gack */
     fs->fd = fd;
     hash_join(hash, (hash_link *) fs);
-    DEBUG(2)
-    fprintf(stderr, "%d OPEN  id %d, FD %d, fs %p\n",
-            (int) mypid,
-            fs->id,
-            fs->fd,
-            fs);
+    DEBUG(2) {
+        fprintf(stderr, "%d OPEN  id %d, FD %d, fs %p\n",
+                (int) mypid,
+                fs->id,
+                fs->fd,
+                fs);
+    }
     return fd;
 }
 
@@ -119,12 +123,13 @@ do_close(diomsg * r, int len)
 
     fd = fs->fd;
     hash_remove_link(hash, (hash_link *) fs);
-    DEBUG(2)
-    fprintf(stderr, "%d CLOSE id %d, FD %d, fs %p\n",
-            (int) mypid,
-            r->id,
-            fs->fd,
-            fs);
+    DEBUG(2) {
+        fprintf(stderr, "%d CLOSE id %d, FD %d, fs %p\n",
+                (int) mypid,
+                r->id,
+                fs->fd,
+                fs);
+    }
     xfree(fs);
     return close(fd);
 }
@@ -148,21 +153,23 @@ do_read(diomsg * r, int len, char *buf)
     }
 
     if (r->offset > -1 && r->offset != fs->offset) {
-        DEBUG(2)
-        fprintf(stderr, "seeking to %"PRId64"\n", (int64_t)r->offset);
+        DEBUG(2) {
+            fprintf(stderr, "seeking to %" PRId64 "\n", (int64_t)r->offset);
+        }
 
         if (lseek(fs->fd, r->offset, SEEK_SET) < 0) {
             DEBUG(1) {
-                fprintf(stderr, "%d FD %d, offset %"PRId64": ", (int) mypid, fs->fd, (int64_t)r->offset);
+                fprintf(stderr, "%d FD %d, offset %" PRId64 ": ", (int) mypid, fs->fd, (int64_t)r->offset);
                 perror("lseek");
             }
         }
     }
 
     x = read(fs->fd, buf, readlen);
-    DEBUG(2)
-    fprintf(stderr, "%d READ %d,%d,%"PRId64" ret %d\n", (int) mypid,
-            fs->fd, readlen, (int64_t)r->offset, x);
+    DEBUG(2) {
+        fprintf(stderr, "%d READ %d,%d,%" PRId64 " ret %d\n", (int) mypid,
+                fs->fd, readlen, (int64_t)r->offset, x);
+    }
 
     if (x < 0) {
         DEBUG(1) {
@@ -198,15 +205,16 @@ do_write(diomsg * r, int len, const char *buf)
     if (r->offset > -1 && r->offset != fs->offset) {
         if (lseek(fs->fd, r->offset, SEEK_SET) < 0) {
             DEBUG(1) {
-                fprintf(stderr, "%d FD %d, offset %"PRId64": ", (int) mypid, fs->fd, (int64_t)r->offset);
+                fprintf(stderr, "%d FD %d, offset %" PRId64 ": ", (int) mypid, fs->fd, (int64_t)r->offset);
                 perror("lseek");
             }
         }
     }
 
-    DEBUG(2)
-    fprintf(stderr, "%d WRITE %d,%d,%"PRId64"\n", (int) mypid,
-            fs->fd, wrtlen, (int64_t)r->offset);
+    DEBUG(2) {
+        fprintf(stderr, "%d WRITE %d,%d,%" PRId64 "\n", (int) mypid,
+                fs->fd, wrtlen, (int64_t)r->offset);
+    }
     x = write(fs->fd, buf, wrtlen);
 
     if (x < 0) {
@@ -234,8 +242,9 @@ do_unlink(diomsg * r, int len, const char *buf)
         return -errno;
     }
 
-    DEBUG(2)
-    fprintf(stderr, "%d UNLNK %s\n", (int) mypid, buf);
+    DEBUG(2) {
+        fprintf(stderr, "%d UNLNK %s\n", (int) mypid, buf);
+    }
     return 0;
 }
 
@@ -245,16 +254,20 @@ msg_handle(diomsg * r, int rl, diomsg * s)
     char *buf = NULL;
     s->mtype = r->mtype;
     s->id = r->id;
-    s->seq_no = r->seq_no;	/* optional, debugging */
+    s->seq_no = r->seq_no;      /* optional, debugging */
     s->callback_data = r->callback_data;
     s->requestor = r->requestor;
-    s->size = 0;		/* optional, debugging */
-    s->offset = 0;		/* optional, debugging */
+    s->size = 0;                /* optional, debugging */
+    s->offset = 0;              /* optional, debugging */
     s->shm_offset = r->shm_offset;
     s->newstyle = r->newstyle;
 
     if (s->shm_offset > -1)
         buf = shmbuf + s->shm_offset;
+    else if (r->mtype != _MQD_CLOSE) {
+        fprintf(stderr, "%d UNLNK id(%u) Error: no filename in shm buffer\n", (int) mypid, s->id);
+        return;
+    }
 
     switch (r->mtype) {
 
@@ -359,7 +372,10 @@ main(int argc, char *argv[])
 
     hash = hash_create(fsCmp, 1 << 4, fsHash);
     assert(hash);
-    fcntl(0, F_SETFL, SQUID_NONBLOCK);
+    if (fcntl(0, F_SETFL, SQUID_NONBLOCK) < 0) {
+        perror(xstrerror());
+        return 1;
+    }
     memset(&sa, '\0', sizeof(sa));
     sa.sa_handler = alarm_handler;
     sa.sa_flags = SA_RESTART;
@@ -368,10 +384,11 @@ main(int argc, char *argv[])
     for (;;) {
         alarm(1);
         memset(&rmsg, '\0', sizeof(rmsg));
-        DEBUG(2)
-        std::cerr << "msgrcv: " << rmsgid << ", "
-                  << &rmsg << ", " << diomsg::msg_snd_rcv_sz
-                  << ", " << 0 << ", " << 0 << std::endl;
+        DEBUG(2) {
+            std::cerr << "msgrcv: " << rmsgid << ", "
+                      << &rmsg << ", " << diomsg::msg_snd_rcv_sz
+                      << ", " << 0 << ", " << 0 << std::endl;
+        }
         rlen = msgrcv(rmsgid, &rmsg, diomsg::msg_snd_rcv_sz, 0, 0);
 
         if (rlen < 0) {
@@ -403,8 +420,9 @@ main(int argc, char *argv[])
         }
     }
 
-    DEBUG(2)
-    fprintf(stderr, "%d diskd exiting\n", (int) mypid);
+    DEBUG(2) {
+        fprintf(stderr, "%d diskd exiting\n", (int) mypid);
+    }
 
     if (msgctl(rmsgid, IPC_RMID, 0) < 0)
         perror("msgctl IPC_RMID");

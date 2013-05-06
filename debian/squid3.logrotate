@@ -10,6 +10,6 @@
 	nocreate
 	sharedscripts
 	postrotate
-		test ! -e /var/run/squid3.pid || /usr/sbin/squid3 -k rotate
+		test ! -e /var/run/squid3.pid || test ! -x /usr/sbin/squid3 || /usr/sbin/squid3 -k rotate
 	endscript
 }

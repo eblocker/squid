@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 79    Squid-side DISKD I/O functions.
  * AUTHOR: Duane Wessels
  *
@@ -34,19 +32,19 @@
  */
 
 #include "squid.h"
+#include "DiskdFile.h"
+#include "ConfigOption.h"
+#include "diomsg.h"
+#include "DiskdIOStrategy.h"
+#include "DiskIO/IORequestor.h"
+#include "DiskIO/ReadRequest.h"
+#include "DiskIO/WriteRequest.h"
+#include "StatCounters.h"
 
 #include <sys/ipc.h>
 #include <sys/msg.h>
 #include <sys/shm.h>
 
-#include "DiskdFile.h"
-#include "ConfigOption.h"
-#include "diomsg.h"
-
-#include "DiskdIOStrategy.h"
-#include "DiskIO/IORequestor.h"
-#include "DiskIO/ReadRequest.h"
-#include "DiskIO/WriteRequest.h"
 CBDATA_CLASS_INIT(DiskdFile);
 
 void *
@@ -68,13 +66,17 @@ DiskdFile::operator delete(void *address)
     cbdataFree(t);
 }
 
-DiskdFile::DiskdFile(char const *aPath, DiskdIOStrategy *anIO) : errorOccured (false), IO(anIO),
-        inProgressIOs (0)
+DiskdFile::DiskdFile(char const *aPath, DiskdIOStrategy *anIO) :
+        errorOccured(false),
+        IO(anIO),
+        mode(0),
+        inProgressIOs(0)
 {
     assert (aPath);
     debugs(79, 3, "DiskdFile::DiskdFile: " << aPath);
     path_ = xstrdup (aPath);
-    id = diskd_stats.sio_id++;
+    id = diskd_stats.sio_id;
+    ++diskd_stats.sio_id;
 }
 
 DiskdFile::~DiskdFile()
@@ -111,7 +113,7 @@ DiskdFile::open(int flags, mode_t aMode, RefCount< IORequestor > callback)
         ioRequestor = NULL;
     }
 
-    diskd_stats.open.ops++;
+    ++diskd_stats.open.ops;
 }
 
 void
@@ -138,13 +140,13 @@ DiskdFile::create(int flags, mode_t aMode, RefCount< IORequestor > callback)
         ioCompleted();
         errorOccured = true;
         //        IO->shm.put (shm_offset);
-        debugs(79, 1, "storeDiskdSend CREATE: " << xstrerror());
+        debugs(79, DBG_IMPORTANT, "storeDiskdSend CREATE: " << xstrerror());
         notifyClient();
         ioRequestor = NULL;
         return;
     }
 
-    diskd_stats.create.ops++;
+    ++diskd_stats.create.ops;
 }
 
 void
@@ -167,13 +169,13 @@ DiskdFile::read(ReadRequest *aRead)
         ioCompleted();
         errorOccured = true;
         //        IO->shm.put (shm_offset);
-        debugs(79, 1, "storeDiskdSend READ: " << xstrerror());
+        debugs(79, DBG_IMPORTANT, "storeDiskdSend READ: " << xstrerror());
         notifyClient();
         ioRequestor = NULL;
         return;
     }
 
-    diskd_stats.read.ops++;
+    ++diskd_stats.read.ops;
 }
 
 void
@@ -193,13 +195,13 @@ DiskdFile::close()
     if (x < 0) {
         ioCompleted();
         errorOccured = true;
-        debugs(79, 1, "storeDiskdSend CLOSE: " << xstrerror());
+        debugs(79, DBG_IMPORTANT, "storeDiskdSend CLOSE: " << xstrerror());
         notifyClient();
         ioRequestor = NULL;
         return;
     }
 
-    diskd_stats.close.ops++;
+    ++diskd_stats.close.ops;
 }
 
 bool
@@ -275,14 +277,14 @@ DiskdFile::completed(diomsg *M)
 void
 DiskdFile::openDone(diomsg *M)
 {
-    statCounter.syscalls.disk.opens++;
+    ++statCounter.syscalls.disk.opens;
     debugs(79, 3, "storeDiskdOpenDone: status " << M->status);
 
     if (M->status < 0) {
-        diskd_stats.open.fail++;
+        ++diskd_stats.open.fail;
         errorOccured = true;
     } else {
-        diskd_stats.open.success++;
+        ++diskd_stats.open.success;
     }
 
     ioCompleted();
@@ -292,14 +294,14 @@ DiskdFile::openDone(diomsg *M)
 void
 DiskdFile::createDone(diomsg *M)
 {
-    statCounter.syscalls.disk.opens++;
+    ++statCounter.syscalls.disk.opens;
     debugs(79, 3, "storeDiskdCreateDone: status " << M->status);
 
     if (M->status < 0) {
-        diskd_stats.create.fail++;
+        ++diskd_stats.create.fail;
         errorOccured = true;
     } else {
-        diskd_stats.create.success++;
+        ++diskd_stats.create.success;
     }
 
     ioCompleted();
@@ -312,7 +314,7 @@ DiskdFile::write(WriteRequest *aRequest)
     debugs(79, 3, "DiskdFile::write: this " << (void *)this << ", buf " << (void *)aRequest->buf << ", off " << aRequest->offset << ", len " << aRequest->len);
     ssize_t shm_offset;
     char *sbuf = (char *)IO->shm.get(&shm_offset);
-    xmemcpy(sbuf, aRequest->buf, aRequest->len);
+    memcpy(sbuf, aRequest->buf, aRequest->len);
 
     if (aRequest->free_func)
         aRequest->free_func(const_cast<char *>(aRequest->buf));
@@ -330,14 +332,14 @@ DiskdFile::write(WriteRequest *aRequest)
     if (x < 0) {
         ioCompleted();
         errorOccured = true;
-        debugs(79, 1, "storeDiskdSend WRITE: " << xstrerror());
+        debugs(79, DBG_IMPORTANT, "storeDiskdSend WRITE: " << xstrerror());
         //        IO->shm.put (shm_offset);
         notifyClient();
         ioRequestor = NULL;
         return;
     }
 
-    diskd_stats.write.ops++;
+    ++diskd_stats.write.ops;
 }
 
 void
@@ -355,14 +357,14 @@ DiskdFile::ioCompleted()
 void
 DiskdFile::closeDone(diomsg * M)
 {
-    statCounter.syscalls.disk.closes++;
+    ++statCounter.syscalls.disk.closes;
     debugs(79, 3, "DiskdFile::closeDone: status " << M->status);
 
     if (M->status < 0) {
-        diskd_stats.close.fail++;
+        ++diskd_stats.close.fail;
         errorOccured = true;
     } else {
-        diskd_stats.close.success++;
+        ++diskd_stats.close.success;
     }
 
     ioCompleted();
@@ -376,22 +378,24 @@ DiskdFile::closeDone(diomsg * M)
 void
 DiskdFile::readDone(diomsg * M)
 {
-    statCounter.syscalls.disk.reads++;
+    ++statCounter.syscalls.disk.reads;
     debugs(79, 3, "DiskdFile::readDone: status " << M->status);
     assert (M->requestor);
     ReadRequest::Pointer readRequest = dynamic_cast<ReadRequest *>(M->requestor);
+
     /* remove the free protection */
-    readRequest->RefCountDereference();
+    if (readRequest != NULL)
+        readRequest->RefCountDereference();
 
     if (M->status < 0) {
-        diskd_stats.read.fail++;
+        ++diskd_stats.read.fail;
         ioCompleted();
         errorOccured = true;
         ioRequestor->readCompleted(NULL, -1, DISK_ERROR, readRequest);
         return;
     }
 
-    diskd_stats.read.success++;
+    ++diskd_stats.read.success;
 
     ioCompleted();
     ioRequestor->readCompleted (IO->shm.buf + M->shm_offset,  M->status, DISK_OK, readRequest);
@@ -400,22 +404,23 @@ DiskdFile::readDone(diomsg * M)
 void
 DiskdFile::writeDone(diomsg *M)
 {
-    statCounter.syscalls.disk.writes++;
+    ++statCounter.syscalls.disk.writes;
     debugs(79, 3, "storeDiskdWriteDone: status " << M->status);
     assert (M->requestor);
     WriteRequest::Pointer writeRequest = dynamic_cast<WriteRequest *>(M->requestor);
     /* remove the free protection */
-    writeRequest->RefCountDereference();
+    if (writeRequest != NULL)
+        writeRequest->RefCountDereference();
 
     if (M->status < 0) {
         errorOccured = true;
-        diskd_stats.write.fail++;
+        ++diskd_stats.write.fail;
         ioCompleted();
         ioRequestor->writeCompleted (DISK_ERROR,0, writeRequest);
         return;
     }
 
-    diskd_stats.write.success++;
+    ++diskd_stats.write.success;
     ioCompleted();
     ioRequestor->writeCompleted (DISK_OK,M->status, writeRequest);
 }

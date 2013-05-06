@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * AUTHOR: Duane Wessels
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
@@ -33,8 +31,6 @@
 #ifndef SQUID_RFC1035_H
 #define SQUID_RFC1035_H
 
-#include "config.h"
-
 #if HAVE_SYS_TYPES_H
 #include <sys/types.h>
 #endif
@@ -57,6 +53,7 @@
  */
 #define RFC1035_MAXHOSTNAMESZ RFC2181_MAXHOSTNAMELEN
 
+#define RFC1035_DEFAULT_PACKET_SZ 512
 
 typedef struct _rfc1035_rr rfc1035_rr;
 struct _rfc1035_rr {
@@ -97,12 +94,14 @@ SQUIDCEXTERN ssize_t rfc1035BuildAQuery(const char *hostname,
                                         char *buf,
                                         size_t sz,
                                         unsigned short qid,
-                                        rfc1035_query * query);
+                                        rfc1035_query * query,
+                                        ssize_t edns_sz);
 SQUIDCEXTERN ssize_t rfc1035BuildPTRQuery(const struct in_addr,
         char *buf,
         size_t sz,
         unsigned short qid,
-        rfc1035_query * query);
+        rfc1035_query * query,
+        ssize_t edns_sz);
 SQUIDCEXTERN void rfc1035SetQueryID(char *, unsigned short qid);
 SQUIDCEXTERN int rfc1035MessageUnpack(const char *buf,
                                       size_t sz,
@@ -110,14 +109,12 @@ SQUIDCEXTERN int rfc1035MessageUnpack(const char *buf,
 SQUIDCEXTERN int rfc1035QueryCompare(const rfc1035_query *, const rfc1035_query *);
 SQUIDCEXTERN void rfc1035RRDestroy(rfc1035_rr ** rr, int n);
 SQUIDCEXTERN void rfc1035MessageDestroy(rfc1035_message ** message);
-SQUIDCEXTERN int rfc1035_errno;
-SQUIDCEXTERN const char *rfc1035_error_message;
+SQUIDCEXTERN const char * rfc1035ErrorMessage(int n);
 
 #define RFC1035_TYPE_A 1
 #define RFC1035_TYPE_CNAME 5
 #define RFC1035_TYPE_PTR 12
 #define RFC1035_CLASS_IN 1
-
 
 /* Child Library RFC3596 Depends on some otherwise internal functions */
 SQUIDCEXTERN int rfc1035HeaderPack(char *buf,
@@ -132,5 +129,6 @@ SQUIDCEXTERN int rfc1035QuestionPack(char *buf,
                                      const char *name,
                                      const unsigned short type,
                                      const unsigned short _class);
+SQUIDCEXTERN int rfc1035RRPack(char *buf, size_t sz, const rfc1035_rr * RR);
 
 #endif /* SQUID_RFC1035_H */

@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  * DEBUG: section 60    Packer: A uniform interface to store-like modules
  * AUTHOR: Alex Rousskov
  *
@@ -45,7 +43,7 @@
  * Comm.c lacks commAppend[Printf] because comm does not handle its own
  * buffers (no mem_obj equivalent for comm.c).
  *
- * Thus, if one wants to be able to store _and_ comm_write an object, s/he
+ * Thus, if one wants to be able to store _and_ Comm::Write an object, s/he
  * has to implement two almost identical functions.
  *
  * Packer
@@ -55,21 +53,19 @@
  * Packer has its own append and printf routines that "know" where to send
  * incoming data. In case of store interface, Packer sends data to
  * storeAppend.  Otherwise, Packer uses a MemBuf that can be flushed later to
- * comm_write.
+ * Comm::Write.
  *
  * Thus, one can write just one function that will either "pack" things for
- * comm_write or "append" things to store, depending on actual packer
+ * Comm::Write or "append" things to store, depending on actual packer
  * supplied.
  *
  * It is amazing how much work a tiny object can save. :)
  *
  */
 
-
 /*
  * To-Do:
  */
-
 
 #include "squid.h"
 #include "Store.h"
@@ -111,7 +107,6 @@ storeEntryAppend(StoreEntry *e, const char *buf, int len)
     e->append(buf, len);
 }
 
-
 /* append()'s */
 static void (*const store_append) (StoreEntry *, const char *, int) = &storeEntryAppend;
 static void (*const memBuf_append) (MemBuf *, const char *, mb_size_t) = &memBufAppend;
@@ -119,7 +114,6 @@ static void (*const memBuf_append) (MemBuf *, const char *, mb_size_t) = &memBuf
 /* vprintf()'s */
 static void (*const store_vprintf) (StoreEntry *, const char *, va_list ap) = &storeAppendVPrintf;
 static void (*const memBuf_vprintf) (MemBuf *, const char *, va_list ap) = &memBufVPrintf;
-
 
 /* init/clean */
 

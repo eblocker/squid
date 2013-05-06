@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 13    High Level Memory Pool Management
  * AUTHOR: Harvest Derived
  *
@@ -34,10 +32,13 @@
 #ifndef SQUID_MEM
 #define SQUID_MEM
 
-#include "config.h"
+/* for mem_type */
+#include "enums.h"
+/* for FREE */
+#include "typedefs.h"
 
-#if HAVE_OSTREAM
-#include <ostream>
+#if HAVE_IOSFWD
+#include <iosfwd>
 #endif
 
 class StoreEntry;
@@ -58,5 +59,24 @@ public:
 protected:
     static void RegisterWithCacheManager(void);
 };
+
+extern const size_t squidSystemPageSize;
+
+void memClean(void);
+void memInitModule(void);
+void memCleanModule(void);
+void memConfigure(void);
+void *memAllocate(mem_type);
+void *memAllocString(size_t net_size, size_t * gross_size);
+void *memAllocBuf(size_t net_size, size_t * gross_size);
+void *memReallocBuf(void *buf, size_t net_size, size_t * gross_size);
+void memFree(void *, int type);
+void memFreeString(size_t size, void *);
+void memFreeBuf(size_t size, void *);
+FREE *memFreeBufFunc(size_t size);
+int memInUse(mem_type);
+void memDataInit(mem_type, const char *, size_t, int, bool zeroOnPush = true);
+void memCheckInit(void);
+void memConfigure(void);
 
 #endif /* SQUID_MEM */

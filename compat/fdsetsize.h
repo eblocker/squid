@@ -15,7 +15,7 @@
 */
 #ifdef _SYS_TYPES_H
 #error squid_fdsetsize.h for FDSETSIZE must be included before sys/types.h
-#error Make sure that squid.h or config.h is the first file included by your .cc
+#error Make sure that squid.h is the first file included by your .cc
 #endif
 #endif /* 0 */
 /*
@@ -76,7 +76,6 @@
 #if CHANGE_FD_SETSIZE && SQUID_MAXFD > DEFAULT_FD_SETSIZE
 #define FD_SETSIZE SQUID_MAXFD
 #endif
-
 
 /*
  * Trap unintentional use of fd_set. Must not be used outside the

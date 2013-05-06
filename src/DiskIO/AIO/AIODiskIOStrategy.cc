@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
  * ----------------------------------------------------------
  *
@@ -49,9 +47,12 @@
 #include "DiskIO/ReadRequest.h"
 #include "DiskIO/WriteRequest.h"
 
-AIODiskIOStrategy::AIODiskIOStrategy()
+AIODiskIOStrategy::AIODiskIOStrategy() :
+        fd(-1)
 {
+    aq.aq_state = AQ_STATE_NONE;
     aq.aq_numpending = 0;
+    memset(&aq.aq_queue, 0, sizeof(aq.aq_queue));
 }
 
 AIODiskIOStrategy::~AIODiskIOStrategy()
@@ -100,6 +101,12 @@ AIODiskIOStrategy::sync()
         callback();
 }
 
+bool
+AIODiskIOStrategy::unlinkdUseful() const
+{
+    return false;
+}
+
 void
 AIODiskIOStrategy::unlinkFile (char const *)
 {}
@@ -130,7 +137,7 @@ AIODiskIOStrategy::callback()
 
     /* Loop through all slots */
 
-    for (i = 0; i < MAX_ASYNCOP; i++) {
+    for (i = 0; i < MAX_ASYNCOP; ++i) {
         if (aq.aq_queue[i].aq_e_state == AQ_ENTRY_USED) {
             aqe = &aq.aq_queue[i];
             /* Active, get status */
@@ -217,7 +224,7 @@ AIODiskIOStrategy::findSlot()
 {
     /* Later we should use something a little more .. efficient :) */
 
-    for (int i = 0; i < MAX_ASYNCOP; i++) {
+    for (int i = 0; i < MAX_ASYNCOP; ++i) {
         if (aq.aq_queue[i].aq_e_state == AQ_ENTRY_FREE)
             /* Found! */
             return i;

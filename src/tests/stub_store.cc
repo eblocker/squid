@@ -1,4 +1,5 @@
 #include "squid.h"
+#include "RequestFlags.h"
 
 #define STUB_API "store.cc"
 #include "tests/STUB.h"
@@ -9,23 +10,24 @@ void StoreController::maintain() STUB
 #include "RemovalPolicy.h"
 RemovalPolicy * createRemovalPolicy(RemovalPolicySettings * settings) STUB_RETVAL(NULL)
 
-
 #include "Store.h"
 StorePointer Store::CurrentRoot = NULL;
+StoreIoStats store_io_stats;
 bool StoreEntry::checkDeferRead(int fd) const STUB_RETVAL(false)
 const char *StoreEntry::getMD5Text() const STUB_RETVAL(NULL)
 StoreEntry::StoreEntry() STUB
 StoreEntry::StoreEntry(const char *url, const char *log_url) STUB
+StoreEntry::~StoreEntry() STUB
 HttpReply const *StoreEntry::getReply() const STUB_RETVAL(NULL)
 void StoreEntry::write(StoreIOBuffer) STUB
 bool StoreEntry::isAccepting() const STUB_RETVAL(false)
-size_t StoreEntry::bytesWanted(Range<size_t> const) const STUB_RETVAL(0)
+size_t StoreEntry::bytesWanted(Range<size_t> const, bool) const STUB_RETVAL(0)
 void StoreEntry::complete() STUB
 store_client_t StoreEntry::storeClientType() const STUB_RETVAL(STORE_NON_CLIENT)
 char const *StoreEntry::getSerialisedMetaData() STUB_RETVAL(NULL)
-void StoreEntry::replaceHttpReply(HttpReply *) STUB
-bool StoreEntry::swapoutPossible() STUB_RETVAL(false)
-void StoreEntry::trimMemory() STUB
+void StoreEntry::replaceHttpReply(HttpReply *, bool andStartWriting) STUB
+bool StoreEntry::mayStartSwapOut() STUB_RETVAL(false)
+void StoreEntry::trimMemory(const bool preserveSwappable) STUB
 void StoreEntry::abort() STUB
 void StoreEntry::unlink() STUB
 void StoreEntry::makePublic() STUB
@@ -39,15 +41,15 @@ void StoreEntry::cacheNegatively() STUB
 void StoreEntry::invokeHandlers() STUB
 void StoreEntry::purgeMem() STUB
 void StoreEntry::swapOut() STUB
-bool StoreEntry::swapOutAble() const STUB_RETVAL(false)
-void StoreEntry::swapOutFileClose() STUB
+void StoreEntry::swapOutFileClose(int how) STUB
 const char *StoreEntry::url() const STUB_RETVAL(NULL)
 int StoreEntry::checkCachable() STUB_RETVAL(0)
 int StoreEntry::checkNegativeHit() const STUB_RETVAL(0)
 int StoreEntry::locked() const STUB_RETVAL(0)
 int StoreEntry::validToSend() const STUB_RETVAL(0)
-int StoreEntry::keepInMemory() const STUB_RETVAL(0)
+bool StoreEntry::memoryCachable() const STUB_RETVAL(false)
 void StoreEntry::createMemObject(const char *, const char *) STUB
+void StoreEntry::hideMemObject() STUB
 void StoreEntry::dump(int debug_lvl) const STUB
 void StoreEntry::hashDelete() STUB
 void StoreEntry::hashInsert(const cache_key *) STUB
@@ -58,12 +60,12 @@ void StoreEntry::timestampsSet() STUB
 void StoreEntry::unregisterAbort() STUB
 void StoreEntry::destroyMemObject() STUB
 int StoreEntry::checkTooSmall() STUB_RETVAL(0)
-void StoreEntry::delayAwareRead(int fd, char *buf, int len, AsyncCall::Pointer callback) STUB
+void StoreEntry::delayAwareRead(const Comm::ConnectionPointer&, char *buf, int len, AsyncCall::Pointer callback) STUB
 void StoreEntry::setNoDelay (bool const) STUB
 bool StoreEntry::modifiedSince(HttpRequest * request) const STUB_RETVAL(false)
 bool StoreEntry::hasIfMatchEtag(const HttpRequest &request) const STUB_RETVAL(false)
 bool StoreEntry::hasIfNoneMatchEtag(const HttpRequest &request) const STUB_RETVAL(false)
-RefCount<Store> StoreEntry::store() const STUB_RETVAL(StorePointer())
+RefCount<SwapDir> StoreEntry::store() const STUB_RETVAL(NULL)
 size_t StoreEntry::inUseCount() STUB_RETVAL(0)
 void StoreEntry::getPublicByRequestMethod(StoreClient * aClient, HttpRequest * request, const HttpRequestMethod& method) STUB
 void StoreEntry::getPublicByRequest(StoreClient * aClient, HttpRequest * request) STUB
@@ -102,29 +104,35 @@ void Store::diskFull() STUB
 void Store::sync() STUB
 void Store::unlink(StoreEntry &) STUB
 
-SQUIDCEXTERN size_t storeEntryInUse() STUB_RETVAL(0)
-SQUIDCEXTERN const char *storeEntryFlags(const StoreEntry *) STUB_RETVAL(NULL)
-void storeEntryReplaceObject(StoreEntry *, HttpReply *) STUB
-SQUIDCEXTERN StoreEntry *storeGetPublic(const char *uri, const HttpRequestMethod& method) STUB_RETVAL(NULL)
-SQUIDCEXTERN StoreEntry *storeGetPublicByRequest(HttpRequest * request) STUB_RETVAL(NULL)
-SQUIDCEXTERN StoreEntry *storeGetPublicByRequestMethod(HttpRequest * request, const HttpRequestMethod& method) STUB_RETVAL(NULL)
-SQUIDCEXTERN StoreEntry *storeCreateEntry(const char *, const char *, request_flags, const HttpRequestMethod&) STUB_RETVAL(NULL)
-SQUIDCEXTERN void storeInit(void) STUB
-SQUIDCEXTERN void storeConfigure(void) STUB
-SQUIDCEXTERN void storeFreeMemory(void) STUB
-SQUIDCEXTERN int expiresMoreThan(time_t, time_t) STUB_RETVAL(0)
-SQUIDCEXTERN void storeAppendPrintf(StoreEntry *, const char *,...) STUB
-void storeAppendVPrintf(StoreEntry *, const char *, va_list ap) STUB
-SQUIDCEXTERN int storeTooManyDiskFilesOpen(void) STUB_RETVAL(0)
-SQUIDCEXTERN void storeHeapPositionUpdate(StoreEntry *, SwapDir *) STUB
-SQUIDCEXTERN void storeSwapFileNumberSet(StoreEntry * e, sfileno filn) STUB
-SQUIDCEXTERN void storeFsInit(void) STUB
-SQUIDCEXTERN void storeFsDone(void) STUB
-SQUIDCEXTERN void storeReplAdd(const char *, REMOVALPOLICYCREATE *) STUB
-void destroyStoreEntry(void *) STUB
-// in Packer.cc !? SQUIDCEXTERN void packerToStoreInit(Packer * p, StoreEntry * e) STUB
-SQUIDCEXTERN void storeGetMemSpace(int size) STUB
+std::ostream &operator <<(std::ostream &os, const StoreEntry &)
+{
+    STUB
+    return os;
+}
 
-#ifndef _USE_INLINE_
+size_t storeEntryInUse() STUB_RETVAL(0)
+const char *storeEntryFlags(const StoreEntry *) STUB_RETVAL(NULL)
+void storeEntryReplaceObject(StoreEntry *, HttpReply *) STUB
+StoreEntry *storeGetPublic(const char *uri, const HttpRequestMethod& method) STUB_RETVAL(NULL)
+StoreEntry *storeGetPublicByRequest(HttpRequest * request) STUB_RETVAL(NULL)
+StoreEntry *storeGetPublicByRequestMethod(HttpRequest * request, const HttpRequestMethod& method) STUB_RETVAL(NULL)
+StoreEntry *storeCreateEntry(const char *, const char *, const RequestFlags &, const HttpRequestMethod&) STUB_RETVAL(NULL)
+void storeInit(void) STUB
+void storeConfigure(void) STUB
+void storeFreeMemory(void) STUB
+int expiresMoreThan(time_t, time_t) STUB_RETVAL(0)
+void storeAppendPrintf(StoreEntry *, const char *,...) STUB
+void storeAppendVPrintf(StoreEntry *, const char *, va_list ap) STUB
+int storeTooManyDiskFilesOpen(void) STUB_RETVAL(0)
+void storeHeapPositionUpdate(StoreEntry *, SwapDir *) STUB
+void storeSwapFileNumberSet(StoreEntry * e, sfileno filn) STUB
+void storeFsInit(void) STUB
+void storeFsDone(void) STUB
+void storeReplAdd(const char *, REMOVALPOLICYCREATE *) STUB
+void destroyStoreEntry(void *) STUB
+// in Packer.cc !? void packerToStoreInit(Packer * p, StoreEntry * e) STUB
+void storeGetMemSpace(int size) STUB
+
+#if !_USE_INLINE_
 #include "Store.cci"
 #endif

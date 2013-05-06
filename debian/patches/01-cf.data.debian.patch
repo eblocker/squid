@@ -2,7 +2,7 @@ Author: Luigi Gangitano <luigi@debian.org>
 Description: Default configuration file for debian
 --- a/src/cf.data.pre
 +++ b/src/cf.data.pre
-@@ -178,7 +178,7 @@
+@@ -327,7 +327,7 @@
  	If you want to use the traditional NCSA proxy authentication, set
  	this line to something like
  
@@ -10,8 +10,8 @@ Description: Default configuration file for debian
 +	auth_param basic program @DEFAULT_PREFIX@/lib/squid3/ncsa_auth @DEFAULT_PREFIX@/etc/passwd
  
  	"utf8" on|off
- 	HTTP uses iso-latin-1 as characterset, while some authentication
-@@ -246,7 +246,7 @@
+ 	HTTP uses iso-latin-1 as character set, while some authentication
+@@ -400,7 +400,7 @@
  	If you want to use a digest authenticator, set this line to
  	something like
  
@@ -19,26 +19,32 @@ Description: Default configuration file for debian
 +	auth_param digest program @DEFAULT_PREFIX@/lib/squid3/digest_pw_auth @DEFAULT_PREFIX@/etc/digpass
  
  	"utf8" on|off
- 	HTTP uses iso-latin-1 as characterset, while some authentication
-@@ -308,7 +308,7 @@
+ 	HTTP uses iso-latin-1 as character set, while some authentication
+@@ -477,7 +477,10 @@
  	of type proxy_auth.  By default, the NTLM authenticator_program
  	is not used.
  
 -	auth_param ntlm program @DEFAULT_PREFIX@/bin/ntlm_auth
-+	auth_param ntlm program @DEFAULT_PREFIX@/lib/squid3/ntlm_auth
++	NOTE: In Debian the ntlm_auth program is distributed in the winbindd package
++	      which is required for this auth scheme to work
++
++	auth_param ntlm program /usr/bin/ntlm_auth
  
- 	"children" numberofchildren
- 	The number of authenticator processes to spawn (no default).
-@@ -343,7 +343,7 @@
+ 	"children" numberofchildren [startup=N] [idle=N]
+ 	The maximum number of authenticator processes to spawn (default 5).
+@@ -518,7 +521,10 @@
  	The only supported program for this role is the ntlm_auth
  	program distributed as part of Samba, version 4 or later.
  
 -	auth_param negotiate program @DEFAULT_PREFIX@/bin/ntlm_auth --helper-protocol=gss-spnego
-+	auth_param negotiate program @DEFAULT_PREFIX@/lib/squid3/ntlm_auth --helper-protocol=gss-spnego
++	NOTE: In Debian the ntlm_auth program is distributed in the winbindd package
++	      which is required for this auth scheme to work
++
++	auth_param negotiate program /usr/bin/ntlm_auth --helper-protocol=gss-spnego
  
- 	"children" numberofchildren
- 	The number of authenticator processes to spawn (no default).
-@@ -760,11 +760,11 @@
+ 	"children" numberofchildren [startup=N] [idle=N]
+ 	The maximum number of authenticator processes to spawn (default 5).
+@@ -1002,11 +1008,11 @@
  # Example rule allowing access from your local networks.
  # Adapt to list your (internal) IP networks from where browsing
  # should be allowed
@@ -55,7 +61,7 @@ Description: Default configuration file for debian
  
  acl SSL_ports port 443
  acl Safe_ports port 80		# http
-@@ -923,7 +923,7 @@
+@@ -1185,7 +1191,7 @@
  # Example rule allowing access from your local networks.
  # Adapt localnet in the ACL section to list your (internal) IP networks
  # from where browsing should be allowed
@@ -64,25 +70,7 @@ Description: Default configuration file for debian
  http_access allow localhost
  
  # And finally deny all other access to this proxy
-@@ -1424,7 +1424,7 @@
- 
- 	Note: The use of this directive using client dependent ACLs is
- 	incompatible with the use of server side persistent connections. To
--	ensure correct results it is best to set server_persisten_connections
-+	ensure correct results it is best to set server_persistent_connections
- 	to off when using this directive in such configurations.
- DOC_END
- 
-@@ -1527,7 +1527,7 @@
- 	an additional ACL needs to be used which ensures the IPv6-bound traffic
- 	is never forced or permitted out the IPv4 interface.
- 
--	# IPv6 destination test along with a dummy access control to perofrm the required DNS
-+	# IPv6 destination test along with a dummy access control to perform the required DNS
- 	# This MUST be place before any ALLOW rules.
- 	acl to_ipv6 dst ipv6
- 	http_access deny ipv6 !all
-@@ -2844,7 +2844,7 @@
+@@ -3775,7 +3781,7 @@
  
  NAME: logfile_rotate
  TYPE: int
@@ -91,7 +79,7 @@ Description: Default configuration file for debian
  LOC: Config.Log.rotateNumber
  DOC_START
  	Specifies the number of logfile rotations to make when you
-@@ -2863,6 +2863,9 @@
+@@ -3794,6 +3800,9 @@
  
  	Note, from Squid-3.1 this option has no effect on the cache.log,
  	that log can be rotated separately by using debug_options
@@ -101,23 +89,14 @@ Description: Default configuration file for debian
  DOC_END
  
  NAME: emulate_httpd_log
-@@ -4284,7 +4287,7 @@
- NAME: visible_hostname
- TYPE: string
- LOC: Config.visibleHostname
--DEFAULT: none
-+DEFAULT: localhost
- DOC_START
- 	If you want to present a special hostname in error messages, etc,
- 	define this.  Otherwise, the return value of gethostname()
-@@ -6482,8 +6485,8 @@
+@@ -7771,8 +7780,8 @@
  
  	WARNING:
  	  This option will restrict the situations under which IPv6
 -	  connectivity is used (and tested). Hiding network problems
 -	  which would otherwise be detected and warned about.
 +	  connectivity is used (and tested), potentially hiding network
-+	  problem swhich would otherwise be detected and warned about.
++	  problems which would otherwise be detected and warned about.
  DOC_END
  
  NAME: ipcache_size

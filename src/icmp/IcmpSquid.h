@@ -32,7 +32,6 @@
 #ifndef _INCLUDE_ICMPSQUID_H
 #define _INCLUDE_ICMPSQUID_H
 
-#include "config.h"
 #include "Icmp.h"
 
 /**
@@ -52,15 +51,15 @@ public:
     virtual int Open();
     virtual void Close();
 
-    void DomainPing(IpAddress &to, const char *domain);
+    void DomainPing(Ip::Address &to, const char *domain);
 
 #if USE_ICMP
-    virtual void SendEcho(IpAddress &to, int opcode, const char* payload=NULL, int len=0);
+    virtual void SendEcho(Ip::Address &to, int opcode, const char* payload=NULL, int len=0);
     virtual void Recv(void);
 #endif
 };
 
 // global engine within squid.
-SQUIDCEXTERN IcmpSquid icmpEngine;
+extern IcmpSquid icmpEngine;
 
 #endif /* _INCLUDE_ICMPSQUID_H */

@@ -4,9 +4,9 @@
 namespace Esi
 {
 
-extern void Init();
-extern void Clean();
+void Init();
+void Clean();
 
-}; // namespace Esi
+} // namespace Esi
 
 #endif /* SQUID_ESI_MODULE_H */

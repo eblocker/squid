@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 28    Access Control
  * AUTHOR: Duane Wessels
  *
@@ -39,6 +37,7 @@
 #include "acl/Checklist.h"
 #include "acl/RegexData.h"
 #include "acl/DomainData.h"
+#include "fqdncache.h"
 #include "HttpRequest.h"
 
 SourceDomainLookup SourceDomainLookup::instance_;
@@ -66,9 +65,8 @@ SourceDomainLookup::LookupDone(const char *fqdn, const DnsLookupDetails &details
     checklist->changeState (ACLChecklist::NullState::Instance());
     checklist->markSourceDomainChecked();
     checklist->request->recordLookup(details);
-    checklist->check();
+    checklist->matchNonBlocking();
 }
-
 
 int
 ACLSourceDomainStrategy::match (ACLData<MatchType> * &data, ACLFilledChecklist *checklist)

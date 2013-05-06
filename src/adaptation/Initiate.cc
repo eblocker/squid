@@ -4,29 +4,14 @@
 
 #include "squid.h"
 #include "HttpMsg.h"
+#include "adaptation/Answer.h"
 #include "adaptation/Initiator.h"
 #include "adaptation/Initiate.h"
 #include "base/AsyncJobCalls.h"
 
 namespace Adaptation
 {
-
-// AdaptInitiator::noteAdaptionAnswer Dialer locks/unlocks the message in transit
-// TODO: replace HTTPMSGLOCK with general RefCounting and delete this class
-class AnswerDialer: public UnaryMemFunT<Initiator, HttpMsg*>
-{
-public:
-    typedef UnaryMemFunT<Initiator, HttpMsg*> Parent;
-
-    AnswerDialer(const Parent::JobPointer &job, Parent::Method meth,
-                 HttpMsg *msg): Parent(job, meth, msg) { HTTPMSGLOCK(arg1); }
-    AnswerDialer(const AnswerDialer &d): Parent(d) { HTTPMSGLOCK(arg1); }
-    virtual ~AnswerDialer() { HTTPMSGUNLOCK(arg1); }
-
-private:
-    AnswerDialer &operator =(const AnswerDialer &); // not implemented
-};
-
+typedef UnaryMemFunT<Initiator, Answer, const Answer &> AnswerDialer;
 /// Calls expectNoConsumption() if noteAdaptationAnswer async call is
 /// scheduled but never fired (e.g., because the HTTP transaction aborts).
 class AnswerCall: public AsyncCallT<AnswerDialer>
@@ -39,18 +24,14 @@ public:
         AsyncCallT<AnswerDialer>::fire();
     }
     virtual ~AnswerCall() {
-        if (!fired && dialer.arg1 != NULL && dialer.arg1->body_pipe != NULL)
-            dialer.arg1->body_pipe->expectNoConsumption();
+        if (!fired && dialer.arg1.message != NULL && dialer.arg1.message->body_pipe != NULL)
+            dialer.arg1.message->body_pipe->expectNoConsumption();
     }
 
 private:
     bool fired; ///< whether we fired the call
 };
-
-} // namespace Adaptation
-
-
-/* Initiate */
+}
 
 Adaptation::Initiate::Initiate(const char *aTypeName): AsyncJob(aTypeName)
 {
@@ -71,7 +52,6 @@ Adaptation::Initiate::initiator(const CbcPointer<Initiator> &i)
     theInitiator = i;
 }
 
-
 // internal cleanup
 void Adaptation::Initiate::swanSong()
 {
@@ -90,21 +70,17 @@ void Adaptation::Initiate::clearInitiator()
     theInitiator.clear();
 }
 
-void Adaptation::Initiate::sendAnswer(HttpMsg *msg)
+void Adaptation::Initiate::sendAnswer(const Answer &answer)
 {
-    assert(msg);
     AsyncCall::Pointer call = new AnswerCall("Initiator::noteAdaptationAnswer",
-            AnswerDialer(theInitiator, &Initiator::noteAdaptationAnswer, msg));
+            AnswerDialer(theInitiator, &Initiator::noteAdaptationAnswer, answer));
     ScheduleCallHere(call);
     clearInitiator();
 }
 
-
 void Adaptation::Initiate::tellQueryAborted(bool final)
 {
-    CallJobHere1(93, 5, theInitiator,
-                 Initiator, noteAdaptationQueryAbort, final);
-    clearInitiator();
+    sendAnswer(Answer::Error(final));
 }
 
 const char *Adaptation::Initiate::status() const

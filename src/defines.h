@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
  * ----------------------------------------------------------
@@ -56,24 +54,9 @@
 #define ACL_ALLWEEK	0x7F
 #define ACL_WEEKDAYS	0x3E
 
-#define MAXHTTPPORTS			128
-
 /* Select types. */
 #define COMM_SELECT_READ   (0x1)
 #define COMM_SELECT_WRITE  (0x2)
-
-#define COMM_NONBLOCKING	0x01
-#define COMM_NOCLOEXEC		0x02
-#define COMM_REUSEADDR		0x04
-#define COMM_TRANSPARENT	0x08
-#define COMM_DOBIND		0x10
-
-#include "Debug.h"
-#define do_debug(SECTION, LEVEL) ((Debug::level = (LEVEL)) > Debug::Levels[SECTION])
-#define debug(SECTION, LEVEL) \
-        do_debug(SECTION, LEVEL) ? (void) 0 : _db_print
-
-#define safe_free(x)	if (x) { xxfree(x); x = NULL; }
 
 #define DISK_OK                   (0)
 #define DISK_ERROR               (-1)
@@ -190,6 +173,11 @@
 #define IPC_UNIX_STREAM 4
 #define IPC_UNIX_DGRAM 5
 
+/* required for AF_UNIX below to be defined [on FreeBSD] */
+#if HAVE_SYS_SOCKET_H
+#include <sys/socket.h>
+#endif
+
 #if HAVE_SOCKETPAIR && defined (AF_UNIX)
 #define IPC_STREAM IPC_UNIX_STREAM
 #define IPC_DGRAM IPC_UNIX_DGRAM
@@ -222,33 +210,6 @@
 #define countof(arr) (sizeof(arr)/sizeof(*arr))
 
 /*
- * Max number of ICP messages to receive per call to icpHandleUdp
- */
-#ifdef _SQUID_MSWIN_
-#define INCOMING_ICP_MAX 1
-#else
-#define INCOMING_ICP_MAX 15
-#endif
-/*
- * Max number of DNS messages to receive per call to DNS read handler
- */
-#ifdef _SQUID_MSWIN_
-#define INCOMING_DNS_MAX 1
-#else
-#define INCOMING_DNS_MAX 15
-#endif
-/*
- * Max number of HTTP connections to accept per call to httpAccept
- * and PER HTTP PORT
- */
-#ifdef _SQUID_MSWIN_
-#define INCOMING_HTTP_MAX 1
-#else
-#define INCOMING_HTTP_MAX 10
-#endif
-#define INCOMING_TOTAL_MAX (INCOMING_ICP_MAX+INCOMING_HTTP_MAX)
-
-/*
  * This many TCP connections must FAIL before we mark the
  * peer as DEAD
  */
@@ -259,14 +220,6 @@
 #define URI_WHITESPACE_ENCODE 2
 #define URI_WHITESPACE_CHOP 3
 #define URI_WHITESPACE_DENY 4
-
-#ifndef _PATH_DEVNULL
-#ifdef _SQUID_MSWIN_
-#define _PATH_DEVNULL "NUL"
-#else
-#define _PATH_DEVNULL "/dev/null"
-#endif
-#endif
 
 #ifndef O_TEXT
 #define O_TEXT 0
@@ -287,7 +240,7 @@
 #define	HTTP_REQBUF_SZ	4096
 
 /* CygWin & Windows NT Port */
-#ifdef _SQUID_WIN32_
+#if _SQUID_WINDOWS_
 #define _WIN_SQUID_SERVICE_CONTROL_STOP SERVICE_CONTROL_STOP
 #define _WIN_SQUID_SERVICE_CONTROL_SHUTDOWN SERVICE_CONTROL_SHUTDOWN
 #define _WIN_SQUID_SERVICE_CONTROL_INTERROGATE SERVICE_CONTROL_INTERROGATE

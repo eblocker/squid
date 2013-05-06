@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
  * ----------------------------------------------------------
@@ -34,105 +32,120 @@
 #define SQUID_HTTPHEADER_H
 
 /* because we pass a spec by value */
-#include "HttpHeaderRange.h"
-/* HttpHeader holds a HttpHeaderMask */
 #include "HttpHeaderMask.h"
-
+#include "MemPool.h"
+#include "SquidString.h"
 
 /* class forward declarations */
-class HttpVersion;
-class HttpHdrContRange;
 class HttpHdrCc;
-class HttpHdrSc;
+class HttpHdrContRange;
 class HttpHdrRange;
-class String;
-
+class HttpHdrSc;
+class Packer;
+class StoreEntry;
 
 /* constant attributes of http header fields */
 
-/** recognized or "known" header fields; @?@ add more! */
+/// recognized or "known" header fields; and the RFC which defines them (or not)
 typedef enum {
     HDR_BAD_HDR = -1,
-    HDR_ACCEPT = 0,
-    HDR_ACCEPT_CHARSET,
-    HDR_ACCEPT_ENCODING,
-    HDR_ACCEPT_LANGUAGE,
-    HDR_ACCEPT_RANGES,
-    HDR_AGE,
-    HDR_ALLOW,
-    HDR_AUTHORIZATION,
-    HDR_CACHE_CONTROL,
-    HDR_CONNECTION,
-    HDR_CONTENT_BASE,
-    HDR_CONTENT_DISPOSITION,
-    HDR_CONTENT_ENCODING,
-    HDR_CONTENT_LANGUAGE,
-    HDR_CONTENT_LENGTH,
-    HDR_CONTENT_LOCATION,
-    HDR_CONTENT_MD5,
-    HDR_CONTENT_RANGE,
-    HDR_CONTENT_TYPE,
-    HDR_COOKIE,
-    HDR_COOKIE2,
-    HDR_DATE,
-    HDR_ETAG,
-    HDR_EXPIRES,
-    HDR_EXPECT,
-    HDR_FROM,
-    HDR_HOST,
-    HDR_IF_MATCH,
-    HDR_IF_MODIFIED_SINCE,
-    HDR_IF_NONE_MATCH,
-    HDR_IF_RANGE,
-    HDR_KEEP_ALIVE,
-    HDR_LAST_MODIFIED,
-    HDR_LINK,
-    HDR_LOCATION,
-    HDR_MAX_FORWARDS,
-    HDR_MIME_VERSION,
-    HDR_PRAGMA,
-    HDR_PROXY_AUTHENTICATE,
-    HDR_PROXY_AUTHENTICATION_INFO,
-    HDR_PROXY_AUTHORIZATION,
-    HDR_PROXY_CONNECTION,
-    HDR_PROXY_SUPPORT,
-    HDR_PUBLIC,
-    HDR_RANGE,
-    HDR_REQUEST_RANGE,		/**< some clients use this, sigh */
-    HDR_REFERER,
-    HDR_RETRY_AFTER,
-    HDR_SERVER,
-    HDR_SET_COOKIE,
-    HDR_SET_COOKIE2,
-    HDR_TE,
-    HDR_TITLE,
-    HDR_TRAILER,
-    HDR_TRANSFER_ENCODING,
-    HDR_TRANSLATE,             /* IIS custom header we may need to cut off */
-    HDR_UNLESS_MODIFIED_SINCE,             /* IIS custom header we may need to cut off */
-    HDR_UPGRADE,
-    HDR_USER_AGENT,
-    HDR_VARY,
-    HDR_VIA,
-    HDR_WARNING,
-    HDR_WWW_AUTHENTICATE,
-    HDR_AUTHENTICATION_INFO,
-    HDR_X_CACHE,
-    HDR_X_CACHE_LOOKUP,		/**< tmp hack, remove later */
-    HDR_X_FORWARDED_FOR,
-    HDR_X_REQUEST_URI,		/**< appended if ADD_X_REQUEST_URI is #defined */
-    HDR_X_SQUID_ERROR,
-    HDR_NEGOTIATE,
+    HDR_ACCEPT = 0,                     /**< RFC 2608, 2616 */
+    HDR_ACCEPT_CHARSET,                 /**< RFC 2608, 2616 */
+    HDR_ACCEPT_ENCODING,                /**< RFC 2608, 2616 */
+    /*HDR_ACCEPT_FEATURES,*/            /* experimental RFC 2295 */
+    HDR_ACCEPT_LANGUAGE,                /**< RFC 2608, 2616 */
+    HDR_ACCEPT_RANGES,                  /**< RFC 2608, 2616 */
+    HDR_AGE,                            /**< RFC 2608, 2616 */
+    HDR_ALLOW,                          /**< RFC 2608, 2616 */
+    /*HDR_ALTERNATES,*/                 /* deprecated RFC 2068, 2295 */
+    HDR_AUTHORIZATION,                  /**< RFC 2608, 2616, 4559 */
+    HDR_CACHE_CONTROL,                  /**< RFC 2608, 2616 */
+    HDR_CONNECTION,                     /**< RFC 2608, 2616 */
+    HDR_CONTENT_BASE,                   /**< RFC 2608 */
+    HDR_CONTENT_DISPOSITION,            /**< RFC 2183, 2616 */
+    HDR_CONTENT_ENCODING,               /**< RFC 2608, 2616 */
+    HDR_CONTENT_LANGUAGE,               /**< RFC 2608, 2616 */
+    HDR_CONTENT_LENGTH,                 /**< RFC 2608, 2616 */
+    HDR_CONTENT_LOCATION,               /**< RFC 2608, 2616 */
+    HDR_CONTENT_MD5,                    /**< RFC 2608, 2616 */
+    HDR_CONTENT_RANGE,                  /**< RFC 2608, 2616 */
+    HDR_CONTENT_TYPE,                   /**< RFC 2608, 2616 */
+    /*HDR_CONTENT_VERSION,*/            /* deprecated RFC 2608 header. */
+    HDR_COOKIE,                         /**< de-facto and RFC 2965 header we may need to erase */
+    HDR_COOKIE2,                        /**< obsolete RFC 2965 header we may need to erase */
+    HDR_DATE,                           /**< RFC 2608, 2616 */
+    /*HDR_DAV,*/                        /* RFC 2518 */
+    /*HDR_DEPTH,*/                      /* RFC 2518 */
+    /*HDR_DERIVED_FROM,*/               /* deprecated RFC 2608 */
+    /*HDR_DESTINATION,*/                /* RFC 2518 */
+    HDR_ETAG,                           /**< RFC 2608, 2616 */
+    HDR_EXPECT,                         /**< RFC 2616, 2616 */
+    HDR_EXPIRES,                        /**< RFC 2608, 2616 */
+    HDR_FROM,                           /**< RFC 2608, 2616 */
+    HDR_HOST,                           /**< RFC 2608, 2616 */
+    /*HDR_IF,*/                         /* RFC 2518 */
+    HDR_IF_MATCH,                       /**< RFC 2608, 2616 */
+    HDR_IF_MODIFIED_SINCE,              /**< RFC 2608, 2616 */
+    HDR_IF_NONE_MATCH,                  /**< RFC 2608, 2616 */
+    HDR_IF_RANGE,                       /**< RFC 2608, 2616 */
+    /*HDR_IF_UNMODIFIED_SINCE,*/        /**< RFC 2608, 2616 */
+    HDR_KEEP_ALIVE,                     /**< obsolete HTTP/1.0 header we may need to erase */
+    HDR_LAST_MODIFIED,                  /**< RFC 2608, 2616 */
+    HDR_LINK,                           /**< RFC 2068 */
+    HDR_LOCATION,                       /**< RFC 2608, 2616 */
+    /*HDR_LOCK_TOKEN,*/                 /* RFC 2518 */
+    HDR_MAX_FORWARDS,                   /**< RFC 2608, 2616 */
+    HDR_MIME_VERSION,                   /**< RFC 2626 */
+    HDR_NEGOTIATE,                      /**< experimental RFC 2295. Why only this one from 2295? */
+    /*HDR_OVERWRITE,*/                  /* RFC 2518 */
+    HDR_ORIGIN,                         /* CORS Draft specification (see http://www.w3.org/TR/cors/) */
+    HDR_PRAGMA,                         /**< deprecated RFC 2068,2616 header we may need to erase */
+    HDR_PROXY_AUTHENTICATE,             /**< RFC 2608, 2616, 2617 */
+    HDR_PROXY_AUTHENTICATION_INFO,      /**< RFC 2617 */
+    HDR_PROXY_AUTHORIZATION,            /**< RFC 2608, 2616, 2617 */
+    HDR_PROXY_CONNECTION,               /**< obsolete Netscape header we may need to erase. */
+    HDR_PROXY_SUPPORT,                  /**< RFC 4559 */
+    HDR_PUBLIC,                         /**< RFC 2608 */
+    HDR_RANGE,                          /**< RFC 2608, 2616 */
+    HDR_REFERER,                        /**< RFC 2608, 2616 */
+    HDR_REQUEST_RANGE,                  /**< some clients use this, sigh */
+    HDR_RETRY_AFTER,                    /**< RFC 2608, 2616 */
+    HDR_SERVER,                         /**< RFC 2608, 2616 */
+    HDR_SET_COOKIE,			/**< de-facto standard header we may need to erase */
+    HDR_SET_COOKIE2,                    /**< obsolete RFC 2965 header we may need to erase */
+    /*HDR_STATUS_URI,*/                 /* RFC 2518 */
+    /*HDR_TCN,*/                        /* experimental RFC 2295 */
+    HDR_TE,                             /**< RFC 2616 */
+    /*HDR_TIMEOUT,*/                    /* RFC 2518 */
+    HDR_TITLE,                          /* obsolete draft suggested header */
+    HDR_TRAILER,                        /**< RFC 2616 */
+    HDR_TRANSFER_ENCODING,              /**< RFC 2608, 2616 */
+    HDR_TRANSLATE,                      /**< IIS custom header we may need to erase */
+    HDR_UNLESS_MODIFIED_SINCE,          /**< IIS custom header we may need to erase */
+    HDR_UPGRADE,                        /**< RFC 2608, 2616 */
+    /*HDR_URI,*/                        /* obsolete RFC 2068 header */
+    HDR_USER_AGENT,                     /**< RFC 2608, 2616 */
+    /*HDR_VARIANT_VARY,*/               /* experimental RFC 2295 */
+    HDR_VARY,                           /**< RFC 2608, 2616 */
+    HDR_VIA,                            /**< RFC 2608, 2616 */
+    HDR_WARNING,                        /**< RFC 2608, 2616 */
+    HDR_WWW_AUTHENTICATE,               /**< RFC 2608, 2616, 2617, 4559 */
+    HDR_AUTHENTICATION_INFO,            /**< RFC 2617 */
+    HDR_X_CACHE,                        /**< Squid custom header */
+    HDR_X_CACHE_LOOKUP,	                /**< Squid custom header. temporary hack that became de-facto. TODO remove */
+    HDR_X_FORWARDED_FOR,                /**< Squid custom header */
+    HDR_X_REQUEST_URI,                  /**< Squid custom header appended if ADD_X_REQUEST_URI is defined */
+    HDR_X_SQUID_ERROR,                  /**< Squid custom header on generated error responses */
 #if X_ACCELERATOR_VARY
-    HDR_X_ACCELERATOR_VARY,
+    HDR_X_ACCELERATOR_VARY,             /**< obsolete Squid custom header. */
 #endif
 #if USE_ADAPTATION
-    HDR_X_NEXT_SERVICES,
+    HDR_X_NEXT_SERVICES,                /**< Squid custom ICAP header */
 #endif
-    HDR_SURROGATE_CAPABILITY,
-    HDR_SURROGATE_CONTROL,
-    HDR_FRONT_END_HTTPS,
-    HDR_OTHER,
+    HDR_SURROGATE_CAPABILITY,           /**< Edge Side Includes (ESI) header */
+    HDR_SURROGATE_CONTROL,              /**< Edge Side Includes (ESI) header */
+    HDR_FRONT_END_HTTPS,                /**< MS Exchange custom header we may have to add */
+    HDR_OTHER,                          /**< internal tag value for "unknown" headers */
     HDR_ENUM_END
 } http_hdr_type;
 
@@ -158,29 +171,27 @@ typedef enum {
     hoHtcpReply,
 #endif
     hoRequest,
-    hoReply
+    hoReply,
+#if USE_SSL
+    hoErrorDetail,
+#endif
+    hoEnd
 } http_hdr_owner_type;
 
-struct _HttpHeaderFieldAttrs {
+// currently a POD
+class HttpHeaderFieldAttrs
+{
+public:
     const char *name;
     http_hdr_type id;
     field_type type;
 };
-
 
 /** Iteration for headers; use HttpHeaderPos as opaque type, do not interpret */
 typedef ssize_t HttpHeaderPos;
 
 /* use this and only this to initialize HttpHeaderPos */
 #define HttpHeaderInitPos (-1)
-
-/* these two are defined in  structs.h */
-
-/// \todo CLEANUP: Kill this.
-typedef struct _TimeOrTag TimeOrTag;
-
-/// \todo CLEANUP: Kill this.
-typedef struct _ETag ETag;
 
 class HttpHeaderEntry
 {
@@ -201,13 +212,20 @@ public:
 
 MEMPROXY_CLASS_INLINE(HttpHeaderEntry);
 
+class ETag;
+class TimeOrTag;
+
 class HttpHeader
 {
 
 public:
     HttpHeader();
-    HttpHeader(http_hdr_owner_type const &owner);
+    explicit HttpHeader(const http_hdr_owner_type owner);
+    HttpHeader(const HttpHeader &other);
     ~HttpHeader();
+
+    HttpHeader &operator =(const HttpHeader &other);
+
     /* Interface functions */
     void clean();
     void append(const HttpHeader * src);
@@ -228,6 +246,8 @@ public:
     bool getList(http_hdr_type id, String *s) const;
     String getStrOrList(http_hdr_type id) const;
     String getByName(const char *name) const;
+    /// sets value and returns true iff a [possibly empty] named field is there
+    bool getByNameIfPresent(const char *name, String &value) const;
     String getByNameListMember(const char *name, const char *member, const char separator) const;
     String getListMember(http_hdr_type id, const char *member, const char separator) const;
     int has(http_hdr_type id) const;
@@ -272,19 +292,12 @@ protected:
 
 private:
     HttpHeaderEntry *findLastEntry(http_hdr_type id) const;
-    /// Made it non-copyable. Our destructor is a bit nasty...
-    HttpHeader(const HttpHeader &);
-    //assignment is used by the reset method, can't block it..
-    //const HttpHeader operator=(const HttpHeader &);
 };
 
-
-extern int httpHeaderParseQuotedString (const char *start, String *val);
-SQUIDCEXTERN int httpHeaderHasByNameListMember(const HttpHeader * hdr, const char *name, const char *member, const char separator);
-SQUIDCEXTERN void httpHeaderUpdate(HttpHeader * old, const HttpHeader * fresh, const HttpHeaderMask * denied_mask);
-int httpMsgIsPersistent(HttpVersion const &http_ver, const HttpHeader * hdr);
-
-SQUIDCEXTERN void httpHeaderCalcMask(HttpHeaderMask * mask, http_hdr_type http_hdr_type_enums[], size_t count);
+int httpHeaderParseQuotedString(const char *start, const int len, String *val);
+int httpHeaderHasByNameListMember(const HttpHeader * hdr, const char *name, const char *member, const char separator);
+void httpHeaderUpdate(HttpHeader * old, const HttpHeader * fresh, const HttpHeaderMask * denied_mask);
+void httpHeaderCalcMask(HttpHeaderMask * mask, http_hdr_type http_hdr_type_enums[], size_t count);
 
 inline bool
 HttpHeader::chunked() const
@@ -292,5 +305,8 @@ HttpHeader::chunked() const
     return has(HDR_TRANSFER_ENCODING) &&
            hasListMember(HDR_TRANSFER_ENCODING, "chunked", ',');
 }
+
+void httpHeaderInitModule(void);
+void httpHeaderCleanModule(void);
 
 #endif /* SQUID_HTTPHEADER_H */

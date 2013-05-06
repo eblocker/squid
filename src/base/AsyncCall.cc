@@ -1,23 +1,21 @@
-/*
- * $Id$
- */
-
 #include "squid.h"
+#include "AsyncCall.h"
 #include "base/AsyncCall.h"
 #include "base/AsyncCallQueue.h"
 #include "cbdata.h"
+#include "Debug.h"
+#include <ostream>
 
-unsigned int AsyncCall::TheLastId = 0;
-
+InstanceIdDefinitions(AsyncCall, "call");
 
 /* AsyncCall */
 
 AsyncCall::AsyncCall(int aDebugSection, int aDebugLevel,
                      const char *aName): name(aName), debugSection(aDebugSection),
-        debugLevel(aDebugLevel), id(++TheLastId), theNext(0), isCanceled(NULL)
+        debugLevel(aDebugLevel), theNext(0), isCanceled(NULL)
 {
     debugs(debugSection, debugLevel, "The AsyncCall " << name << " constructed, this=" << this <<
-           " [call" << id << ']');
+           " [" << id << ']');
 }
 
 AsyncCall::~AsyncCall()
@@ -29,7 +27,7 @@ void
 AsyncCall::make()
 {
     debugs(debugSection, debugLevel, HERE << "make call " << name <<
-           " [call"<< id << ']');
+           " [" << id << ']');
     if (canFire()) {
         fire();
         return;
@@ -39,15 +37,16 @@ AsyncCall::make()
         isCanceled = "unknown reason";
 
     debugs(debugSection, debugLevel, HERE << "will not call " << name <<
-           " [call"<< id << ']' << " because of " << isCanceled);
+           " [" << id << ']' << " because of " << isCanceled);
 }
 
 bool
 AsyncCall::cancel(const char *reason)
 {
-    if (isCanceled)
-        debugs(debugSection, debugLevel, HERE << "will not call " << name <<
-               " [call"<< id << ']' << " also because " << reason);
+    debugs(debugSection, debugLevel, HERE << "will not call " << name <<
+           " [" << id << "] " << (isCanceled ? "also " : "") <<
+           "because " << reason);
+
     isCanceled = reason;
     return false;
 }
@@ -83,7 +82,7 @@ bool
 ScheduleCall(const char *fileName, int fileLine, AsyncCall::Pointer &call)
 {
     debugs(call->debugSection, call->debugLevel, fileName << "(" << fileLine <<
-           ") will call " << *call << " [call"<< call->id << ']' );
+           ") will call " << *call << " [" << call->id << ']' );
     AsyncCallQueue::Instance().schedule(call);
     return true;
 }

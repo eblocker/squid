@@ -39,13 +39,23 @@ POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
 DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in \
-	$(top_srcdir)/src/Common.am $(top_srcdir)/src/TestHeaders.am
+	$(top_srcdir)/src/Common.am drand48.c eui64_aton.c \
+	getaddrinfo.c getnameinfo.c inet_ntop.c inet_pton.c \
+	initgroups.c psignal.c strerror.c strsep.c strtoll.c tempnam.c
 check_PROGRAMS = testPreCompiler$(EXEEXT)
-TESTS = testHeaders testPreCompiler$(EXEEXT)
+TESTS = testPreCompiler$(EXEEXT) testHeaders
 @USE_LOADABLE_MODULES_TRUE@am__append_1 = $(INCLTDL)
 subdir = compat
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
-am__aclocal_m4_deps = $(top_srcdir)/acinclude.m4 \
+am__aclocal_m4_deps = $(top_srcdir)/acinclude/init.m4 \
+	$(top_srcdir)/acinclude/squid-util.m4 \
+	$(top_srcdir)/acinclude/compiler-flags.m4 \
+	$(top_srcdir)/acinclude/os-deps.m4 \
+	$(top_srcdir)/acinclude/krb5.m4 $(top_srcdir)/acinclude/pam.m4 \
+	$(top_srcdir)/acinclude/pkg.m4 \
+	$(top_srcdir)/acinclude/lib-checks.m4 \
+	$(top_srcdir)/acinclude/ax_cxx_compile_stdcxx_0x.m4 \
+	$(top_srcdir)/acinclude/ax_cxx_0x_types.m4 \
 	$(top_srcdir)/configure.ac
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
@@ -53,10 +63,16 @@ mkinstalldirs = $(install_sh) -d
 CONFIG_HEADER = $(top_builddir)/include/autoconf.h
 CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
-LTLIBRARIES = $(noinst_LTLIBRARIES)
-libcompat_la_LIBADD =
-am_libcompat_la_OBJECTS = assert.lo compat.lo GnuRegex.lo
-libcompat_la_OBJECTS = $(am_libcompat_la_OBJECTS)
+LIBRARIES = $(noinst_LIBRARIES)
+ARFLAGS = cru
+libcompat_squid_a_AR = $(AR) $(ARFLAGS)
+libcompat_squid_a_DEPENDENCIES = $(LIBOBJS)
+am_libcompat_squid_a_OBJECTS = assert.$(OBJEXT) compat.$(OBJEXT) \
+	debug.$(OBJEXT) GnuRegex.$(OBJEXT) shm.$(OBJEXT) \
+	strnstr.$(OBJEXT) strnrchr.$(OBJEXT) xalloc.$(OBJEXT) \
+	xstrerror.$(OBJEXT) xstring.$(OBJEXT) xstrto.$(OBJEXT) \
+	mswin.$(OBJEXT)
+libcompat_squid_a_OBJECTS = $(am_libcompat_squid_a_OBJECTS)
 am_testPreCompiler_OBJECTS = testPreCompiler.$(OBJEXT) \
 	testMain.$(OBJEXT)
 testPreCompiler_OBJECTS = $(am_testPreCompiler_OBJECTS)
@@ -88,8 +104,8 @@ CXXLD = $(CXX)
 CXXLINK = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
 	--mode=link $(CXXLD) $(AM_CXXFLAGS) $(CXXFLAGS) $(AM_LDFLAGS) \
 	$(LDFLAGS) -o $@
-SOURCES = $(libcompat_la_SOURCES) $(testPreCompiler_SOURCES)
-DIST_SOURCES = $(libcompat_la_SOURCES) $(testPreCompiler_SOURCES)
+SOURCES = $(libcompat_squid_a_SOURCES) $(testPreCompiler_SOURCES)
+DIST_SOURCES = $(libcompat_squid_a_SOURCES) $(testPreCompiler_SOURCES)
 ETAGS = etags
 CTAGS = ctags
 am__tty_colors = \
@@ -109,9 +125,8 @@ AUTOHEADER = @AUTOHEADER@
 AUTOMAKE = @AUTOMAKE@
 AWK = @AWK@
 BASIC_AUTH_HELPERS = @BASIC_AUTH_HELPERS@
+BZR = @BZR@
 CACHE_EFFECTIVE_USER = @CACHE_EFFECTIVE_USER@
-CACHE_HTTP_PORT = @CACHE_HTTP_PORT@
-CACHE_ICP_PORT = @CACHE_ICP_PORT@
 CC = @CC@
 CCDEPMODE = @CCDEPMODE@
 CFLAGS = @CFLAGS@
@@ -126,8 +141,10 @@ CXXCPP = @CXXCPP@
 CXXDEPMODE = @CXXDEPMODE@
 CXXFLAGS = @CXXFLAGS@
 CYGPATH_W = @CYGPATH_W@
+DEFAULT_HOSTS = @DEFAULT_HOSTS@
 DEFAULT_LOG_DIR = @DEFAULT_LOG_DIR@
-DEFAULT_PIDFILE = @DEFAULT_PIDFILE@
+DEFAULT_PID_FILE = @DEFAULT_PID_FILE@
+DEFAULT_SWAP_DIR = @DEFAULT_SWAP_DIR@
 DEFS = @DEFS@
 DEPDIR = @DEPDIR@
 DIGEST_AUTH_HELPERS = @DIGEST_AUTH_HELPERS@
@@ -138,16 +155,18 @@ DISK_OS_LIBS = @DISK_OS_LIBS@
 DISK_PROGRAMS = @DISK_PROGRAMS@
 DSYMUTIL = @DSYMUTIL@
 DUMPBIN = @DUMPBIN@
-ECAPLIB = @ECAPLIB@
 ECAP_LIBS = @ECAP_LIBS@
 ECHO_C = @ECHO_C@
 ECHO_N = @ECHO_N@
 ECHO_T = @ECHO_T@
 EGREP = @EGREP@
 EPOLL_LIBS = @EPOLL_LIBS@
+EUILIB = @EUILIB@
 EXEEXT = @EXEEXT@
 EXPATLIB = @EXPATLIB@
 EXTERNAL_ACL_HELPERS = @EXTERNAL_ACL_HELPERS@
+EXT_LIBECAP_CFLAGS = @EXT_LIBECAP_CFLAGS@
+EXT_LIBECAP_LIBS = @EXT_LIBECAP_LIBS@
 FALSE = @FALSE@
 FGREP = @FGREP@
 GREP = @GREP@
@@ -159,7 +178,11 @@ INSTALL_DATA = @INSTALL_DATA@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
 INSTALL_SCRIPT = @INSTALL_SCRIPT@
 INSTALL_STRIP_PROGRAM = @INSTALL_STRIP_PROGRAM@
+KRB5INCS = @KRB5INCS@
+KRB5LIBS = @KRB5LIBS@
+LBERLIB = @LBERLIB@
 LD = @LD@
+LDAPLIB = @LDAPLIB@
 LDFLAGS = @LDFLAGS@
 LIBADD_DL = @LIBADD_DL@
 LIBADD_DLD_LINK = @LIBADD_DLD_LINK@
@@ -171,11 +194,10 @@ LIBS = @LIBS@
 LIBSASL = @LIBSASL@
 LIBTOOL = @LIBTOOL@
 LIB_DB = @LIB_DB@
-LIB_LBER = @LIB_LBER@
-LIB_LDAP = @LIB_LDAP@
 LIPO = @LIPO@
 LN = @LN@
 LN_S = @LN_S@
+LOG_DAEMON_HELPERS = @LOG_DAEMON_HELPERS@
 LTDLDEPS = @LTDLDEPS@
 LTDLINCL = @LTDLINCL@
 LTDLOPEN = @LTDLOPEN@
@@ -195,7 +217,6 @@ NMEDIT = @NMEDIT@
 NTLM_AUTH_HELPERS = @NTLM_AUTH_HELPERS@
 OBJDUMP = @OBJDUMP@
 OBJEXT = @OBJEXT@
-OPT_DEFAULT_HOSTS = @OPT_DEFAULT_HOSTS@
 OTOOL = @OTOOL@
 OTOOL64 = @OTOOL64@
 PACKAGE = @PACKAGE@
@@ -207,7 +228,12 @@ PACKAGE_URL = @PACKAGE_URL@
 PACKAGE_VERSION = @PACKAGE_VERSION@
 PATH_SEPARATOR = @PATH_SEPARATOR@
 PERL = @PERL@
+PKG_CONFIG = @PKG_CONFIG@
+PKG_CONFIG_LIBDIR = @PKG_CONFIG_LIBDIR@
+PKG_CONFIG_PATH = @PKG_CONFIG_PATH@
 PO2HTML = @PO2HTML@
+PO2TEXT = @PO2TEXT@
+POD2MAN = @POD2MAN@
 RANLIB = @RANLIB@
 REGEXLIB = @REGEXLIB@
 REPL_LIBS = @REPL_LIBS@
@@ -229,7 +255,9 @@ STORE_LIBS_TO_ADD = @STORE_LIBS_TO_ADD@
 STORE_LIBS_TO_BUILD = @STORE_LIBS_TO_BUILD@
 STORE_TESTS = @STORE_TESTS@
 STRIP = @STRIP@
+TR = @TR@
 TRUE = @TRUE@
+URL_REWRITE_HELPERS = @URL_REWRITE_HELPERS@
 VERSION = @VERSION@
 WIN32_PSAPI = @WIN32_PSAPI@
 XMLLIB = @XMLLIB@
@@ -242,6 +270,7 @@ abs_top_srcdir = @abs_top_srcdir@
 ac_ct_CC = @ac_ct_CC@
 ac_ct_CXX = @ac_ct_CXX@
 ac_ct_DUMPBIN = @ac_ct_DUMPBIN@
+ac_krb5_config = @ac_krb5_config@
 am__include = @am__include@
 am__leading_dot = @am__leading_dot@
 am__quote = @am__quote@
@@ -295,30 +324,73 @@ top_srcdir = @top_srcdir@
 AM_CFLAGS = $(SQUID_CFLAGS)
 AM_CXXFLAGS = $(SQUID_CXXFLAGS)
 CLEANFILES = testHeaders
-INCLUDES = -I$(top_srcdir) -I$(top_srcdir)/include -I$(top_srcdir)/src \
-	-I$(top_builddir)/include $(SQUID_CPPUNIT_INC) $(am__append_1)
+INCLUDES = -I$(top_srcdir) -I$(top_srcdir)/include -I$(top_srcdir)/lib \
+	-I$(top_srcdir)/src -I$(top_builddir)/include \
+	$(SQUID_CPPUNIT_INC) $(KRB5INCS) $(am__append_1)
+@ENABLE_XPROF_STATS_FALSE@LIBPROFILER = 
+@ENABLE_XPROF_STATS_TRUE@LIBPROFILER = $(top_builddir)/lib/profiler/libprofiler.la
+COMPAT_LIB = -L$(top_builddir)/compat -lcompat-squid $(LIBPROFILER)
+subst_perlshell = sed -e 's,[@]PERL[@],$(PERL),g' <$(srcdir)/$@.pl.in >$@ || ($(RM) -f $@ ; exit 1)
 
 # Ideally this would be 100% inline functions and macro wrappers.
 
 # Port Specific Configurations
-noinst_LTLIBRARIES = libcompat.la
-libcompat_la_SOURCES = \
+noinst_LIBRARIES = libcompat-squid.a
+libcompat_squid_a_SOURCES = \
+	assert.cc \
 	assert.h \
+	cmsg.h \
+	compat.cc \
 	compat.h \
 	compat_shared.h \
+	cpu.h \
+	cppunit.h \
+	debug.cc \
+	debug.h \
+	drand48.h \
+	eui64_aton.h \
 	fdsetsize.h \
+	getaddrinfo.h \
+	getnameinfo.h \
+	GnuRegex.c \
+	GnuRegex.h \
+	inet_ntop.h \
+	inet_pton.h \
+	initgroups.h \
 	osdetect.h \
+	psignal.h \
+	shm.cc \
+	shm.h \
 	stdio.h \
 	stdvarargs.h \
+	strnstr.cc \
+	strsep.h \
+	strtoll.h \
+	strnrchr.h \
+	strnrchr.c \
+	tempnam.h \
+	types.h \
+	unsafe.h \
 	valgrind.h \
+	xalloc.cc \
+	xalloc.h \
+	xis.h \
+	xstrerror.cc \
+	xstrerror.h \
+	xstring.cc \
+	xstring.h \
+	xstrto.cc \
+	xstrto.h \
 	\
 	os/aix.h \
 	os/dragonfly.h \
 	os/freebsd.h \
 	os/hpux.h \
 	os/linux.h \
-	os/mswin.h \
 	os/macosx.h \
+	os/mswin.h \
+	mswin.cc \
+	os/netbsd.h \
 	os/next.h \
 	os/openbsd.h \
 	os/opensolaris_10_netdb.h \
@@ -327,13 +399,9 @@ libcompat_la_SOURCES = \
 	os/sgi.h \
 	os/solaris.h \
 	os/sunos.h \
-	os/windows.h \
-	\
-	assert.cc \
-	compat.cc \
-	GnuRegex.h \
-	GnuRegex.c
+	os/windows.h
 
+libcompat_squid_a_LIBADD = $(LIBOBJS)
 testPreCompiler_SOURCES = \
 	testPreCompiler.h \
 	testPreCompiler.cc \
@@ -345,7 +413,7 @@ all: all-am
 
 .SUFFIXES:
 .SUFFIXES: .c .cc .lo .o .obj
-$(srcdir)/Makefile.in: @MAINTAINER_MODE_TRUE@ $(srcdir)/Makefile.am $(top_srcdir)/src/Common.am $(top_srcdir)/src/TestHeaders.am $(am__configure_deps)
+$(srcdir)/Makefile.in: @MAINTAINER_MODE_TRUE@ $(srcdir)/Makefile.am $(top_srcdir)/src/Common.am $(am__configure_deps)
 	@for dep in $?; do \
 	  case '$(am__configure_deps)' in \
 	    *$$dep*) \
@@ -376,16 +444,12 @@ $(ACLOCAL_M4): @MAINTAINER_MODE_TRUE@ $(am__aclocal_m4_deps)
 	cd $(top_builddir) && $(MAKE) $(AM_MAKEFLAGS) am--refresh
 $(am__aclocal_m4_deps):
 
-clean-noinstLTLIBRARIES:
-	-test -z "$(noinst_LTLIBRARIES)" || rm -f $(noinst_LTLIBRARIES)
-	@list='$(noinst_LTLIBRARIES)'; for p in $$list; do \
-	  dir="`echo $$p | sed -e 's|/[^/]*$$||'`"; \
-	  test "$$dir" != "$$p" || dir=.; \
-	  echo "rm -f \"$${dir}/so_locations\""; \
-	  rm -f "$${dir}/so_locations"; \
-	done
-libcompat.la: $(libcompat_la_OBJECTS) $(libcompat_la_DEPENDENCIES) 
-	$(CXXLINK)  $(libcompat_la_OBJECTS) $(libcompat_la_LIBADD) $(LIBS)
+clean-noinstLIBRARIES:
+	-test -z "$(noinst_LIBRARIES)" || rm -f $(noinst_LIBRARIES)
+libcompat-squid.a: $(libcompat_squid_a_OBJECTS) $(libcompat_squid_a_DEPENDENCIES) 
+	-rm -f libcompat-squid.a
+	$(libcompat_squid_a_AR) libcompat-squid.a $(libcompat_squid_a_OBJECTS) $(libcompat_squid_a_LIBADD)
+	$(RANLIB) libcompat-squid.a
 
 clean-checkPROGRAMS:
 	@list='$(check_PROGRAMS)'; test -n "$$list" || exit 0; \
@@ -405,11 +469,32 @@ mostlyclean-compile:
 distclean-compile:
 	-rm -f *.tab.c
 
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/GnuRegex.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/assert.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/compat.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@$(DEPDIR)/drand48.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@$(DEPDIR)/eui64_aton.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@$(DEPDIR)/getaddrinfo.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@$(DEPDIR)/getnameinfo.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@$(DEPDIR)/inet_ntop.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@$(DEPDIR)/inet_pton.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@$(DEPDIR)/initgroups.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@$(DEPDIR)/psignal.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@$(DEPDIR)/strerror.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@$(DEPDIR)/strsep.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@$(DEPDIR)/strtoll.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@$(DEPDIR)/tempnam.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/GnuRegex.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/assert.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/compat.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/debug.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mswin.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/shm.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/strnrchr.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/strnstr.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/testMain.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/testPreCompiler.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/xalloc.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/xstrerror.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/xstring.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/xstrto.Po@am__quote@
 
 .c.o:
 @am__fastdepCC_TRUE@	$(COMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
@@ -651,7 +736,7 @@ check-am: all-am
 	$(MAKE) $(AM_MAKEFLAGS) $(check_PROGRAMS)
 	$(MAKE) $(AM_MAKEFLAGS) check-TESTS
 check: check-am
-all-am: Makefile $(LTLIBRARIES)
+all-am: Makefile $(LIBRARIES)
 installdirs:
 install: install-am
 install-exec: install-exec-am
@@ -682,10 +767,10 @@ maintainer-clean-generic:
 clean: clean-am
 
 clean-am: clean-checkPROGRAMS clean-generic clean-libtool \
-	clean-noinstLTLIBRARIES mostlyclean-am
+	clean-noinstLIBRARIES mostlyclean-am
 
 distclean: distclean-am
-	-rm -rf ./$(DEPDIR)
+	-rm -rf $(DEPDIR) ./$(DEPDIR)
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
 	distclean-tags
@@ -731,7 +816,7 @@ install-ps-am:
 installcheck-am:
 
 maintainer-clean: maintainer-clean-am
-	-rm -rf ./$(DEPDIR)
+	-rm -rf $(DEPDIR) ./$(DEPDIR)
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic
 
@@ -754,7 +839,7 @@ uninstall-am:
 
 .PHONY: CTAGS GTAGS all all-am check check-TESTS check-am clean \
 	clean-checkPROGRAMS clean-generic clean-libtool \
-	clean-noinstLTLIBRARIES ctags distclean distclean-compile \
+	clean-noinstLIBRARIES ctags distclean distclean-compile \
 	distclean-generic distclean-libtool distclean-tags distdir dvi \
 	dvi-am html html-am info info-am install install-am \
 	install-data install-data-am install-dvi install-dvi-am \
@@ -769,8 +854,8 @@ uninstall-am:
 
 $(OBJS): $(top_srcdir)/include/version.h $(top_builddir)/include/autoconf.h
 
-testHeaders: $(srcdir)/*.h
-	$(SHELL) $(top_srcdir)/test-suite/testheaders.sh "$(CXXCOMPILE)" "$(srcdir)" || exit 1
+testHeaders: $(srcdir)/*.h $(srcdir)/os/*.h
+	$(SHELL) $(top_srcdir)/test-suite/testheaders.sh "$(CXXCOMPILE)" $^ || exit 1
 
 .PHONY: testHeaders
 

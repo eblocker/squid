@@ -3,18 +3,19 @@
  */
 
 #include "squid.h"
-#include "comm.h"
-#include "HttpReply.h"
-
-#include "adaptation/icap/OptXact.h"
+#include "adaptation/Answer.h"
+#include "adaptation/icap/Config.h"
 #include "adaptation/icap/Options.h"
-#include "TextException.h"
-#include "SquidTime.h"
+#include "adaptation/icap/OptXact.h"
+#include "base/TextException.h"
+#include "comm.h"
+#include "HttpHeaderTools.h"
+#include "HttpReply.h"
 #include "HttpRequest.h"
+#include "SquidTime.h"
 
 CBDATA_NAMESPACED_CLASS_INIT(Adaptation::Icap, OptXact);
 CBDATA_NAMESPACED_CLASS_INIT(Adaptation::Icap, OptXactLauncher);
-
 
 Adaptation::Icap::OptXact::OptXact(Adaptation::Icap::ServiceRep::Pointer &aService):
         AsyncJob("Adaptation::Icap::OptXact"),
@@ -50,6 +51,8 @@ void Adaptation::Icap::OptXact::makeRequest(MemBuf &buf)
     buf.Printf("OPTIONS " SQUIDSTRINGPH " ICAP/1.0\r\n", SQUIDSTRINGPRINT(uri));
     const String host = s.cfg().host;
     buf.Printf("Host: " SQUIDSTRINGPH ":%d\r\n", SQUIDSTRINGPRINT(host), s.cfg().port);
+    if (TheConfig.allow206_enable)
+        buf.Printf("Allow: 206\r\n");
     buf.append(ICAP::crlf, 2);
 
     // XXX: HttpRequest cannot fully parse ICAP Request-Line
@@ -76,7 +79,7 @@ void Adaptation::Icap::OptXact::handleCommRead(size_t)
         debugs(93, 7, HERE << "readAll=" << readAll);
         icap_tio_finish = current_time;
         setOutcome(xoOpt);
-        sendAnswer(icapReply);
+        sendAnswer(Answer::Forward(icapReply));
         Must(done()); // there should be nothing else to do
         return;
     }
@@ -112,6 +115,10 @@ void Adaptation::Icap::OptXact::finalizeLogInfo()
 {
     //    al.cache.caddr = 0;
     al.icap.reqMethod = Adaptation::methodOptions;
+
+    if (icapReply && al.icap.bytesRead > icapReply->hdr_sz)
+        al.icap.bodyBytesRead = al.icap.bytesRead - icapReply->hdr_sz;
+
     Adaptation::Icap::Xaction::finalizeLogInfo();
 }
 

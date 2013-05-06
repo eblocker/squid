@@ -39,23 +39,38 @@
  */
 
 #include "squid.h"
-#include "icmp/net_db.h"
+#include "CachePeer.h"
 #include "cbdata.h"
+#include "disk.h"
 #include "event.h"
-#include "CacheManager.h"
-#include "Store.h"
-#include "SwapDir.h"
-#include "HttpRequest.h"
-#include "HttpReply.h"
-#include "MemObject.h"
 #include "fde.h"
 #include "forward.h"
+#include "HttpReply.h"
+#include "HttpRequest.h"
+#include "icmp/net_db.h"
+#include "internal.h"
+#include "ip/Address.h"
+#include "log/File.h"
+#include "Mem.h"
+#include "MemObject.h"
+#include "mgr/Registration.h"
+#include "mime_header.h"
+#include "neighbors.h"
 #include "SquidTime.h"
+#include "Store.h"
+#include "StoreClient.h"
+#include "SwapDir.h"
+#include "tools.h"
+#include "URL.h"
 #include "wordlist.h"
-#include "ip/IpAddress.h"
+
+#if HAVE_SYS_STAT_H
+#include <sys/stat.h>
+#endif
 
 #if USE_ICMP
 #include "icmp/IcmpSquid.h"
+#include "ipcache.h"
 #include "StoreClient.h"
 
 #define	NETDB_REQBUF_SZ	4096
@@ -67,7 +82,7 @@ typedef enum {
 } netdb_conn_state_t;
 
 typedef struct {
-    peer *p;
+    CachePeer *p;
     StoreEntry *e;
     store_client *sc;
     HttpRequest *r;
@@ -81,17 +96,17 @@ typedef struct {
 static hash_table *addr_table = NULL;
 static hash_table *host_table = NULL;
 
-IpAddress networkFromInaddr(const IpAddress &a);
+Ip::Address networkFromInaddr(const Ip::Address &a);
 static void netdbRelease(netdbEntry * n);
 
-static void netdbHashInsert(netdbEntry * n, IpAddress &addr);
+static void netdbHashInsert(netdbEntry * n, Ip::Address &addr);
 static void netdbHashDelete(const char *key);
 static void netdbHostInsert(netdbEntry * n, const char *hostname);
 static void netdbHostDelete(const net_db_name * x);
 static void netdbPurgeLRU(void);
 static netdbEntry *netdbLookupHost(const char *key);
 static net_db_peer *netdbPeerByName(const netdbEntry * n, const char *);
-static net_db_peer *netdbPeerAdd(netdbEntry * n, peer * e);
+static net_db_peer *netdbPeerAdd(netdbEntry * n, CachePeer * e);
 static const char *netdbPeerName(const char *name);
 static IPH netdbSendPing;
 static QS sortPeerByRtt;
@@ -102,14 +117,14 @@ static FREE netdbFreeNetdbEntry;
 static STCB netdbExchangeHandleReply;
 static void netdbExchangeDone(void *);
 
-/* We have to keep a local list of peer names.  The Peers structure
+/* We have to keep a local list of CachePeer names.  The Peers structure
  * gets freed during a reconfigure.  We want this database to
  * remain persisitent, so _net_db_peer->peername points into this
  * linked list */
 static wordlist *peer_names = NULL;
 
 static void
-netdbHashInsert(netdbEntry * n, IpAddress &addr)
+netdbHashInsert(netdbEntry * n, Ip::Address &addr)
 {
     networkFromInaddr(addr).NtoA(n->network, MAX_IPSTRLEN);
     n->hash.key = n->network;
@@ -140,7 +155,7 @@ netdbHostInsert(netdbEntry * n, const char *hostname)
     x->net_db_entry = n;
     assert(hash_lookup(host_table, hostname) == NULL);
     hash_join(host_table, &x->hash);
-    n->link_count++;
+    ++ n->link_count;
 }
 
 static void
@@ -151,7 +166,7 @@ netdbHostDelete(const net_db_name * x)
     assert(x != NULL);
     assert(x->net_db_entry != NULL);
     n = x->net_db_entry;
-    n->link_count--;
+    -- n->link_count;
 
     for (X = &n->hosts; *X; X = &(*X)->next) {
         if (*X == x) {
@@ -224,7 +239,7 @@ netdbPurgeLRU(void)
     while ((n = (netdbEntry *) hash_next(addr_table))) {
         assert(list_count < memInUse(MEM_NETDBENTRY));
         *(list + list_count) = n;
-        list_count++;
+        ++list_count;
     }
 
     qsort((char *) list,
@@ -232,20 +247,20 @@ netdbPurgeLRU(void)
           sizeof(netdbEntry *),
           netdbLRU);
 
-    for (k = 0; k < list_count; k++) {
+    for (k = 0; k < list_count; ++k) {
         if (memInUse(MEM_NETDBENTRY) < Config.Netdb.low)
             break;
 
         netdbRelease(*(list + k));
 
-        removed++;
+        ++removed;
     }
 
     xfree(list);
 }
 
 static netdbEntry *
-netdbLookupAddr(const IpAddress &addr)
+netdbLookupAddr(const Ip::Address &addr)
 {
     netdbEntry *n;
     char *key = new char[MAX_IPSTRLEN];
@@ -256,7 +271,7 @@ netdbLookupAddr(const IpAddress &addr)
 }
 
 static netdbEntry *
-netdbAdd(IpAddress &addr)
+netdbAdd(Ip::Address &addr)
 {
     netdbEntry *n;
 
@@ -274,7 +289,7 @@ netdbAdd(IpAddress &addr)
 static void
 netdbSendPing(const ipcache_addrs *ia, const DnsLookupDetails &, void *data)
 {
-    IpAddress addr;
+    Ip::Address addr;
     char *hostname = NULL;
     static_cast<generic_cbdata *>(data)->unwrap(&hostname);
     netdbEntry *n;
@@ -305,7 +320,7 @@ netdbSendPing(const ipcache_addrs *ia, const DnsLookupDetails &, void *data)
         x = (net_db_name *) hash_lookup(host_table, hostname);
 
         if (x == NULL) {
-            debugs(38, 1, "netdbSendPing: net_db_name list bug: " << hostname << " not found");
+            debugs(38, DBG_IMPORTANT, "netdbSendPing: net_db_name list bug: " << hostname << " not found");
             xfree(hostname);
             return;
         }
@@ -318,20 +333,20 @@ netdbSendPing(const ipcache_addrs *ia, const DnsLookupDetails &, void *data)
             }
         }
 
-        n->link_count--;
+        -- n->link_count;
         /* point to 'network na' from host entry */
         x->net_db_entry = na;
         /* link net_db_name to 'network na' */
         x->next = na->hosts;
         na->hosts = x;
-        na->link_count++;
+        ++ na->link_count;
         n = na;
     }
 
     if (n->next_ping_time <= squid_curtime) {
         debugs(38, 3, "netdbSendPing: pinging " << hostname);
         icmpEngine.DomainPing(addr, hostname);
-        n->pings_sent++;
+        ++ n->pings_sent;
         n->next_ping_time = squid_curtime + Config.Netdb.period;
         n->last_use_time = squid_curtime;
     }
@@ -339,10 +354,10 @@ netdbSendPing(const ipcache_addrs *ia, const DnsLookupDetails &, void *data)
     xfree(hostname);
 }
 
-IpAddress
-networkFromInaddr(const IpAddress &in)
+Ip::Address
+networkFromInaddr(const Ip::Address &in)
 {
-    IpAddress out;
+    Ip::Address out;
 
     out = in;
 
@@ -398,7 +413,7 @@ netdbPeerByName(const netdbEntry * n, const char *peername)
     int i;
     net_db_peer *p = n->peers;
 
-    for (i = 0; i < n->n_peers; i++, p++) {
+    for (i = 0; i < n->n_peers; ++i, ++p) {
         if (!strcmp(p->peername, peername))
             return p;
     }
@@ -407,7 +422,7 @@ netdbPeerByName(const netdbEntry * n, const char *peername)
 }
 
 static net_db_peer *
-netdbPeerAdd(netdbEntry * n, peer * e)
+netdbPeerAdd(netdbEntry * n, CachePeer * e)
 {
     net_db_peer *p;
     net_db_peer *o;
@@ -427,7 +442,7 @@ netdbPeerAdd(netdbEntry * n, peer * e)
 
         n->peers = (net_db_peer *)xcalloc(n->n_peers_alloc, sizeof(net_db_peer));
 
-        for (i = 0; i < osize; i++)
+        for (i = 0; i < osize; ++i)
             *(n->peers + i) = *(o + i);
 
         if (osize) {
@@ -437,7 +452,7 @@ netdbPeerAdd(netdbEntry * n, peer * e)
 
     p = n->peers + n->n_peers;
     p->peername = netdbPeerName(e->host);
-    n->n_peers++;
+    ++ n->n_peers;
     return p;
 }
 
@@ -480,7 +495,7 @@ netdbSaveState(void *foo)
     lf = logfileOpen(Config.netdbFilename, 4096, 0);
 
     if (NULL == lf) {
-        debugs(50, 1, "netdbSaveState: " << Config.netdbFilename << ": " << xstrerror());
+        debugs(50, DBG_IMPORTANT, "netdbSaveState: " << Config.netdbFilename << ": " << xstrerror());
         return;
     }
 
@@ -504,7 +519,7 @@ netdbSaveState(void *foo)
 
         logfilePrintf(lf, "\n");
 
-        count++;
+        ++count;
 
 #undef RBUF_SZ
 
@@ -512,7 +527,7 @@ netdbSaveState(void *foo)
 
     logfileClose(lf);
     getCurrentTime();
-    debugs(38, 1, "NETDB state saved; " <<
+    debugs(38, DBG_IMPORTANT, "NETDB state saved; " <<
            count << " entries, " <<
            tvSubMsec(start, current_time) << " msec" );
     eventAddIsh("netdbSaveState", netdbSaveState, NULL, 3600.0, 1);
@@ -532,7 +547,7 @@ netdbReloadState(void)
     netdbEntry *n;
     netdbEntry N;
 
-    IpAddress addr;
+    Ip::Address addr;
     int count = 0;
 
     struct timeval start = current_time;
@@ -619,7 +634,7 @@ netdbReloadState(void)
 
         n = (netdbEntry *)memAllocate(MEM_NETDBENTRY);
 
-        xmemcpy(n, &N, sizeof(netdbEntry));
+        memcpy(n, &N, sizeof(netdbEntry));
 
         netdbHashInsert(n, addr);
 
@@ -630,12 +645,12 @@ netdbReloadState(void)
             netdbHostInsert(n, q);
         }
 
-        count++;
+        ++count;
     }
 
     xfree(buf);
     getCurrentTime();
-    debugs(38, 1, "NETDB state reloaded; " <<
+    debugs(38, DBG_IMPORTANT, "NETDB state reloaded; " <<
            count << " entries, " <<
            tvSubMsec(start, current_time) << " msec" );
 }
@@ -669,11 +684,10 @@ netdbFreeNameEntry(void *data)
     memFree(x, MEM_NET_DB_NAME);
 }
 
-
 static void
 netdbExchangeHandleReply(void *data, StoreIOBuffer receivedData)
 {
-    IpAddress addr;
+    Ip::Address addr;
 
     netdbExchangeState *ex = (netdbExchangeState *)data;
     int rec_sz = 0;
@@ -775,29 +789,29 @@ netdbExchangeHandleReply(void *data, StoreIOBuffer receivedData)
             switch ((int) *(p + o)) {
 
             case NETDB_EX_NETWORK:
-                o++;
+                ++o;
                 /* FIXME INET6 : NetDB can still ony send IPv4 */
-                xmemcpy(&line_addr, p + o, sizeof(struct in_addr));
+                memcpy(&line_addr, p + o, sizeof(struct in_addr));
                 addr = line_addr;
                 o += sizeof(struct in_addr);
                 break;
 
             case NETDB_EX_RTT:
-                o++;
-                xmemcpy(&j, p + o, sizeof(int));
+                ++o;
+                memcpy(&j, p + o, sizeof(int));
                 o += sizeof(int);
                 rtt = (double) ntohl(j) / 1000.0;
                 break;
 
             case NETDB_EX_HOPS:
-                o++;
-                xmemcpy(&j, p + o, sizeof(int));
+                ++o;
+                memcpy(&j, p + o, sizeof(int));
                 o += sizeof(int);
                 hops = (double) ntohl(j) / 1000.0;
                 break;
 
             default:
-                debugs(38, 1, "netdbExchangeHandleReply: corrupt data, aborting");
+                debugs(38, DBG_IMPORTANT, "netdbExchangeHandleReply: corrupt data, aborting");
                 netdbExchangeDone(ex);
                 return;
             }
@@ -814,7 +828,7 @@ netdbExchangeHandleReply(void *data, StoreIOBuffer receivedData)
 
         p += rec_sz;
 
-        nused++;
+        ++nused;
     }
 
     /*
@@ -881,12 +895,10 @@ netdbExchangeDone(void *data)
 static void
 netdbRegisterWithCacheManager(void)
 {
-    CacheManager::GetInstance()->
-    registerAction("netdb", "Network Measurement Database", netdbDump, 0, 1);
+    Mgr::RegisterAction("netdb", "Network Measurement Database", netdbDump, 0, 1);
 }
 
 #endif /* USE_ICMP */
-
 
 /* PUBLIC FUNCTIONS */
 
@@ -933,7 +945,7 @@ netdbPingSite(const char *hostname)
 }
 
 void
-netdbHandlePingReply(const IpAddress &from, int hops, int rtt)
+netdbHandlePingReply(const Ip::Address &from, int hops, int rtt)
 {
 #if USE_ICMP
     netdbEntry *n;
@@ -977,10 +989,9 @@ netdbFreeMemory(void)
 #endif
 }
 
-
 #if 0 // AYJ: Looks to be unused code.
 int
-netdbHops(IpAddress &addr)
+netdbHops(Ip::Address &addr)
 {
 #if USE_ICMP
     netdbEntry *n = netdbLookupAddr(addr);
@@ -1017,11 +1028,13 @@ netdbDump(StoreEntry * sentry)
     i = 0;
     hash_first(addr_table);
 
-    while ((n = (netdbEntry *) hash_next(addr_table)))
-        *(list + i++) = n;
+    while ((n = (netdbEntry *) hash_next(addr_table))) {
+        *(list + i) = n;
+        ++i;
+    }
 
     if (i != memInUse(MEM_NETDBENTRY))
-        debugs(38, 0, "WARNING: netdb_addrs count off, found " << i <<
+        debugs(38, DBG_CRITICAL, "WARNING: netdb_addrs count off, found " << i <<
                ", expected " << memInUse(MEM_NETDBENTRY));
 
     qsort((char *) list,
@@ -1029,7 +1042,7 @@ netdbDump(StoreEntry * sentry)
           sizeof(netdbEntry *),
           sortByRtt);
 
-    for (k = 0; k < i; k++) {
+    for (k = 0; k < i; ++k) {
         n = *(list + k);
         storeAppendPrintf(sentry, "%-46.46s %4d/%4d %7.1f %5.1f", /* Max between 16 (IPv4) or 46 (IPv6)   */
                           n->network,
@@ -1045,7 +1058,7 @@ netdbDump(StoreEntry * sentry)
 
         p = n->peers;
 
-        for (j = 0; j < n->n_peers; j++, p++) {
+        for (j = 0; j < n->n_peers; ++j, ++p) {
             storeAppendPrintf(sentry, "    %-22.22s %7.1f %5.1f\n",
                               p->peername,
                               p->rtt,
@@ -1111,7 +1124,7 @@ netdbHostData(const char *host, int *samp, int *rtt, int *hops)
 }
 
 void
-netdbUpdatePeer(HttpRequest * r, peer * e, int irtt, int ihops)
+netdbUpdatePeer(HttpRequest * r, CachePeer * e, int irtt, int ihops)
 {
 #if USE_ICMP
     netdbEntry *n;
@@ -1147,7 +1160,7 @@ netdbUpdatePeer(HttpRequest * r, peer * e, int irtt, int ihops)
 }
 
 void
-netdbExchangeUpdatePeer(IpAddress &addr, peer * e, double rtt, double hops)
+netdbExchangeUpdatePeer(Ip::Address &addr, CachePeer * e, double rtt, double hops)
 {
 #if USE_ICMP
     netdbEntry *n;
@@ -1189,7 +1202,7 @@ netdbExchangeUpdatePeer(IpAddress &addr, peer * e, double rtt, double hops)
 }
 
 void
-netdbDeleteAddrNetwork(IpAddress &addr)
+netdbDeleteAddrNetwork(Ip::Address &addr)
 {
 #if USE_ICMP
     netdbEntry *n = netdbLookupAddr(addr);
@@ -1203,14 +1216,13 @@ netdbDeleteAddrNetwork(IpAddress &addr)
 #endif
 }
 
-
 void
 netdbBinaryExchange(StoreEntry * s)
 {
     HttpReply *reply = new HttpReply;
 #if USE_ICMP
 
-    IpAddress addr;
+    Ip::Address addr;
 
     netdbEntry *n;
     int i;
@@ -1244,26 +1256,29 @@ netdbBinaryExchange(StoreEntry * s)
         if ( !addr.IsIPv4() )
             continue;
 
-        buf[i++] = (char) NETDB_EX_NETWORK;
+        buf[i] = (char) NETDB_EX_NETWORK;
+        ++i;
 
         addr.GetInAddr(line_addr);
-        xmemcpy(&buf[i], &line_addr, sizeof(struct in_addr));
+        memcpy(&buf[i], &line_addr, sizeof(struct in_addr));
 
         i += sizeof(struct in_addr);
 
-        buf[i++] = (char) NETDB_EX_RTT;
+        buf[i] = (char) NETDB_EX_RTT;
+        ++i;
 
         j = htonl((int) (n->rtt * 1000));
 
-        xmemcpy(&buf[i], &j, sizeof(int));
+        memcpy(&buf[i], &j, sizeof(int));
 
         i += sizeof(int);
 
-        buf[i++] = (char) NETDB_EX_HOPS;
+        buf[i] = (char) NETDB_EX_HOPS;
+        ++i;
 
         j = htonl((int) (n->hops * 1000));
 
-        xmemcpy(&buf[i], &j, sizeof(int));
+        memcpy(&buf[i], &j, sizeof(int));
 
         i += sizeof(int);
 
@@ -1299,7 +1314,7 @@ void
 netdbExchangeStart(void *data)
 {
 #if USE_ICMP
-    peer *p = (peer *)data;
+    CachePeer *p = (CachePeer *)data;
     char *uri;
     netdbExchangeState *ex;
     StoreIOBuffer tempBuffer;
@@ -1312,7 +1327,7 @@ netdbExchangeStart(void *data)
     ex->r = HttpRequest::CreateFromUrl(uri);
 
     if (NULL == ex->r) {
-        debugs(38, 1, "netdbExchangeStart: Bad URI " << uri);
+        debugs(38, DBG_IMPORTANT, "netdbExchangeStart: Bad URI " << uri);
         return;
     }
 
@@ -1320,7 +1335,7 @@ netdbExchangeStart(void *data)
     assert(NULL != ex->r);
     ex->r->http_ver = HttpVersion(1,1);
     ex->connstate = STATE_HEADER;
-    ex->e = storeCreateEntry(uri, uri, request_flags(), METHOD_GET);
+    ex->e = storeCreateEntry(uri, uri, RequestFlags(), METHOD_GET);
     ex->buf_sz = NETDB_REQBUF_SZ;
     assert(NULL != ex->e);
     ex->sc = storeClientListAdd(ex->e, ex);
@@ -1329,23 +1344,23 @@ netdbExchangeStart(void *data)
     tempBuffer.data = ex->buf;
     storeClientCopy(ex->sc, ex->e, tempBuffer,
                     netdbExchangeHandleReply, ex);
-    ex->r->flags.loopdetect = 1;	/* cheat! -- force direct */
+    ex->r->flags.loopDetected = 1;	/* cheat! -- force direct */
 
     if (p->login)
         xstrncpy(ex->r->login, p->login, MAX_LOGIN_SZ);
 
     urlCanonical(ex->r);
 
-    FwdState::fwdStart(-1, ex->e, ex->r);
+    FwdState::fwdStart(Comm::ConnectionPointer(), ex->e, ex->r);
 
 #endif
 }
 
-peer *
+CachePeer *
 netdbClosestParent(HttpRequest * request)
 {
 #if USE_ICMP
-    peer *p = NULL;
+    CachePeer *p = NULL;
     netdbEntry *n;
     const ipcache_addrs *ia;
     net_db_peer *h;
@@ -1373,7 +1388,7 @@ netdbClosestParent(HttpRequest * request)
      * Make sure we don't return a parent who is farther away than
      * we are.  Note, the n->peers list is pre-sorted by RTT.
      */
-    for (i = 0; i < n->n_peers; i++) {
+    for (i = 0; i < n->n_peers; ++i) {
         h = &n->peers[i];
 
         if (n->rtt > 0)

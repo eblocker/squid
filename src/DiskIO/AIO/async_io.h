@@ -1,11 +1,9 @@
 #ifndef __ASYNC_IO_H__
 #define __ASYNC_IO_H__
 
-#include "config.h"
-
 #if USE_DISKIO_AIO
 
-#ifdef _SQUID_WIN32_
+#if _SQUID_WINDOWS_
 #include "aio_win32.h"
 #else
 #if HAVE_AIO_H

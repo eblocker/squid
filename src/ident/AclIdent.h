@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
  * ----------------------------------------------------------
@@ -35,8 +33,6 @@
 #ifndef SQUID_IDENT_ACLIDENT_H
 #define SQUID_IDENT_ACLIDENT_H
 
-#include "config.h"
-
 #if USE_IDENT
 
 #include "acl/Checklist.h"
@@ -53,7 +49,6 @@ private:
     static IdentLookup instance_;
     static void LookupDone(const char *ident, void *data);
 };
-
 
 #include "acl/Acl.h"
 #include "acl/Data.h"

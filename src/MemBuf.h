@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
  * ----------------------------------------------------------
@@ -72,8 +70,8 @@ public:
 
     /**
      * Whether the buffer contains any data space available.
-     \retval true	if data can be added to teh buffer
-     \retval false	if teh buffer is full
+     \retval true	if data can be added to the buffer
+     \retval false	if the buffer is full
      */
     bool hasSpace() const { return size+1 < capacity; }
 
@@ -134,8 +132,6 @@ private:
 
     void grow(mb_size_t min_cap);
 
-    CBDATA_CLASS2(MemBuf);
-
 public:
     /**
      \deprecated use space*() and content*() methods to access safely instead.
@@ -167,15 +163,18 @@ public:
 
     unsigned valid:1;		/* to be used for debugging only! */
 #endif
+
+private:
+    CBDATA_CLASS2(MemBuf);
 };
 
-#ifdef _USE_INLINE_
+#if _USE_INLINE_
 #include "MemBuf.cci"
 #endif
 
 /** returns free() function to be used, _freezes_ the object! */
-SQUIDCEXTERN void memBufReport(MemBuf * mb);
+void memBufReport(MemBuf * mb);
 /** pack content into a mem buf. */
-SQUIDCEXTERN void packerToMemInit(Packer * p, MemBuf * mb);
+void packerToMemInit(Packer * p, MemBuf * mb);
 
 #endif /* SQUID_MEM_H */

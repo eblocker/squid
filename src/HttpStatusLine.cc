@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  * DEBUG: section 57    HTTP Status-line
  * AUTHOR: Alex Rousskov
  *
@@ -34,7 +32,9 @@
  */
 
 #include "squid.h"
+#include "Debug.h"
 #include "HttpStatusLine.h"
+#include "Packer.h"
 
 /* local constants */
 /* AYJ: see bug 2469 - RFC2616 confirms stating 'SP characters' plural! */
@@ -60,7 +60,7 @@ void
 httpStatusLineSet(HttpStatusLine * sline, HttpVersion version, http_status status, const char *reason)
 {
     assert(sline);
-    sline->protocol = PROTO_HTTP;
+    sline->protocol = AnyP::PROTO_HTTP;
     sline->version = version;
     sline->status = status;
     /* Note: no xstrdup for 'reason', assumes constant 'reasons' */
@@ -77,7 +77,7 @@ httpStatusLinePackInto(const HttpStatusLine * sline, Packer * p)
     assert(sline && p);
 
     /* handle ICY protocol status line specially. Pass on the bad format. */
-    if (sline->protocol == PROTO_ICY) {
+    if (sline->protocol == AnyP::PROTO_ICY) {
         debugs(57, 9, "packing sline " << sline << " using " << p << ":");
         debugs(57, 9, "FORMAT=" << IcyStatusLineFormat );
         debugs(57, 9, "ICY " << sline->status << " " << (sline->reason ? sline->reason : httpStatusString(sline->status)) );
@@ -86,9 +86,9 @@ httpStatusLinePackInto(const HttpStatusLine * sline, Packer * p)
     }
 
     debugs(57, 9, "packing sline " << sline << " using " << p << ":");
-    debug(57, 9) (HttpStatusLineFormat, sline->version.major,
-                  sline->version.minor, sline->status,
-                  sline->reason ? sline->reason : httpStatusString(sline->status));
+    debugs(57, 9, "FORMAT=" << HttpStatusLineFormat );
+    debugs(57, 9, "HTTP/" << sline->version.major << "." << sline->version.minor <<
+           " " << sline->status << " " << (sline->reason ? sline->reason : httpStatusString(sline->status)) );
     packerPrintf(p, HttpStatusLineFormat, sline->version.major,
                  sline->version.minor, sline->status, httpStatusLineReason(sline));
 }
@@ -108,7 +108,7 @@ httpStatusLineParse(HttpStatusLine * sline, const String &protoPrefix, const cha
 
     if (protoPrefix.cmp("ICY", 3) == 0) {
         debugs(57, 3, "httpStatusLineParse: Invalid HTTP identifier. Detected ICY protocol istead.");
-        sline->protocol = PROTO_ICY;
+        sline->protocol = AnyP::PROTO_ICY;
         start += protoPrefix.size();
     } else if (protoPrefix.caseCmp(start, protoPrefix.size()) == 0) {
 
@@ -220,6 +220,10 @@ httpStatusString(http_status status)
         p = "Temporary Redirect";
         break;
 
+    case HTTP_PERMANENT_REDIRECT:
+        p = "Permanent Redirect";
+        break;
+
     case HTTP_BAD_REQUEST:
         p = "Bad Request";
         break;
@@ -314,6 +318,23 @@ httpStatusString(http_status status)
 
     case HTTP_HTTP_VERSION_NOT_SUPPORTED:
         p = "HTTP Version not supported";
+        break;
+
+        // RFC 6585
+    case HTTP_PRECONDITION_REQUIRED: // 428
+        p = "Precondition Required";
+        break;
+
+    case HTTP_TOO_MANY_REQUESTS: // 429
+        p = "Too Many Requests";
+        break;
+
+    case HTTP_REQUEST_HEADER_FIELDS_TOO_LARGE: // 431
+        p = "Request Header Fields Too Large";
+        break;
+
+    case HTTP_NETWORK_AUTHENTICATION_REQUIRED: // 511
+        p = "Network Authentication Required";
         break;
 
     default:

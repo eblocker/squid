@@ -1,5 +1,4 @@
 /*
- * $Id$
  * DEBUG: section 93    eCAP Interface
  */
 
@@ -23,28 +22,25 @@ namespace Ecap
 class ServiceRep : public Adaptation::Service
 {
 public:
-    ServiceRep(const Adaptation::ServiceConfig &config);
+    explicit ServiceRep(const ServiceConfigPointer &aConfig);
     virtual ~ServiceRep();
 
     typedef libecap::shared_ptr<libecap::adapter::Service> AdapterService;
 
+    /* Adaptation::Service API */
     virtual void finalize();
-
     virtual bool probed() const;
     virtual bool up() const;
-
-    Adaptation::Initiate *makeXactLauncher(HttpMsg *virginHeader, HttpRequest *virginCause);
-
-    // the methods below can only be called on an up() service
+    virtual Adaptation::Initiate *makeXactLauncher(HttpMsg *virginHeader, HttpRequest *virginCause);
     virtual bool wantsUrl(const String &urlPath) const;
-
-    // called by transactions to report service failure
     virtual void noteFailure();
-
     virtual const char *status() const;
-
     virtual void detach();
     virtual bool detached() const;
+
+protected:
+    void tryConfigureAndStart();
+    bool handleFinalizeFailure(const char *error);
 
 private:
     AdapterService theService; // the actual adaptation service we represent
@@ -52,15 +48,15 @@ private:
 };
 
 /// register loaded eCAP module service
-extern void RegisterAdapterService(const ServiceRep::AdapterService& adapterService);
+void RegisterAdapterService(const ServiceRep::AdapterService& adapterService);
 /// unregister loaded eCAP module service by service uri
-extern void UnregisterAdapterService(const String& serviceUri);
+void UnregisterAdapterService(const String& serviceUri);
 
 /// returns loaded eCAP module service by service uri
-extern ServiceRep::AdapterService FindAdapterService(const String& serviceUri);
+ServiceRep::AdapterService FindAdapterService(const String& serviceUri);
 
 /// check for loaded eCAP services without matching ecap_service in squid.conf
-extern void CheckUnusedAdapterServices(const Services& services);
+void CheckUnusedAdapterServices(const Services& services);
 } // namespace Ecap
 } // namespace Adaptation
 

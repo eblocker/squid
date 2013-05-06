@@ -1,7 +1,14 @@
-#  Makefile for storage modules in the Squid Object Cache server
-#
-#  $Id$
-#
+DIST_SUBDIRS= \
+	AD_group \
+	eDirectory_userip \
+	file_userip \
+	kerberos_ldap_group \
+	LDAP_group \
+	LM_group \
+	session \
+	SQL_session \
+	time_quota \
+	unix_group \
+	wbinfo_group
 
-DIST_SUBDIRS	= ip_user ldap_group mswin_ad_group mswin_lm_group session unix_group wbinfo_group
-SUBDIRS		= $(EXTERNAL_ACL_HELPERS)
+SUBDIRS=$(EXTERNAL_ACL_HELPERS)

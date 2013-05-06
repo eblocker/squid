@@ -1,14 +1,5 @@
-/*
- * $Id$
- */
-
 #ifndef SQUID_SNMP_API_H
 #define SQUID_SNMP_API_H
-
-#include "config.h"
-#ifdef HAVE_SYS_TIME_H
-#include <sys/time.h>
-#endif
 
 /***********************************************************
 	Copyright 1989 by Carnegie Mellon University
@@ -35,8 +26,6 @@ SOFTWARE.
 /*
  * snmp_api.h - API for access to snmp.
  */
-
-
 
 /*
  * Set fields in session and pdu to the following to get a default or unconfigured value.
@@ -89,7 +78,6 @@ extern "C" {
      */
     int snmp_close(struct snmp_session *);
 
-
     /*
      * int snmp_send(session, pdu)
      *     struct snmp_session *session;
@@ -116,7 +104,6 @@ extern "C" {
      * routine returns successfully, the pdu and it's request are deleted.
      */
     void snmp_read(fd_set *);
-
 
     /*
      * int snmp_select_info(numfds, fdset, timeout, block)
@@ -159,7 +146,6 @@ extern "C" {
      */
     void snmp_timeout(void);
 
-
     /*
      * This routine must be supplied by the application:
      *
@@ -174,10 +160,6 @@ extern "C" {
      * Any data in the pdu must be copied because it will be freed elsewhere.
      * Operations are defined below:
      */
-
-
-
-
 
     void snmp_api_stats(void *);
 #endif

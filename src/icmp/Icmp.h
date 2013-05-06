@@ -32,8 +32,7 @@
 #ifndef _INCLUDE_ICMP_H
 #define _INCLUDE_ICMP_H
 
-#include "config.h"
-#include "ip/IpAddress.h"
+#include "ip/Address.h"
 
 #define PINGER_PAYLOAD_SZ	8192
 
@@ -45,7 +44,7 @@
 
 /* This is a line-data format struct. DO NOT alter. */
 struct pingerEchoData {
-    IpAddress to;
+    Ip::Address to;
     unsigned char opcode;
     int psize;
     char payload[PINGER_PAYLOAD_SZ];
@@ -53,7 +52,7 @@ struct pingerEchoData {
 
 /* This is a line-data format struct. DO NOT alter. */
 struct pingerReplyData {
-    IpAddress from;
+    Ip::Address from;
     unsigned char opcode;
     int rtt;
     int hops;
@@ -67,10 +66,9 @@ struct icmpEchoData {
     char payload[MAX_PAYLOAD];
 };
 
-SQUIDCEXTERN int icmp_pkts_sent;
+extern int icmp_pkts_sent;
 
 #endif /* USE_ICMP */
-
 
 /**
  * Implements the squid interface to access ICMP operations
@@ -107,7 +105,7 @@ public:
      *                Content longer than MAX_PAYLOAD will be truncated.
      \param len       Length of the payload in bytes if any is to be sent or 0.
      */
-    virtual void SendEcho(IpAddress &to, int opcode, const char *payload=NULL, int len=0) =0;
+    virtual void SendEcho(Ip::Address &to, int opcode, const char *payload=NULL, int len=0) =0;
 
     /// Handle ICMP responses.
     virtual void Recv(void) =0;
@@ -135,7 +133,7 @@ protected:
     int ipHops(int ttl);
 
     /// Log the packet.
-    void Log(const IpAddress &addr, const u_int8_t type, const char* pkt_str, const int rtt, const int hops);
+    void Log(const Ip::Address &addr, const uint8_t type, const char* pkt_str, const int rtt, const int hops);
 
     /* no use wasting memory */
     int icmp_sock;

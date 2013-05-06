@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  * DEBUG: section 80    WCCP Support
  * AUTHOR: Glenn Chisholm
  *
@@ -33,10 +31,13 @@
  *
  */
 #include "squid.h"
-#include "comm.h"
-#include "event.h"
 
 #if USE_WCCP
+#include "comm.h"
+#include "comm/Connection.h"
+#include "comm/Loops.h"
+#include "event.h"
+#include "SquidConfig.h"
 
 #define WCCP_PORT 2048
 #define WCCP_REVISION 0
@@ -59,7 +60,7 @@ struct wccp_here_i_am_t {
 };
 
 struct wccp_cache_entry_t {
-    struct in_addr ip_addr;
+    struct in_addr ip_addr;  // WCCP on-the-wire in 32-bit IPv4-only.
     int revision;
     char hash[WCCP_HASH_SIZE];
     int reserved;
@@ -91,7 +92,7 @@ static int last_id;
 static int last_assign_buckets_change;
 static unsigned int number_caches;
 
-static IpAddress local_ip;
+static Ip::Address local_ip;
 
 static PF wccpHandleUdp;
 static int wccpLowestIP(void);
@@ -127,7 +128,6 @@ wccpInit(void)
 void
 wccpConnectionOpen(void)
 {
-    struct addrinfo *router = NULL, *local = NULL;
     debugs(80, 5, "wccpConnectionOpen: Called");
 
     if (Config.Wccp.router.IsAnyAddr()) {
@@ -136,12 +136,12 @@ wccpConnectionOpen(void)
     }
 
     if ( !Config.Wccp.router.SetIPv4() ) {
-        debugs(1, 1, "WCCPv1 Disabled. Router " << Config.Wccp.router << " is not IPv4.");
+        debugs(80, DBG_CRITICAL, "WCCPv1 Disabled. Router " << Config.Wccp.router << " is not an IPv4 address.");
         return;
     }
 
     if ( !Config.Wccp.address.SetIPv4() ) {
-        debugs(1, 1, "WCCPv1 Disabled. Local address " << Config.Wccp.address << " is not IPv4.");
+        debugs(80, DBG_CRITICAL, "WCCPv1 Disabled. Local address " << Config.Wccp.address << " is not an IPv4 address.");
         return;
     }
 
@@ -157,37 +157,31 @@ wccpConnectionOpen(void)
     if (theWccpConnection < 0)
         fatal("Cannot open WCCP Port");
 
-    commSetSelect(theWccpConnection,
-                  COMM_SELECT_READ,
-                  wccpHandleUdp,
-                  NULL,
-                  0);
+    Comm::SetSelect(theWccpConnection, COMM_SELECT_READ, wccpHandleUdp, NULL, 0);
 
-    debugs(80, 1, "Accepting WCCPv1 messages on " << Config.Wccp.address << ", FD " << theWccpConnection << ".");
+    debugs(80, DBG_IMPORTANT, "Accepting WCCPv1 messages on " << Config.Wccp.address << ", FD " << theWccpConnection << ".");
 
-    Config.Wccp.router.GetAddrInfo(router,AF_INET);
+    // Sadly WCCP only does IPv4
 
-    if (connect(theWccpConnection, router->ai_addr, router->ai_addrlen))
+    struct sockaddr_in router;
+    Config.Wccp.router.GetSockAddr(router);
+    if (connect(theWccpConnection, (struct sockaddr*)&router, sizeof(router)))
         fatal("Unable to connect WCCP out socket");
 
-    Config.Wccp.router.FreeAddrInfo(router);
-
-    Config.Wccp.address.InitAddrInfo(local);
-
-    if (getsockname(theWccpConnection, local->ai_addr, &local->ai_addrlen))
+    struct sockaddr_in local;
+    memset(&local, '\0', sizeof(local));
+    socklen_t slen = sizeof(local);
+    if (getsockname(theWccpConnection, (struct sockaddr*)&local, &slen))
         fatal("Unable to getsockname on WCCP out socket");
 
-    local_ip = *local;
-
-    Config.Wccp.address.FreeAddrInfo(local);
+    local_ip = local;
 }
-
 
 void
 wccpConnectionClose(void)
 {
     if (theWccpConnection > -1) {
-        debugs(80, 1, "FD " << theWccpConnection << " Closing WCCPv1 socket");
+        debugs(80, DBG_IMPORTANT, "FD " << theWccpConnection << " Closing WCCPv1 socket");
         comm_close(theWccpConnection);
         theWccpConnection = -1;
     }
@@ -203,13 +197,12 @@ wccpConnectionClose(void)
 static void
 wccpHandleUdp(int sock, void *not_used)
 {
-
-    IpAddress from;
+    Ip::Address from;
     int len;
 
     debugs(80, 6, "wccpHandleUdp: Called.");
 
-    commSetSelect(sock, COMM_SELECT_READ, wccpHandleUdp, NULL, 0);
+    Comm::SetSelect(sock, COMM_SELECT_READ, wccpHandleUdp, NULL, 0);
 
     memset(&wccp_i_see_you, '\0', sizeof(wccp_i_see_you));
 
@@ -239,7 +232,7 @@ wccpHandleUdp(int sock, void *not_used)
         return;
 
     if (ntohl(wccp_i_see_you.number) > WCCP_ACTIVE_CACHES) {
-        debugs(80, 1, "Ignoring WCCP_I_SEE_YOU from " <<
+        debugs(80, DBG_IMPORTANT, "Ignoring WCCP_I_SEE_YOU from " <<
                from << " with number of caches set to " <<
                (int) ntohl(wccp_i_see_you.number));
 
@@ -285,7 +278,7 @@ wccpLowestIP(void)
      * We sanity checked wccp_i_see_you.number back in wccpHandleUdp()
      */
 
-    for (loop = 0; loop < (unsigned) ntohl(wccp_i_see_you.number); loop++) {
+    for (loop = 0; loop < (unsigned) ntohl(wccp_i_see_you.number); ++loop) {
         assert(loop < WCCP_ACTIVE_CACHES);
 
         if (local_ip > wccp_i_see_you.wccp_cache_entry[loop].ip_addr)
@@ -304,13 +297,18 @@ wccpHereIam(void *voidnotused)
     debugs(80, 6, "wccpHereIam: Called");
 
     wccp_here_i_am.id = last_id;
-    comm_udp_send(theWccpConnection,
-                  &wccp_here_i_am,
-                  sizeof(wccp_here_i_am),
-                  0);
+    double interval = 10.0; // TODO: make this configurable, possibly negotiate with the router.
+    errno = 0;
+    ssize_t sent = comm_udp_send(theWccpConnection, &wccp_here_i_am, sizeof(wccp_here_i_am), 0);
+
+    // if we failed to send the whole lot, try again at a shorter interval (20%)
+    if (sent != sizeof(wccp_here_i_am)) {
+        debugs(80, 2, "ERROR: failed to send WCCP HERE_I_AM packet: " << xstrerror());
+        interval = 2.0;
+    }
 
     if (!eventFind(wccpHereIam, NULL))
-        eventAdd("wccpHereIam", wccpHereIam, NULL, 10.0, 1);
+        eventAdd("wccpHereIam", wccpHereIam, NULL, interval, 1);
 }
 
 static void
@@ -353,20 +351,22 @@ wccpAssignBuckets(void)
 
     buckets_per_cache = WCCP_BUCKETS / number_caches;
 
-    for (loop = 0; loop < number_caches; loop++) {
+    for (loop = 0; loop < number_caches; ++loop) {
         int i;
-        xmemcpy(&caches[loop],
-                &wccp_i_see_you.wccp_cache_entry[loop].ip_addr,
-                sizeof(*caches));
+        memcpy(&caches[loop],
+               &wccp_i_see_you.wccp_cache_entry[loop].ip_addr,
+               sizeof(*caches));
 
-        for (i = 0; i < buckets_per_cache; i++) {
+        for (i = 0; i < buckets_per_cache; ++i) {
             assert(bucket < WCCP_BUCKETS);
-            buckets[bucket++] = loop;
+            buckets[bucket] = loop;
+            ++bucket;
         }
     }
 
     while (bucket < WCCP_BUCKETS) {
-        buckets[bucket++] = number_caches - 1;
+        buckets[bucket] = number_caches - 1;
+        ++bucket;
     }
 
     wccp_assign_bucket->type = htonl(WCCP_ASSIGN_BUCKET);

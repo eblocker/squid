@@ -7,9 +7,10 @@
 #include "adaptation/ServiceFilter.h"
 #include "adaptation/Service.h"
 
-Adaptation::Service::Service(const ServiceConfig &aConfig): theConfig(aConfig)
+Adaptation::Service::Service(const ServiceConfigPointer &aConfig): theConfig(aConfig)
 {
-    debugs(93,3, HERE << "creating adaptation service " << theConfig.key);
+    Must(theConfig != NULL);
+    debugs(93,3, HERE << "creating adaptation service " << cfg().key);
 }
 
 Adaptation::Service::~Service()
@@ -49,7 +50,6 @@ Adaptation::Service::wants(const ServiceFilter &filter) const
     // to the bypass && broken() test above. Thus, we want to use it!
     return true;
 }
-
 
 Adaptation::Services &
 Adaptation::AllServices()

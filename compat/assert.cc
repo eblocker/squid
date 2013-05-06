@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * AUTHOR: Henrik Nordstrom
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
@@ -31,7 +29,7 @@
  *
  */
 
-#include "config.h"
+#include "squid.h"
 
 void xassert(const char *expr, const char *file, int line)
 {

@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  * DEBUG: section 58    HTTP Reply (Response)
  * AUTHOR: Alex Rousskov
  *
@@ -34,14 +32,20 @@
  */
 
 #include "squid.h"
-#include "SquidTime.h"
-#include "Store.h"
-#include "HttpReply.h"
+#include "acl/AclSizeLimit.h"
+#include "acl/FilledChecklist.h"
+#include "globals.h"
+#include "HttpBody.h"
+#include "HttpHdrCc.h"
 #include "HttpHdrContRange.h"
 #include "HttpHdrSc.h"
-#include "acl/FilledChecklist.h"
+#include "HttpReply.h"
 #include "HttpRequest.h"
 #include "MemBuf.h"
+#include "SquidConfig.h"
+#include "SquidTime.h"
+#include "Store.h"
+#include "StrList.h"
 
 /* local constants */
 
@@ -93,7 +97,6 @@ HttpReply::~HttpReply()
 void
 HttpReply::init()
 {
-    httpBodyInit(&body);
     hdrCacheInit();
     httpStatusLineInit(&sline);
     pstate = psReadyToParseStartLine;
@@ -120,7 +123,7 @@ HttpReply::clean()
     // points to a pipe that is owned and initiated by another object.
     body_pipe = NULL;
 
-    httpBodyClean(&body);
+    body.clear();
     hdrCacheClean();
     header.clean();
     httpStatusLineClean(&sline);
@@ -139,7 +142,7 @@ void
 HttpReply::packInto(Packer * p)
 {
     packHeadersInto(p);
-    httpBodyPackInto(&body, p);
+    body.packInto(p);
 }
 
 /* create memBuf, create mem-based packer, pack, destroy packer, return MemBuf */
@@ -185,7 +188,7 @@ HttpReply::make304() const
     /* rv->cache_control */
     /* rv->content_range */
     /* rv->keep_alive */
-    HttpVersion ver(1,0);
+    HttpVersion ver(1,1);
     httpStatusLineSet(&rv->sline, ver, HTTP_NOT_MODIFIED, NULL);
 
     for (t = 0; ImsEntries[t] != HDR_OTHER; ++t)
@@ -202,7 +205,7 @@ HttpReply::packed304Reply()
     /* Not as efficient as skipping the header duplication,
      * but easier to maintain
      */
-    HttpReply *temp = make304 ();
+    HttpReply *temp = make304();
     MemBuf *rv = temp->pack();
     delete temp;
     return rv;
@@ -213,7 +216,7 @@ HttpReply::setHeaders(http_status status, const char *reason,
                       const char *ctype, int64_t clen, time_t lmt, time_t expiresTime)
 {
     HttpHeader *hdr;
-    HttpVersion ver(1,0);
+    HttpVersion ver(1,1);
     httpStatusLineSet(&sline, ver, status, reason);
     hdr = &header;
     hdr->putStr(HDR_SERVER, visible_appname_string);
@@ -248,7 +251,7 @@ void
 HttpReply::redirect(http_status status, const char *loc)
 {
     HttpHeader *hdr;
-    HttpVersion ver(1,0);
+    HttpVersion ver(1,1);
     httpStatusLineSet(&sline, ver, status, httpStatusString(status));
     hdr = &header;
     hdr->putStr(HDR_SERVER, APP_FULLNAME);
@@ -330,21 +333,21 @@ HttpReply::hdrExpirationTime()
 
     if (cache_control) {
         if (date >= 0) {
-            if (cache_control->s_maxage >= 0)
-                return date + cache_control->s_maxage;
+            if (cache_control->hasSMaxAge())
+                return date + cache_control->sMaxAge();
 
-            if (cache_control->max_age >= 0)
-                return date + cache_control->max_age;
+            if (cache_control->hasMaxAge())
+                return date + cache_control->maxAge();
         } else {
             /*
              * Conservatively handle the case when we have a max-age
              * header, but no Date for reference?
              */
 
-            if (cache_control->s_maxage >= 0)
+            if (cache_control->hasSMaxAge())
                 return squid_curtime;
 
-            if (cache_control->max_age >= 0)
+            if (cache_control->hasMaxAge())
                 return squid_curtime;
         }
     }
@@ -377,12 +380,13 @@ HttpReply::hdrCacheInit()
 {
     HttpMsg::hdrCacheInit();
 
+    http_ver = sline.version;
     content_length = header.getInt64(HDR_CONTENT_LENGTH);
     date = header.getTime(HDR_DATE);
     last_modified = header.getTime(HDR_LAST_MODIFIED);
     surrogate_control = header.getSc();
     content_range = header.getContRange();
-    keep_alive = httpMsgIsPersistent(sline.version, &header);
+    keep_alive = persistent() ? 1 : 0;
     const char *str = header.getStr(HDR_CONTENT_TYPE);
 
     if (str)
@@ -401,12 +405,12 @@ HttpReply::hdrCacheClean()
     content_type.clean();
 
     if (cache_control) {
-        httpHdrCcDestroy(cache_control);
+        delete cache_control;
         cache_control = NULL;
     }
 
     if (surrogate_control) {
-        httpHdrScDestroy(surrogate_control);
+        delete surrogate_control;
         surrogate_control = NULL;
     }
 
@@ -588,18 +592,15 @@ HttpReply::calcMaxBodySize(HttpRequest& request)
         return;
     bodySizeMax = -1;
 
+    // short-circuit ACL testing if there are none configured
+    if (!Config.ReplyBodySize)
+        return;
+
     ACLFilledChecklist ch(NULL, &request, NULL);
-#if FOLLOW_X_FORWARDED_FOR
-    if (Config.onoff.acl_uses_indirect_client)
-        ch.src_addr = request.indirect_client_addr;
-    else
-#endif
-        ch.src_addr = request.client_addr;
-    ch.my_addr = request.my_addr;
     ch.reply = HTTPMSGLOCK(this); // XXX: this lock makes method non-const
-    for (acl_size_t *l = Config.ReplyBodySize; l; l = l -> next) {
+    for (AclSizeLimit *l = Config.ReplyBodySize; l; l = l -> next) {
         /* if there is no ACL list or if the ACLs listed match use this size value */
-        if (!l->aclList || ch.matchAclListFast(l->aclList)) {
+        if (!l->aclList || ch.fastCheck(l->aclList) == ACCESS_ALLOWED) {
             debugs(58, 4, HERE << "bodySizeMax=" << bodySizeMax);
             bodySizeMax = l->size; // may be -1
             break;
@@ -624,7 +625,6 @@ HttpReply::clone() const
     // keep_alive is handled in hdrCacheInit()
     return rep;
 }
-
 
 bool HttpReply::inheritProperties(const HttpMsg *aMsg)
 {

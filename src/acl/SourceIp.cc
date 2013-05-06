@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 28    Access Control
  * AUTHOR: Duane Wessels
  *
@@ -48,8 +46,6 @@ ACLSourceIP::match(ACLChecklist *checklist)
 {
     return ACLIP::match(Filled(checklist)->src_addr);
 }
-
-
 
 ACL *
 ACLSourceIP::clone() const

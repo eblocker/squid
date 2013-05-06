@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
  * ----------------------------------------------------------
  *
@@ -32,8 +30,6 @@
 
 #ifndef SQUID_AIODISKIOMODULE_H
 #define SQUID_AIODISKIOMODULE_H
-
-#include "config.h"
 
 #if USE_DISKIO_AIO
 

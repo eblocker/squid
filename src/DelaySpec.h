@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
  * ----------------------------------------------------------
@@ -31,9 +29,6 @@
  */
 #ifndef SQUID_DELAYSPEC_H
 #define SQUID_DELAYSPEC_H
-
-/* for int64_t definition */
-#include "config.h"
 
 class StoreEntry;
 

@@ -1,4 +1,5 @@
-#include "config.h"
+#define SQUID_UNIT_TEST 1
+#include "squid.h"
 
 #if HAVE_ASSERT_H
 #include <assert.h>
@@ -8,6 +9,7 @@
 
 /* Being a C library code it is best bodily included and tested with C++ type-safe techniques. */
 #include "lib/rfc1035.c"
+#include "lib/rfc2671.c"
 
 CPPUNIT_TEST_SUITE_REGISTRATION( testRFC1035 );
 
@@ -75,7 +77,6 @@ void testRFC1035::testBugPacketEndingOnCompressionPtr()
     int res = 0;
     unsigned int off = 0;
 
-
     /* Test the HeaderUnpack function results */
     msg = new rfc1035_message;
     res = rfc1035HeaderUnpack(buf, len, &off, msg);
@@ -105,7 +106,6 @@ void testRFC1035::testBugPacketEndingOnCompressionPtr()
     /* Test the MessageUnpack function itself */
     res = rfc1035MessageUnpack(buf, len, &msg);
 
-    CPPUNIT_ASSERT_EQUAL((const char*)NULL, rfc1035_error_message);
     CPPUNIT_ASSERT_EQUAL(1, res);
     CPPUNIT_ASSERT(msg != NULL);
     rfc1035MessageDestroy(&msg);
@@ -131,8 +131,7 @@ void testRFC1035::testBugPacketHeadersOnly()
     /* Test the MessageUnpack function itself */
     res = rfc1035MessageUnpack(buf, len, &msg);
 
-    CPPUNIT_ASSERT(rfc1035_error_message != NULL);
-    CPPUNIT_ASSERT(0 == memcmp("The DNS reply message is corrupt or could not be safely parsed.", rfc1035_error_message, 63));
+    CPPUNIT_ASSERT(0 == memcmp("The DNS reply message is corrupt or could not be safely parsed.", rfc1035ErrorMessage(res), 63));
     CPPUNIT_ASSERT(res < 0);
     CPPUNIT_ASSERT(msg == NULL);
 }

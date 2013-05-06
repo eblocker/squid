@@ -2,11 +2,9 @@
 #ifndef SQUID_SRC_TEST_STORE_H
 #define SQUID_SRC_TEST_STORE_H
 
-#include "squid.h"
 #include "Store.h"
 
 #include <cppunit/extensions/HelperMacros.h>
-
 
 /*
  * test the store framework
@@ -30,7 +28,6 @@ protected:
     void testMaxSize();
 };
 
-
 /* subclass of Store to allow testing of methods without having all the
  * other components live
  */
@@ -45,11 +42,9 @@ public:
 
     virtual int callback();
 
-    virtual StoreEntry* get
-    (const cache_key*);
+    virtual StoreEntry* get(const cache_key*);
 
-    virtual void get
-    (String, void (*)(StoreEntry*, void*), void*);
+    virtual void get(String, void (*)(StoreEntry*, void*), void*);
 
     virtual void init();
 
@@ -59,19 +54,24 @@ public:
 
     virtual uint64_t minSize() const;
 
+    virtual uint64_t currentSize() const;
+
+    virtual uint64_t currentCount() const;
+
+    virtual int64_t maxObjectSize() const;
+
+    virtual void getStats(StoreInfoStats &) const;
+
     virtual void stat(StoreEntry &) const; /* output stats to the provided store entry */
 
     virtual void reference(StoreEntry &) {}	/* Reference this object */
 
-    virtual void dereference(StoreEntry &) {}	/* Unreference this object */
-
-    virtual void updateSize(int64_t size, int sign) {}
+    virtual bool dereference(StoreEntry &, bool) { return true; }
 
     virtual StoreSearch *search(String const url, HttpRequest *);
 };
 
 typedef RefCount<TestStore> TestStorePointer;
-
 
 #endif
 

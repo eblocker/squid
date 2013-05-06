@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
  * ----------------------------------------------------------
@@ -32,12 +30,6 @@
  */
 #ifndef SQUID_PINGDATA_H
 #define SQUID_PINGDATA_H
-
-#include "config.h"
-
-#ifdef HAVE_SYS_TIME_H
-#include <sys/time.h>
-#endif
 
 class ping_data
 {

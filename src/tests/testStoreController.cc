@@ -1,12 +1,12 @@
 #define SQUID_UNIT_TEST 1
 
 #include "squid.h"
-
 #include "testStoreController.h"
 #include "Store.h"
 #include "SwapDir.h"
 #include "TestSwapDir.h"
 #include "Mem.h"
+#include "SquidConfig.h"
 #include "SquidTime.h"
 #include "StoreSearch.h"
 
@@ -19,7 +19,6 @@ addSwapDir(TestSwapDirPointer aStore)
     Config.cacheSwap.swapDirs[Config.cacheSwap.n_configured] = aStore.getRaw();
     ++Config.cacheSwap.n_configured;
 }
-
 
 void
 testStoreController::testStats()
@@ -93,7 +92,7 @@ addedEntry(StorePointer hashStore,
     e->swap_filen = 0; /* garh - lower level*/
     e->swap_dirn = -1;
 
-    for (int i=0; i < Config.cacheSwap.n_configured; i++) {
+    for (int i=0; i < Config.cacheSwap.n_configured; ++i) {
         if (INDEXSD (i) == aStore.getRaw())
             e->swap_dirn = i;
     }

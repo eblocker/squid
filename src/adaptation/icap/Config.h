@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
  * ----------------------------------------------------------
@@ -57,6 +55,7 @@ public:
     int default_options_ttl;
     int preview_enable;
     int preview_size;
+    int allow206_enable;
     time_t connect_timeout_raw;
     time_t io_timeout_raw;
     int reuse_connections;
@@ -75,11 +74,10 @@ private:
     Config(const Config &); // not implemented
     Config &operator =(const Config &); // not implemented
 
-    virtual Adaptation::ServicePointer createService(const Adaptation::ServiceConfig &cfg);
+    virtual Adaptation::ServicePointer createService(const ServiceConfigPointer &cfg);
 };
 
 extern Config TheConfig;
-
 
 } // namespace Icap
 } // namespace Adaptation

@@ -1,7 +1,4 @@
 /*
- * $Id$
- *
- *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
  * ----------------------------------------------------------
  *
@@ -34,6 +31,9 @@
 
 #ifndef SQUID_ACLPROXYAUTH_H
 #define SQUID_ACLPROXYAUTH_H
+
+#if USE_AUTH
+
 #include "acl/Acl.h"
 #include "acl/Data.h"
 #include "acl/Checklist.h"
@@ -47,18 +47,7 @@ public:
 
 private:
     static ProxyAuthLookup instance_;
-    static void LookupDone(void *data, char *result);
-};
-
-class ProxyAuthNeeded : public ACLChecklist::AsyncState
-{
-
-public:
-    static ProxyAuthNeeded *Instance();
-    virtual void checkForAsync(ACLChecklist *)const;
-
-private:
-    static ProxyAuthNeeded instance_;
+    static void LookupDone(void *data);
 };
 
 class ACLProxyAuth : public ACL
@@ -82,7 +71,7 @@ public:
     virtual bool empty () const;
     virtual bool requiresRequest() const {return true;}
 
-    virtual ACL *clone()const;
+    virtual ACL *clone() const;
     virtual int matchForCache(ACLChecklist *checklist);
 
 private:
@@ -91,11 +80,11 @@ private:
     static Prototype RegexRegistryProtoype;
     static ACLProxyAuth RegexRegistryEntry_;
     int matchProxyAuth(ACLChecklist *);
-    void checkAuthForCaching(ACLChecklist *) const;
     ACLData<char const *> *data;
     char const *type_;
 };
 
 MEMPROXY_CLASS_INLINE(ACLProxyAuth);
 
+#endif /* USE_AUTH */
 #endif /* SQUID_ACLPROXYAUTH_H */

@@ -1,9 +1,5 @@
-/*
- * $Id$
- */
-
-#include "config.h"
-#include "util.h"
+#include "squid.h"
+#include "uudecode.h"
 
 /* aaaack but it's fast and const should make it shared text page. */
 const int pr2six[256] = {

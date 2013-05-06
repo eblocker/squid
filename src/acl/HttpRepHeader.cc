@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
  * ----------------------------------------------------------
@@ -38,8 +36,6 @@
 #include "acl/HttpHeaderData.h"
 #include "acl/Checklist.h"
 #include "HttpReply.h"
-
-
 
 int
 ACLHTTPRepHeaderStrategy::match (ACLData<MatchType> * &data, ACLFilledChecklist *checklist)

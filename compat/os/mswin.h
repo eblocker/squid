@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * AUTHOR: Andrey Shorin <tolsty@tushino.com>
  * AUTHOR: Guido Serassio <serassio@squid-cache.org>
  *
@@ -31,14 +29,10 @@
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
  *
  */
-#ifndef SQUID_CONFIG_H
-#include "config.h"
-#endif
-
 #ifndef SQUID_OS_MSWIN_H
 #define SQUID_OS_MSWIN_H
 
-#ifdef _SQUID_WIN32_
+#if _SQUID_WINDOWS_
 
 #define ACL WindowsACL
 #if defined(_MSC_VER) /* Microsoft C Compiler ONLY */
@@ -63,21 +57,10 @@
 
 #if defined(_MSC_VER) /* Microsoft C Compiler ONLY */
 
-typedef unsigned char uint8_t;
-typedef unsigned short uint16_t;
-typedef unsigned int uint32_t;
-typedef unsigned __int64 uint64_t;
-
-typedef long pid_t;
-
 #if defined __USE_FILE_OFFSET64
-typedef int64_t off_t;
 typedef uint64_t ino_t;
-
 #else
-typedef long off_t;
 typedef unsigned long ino_t;
-
 #endif
 
 #define INT64_MAX _I64_MAX
@@ -105,14 +88,19 @@ typedef unsigned long ino_t;
 #define fileno _fileno
 #define fstat _fstati64
 #endif
+#if !defined(_SQUID_MINGW_) // MinGW defines these properly
+SQUIDCEXTERN int WIN32_ftruncate(int fd, off_t size);
 #define ftruncate WIN32_ftruncate
+SQUIDCEXTERN int WIN32_truncate(const char *pathname, off_t length);
+#define truncate WIN32_truncate
+#endif
 #define getcwd _getcwd
 #define getpid _getpid
 #define getrusage WIN32_getrusage
 #if defined(_MSC_VER) /* Microsoft C Compiler ONLY */
 #define lseek _lseeki64
 #define memccpy _memccpy
-#define mkdir(p) _mkdir(p)
+#define mkdir(p,F) _mkdir((p))
 #define mktemp _mktemp
 #endif
 #define pclose _pclose
@@ -130,7 +118,6 @@ typedef unsigned long ino_t;
 #define strncasecmp _strnicmp
 #define tempnam _tempnam
 #endif
-#define truncate WIN32_truncate
 #define umask _umask
 #define unlink _unlink
 #if defined(_MSC_VER) /* Microsoft C Compiler ONLY */
@@ -211,7 +198,7 @@ struct statfs {
     long    f_spare[6]; /* spare for later */
 };
 
-#ifndef HAVE_GETTIMEOFDAY
+#if !HAVE_GETTIMEOFDAY
 struct timezone {
     int	tz_minuteswest;	/* minutes west of Greenwich */
     int	tz_dsttime;	/* type of dst correction */
@@ -223,7 +210,6 @@ struct timezone {
 #define FD_SETSIZE SQUID_MAXFD
 #endif
 
-#include <stddef.h>
 #include <process.h>
 #include <errno.h>
 #if defined(_MSC_VER) /* Microsoft C Compiler ONLY */
@@ -246,9 +232,12 @@ struct timezone {
 #pragma warning (pop)
 #endif
 #include <io.h>
-#include <stdlib.h>
 
 typedef char * caddr_t;
+
+#ifndef _PATH_DEVNULL
+#define _PATH_DEVNULL "NUL"
+#endif
 
 #undef FD_CLOSE
 #undef FD_OPEN
@@ -361,6 +350,7 @@ SQUIDCEXTERN int _free_osfhnd(int);
 SQUIDCEXTERN THREADLOCAL int ws32_result;
 
 #define strerror(e) WIN32_strerror(e)
+#define HAVE_STRERROR 1
 
 #ifdef __cplusplus
 
@@ -758,5 +748,19 @@ struct rusage {
 
 #undef ACL
 
-#endif /* _SQUID_WIN32_ */
+#if !defined(getpagesize)
+/* Windows may lack getpagesize() prototype */
+SQUIDCEXTERN size_t getpagesize(void);
+#endif
+
+/* gcc doesn't recognize the Windows native 64 bit formatting tags causing
+ * the compile fail, so we must disable the check on native Windows.
+ */
+#if __GNUC__
+#define PRINTF_FORMAT_ARG1
+#define PRINTF_FORMAT_ARG2
+#define PRINTF_FORMAT_ARG3
+#endif
+
+#endif /* _SQUID_WINDOWS_ */
 #endif /* SQUID_OS_MSWIN_H */

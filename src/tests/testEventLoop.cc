@@ -1,29 +1,16 @@
-#include "config.h"
+#define SQUID_UNIT_TEST 1
+#include "squid.h"
 
 #include <cppunit/TestAssert.h>
 
 #include "testEventLoop.h"
+#include "AsyncEngine.h"
 #include "EventLoop.h"
 #include "Mem.h"
-
-#if 0
-#include "AsyncEngine.h"
-#include "base/AsyncCallQueue.h"
-#include "event.h"
-#endif
+#include "SquidTime.h"
+#include "stat.h"
 
 CPPUNIT_TEST_SUITE_REGISTRATION( testEventLoop );
-
-/* stub functions to link successfully */
-void
-shut_down(int)
-{}
-
-void
-reconfigure(int)
-{}
-
-/* end stubs */
 
 /* init legacy static-initialized modules */
 

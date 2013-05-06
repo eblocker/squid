@@ -1,18 +1,13 @@
-#ifndef SQUID_CONFIG_H
-#include "config.h"
-#endif
-
 #ifndef SQUID_OS_FREEBSD_H
 #define SQUID_OS_FREEBSD_H
 
-#ifdef _SQUID_FREEBSD_
+#if _SQUID_FREEBSD_
 
 /****************************************************************************
  *--------------------------------------------------------------------------*
  * DO *NOT* MAKE ANY CHANGES below here unless you know what you're doing...*
  *--------------------------------------------------------------------------*
  ****************************************************************************/
-
 
 #if USE_ASYNC_IO && defined(LINUXTHREADS)
 #define _SQUID_LINUX_THREADS_

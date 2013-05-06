@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 28    Access Control
  * AUTHOR: Robert Collins
  *
@@ -36,6 +34,8 @@
 
 #include "squid.h"
 #include "acl/IntRange.h"
+#include "cache_cf.h"
+#include "Debug.h"
 #include "wordlist.h"
 #include "Parsing.h"
 
@@ -53,8 +53,10 @@ ACLIntRange::parse()
         char *b = strchr(a, '-');
         unsigned short port1, port2;
 
-        if (b)
-            *b++ = '\0';
+        if (b) {
+            *b = '\0';
+            ++b;
+        }
 
         port1 = xatos(a);
 
@@ -69,7 +71,7 @@ ACLIntRange::parse()
             temp.end = port2+1;
             ranges.push_back(temp);
         } else {
-            debugs(28, 0, "ACLIntRange::parse: Invalid port value");
+            debugs(28, DBG_CRITICAL, "ACLIntRange::parse: Invalid port value");
             self_destruct();
         }
     }

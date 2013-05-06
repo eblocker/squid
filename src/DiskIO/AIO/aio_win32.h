@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * AUTHOR: Guido Serassio <serassio@squid-cache.org>
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
@@ -34,11 +32,9 @@
 #ifndef __WIN32_AIO_H__
 #define __WIN32_AIO_H__
 
-#include "config.h"
-
 #if USE_DISKIO_AIO
 
-#ifdef _SQUID_CYGWIN_
+#if _SQUID_CYGWIN_
 #include "squid_windows.h"
 #endif
 
@@ -46,7 +42,7 @@
 typedef int64_t	off64_t;
 #endif
 
-#ifdef _SQUID_MSWIN_
+#if _SQUID_MSWIN_
 
 union sigval {
     int sival_int; /* integer value */

@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  * DEBUG: section 63    Low Level Memory Pool Management
  * AUTHOR: Alex Rousskov, Andres Kroonmaa, Robert Collins
  *
@@ -33,7 +31,7 @@
  *
  */
 
-#include "config.h"
+#include "squid.h"
 #if HAVE_ASSERT_H
 #include <assert.h>
 #endif
@@ -243,7 +241,7 @@ MemImplementingAllocator::alloc()
 }
 
 void
-MemImplementingAllocator::free(void *obj)
+MemImplementingAllocator::freeOne(void *obj)
 {
     assert(obj != NULL);
     (void) VALGRIND_CHECK_MEM_IS_ADDRESSABLE(obj, obj_size);
@@ -302,7 +300,7 @@ memPoolGetGlobalStats(MemPoolGlobalStats * stats)
     iter = memPoolIterate();
     while ((pool = memPoolIterateNext(iter))) {
         if (pool->getStats(&pp_stats, 1) > 0)
-            pools_inuse++;
+            ++pools_inuse;
     }
     memPoolIterateDone(&iter);
 
@@ -356,9 +354,9 @@ MemAllocatorProxy::alloc()
 }
 
 void
-MemAllocatorProxy::free(void *address)
+MemAllocatorProxy::freeOne(void *address)
 {
-    getAllocator()->free(address);
+    getAllocator()->freeOne(address);
     /* TODO: check for empty, and if so, if the default type has altered,
      * switch
      */

@@ -31,14 +31,15 @@
 #ifndef SQUID_CLIENTSIDEREPLY_H
 #define SQUID_CLIENTSIDEREPLY_H
 
-#include "RefCount.h"
-#include "HttpHeader.h"
-#include "clientStream.h"
-#include "StoreClient.h"
 #include "client_side_request.h"
+#include "clientStream.h"
+#include "HttpHeader.h"
+#include "RefCount.h"
+#include "RequestFlags.h"
+#include "StoreClient.h"
 
 class ErrorState;
-class IpAddress;
+#include "ip/forward.h"
 
 /* XXX make static method */
 
@@ -71,9 +72,18 @@ public:
     void identifyFoundObject(StoreEntry *entry);
     int storeOKTransferDone() const;
     int storeNotOKTransferDone() const;
-
-    void setReplyToError(err_type, http_status, const HttpRequestMethod&, char const *, IpAddress &, HttpRequest *, const char *, AuthUserRequest *);
-    void createStoreEntry(const HttpRequestMethod& m, request_flags flags);
+    /// replaces current response store entry with the given one
+    void setReplyToStoreEntry(StoreEntry *e);
+    /// builds error using clientBuildError() and calls setReplyToError() below
+    void setReplyToError(err_type, http_status, const HttpRequestMethod&, char const *, Ip::Address &, HttpRequest *, const char *,
+#if USE_AUTH
+                         Auth::UserRequest::Pointer);
+#else
+                         void * unused);
+#endif
+    /// creates a store entry for the reply and appends err to it
+    void setReplyToError(const HttpRequestMethod& method, ErrorState *err);
+    void createStoreEntry(const HttpRequestMethod& m, RequestFlags flags);
     void removeStoreReference(store_client ** scp, StoreEntry ** ep);
     void removeClientStoreReference(store_client **scp, ClientHttpRequest *http);
     void startError(ErrorState * err);
@@ -111,7 +121,6 @@ public:
     clientStreamNode *ourNode;	/* This will go away if/when this file gets refactored some more */
 
 private:
-    CBDATA_CLASS(clientReplyContext);
     clientStreamNode *getNextNode() const;
     void makeThisHead();
     bool errorInStream(StoreIOBuffer const &result, size_t const &sizeToProcess)const ;
@@ -121,8 +130,8 @@ private:
     StoreIOBuffer holdingBuffer;
     HttpReply *reply;
     void processReplyAccess();
-    static PF ProcessReplyAccessResult;
-    void processReplyAccessResult(bool accessAllowed);
+    static ACLCB ProcessReplyAccessResult;
+    void processReplyAccessResult(const allow_t &accessAllowed);
     void cloneReply();
     void buildReplyHeader ();
     bool alwaysAllowResponse(http_status sline) const;
@@ -144,6 +153,8 @@ private:
     StoreEntry *old_entry;
     store_client *old_sc;	/* ... for entry to be validated */
     bool deleting;
+
+    CBDATA_CLASS(clientReplyContext);
 };
 
 #endif /* SQUID_CLIENTSIDEREPLY_H */

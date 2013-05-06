@@ -1,7 +1,4 @@
-
 /*
- * $Id$
- *
  * DEBUG: section 21    Integer functions
  * AUTHOR: Harvest Derived
  *
@@ -34,6 +31,11 @@
  */
 
 #include "squid.h"
+
+#if HAVE_MATH_H
+#include <math.h>
+#endif
+
 int
 isPowTen(int count)
 {

@@ -1,7 +1,3 @@
-#ifndef SQUID_CONFIG_H
-#include "config.h"
-#endif
-
 #ifndef _SQUID_STDVARARGS_H
 #define _SQUID_STDVARARGS_H
 
@@ -38,7 +34,7 @@
 #endif /* HAVE_CSTDARG */
 
 /* Make sure syslog goes after stdarg/varargs */
-#ifdef HAVE_SYSLOG_H
+#if HAVE_SYSLOG_H
 #include <syslog.h>
 #endif
 

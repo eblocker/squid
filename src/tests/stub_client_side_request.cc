@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * AUTHOR: Robert Collins
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
@@ -31,10 +29,10 @@
  *
  */
 
+#include "squid.h"
 #include "client_side_request.h"
 #include "Store.h"
 
-#ifndef _USE_INLINE_
+#if !_USE_INLINE_
 #include "client_side_request.cci"
 #endif
-

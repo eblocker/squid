@@ -20,24 +20,26 @@ DEB_CONFIGURE_EXTRA_FLAGS := --datadir=/usr/share/squid3 \
 		--with-cppunit-basedir=/usr \
 		--enable-inline \
 		--enable-async-io=8 \
-		--enable-storeio="ufs,aufs,diskd" \
+		--enable-storeio="ufs,aufs,diskd,rock" \
 		--enable-removal-policies="lru,heap" \
 		--enable-delay-pools \
 		--enable-cache-digests \
 		--enable-underscores \
 		--enable-icap-client \
 		--enable-follow-x-forwarded-for \
-		--enable-auth="basic,digest,ntlm,negotiate" \
-		--enable-basic-auth-helpers="LDAP,MSNT,NCSA,PAM,SASL,SMB,YP,DB,POP3,getpwnam,squid_radius_auth,multi-domain-NTLM" \
-		--enable-ntlm-auth-helpers="smb_lm," \
-		--enable-digest-auth-helpers="ldap,password" \
-		--enable-negotiate-auth-helpers="squid_kerb_auth" \
-		--enable-external-acl-helpers="ip_user,ldap_group,session,unix_group,wbinfo_group" \
-		--enable-arp-acl \
+		--enable-auth-basic="DB,fake,getpwnam,LDAP,MSNT,MSNT-multi-domain,NCSA,NIS,PAM,POP3,RADIUS,SASL,SMB" \
+		--enable-auth-digest="file,LDAP" \
+		--enable-auth-negotiate="kerberos,wrapper" \
+		--enable-auth-ntlm="fake,smb_lm" \
+		--enable-external-acl-helpers="file_userip,kerberos_ldap_group,LDAP_group,session,SQL_session,unix_group,wbinfo_group" \
+		--enable-url-rewrite-helpers="fake" \
+		--enable-eui \
 		--enable-esi \
+		--enable-icmp \
 		--enable-zph-qos \
-		--enable-wccpv2 \
+		--enable-ecap \
 		--disable-translation \
+		--with-swapdir=/var/spool/squid3 \
 		--with-logdir=/var/log/squid3 \
 		--with-pidfile=/var/run/squid3.pid \
 		--with-filedescriptors=65536 \
@@ -48,12 +50,14 @@ DEB_HOST_ARCH_OS := $(shell dpkg-architecture -qDEB_HOST_ARCH_OS 2>/dev/null)
 
 ifeq ($(DEB_HOST_ARCH_OS), kfreebsd)
 		DEB_CONFIGURE_EXTRA_FLAGS += --enable-kqueue
-else
+endif
+ifeq ($(DEB_HOST_ARCH_OS), linux)
 		DEB_CONFIGURE_EXTRA_FLAGS += --enable-linux-netfilter
 endif
 
 DEB_MAKE_CLEAN_TARGET = distclean
 
+DEB_FIXPERMS_EXCLUDE = /usr/lib/squid3/pinger
 
 install/squid3::
 	install -m 755 -g root -d $(INSTALLDIR)/usr/lib/cgi-bin
@@ -61,14 +65,6 @@ install/squid3::
 	mv $(INSTALLDIR)/usr/lib/squid3/cachemgr.cgi $(INSTALLDIR)/usr/lib/cgi-bin/cachemgr.cgi
 	mv $(INSTALLDIR)/usr/sbin/squid $(INSTALLDIR)/usr/sbin/squid3
 	mv $(INSTALLDIR)/usr/share/man/man8/squid.8 $(INSTALLDIR)/usr/share/man/man8/squid3.8
-	mv $(INSTALLDIR)/usr/share/man/man8/pam_auth.8 $(INSTALLDIR)/usr/share/man/man8/squid3_pam_auth.8
-	mv $(INSTALLDIR)/usr/share/man/man8/squid_ldap_auth.8 $(INSTALLDIR)/usr/share/man/man8/squid3_ldap_auth.8
-	mv $(INSTALLDIR)/usr/share/man/man8/squid_ldap_group.8 $(INSTALLDIR)/usr/share/man/man8/squid3_ldap_group.8
-	mv $(INSTALLDIR)/usr/share/man/man8/squid_session.8 $(INSTALLDIR)/usr/share/man/man8/squid3_session.8
-	mv $(INSTALLDIR)/usr/share/man/man8/squid_unix_group.8 $(INSTALLDIR)/usr/share/man/man8/squid3_unix_group.8
-	mv $(INSTALLDIR)/usr/share/man/man8/ncsa_auth.8 $(INSTALLDIR)/usr/share/man/man8/squid3_ncsa_auth.8
-	mv $(INSTALLDIR)/usr/share/man/man8/squid_db_auth.8 $(INSTALLDIR)/usr/share/man/man8/squid3_db_auth.8
-	mv $(INSTALLDIR)/usr/share/man/man8/squid_radius_auth.8 $(INSTALLDIR)/usr/share/man/man8/squid3_radius_auth.8
 	install -m 755 -g root -d $(INSTALLDIR)/etc/init.d
 	install -m 755 -g root -d $(INSTALLDIR)/etc/logrotate.d
 	install -m 755 -g root -d $(INSTALLDIR)/etc/resolvconf
@@ -84,6 +80,8 @@ install/squid3::
 	install -m 750 -o proxy -g proxy -d debian/squid3/var/log/squid3
 	install -m 750 -o proxy -g proxy -d debian/squid3/var/spool/squid3
 	install -m 755 -g root -d $(INSTALLDIR)/usr/share/man/man1
+	mv $(INSTALLDIR)/usr/bin/purge $(INSTALLDIR)/usr/bin/squid-purge
+	chmod 4755 $(INSTALLDIR)/usr/lib/squid3/pinger
 
 clean::
 	# nothing to do

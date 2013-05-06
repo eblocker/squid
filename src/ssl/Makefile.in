@@ -43,7 +43,15 @@ EXTRA_PROGRAMS = ssl_crtd$(EXEEXT)
 libexec_PROGRAMS = $(am__EXEEXT_1)
 subdir = src/ssl
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
-am__aclocal_m4_deps = $(top_srcdir)/acinclude.m4 \
+am__aclocal_m4_deps = $(top_srcdir)/acinclude/init.m4 \
+	$(top_srcdir)/acinclude/squid-util.m4 \
+	$(top_srcdir)/acinclude/compiler-flags.m4 \
+	$(top_srcdir)/acinclude/os-deps.m4 \
+	$(top_srcdir)/acinclude/krb5.m4 $(top_srcdir)/acinclude/pam.m4 \
+	$(top_srcdir)/acinclude/pkg.m4 \
+	$(top_srcdir)/acinclude/lib-checks.m4 \
+	$(top_srcdir)/acinclude/ax_cxx_compile_stdcxx_0x.m4 \
+	$(top_srcdir)/acinclude/ax_cxx_0x_types.m4 \
 	$(top_srcdir)/configure.ac
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
@@ -54,11 +62,14 @@ CONFIG_CLEAN_VPATH_FILES =
 LTLIBRARIES = $(noinst_LTLIBRARIES)
 libsslsquid_la_LIBADD =
 am__libsslsquid_la_SOURCES_DIST = context_storage.cc context_storage.h \
-	Config.cc Config.h ErrorDetail.cc ErrorDetail.h helper.cc \
+	Config.cc Config.h ErrorDetail.cc ErrorDetail.h \
+	ErrorDetailManager.cc ErrorDetailManager.h ProxyCerts.h \
+	ServerBump.cc ServerBump.h support.cc support.h helper.cc \
 	helper.h
 @USE_SSL_CRTD_TRUE@am__objects_1 = helper.lo
 am_libsslsquid_la_OBJECTS = context_storage.lo Config.lo \
-	ErrorDetail.lo $(am__objects_1)
+	ErrorDetail.lo ErrorDetailManager.lo ServerBump.lo support.lo \
+	$(am__objects_1)
 libsslsquid_la_OBJECTS = $(am_libsslsquid_la_OBJECTS)
 libsslutil_la_LIBADD =
 am_libsslutil_la_OBJECTS = gadgets.lo crtd_message.lo
@@ -72,9 +83,10 @@ am__ssl_crtd_SOURCES_DIST = ssl_crtd.cc certificate_db.cc \
 @USE_SSL_CRTD_TRUE@	certificate_db.$(OBJEXT)
 ssl_crtd_OBJECTS = $(am_ssl_crtd_OBJECTS)
 am__DEPENDENCIES_1 =
-@USE_SSL_CRTD_TRUE@ssl_crtd_DEPENDENCIES = $(am__DEPENDENCIES_1) \
-@USE_SSL_CRTD_TRUE@	../../compat/libcompat.la \
-@USE_SSL_CRTD_TRUE@	../../lib/libmiscutil.a
+@ENABLE_XPROF_STATS_TRUE@am__DEPENDENCIES_2 = $(top_builddir)/lib/profiler/libprofiler.la
+am__DEPENDENCIES_3 = $(am__DEPENDENCIES_2)
+@USE_SSL_CRTD_TRUE@ssl_crtd_DEPENDENCIES = libsslutil.la \
+@USE_SSL_CRTD_TRUE@	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_3)
 DEFAULT_INCLUDES = 
 depcomp = $(SHELL) $(top_srcdir)/cfgaux/depcomp
 am__depfiles_maybe = depfiles
@@ -120,9 +132,8 @@ AUTOHEADER = @AUTOHEADER@
 AUTOMAKE = @AUTOMAKE@
 AWK = @AWK@
 BASIC_AUTH_HELPERS = @BASIC_AUTH_HELPERS@
+BZR = @BZR@
 CACHE_EFFECTIVE_USER = @CACHE_EFFECTIVE_USER@
-CACHE_HTTP_PORT = @CACHE_HTTP_PORT@
-CACHE_ICP_PORT = @CACHE_ICP_PORT@
 CC = @CC@
 CCDEPMODE = @CCDEPMODE@
 CFLAGS = @CFLAGS@
@@ -137,8 +148,10 @@ CXXCPP = @CXXCPP@
 CXXDEPMODE = @CXXDEPMODE@
 CXXFLAGS = @CXXFLAGS@
 CYGPATH_W = @CYGPATH_W@
+DEFAULT_HOSTS = @DEFAULT_HOSTS@
 DEFAULT_LOG_DIR = @DEFAULT_LOG_DIR@
-DEFAULT_PIDFILE = @DEFAULT_PIDFILE@
+DEFAULT_PID_FILE = @DEFAULT_PID_FILE@
+DEFAULT_SWAP_DIR = @DEFAULT_SWAP_DIR@
 DEFS = @DEFS@
 DEPDIR = @DEPDIR@
 DIGEST_AUTH_HELPERS = @DIGEST_AUTH_HELPERS@
@@ -149,16 +162,18 @@ DISK_OS_LIBS = @DISK_OS_LIBS@
 DISK_PROGRAMS = @DISK_PROGRAMS@
 DSYMUTIL = @DSYMUTIL@
 DUMPBIN = @DUMPBIN@
-ECAPLIB = @ECAPLIB@
 ECAP_LIBS = @ECAP_LIBS@
 ECHO_C = @ECHO_C@
 ECHO_N = @ECHO_N@
 ECHO_T = @ECHO_T@
 EGREP = @EGREP@
 EPOLL_LIBS = @EPOLL_LIBS@
+EUILIB = @EUILIB@
 EXEEXT = @EXEEXT@
 EXPATLIB = @EXPATLIB@
 EXTERNAL_ACL_HELPERS = @EXTERNAL_ACL_HELPERS@
+EXT_LIBECAP_CFLAGS = @EXT_LIBECAP_CFLAGS@
+EXT_LIBECAP_LIBS = @EXT_LIBECAP_LIBS@
 FALSE = @FALSE@
 FGREP = @FGREP@
 GREP = @GREP@
@@ -170,7 +185,11 @@ INSTALL_DATA = @INSTALL_DATA@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
 INSTALL_SCRIPT = @INSTALL_SCRIPT@
 INSTALL_STRIP_PROGRAM = @INSTALL_STRIP_PROGRAM@
+KRB5INCS = @KRB5INCS@
+KRB5LIBS = @KRB5LIBS@
+LBERLIB = @LBERLIB@
 LD = @LD@
+LDAPLIB = @LDAPLIB@
 LDFLAGS = @LDFLAGS@
 LIBADD_DL = @LIBADD_DL@
 LIBADD_DLD_LINK = @LIBADD_DLD_LINK@
@@ -182,11 +201,10 @@ LIBS = @LIBS@
 LIBSASL = @LIBSASL@
 LIBTOOL = @LIBTOOL@
 LIB_DB = @LIB_DB@
-LIB_LBER = @LIB_LBER@
-LIB_LDAP = @LIB_LDAP@
 LIPO = @LIPO@
 LN = @LN@
 LN_S = @LN_S@
+LOG_DAEMON_HELPERS = @LOG_DAEMON_HELPERS@
 LTDLDEPS = @LTDLDEPS@
 LTDLINCL = @LTDLINCL@
 LTDLOPEN = @LTDLOPEN@
@@ -206,7 +224,6 @@ NMEDIT = @NMEDIT@
 NTLM_AUTH_HELPERS = @NTLM_AUTH_HELPERS@
 OBJDUMP = @OBJDUMP@
 OBJEXT = @OBJEXT@
-OPT_DEFAULT_HOSTS = @OPT_DEFAULT_HOSTS@
 OTOOL = @OTOOL@
 OTOOL64 = @OTOOL64@
 PACKAGE = @PACKAGE@
@@ -218,7 +235,12 @@ PACKAGE_URL = @PACKAGE_URL@
 PACKAGE_VERSION = @PACKAGE_VERSION@
 PATH_SEPARATOR = @PATH_SEPARATOR@
 PERL = @PERL@
+PKG_CONFIG = @PKG_CONFIG@
+PKG_CONFIG_LIBDIR = @PKG_CONFIG_LIBDIR@
+PKG_CONFIG_PATH = @PKG_CONFIG_PATH@
 PO2HTML = @PO2HTML@
+PO2TEXT = @PO2TEXT@
+POD2MAN = @POD2MAN@
 RANLIB = @RANLIB@
 REGEXLIB = @REGEXLIB@
 REPL_LIBS = @REPL_LIBS@
@@ -240,7 +262,9 @@ STORE_LIBS_TO_ADD = @STORE_LIBS_TO_ADD@
 STORE_LIBS_TO_BUILD = @STORE_LIBS_TO_BUILD@
 STORE_TESTS = @STORE_TESTS@
 STRIP = @STRIP@
+TR = @TR@
 TRUE = @TRUE@
+URL_REWRITE_HELPERS = @URL_REWRITE_HELPERS@
 VERSION = @VERSION@
 WIN32_PSAPI = @WIN32_PSAPI@
 XMLLIB = @XMLLIB@
@@ -253,6 +277,7 @@ abs_top_srcdir = @abs_top_srcdir@
 ac_ct_CC = @ac_ct_CC@
 ac_ct_CXX = @ac_ct_CXX@
 ac_ct_DUMPBIN = @ac_ct_DUMPBIN@
+ac_krb5_config = @ac_krb5_config@
 am__include = @am__include@
 am__leading_dot = @am__leading_dot@
 am__quote = @am__quote@
@@ -307,9 +332,17 @@ AM_CFLAGS = $(SQUID_CFLAGS)
 AM_CXXFLAGS = $(SQUID_CXXFLAGS)
 CLEANFILES = testHeaders
 TESTS = testHeaders
-INCLUDES = -I$(top_srcdir) -I$(top_srcdir)/include -I$(top_srcdir)/src \
-	-I$(top_builddir)/include $(SQUID_CPPUNIT_INC) $(am__append_1)
+INCLUDES = -I$(top_srcdir) -I$(top_srcdir)/include -I$(top_srcdir)/lib \
+	-I$(top_srcdir)/src -I$(top_builddir)/include \
+	$(SQUID_CPPUNIT_INC) $(KRB5INCS) $(am__append_1)
+@ENABLE_XPROF_STATS_FALSE@LIBPROFILER = 
+@ENABLE_XPROF_STATS_TRUE@LIBPROFILER = $(top_builddir)/lib/profiler/libprofiler.la
+COMPAT_LIB = -L$(top_builddir)/compat -lcompat-squid $(LIBPROFILER)
+subst_perlshell = sed -e 's,[@]PERL[@],$(PERL),g' <$(srcdir)/$@.pl.in >$@ || ($(RM) -f $@ ; exit 1)
 noinst_LTLIBRARIES = libsslsquid.la libsslutil.la
+EXTRA_DIST = \
+	ssl_crtd.8
+
 @USE_SSL_CRTD_FALSE@SSL_CRTD = 
 @USE_SSL_CRTD_TRUE@SSL_CRTD = ssl_crtd
 @USE_SSL_CRTD_FALSE@SSL_CRTD_SOURCE = 
@@ -324,6 +357,13 @@ libsslsquid_la_SOURCES = \
 	Config.h \
 	ErrorDetail.cc \
 	ErrorDetail.h \
+	ErrorDetailManager.cc \
+	ErrorDetailManager.h \
+	ProxyCerts.h \
+	ServerBump.cc \
+	ServerBump.h \
+	support.cc \
+	support.h \
 	\
 	$(SSL_CRTD_SOURCE)
 
@@ -334,7 +374,7 @@ libsslutil_la_SOURCES = \
 	crtd_message.h
 
 @USE_SSL_CRTD_TRUE@ssl_crtd_SOURCES = ssl_crtd.cc certificate_db.cc certificate_db.h
-@USE_SSL_CRTD_TRUE@ssl_crtd_LDADD = $(SSLLIB) -lsslutil ../../compat/libcompat.la ../../lib/libmiscutil.a
+@USE_SSL_CRTD_TRUE@ssl_crtd_LDADD = libsslutil.la $(SSLLIB) $(COMPAT_LIB)
 all: all-am
 
 .SUFFIXES:
@@ -446,12 +486,15 @@ distclean-compile:
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Config.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ErrorDetail.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ErrorDetailManager.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ServerBump.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/certificate_db.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/context_storage.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/crtd_message.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/gadgets.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/helper.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ssl_crtd.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/support.Plo@am__quote@
 
 .cc.o:
 @am__fastdepCXX_TRUE@	$(CXXCOMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<

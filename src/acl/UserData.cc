@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 28    Access Control
  * AUTHOR: Duane Wessels
  *
@@ -37,6 +35,7 @@
 #include "squid.h"
 #include "acl/UserData.h"
 #include "acl/Checklist.h"
+#include "Debug.h"
 #include "wordlist.h"
 #include "ConfigParser.h"
 
@@ -159,7 +158,6 @@ ACLUserData::parse()
         names = names->insert(xstrdup(t), splaystrcmp);
     }
 }
-
 
 bool
 ACLUserData::empty() const

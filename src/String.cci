@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 67    String
  * AUTHOR: Duane Wessels
  *
@@ -32,19 +30,17 @@
  *
  */
 
-#include "config.h"
 #include <cstring>
 
-#ifdef HAVE_STDINT_H
-#include <stdint.h> //for INT_MAX
+#if HAVE_STDINT_H
+#include <stdint.h>
 #else /* HAVE_STDINT_H */
 #ifndef INT_MAX
 #define INT_MAX 1<<31 //hack but a safe bet
 #endif /* INT_MAX */
 #endif /* HAVE_STDINT_H */
 
-
-String::String() : size_(0), len_(0), buf_ (NULL)
+String::String() : size_(0), len_(0), buf_(NULL)
 {
 #if DEBUGSTRINGS
     StringRegistry::Instance().add(this);
@@ -87,7 +83,6 @@ String::operator [](unsigned int aPos) const
     return buf_[aPos];
 }
 
-
 /// compare NULL and empty strings because str*cmp() may fail on NULL strings
 /// and because we need to return consistent results for strncmp(count == 0).
 bool
@@ -106,9 +101,8 @@ String::nilCmp(const bool thisIsNilOrEmpty, const bool otherIsNilOrEmpty, int &r
     return true;
 }
 
-
 int
-String::cmp (char const *aString) const
+String::cmp(char const *aString) const
 {
     int result = 0;
     if (nilCmp(!size(), (!aString || !*aString), result))
@@ -118,7 +112,7 @@ String::cmp (char const *aString) const
 }
 
 int
-String::cmp (char const *aString, String::size_type count) const
+String::cmp(char const *aString, String::size_type count) const
 {
     int result = 0;
     if (nilCmp((!size() || !count), (!aString || !*aString || !count), result))
@@ -128,7 +122,7 @@ String::cmp (char const *aString, String::size_type count) const
 }
 
 int
-String::cmp (String const &aString) const
+String::cmp(String const &aString) const
 {
     int result = 0;
     if (nilCmp(!size(), !aString.size(), result))
@@ -162,7 +156,6 @@ String::caseCmp(const String &str) const
 {
     return caseCmp(str.rawBuf(),str.size());
 }
-
 
 void
 String::set(char const *loc, char const ch)
@@ -200,4 +193,10 @@ operator<<(std::ostream& os, String const &aString)
 {
     os.write(aString.rawBuf(),aString.size());
     return os;
+}
+
+bool
+operator<(const String &a, const String &b)
+{
+    return a.cmp(b) < 0;
 }

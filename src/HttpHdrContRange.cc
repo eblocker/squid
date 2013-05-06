@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  * DEBUG: section 68    HTTP Content-Range Header
  * AUTHOR: Alex Rousskov
  *
@@ -34,7 +32,11 @@
  */
 
 #include "squid.h"
+#include "Debug.h"
+#include "enums.h"
 #include "HttpHdrContRange.h"
+#include "HttpHeaderTools.h"
+#include "Mem.h"
 
 /*
  *    Currently only byte ranges are supported
@@ -47,7 +49,6 @@
  *    byte-range-resp-spec = first-byte-pos "-" last-byte-pos
  *    entity-length        = 1*DIGIT
  */
-
 
 /* local constants */
 #define range_spec_unknown (-1)
@@ -90,7 +91,7 @@ httpHdrRangeRespSpecParseInit(HttpHdrRangeSpec * spec, const char *field, int fl
         return 0;
     }
 
-    p++;
+    ++p;
 
     /* do we have last-pos ? */
     if (p - field >= flen) {
@@ -129,7 +130,7 @@ httpHdrRangeRespSpecPackInto(const HttpHdrRangeSpec * spec, Packer * p)
     if (!known_spec(spec->offset) || !known_spec(spec->length))
         packerPrintf(p, "*");
     else
-        packerPrintf(p, "bytes %"PRId64"-%"PRId64,
+        packerPrintf(p, "bytes %" PRId64 "-%" PRId64,
                      spec->offset, spec->offset + spec->length - 1);
 }
 
@@ -182,7 +183,7 @@ httpHdrContRangeParseInit(HttpHdrContRange * range, const char *str)
     else if (!httpHdrRangeRespSpecParseInit(&range->spec, str, p - str))
         return 0;
 
-    p++;
+    ++p;
 
     if (*p == '*')
         range->elength = range_spec_unknown;
@@ -233,7 +234,7 @@ httpHdrContRangePackInto(const HttpHdrContRange * range, Packer * p)
     if (!known_spec(range->elength))
         packerPrintf(p, "/*");
     else
-        packerPrintf(p, "/%"PRId64, range->elength);
+        packerPrintf(p, "/%" PRId64, range->elength);
 }
 
 void

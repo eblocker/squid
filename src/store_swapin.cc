@@ -1,7 +1,4 @@
-
 /*
- * $Id$
- *
  * DEBUG: section 20    Storage Manager Swapin Functions
  * AUTHOR: Duane Wessels
  *
@@ -34,8 +31,11 @@
  */
 
 #include "squid.h"
+#include "globals.h"
+#include "StatCounters.h"
 #include "StoreClient.h"
 #include "Store.h"
+#include "store_swapin.h"
 
 static StoreIOState::STIOCB storeSwapInFileClosed;
 static StoreIOState::STFNCB storeSwapInFileNotify;
@@ -44,24 +44,26 @@ void
 storeSwapInStart(store_client * sc)
 {
     StoreEntry *e = sc->entry;
-    assert(e->mem_status == NOT_IN_MEMORY);
 
     if (!EBIT_TEST(e->flags, ENTRY_VALIDATED)) {
         /* We're still reloading and haven't validated this entry yet */
         return;
     }
 
+    if (e->mem_status != NOT_IN_MEMORY)
+        debugs(20, 3, HERE << "already IN_MEMORY");
+
     debugs(20, 3, "storeSwapInStart: called for : " << e->swap_dirn << " " <<
            std::hex << std::setw(8) << std::setfill('0') << std::uppercase <<
            e->swap_filen << " " <<  e->getMD5Text());
 
     if (e->swap_status != SWAPOUT_WRITING && e->swap_status != SWAPOUT_DONE) {
-        debugs(20, 1, "storeSwapInStart: bad swap_status (" << swapStatusStr[e->swap_status] << ")");
+        debugs(20, DBG_IMPORTANT, "storeSwapInStart: bad swap_status (" << swapStatusStr[e->swap_status] << ")");
         return;
     }
 
     if (e->swap_filen < 0) {
-        debugs(20, 1, "storeSwapInStart: swap_filen < 0");
+        debugs(20, DBG_IMPORTANT, "storeSwapInStart: swap_filen < 0");
         return;
     }
 
@@ -82,7 +84,7 @@ storeSwapInFileClosed(void *data, int errflag, StoreIOState::Pointer self)
         sc->callback(0, errflag ? true : false);
     }
 
-    statCounter.swap.ins++;
+    ++statCounter.swap.ins;
 }
 
 static void
@@ -95,6 +97,7 @@ storeSwapInFileNotify(void *data, int errflag, StoreIOState::Pointer self)
            e->swap_dirn << " to " << sc->swapin_sio->swap_filen << "/" <<
            sc->swapin_sio->swap_dirn);
 
+    assert(e->swap_filen < 0); // if this fails, call SwapDir::disconnect(e)
     e->swap_filen = sc->swapin_sio->swap_filen;
     e->swap_dirn = sc->swapin_sio->swap_dirn;
 }

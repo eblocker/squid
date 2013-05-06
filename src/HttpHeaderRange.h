@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
  * ----------------------------------------------------------
@@ -34,10 +32,10 @@
 #ifndef SQUID_HTTPHEADERRANGE_H
 #define SQUID_HTTPHEADERRANGE_H
 
-#include "MemPool.h"
-#include "Range.h"
 #include "Array.h"
+#include "MemPool.h"
 #include "Packer.h"
+#include "Range.h"
 #include "SquidString.h"
 
 class HttpReply;
@@ -48,7 +46,7 @@ class HttpHdrRangeSpec
 
 public:
     MEMPROXY_CLASS(HttpHdrRangeSpec);
-    typedef Range<int64_t> HttpRange;
+    typedef Range<int64_t, uint64_t> HttpRange;
     static int64_t const UnknownPosition;
 
     HttpHdrRangeSpec();
@@ -103,7 +101,7 @@ public:
     bool willBeComplex() const;
     int64_t firstOffset() const;
     int64_t lowestOffset(int64_t) const;
-    bool offsetLimitExceeded() const;
+    bool offsetLimitExceeded(const int64_t limit) const;
     bool contains(HttpHdrRangeSpec& r) const;
     Vector<HttpHdrRangeSpec *> specs;
 

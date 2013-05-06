@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
  * ----------------------------------------------------------
  *
@@ -48,7 +46,6 @@ public:
     virtual DiskIOStrategy* createStrategy();
 
 private:
-    static void Stats(StoreEntry * sentry);
     static DiskDaemonDiskIOModule Instance;
     bool initialised;
     void registerWithCacheManager(void);

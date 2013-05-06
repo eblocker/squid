@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  * DEBUG: section 81    CPU Profiling Routines
  * AUTHOR: Andres Kroonmaa
  *
@@ -35,10 +33,11 @@
 
 #include "squid.h"
 
-#ifdef USE_XPROF_STATS
+#if USE_XPROF_STATS
 
-#include "CacheManager.h"
 #include "event.h"
+#include "mgr/Registration.h"
+#include "profiler/Profiler.h"
 #include "SquidMath.h"
 #include "Store.h"
 
@@ -100,13 +99,11 @@ xprof_comp(xprof_stats_node ** ii, xprof_stats_node ** jj)
 static void
 xprof_sorthist(TimersArray * xprof_list)
 {
-    int i;
-
-    for (i = 0; i < XPROF_LAST; i++) {
+    for (int i = 0; i < XPROF_LAST; ++i) {
         sortlist[i] = xprof_list[i];
     }
 
-    qsort(&sortlist[XPROF_hash_lookup], XPROF_LAST - XPROF_hash_lookup, sizeof(xprof_stats_node *), (QS *) xprof_comp);
+    qsort(&sortlist[XPROF_PROF_UNACCOUNTED+1], XPROF_LAST - XPROF_PROF_UNACCOUNTED+1, sizeof(xprof_stats_node *), (QS *) xprof_comp);
 }
 
 static double time_frame;
@@ -153,7 +150,7 @@ xprof_summary_item(StoreEntry * sentry, char const *descr, TimersArray * list)
     storeAppendPrintf(sentry,
                       "Probe Name\t  Events\t cumulated time \t best case \t average \t worst case\t Rate / sec \t %% in int\n");
 
-    for (i = 0; i < XPROF_LAST; i++) {
+    for (i = 0; i < XPROF_LAST; ++i) {
         if (!hist[i]->name)
             continue;
 
@@ -195,7 +192,7 @@ xprof_average(TimersArray ** list, int secs)
 
     now = get_tick();
 
-    for (i = 0; i < XPROF_LAST; i++) {
+    for (i = 0; i < XPROF_LAST; ++i) {
         hist[i]->name = head[i]->name;
         hist[i]->accu.summ += head[i]->accu.summ;
         hist[i]->accu.count += head[i]->accu.count;	/* accumulate multisec */
@@ -270,8 +267,7 @@ xprof_chk_overhead(int samples)
 static void
 xprofRegisterWithCacheManager(void)
 {
-    CacheManager::GetInstance()->
-    registerAction("cpu_profile", "CPU Profiling Stats", xprof_summary, 0, 1);
+    Mgr::RegisterAction("cpu_profile", "CPU Profiling Stats", xprof_summary, 0, 1);
 }
 
 // FIXME:
@@ -298,7 +294,7 @@ xprof_event(void *data)
     xprof_Init();
     xprof_delta = now - xprof_start_t;
     xprof_start_t = now;
-    xprof_events++;
+    ++xprof_events;
 
     if (!xprof_average_delta)
         xprof_average_delta = xprof_delta;

@@ -30,13 +30,10 @@
  *
  ***************************************************************************/
 
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif /* HAVE_CONFIG_H */
+#include "squid.h"
 
 #include <stdio.h>
 #include "snmp_api_error.h"
-
 
 /***************************************************************************
  *
@@ -63,7 +60,6 @@ static const char *api_errors[17] = {
     "Unable to parse PDU",
     "Packet Error",
     "No Response From Host",
-
 
     "Unknown Error"
 };

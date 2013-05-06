@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * AUTHOR: Robert Collins
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
@@ -34,7 +32,7 @@
 
 #include "squid.h"
 
-#if USE_CHUNKEDMEMPOOLS
+#if USE_MEMPOOLS
 
 #include "MemPool.h"
 
@@ -74,20 +72,20 @@ MemPoolTest::run()
     assert (something);
     assert (something->aValue == 0);
     something->aValue = 5;
-    Pool->free(something);
+    Pool->freeOne(something);
     SomethingToAlloc *otherthing = static_cast<SomethingToAlloc *>(Pool->alloc());
     assert (otherthing == something);
     assert (otherthing->aValue == 0);
-    Pool->free (otherthing);
+    Pool->freeOne(otherthing);
     delete Pool;
 }
 
-#endif /* USE_CHUNKEDMEMPOOLS */
+#endif /* USE_MEMPOOLS */
 
 int
 main (int argc, char **argv)
 {
-#if USE_CHUNKEDMEMPOOLS
+#if USE_MEMPOOLS
     MemPoolTest aTest;
     aTest.run();
 #endif

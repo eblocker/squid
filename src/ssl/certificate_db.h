@@ -1,7 +1,3 @@
-/*
- * $Id$
- */
-
 #ifndef SQUID_SSL_CERTIFICATE_DB_H
 #define SQUID_SSL_CERTIFICATE_DB_H
 
@@ -15,21 +11,42 @@
 
 namespace Ssl
 {
-/// Cross platform file locker.
-class FileLocker
+/// maintains an exclusive blocking file-based lock
+class Lock
 {
 public:
-    /// Lock file
-    FileLocker(std::string const & aFilename);
-    /// Unlock file
-    ~FileLocker();
+    explicit Lock(std::string const &filename); ///<  creates an unlocked lock
+    ~Lock(); ///<  releases the lock if it is locked
+    void lock(); ///<  locks the lock, may block
+    void unlock(); ///<  unlocks locked lock or throws
+    bool locked() const; ///<  whether our lock is locked
+    const char *name() const { return filename.c_str(); }
 private:
-#ifdef _SQUID_MSWIN_
+    std::string filename;
+#if _SQUID_MSWIN_
     HANDLE hFile; ///< Windows file handle.
 #else
     int fd; ///< Linux file descriptor.
 #endif
 };
+
+/// an exception-safe way to obtain and release a lock
+class Locker
+{
+public:
+    /// locks the lock if the lock was unlocked
+    Locker(Lock &lock, const char  *aFileName, int lineNo);
+    /// unlocks the lock if it was locked by us
+    ~Locker();
+private:
+    bool weLocked; ///<  whether we locked the lock
+    Lock &lock; ///<  the lock we are operating on
+    const std::string fileName; ///<  where the lock was needed
+    const int lineNo; ///<  where the lock was needed
+};
+
+/// convenience macro to pass source code location to Locker and others
+#define Here __FILE__, __LINE__
 
 /**
  * Database class for storing SSL certificates and their private keys.
@@ -60,6 +77,8 @@ public:
     public:
         /// Create row wrapper.
         Row();
+        ///Create row wrapper for row with width items
+        Row(char **row, size_t width);
         /// Delete all row.
         ~Row();
         void setValue(size_t number, char const * value); ///< Set cell's value in row
@@ -73,15 +92,14 @@ public:
     CertificateDb(std::string const & db_path, size_t aMax_db_size, size_t aFs_block_size);
     /// Find certificate and private key for host name
     bool find(std::string const & host_name, Ssl::X509_Pointer & cert, Ssl::EVP_PKEY_Pointer & pkey);
+    /// Delete a certificate from database
+    bool purgeCert(std::string const & key);
     /// Save certificate to disk.
-    bool addCertAndPrivateKey(Ssl::X509_Pointer & cert, Ssl::EVP_PKEY_Pointer & pkey);
-    /// Get a serial number to use for generating a new certificate.
-    BIGNUM * getCurrentSerialNumber();
+    bool addCertAndPrivateKey(Ssl::X509_Pointer & cert, Ssl::EVP_PKEY_Pointer & pkey, std::string const & useName);
     /// Create and initialize a database  under the  db_path
-    static void create(std::string const & db_path, int serial);
+    static void create(std::string const & db_path);
     /// Check the database stored under the db_path.
     static void check(std::string const & db_path, size_t max_db_size);
-    std::string getSNString() const; ///< Get serial number as string.
     bool IsEnabledDiskStore() const; ///< Check enabled of dist store.
 private:
     void load(); ///< Load db from disk.
@@ -97,9 +115,15 @@ private:
     /// Only find certificate in current db and return it.
     bool pure_find(std::string const & host_name, Ssl::X509_Pointer & cert, Ssl::EVP_PKEY_Pointer & pkey);
 
+    void deleteRow(const char **row, int rowIndex); ///< Delete a row from TXT_DB
     bool deleteInvalidCertificate(); ///< Delete invalid certificate.
     bool deleteOldestCertificate(); ///< Delete oldest certificate.
     bool deleteByHostname(std::string const & host); ///< Delete using host name.
+
+    /// Removes the first matching row from TXT_DB. Ignores failures.
+    static void sq_TXT_DB_delete(TXT_DB *db, const char **row);
+    /// Remove the row on position idx from TXT_DB. Ignores failures.
+    static void sq_TXT_DB_delete_row(TXT_DB *db, int idx);
 
     /// Callback hash function for serials. Used to create TXT_DB index of serials.
     static unsigned long index_serial_hash(const char **a);
@@ -132,7 +156,6 @@ private:
     static IMPLEMENT_LHASH_COMP_FN(index_name_cmp,const char **)
 #endif
 
-    static const std::string serial_file; ///< Base name of the file to store serial number.
     static const std::string db_file; ///< Base name of the database index file.
     static const std::string cert_dir; ///< Base name of the directory to store the certs.
     static const std::string size_file; ///< Base name of the file to store db size.
@@ -140,7 +163,6 @@ private:
     static const size_t min_db_size;
 
     const std::string db_path; ///< The database directory.
-    const std::string serial_full; ///< Full path of the file to store serial number.
     const std::string db_full; ///< Full path of the database index file.
     const std::string cert_full; ///< Full path of the directory to store the certs.
     const std::string size_full; ///< Full path of the file to store the db size.
@@ -148,6 +170,7 @@ private:
     TXT_DB_Pointer db; ///< Database with certificates info.
     const size_t max_db_size; ///< Max size of db.
     const size_t fs_block_size; ///< File system block size.
+    mutable Lock dbLock;  ///< protects the database file
 
     bool enabled_disk_store; ///< The storage on the disk is enabled.
 };

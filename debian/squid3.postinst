@@ -35,6 +35,7 @@ case "$1" in
 		#
 		log_dir=/var/log/squid3
 		cache_dir=`grepconf2 cache_dir /var/spool/squid3`
+                run_dir=/var/run/squid3
 		usr=`grepconf cache_effective_user proxy`
 		grp=`grepconf cache_effective_group proxy`
 		
@@ -47,6 +48,13 @@ case "$1" in
 		   [ "$(stat -c %G $log_dir)" != "$grp" ] ; then
 			if [ "$(dpkg-statoverride --list $log_dir)" = "" ] ; then
 		  		chown -R $usr:$grp $log_dir
+			fi
+		fi
+	 
+		if [ "$(stat -c %U $run_dir)" != "$usr" ] ||
+		   [ "$(stat -c %G $run_dir)" != "$grp" ] ; then
+			if [ "$(dpkg-statoverride --list $run_dir)" = "" ] ; then
+		  		chown -R $usr:$grp $run_dir
 			fi
 		fi
 	 

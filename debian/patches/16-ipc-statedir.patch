@@ -1,0 +1,34 @@
+Author: Luigi Gangitano <luigi@debian.org>
+Description: Change default statedir for IPC to /var/run/squid3
+--- a/src/ipc/Makefile.am
++++ b/src/ipc/Makefile.am
+@@ -59,7 +59,7 @@
+ 	mem/Segment.cc \
+ 	mem/Segment.h
+ 
+-DEFS += -DDEFAULT_STATEDIR=\"$(localstatedir)/run/squid\"
++DEFS += -DDEFAULT_STATEDIR=\"$(localstatedir)/run/squid3\"
+ 
+ install-data-local:
+-	$(mkinstalldirs) $(DESTDIR)$(localstatedir)/run/squid;
++	$(mkinstalldirs) $(DESTDIR)$(localstatedir)/run/squid3;
+--- a/src/ipc/Makefile.in
++++ b/src/ipc/Makefile.in
+@@ -128,7 +128,7 @@
+ DEFAULT_LOG_DIR = @DEFAULT_LOG_DIR@
+ DEFAULT_PID_FILE = @DEFAULT_PID_FILE@
+ DEFAULT_SWAP_DIR = @DEFAULT_SWAP_DIR@
+-DEFS = @DEFS@ -DDEFAULT_STATEDIR=\"$(localstatedir)/run/squid\"
++DEFS = @DEFS@ -DDEFAULT_STATEDIR=\"$(localstatedir)/run/squid3\"
+ DEPDIR = @DEPDIR@
+ DIGEST_AUTH_HELPERS = @DIGEST_AUTH_HELPERS@
+ DISK_LIBS = @DISK_LIBS@
+@@ -821,7 +821,7 @@
+ .PHONY: testHeaders
+ 
+ install-data-local:
+-	$(mkinstalldirs) $(DESTDIR)$(localstatedir)/run/squid;
++	$(mkinstalldirs) $(DESTDIR)$(localstatedir)/run/squid3;
+ 
+ # Tell versions [3.59,3.63) of GNU make to not export all variables.
+ # Otherwise a system limit (for SysV at least) may be exceeded.

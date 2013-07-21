@@ -8,6 +8,9 @@ squid3 (3.3.8-1) UNRELEASED; urgency=low
     - Includes PNG image used in error pages, with new copyright assignement
       (Closes: #683255)
 
+  * Added /var/run/squid3 dir to host sockets in SMP configuration
+    (Closes: #710126)
+
  -- Luigi Gangitano <luigi@debian.org>  Sun, 21 Jul 2013 18:28:36 +0200
 
 squid3 (3.3.4-1) unstable; urgency=low

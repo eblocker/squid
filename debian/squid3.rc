@@ -54,6 +54,33 @@ find_cache_type () {
 	echo "$res"
 }
 
+grepconf () {
+	w=" 	" # space tab
+	sq=/etc/squid3/squid.conf
+	# sed is cool.
+	res=`sed -ne '
+		s/^'$1'['"$w"']\+\([^'"$w"']\+\).*$/\1/p;
+		t end;
+		d;
+		:end q' < $sq`
+	[ -n "$res" ] || res=$2
+	echo "$res"
+}
+
+create_run_dir () {
+	run_dir=/var/run/squid3
+	usr=`grepconf cache_effective_user proxy`
+	grp=`grepconf cache_effective_group proxy`
+
+	if [ "$(stat -c %U $run_dir)" != "$usr" ] ||
+	   [ "$(stat -c %G $run_dir)" != "$grp" ] ; then
+		if [ "$(dpkg-statoverride --list $run_dir)" = "" ] ; then
+	  		chown -R $usr:$grp $run_dir
+		fi
+	fi
+	 
+}
+
 start () {
 	cache_dir=`find_cache_dir cache_dir`
 	cache_type=`find_cache_type cache_dir`

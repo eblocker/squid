@@ -300,14 +300,10 @@ update_maxobjsize(void)
 static void
 SetConfigFilename(char const *file_name, bool is_pipe)
 {
-    cfg_filename = file_name;
-
-    char const *token;
-
     if (is_pipe)
         cfg_filename = file_name + 1;
-    else if ((token = strrchr(cfg_filename, '/')))
-        cfg_filename = token + 1;
+    else
+        cfg_filename = file_name;
 }
 
 static const char*
@@ -528,7 +524,7 @@ parseOneConfigFile(const char *file_name, unsigned int depth)
                 if ((token = strchr(new_file_name, '"')))
                     *token = '\0';
 
-                cfg_filename = new_file_name;
+                SetConfigFilename(new_file_name, false);
             }
 
             config_lineno = new_lineno;
@@ -598,7 +594,7 @@ parseOneConfigFile(const char *file_name, unsigned int depth)
         fclose(fp);
     }
 
-    cfg_filename = orig_cfg_filename;
+    SetConfigFilename(orig_cfg_filename, false);
     config_lineno = orig_config_lineno;
 
     xfree(tmp_line);
@@ -678,12 +674,6 @@ configDoConfigure(void)
         Config.Store.maxObjectSize = 0x7FFF0000;
     }
 #endif
-    if (0 == Store::Root().maxSize())
-        /* people might want a zero-sized cache on purpose */
-        (void) 0;
-    else if (Store::Root().maxSize() < Config.memMaxSize)
-        /* This is bogus. folk with NULL caches will want this */
-        debugs(3, DBG_CRITICAL, "WARNING cache_mem is larger than total disk cache space!");
 
     if (Config.Announce.period > 0) {
         Config.onoff.announce = 1;
@@ -1907,8 +1897,10 @@ parse_cachedir(SquidConfig::_cacheSwap * swap)
 
     fs = find_fstype(type_str);
 
-    if (fs < 0)
-        self_destruct();
+    if (fs < 0) {
+        debugs(3, DBG_PARSE_NOTE(DBG_IMPORTANT), "ERROR: This proxy does not support the '" << type_str << "' cache type. Ignoring.");
+        return;
+    }
 
     /* reconfigure existing dir */
 
@@ -3687,17 +3679,16 @@ parse_port_option(AnyP::PortCfg * s, char *token)
     } else if (strncmp(token, "tcpkeepalive=", 13) == 0) {
         char *t = token + 13;
         s->tcp_keepalive.enabled = 1;
-        s->tcp_keepalive.idle = xatoui(t);
+        s->tcp_keepalive.idle = xatoui(t,',');
         t = strchr(t, ',');
         if (t) {
             ++t;
-            s->tcp_keepalive.interval = xatoui(t);
+            s->tcp_keepalive.interval = xatoui(t,',');
             t = strchr(t, ',');
         }
         if (t) {
             ++t;
             s->tcp_keepalive.timeout = xatoui(t);
-            // t = strchr(t, ','); // not really needed, left in as documentation
         }
 #if USE_SSL
     } else if (strcasecmp(token, "sslBump") == 0) {

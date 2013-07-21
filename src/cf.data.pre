@@ -689,6 +689,13 @@ DOC_START
 	  		list separator. ; can be any non-alphanumeric
 			character.
 
+	  %ACL		The name of the ACL being tested.
+	  %DATA		The ACL arguments. If not used then any arguments
+			is automatically added at the end of the line
+			sent to the helper.
+			NOTE: this will encode the arguments as one token,
+			whereas the default will pass each separately.
+
 	  %%		The percent sign. Useful for helpers which need
 			an unchanging input format.
 
@@ -3498,9 +3505,15 @@ DOC_START
 
 	HTTP related format codes:
 
-		[http::]>h	Original request header. Optional header name argument
-				on the format header[:[separator]element]
-		[http::]>ha	The HTTP request headers after adaptation and redirection. 
+		[http::]>h	Original received request header. 
+				Usually differs from the request header sent by
+				Squid, although most fields are often preserved.
+				Accepts optional header field name/value filter
+				argument using name[:[separator]element] format.
+		[http::]>ha	Received request header after adaptation and
+				redirection (pre-cache REQMOD vectoring point).
+				Usually differs from the request header sent by
+				Squid, although most fields are often preserved.
 				Optional header name argument as for >h
 		[http::]<h	Reply header. Optional header name argument
 				as for >h
@@ -7316,6 +7329,8 @@ DOC_START
 	can even specify multiple identical services as long as their
 	service_names differ.
 
+	To activate a service, use the adaptation_access directive. To group
+	services, use adaptation_service_chain and adaptation_service_set.
 
 	Service options are separated by white space. ICAP services support
 	the following name=value options:
@@ -7447,6 +7462,8 @@ DOC_START
 		eCAP service must have a unique URI. Obtain the right URI from
 		the service provider.
 
+	To activate a service, use the adaptation_access directive. To group
+	services, use adaptation_service_chain and adaptation_service_set.
 
 	Service options are separated by white space. eCAP services support
 	the following name=value options:

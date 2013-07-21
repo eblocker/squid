@@ -1,4 +1,6 @@
-squid3 (3.3.8-1) UNRELEASED; urgency=low
+squid3 (3.3.8-1) unstable; urgency=high
+
+  * Urgency high due to security fixes
 
   * New upstream release
     - Fixes security issues (Closes: #716743)

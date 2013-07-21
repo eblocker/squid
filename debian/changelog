@@ -1,6 +1,12 @@
 squid3 (3.3.8-1) UNRELEASED; urgency=low
 
   * New upstream release
+    - Fixes security issues (Closes: #716743)
+      + Buffer overflow in HTTP request handling (Ref: SQUID-2013:2,
+        CVE-2013-4115)
+      + DoS in request processing (Ref: SQUID-2013:3, CVE-2013-4123)
+    - Includes PNG image used in error pages, with new copyright assignement
+      (Closes: #683255)
 
  -- Luigi Gangitano <luigi@debian.org>  Sun, 21 Jul 2013 18:28:36 +0200
 

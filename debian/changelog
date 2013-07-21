@@ -11,6 +11,9 @@ squid3 (3.3.8-1) UNRELEASED; urgency=low
   * Added /var/run/squid3 dir to host sockets in SMP configuration
     (Closes: #710126)
 
+  * debian/control
+    - Bumped Standard-Version to 3.9.4, no change needed
+
  -- Luigi Gangitano <luigi@debian.org>  Sun, 21 Jul 2013 18:28:36 +0200
 
 squid3 (3.3.4-1) unstable; urgency=low

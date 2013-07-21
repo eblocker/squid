@@ -1,3 +1,19 @@
+squid3 (3.3.4-1) unstable; urgency=low
+
+  * New upstream release
+    - Added support for SHA passwords in ncsa_auth (Closes: #652010)
+
+  * debian/squid3.lintian-overrides
+    - Added override for pinger setuid bin
+
+  * debian/watch
+    - Fixed pattern to skip the last dot
+
+  * debian/rules
+    - Removed reference to cppunit-basedir
+
+ -- Luigi Gangitano <luigi@debian.org>  Mon, 06 May 2013 16:46:33 +0200
+
 squid3 (3.3.3-2) unstable; urgency=low
 
   I would like to thank Amos Jeffries <squid3@treenet.co.nz> for his help

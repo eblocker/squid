@@ -545,10 +545,7 @@ FwdState::checkRetry()
     if (!entry->isEmpty())
         return false;
 
-    if (n_tries > 10)
-        return false;
-
-    if (origin_tries > 2)
+    if (n_tries > Config.forward_max_tries)
         return false;
 
     if (squid_curtime - start_t > Config.Timeout.forward)
@@ -938,7 +935,7 @@ FwdState::connectStart()
 
     debugs(17, 3, "fwdConnectStart: " << entry->url());
 
-    if (n_tries == 0) // first attempt
+    if (!request->hier.first_conn_start.tv_sec) // first attempt
         request->hier.first_conn_start = current_time;
 
     /* connection timeout */
@@ -1022,9 +1019,6 @@ FwdState::connectStart()
         flags.connected_okay = true;
         debugs(17, 3, HERE << "reusing pconn " << serverConnection());
         ++n_tries;
-
-        if (!serverConnection()->getPeer())
-            ++origin_tries;
 
         comm_add_close_handler(serverConnection()->fd, fwdServerClosedWrapper, this);
 
@@ -1223,9 +1217,6 @@ FwdState::reforward()
     }
 
     if (n_tries > Config.forward_max_tries)
-        return 0;
-
-    if (origin_tries > 1)
         return 0;
 
     if (request->bodyNibbled())

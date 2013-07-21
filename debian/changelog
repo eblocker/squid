@@ -1,3 +1,9 @@
+squid3 (3.3.8-1) UNRELEASED; urgency=low
+
+  * New upstream release
+
+ -- Luigi Gangitano <luigi@debian.org>  Sun, 21 Jul 2013 18:28:36 +0200
+
 squid3 (3.3.4-1) unstable; urgency=low
 
   * New upstream release

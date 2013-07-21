@@ -510,7 +510,7 @@ Format::Format::assemble(MemBuf &mb, const AccessLogEntry::Pointer &al, int logS
 
         case LFT_ADAPTED_REQUEST_HEADER:
 
-            if (al->request)
+            if (al->adapted_request)
                 sb = al->adapted_request->header.getByName(fmt->data.header.header);
 
             out = sb.termedBuf();
@@ -629,7 +629,7 @@ Format::Format::assemble(MemBuf &mb, const AccessLogEntry::Pointer &al, int logS
             break;
 
         case LFT_ICAP_REQ_HEADER_ELEM:
-            if (al->request)
+            if (al->icap.request)
                 sb = al->icap.request->header.getByNameListMember(fmt->data.header.header, fmt->data.header.element, fmt->data.header.separator);
 
             out = sb.termedBuf();
@@ -760,7 +760,10 @@ Format::Format::assemble(MemBuf &mb, const AccessLogEntry::Pointer &al, int logS
             break;
 
         case LFT_USER_NAME:
-            out = strOrNull(al->cache.authuser);
+#if USE_AUTH
+            if (al->request && al->request->auth_user_request != NULL)
+                out = strOrNull(al->request->auth_user_request->username());
+#endif
             if (!out)
                 out = strOrNull(al->cache.extuser);
 #if USE_SSL
@@ -772,7 +775,10 @@ Format::Format::assemble(MemBuf &mb, const AccessLogEntry::Pointer &al, int logS
             break;
 
         case LFT_USER_LOGIN:
-            out = strOrNull(al->cache.authuser);
+#if USE_AUTH
+            if (al->request && al->request->auth_user_request != NULL)
+                out = strOrNull(al->request->auth_user_request->username());
+#endif
             break;
 
         case LFT_USER_IDENT:

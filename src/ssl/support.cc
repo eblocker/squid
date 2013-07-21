@@ -940,12 +940,8 @@ SSL_CTX *
 sslCreateClientContext(const char *certfile, const char *keyfile, int version, const char *cipher, const char *options, const char *flags, const char *CAfile, const char *CApath, const char *CRLfile)
 {
     int ssl_error;
-#if OPENSSL_VERSION_NUMBER < 0x00909000L
-    SSL_METHOD *method;
-#else
-    const SSL_METHOD *method;
-#endif
-    SSL_CTX *sslContext;
+    Ssl::ContextMethod method;
+    SSL_CTX * sslContext;
     long fl = Ssl::parse_flags(flags);
 
     ssl_initialize();
@@ -1413,9 +1409,12 @@ bool Ssl::verifySslCertificate(SSL_CTX * sslContext, CertificateProperties const
 {
     // SSL_get_certificate is buggy in openssl versions 1.0.1d and 1.0.1e
     // Try to retrieve certificate directly from SSL_CTX object
-#if OPENSSL_VERSION_NUMBER == 0x1000105fL || OPENSSL_VERSION_NUMBER == 0x1000104fL
+#if SQUID_USE_SSLGETCERTIFICATE_HACK
     X509 ***pCert = (X509 ***)sslContext->cert;
     X509 * cert = pCert && *pCert ? **pCert : NULL;
+#elif SQUID_SSLGETCERTIFICATE_BUGGY
+    X509 * cert = NULL;
+    assert(0);
 #else
     // Temporary ssl for getting X509 certificate from SSL_CTX.
     Ssl::SSL_Pointer ssl(SSL_new(sslContext));
@@ -1518,7 +1517,10 @@ void Ssl::readCertChainAndPrivateKeyFromFiles(X509_Pointer & cert, EVP_PKEY_Poin
         chain.reset(sk_X509_new_null());
     if (!chain)
         debugs(83, DBG_IMPORTANT, "WARNING: unable to allocate memory for cert chain");
-    pkey.reset(readSslPrivateKey(keyFilename, ssl_ask_password_cb));
+    // XXX: ssl_ask_password_cb needs SSL_CTX_set_default_passwd_cb_userdata()
+    // so this may not fully work iff Config.Program.ssl_password is set.
+    pem_password_cb *cb = ::Config.Program.ssl_password ? &ssl_ask_password_cb : NULL;
+    pkey.reset(readSslPrivateKey(keyFilename, cb));
     cert.reset(readSslX509CertificatesChain(certFilename, chain.get()));
     if (!pkey || !cert || !X509_check_private_key(cert.get(), pkey.get())) {
         pkey.reset(NULL);

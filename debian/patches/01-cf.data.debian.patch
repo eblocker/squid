@@ -40,7 +40,7 @@ Description: Default configuration file for debian
  	auth_param negotiate program /usr/bin/ntlm_auth --helper-protocol=gss-spnego
  
  	"children" numberofchildren [startup=N] [idle=N]
-@@ -1002,11 +1008,11 @@
+@@ -1009,11 +1015,11 @@
  # Example rule allowing access from your local networks.
  # Adapt to list your (internal) IP networks from where browsing
  # should be allowed
@@ -57,7 +57,7 @@ Description: Default configuration file for debian
  
  acl SSL_ports port 443
  acl Safe_ports port 80		# http
-@@ -1187,7 +1193,7 @@
+@@ -1194,7 +1200,7 @@
  # Example rule allowing access from your local networks.
  # Adapt localnet in the ACL section to list your (internal) IP networks
  # from where browsing should be allowed
@@ -66,7 +66,7 @@ Description: Default configuration file for debian
  http_access allow localhost
  
  # And finally deny all other access to this proxy
-@@ -3876,7 +3882,7 @@
+@@ -3889,7 +3895,7 @@
  
  NAME: logfile_rotate
  TYPE: int
@@ -75,7 +75,7 @@ Description: Default configuration file for debian
  LOC: Config.Log.rotateNumber
  DOC_START
  	Specifies the number of logfile rotations to make when you
-@@ -3895,6 +3901,9 @@
+@@ -3908,6 +3914,9 @@
  
  	Note, from Squid-3.1 this option is only a default for cache.log,
  	that log can be rotated separately by using debug_options.
@@ -85,7 +85,7 @@ Description: Default configuration file for debian
  DOC_END
  
  NAME: emulate_httpd_log
-@@ -7965,8 +7974,8 @@
+@@ -7982,8 +7991,8 @@
  
  	WARNING:
  	  This option will restrict the situations under which IPv6

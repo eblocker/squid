@@ -2,5 +2,3 @@
 02-makefile-defaults.patch
 15-cachemgr-default-config.patch
 16-ipc-statedir.patch
-17-pod2man-check.patch
-CVE-2014-3609.patch

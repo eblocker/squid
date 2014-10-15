@@ -1,8 +1,21 @@
 Author: Luigi Gangitano <luigi@debian.org>
 Description: Change default file locations for debian
---- a/src/Makefile.in
-+++ b/src/Makefile.in
-@@ -2802,7 +2802,7 @@
+diff -ur a/src/Makefile.am squid-3.4.2/src/Makefile.am
+--- a/src/Makefile.am	2013-12-31 00:33:27.000000000 +1300
++++ b/src/Makefile.am	2014-02-01 20:53:04.000000000 +1300
+@@ -921,7 +921,7 @@
+ DEFAULT_PREFIX		= $(prefix)
+ DEFAULT_CONFIG_DIR	= $(sysconfdir)
+ DEFAULT_CONFIG_FILE	= $(DEFAULT_CONFIG_DIR)/squid.conf
+-DEFAULT_MIME_TABLE	= $(DEFAULT_CONFIG_DIR)/mime.conf
++DEFAULT_MIME_TABLE	= $(datadir)/mime.conf
+ DEFAULT_DNSSERVER	= $(libexecdir)/`echo dnsserver | sed '$(transform);s/$$/$(EXEEXT)/'`
+ DEFAULT_SSL_CRTD	= $(libexecdir)/`echo ssl_crtd  | sed '$(transform);s/$$/$(EXEEXT)/'`
+ DEFAULT_LOG_PREFIX	= $(DEFAULT_LOG_DIR)
+diff -ur a/src/Makefile.in squid-3.4.2/src/Makefile.in
+--- a/src/Makefile.in	2013-12-31 00:34:02.000000000 +1300
++++ b/src/Makefile.in	2014-02-01 20:53:12.000000000 +1300
+@@ -2822,7 +2822,7 @@
  DEFAULT_PREFIX = $(prefix)
  DEFAULT_CONFIG_DIR = $(sysconfdir)
  DEFAULT_CONFIG_FILE = $(DEFAULT_CONFIG_DIR)/squid.conf

@@ -18,6 +18,7 @@ DEB_CONFIGURE_EXTRA_FLAGS := --datadir=/usr/share/squid3 \
 		--sysconfdir=/etc/squid3 \
 		--mandir=/usr/share/man \
 		--enable-inline \
+		--disable-arch-native \
 		--enable-async-io=8 \
 		--enable-storeio="ufs,aufs,diskd,rock" \
 		--enable-removal-policies="lru,heap" \

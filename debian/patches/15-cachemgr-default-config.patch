@@ -1,7 +1,8 @@
 Author: Luigi Gangitano <luigi@debian.org>
 Description: Fix path for cachemgr.cgi default configuration file
---- a/tools/Makefile.am
-+++ b/tools/Makefile.am
+=== modified file 'tools/Makefile.am'
+--- a/tools/Makefile.am	2010-12-06 14:06:06 +0000
++++ b/tools/Makefile.am	2013-05-18 13:15:39 +0000
 @@ -68,7 +68,7 @@
  
  ## ##### cachemgr.cgi  #####
@@ -19,9 +20,10 @@ Description: Fix path for cachemgr.cgi default configuration file
  	$(INSTALL_DATA) $(srcdir)/cachemgr.conf $(DESTDIR)$(DEFAULT_CACHEMGR_CONFIG).default
  	@if test -f $(DESTDIR)$(DEFAULT_CACHEMGR_CONFIG) ; then \
  	        echo "$@ will not overwrite existing $(DESTDIR)$(DEFAULT_CACHEMGR_CONFIG)" ; \
---- a/tools/Makefile.in
-+++ b/tools/Makefile.in
-@@ -434,7 +434,7 @@
+
+--- a/tools/Makefile.in	2013-05-19 01:11:10.000000000 +1200
++++ b/tools/Makefile.in	2013-05-19 01:15:39.000000000 +1200
+@@ -510,7 +510,7 @@
  	test_tools.cc \
  	time.cc
  
@@ -30,7 +32,7 @@ Description: Fix path for cachemgr.cgi default configuration file
  cachemgr__CGIEXT__SOURCES = cachemgr.cc \
  	stub_debug.cc \
  	test_tools.cc \
-@@ -1237,6 +1237,7 @@
+@@ -1334,6 +1334,7 @@
  	$(SUBSTITUTE) < $(srcdir)/cachemgr.cgi.8.in > $@
  
  install-data-local:

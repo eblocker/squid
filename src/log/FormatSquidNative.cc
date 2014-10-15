@@ -75,7 +75,7 @@ Log::Format::SquidNative(const AccessLogEntry::Pointer &al, Logfile * logfile)
                   (int) current_time.tv_usec / 1000,
                   al->cache.msec,
                   clientip,
-                  ::Format::log_tags[al->cache.code],
+                  LogTags_str[al->cache.code],
                   al->http.statusSfx(),
                   al->http.code,
                   al->cache.replySize,
@@ -84,7 +84,7 @@ Log::Format::SquidNative(const AccessLogEntry::Pointer &al, Logfile * logfile)
                   user ? user : dash_str,
                   al->hier.ping.timedout ? "TIMEOUT_" : "",
                   hier_code_str[al->hier.code],
-                  al->hier.tcpServer != NULL ? al->hier.tcpServer->remote.NtoA(hierHost, sizeof(hierHost)) : "-",
+                  al->hier.tcpServer != NULL ? al->hier.tcpServer->remote.toStr(hierHost, sizeof(hierHost)) : "-",
                   al->http.content_type,
                   (Config.onoff.log_mime_hdrs?"":"\n"));
 

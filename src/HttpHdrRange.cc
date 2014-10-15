@@ -92,7 +92,7 @@ HttpHdrRangeSpec::parseInit(const char *field, int flen)
 
     /* is it a suffix-byte-range-spec ? */
     if (*field == '-') {
-        if (!httpHeaderParseOffset(field + 1, &length))
+        if (!httpHeaderParseOffset(field + 1, &length) || !known_spec(length))
             return false;
     } else
         /* must have a '-' somewhere in _this_ field */
@@ -100,7 +100,7 @@ HttpHdrRangeSpec::parseInit(const char *field, int flen)
             debugs(64, 2, "invalid (missing '-') range-spec near: '" << field << "'");
             return false;
         } else {
-            if (!httpHeaderParseOffset(field, &offset))
+            if (!httpHeaderParseOffset(field, &offset) || !known_spec(offset))
                 return false;
 
             ++p;
@@ -109,7 +109,7 @@ HttpHdrRangeSpec::parseInit(const char *field, int flen)
             if (p - field < flen) {
                 int64_t last_pos;
 
-                if (!httpHeaderParseOffset(p, &last_pos))
+                if (!httpHeaderParseOffset(p, &last_pos) || !known_spec(last_pos))
                     return false;
 
                 // RFC 2616 s14.35.1 MUST: last-byte-pos >= first-byte-pos
@@ -224,7 +224,7 @@ HttpHdrRangeSpec::mergeWith(const HttpHdrRangeSpec * donor)
  * Range
  */
 
-HttpHdrRange::HttpHdrRange () : clen (HttpHdrRangeSpec::UnknownPosition)
+HttpHdrRange::HttpHdrRange() : clen(HttpHdrRangeSpec::UnknownPosition)
 {}
 
 HttpHdrRange *
@@ -285,7 +285,9 @@ HttpHdrRange::~HttpHdrRange()
         delete specs.pop_back();
 }
 
-HttpHdrRange::HttpHdrRange(HttpHdrRange const &old) : specs()
+HttpHdrRange::HttpHdrRange(HttpHdrRange const &old) :
+        specs(),
+        clen(HttpHdrRangeSpec::UnknownPosition)
 {
     specs.reserve(old.specs.size());
 

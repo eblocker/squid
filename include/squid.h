@@ -103,19 +103,15 @@
 /*
  * Determine if this is a leak check build or standard
  */
-#if PURIFY
-#define LEAK_CHECK_MODE 1
-#elif WITH_VALGRIND
-#define LEAK_CHECK_MODE 1
-#elif XMALLOC_TRACE
+#if PURIFY || WITH_VALGRIND
 #define LEAK_CHECK_MODE 1
 #endif
 
 /* temp hack: needs to be pre-defined for now. */
 #define SQUID_MAXPATHLEN 256
 
-// TODO: determine if this is required. OR if compat/os/mswin.h works
-#if _SQUID_MSWIN_
+// TODO: determine if this is required. OR if compat/os/mswindows.h works
+#if _SQUID_WINDOWS_ && defined(__cplusplus)
 /** \cond AUTODOCS-IGNORE */
 using namespace Squid;
 /** \endcond */

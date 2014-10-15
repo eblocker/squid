@@ -81,9 +81,6 @@ Mgr::InfoActionData::operator += (const InfoActionData& stats)
     cpu_usage += stats.cpu_usage;
     cpu_usage5 += stats.cpu_usage5;
     cpu_usage60 += stats.cpu_usage60;
-#if HAVE_SBRK
-    proc_data_seg += stats.proc_data_seg;
-#endif
     maxrss += stats.maxrss;
     page_faults += stats.page_faults;
 #if HAVE_MSTATS && HAVE_GNUMALLOC_H
@@ -106,8 +103,8 @@ Mgr::InfoActionData::operator += (const InfoActionData& stats)
     mp_uordbytes += stats.mp_uordbytes;
     mp_allocated += stats.mp_allocated;
     mp_treeoverhead += stats.mp_treeoverhead;
-#endif
-#endif
+#endif /* HAVE_STRUCT_MALLINFO_MXFAST */
+#endif /* HAVE_MALLINFO && HAVE_STRUCT_MALLINFO */
     total_accounted += stats.total_accounted;
 #if !(HAVE_MSTATS && HAVE_GNUMALLOC_H) && HAVE_MALLINFO && HAVE_STRUCT_MALLINFO
     mem_pool_allocated += stats.mem_pool_allocated;
@@ -115,7 +112,7 @@ Mgr::InfoActionData::operator += (const InfoActionData& stats)
     gb_saved_count += stats.gb_saved_count;
     gb_freed_count += stats.gb_freed_count;
     max_fd += stats.max_fd;
-    biggest_fd += stats.biggest_fd;
+    biggest_fd = max(biggest_fd, stats.biggest_fd);
     number_fd += stats.number_fd;
     opening_fd += stats.opening_fd;
     num_fd_free += stats.num_fd_free;
@@ -131,8 +128,8 @@ Mgr::InfoAction::Create(const CommandPointer &cmd)
     return new InfoAction(cmd);
 }
 
-Mgr::InfoAction::InfoAction(const CommandPointer &cmd):
-        Action(cmd), data()
+Mgr::InfoAction::InfoAction(const CommandPointer &aCmd):
+        Action(aCmd), data()
 {
     debugs(16, 5, HERE);
 }

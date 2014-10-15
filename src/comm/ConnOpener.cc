@@ -225,12 +225,12 @@ Comm::ConnOpener::start()
     Must(conn_ != NULL);
 
     /* outbound sockets have no need to be protocol agnostic. */
-    if (!(Ip::EnableIpv6&IPV6_SPECIAL_V4MAPPING) && conn_->remote.IsIPv4()) {
-        conn_->local.SetIPv4();
+    if (!(Ip::EnableIpv6&IPV6_SPECIAL_V4MAPPING) && conn_->remote.isIPv4()) {
+        conn_->local.setIPv4();
     }
 
     if (createFd())
-        connect();
+        doConnect();
 }
 
 /// called at the end of Comm::ConnOpener::DelayedConnectRetry event
@@ -241,7 +241,7 @@ Comm::ConnOpener::restart()
     calls_.sleep_ = false;
 
     if (createFd())
-        connect();
+        doConnect();
 }
 
 /// Create a socket for the future connection or return false.
@@ -311,7 +311,7 @@ Comm::ConnOpener::connected()
 
 /// Make an FD connection attempt.
 void
-Comm::ConnOpener::connect()
+Comm::ConnOpener::doConnect()
 {
     Must(conn_ != NULL);
     Must(temporaryFd_ >= 0);
@@ -339,12 +339,12 @@ Comm::ConnOpener::connect()
 
         if (failRetries_ < Config.connect_retries) {
             debugs(5, 5, HERE << conn_ << ": * - try again");
-            sleep();
+            retrySleep();
             return;
         } else {
             // send ERROR back to the upper layer.
             debugs(5, 5, HERE << conn_ << ": * - ERR tried too many times already.");
-            sendAnswer(COMM_ERR_CONNECT, xerrno, "Comm::ConnOpener::connect");
+            sendAnswer(COMM_ERR_CONNECT, xerrno, "Comm::ConnOpener::doConnect");
         }
     }
     }
@@ -352,7 +352,7 @@ Comm::ConnOpener::connect()
 
 /// Close and wait a little before trying to open and connect again.
 void
-Comm::ConnOpener::sleep()
+Comm::ConnOpener::retrySleep()
 {
     Must(!calls_.sleep_);
     closeFd();
@@ -388,16 +388,16 @@ void
 Comm::ConnOpener::lookupLocalAddress()
 {
     struct addrinfo *addr = NULL;
-    conn_->local.InitAddrInfo(addr);
+    Ip::Address::InitAddrInfo(addr);
 
     if (getsockname(conn_->fd, addr->ai_addr, &(addr->ai_addrlen)) != 0) {
         debugs(50, DBG_IMPORTANT, "ERROR: Failed to retrieve TCP/UDP details for socket: " << conn_ << ": " << xstrerror());
-        conn_->local.FreeAddrInfo(addr);
+        Ip::Address::FreeAddrInfo(addr);
         return;
     }
 
     conn_->local = *addr;
-    conn_->local.FreeAddrInfo(addr);
+    Ip::Address::FreeAddrInfo(addr);
     debugs(5, 6, HERE << conn_);
 }
 
@@ -426,7 +426,7 @@ Comm::ConnOpener::timeout(const CommTimeoutCbParams &)
 }
 
 /* Legacy Wrapper for the retry event after COMM_INPROGRESS
- * XXX: As soon as Comm::SetSelect() accepts Async calls we can use a ConnOpener::connect call
+ * XXX: As soon as Comm::SetSelect() accepts Async calls we can use a ConnOpener::doConnect call
  */
 void
 Comm::ConnOpener::InProgressConnectRetry(int fd, void *data)
@@ -437,7 +437,7 @@ Comm::ConnOpener::InProgressConnectRetry(int fd, void *data)
         // Ew. we are now outside the all AsyncJob protections.
         // get back inside by scheduling another call...
         typedef NullaryMemFunT<Comm::ConnOpener> Dialer;
-        AsyncCall::Pointer call = JobCallback(5, 4, Dialer, cs, Comm::ConnOpener::connect);
+        AsyncCall::Pointer call = JobCallback(5, 4, Dialer, cs, Comm::ConnOpener::doConnect);
         ScheduleCallHere(call);
     }
     delete ptr;

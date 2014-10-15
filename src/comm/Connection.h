@@ -42,7 +42,6 @@
 #include "hier_code.h"
 #include "ip/Address.h"
 #include "MemPool.h"
-#include "RefCount.h"
 #include "typedefs.h"
 #if USE_SQUID_EUI
 #include "eui/Eui48.h"

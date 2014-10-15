@@ -35,6 +35,8 @@ typedef enum {
     LFT_CLIENT_LOCAL_IP,
     LFT_CLIENT_LOCAL_PORT,
     /*LFT_CLIENT_LOCAL_FQDN, (rDNS) */
+    LFT_CLIENT_LOCAL_TOS,
+    LFT_CLIENT_LOCAL_NFMARK,
 
     /* client connection local squid.conf details */
     LFT_LOCAL_LISTENING_IP,
@@ -50,6 +52,8 @@ typedef enum {
     LFT_SERVER_LOCAL_IP,
     LFT_SERVER_LOCAL_IP_OLD_27,
     LFT_SERVER_LOCAL_PORT,
+    LFT_SERVER_LOCAL_TOS,
+    LFT_SERVER_LOCAL_NFMARK,
 
     /* original Request-Line details recieved from client */
     LFT_CLIENT_REQ_METHOD,
@@ -196,6 +200,7 @@ typedef enum {
     LFT_SSL_USER_CERT_ISSUER,
 #endif
 
+    LFT_NOTE,
     LFT_PERCENT			/* special string cases for escaped chars */
 } ByteCode_t;
 
@@ -207,8 +212,6 @@ enum Quoting {
     LOG_QUOTE_URL,
     LOG_QUOTE_RAW
 };
-
-extern const char *log_tags[];
 
 } // namespace Format
 

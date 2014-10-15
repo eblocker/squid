@@ -34,15 +34,17 @@
 #define SQUID_HELPER_H
 
 #include "base/AsyncCall.h"
+#include "base/InstanceId.h"
 #include "cbdata.h"
 #include "comm/forward.h"
 #include "dlink.h"
 #include "ip/Address.h"
 #include "HelperChildConfig.h"
+#include "HelperReply.h"
 
 class helper_request;
 
-typedef void HLPSCB(void *, void *lastserver, char *buf);
+typedef void HLPCB(void *, const HelperReply &reply);
 
 class helper
 {
@@ -114,7 +116,9 @@ public:
     void closeWritePipeSafely();
 
 public:
-    int index;
+    /// Helper program identifier; does not change when contents do,
+    ///   including during assignment
+    const InstanceId<HelperServerBase> index;
     int pid;
     Ip::Address addr;
     Comm::ConnectionPointer readPipe;
@@ -131,11 +135,11 @@ public:
     dlink_node link;
 
     struct _helper_flags {
-        unsigned int busy:1;
-        unsigned int writing:1;
-        unsigned int closing:1;
-        unsigned int shutdown:1;
-        unsigned int reserved:1;
+        bool busy;
+        bool writing;
+        bool closing;
+        bool shutdown;
+        bool reserved;
     } flags;
 
     struct {
@@ -199,7 +203,7 @@ class helper_stateful_request
 public:
     MEMPROXY_CLASS(helper_stateful_request);
     char *buf;
-    HLPSCB *callback;
+    HLPCB *callback;
     int placeholder;		/* if 1, this is a dummy request waiting for a stateful helper to become available */
     void *data;
 };
@@ -210,7 +214,7 @@ MEMPROXY_CLASS_INLINE(helper_stateful_request);
 void helperOpenServers(helper * hlp);
 void helperStatefulOpenServers(statefulhelper * hlp);
 void helperSubmit(helper * hlp, const char *buf, HLPCB * callback, void *data);
-void helperStatefulSubmit(statefulhelper * hlp, const char *buf, HLPSCB * callback, void *data, helper_stateful_server * lastserver);
+void helperStatefulSubmit(statefulhelper * hlp, const char *buf, HLPCB * callback, void *data, helper_stateful_server * lastserver);
 void helperStats(StoreEntry * sentry, helper * hlp, const char *label = NULL);
 void helperStatefulStats(StoreEntry * sentry, statefulhelper * hlp, const char *label = NULL);
 void helperShutdown(helper * hlp);

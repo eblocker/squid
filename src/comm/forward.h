@@ -1,8 +1,8 @@
 #ifndef _SQUID_COMM_FORWARD_H
 #define _SQUID_COMM_FORWARD_H
 
-#include "Array.h"
-#include "RefCount.h"
+#include "base/Vector.h"
+#include "base/RefCount.h"
 
 namespace Comm
 {

@@ -14,6 +14,8 @@ public:
     /// The number of processes spawn for ssl_crtd.
     HelperChildConfig ssl_crtdChildren;
 #endif
+    char *ssl_crt_validator;
+    HelperChildConfig ssl_crt_validator_Children;
     Config();
     ~Config();
 private:

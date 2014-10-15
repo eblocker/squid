@@ -95,18 +95,15 @@ class PeerDigest
 {
 
 public:
-    void *operator new (size_t);
-    void operator delete(void *);
-
     CachePeer *peer;          /**< pointer back to peer structure, argh */
     CacheDigest *cd;            /**< actual digest structure */
     String host;                /**< copy of peer->host */
     const char *req_result;     /**< text status of the last request */
 
     struct {
-        unsigned int needed:1;          /**< there were requests for this digest */
-        unsigned int usable:1;          /**< can be used for lookups */
-        unsigned int requested:1;       /**< in process of receiving [fresh] digest */
+        bool needed;          /**< there were requests for this digest */
+        bool usable;          /**< can be used for lookups */
+        bool requested;       /**< in process of receiving [fresh] digest */
     } flags;
 
     struct {
@@ -132,7 +129,7 @@ public:
     } stats;
 
 private:
-    CBDATA_CLASS(PeerDigest);
+    CBDATA_CLASS2(PeerDigest);
 };
 
 extern const Version CacheDigestVer;

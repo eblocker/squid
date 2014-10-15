@@ -1,8 +1,9 @@
 #ifndef SQUID_ICAPHISTORY_H
 #define SQUID_ICAPHISTORY_H
 
+#include "base/RefCount.h"
 #include "enums.h"
-#include "RefCount.h"
+#include "LogTags.h"
 #include "SquidString.h"
 
 namespace Adaptation
@@ -30,7 +31,7 @@ public:
 #if USE_SSL
     String ssluser; ///< the username from SSL
 #endif
-    log_type logType; ///< the squid request status (TCP_MISS etc)
+    LogTags logType; ///< the squid request status (TCP_MISS etc)
 
     String log_uri; ///< the request uri
     size_t req_sz; ///< the request size

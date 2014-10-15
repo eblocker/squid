@@ -107,11 +107,13 @@ static const HttpHeaderFieldAttrs HeadersAttrs[] = {
     {"Expires", HDR_EXPIRES, ftDate_1123},
     {"From", HDR_FROM, ftStr},
     {"Host", HDR_HOST, ftStr},
+    {"HTTP2-Settings", HDR_HTTP2_SETTINGS, ftStr}, /* for now */
     {"If-Match", HDR_IF_MATCH, ftStr},	/* for now */
     {"If-Modified-Since", HDR_IF_MODIFIED_SINCE, ftDate_1123},
     {"If-None-Match", HDR_IF_NONE_MATCH, ftStr},	/* for now */
     {"If-Range", HDR_IF_RANGE, ftDate_1123_or_ETag},
     {"Keep-Alive", HDR_KEEP_ALIVE, ftStr},
+    {"Key", HDR_KEY, ftStr},
     {"Last-Modified", HDR_LAST_MODIFIED, ftDate_1123},
     {"Link", HDR_LINK, ftStr},
     {"Location", HDR_LOCATION, ftStr},
@@ -187,6 +189,7 @@ static http_hdr_type ListHeadersArr[] = {
     HDR_CONNECTION,
     HDR_EXPECT,
     HDR_IF_MATCH, HDR_IF_NONE_MATCH,
+    HDR_KEY,
     HDR_LINK, HDR_PRAGMA,
     HDR_PROXY_CONNECTION,
     HDR_PROXY_SUPPORT,
@@ -231,6 +234,7 @@ static HttpHeaderMask ReplyHeadersMask;		/* set run-time using ReplyHeaders */
 static http_hdr_type ReplyHeadersArr[] = {
     HDR_ACCEPT, HDR_ACCEPT_CHARSET, HDR_ACCEPT_ENCODING, HDR_ACCEPT_LANGUAGE,
     HDR_ACCEPT_RANGES, HDR_AGE,
+    HDR_KEY,
     HDR_LOCATION, HDR_MAX_FORWARDS,
     HDR_MIME_VERSION, HDR_PUBLIC, HDR_RETRY_AFTER, HDR_SERVER, HDR_SET_COOKIE, HDR_SET_COOKIE2,
     HDR_ORIGIN,
@@ -251,6 +255,7 @@ static http_hdr_type ReplyHeadersArr[] = {
 static HttpHeaderMask RequestHeadersMask;	/* set run-time using RequestHeaders */
 static http_hdr_type RequestHeadersArr[] = {
     HDR_AUTHORIZATION, HDR_FROM, HDR_HOST,
+    HDR_HTTP2_SETTINGS,
     HDR_IF_MATCH, HDR_IF_MODIFIED_SINCE, HDR_IF_NONE_MATCH,
     HDR_IF_RANGE, HDR_MAX_FORWARDS,
     HDR_ORIGIN,
@@ -261,7 +266,7 @@ static http_hdr_type RequestHeadersArr[] = {
 
 static HttpHeaderMask HopByHopHeadersMask;
 static http_hdr_type HopByHopHeadersArr[] = {
-    HDR_CONNECTION, HDR_KEEP_ALIVE, /*HDR_PROXY_AUTHENTICATE,*/ HDR_PROXY_AUTHORIZATION,
+    HDR_CONNECTION, HDR_HTTP2_SETTINGS, HDR_KEEP_ALIVE, /*HDR_PROXY_AUTHENTICATE,*/ HDR_PROXY_AUTHORIZATION,
     HDR_TE, HDR_TRAILER, HDR_TRANSFER_ENCODING, HDR_UPGRADE, HDR_PROXY_CONNECTION
 };
 
@@ -544,6 +549,7 @@ HttpHeader::parse(const char *header_start, const char *header_end)
 {
     const char *field_ptr = header_start;
     HttpHeaderEntry *e, *e2;
+    int warnOnError = (Config.onoff.relaxed_header_parser <= 0 ? DBG_IMPORTANT : 2);
 
     PROF_start(HttpHeaderParse);
 
@@ -585,7 +591,7 @@ HttpHeader::parse(const char *header_start, const char *header_end)
                             cr_only = false;
                     }
                     if (cr_only) {
-                        debugs(55, DBG_IMPORTANT, "WARNING: Rejecting HTTP request with a CR+ "
+                        debugs(55, DBG_IMPORTANT, "SECURITY WARNING: Rejecting HTTP request with a CR+ "
                                "header field to prevent request smuggling attacks: {" <<
                                getStringPrefix(header_start, header_end) << "}");
                         goto reset;
@@ -595,7 +601,7 @@ HttpHeader::parse(const char *header_start, const char *header_end)
 
             /* Barf on stray CR characters */
             if (memchr(this_line, '\r', field_end - this_line)) {
-                debugs(55, DBG_IMPORTANT, "WARNING: suspicious CR characters in HTTP header {" <<
+                debugs(55, warnOnError, "WARNING: suspicious CR characters in HTTP header {" <<
                        getStringPrefix(field_start, field_end) << "}");
 
                 if (Config.onoff.relaxed_header_parser) {
@@ -610,7 +616,7 @@ HttpHeader::parse(const char *header_start, const char *header_end)
             }
 
             if (this_line + 1 == field_end && this_line > field_start) {
-                debugs(55, DBG_IMPORTANT, "WARNING: Blank continuation line in HTTP header {" <<
+                debugs(55, warnOnError, "WARNING: Blank continuation line in HTTP header {" <<
                        getStringPrefix(header_start, header_end) << "}");
                 goto reset;
             }
@@ -618,7 +624,7 @@ HttpHeader::parse(const char *header_start, const char *header_end)
 
         if (field_start == field_end) {
             if (field_ptr < header_end) {
-                debugs(55, DBG_IMPORTANT, "WARNING: unparseable HTTP header field near {" <<
+                debugs(55, warnOnError, "WARNING: unparseable HTTP header field near {" <<
                        getStringPrefix(field_start, header_end) << "}");
                 goto reset;
             }
@@ -627,23 +633,21 @@ HttpHeader::parse(const char *header_start, const char *header_end)
         }
 
         if ((e = HttpHeaderEntry::parse(field_start, field_end)) == NULL) {
-            debugs(55, DBG_IMPORTANT, "WARNING: unparseable HTTP header field {" <<
+            debugs(55, warnOnError, "WARNING: unparseable HTTP header field {" <<
                    getStringPrefix(field_start, field_end) << "}");
-            debugs(55, Config.onoff.relaxed_header_parser <= 0 ? 1 : 2,
-                   " in {" << getStringPrefix(header_start, header_end) << "}");
+            debugs(55, warnOnError, " in {" << getStringPrefix(header_start, header_end) << "}");
 
             if (Config.onoff.relaxed_header_parser)
                 continue;
-            else
-                goto reset;
+
+            goto reset;
         }
 
         if (e->id == HDR_CONTENT_LENGTH && (e2 = findEntry(e->id)) != NULL) {
-//            if (e->value.cmp(e2->value.termedBuf()) != 0) {
             if (e->value != e2->value) {
                 int64_t l1, l2;
-                debugs(55, Config.onoff.relaxed_header_parser <= 0 ? 1 : 2,
-                       "WARNING: found two conflicting content-length headers in {" << getStringPrefix(header_start, header_end) << "}");
+                debugs(55, warnOnError, "WARNING: found two conflicting content-length headers in {" <<
+                       getStringPrefix(header_start, header_end) << "}");
 
                 if (!Config.onoff.relaxed_header_parser) {
                     delete e;
@@ -664,22 +668,18 @@ HttpHeader::parse(const char *header_start, const char *header_end)
                     continue;
                 }
             } else {
-                debugs(55, Config.onoff.relaxed_header_parser <= 0 ? 1 : 2,
-                       "NOTICE: found double content-length header");
+                debugs(55, warnOnError, "NOTICE: found double content-length header");
+                delete e;
 
-                if (Config.onoff.relaxed_header_parser) {
-                    delete e;
+                if (Config.onoff.relaxed_header_parser)
                     continue;
-                } else {
-                    delete e;
-                    goto reset;
-                }
+
+                goto reset;
             }
         }
 
         if (e->id == HDR_OTHER && stringHasWhitespace(e->name.termedBuf())) {
-            debugs(55, Config.onoff.relaxed_header_parser <= 0 ? 1 : 2,
-                   "WARNING: found whitespace in HTTP header name {" <<
+            debugs(55, warnOnError, "WARNING: found whitespace in HTTP header name {" <<
                    getStringPrefix(field_start, field_end) << "}");
 
             if (!Config.onoff.relaxed_header_parser) {

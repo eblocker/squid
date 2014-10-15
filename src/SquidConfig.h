@@ -29,14 +29,15 @@
  *
  */
 
-#include "acl/AclAddress.h"
+#include "acl/forward.h"
+#include "base/RefCount.h"
 #include "ClientDelayConfig.h"
 #include "DelayConfig.h"
 #include "HelperChildConfig.h"
 #include "HttpHeaderTools.h"
 #include "icmp/IcmpConfig.h"
 #include "ip/Address.h"
-#include "RefCount.h"
+#include "Notes.h"
 #include "YesNoNone.h"
 
 #if USE_SSL
@@ -45,9 +46,6 @@ class sslproxy_cert_sign;
 class sslproxy_cert_adapt;
 #endif
 
-class acl_access;
-class AclSizeLimit;
-class AclDenyInfoList;
 namespace Mgr
 {
 class ActionPasswordList;
@@ -202,6 +200,7 @@ public:
 #endif
 
         wordlist *redirect;
+        wordlist *store_id;
 #if USE_UNLINKD
 
         char *unlinkd;
@@ -219,6 +218,7 @@ public:
 #endif
 
     HelperChildConfig redirectChildren;
+    HelperChildConfig storeIdChildren;
     time_t authenticateGCInterval;
     time_t authenticateTTL;
     time_t authenticateIpTTL;
@@ -317,6 +317,7 @@ public:
         int nonhierarchical_direct;
         int strip_query_terms;
         int redirector_bypass;
+        int store_id_bypass;
         int ignore_unknown_nameservers;
         int client_pconns;
         int server_pconns;
@@ -328,7 +329,6 @@ public:
 
         int ie_refresh;
         int vary_ignore_expire;
-        int pipeline_prefetch;
         int surrogate_is_remote;
         int request_entities;
         int detect_broken_server_pconns;
@@ -337,6 +337,7 @@ public:
         int check_hostnames;
         int allow_underscore;
         int via;
+        int cache_miss_revalidate;
         int emailErrData;
         int httpd_suppress_version_string;
         int global_internal_static;
@@ -355,7 +356,10 @@ public:
         int memory_cache_disk;
         int hostStrictVerify;
         int client_dst_passthru;
+        int dns_mdns;
     } onoff;
+
+    int pipeline_max_prefetch;
 
     int forward_max_tries;
     int connect_retries;
@@ -371,7 +375,7 @@ public:
         acl_access *AlwaysDirect;
         acl_access *ASlists;
         acl_access *noCache;
-        acl_access *log;
+        acl_access *stats_collection;
 #if SQUID_SNMP
 
         acl_access *snmp;
@@ -380,6 +384,7 @@ public:
         acl_access *brokenPosts;
 #endif
         acl_access *redirector;
+        acl_access *store_id;
         acl_access *reply;
         AclAddress *outgoing_address;
 #if USE_HTCP
@@ -395,9 +400,9 @@ public:
         acl_access *followXFF;
 #endif /* FOLLOW_X_FORWARDED_FOR */
 
-#if ICAP_CLIENT
-        acl_access* icap;
-#endif
+        /// spoof_client_ip squid.conf acl.
+        /// nil unless configured
+        acl_access* spoof_client_ip;
     } accessList;
     AclDenyInfoList *denyInfoList;
 
@@ -476,6 +481,8 @@ public:
     HeaderManglers *reply_header_access;
     ///request_header_add access list
     HeaderWithAclList *request_header_add;
+    ///note
+    Notes notes;
     char *coredump_dir;
     char *chroot_dir;
 #if USE_CACHE_DIGESTS

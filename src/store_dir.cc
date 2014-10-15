@@ -127,7 +127,7 @@ StoreController::createOneStore(Store &aStore)
      * The following is a workaround for create store directories sequentially
      * when running on native Windows port.
      */
-#if !_SQUID_MSWIN_
+#if !_SQUID_WINDOWS_
 
     if (fork())
         return;
@@ -136,7 +136,7 @@ StoreController::createOneStore(Store &aStore)
 
     aStore.create();
 
-#if !_SQUID_MSWIN_
+#if !_SQUID_WINDOWS_
 
     exit(0);
 
@@ -148,7 +148,7 @@ StoreController::create()
 {
     swapDir->create();
 
-#if !_SQUID_MSWIN_
+#if !_SQUID_WINDOWS_
 
     pid_t pid;
 
@@ -265,7 +265,7 @@ storeDirSelectSwapDirLeastLoad(const StoreEntry * e)
 
     for (i = 0; i < Config.cacheSwap.n_configured; ++i) {
         SD = dynamic_cast<SwapDir *>(INDEXSD(i));
-        SD->flags.selected = 0;
+        SD->flags.selected = false;
 
         if (!SD->canStore(*e, objsize, load))
             continue;
@@ -298,7 +298,7 @@ storeDirSelectSwapDirLeastLoad(const StoreEntry * e)
     }
 
     if (dirn >= 0)
-        dynamic_cast<SwapDir *>(INDEXSD(dirn))->flags.selected = 1;
+        dynamic_cast<SwapDir *>(INDEXSD(dirn))->flags.selected = true;
 
     return dirn;
 }
@@ -1131,7 +1131,12 @@ StoreHashIndex::search(String const url, HttpRequest *)
 
 CBDATA_CLASS_INIT(StoreSearchHashIndex);
 
-StoreSearchHashIndex::StoreSearchHashIndex(RefCount<StoreHashIndex> aSwapDir) : sd(aSwapDir), _done (false), bucket (0)
+StoreSearchHashIndex::StoreSearchHashIndex(RefCount<StoreHashIndex> aSwapDir) :
+        sd(aSwapDir),
+        callback(NULL),
+        cbdata(NULL),
+        _done(false),
+        bucket(0)
 {}
 
 /* do not link

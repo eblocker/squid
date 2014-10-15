@@ -43,8 +43,8 @@ check_PROGRAMS+= tests/testACLMaxUserIP
 endif
 DIST_SUBDIRS += auth
 
-SUBDIRS	+= ip icmp ident log ipc mgr
-DIST_SUBDIRS += ip icmp ident log ipc mgr
+SUBDIRS	+= http ip icmp ident log ipc mgr
+DIST_SUBDIRS += http ip icmp ident log ipc mgr
 
 if ENABLE_SSL
 SUBDIRS += ssl
@@ -80,7 +80,7 @@ if USE_ESI
 SUBDIRS += esi
 ESI_LOCAL_LIBS = \
 	esi/libesi.la \
-	$(top_builddir)/lib/libTrie/src/libTrie.a
+	$(top_builddir)/lib/libTrie/libTrie.a
 ESI_LIBS = $(ESI_LOCAL_LIBS) \
 	$(XMLLIB) \
 	$(EXPATLIB)
@@ -197,7 +197,6 @@ EXTRA_PROGRAMS = \
 	tests/testUfs \
 	tests/testCoss \
 	tests/testRock \
-	tests/testNull \
 	ufsdump
 
 ## cfgen is used when building squid
@@ -350,12 +349,12 @@ squid_SOURCES = \
 	fde.h \
 	FileMap.h \
 	filemap.cc \
-	forward.cc \
-	forward.h \
 	fqdncache.h \
 	fqdncache.cc \
 	ftp.h \
 	ftp.cc \
+	FwdState.cc \
+	FwdState.h \
 	Generic.h \
 	globals.h \
 	gopher.h \
@@ -364,15 +363,14 @@ squid_SOURCES = \
 	helper.h \
 	HelperChildConfig.h \
 	HelperChildConfig.cc \
+	HelperReply.cc \
+	HelperReply.h \
 	hier_code.h \
 	HierarchyLogEntry.h \
 	$(HTCPSOURCE) \
 	HttpStateFlags.h \
 	http.cc \
 	http.h \
-	HttpStatusCode.h \
-	HttpStatusLine.cc \
-	HttpStatusLine.h \
 	HttpHeaderFieldStat.h \
 	HttpHdrCc.h \
 	HttpHdrCc.cc \
@@ -407,7 +405,6 @@ squid_SOURCES = \
 	HttpRequest.h \
 	HttpRequestMethod.cc \
 	HttpRequestMethod.h \
-	HttpVersion.h \
 	ICP.h \
 	icp_opcode.h \
 	icp_v2.cc \
@@ -422,8 +419,11 @@ squid_SOURCES = \
 	$(LEAKFINDERSOURCE) \
 	SquidList.h \
 	SquidList.cc \
+	LogTags.h \
 	lookup_t.h \
 	main.cc \
+	MasterXaction.cc \
+	MasterXaction.h \
 	Mem.h \
 	mem.cc \
 	mem_node.cc \
@@ -440,6 +440,8 @@ squid_SOURCES = \
 	multicast.cc \
 	neighbors.h \
 	neighbors.cc \
+	Notes.cc \
+	Notes.h \
 	Packer.cc \
 	Packer.h \
 	Parsing.cc \
@@ -600,6 +602,7 @@ BUILT_SOURCES = \
 	globals.cc \
 	hier_code.cc \
 	icp_opcode.cc \
+	LogTags.cc \
 	lookup_t.cc \
 	repl_modules.cc \
 	swap_log_op.cc
@@ -614,7 +617,6 @@ squid_LDADD = \
 	$(AUTH_ACL_LIBS) \
 	ident/libident.la \
 	acl/libacls.la \
-	eui/libeui.la \
 	acl/libstate.la \
 	$(AUTH_LIBS) \
 	$(DISK_LIBS) \
@@ -628,6 +630,7 @@ squid_LDADD = \
 	anyp/libanyp.la \
 	comm/libcomm.la \
 	eui/libeui.la \
+	http/libsquid-http.la \
 	icmp/libicmp.la icmp/libicmp-core.la \
 	log/liblog.la \
 	format/libformat.la \
@@ -635,6 +638,7 @@ squid_LDADD = \
 	$(DISK_LINKOBJS) \
 	$(REPL_OBJS) \
 	$(DISK_OS_LIBS) \
+	$(NETTLELIB) \
 	$(CRYPTLIB) \
 	$(REGEXLIB) \
 	$(ADAPTATION_LIBS) \
@@ -770,6 +774,7 @@ ufsdump_LDADD = \
 	mgr/libmgr.la \
 	$(XTRA_OBJS) \
 	$(REPL_OBJS) \
+	$(NETTLELIB) \
 	$(CRYPTLIB) \
 	$(REGEXLIB) \
 	$(SSLLIB) \
@@ -937,7 +942,7 @@ DEFAULT_ERROR_DIR	= $(datadir)/errors
 # Make location configure settings available to the code
 DEFS += -DDEFAULT_CONFIG_FILE=\"$(DEFAULT_CONFIG_FILE)\" -DDEFAULT_SQUID_DATA_DIR=\"$(datadir)\" -DDEFAULT_SQUID_CONFIG_DIR=\"$(sysconfdir)\"
 
-snmp_core.o snmp_agent.o: ../snmplib/libsnmplib.a $(top_srcdir)/include/cache_snmp.h
+snmp_core.o snmp_agent.o: ../snmplib/libsnmplib.la $(top_srcdir)/include/cache_snmp.h
 
 globals.cc: globals.h mk-globals-c.awk
 	$(AWK) -f $(srcdir)/mk-globals-c.awk < $(srcdir)/globals.h > $@ || ($(RM) -f $@ && exit 1)
@@ -951,6 +956,9 @@ err_type.cc: err_type.h mk-string-arrays.awk
 
 err_detail_type.cc: err_detail_type.h mk-string-arrays.awk
 	$(AWK) -f $(srcdir)/mk-string-arrays.awk < $(srcdir)/err_detail_type.h | sed 's/ERR_DETAIL_//' > $@ || ($(RM) -f $@ && exit 1)
+
+LogTags.cc: LogTags.h mk-string-arrays.awk
+	$(AWK) -f $(srcdir)/mk-string-arrays.awk < $(srcdir)/LogTags.h | sed 's/LOG_//' > $@ || ($(RM) -f $@ && exit 1)
 
 lookup_t.cc: lookup_t.h mk-string-arrays.awk
 	$(AWK) -f $(srcdir)/mk-string-arrays.awk < $(srcdir)/lookup_t.h > $@ || ($(RM) -f $@ && exit 1)
@@ -1087,7 +1095,14 @@ check_PROGRAMS+=\
 	tests/testURL \
 	tests/testConfigParser \
 	tests/testStatHist \
-	$(STORE_TESTS)
+	tests/testVector
+
+if HAVE_FS_ROCK
+check_PROGRAMS += tests/testRock
+endif
+if HAVE_FS_UFS
+check_PROGRAMS += tests/testUfs
+endif
 
 ## NP: required to run the above list. check_PROGRAMS only builds the binaries...
 TESTS += $(check_PROGRAMS)
@@ -1119,6 +1134,7 @@ TESTS += $(check_PROGRAMS)
 tests_testHttpReply_SOURCES=\
 	cbdata.cc \
 	cbdata.h \
+	ConfigParser.cc \
 	ETag.cc \
 	fatal.h \
 	tests/stub_fatal.cc \
@@ -1146,9 +1162,6 @@ tests_testHttpReply_SOURCES=\
 	HttpMsg.h \
 	HttpReply.cc \
 	HttpReply.h \
-	HttpStatusCode.h \
-	HttpStatusLine.cc \
-	HttpStatusLine.h \
 	Mem.h \
 	mem.cc \
 	RegexList.h \
@@ -1196,6 +1209,7 @@ nodist_tests_testHttpReply_SOURCES=\
 	$(TESTSOURCES)
 tests_testHttpReply_LDFLAGS = $(LIBADD_DL)
 tests_testHttpReply_LDADD=\
+	http/libsquid-http.la \
 	acl/libacls.la \
 	acl/libapi.la \
 	acl/libstate.la \
@@ -1209,6 +1223,7 @@ tests_testHttpReply_LDADD=\
 	$(top_builddir)/lib/libmiscutil.la \
 	$(SQUID_CPPUNIT_LIBS) \
 	$(SQUID_CPPUNIT_LA) \
+	$(NETTLELIB) \
 	$(SSLLIB) \
 	$(COMPAT_LIB) \
 	$(XTRA_LIBS)
@@ -1247,6 +1262,10 @@ tests_testACLMaxUserIP_SOURCES= \
 	HttpRequestMethod.cc \
 	int.h \
 	int.cc \
+	MasterXaction.cc \
+	MasterXaction.h \
+	Notes.cc \
+	Notes.h \
 	SquidList.h \
 	SquidList.cc \
 	mem_node.cc \
@@ -1282,6 +1301,7 @@ tests_testACLMaxUserIP_SOURCES= \
 	cache_cf.h \
 	YesNoNone.h \
 	tests/stub_cache_cf.cc \
+	tests/stub_client_side.cc \
 	tests/stub_debug.cc \
 	tests/stub_DelayId.cc \
 	tests/stub_DiskIOModule.cc \
@@ -1326,6 +1346,7 @@ tests_testACLMaxUserIP_SOURCES= \
 nodist_tests_testACLMaxUserIP_SOURCES= \
 	$(TESTSOURCES)
 tests_testACLMaxUserIP_LDADD= \
+	http/libsquid-http.la \
 	$(AUTH_ACL_LIBS) \
 	ident/libident.la \
 	acl/libacls.la \
@@ -1343,6 +1364,7 @@ tests_testACLMaxUserIP_LDADD= \
 	$(top_builddir)/lib/libmiscencoding.la \
 	$(top_builddir)/lib/libmiscutil.la \
 	$(DISK_OS_LIBS) \
+	$(NETTLELIB) \
 	$(REGEXLIB) \
 	$(SQUID_CPPUNIT_LIBS) \
 	$(SSLLIB) \
@@ -1438,17 +1460,20 @@ tests_testCacheManager_SOURCES = \
 	fde.cc \
 	FileMap.h \
 	filemap.cc \
-	forward.cc \
 	fqdncache.h \
 	fqdncache.cc \
 	ftp.h \
 	ftp.cc \
+	FwdState.cc \
+	FwdState.h \
 	gopher.h \
 	gopher.cc \
 	hier_code.h \
 	helper.cc \
 	HelperChildConfig.h \
 	HelperChildConfig.cc \
+	HelperReply.cc \
+	HelperReply.h \
 	$(HTCPSOURCE) \
 	HttpStateFlags.h \
 	http.cc \
@@ -1469,7 +1494,6 @@ tests_testCacheManager_SOURCES = \
 	HttpHdrScTarget.cc \
 	HttpMsg.cc \
 	HttpReply.cc \
-	HttpStatusLine.cc \
 	icp_v2.cc \
 	icp_v3.cc \
 	$(IPC_SOURCE) \
@@ -1480,9 +1504,12 @@ tests_testCacheManager_SOURCES = \
 	internal.cc \
 	SquidList.h \
 	SquidList.cc \
+	MasterXaction.cc \
+	MasterXaction.h \
 	multicast.h \
 	multicast.cc \
 	mem_node.cc \
+	MemBlob.cc \
 	MemBuf.cc \
 	MemObject.cc \
 	mime.h \
@@ -1491,6 +1518,8 @@ tests_testCacheManager_SOURCES = \
 	mime_header.cc \
 	neighbors.h \
 	neighbors.cc \
+	Notes.cc \
+	Notes.h \
 	Packer.cc \
 	Parsing.cc \
 	pconn.cc \
@@ -1571,10 +1600,10 @@ nodist_tests_testCacheManager_SOURCES = \
 	$(DISKIO_GEN_SOURCE)
 # comm.cc only requires comm/libcomm.la until fdc_table is dead.
 tests_testCacheManager_LDADD = \
+	http/libsquid-http.la \
 	$(AUTH_ACL_LIBS) \
 	ident/libident.la \
 	acl/libacls.la \
-	eui/libeui.la \
 	acl/libstate.la \
 	$(AUTH_LIBS) \
 	acl/libapi.la \
@@ -1583,6 +1612,7 @@ tests_testCacheManager_LDADD = \
 	ip/libip.la \
 	fs/libfs.la \
 	comm/libcomm.la \
+	eui/libeui.la \
 	icmp/libicmp.la icmp/libicmp-core.la \
 	log/liblog.la \
 	format/libformat.la \
@@ -1599,6 +1629,7 @@ tests_testCacheManager_LDADD = \
 	$(top_builddir)/lib/libmisccontainers.la \
 	$(top_builddir)/lib/libmiscencoding.la \
 	$(top_builddir)/lib/libmiscutil.la \
+	$(NETTLELIB) \
 	$(REGEXLIB) \
 	$(SQUID_CPPUNIT_LIBS) \
 	$(SQUID_CPPUNIT_LA) \
@@ -1652,11 +1683,12 @@ tests_testDiskIO_SOURCES = \
 	HttpMsg.cc \
 	HttpReply.cc \
 	HttpRequestMethod.cc \
-	HttpStatusLine.cc \
 	int.h \
 	int.cc \
 	SquidList.h \
 	SquidList.cc \
+	MasterXaction.cc \
+	MasterXaction.h \
 	MemBuf.cc \
 	MemObject.cc \
 	mem_node.cc \
@@ -1717,6 +1749,7 @@ tests_testDiskIO_SOURCES = \
 	tests/stub_internal.cc \
 	tests/stub_ipc.cc \
 	tests/stub_ipcache.cc \
+	tests/stub_libeui.cc \
 	tests/stub_libformat.cc \
 	tests/stub_libicmp.cc \
 	tests/stub_MemStore.cc \
@@ -1750,13 +1783,13 @@ nodist_tests_testDiskIO_SOURCES= \
 	SquidMath.h \
 	swap_log_op.cc
 tests_testDiskIO_LDADD = \
+	http/libsquid-http.la \
 	SquidConfig.o \
 	CommCalls.o \
 	DnsLookupDetails.o \
 	$(AUTH_ACL_LIBS) \
 	ident/libident.la \
 	acl/libacls.la \
-	eui/libeui.la \
 	acl/libstate.la \
 	$(AUTH_LIBS) \
 	libsquid.la \
@@ -1776,6 +1809,7 @@ tests_testDiskIO_LDADD = \
 	$(top_builddir)/lib/libmisccontainers.la \
 	$(top_builddir)/lib/libmiscencoding.la \
 	$(top_builddir)/lib/libmiscutil.la \
+	$(NETTLELIB) \
 	$(REGEXLIB) \
 	$(SQUID_CPPUNIT_LIBS) \
 	$(SSLLIB) \
@@ -1843,16 +1877,19 @@ tests_testEvent_SOURCES = \
 	fde.cc \
 	FileMap.h \
 	filemap.cc \
-	forward.cc \
 	fqdncache.h \
 	fqdncache.cc \
 	ftp.h \
 	ftp.cc \
+	FwdState.cc \
+	FwdState.h \
 	gopher.h \
 	gopher.cc \
 	helper.cc \
 	HelperChildConfig.h \
 	HelperChildConfig.cc \
+	HelperReply.cc \
+	HelperReply.h \
 	hier_code.h \
 	$(HTCPSOURCE) \
 	http.cc \
@@ -1879,7 +1916,6 @@ tests_testEvent_SOURCES = \
 	RequestFlags.cc \
 	HttpRequest.cc \
 	HttpRequestMethod.cc \
-	HttpStatusLine.cc \
 	icp_v2.cc \
 	icp_v3.cc \
 	$(IPC_SOURCE) \
@@ -1890,9 +1926,12 @@ tests_testEvent_SOURCES = \
 	internal.cc \
 	SquidList.h \
 	SquidList.cc \
+	MasterXaction.cc \
+	MasterXaction.h \
 	Mem.h \
 	mem.cc \
 	mem_node.cc \
+	MemBlob.cc \
 	MemBuf.cc \
 	MemObject.cc \
 	mime.h \
@@ -1903,6 +1942,8 @@ tests_testEvent_SOURCES = \
 	multicast.cc \
 	neighbors.h \
 	neighbors.cc \
+	Notes.cc \
+	Notes.h \
 	Packer.cc \
 	Parsing.cc \
 	pconn.cc \
@@ -1968,6 +2009,7 @@ tests_testEvent_SOURCES = \
 	tests/testMain.cc \
 	tests/stub_main_cc.cc \
 	tests/stub_ipc_Forwarder.cc \
+	tests/stub_libeui.cc \
 	tests/stub_store_stats.cc \
 	time.cc \
 	tools.h \
@@ -1990,10 +2032,10 @@ nodist_tests_testEvent_SOURCES = \
 	$(BUILT_SOURCES) \
 	$(DISKIO_GEN_SOURCE)
 tests_testEvent_LDADD = \
+	http/libsquid-http.la \
 	$(AUTH_ACL_LIBS) \
 	ident/libident.la \
 	acl/libacls.la \
-	eui/libeui.la \
 	acl/libstate.la \
 	$(AUTH_LIBS) \
 	acl/libapi.la \
@@ -2018,6 +2060,7 @@ tests_testEvent_LDADD = \
 	ipc/libipc.la \
 	mgr/libmgr.la \
 	$(SNMP_LIBS) \
+	$(NETTLELIB) \
 	$(REGEXLIB) \
 	$(SQUID_CPPUNIT_LIBS) \
 	$(SQUID_CPPUNIT_LA) \
@@ -2085,16 +2128,19 @@ tests_testEventLoop_SOURCES = \
 	fde.cc \
 	FileMap.h \
 	filemap.cc \
-	forward.cc \
 	fqdncache.h \
 	fqdncache.cc \
 	ftp.h \
 	ftp.cc \
+	FwdState.cc \
+	FwdState.h \
 	gopher.h \
 	gopher.cc \
 	helper.cc \
 	HelperChildConfig.h \
 	HelperChildConfig.cc \
+	HelperReply.cc \
+	HelperReply.h \
 	hier_code.h \
 	$(HTCPSOURCE) \
 	http.cc \
@@ -2121,7 +2167,6 @@ tests_testEventLoop_SOURCES = \
 	RequestFlags.cc \
 	HttpRequest.cc \
 	HttpRequestMethod.cc \
-	HttpStatusLine.cc \
 	icp_v2.cc \
 	icp_v3.cc \
 	$(IPC_SOURCE) \
@@ -2132,6 +2177,9 @@ tests_testEventLoop_SOURCES = \
 	internal.cc \
 	SquidList.h \
 	SquidList.cc \
+	MasterXaction.cc \
+	MasterXaction.h \
+	MemBlob.cc \
 	MemBuf.cc \
 	MemObject.cc \
 	Mem.h \
@@ -2145,6 +2193,8 @@ tests_testEventLoop_SOURCES = \
 	multicast.cc \
 	neighbors.h \
 	neighbors.cc \
+	Notes.cc \
+	Notes.h \
 	Packer.cc \
 	Parsing.cc \
 	pconn.cc \
@@ -2210,6 +2260,7 @@ tests_testEventLoop_SOURCES = \
 	tests/testMain.cc \
 	tests/stub_main_cc.cc \
 	tests/stub_ipc_Forwarder.cc \
+	tests/stub_libeui.cc \
 	tests/stub_store_stats.cc \
 	time.cc \
 	tools.h \
@@ -2232,10 +2283,10 @@ nodist_tests_testEventLoop_SOURCES = \
 	$(BUILT_SOURCES) \
 	$(DISKIO_GEN_SOURCE)
 tests_testEventLoop_LDADD = \
+	http/libsquid-http.la \
 	$(AUTH_ACL_LIBS) \
 	ident/libident.la \
 	acl/libacls.la \
-	eui/libeui.la \
 	acl/libstate.la \
 	$(AUTH_LIBS) \
 	acl/libapi.la \
@@ -2260,6 +2311,7 @@ tests_testEventLoop_LDADD = \
 	ipc/libipc.la \
 	mgr/libmgr.la \
 	$(SNMP_LIBS) \
+	$(NETTLELIB) \
 	$(REGEXLIB) \
 	$(SQUID_CPPUNIT_LIBS) \
 	$(SQUID_CPPUNIT_LA) \
@@ -2324,16 +2376,19 @@ tests_test_http_range_SOURCES = \
 	fde.cc \
 	FileMap.h \
 	filemap.cc \
-	forward.cc \
 	fqdncache.h \
 	fqdncache.cc \
 	ftp.h \
 	ftp.cc \
+	FwdState.cc \
+	FwdState.h \
 	gopher.h \
 	gopher.cc \
 	helper.cc \
 	HelperChildConfig.h \
 	HelperChildConfig.cc \
+	HelperReply.cc \
+	HelperReply.h \
 	hier_code.h \
 	$(HTCPSOURCE) \
 	http.cc \
@@ -2360,7 +2415,6 @@ tests_test_http_range_SOURCES = \
 	RequestFlags.cc \
 	HttpRequest.cc \
 	HttpRequestMethod.cc \
-	HttpStatusLine.cc \
 	icp_v2.cc \
 	icp_v3.cc \
 	int.h \
@@ -2371,6 +2425,9 @@ tests_test_http_range_SOURCES = \
 	ipcache.cc \
 	SquidList.h \
 	SquidList.cc \
+	MasterXaction.cc \
+	MasterXaction.h \
+	MemBlob.cc \
 	MemBuf.cc \
 	MemObject.cc \
 	Mem.h \
@@ -2384,6 +2441,8 @@ tests_test_http_range_SOURCES = \
 	multicast.cc \
 	neighbors.h \
 	neighbors.cc \
+	Notes.cc \
+	Notes.h \
 	Packer.cc \
 	Parsing.cc \
 	peer_digest.cc \
@@ -2445,6 +2504,7 @@ tests_test_http_range_SOURCES = \
 	SwapDir.cc \
 	tests/test_http_range.cc \
 	tests/stub_ipc_Forwarder.cc \
+	tests/stub_libeui.cc \
 	tests/stub_main_cc.cc \
 	tests/stub_MemStore.cc \
 	tests/stub_store_stats.cc \
@@ -2468,10 +2528,10 @@ nodist_tests_test_http_range_SOURCES = \
 	$(BUILT_SOURCES) \
 	$(DISKIO_GEN_SOURCE)
 tests_test_http_range_LDADD = \
+	http/libsquid-http.la \
 	$(AUTH_ACL_LIBS) \
 	ident/libident.la \
 	acl/libacls.la \
-	eui/libeui.la \
 	acl/libstate.la \
 	$(AUTH_LIBS) \
 	acl/libapi.la \
@@ -2496,6 +2556,7 @@ tests_test_http_range_LDADD = \
 	$(top_builddir)/lib/libmisccontainers.la \
 	$(top_builddir)/lib/libmiscencoding.la \
 	$(top_builddir)/lib/libmiscutil.la \
+	$(NETTLELIB) \
 	$(REGEXLIB) \
 	$(SQUID_CPPUNIT_LIBS) \
 	$(SQUID_CPPUNIT_LA) \
@@ -2534,6 +2595,7 @@ tests_testHttpParser_SOURCES = \
 nodist_tests_testHttpParser_SOURCES = \
 	$(TESTSOURCES)
 tests_testHttpParser_LDADD= \
+	http/libsquid-http.la \
 	SquidConfig.o \
 	base/libbase.la \
 	ip/libip.la \
@@ -2566,6 +2628,7 @@ tests_testHttpRequest_SOURCES = \
 	tests/stub_DiskIOModule.cc \
 	tests/stub_main_cc.cc \
 	tests/stub_ipc_Forwarder.cc \
+	tests/stub_libeui.cc \
 	tests/stub_store_stats.cc \
 	time.cc \
 	BodyPipe.cc \
@@ -2612,16 +2675,19 @@ tests_testHttpRequest_SOURCES = \
 	fd.h \
 	fd.cc \
 	fde.cc \
-	forward.cc \
 	fqdncache.h \
 	fqdncache.cc \
 	ftp.h \
 	ftp.cc \
+	FwdState.cc \
+	FwdState.h \
 	gopher.h \
 	gopher.cc \
 	helper.cc \
 	HelperChildConfig.h \
 	HelperChildConfig.cc \
+	HelperReply.cc \
+	HelperReply.h \
 	hier_code.h \
 	$(HTCPSOURCE) \
 	http.cc \
@@ -2642,7 +2708,6 @@ tests_testHttpRequest_SOURCES = \
 	HttpHdrScTarget.cc \
 	HttpMsg.cc \
 	HttpReply.cc \
-	HttpStatusLine.cc \
 	icp_v2.cc \
 	icp_v3.cc \
 	$(IPC_SOURCE) \
@@ -2653,9 +2718,12 @@ tests_testHttpRequest_SOURCES = \
 	internal.cc \
 	SquidList.h \
 	SquidList.cc \
+	MasterXaction.cc \
+	MasterXaction.h \
 	multicast.h \
 	multicast.cc \
 	mem_node.cc \
+	MemBlob.cc \
 	MemBuf.cc \
 	MemObject.cc \
 	mime.h \
@@ -2664,6 +2732,8 @@ tests_testHttpRequest_SOURCES = \
 	mime_header.cc \
 	neighbors.h \
 	neighbors.cc \
+	Notes.cc \
+	Notes.h \
 	Packer.cc \
 	Parsing.cc \
 	pconn.cc \
@@ -2745,7 +2815,6 @@ tests_testHttpRequest_LDADD = \
 	$(AUTH_ACL_LIBS) \
 	ident/libident.la \
 	acl/libacls.la \
-	eui/libeui.la \
 	acl/libstate.la \
 	$(AUTH_LIBS) \
 	acl/libapi.la \
@@ -2761,6 +2830,7 @@ tests_testHttpRequest_LDADD = \
 	comm/libcomm.la \
 	log/liblog.la \
 	format/libformat.la \
+	http/libsquid-http.la \
 	$(REPL_OBJS) \
 	$(ADAPTATION_LIBS) \
 	$(ESI_LIBS) \
@@ -2769,6 +2839,7 @@ tests_testHttpRequest_LDADD = \
 	$(top_builddir)/lib/libmiscencoding.la \
 	$(top_builddir)/lib/libmiscutil.la \
 	$(DISK_OS_LIBS) \
+	$(NETTLELIB) \
 	$(REGEXLIB) \
 	$(SQUID_CPPUNIT_LIBS) \
 	$(SQUID_CPPUNIT_LA) \
@@ -2823,6 +2894,8 @@ tests_testStore_SOURCES= \
 	int.cc \
 	SquidList.h \
 	SquidList.cc \
+	MasterXaction.cc \
+	MasterXaction.h \
 	Mem.h \
 	mem.cc \
 	mem_node.cc \
@@ -2877,6 +2950,7 @@ tests_testStore_SOURCES= \
 	tests/stub_helper.cc \
 	tests/stub_HelperChildConfig.cc \
 	tests/stub_http.cc \
+	tests/stub_libeui.cc \
 	tests/stub_libformat.cc \
 	HttpBody.h \
 	HttpBody.cc \
@@ -2921,10 +2995,10 @@ nodist_tests_testStore_SOURCES= \
 	swap_log_op.cc
 
 tests_testStore_LDADD= \
+	http/libsquid-http.la \
 	$(AUTH_ACL_LIBS) \
 	ident/libident.la \
 	acl/libacls.la \
-	eui/libeui.la \
 	acl/libstate.la \
 	$(AUTH_LIBS) \
 	acl/libapi.la \
@@ -2939,6 +3013,7 @@ tests_testStore_LDADD= \
 	$(top_builddir)/lib/libmisccontainers.la \
 	$(top_builddir)/lib/libmiscencoding.la \
 	$(top_builddir)/lib/libmiscutil.la \
+	$(NETTLELIB) \
 	$(REGEXLIB) \
 	$(SQUID_CPPUNIT_LIBS) \
 	$(SSLLIB) \
@@ -2995,7 +3070,6 @@ SWAP_TEST_DS =\
 	$(AUTH_ACL_LIBS) \
 	ident/libident.la \
 	acl/libacls.la \
-	eui/libeui.la \
 	acl/libstate.la \
 	$(AUTH_LIBS) \
 	acl/libapi.la \
@@ -3017,6 +3091,7 @@ tests_testUfs_SOURCES = \
 	tests/stub_HelperChildConfig.cc \
 	tests/stub_icp.cc \
 	tests/stub_ipc.cc \
+	tests/stub_libeui.cc \
 	tests/stub_MemStore.cc \
 	tests/stub_pconn.cc \
 	tests/stub_Port.cc \
@@ -3041,13 +3116,14 @@ tests_testUfs_SOURCES = \
 	HttpBody.h \
 	HttpBody.cc \
 	HttpReply.cc \
-	HttpStatusLine.cc \
 	int.h \
 	int.cc \
 	RequestFlags.h \
 	RequestFlags.cc \
 	SquidList.h \
 	SquidList.cc \
+	MasterXaction.cc \
+	MasterXaction.h \
 	MemObject.cc \
 	StoreSwapLogData.cc \
 	StoreIOState.cc \
@@ -3145,12 +3221,12 @@ nodist_tests_testUfs_SOURCES = \
 	SquidMath.h \
 	swap_log_op.cc
 tests_testUfs_LDADD = \
+	http/libsquid-http.la \
 	CommCalls.o \
 	DnsLookupDetails.o \
 	$(AUTH_ACL_LIBS) \
 	ident/libident.la \
 	acl/libacls.la \
-	eui/libeui.la \
 	acl/libstate.la \
 	$(AUTH_LIBS) \
 	acl/libapi.la \
@@ -3172,6 +3248,7 @@ tests_testUfs_LDADD = \
 	$(top_builddir)/lib/libmisccontainers.la \
 	$(top_builddir)/lib/libmiscencoding.la \
 	$(top_builddir)/lib/libmiscutil.la \
+	$(NETTLELIB) \
 	$(REGEXLIB) \
 	$(SQUID_CPPUNIT_LIBS) \
 	$(SSLLIB) \
@@ -3180,6 +3257,20 @@ tests_testUfs_LDADD = \
 tests_testUfs_LDFLAGS = $(LIBADD_DL)
 tests_testUfs_DEPENDENCIES = \
 	$(SWAP_TEST_DS)
+
+check_PROGRAMS += testRefCount
+testRefCount_SOURCES= \
+	base/Lock.h \
+	base/RefCount.h \
+	tests/stub_cbdata.cc \
+	tests/stub_debug.cc \
+	tests/stub_MemBuf.cc \
+	tests/testRefCount.cc
+testRefCount_LDADD = \
+	base/libbase.la \
+	$(top_builddir)/lib/libmiscutil.la \
+	$(COMPAT_LIB) \
+	$(XTRA_LIBS)
 
 tests_testRock_SOURCES = \
 	cbdata.cc \
@@ -3193,7 +3284,7 @@ tests_testRock_SOURCES = \
 	EventLoop.cc \
 	event.cc \
 	fatal.h \
-	tests/stub_fatal.cc \
+	fatal.cc \
 	fd.h \
 	fd.cc \
 	fde.h \
@@ -3216,11 +3307,12 @@ tests_testRock_SOURCES = \
 	HttpMsg.cc \
 	HttpReply.cc \
 	HttpRequestMethod.cc \
-	HttpStatusLine.cc \
 	int.h \
 	int.cc \
 	SquidList.h \
 	SquidList.cc \
+	MasterXaction.cc \
+	MasterXaction.h \
 	Mem.h \
 	mem.cc \
 	MemBuf.cc \
@@ -3268,8 +3360,8 @@ tests_testRock_SOURCES = \
 	cache_cf.h \
 	YesNoNone.h \
 	tests/stub_cache_cf.cc \
-	tests/stub_cache_manager.cc \
 	client_db.h \
+	tests/stub_cache_manager.cc \
 	tests/stub_client_db.cc \
 	tests/stub_client_side_request.cc \
 	tests/stub_debug.cc \
@@ -3280,8 +3372,10 @@ tests_testRock_SOURCES = \
 	tests/stub_icp.cc \
 	tests/stub_ipc.cc \
 	tests/stub_ipcache.cc \
+	tests/stub_libeui.cc \
 	tests/stub_libformat.cc \
 	tests/stub_libicmp.cc \
+	tests/stub_libmgr.cc \
 	tests/stub_MemStore.cc \
 	mime.h \
 	tests/stub_mime.cc \
@@ -3308,6 +3402,7 @@ nodist_tests_testRock_SOURCES = \
 	SquidMath.h \
 	$(TESTSOURCES)
 tests_testRock_LDADD = \
+	http/libsquid-http.la \
 	libsquid.la \
 	comm/libcomm.la \
 	anyp/libanyp.la \
@@ -3321,14 +3416,13 @@ tests_testRock_LDADD = \
 	acl/libacls.la \
 	acl/libapi.la \
 	acl/libstate.la \
-	eui/libeui.la \
 	ipc/libipc.la \
-	mgr/libmgr.la \
 	base/libbase.la \
 	$(SSL_LIBS) \
 	$(top_builddir)/lib/libmisccontainers.la \
 	$(top_builddir)/lib/libmiscencoding.la \
 	$(top_builddir)/lib/libmiscutil.la \
+	$(NETTLELIB) \
 	$(REGEXLIB) \
 	$(SQUID_CPPUNIT_LIBS) \
 	$(SSLLIB) \
@@ -3350,6 +3444,7 @@ tests_testCoss_SOURCES = \
 	internal.h \
 	tests/stub_internal.cc \
 	tests/stub_ipc.cc \
+	tests/stub_libeui.cc \
 	tests/stub_pconn.cc \
 	store_rebuild.h \
 	tests/stub_store_rebuild.cc \
@@ -3367,7 +3462,6 @@ tests_testCoss_SOURCES = \
 	HttpBody.h \
 	HttpBody.cc \
 	HttpReply.cc \
-	HttpStatusLine.cc \
 	int.h \
 	int.cc \
 	SquidList.h \
@@ -3474,7 +3568,6 @@ tests_testCoss_LDADD = \
 	$(AUTH_ACL_LIBS) \
 	ident/libident.la \
 	acl/libacls.la \
-	eui/libeui.la \
 	acl/libstate.la \
 	$(AUTH_LIBS) \
 	acl/libapi.la \
@@ -3501,150 +3594,6 @@ tests_testCoss_LDADD = \
 	$(XTRA_LIBS)
 tests_testCoss_LDFLAGS = $(LIBADD_DL)
 tests_testCoss_DEPENDENCIES = \
-	$(SWAP_TEST_DS)
-
-tests_testNull_SOURCES = \
-	tests/testNull.cc \
-	tests/testMain.cc \
-	tests/testNull.h \
-	internal.h \
-	tests/stub_internal.cc \
-	store_rebuild.h \
-	tests/stub_store_rebuild.cc \
-	tests/stub_store_stats.cc \
-	fd.h \
-	fd.cc \
-	disk.h \
-	disk.cc \
-	FileMap.h \
-	filemap.cc \
-	HttpBody.h \
-	HttpBody.cc \
-	HttpReply.cc \
-	HttpStatusLine.cc \
-	int.h \
-	int.cc \
-	SquidList.h \
-	SquidList.cc \
-	MemObject.cc \
-	StoreSwapLogData.cc \
-	StoreIOState.cc \
-	StoreMeta.cc \
-	StoreMetaMD5.cc \
-	StoreMetaSTD.cc \
-	StoreMetaSTDLFS.cc \
-	StoreMetaUnpacker.cc \
-	StoreMetaURL.cc \
-	StoreMetaVary.cc \
-	StoreFileSystem.cc \
-	store_io.cc \
-	store_swapout.cc \
-	store_swapmeta.cc \
-	$(UNLINKDSOURCE) \
-	$(WIN32_SOURCE) \
-	event.cc \
-	$(DELAY_POOL_SOURCE) \
-	CacheDigest.h \
-	CacheDigest.cc \
-	ConfigParser.cc \
-	EventLoop.cc \
-	HttpMsg.cc \
-	RemovalPolicy.cc \
-	store_dir.cc \
-	repl_modules.h \
-	store.cc \
-	HttpRequestMethod.cc \
-	store_key_md5.h \
-	store_key_md5.cc \
-	Parsing.cc \
-	ConfigOption.cc \
-	SwapDir.cc \
-	tests/stub_acl.cc \
-	cache_cf.h \
-	YesNoNone.h \
-	tests/stub_cache_cf.cc \
-	tests/stub_helper.cc \
-	cbdata.cc \
-	String.cc \
-	tests/stub_comm.cc \
-	tests/stub_debug.cc \
-	tests/stub_client_side_request.cc \
-	tests/stub_http.cc \
-	mem_node.cc \
-	stmem.cc \
-	mime.h \
-	tests/stub_mime.cc \
-	HttpHeaderFieldInfo.h \
-	HttpHeaderTools.h \
-	HttpHeaderTools.cc \
-	HttpHeader.h \
-	HttpHeader.cc \
-	Mem.h \
-	mem.cc \
-	ClientInfo.h \
-	MemBuf.cc \
-	HttpHdrContRange.cc \
-	Packer.cc \
-	HttpHeaderFieldStat.h \
-	HttpHdrCc.h \
-	HttpHdrCc.cc \
-	HttpHdrCc.cci \
-	HttpHdrSc.cc \
-	HttpHdrScTarget.cc \
-	url.cc \
-	StatCounters.h \
-	StatCounters.cc \
-	StatHist.h \
-	tests/stub_StatHist.cc \
-	tests/stub_errorpage.cc \
-	tests/stub_HttpRequest.cc \
-	log/access_log.h \
-	tests/stub_access_log.cc \
-	refresh.h \
-	refresh.cc \
-	tests/stub_store_client.cc \
-	tests/stub_store_stats.cc \
-	tools.h \
-	tests/stub_tools.cc \
-	tests/testStoreSupport.cc \
-	tests/testStoreSupport.h \
-	time.cc \
-	URLScheme.cc \
-	wordlist.h \
-	wordlist.cc \
-	$(DISKIO_SOURCE)
-
-nodist_tests_testNull_SOURCES = \
-	$(TESTSOURCES) \
-	$(DISKIO_GEN_SOURCE)
-tests_testNull_LDADD = \
-	$(REGEXLIB) \
-	$(AUTH_ACL_LIBS) \
-	ident/libident.la \
-	acl/libacls.la \
-	eui/libeui.la \
-	acl/libstate.la \
-	$(AUTH_LIBS) \
-	acl/libapi.la \
-	base/libbase.la \
-	libsquid.la \
-	ip/libip.la \
-	fs/libfs.la \
-	ipc/libipc.la \
-	mgr/libmgr.la \
-	$(REPL_OBJS) \
-	$(DISK_LIBS) \
-	$(DISK_OS_LIBS) \
-	acl/libapi.la \
-	$(top_builddir)/lib/libmisccontainers.la \
-	$(top_builddir)/lib/libmiscencoding.la \
-	$(top_builddir)/lib/libmiscutil.la \
-	$(SQUID_CPPUNIT_LIBS) \
-	$(SSLLIB) \
-	$(COMPAT_LIB) \
-	$(XTRA_LIBS)
-tests_testNull_LDFLAGS = $(LIBADD_DL)
-tests_testNull_DEPENDENCIES = \
 	$(SWAP_TEST_DS)
 
 ## Tests of the URL module.
@@ -3700,16 +3649,19 @@ tests_testURL_SOURCES = \
 	fde.cc \
 	FileMap.h \
 	filemap.cc \
-	forward.cc \
 	fqdncache.h \
 	fqdncache.cc \
 	ftp.h \
 	ftp.cc \
+	FwdState.cc \
+	FwdState.h \
 	gopher.h \
 	gopher.cc \
 	helper.cc \
 	HelperChildConfig.h \
 	HelperChildConfig.cc \
+	HelperReply.cc \
+	HelperReply.h \
 	hier_code.h \
 	$(HTCPSOURCE) \
 	http.cc \
@@ -3736,7 +3688,6 @@ tests_testURL_SOURCES = \
 	RequestFlags.cc \
 	HttpRequest.cc \
 	HttpRequestMethod.cc \
-	HttpStatusLine.cc \
 	icp_v2.cc \
 	icp_v3.cc \
 	$(IPC_SOURCE) \
@@ -3747,11 +3698,14 @@ tests_testURL_SOURCES = \
 	internal.cc \
 	SquidList.h \
 	SquidList.cc \
+	MasterXaction.cc \
+	MasterXaction.h \
 	multicast.h \
 	multicast.cc \
 	Mem.h \
 	mem.cc \
 	mem_node.cc \
+	MemBlob.cc \
 	MemBuf.cc \
 	MemObject.cc \
 	mime.h \
@@ -3760,6 +3714,8 @@ tests_testURL_SOURCES = \
 	mime_header.cc \
 	neighbors.h \
 	neighbors.cc \
+	Notes.cc \
+	Notes.h \
 	Packer.cc \
 	Parsing.cc \
 	pconn.cc \
@@ -3849,6 +3805,7 @@ tests_testURL_SOURCES = \
 nodist_tests_testURL_SOURCES = \
 	$(BUILT_SOURCES)
 tests_testURL_LDADD = \
+	http/libsquid-http.la \
 	anyp/libanyp.la \
 	$(AUTH_ACL_LIBS) \
 	ident/libident.la \
@@ -3877,6 +3834,7 @@ tests_testURL_LDADD = \
 	$(top_builddir)/lib/libmisccontainers.la \
 	$(top_builddir)/lib/libmiscencoding.la \
 	$(top_builddir)/lib/libmiscutil.la \
+	$(NETTLELIB) \
 	$(COMPAT_LIB) \
 	$(SQUID_CPPUNIT_LIBS) \
 	$(SQUID_CPPUNIT_LA) \
@@ -3968,6 +3926,21 @@ tests_testStatHist_LDADD = \
 	$(SQUID_CPPUNIT_LA) \
 	$(COMPAT_LIB)
 tests_testStatHist_DEPENDENCIES = $(SQUID_CPPUNIT_LA)
+
+tests_testVector_SOURCES = \
+	tests/testVector.cc \
+	tests/testMain.cc \
+	tests/testVector.h \
+	time.cc
+nodist_tests_testVector_SOURCES = \
+	$(TESTSOURCES)
+tests_testVector_LDADD= \
+	$(SQUID_CPPUNIT_LIBS) \
+	$(COMPAT_LIB) \
+	$(XTRA_LIBS)
+tests_testVector_LDFLAGS = $(LIBADD_DL)
+tests_testVector_DEPENDENCIES = \
+	$(SQUID_CPPUNIT_LA)
 
 
 TESTS += testHeaders

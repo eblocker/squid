@@ -39,7 +39,7 @@
 #include "comm/Connection.h"
 #include "comm/ConnOpener.h"
 #include "event.h"
-#include "forward.h"
+#include "FwdState.h"
 #include "globals.h"
 #include "htcp.h"
 #include "HttpRequest.h"
@@ -121,7 +121,7 @@ whichPeer(const Ip::Address &from)
 
     for (p = Config.peers; p; p = p->next) {
         for (j = 0; j < p->n_addresses; ++j) {
-            if (from == p->addresses[j] && from.GetPort() == p->icp.port) {
+            if (from == p->addresses[j] && from.port() == p->icp.port) {
                 return p;
             }
         }
@@ -181,7 +181,7 @@ peerAllowedToUse(const CachePeer * p, HttpRequest * request)
 
     // CONNECT requests are proxy requests. Not to be forwarded to origin servers.
     // Unless the destination port matches, in which case we MAY perform a 'DIRECT' to this CachePeer.
-    if (p->options.originserver && request->method == METHOD_CONNECT && request->port != p->in_addr.GetPort())
+    if (p->options.originserver && request->method == Http::METHOD_CONNECT && request->port != p->in_addr.port())
         return false;
 
     if (p->peer_domain == NULL && p->access == NULL)
@@ -204,8 +204,6 @@ peerAllowedToUse(const CachePeer * p, HttpRequest * request)
         return do_ping;
 
     ACLFilledChecklist checklist(p->access, request, NULL);
-    checklist.src_addr = request->client_addr;
-    checklist.my_addr = request->my_addr;
 
     return (checklist.fastCheck() == ACCESS_ALLOWED);
 }
@@ -434,7 +432,7 @@ peerClearRR()
 {
     CachePeer *p = NULL;
     for (p = Config.peers; p; p = p->next) {
-        p->rr_count = 0;
+        p->rr_count = 1;
     }
 }
 
@@ -549,7 +547,7 @@ neighbors_init(void)
                 continue;
 
             for (AnyP::PortCfg *s = Config.Sockaddr.http; s; s = s->next) {
-                if (thisPeer->http_port != s->s.GetPort())
+                if (thisPeer->http_port != s->s.port())
                     continue;
 
                 debugs(15, DBG_IMPORTANT, "WARNING: Peer looks like this host");
@@ -925,7 +923,7 @@ neighborIgnoreNonPeer(const Ip::Address &from, icp_opcode opcode)
         if (np->in_addr != from)
             continue;
 
-        if (np->in_addr.GetPort() != from.GetPort())
+        if (np->in_addr.port() != from.port())
             continue;
 
         break;
@@ -934,10 +932,10 @@ neighborIgnoreNonPeer(const Ip::Address &from, icp_opcode opcode)
     if (np == NULL) {
         np = (CachePeer *)xcalloc(1, sizeof(CachePeer));
         np->in_addr = from;
-        np->icp.port = from.GetPort();
+        np->icp.port = from.port();
         np->type = PEER_NONE;
         np->host = new char[MAX_IPSTRLEN];
-        from.NtoA(np->host,MAX_IPSTRLEN);
+        from.toStr(np->host,MAX_IPSTRLEN);
         np->next = non_peers;
         non_peers = np;
     }
@@ -1223,15 +1221,15 @@ peerDNSConfigure(const ipcache_addrs *ia, const DnsLookupDetails &, void *data)
         ++ p->n_addresses;
     }
 
-    p->in_addr.SetEmpty();
+    p->in_addr.setEmpty();
     p->in_addr = p->addresses[0];
-    p->in_addr.SetPort(p->icp.port);
+    p->in_addr.port(p->icp.port);
 
     if (p->type == PEER_MULTICAST)
         peerCountMcastPeersSchedule(p, 10);
 
 #if USE_ICMP
-    if (p->type != PEER_MULTICAST)
+    if (p->type != PEER_MULTICAST && IamWorkerProcess())
         if (!p->options.no_netdb_exchange)
             eventAddIsh("netdbExchangeStart", netdbExchangeStart, p, 30.0, 1);
 #endif
@@ -1317,7 +1315,8 @@ peerProbeConnect(CachePeer * p)
     for (int i = 0; i < p->n_addresses; ++i) {
         Comm::ConnectionPointer conn = new Comm::Connection;
         conn->remote = p->addresses[i];
-        conn->remote.SetPort(p->http_port);
+        conn->remote.port(p->http_port);
+        conn->setPeer(p);
         getOutgoingAddress(NULL, conn);
 
         ++ p->testing_now;
@@ -1360,7 +1359,7 @@ peerCountMcastPeersSchedule(CachePeer * p, time_t when)
              p,
              (double) when, 1);
 
-    p->mcast.flags.count_event_pending = 1;
+    p->mcast.flags.count_event_pending = true;
 }
 
 static void
@@ -1374,20 +1373,22 @@ peerCountMcastPeersStart(void *data)
     int reqnum;
     LOCAL_ARRAY(char, url, MAX_URL);
     assert(p->type == PEER_MULTICAST);
-    p->mcast.flags.count_event_pending = 0;
+    p->mcast.flags.count_event_pending = false;
     snprintf(url, MAX_URL, "http://");
-    p->in_addr.ToURL(url+7, MAX_URL -8 );
+    p->in_addr.toUrl(url+7, MAX_URL -8 );
     strcat(url, "/");
-    fake = storeCreateEntry(url, url, RequestFlags(), METHOD_GET);
+    fake = storeCreateEntry(url, url, RequestFlags(), Http::METHOD_GET);
     HttpRequest *req = HttpRequest::CreateFromUrl(url);
     psstate = new ps_state;
-    psstate->request = HTTPMSGLOCK(req);
+    psstate->request = req;
+    HTTPMSGLOCK(psstate->request);
     psstate->entry = fake;
     psstate->callback = NULL;
     psstate->callback_data = cbdataReference(p);
     psstate->ping.start = current_time;
     mem = fake->mem_obj;
-    mem->request = HTTPMSGLOCK(psstate->request);
+    mem->request = psstate->request;
+    HTTPMSGLOCK(mem->request);
     mem->start_ping = current_time;
     mem->ping_reply_callback = peerCountHandleIcpReply;
     mem->ircb_data = psstate;
@@ -1401,7 +1402,7 @@ peerCountMcastPeersStart(void *data)
              peerCountMcastPeersDone,
              psstate,
              Config.Timeout.mcast_icp_query / 1000.0, 1);
-    p->mcast.flags.counting = 1;
+    p->mcast.flags.counting = true;
     peerCountMcastPeersSchedule(p, MCAST_COUNT_RATE);
 }
 
@@ -1413,7 +1414,7 @@ peerCountMcastPeersDone(void *data)
 
     if (cbdataReferenceValid(psstate->callback_data)) {
         CachePeer *p = (CachePeer *)psstate->callback_data;
-        p->mcast.flags.counting = 0;
+        p->mcast.flags.counting = false;
         p->mcast.avg_n_members = Math::doubleAverage(p->mcast.avg_n_members, (double) psstate->ping.n_recv, ++p->mcast.n_times_counted, 10);
         debugs(15, DBG_IMPORTANT, "Group " << p->host  << ": " << psstate->ping.n_recv  <<
                " replies, "<< std::setw(4)<< std::setprecision(2) <<
@@ -1607,7 +1608,7 @@ dump_peers(StoreEntry * sentry, CachePeer * peers)
 
         for (i = 0; i < e->n_addresses; ++i) {
             storeAppendPrintf(sentry, "Address[%d] : %s\n", i,
-                              e->addresses[i].NtoA(ntoabuf,MAX_IPSTRLEN) );
+                              e->addresses[i].toStr(ntoabuf,MAX_IPSTRLEN) );
         }
 
         storeAppendPrintf(sentry, "Status     : %s\n",
@@ -1771,7 +1772,7 @@ neighborsHtcpClear(StoreEntry * e, const char *uri, HttpRequest * req, const Htt
         if (p->options.htcp_no_purge_clr && reason == HTCP_CLR_PURGE) {
             continue;
         }
-        debugs(15, 3, "neighborsHtcpClear: sending CLR to " << p->in_addr.ToURL(buf, 128));
+        debugs(15, 3, "neighborsHtcpClear: sending CLR to " << p->in_addr.toUrl(buf, 128));
         htcpClear(e, uri, req, method, p, reason);
     }
 }

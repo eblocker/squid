@@ -36,7 +36,7 @@
 #include "CacheDigest.h"
 #include "CachePeer.h"
 #include "event.h"
-#include "forward.h"
+#include "FwdState.h"
 #include "globals.h"
 #include "HttpReply.h"
 #include "HttpRequest.h"
@@ -121,21 +121,6 @@ peerDigestClean(PeerDigest * pd)
 
 CBDATA_CLASS_INIT(PeerDigest);
 
-void *
-PeerDigest::operator new (size_t)
-{
-    CBDATA_INIT_TYPE(PeerDigest);
-    PeerDigest *result = cbdataAlloc(PeerDigest);
-    return result;
-}
-
-void
-PeerDigest::operator delete (void *address)
-{
-    PeerDigest *t = static_cast<PeerDigest *>(address);
-    cbdataFree(t);
-}
-
 /* allocate new peer digest, call Init, and lock everything */
 PeerDigest *
 peerDigestCreate(CachePeer * p)
@@ -180,7 +165,7 @@ peerDigestNeeded(PeerDigest * pd)
     assert(!pd->flags.needed);
     assert(!pd->cd);
 
-    pd->flags.needed = 1;
+    pd->flags.needed = true;
     pd->times.needed = squid_curtime;
     peerDigestSetCheck(pd, 0);	/* check asap */
 }
@@ -315,22 +300,21 @@ peerDigestRequest(PeerDigest * pd)
 {
     CachePeer *p = pd->peer;
     StoreEntry *e, *old_e;
-    char *url;
+    char *url = NULL;
     const cache_key *key;
     HttpRequest *req;
     DigestFetchState *fetch = NULL;
     StoreIOBuffer tempBuffer;
 
     pd->req_result = NULL;
-    pd->flags.requested = 1;
+    pd->flags.requested = true;
 
     /* compute future request components */
 
     if (p->digest_url)
         url = xstrdup(p->digest_url);
     else
-        url = internalRemoteUri(p->host, p->http_port,
-                                "/squid-internal-periodic/", StoreDigestFileName);
+        url = xstrdup(internalRemoteUri(p->host, p->http_port, "/squid-internal-periodic/", StoreDigestFileName));
 
     req = HttpRequest::CreateFromUrl(url);
 
@@ -360,7 +344,8 @@ peerDigestRequest(PeerDigest * pd)
 
     fetch = cbdataAlloc(DigestFetchState);
 
-    fetch->request = HTTPMSGLOCK(req);
+    fetch->request = req;
+    HTTPMSGLOCK(fetch->request);
 
     fetch->pd = cbdataReference(pd);
 
@@ -375,10 +360,10 @@ peerDigestRequest(PeerDigest * pd)
 
     pd_last_req_time = squid_curtime;
 
-    req->flags.cachable = 1;
+    req->flags.cachable = true;
 
     /* the rest is based on clientProcessExpired() */
-    req->flags.refresh = 1;
+    req->flags.refresh = true;
 
     old_e = fetch->old_entry = Store::Root().get(key);
 
@@ -412,6 +397,8 @@ peerDigestRequest(PeerDigest * pd)
 
     storeClientCopy(fetch->sc, e, tempBuffer,
                     peerDigestHandleReply, fetch);
+
+    safe_free(url);
 }
 
 /* Handle the data copying .. */
@@ -545,25 +532,24 @@ peerDigestFetchReply(void *data, char *buf, ssize_t size)
         return -1;
 
     if ((hdr_size = headersEnd(buf, size))) {
-        http_status status;
         HttpReply const *reply = fetch->entry->getReply();
         assert(reply);
-        assert (reply->sline.status != 0);
-        status = reply->sline.status;
+        assert(reply->sline.status() != Http::scNone);
+        const Http::StatusCode status = reply->sline.status();
         debugs(72, 3, "peerDigestFetchReply: " << pd->host << " status: " << status <<
                ", expires: " << (long int) reply->expires << " (" << std::showpos <<
                (int) (reply->expires - squid_curtime) << ")");
 
         /* this "if" is based on clientHandleIMSReply() */
 
-        if (status == HTTP_NOT_MODIFIED) {
-            HttpRequest *r = NULL;
+        if (status == Http::scNotModified) {
             /* our old entry is fine */
             assert(fetch->old_entry);
 
-            if (!fetch->old_entry->mem_obj->request)
-                fetch->old_entry->mem_obj->request = r =
-                                                         HTTPMSGLOCK(fetch->entry->mem_obj->request);
+            if (!fetch->old_entry->mem_obj->request) {
+                fetch->old_entry->mem_obj->request = fetch->entry->mem_obj->request;
+                HTTPMSGLOCK(fetch->old_entry->mem_obj->request);
+            }
 
             assert(fetch->old_entry->mem_obj->request);
 
@@ -585,7 +571,7 @@ peerDigestFetchReply(void *data, char *buf, ssize_t size)
             /* preserve request -- we need its size to update counters */
             /* requestUnlink(r); */
             /* fetch->entry->mem_obj->request = NULL; */
-        } else if (status == HTTP_OK) {
+        } else if (status == Http::scOkay) {
             /* get rid of old entry if any */
 
             if (fetch->old_entry) {
@@ -597,13 +583,13 @@ peerDigestFetchReply(void *data, char *buf, ssize_t size)
             }
         } else {
             /* some kind of a bug */
-            peerDigestFetchAbort(fetch, buf, httpStatusLineReason(&reply->sline));
+            peerDigestFetchAbort(fetch, buf, reply->sline.reason());
             return -1;		/* XXX -1 will abort stuff in ReadReply! */
         }
 
         /* must have a ready-to-use store entry if we got here */
         /* can we stay with the old in-memory digest? */
-        if (status == HTTP_NOT_MODIFIED && fetch->pd->cd) {
+        if (status == Http::scNotModified && fetch->pd->cd) {
             peerDigestFetchStop(fetch, buf, "Not modified");
             fetch->state = DIGEST_READ_DONE;
         } else {
@@ -637,11 +623,11 @@ peerDigestSwapInHeaders(void *data, char *buf, ssize_t size)
 
     if ((hdr_size = headersEnd(buf, size))) {
         assert(fetch->entry->getReply());
-        assert (fetch->entry->getReply()->sline.status != 0);
+        assert(fetch->entry->getReply()->sline.status() != Http::scNone);
 
-        if (fetch->entry->getReply()->sline.status != HTTP_OK) {
+        if (fetch->entry->getReply()->sline.status() != Http::scOkay) {
             debugs(72, DBG_IMPORTANT, "peerDigestSwapInHeaders: " << fetch->pd->host <<
-                   " status " << fetch->entry->getReply()->sline.status <<
+                   " status " << fetch->entry->getReply()->sline.status() <<
                    " got cached!");
 
             peerDigestFetchAbort(fetch, buf, "internal status error");
@@ -843,7 +829,7 @@ peerDigestReqFinish(DigestFetchState * fetch, char *buf,
     /* must go before peerDigestPDFinish */
 
     if (pdcb_valid) {
-        fetch->pd->flags.requested = 0;
+        fetch->pd->flags.requested = false;
         fetch->pd->req_result = reason;
     }
 
@@ -894,14 +880,14 @@ peerDigestPDFinish(DigestFetchState * fetch, int pcb_valid, int err)
             pd->cd = NULL;
         }
 
-        pd->flags.usable = 0;
+        pd->flags.usable = false;
 
         if (!pcb_valid)
             peerDigestNotePeerGone(pd);
     } else {
         assert(pcb_valid);
 
-        pd->flags.usable = 1;
+        pd->flags.usable = true;
 
         /* XXX: ugly condition, but how? */
 

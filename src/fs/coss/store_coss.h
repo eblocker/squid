@@ -36,8 +36,9 @@ public:
     char buffer[COSS_MEMBUF_SZ];
 
     struct _cossmembuf_flags {
-        unsigned int full:1;
-        unsigned int writing:1;
+        _cossmembuf_flags() : full(false), writing(false) {}
+        bool full;
+        bool writing;
     } flags;
 };
 
@@ -68,9 +69,9 @@ public:
     size_t requestoffset;	/* in blocks */
     int64_t reqdiskoffset;	/* in blocks */
 
-    struct {
-        unsigned int reading:1;
-        unsigned int writing:1;
+    struct CossFlags {
+        bool reading;
+        bool writing;
     } flags;
 
     CossMemBuf *locked_membuf;
@@ -106,14 +107,12 @@ class CossRead : public ReadRequest
 {
 
 public:
-    void * operator new (size_t);
-    void operator delete (void *);
     CossRead(ReadRequest const &base, StoreIOState::Pointer anSio) : ReadRequest(base) , sio(anSio) {}
 
     StoreIOState::Pointer sio;
 
 private:
-    CBDATA_CLASS(CossRead);
+    CBDATA_CLASS2(CossRead);
 };
 
 #include "DiskIO/WriteRequest.h"
@@ -123,14 +122,12 @@ class CossWrite : public WriteRequest
 {
 
 public:
-    void * operator new (size_t);
-    void operator delete (void *);
     CossWrite(WriteRequest const &base, CossMemBuf *aBuf) : WriteRequest(base) , membuf(aBuf) {}
 
     CossMemBuf *membuf;
 
 private:
-    CBDATA_CLASS(CossWrite);
+    CBDATA_CLASS2(CossWrite);
 };
 
 #endif

@@ -201,7 +201,7 @@ urlDefaultPort(AnyP::ProtocolType p)
  * This abuses HttpRequest as a way of representing the parsed url
  * and its components.
  * method is used to switch parsers and to init the HttpRequest.
- * If method is METHOD_CONNECT, then rather than a URL a hostname:port is
+ * If method is Http::METHOD_CONNECT, then rather than a URL a hostname:port is
  * looked for.
  * The url is non const so that if its too long we can NULL-terminate it in place.
  */
@@ -236,14 +236,14 @@ urlParse(const HttpRequestMethod& method, char *url, HttpRequest *request)
         debugs(23, DBG_IMPORTANT, "urlParse: URL too large (" << l << " bytes)");
         return NULL;
     }
-    if (method == METHOD_CONNECT) {
+    if (method == Http::METHOD_CONNECT) {
         port = CONNECT_PORT;
 
         if (sscanf(url, "[%[^]]]:%d", host, &port) < 1)
             if (sscanf(url, "%[^:]:%d", host, &port) < 1)
                 return NULL;
 
-    } else if ((method == METHOD_OPTIONS || method == METHOD_TRACE) &&
+    } else if ((method == Http::METHOD_OPTIONS || method == Http::METHOD_TRACE) &&
                strcmp(url, "*") == 0) {
         protocol = AnyP::PROTO_HTTP;
         port = urlDefaultPort(protocol);
@@ -354,7 +354,7 @@ urlParse(const HttpRequestMethod& method, char *url, HttpRequest *request)
         }
 
         // Bug 3183 sanity check: If scheme is present, host must be too.
-        if (protocol != AnyP::PROTO_NONE && (host == NULL || *host == '\0')) {
+        if (protocol != AnyP::PROTO_NONE && host[0] == '\0') {
             debugs(23, DBG_IMPORTANT, "SECURITY ALERT: Missing hostname in URL '" << url << "'. see access.log for details.");
             return NULL;
         }
@@ -499,7 +499,6 @@ const char *
 urlCanonical(HttpRequest * request)
 {
     LOCAL_ARRAY(char, portbuf, 32);
-/// \todo AYJ: Performance: making this a ptr and allocating when needed will be better than a write and future xstrdup().
     LOCAL_ARRAY(char, urlbuf, MAX_URL);
 
     if (request->canonical)
@@ -508,31 +507,22 @@ urlCanonical(HttpRequest * request)
     if (request->protocol == AnyP::PROTO_URN) {
         snprintf(urlbuf, MAX_URL, "urn:" SQUIDSTRINGPH,
                  SQUIDSTRINGPRINT(request->urlpath));
+    } else if (request->method.id() == Http::METHOD_CONNECT) {
+        snprintf(urlbuf, MAX_URL, "%s:%d", request->GetHost(), request->port);
     } else {
-/// \todo AYJ: this could use "if..else and method == METHOD_CONNECT" easier.
-        switch (request->method.id()) {
+        portbuf[0] = '\0';
 
-        case METHOD_CONNECT:
-            snprintf(urlbuf, MAX_URL, "%s:%d", request->GetHost(), request->port);
-            break;
+        if (request->port != urlDefaultPort(request->protocol))
+            snprintf(portbuf, 32, ":%d", request->port);
 
-        default:
-            portbuf[0] = '\0';
-
-            if (request->port != urlDefaultPort(request->protocol))
-                snprintf(portbuf, 32, ":%d", request->port);
-
-            const URLScheme sch = request->protocol; // temporary, until bug 1961 URL handling is fixed.
-            snprintf(urlbuf, MAX_URL, "%s://%s%s%s%s" SQUIDSTRINGPH,
-                     sch.const_str(),
-                     request->login,
-                     *request->login ? "@" : null_string,
-                     request->GetHost(),
-                     portbuf,
-                     SQUIDSTRINGPRINT(request->urlpath));
-
-            break;
-        }
+        const URLScheme sch = request->protocol; // temporary, until bug 1961 URL handling is fixed.
+        snprintf(urlbuf, MAX_URL, "%s://%s%s%s%s" SQUIDSTRINGPH,
+                 sch.const_str(),
+                 request->login,
+                 *request->login ? "@" : null_string,
+                 request->GetHost(),
+                 portbuf,
+                 SQUIDSTRINGPRINT(request->urlpath));
     }
 
     return (request->canonical = xstrdup(urlbuf));
@@ -553,52 +543,39 @@ urlCanonicalClean(const HttpRequest * request)
     if (request->protocol == AnyP::PROTO_URN) {
         snprintf(buf, MAX_URL, "urn:" SQUIDSTRINGPH,
                  SQUIDSTRINGPRINT(request->urlpath));
+    } else if (request->method.id() == Http::METHOD_CONNECT) {
+        snprintf(buf, MAX_URL, "%s:%d", request->GetHost(), request->port);
     } else {
-/// \todo AYJ: this could use "if..else and method == METHOD_CONNECT" easier.
-        switch (request->method.id()) {
+        portbuf[0] = '\0';
 
-        case METHOD_CONNECT:
-            snprintf(buf, MAX_URL, "%s:%d",
-                     request->GetHost(),
-                     request->port);
-            break;
+        if (request->port != urlDefaultPort(request->protocol))
+            snprintf(portbuf, 32, ":%d", request->port);
 
-        default:
-            portbuf[0] = '\0';
+        loginbuf[0] = '\0';
 
-            if (request->port != urlDefaultPort(request->protocol))
-                snprintf(portbuf, 32, ":%d", request->port);
+        if ((int) strlen(request->login) > 0) {
+            strcpy(loginbuf, request->login);
 
-            loginbuf[0] = '\0';
+            if ((t = strchr(loginbuf, ':')))
+                *t = '\0';
 
-            if ((int) strlen(request->login) > 0) {
-                strcpy(loginbuf, request->login);
-
-                if ((t = strchr(loginbuf, ':')))
-                    *t = '\0';
-
-                strcat(loginbuf, "@");
-            }
-
-            const URLScheme sch = request->protocol; // temporary, until bug 1961 URL handling is fixed.
-            snprintf(buf, MAX_URL, "%s://%s%s%s" SQUIDSTRINGPH,
-                     sch.const_str(),
-                     loginbuf,
-                     request->GetHost(),
-                     portbuf,
-                     SQUIDSTRINGPRINT(request->urlpath));
-            /*
-             * strip arguments AFTER a question-mark
-             */
-
-            if (Config.onoff.strip_query_terms)
-                if ((t = strchr(buf, '?'))) {
-                    ++t;
-                    *t = '\0';
-                }
-
-            break;
+            strcat(loginbuf, "@");
         }
+
+        const URLScheme sch = request->protocol; // temporary, until bug 1961 URL handling is fixed.
+        snprintf(buf, MAX_URL, "%s://%s%s%s" SQUIDSTRINGPH,
+                 sch.const_str(),
+                 loginbuf,
+                 request->GetHost(),
+                 portbuf,
+                 SQUIDSTRINGPRINT(request->urlpath));
+        /*
+         * strip arguments AFTER a question-mark
+         */
+
+        if (Config.onoff.strip_query_terms)
+            if ((t = strchr(buf, '?')))
+                *(++t) = '\0';
     }
 
     if (stringHasCntl(buf))
@@ -609,7 +586,7 @@ urlCanonicalClean(const HttpRequest * request)
 
 /**
  * Yet another alternative to urlCanonical.
- * This one addes the https:// parts to METHOD_CONNECT URL
+ * This one adds the https:// parts to Http::METHOD_CONNECT URL
  * for use in error page outputs.
  * Luckily we can leverage the others instead of duplicating.
  */
@@ -619,7 +596,7 @@ urlCanonicalFakeHttps(const HttpRequest * request)
     LOCAL_ARRAY(char, buf, MAX_URL);
 
     // method CONNECT and port HTTPS
-    if (request->method == METHOD_CONNECT && request->port == 443) {
+    if (request->method == Http::METHOD_CONNECT && request->port == 443) {
         snprintf(buf, MAX_URL, "https://%s/*", request->GetHost());
         return buf;
     }
@@ -671,7 +648,7 @@ char *
 urlMakeAbsolute(const HttpRequest * req, const char *relUrl)
 {
 
-    if (req->method.id() == METHOD_CONNECT) {
+    if (req->method.id() == Http::METHOD_CONNECT) {
         return (NULL);
     }
 
@@ -842,15 +819,15 @@ urlCheckRequest(const HttpRequest * r)
      * do not have a default protocol from the client side of HTTP.
      */
 
-    if (r->method == METHOD_CONNECT)
+    if (r->method == Http::METHOD_CONNECT)
         return 1;
 
     // we support OPTIONS and TRACE directed at us (with a 501 reply, for now)
     // we also support forwarding OPTIONS and TRACE, except for the *-URI ones
-    if (r->method == METHOD_OPTIONS || r->method == METHOD_TRACE)
+    if (r->method == Http::METHOD_OPTIONS || r->method == Http::METHOD_TRACE)
         return (r->header.getInt64(HDR_MAX_FORWARDS) == 0 || r->urlpath != "*");
 
-    if (r->method == METHOD_PURGE)
+    if (r->method == Http::METHOD_PURGE)
         return 1;
 
     /* does method match the protocol? */
@@ -866,7 +843,7 @@ urlCheckRequest(const HttpRequest * r)
 
     case AnyP::PROTO_FTP:
 
-        if (r->method == METHOD_PUT)
+        if (r->method == Http::METHOD_PUT)
             rc = 1;
 
     case AnyP::PROTO_GOPHER:
@@ -874,9 +851,9 @@ urlCheckRequest(const HttpRequest * r)
     case AnyP::PROTO_WAIS:
 
     case AnyP::PROTO_WHOIS:
-        if (r->method == METHOD_GET)
+        if (r->method == Http::METHOD_GET)
             rc = 1;
-        else if (r->method == METHOD_HEAD)
+        else if (r->method == Http::METHOD_HEAD)
             rc = 1;
 
         break;

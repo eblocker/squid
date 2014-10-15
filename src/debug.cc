@@ -45,6 +45,7 @@ int Debug::log_stderr = -1;
 bool Debug::log_syslog = false;
 int Debug::Levels[MAX_DEBUG_SECTIONS];
 int Debug::level;
+int Debug::sectionLevel;
 char *Debug::cache_log = NULL;
 int Debug::rotateNumber = -1;
 FILE *debug_log = NULL;
@@ -62,7 +63,7 @@ static void _db_print_syslog(const char *format, va_list args);
 static void _db_print_stderr(const char *format, va_list args);
 static void _db_print_file(const char *format, va_list args);
 
-#if _SQUID_MSWIN_
+#if _SQUID_WINDOWS_
 extern LPCRITICAL_SECTION dbg_mutex;
 typedef BOOL (WINAPI * PFInitializeCriticalSectionAndSpinCount) (LPCRITICAL_SECTION, DWORD);
 #endif
@@ -76,7 +77,7 @@ _db_print(const char *format,...)
     va_list args2;
     va_list args3;
 
-#if _SQUID_MSWIN_
+#if _SQUID_WINDOWS_
     /* Multiple WIN32 threads may call this simultaneously */
 
     if (!dbg_mutex) {
@@ -129,7 +130,7 @@ _db_print(const char *format,...)
     _db_print_syslog(format, args3);
 #endif
 
-#if _SQUID_MSWIN_
+#if _SQUID_WINDOWS_
     LeaveCriticalSection(dbg_mutex);
 #endif
 
@@ -485,7 +486,7 @@ _db_rotate_log(void)
         --i;
         snprintf(from, MAXPATHLEN, "%s.%d", debug_log_file, i - 1);
         snprintf(to, MAXPATHLEN, "%s.%d", debug_log_file, i);
-#if _SQUID_MSWIN_
+#if _SQUID_WINDOWS_
         remove
         (to);
 #endif
@@ -496,14 +497,14 @@ _db_rotate_log(void)
      * You can't rename open files on Microsoft "operating systems"
      * so we close before renaming.
      */
-#if _SQUID_MSWIN_
+#if _SQUID_WINDOWS_
     if (debug_log != stderr)
         fclose(debug_log);
 #endif
     /* Rotate the current log to .0 */
     if (Debug::rotateNumber > 0) {
         snprintf(to, MAXPATHLEN, "%s.%d", debug_log_file, 0);
-#if _SQUID_MSWIN_
+#if _SQUID_WINDOWS_
         remove
         (to);
 #endif
@@ -800,4 +801,27 @@ SkipBuildPrefix(const char* path)
     static const size_t BuildPrefixLength = BuildPrefixInit();
 
     return path+BuildPrefixLength;
+}
+
+std::ostream &
+Raw::print(std::ostream &os) const
+{
+    if (label_)
+        os << ' ' << label_ << '[' << size_ << ']';
+
+    if (!size_)
+        return os;
+
+    // finalize debugging level if no level was set explicitly via minLevel()
+    const int finalLevel = (level >= 0) ? level :
+                           (size_ > 40 ? DBG_DATA : Debug::sectionLevel);
+    if (finalLevel <= Debug::sectionLevel) {
+        os << (label_ ? '=' : ' ');
+        if (data_)
+            os.write(data_, size_);
+        else
+            os << "[null]";
+    }
+
+    return os;
 }

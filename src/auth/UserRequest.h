@@ -37,7 +37,7 @@
 #include "auth/User.h"
 #include "dlink.h"
 #include "ip/Address.h"
-#include "typedefs.h"
+#include "helper.h"
 #include "HttpHeader.h"
 
 class ConnStateData;
@@ -50,14 +50,24 @@ class HttpRequest;
 // AYJ: must match re-definition in helpers/negotiate_auth/kerberos/negotiate_kerb_auth.cc
 #define MAX_AUTHTOKEN_LEN   32768
 
-/// \ingroup AuthAPI
+/**
+ * Node used to link an IP address to some user credentials
+ * for the max_user_ip ACL feature.
+ *
+ * \ingroup AuthAPI
+ */
 class AuthUserIP
 {
 public:
     dlink_node node;
-    /* IP addr this user authenticated from */
 
+    /// IP address this user authenticated from
     Ip::Address ipaddr;
+
+    /** When this IP should be forgotten.
+     * Set to the time of last request made from this
+     * (user,IP) pair plus authenticate_ip_ttl seconds
+     */
     time_t ip_expiretime;
 };
 
@@ -145,7 +155,7 @@ public:
     /* add the [Proxy-]Authentication-Info trailer */
     virtual void addAuthenticationInfoTrailer(HttpReply * rep, int accel);
 
-    virtual void onConnectionClose(ConnStateData *);
+    virtual void releaseAuthServer();
 
     /**
      * Called when squid is ready to put the request on hold and wait for a callback from the auth module

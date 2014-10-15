@@ -58,6 +58,7 @@ Auth::User::User(Auth::Config *aConfig) :
         config(aConfig),
         ipcount(0),
         expiretime(0),
+        notes(),
         credentials_state(Auth::Unchecked),
         username_(NULL)
 {
@@ -99,13 +100,16 @@ Auth::User::absorb(Auth::User::Pointer from)
 
     debugs(29, 5, HERE << "auth_user '" << from << "' into auth_user '" << this << "'.");
 
+    // combine the helper response annotations. Ensuring no duplicates are copied.
+    notes.appendNewOnly(&from->notes);
+
     /* absorb the list of IP address sources (for max_user_ip controls) */
     AuthUserIP *new_ipdata;
     while (from->ip_list.head != NULL) {
         new_ipdata = static_cast<AuthUserIP *>(from->ip_list.head->data);
 
         /* If this IP has expired - ignore the expensive merge actions. */
-        if (new_ipdata->ip_expiretime + ::Config.authenticateIpTTL < squid_curtime) {
+        if (new_ipdata->ip_expiretime <= squid_curtime) {
             /* This IP has expired - remove from the source list */
             dlinkDelete(&new_ipdata->node, &(from->ip_list));
             cbdataFree(new_ipdata);
@@ -124,7 +128,7 @@ Auth::User::absorb(Auth::User::Pointer from)
                     /* update IP ttl and stop searching. */
                     ipdata->ip_expiretime = max(ipdata->ip_expiretime, new_ipdata->ip_expiretime);
                     break;
-                } else if (ipdata->ip_expiretime + ::Config.authenticateIpTTL < squid_curtime) {
+                } else if (ipdata->ip_expiretime <= squid_curtime) {
                     /* This IP has expired - cleanup the destination list */
                     dlinkDelete(&ipdata->node, &ip_list);
                     cbdataFree(ipdata);
@@ -151,7 +155,7 @@ Auth::User::absorb(Auth::User::Pointer from)
 Auth::User::~User()
 {
     debugs(29, 5, HERE << "Freeing auth_user '" << this << "'.");
-    assert(RefCountCount() == 0);
+    assert(LockCount() == 0);
 
     /* free cached acl results */
     aclCacheMatchFlush(&proxy_match_cache);
@@ -223,7 +227,7 @@ Auth::User::cacheCleanup(void *datanotused)
                auth_user->auth_type << "\n\tUsername: " << username <<
                "\n\texpires: " <<
                (long int) (auth_user->expiretime + ::Config.authenticateTTL) <<
-               "\n\treferences: " << (long int) auth_user->RefCountCount());
+               "\n\treferences: " << auth_user->LockCount());
 
         if (auth_user->expiretime + ::Config.authenticateTTL <= current_time.tv_sec) {
             debugs(29, 5, HERE << "Removing user " << username << " from cache due to timeout.");
@@ -309,7 +313,7 @@ Auth::User::addIp(Ip::Address ipaddr)
             found = 1;
             /* update IP ttl */
             ipdata->ip_expiretime = squid_curtime;
-        } else if (ipdata->ip_expiretime + ::Config.authenticateIpTTL < squid_curtime) {
+        } else if (ipdata->ip_expiretime <= squid_curtime) {
             /* This IP has expired - remove from the seen list */
             dlinkDelete(&ipdata->node, &ip_list);
             cbdataFree(ipdata);
@@ -327,7 +331,7 @@ Auth::User::addIp(Ip::Address ipaddr)
     /* This ip is not in the seen list */
     ipdata = cbdataAlloc(AuthUserIP);
 
-    ipdata->ip_expiretime = squid_curtime;
+    ipdata->ip_expiretime = squid_curtime + ::Config.authenticateIpTTL;
 
     ipdata->ipaddr = ipaddr;
 

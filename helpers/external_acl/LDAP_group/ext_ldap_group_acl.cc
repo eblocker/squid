@@ -51,7 +51,7 @@
 #include <ctype.h>
 #endif
 
-#if _SQUID_MSWIN_		/* Native Windows port and MinGW */
+#if _SQUID_WINDOWS_ && !_SQUID_CYGWIN_
 
 #define snprintf _snprintf
 #include <windows.h>
@@ -87,10 +87,6 @@ PFldap_start_tls_s Win32_ldap_start_tls_s;
 #include <ldap.h>
 #endif
 
-#endif
-
-#if defined(LDAP_OPT_NETWORK_TIMEOUT)
-#include <sys/time.h>
 #endif
 
 #define PROGRAM_NAME "ext_ldap_group_acl"
@@ -451,7 +447,7 @@ main(int argc, char **argv)
     /* On Windows ldap_start_tls_s is available starting from Windows XP,
      * so we need to bind at run-time with the function entry point
      */
-#if _SQUID_MSWIN_
+#if _SQUID_WINDOWS_
     if (use_tls) {
 
         HMODULE WLDAP32Handle;

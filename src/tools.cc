@@ -55,6 +55,9 @@
 #if HAVE_SYS_PRCTL_H
 #include <sys/prctl.h>
 #endif
+#if HAVE_WIN32_PSAPI
+#include <psapi.h>
+#endif
 #if HAVE_SYS_STAT_H
 #include <sys/stat.h>
 #endif
@@ -128,7 +131,14 @@ mail_warranty(void)
     FILE *fp = NULL;
     static char command[256];
 
-    const mode_t prev_umask=umask(S_IRWXU);
+    /*
+     * NP: umask() takes the mask of bits we DONT want set.
+     *
+     * We want the current user to have read/write access
+     * and since this file will be passed to mailsystem,
+     * the group and other must have read access.
+     */
+    const mode_t prev_umask=umask(S_IXUSR|S_IXGRP|S_IWGRP|S_IWOTH|S_IXOTH);
 
 #if HAVE_MKSTEMP
     char filename[] = "/tmp/squid-XXXXXX";
@@ -242,22 +252,59 @@ dumpMallocStats(void)
 }
 
 void
-
 squid_getrusage(struct rusage *r)
 {
-
     memset(r, '\0', sizeof(struct rusage));
-#if HAVE_GETRUSAGE && defined(RUSAGE_SELF)
+#if HAVE_GETRUSAGE && defined(RUSAGE_SELF) && !_SQUID_WINDOWS_
 #if _SQUID_SOLARIS_
     /* Solaris 2.5 has getrusage() permission bug -- Arjan de Vet */
     enter_suid();
 #endif
 
     getrusage(RUSAGE_SELF, r);
-#if _SQUID_SOLARIS_
 
+#if _SQUID_SOLARIS_
     leave_suid();
 #endif
+
+#elif _SQUID_WINDOWS_ && HAVE_WIN32_PSAPI
+    // Windows has an alternative method if there is no POSIX getrusage defined.
+    if (WIN32_OS_version >= _WIN_OS_WINNT) {
+        /* On Windows NT and later call PSAPI.DLL for process Memory */
+        /* informations -- Guido Serassio                       */
+        HANDLE hProcess;
+        PROCESS_MEMORY_COUNTERS pmc;
+        hProcess = OpenProcess(PROCESS_QUERY_INFORMATION |
+                               PROCESS_VM_READ,
+                               FALSE, GetCurrentProcessId());
+        {
+            /* Microsoft CRT doesn't have getrusage function,  */
+            /* so we get process CPU time information from PSAPI.DLL. */
+            FILETIME ftCreate, ftExit, ftKernel, ftUser;
+            if (GetProcessTimes(hProcess, &ftCreate, &ftExit, &ftKernel, &ftUser)) {
+                int64_t *ptUser = (int64_t *)&ftUser;
+                int64_t tUser64 = *ptUser / 10;
+                int64_t *ptKernel = (int64_t *)&ftKernel;
+                int64_t tKernel64 = *ptKernel / 10;
+                r->ru_utime.tv_sec =(long)(tUser64 / 1000000);
+                r->ru_stime.tv_sec =(long)(tKernel64 / 1000000);
+                r->ru_utime.tv_usec =(long)(tUser64 % 1000000);
+                r->ru_stime.tv_usec =(long)(tKernel64 % 1000000);
+            } else {
+                CloseHandle( hProcess );
+                return;
+            }
+        }
+        if (GetProcessMemoryInfo( hProcess, &pmc, sizeof(pmc))) {
+            r->ru_maxrss=(DWORD)(pmc.WorkingSetSize / getpagesize());
+            r->ru_majflt=pmc.PageFaultCount;
+        } else {
+            CloseHandle( hProcess );
+            return;
+        }
+
+        CloseHandle( hProcess );
+    }
 #endif
 }
 
@@ -366,7 +413,7 @@ death(int sig)
 #endif
 #endif /* PRINT_STACK_TRACE */
 
-#if SA_RESETHAND == 0 && !_SQUID_MSWIN_
+#if SA_RESETHAND == 0 && !_SQUID_WINDOWS_
     signal(SIGSEGV, SIG_DFL);
 
     signal(SIGBUS, SIG_DFL);
@@ -454,7 +501,7 @@ debug_trap(const char *message)
 void
 sig_child(int sig)
 {
-#if !_SQUID_MSWIN_
+#if !_SQUID_WINDOWS_
 #if _SQUID_NEXT_
     union wait status;
 #else
@@ -509,12 +556,12 @@ getMyHostname(void)
 
     host[0] = '\0';
 
-    if (Config.Sockaddr.http && sa.IsAnyAddr())
+    if (Config.Sockaddr.http && sa.isAnyAddr())
         sa = Config.Sockaddr.http->s;
 
 #if USE_SSL
 
-    if (Config.Sockaddr.https && sa.IsAnyAddr())
+    if (Config.Sockaddr.https && sa.isAnyAddr())
         sa = Config.Sockaddr.https->s;
 
 #endif
@@ -523,9 +570,9 @@ getMyHostname(void)
      * If the first http_port address has a specific address, try a
      * reverse DNS lookup on it.
      */
-    if ( !sa.IsAnyAddr() ) {
+    if ( !sa.isAnyAddr() ) {
 
-        sa.GetAddrInfo(AI);
+        sa.getAddrInfo(AI);
         /* we are looking for a name. */
         if (getnameinfo(AI->ai_addr, AI->ai_addrlen, host, SQUIDHOSTNAMELEN, NULL, 0, NI_NAMEREQD ) == 0) {
             /* DNS lookup successful */
@@ -534,13 +581,13 @@ getMyHostname(void)
 
             present = 1;
 
-            sa.FreeAddrInfo(AI);
+            Ip::Address::FreeAddrInfo(AI);
 
             if (strchr(host, '.'))
                 return host;
         }
 
-        sa.FreeAddrInfo(AI);
+        Ip::Address::FreeAddrInfo(AI);
         debugs(50, 2, "WARNING: failed to resolve " << sa << " to a fully qualified hostname");
     }
 
@@ -560,15 +607,14 @@ getMyHostname(void)
             present = 1;
 
             /* AYJ: do we want to flag AI_ALL and cache the result anywhere. ie as our local host IPs? */
-            if (AI) {
+            if (AI)
                 freeaddrinfo(AI);
-                AI = NULL;
-            }
 
             return host;
         }
 
-        if (AI) freeaddrinfo(AI);
+        if (AI)
+            freeaddrinfo(AI);
         debugs(50, DBG_IMPORTANT, "WARNING: '" << host << "' rDNS test failed: " << xstrerror());
     }
 
@@ -994,7 +1040,7 @@ squid_signal(int sig, SIGHDLR * func, int flags)
         debugs(50, DBG_CRITICAL, "sigaction: sig=" << sig << " func=" << func << ": " << xstrerror());
 
 #else
-#if _SQUID_MSWIN_
+#if _SQUID_WINDOWS_
     /*
     On Windows, only SIGINT, SIGILL, SIGFPE, SIGTERM, SIGBREAK, SIGABRT and SIGSEGV signals
     are supported, so we must care of don't call signal() for other value.
@@ -1167,19 +1213,19 @@ getMyPort(void)
     AnyP::PortCfg *p = NULL;
     if ((p = Config.Sockaddr.http)) {
         // skip any special interception ports
-        while (p && (p->intercepted || p->spoof_client_ip))
+        while (p && p->flags.isIntercepted())
             p = p->next;
         if (p)
-            return p->s.GetPort();
+            return p->s.port();
     }
 
 #if USE_SSL
     if ((p = Config.Sockaddr.https)) {
         // skip any special interception ports
-        while (p && (p->intercepted || p->spoof_client_ip))
+        while (p && p->flags.isIntercepted())
             p = p->next;
         if (p)
-            return p->s.GetPort();
+            return p->s.port();
     }
 #endif
 

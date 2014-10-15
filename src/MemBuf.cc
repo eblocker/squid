@@ -137,6 +137,7 @@ MemBuf::init(mb_size_t szInit, mb_size_t szMax)
     capacity = 0;
     stolen = 0;
     grow(szInit);
+    terminate();
 }
 
 /**
@@ -218,6 +219,20 @@ void MemBuf::consume(mb_size_t shiftSize)
         terminate();
     }
     PROF_stop(MemBuf_consume);
+}
+
+/// removes all whitespace prefix bytes and "packs" by moving content left
+void MemBuf::consumeWhitespacePrefix()
+{
+    PROF_start(MemBuf_consumeWhitespace);
+    if (contentSize() > 0) {
+        const char *end = buf + contentSize();
+        const char *p = buf;
+        for (; p<end && xisspace(*p); ++p);
+        if (p-buf > 0)
+            consume(p-buf);
+    }
+    PROF_stop(MemBuf_consumeWhitespace);
 }
 
 // removes last tailSize bytes

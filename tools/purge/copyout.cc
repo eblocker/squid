@@ -35,10 +35,6 @@
 // Initial revision
 //
 //
-#if (defined(__GNUC__) || defined(__GNUG__)) && !defined(__clang__)
-#pragma implementation
-#endif
-
 #include "squid.h"
 #include "copyout.hh"
 
@@ -131,7 +127,8 @@ copy_out( size_t filesize, size_t metasize, unsigned debug,
     if ( ptr == 0 || strlen(ptr) < 4 ) return false;
 
     // create filename to store contents into
-    char *filename = new char[ strlen(url) + strlen(copydir) + strlen(index) ];
+    // NP: magic extra 5 bytes for the component delimiter and termination octets
+    char *filename = new char[ strlen(ptr) + strlen(copydir) + strlen(index) +5 ];
     assert( filename != 0 );
     strcpy( filename, copydir );
     strcat( filename, "/" );

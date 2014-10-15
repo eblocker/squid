@@ -38,7 +38,7 @@
 #include "DnsLookupDetails.h"
 #include "errorpage.h"
 #include "event.h"
-#include "forward.h"
+#include "FwdState.h"
 #include "globals.h"
 #include "hier_code.h"
 #include "htcp.h"
@@ -71,7 +71,6 @@ static const char *DirectStr[] = {
 static void peerSelectFoo(ps_state *);
 static void peerPingTimeout(void *data);
 static IRCB peerHandlePingReply;
-static void peerSelectStateFree(ps_state * psstate);
 static void peerIcpParentMiss(CachePeer *, icp_common_t *, ps_state *);
 #if USE_HTCP
 static void peerHtcpParentMiss(CachePeer *, HtcpReplyData *, ps_state *);
@@ -89,34 +88,31 @@ static void peerSelectDnsResults(const ipcache_addrs *ia, const DnsLookupDetails
 
 CBDATA_CLASS_INIT(ps_state);
 
-static void
-peerSelectStateFree(ps_state * psstate)
+ps_state::~ps_state()
 {
-    if (psstate->entry) {
-        debugs(44, 3, HERE << psstate->entry->url());
+    if (entry) {
+        debugs(44, 3, entry->url());
 
-        if (psstate->entry->ping_status == PING_WAITING)
-            eventDelete(peerPingTimeout, psstate);
+        if (entry->ping_status == PING_WAITING)
+            eventDelete(peerPingTimeout, this);
 
-        psstate->entry->ping_status = PING_DONE;
+        entry->ping_status = PING_DONE;
     }
 
-    if (psstate->acl_checklist) {
-        debugs(44, DBG_IMPORTANT, "calling aclChecklistFree() from peerSelectStateFree");
-        delete (psstate->acl_checklist);
+    if (acl_checklist) {
+        debugs(44, DBG_IMPORTANT, "calling aclChecklistFree() from ps_state destructor");
+        delete acl_checklist;
     }
 
-    HTTPMSGUNLOCK(psstate->request);
+    HTTPMSGUNLOCK(request);
 
-    if (psstate->entry) {
-        assert(psstate->entry->ping_status != PING_WAITING);
-        psstate->entry->unlock();
-        psstate->entry = NULL;
+    if (entry) {
+        assert(entry->ping_status != PING_WAITING);
+        entry->unlock();
+        entry = NULL;
     }
 
-    delete psstate->lastError;
-
-    cbdataFree(psstate);
+    delete lastError;
 }
 
 static int
@@ -158,7 +154,8 @@ peerSelect(Comm::ConnectionList * paths,
 
     psstate = new ps_state;
 
-    psstate->request = HTTPMSGLOCK(request);
+    psstate->request = request;
+    HTTPMSGLOCK(psstate->request);
 
     psstate->entry = entry;
     psstate->paths = paths;
@@ -236,7 +233,7 @@ peerSelectDnsPaths(ps_state *psstate)
     // on intercepted traffic which failed Host verification
     const HttpRequest *req = psstate->request;
     const bool isIntercepted = !req->flags.redirected &&
-                               (req->flags.intercepted || req->flags.spoofClientIp);
+                               (req->flags.intercepted || req->flags.interceptTproxy);
     const bool useOriginalDst = Config.onoff.client_dst_passthru || !req->flags.hostVerified;
     const bool choseDirect = fs && fs->code == HIER_DIRECT;
     if (isIntercepted && useOriginalDst && choseDirect) {
@@ -245,7 +242,7 @@ peerSelectDnsPaths(ps_state *psstate)
             // construct a "result" adding the ORIGINAL_DST to the set instead of DIRECT
             Comm::ConnectionPointer p = new Comm::Connection();
             p->remote = req->clientConnectionManager->clientConnection->local;
-            p->peerType = fs->code;
+            p->peerType = ORIGINAL_DST; // fs->code is DIRECT. This fixes the display.
             p->setPeer(fs->_peer);
 
             // check for a configured outgoing address for this destination...
@@ -312,7 +309,7 @@ peerSelectDnsPaths(ps_state *psstate)
         psstate->lastError = NULL; // FwdState has taken control over the ErrorState object.
     }
 
-    peerSelectStateFree(psstate);
+    delete psstate;
 }
 
 static void
@@ -338,28 +335,28 @@ peerSelectDnsResults(const ipcache_addrs *ia, const DnsLookupDetails &details, v
             if (psstate->paths->size() >= (unsigned int)Config.forward_max_tries)
                 break;
 
-            // for TPROXY we must skip unusable addresses.
+            // for TPROXY spoofing we must skip unusable addresses.
             if (psstate->request->flags.spoofClientIp && !(fs->_peer && fs->_peer->options.no_tproxy) ) {
-                if (ia->in_addrs[n].IsIPv4() != psstate->request->client_addr.IsIPv4()) {
+                if (ia->in_addrs[ip].isIPv4() != psstate->request->client_addr.isIPv4()) {
                     // we CAN'T spoof the address on this link. find another.
                     continue;
                 }
             }
 
             p = new Comm::Connection();
-            p->remote = ia->in_addrs[n];
+            p->remote = ia->in_addrs[ip];
 
             // when IPv6 is disabled we cannot use it
-            if (!Ip::EnableIpv6 && p->remote.IsIPv6()) {
+            if (!Ip::EnableIpv6 && p->remote.isIPv6()) {
                 const char *host = (fs->_peer ? fs->_peer->host : psstate->request->GetHost());
                 ipcacheMarkBadAddr(host, p->remote);
                 continue;
             }
 
             if (fs->_peer)
-                p->remote.SetPort(fs->_peer->http_port);
+                p->remote.port(fs->_peer->http_port);
             else
-                p->remote.SetPort(psstate->request->port);
+                p->remote.port(psstate->request->port);
             p->peerType = fs->code;
             p->setPeer(fs->_peer);
 
@@ -373,7 +370,7 @@ peerSelectDnsResults(const ipcache_addrs *ia, const DnsLookupDetails &details, v
         delete psstate->lastError;
         psstate->lastError = NULL;
         if (fs->code == HIER_DIRECT) {
-            psstate->lastError = new ErrorState(ERR_DNS_FAIL, HTTP_SERVICE_UNAVAILABLE, psstate->request);
+            psstate->lastError = new ErrorState(ERR_DNS_FAIL, Http::scServiceUnavailable, psstate->request);
             psstate->lastError->dnsError = details.error;
         }
     }
@@ -636,10 +633,10 @@ peerGetSomeNeighborReplies(ps_state * ps)
     if ((p = ps->hit)) {
         code = ps->hit_type == PEER_PARENT ? PARENT_HIT : SIBLING_HIT;
     } else {
-        if (!ps->closest_parent_miss.IsAnyAddr()) {
+        if (!ps->closest_parent_miss.isAnyAddr()) {
             p = whichPeer(ps->closest_parent_miss);
             code = CLOSEST_PARENT_MISS;
-        } else if (!ps->first_parent_miss.IsAnyAddr()) {
+        } else if (!ps->first_parent_miss.isAnyAddr()) {
             p = whichPeer(ps->first_parent_miss);
             code = FIRST_PARENT_MISS;
         }
@@ -752,7 +749,7 @@ peerPingTimeout(void *data)
         /* request aborted */
         entry->ping_status = PING_DONE;
         cbdataReferenceDone(psstate->callback_data);
-        peerSelectStateFree(psstate);
+        delete psstate;
         return;
     }
 
@@ -795,7 +792,7 @@ peerIcpParentMiss(CachePeer * p, icp_common_t * header, ps_state * ps)
         return;
 
     /* set FIRST_MISS if there is no CLOSEST parent */
-    if (!ps->closest_parent_miss.IsAnyAddr())
+    if (!ps->closest_parent_miss.isAnyAddr())
         return;
 
     rtt = (tvSubMsec(ps->ping.start, current_time) - p->basetime) / p->weight;
@@ -803,7 +800,7 @@ peerIcpParentMiss(CachePeer * p, icp_common_t * header, ps_state * ps)
     if (rtt < 1)
         rtt = 1;
 
-    if (ps->first_parent_miss.IsAnyAddr() || rtt < ps->ping.w_rtt) {
+    if (ps->first_parent_miss.isAnyAddr() || rtt < ps->ping.w_rtt) {
         ps->first_parent_miss = p->in_addr;
         ps->ping.w_rtt = rtt;
     }
@@ -893,7 +890,7 @@ peerHtcpParentMiss(CachePeer * p, HtcpReplyData * htcp, ps_state * ps)
         return;
 
     /* set FIRST_MISS if there is no CLOSEST parent */
-    if (!ps->closest_parent_miss.IsAnyAddr())
+    if (!ps->closest_parent_miss.isAnyAddr())
         return;
 
     rtt = (tvSubMsec(ps->ping.start, current_time) - p->basetime) / p->weight;
@@ -901,7 +898,7 @@ peerHtcpParentMiss(CachePeer * p, HtcpReplyData * htcp, ps_state * ps)
     if (rtt < 1)
         rtt = 1;
 
-    if (ps->first_parent_miss.IsAnyAddr() || rtt < ps->ping.w_rtt) {
+    if (ps->first_parent_miss.isAnyAddr() || rtt < ps->ping.w_rtt) {
         ps->first_parent_miss = p->in_addr;
         ps->ping.w_rtt = rtt;
     }
@@ -940,13 +937,6 @@ peerAddFwdServer(FwdServer ** FSVR, CachePeer * p, hier_code code)
         FSVR = &(*FSVR)->next;
 
     *FSVR = fs;
-}
-
-void *
-ps_state::operator new(size_t)
-{
-    CBDATA_INIT_TYPE(ps_state);
-    return cbdataAlloc(ps_state);
 }
 
 ps_state::ps_state() : request (NULL),

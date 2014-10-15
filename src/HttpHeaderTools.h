@@ -1,6 +1,7 @@
 #ifndef SQUID_HTTPHEADERTOOLS_H
 #define SQUID_HTTPHEADERTOOLS_H
 
+#include "acl/forward.h"
 #include "format/Format.h"
 #include "HttpHeader.h"
 #include "typedefs.h"
@@ -21,8 +22,6 @@
 #include <strings.h>
 #endif
 
-class acl_access;
-class ACLList;
 class HeaderWithAcl;
 class HttpHeader;
 class HttpHeaderFieldInfo;
@@ -93,7 +92,7 @@ private:
 class HeaderWithAcl
 {
 public:
-    HeaderWithAcl() :  aclList(NULL), fieldId (HDR_BAD_HDR), quoted(false) {}
+    HeaderWithAcl() : aclList(NULL), valueFormat(NULL), fieldId(HDR_BAD_HDR), quoted(false) {}
 
     /// HTTP header field name
     std::string fieldName;

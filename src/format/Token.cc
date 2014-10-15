@@ -6,32 +6,6 @@
 #include "SquidConfig.h"
 #include "Store.h"
 
-const char *Format::log_tags[] = {
-    "NONE",
-    "TCP_HIT",
-    "TCP_MISS",
-    "TCP_REFRESH_UNMODIFIED",
-    "TCP_REFRESH_FAIL", // same tag logged for LOG_TCP_REFRESH_FAIL_OLD and
-    "TCP_REFRESH_FAIL", // LOG_TCP_REFRESH_FAIL_ERR for backward-compatibility
-    "TCP_REFRESH_MODIFIED",
-    "TCP_CLIENT_REFRESH_MISS",
-    "TCP_IMS_HIT",
-    "TCP_SWAPFAIL_MISS",
-    "TCP_NEGATIVE_HIT",
-    "TCP_MEM_HIT",
-    "TCP_DENIED",
-    "TCP_DENIED_REPLY",
-    "TCP_OFFLINE_HIT",
-    "TCP_REDIRECT",
-    "UDP_HIT",
-    "UDP_MISS",
-    "UDP_DENIED",
-    "UDP_INVALID",
-    "UDP_MISS_NOFETCH",
-    "ICP_QUERY",
-    "LOG_TYPE_MAX"
-};
-
 // Due to token overlaps between 1 and 2 letter tokens (Bug 3310)
 // We split the token table into sets determined by the token length
 namespace Format
@@ -72,7 +46,6 @@ static TokenTableEntry TokenTable2C[] = {
     {"<la", LFT_SERVER_LOCAL_IP},
     {"oa", LFT_SERVER_LOCAL_IP_OLD_27},
     {"<lp", LFT_SERVER_LOCAL_PORT},
-    /* {"ot", LFT_PEER_OUTGOING_TOS}, */
 
     {"ts", LFT_TIME_SECONDS_SINCE_EPOCH},
     {"tu", LFT_TIME_SUBSECOND},
@@ -148,8 +121,13 @@ static TokenTableEntry TokenTable2C[] = {
 /// Miscellaneous >2 byte tokens
 static TokenTableEntry TokenTableMisc[] = {
     {">eui", LFT_CLIENT_EUI},
+    {">qos", LFT_CLIENT_LOCAL_TOS},
+    {"<qos", LFT_SERVER_LOCAL_TOS},
+    {">nfmark", LFT_CLIENT_LOCAL_NFMARK},
+    {"<nfmark", LFT_SERVER_LOCAL_NFMARK},
     {"err_code", LFT_SQUID_ERROR },
     {"err_detail", LFT_SQUID_ERROR_DETAIL },
+    {"note", LFT_NOTE },
     {NULL, LFT_NONE}		/* this must be last */
 };
 
@@ -321,12 +299,12 @@ Format::Token::parse(const char *def, Quoting *quoting)
     }
 
     if (*cur == '-') {
-        left = 1;
+        left = true;
         ++cur;
     }
 
     if (*cur == '0') {
-        zero = 1;
+        zero = true;
         ++cur;
     }
 
@@ -402,7 +380,7 @@ Format::Token::parse(const char *def, Quoting *quoting)
     }
 
     if (*cur == ' ') {
-        space = 1;
+        space = true;
         ++cur;
     }
 
@@ -425,6 +403,8 @@ done:
     case LFT_REQUEST_HEADER:
 
     case LFT_REPLY_HEADER:
+
+    case LFT_NOTE:
 
         if (data.string) {
             char *header = data.string;
@@ -558,6 +538,23 @@ done:
     }
 
     return (cur - def);
+}
+
+Format::Token::Token() : type(LFT_NONE),
+        label(NULL),
+        widthMin(-1),
+        widthMax(-1),
+        quote(LOG_QUOTE_NONE),
+        left(false),
+        space(false),
+        zero(false),
+        divisor(1),
+        next(NULL)
+{
+    data.string = NULL;
+    data.header.header = NULL;
+    data.header.element = NULL;
+    data.header.separator = ',';
 }
 
 Format::Token::~Token()

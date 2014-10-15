@@ -19,7 +19,10 @@ squid3 (3.4.8-1) UNRELEASED; urgency=high
   * debian/watch
     - updated watch pattern for upstream major series
 
- -- Amos Jeffries <amosjeffries@squid-cache.org>  Thu, 16 Oct 2014 05:55:00 +1300
+  * debian/rules
+    - Remove obsolete --enable-underscores (Closes: #693905)
+
+ -- Amos Jeffries <amosjeffries@squid-cache.org>  Thu, 16 Oct 2014 07:56:00 +1300
 
 squid3 (3.3.8-1.2) unstable; urgency=high
 

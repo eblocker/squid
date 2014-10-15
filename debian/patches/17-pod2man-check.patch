@@ -1,0 +1,40 @@
+Description: fix check for perl and pod2man
+ At least under Perl 5.18, the current version fails with
+ | pod2man: unable to format
+ | configure: FOO ... found but cannot be built
+Origin: vendor
+Bug-Debian: http://bugs.debian.org/725599
+Forwarded: no
+Author: gregor herrmann <gregoa@debian.org>
+Last-Update: 2013-10-25
+
+--- a/helpers/basic_auth/DB/config.test
++++ b/helpers/basic_auth/DB/config.test
+@@ -2,6 +2,6 @@
+ 
+ ## Test: do we have perl to build the helper scripts?
+ ## Test: do we have pod2man to build the manual?
+-perl --version >/dev/null && echo | pod2man >/dev/null
++command -v perl >/dev/null && command -v pod2man >/dev/null
+ 
+ exit $?
+--- a/helpers/external_acl/SQL_session/config.test
++++ b/helpers/external_acl/SQL_session/config.test
+@@ -2,6 +2,6 @@
+ 
+ ## Test: do we have perl to build the helper scripts?
+ ## Test: do we have pod2man to build the manual?
+-perl --version >/dev/null && echo | pod2man >/dev/null
++command -v perl >/dev/null && command -v pod2man >/dev/null
+ 
+ exit $?
+--- a/helpers/log_daemon/DB/config.test
++++ b/helpers/log_daemon/DB/config.test
+@@ -2,6 +2,6 @@
+ 
+ ## Test: do we have perl to build the helper scripts?
+ ## Test: do we have pod2man to build the manual?
+-perl --version >/dev/null && echo | pod2man >/dev/null
++command -v perl >/dev/null && command -v pod2man >/dev/null
+ 
+ exit $?

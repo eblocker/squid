@@ -1,46 +1,5 @@
-------------------------------------------------------------
-revno: 13176
-revision-id: squid3@treenet.co.nz-20141009115328-975fts0dt6hamnid
-parent: squidadm@squid-cache.org-20141008153132-jkq1rvu9q9qiflro
-fixes bug: http://bugs.squid-cache.org/show_bug.cgi?id=4088
-committer: Amos Jeffries <squid3@treenet.co.nz>
-branch nick: 3.4
-timestamp: Thu 2014-10-09 04:53:28 -0700
-message:
-  Bug 4088: memory leak in external_acl_type helper with cache=0 or ttl=0
-  
-  ExternalACLEntry / external_acl_entry objects have been abusing the
-  CBDATA API for reference counting and since 3.4 this has resulted in
-  hidden memory leaks as object accounting shows all locks released but
-  the memory is not freed by any 'owner'.
-  
-  * convert to using RefCount<> API.
-  
-  * move ExternalACLEntry pre-define to acl/forward.h
-  
-  * add ExternalACLEntryPointer in acl/forward.h
-  
-  * convert LookupDone() method to using explicit typed pointer
-  
-  * convert from CBDATA_CLASS to MEMPROXY_CLASS memory management.
-  
-  * convert almost all raw ExternalACLEntry* to Pointer
-   - remaining usage is in the cache hash pointers. Use an explicit 'cachd'
-    lock/unlock until this hash is updated to std:: structure types.
-------------------------------------------------------------
-# Bazaar merge directive format 2 (Bazaar 0.90)
-# revision_id: squid3@treenet.co.nz-20141009115328-975fts0dt6hamnid
-# target_branch: http://bzr.squid-cache.org/bzr/squid3/3.4
-# testament_sha1: 663911f83f4a6108c0a902576e66cb8da0af51a6
-# timestamp: 2014-10-09 13:22:19 +0000
-# source_branch: http://bzr.squid-cache.org/bzr/squid3/3.4
-# base_revision_id: squidadm@squid-cache.org-20141008153132-\
-#   jkq1rvu9q9qiflro
-# 
-# Begin patch
-=== modified file 'src/ExternalACL.h'
---- src/ExternalACL.h	2012-09-20 11:28:21 +0000
-+++ src/ExternalACL.h	2014-10-09 11:53:28 +0000
+--- a/src/ExternalACL.h
++++ b/src/ExternalACL.h
 @@ -33,6 +33,8 @@
  #define SQUID_EXTERNALACL_H
  
@@ -68,10 +27,8 @@ message:
  void externalAclLookup(ACLChecklist * ch, void *acl_data, EAH * handler, void *data);
  void externalAclInit(void);
  void externalAclShutdown(void);
-
-=== modified file 'src/ExternalACLEntry.cc'
---- src/ExternalACLEntry.cc	2013-11-29 10:55:53 +0000
-+++ src/ExternalACLEntry.cc	2014-10-09 11:53:28 +0000
+--- a/src/ExternalACLEntry.cc
++++ b/src/ExternalACLEntry.cc
 @@ -47,8 +47,6 @@
   * external_acl cache
   */
@@ -81,10 +38,8 @@ message:
  ExternalACLEntry::ExternalACLEntry() :
          notes()
  {
-
-=== modified file 'src/ExternalACLEntry.h'
---- src/ExternalACLEntry.h	2013-11-29 10:55:53 +0000
-+++ src/ExternalACLEntry.h	2014-10-09 11:53:28 +0000
+--- a/src/ExternalACLEntry.h
++++ b/src/ExternalACLEntry.h
 @@ -43,7 +43,7 @@
  #define SQUID_EXTERNALACLENTRY_H
  
@@ -118,10 +73,8 @@ message:
 +MEMPROXY_CLASS_INLINE(ExternalACLEntry);
  
  #endif
-
-=== modified file 'src/acl/FilledChecklist.cc'
---- src/acl/FilledChecklist.cc	2013-06-03 14:05:16 +0000
-+++ src/acl/FilledChecklist.cc	2014-10-09 11:53:28 +0000
+--- a/src/acl/FilledChecklist.cc
++++ b/src/acl/FilledChecklist.cc
 @@ -3,6 +3,7 @@
  #include "client_side.h"
  #include "comm/Connection.h"
@@ -156,10 +109,8 @@ message:
          conn_(NULL),
          fd_(-1),
          destinationDomainChecked_(false),
-
-=== modified file 'src/acl/FilledChecklist.h'
---- src/acl/FilledChecklist.h	2013-06-06 13:53:16 +0000
-+++ src/acl/FilledChecklist.h	2014-10-09 11:53:28 +0000
+--- a/src/acl/FilledChecklist.h
++++ b/src/acl/FilledChecklist.h
 @@ -3,6 +3,7 @@
  
  #include "acl/Checklist.h"
@@ -185,10 +136,8 @@ message:
  
  private:
      ConnStateData * conn_;          /**< hack for ident and NTLM */
-
-=== modified file 'src/acl/forward.h'
---- src/acl/forward.h	2013-05-28 15:05:58 +0000
-+++ src/acl/forward.h	2014-10-09 11:53:28 +0000
+--- a/src/acl/forward.h
++++ b/src/acl/forward.h
 @@ -1,6 +1,8 @@
  #ifndef SQUID_ACL_FORWARD_H
  #define SQUID_ACL_FORWARD_H
@@ -206,10 +155,8 @@ message:
 +typedef RefCount<ExternalACLEntry> ExternalACLEntryPointer;
 +
  #endif /* SQUID_ACL_FORWARD_H */
-
-=== modified file 'src/external_acl.cc'
---- src/external_acl.cc	2014-08-03 11:13:01 +0000
-+++ src/external_acl.cc	2014-10-09 11:53:28 +0000
+--- a/src/external_acl.cc
++++ b/src/external_acl.cc
 @@ -85,11 +85,11 @@
  typedef struct _external_acl_format external_acl_format;
  
@@ -487,4 +434,3 @@ message:
          if (HttpRequest * req = checklist->request) {
              // XXX: we have no access to the transaction / AccessLogEntry so cant SyncNotes().
              // workaround by using anything already set in HttpRequest
-

@@ -9,7 +9,7 @@ squid3 (3.4.8-1) UNRELEASED; urgency=high
   * debian/patches/
     - remove CVE-2014-3609.patch included upstream
     - remove 17-pod2man-check.patch obsoleted by new version
-    - add upstream patch squid-3.4-13176.patch:
+    - add upstream patch 21-squid-3.4-13176-memoryleak.patch:
       memory leak in external_acl_type helper with cache=0 or ttl=0
 
   * debian/rules

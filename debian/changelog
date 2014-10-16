@@ -33,6 +33,7 @@ squid3 (3.4.8-1) UNRELEASED; urgency=high
   * debian/control
     - Added dependency for missing intepreter ksh
     - Bumped Standard-Version to 3.9.6, no change needed
+    - Added XS-Vcs-Git Header pointing to Alioth repository
 
  -- Luigi Gangitano <luigi@debian.org>  Fri, 17 Oct 2014 00:10:00 +1300
 

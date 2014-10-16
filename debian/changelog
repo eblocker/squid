@@ -30,6 +30,9 @@ squid3 (3.4.8-1) UNRELEASED; urgency=high
   * debian/patches/
     - refreshed all patches to match 3.4.8
 
+  * debian/control
+    - Added dependency for missing intepreter ksh
+
  -- Luigi Gangitano <luigi@debian.org>  Fri, 17 Oct 2014 00:10:00 +1300
 
 squid3 (3.3.8-1.2) unstable; urgency=high

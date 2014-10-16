@@ -17,6 +17,7 @@ squid3 (3.4.8-1) UNRELEASED; urgency=high
 
   * debian/control
     - libecap API support is specific to version 0.2.0
+    - use nettle for crypto library
 
   * debian/watch
     - updated watch pattern for upstream major series

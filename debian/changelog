@@ -9,6 +9,8 @@ squid3 (3.4.8-1) UNRELEASED; urgency=high
   * debian/patches/
     - remove CVE-2014-3609.patch included upstream
     - remove 17-pod2man-check.patch obsoleted by new version
+    - add upstream patch squid-3.4-13176.patch:
+      memory leak in external_acl_type helper with cache=0 or ttl=0
 
   * debian/rules
     - add --disable-arch-native to build with portable CPU support
@@ -22,7 +24,7 @@ squid3 (3.4.8-1) UNRELEASED; urgency=high
   * debian/rules
     - Remove obsolete --enable-underscores (Closes: #693905)
 
- -- Amos Jeffries <amosjeffries@squid-cache.org>  Thu, 16 Oct 2014 07:56:00 +1300
+ -- Amos Jeffries <amosjeffries@squid-cache.org>  Fri, 17 Oct 2014 00:10:00 +1300
 
 squid3 (3.3.8-1.2) unstable; urgency=high
 

@@ -1,0 +1,490 @@
+------------------------------------------------------------
+revno: 13176
+revision-id: squid3@treenet.co.nz-20141009115328-975fts0dt6hamnid
+parent: squidadm@squid-cache.org-20141008153132-jkq1rvu9q9qiflro
+fixes bug: http://bugs.squid-cache.org/show_bug.cgi?id=4088
+committer: Amos Jeffries <squid3@treenet.co.nz>
+branch nick: 3.4
+timestamp: Thu 2014-10-09 04:53:28 -0700
+message:
+  Bug 4088: memory leak in external_acl_type helper with cache=0 or ttl=0
+  
+  ExternalACLEntry / external_acl_entry objects have been abusing the
+  CBDATA API for reference counting and since 3.4 this has resulted in
+  hidden memory leaks as object accounting shows all locks released but
+  the memory is not freed by any 'owner'.
+  
+  * convert to using RefCount<> API.
+  
+  * move ExternalACLEntry pre-define to acl/forward.h
+  
+  * add ExternalACLEntryPointer in acl/forward.h
+  
+  * convert LookupDone() method to using explicit typed pointer
+  
+  * convert from CBDATA_CLASS to MEMPROXY_CLASS memory management.
+  
+  * convert almost all raw ExternalACLEntry* to Pointer
+   - remaining usage is in the cache hash pointers. Use an explicit 'cachd'
+    lock/unlock until this hash is updated to std:: structure types.
+------------------------------------------------------------
+# Bazaar merge directive format 2 (Bazaar 0.90)
+# revision_id: squid3@treenet.co.nz-20141009115328-975fts0dt6hamnid
+# target_branch: http://bzr.squid-cache.org/bzr/squid3/3.4
+# testament_sha1: 663911f83f4a6108c0a902576e66cb8da0af51a6
+# timestamp: 2014-10-09 13:22:19 +0000
+# source_branch: http://bzr.squid-cache.org/bzr/squid3/3.4
+# base_revision_id: squidadm@squid-cache.org-20141008153132-\
+#   jkq1rvu9q9qiflro
+# 
+# Begin patch
+=== modified file 'src/ExternalACL.h'
+--- src/ExternalACL.h	2012-09-20 11:28:21 +0000
++++ src/ExternalACL.h	2014-10-09 11:53:28 +0000
+@@ -33,6 +33,8 @@
+ #define SQUID_EXTERNALACL_H
+ 
+ #include "acl/Checklist.h"
++#include "base/RefCount.h"
++
+ class external_acl;
+ class StoreEntry;
+ 
+@@ -52,7 +54,7 @@
+ 
+ private:
+     static ExternalACLLookup instance_;
+-    static void LookupDone(void *data, void *result);
++    static void LookupDone(void *data, const ExternalACLEntryPointer &result);
+ };
+ 
+ #include "acl/Acl.h"
+@@ -96,7 +98,7 @@
+ void parse_externalAclHelper(external_acl **);
+ void dump_externalAclHelper(StoreEntry * sentry, const char *name, const external_acl *);
+ void free_externalAclHelper(external_acl **);
+-typedef void EAH(void *data, void *result);
++typedef void EAH(void *data, const ExternalACLEntryPointer &result);
+ void externalAclLookup(ACLChecklist * ch, void *acl_data, EAH * handler, void *data);
+ void externalAclInit(void);
+ void externalAclShutdown(void);
+
+=== modified file 'src/ExternalACLEntry.cc'
+--- src/ExternalACLEntry.cc	2013-11-29 10:55:53 +0000
++++ src/ExternalACLEntry.cc	2014-10-09 11:53:28 +0000
+@@ -47,8 +47,6 @@
+  * external_acl cache
+  */
+ 
+-CBDATA_CLASS_INIT(ExternalACLEntry);
+-
+ ExternalACLEntry::ExternalACLEntry() :
+         notes()
+ {
+
+=== modified file 'src/ExternalACLEntry.h'
+--- src/ExternalACLEntry.h	2013-11-29 10:55:53 +0000
++++ src/ExternalACLEntry.h	2014-10-09 11:53:28 +0000
+@@ -43,7 +43,7 @@
+ #define SQUID_EXTERNALACLENTRY_H
+ 
+ #include "acl/Acl.h"
+-#include "cbdata.h"
++#include "acl/forward.h"
+ #include "hash.h"
+ #include "Notes.h"
+ #include "SquidString.h"
+@@ -82,9 +82,8 @@
+  * Used opaqueue in the interface
+  */
+ 
+-class ExternalACLEntry: public hash_link
++class ExternalACLEntry: public hash_link, public RefCountable
+ {
+-
+ public:
+     ExternalACLEntry();
+     ~ExternalACLEntry();
+@@ -106,10 +105,9 @@
+     String log;
+     external_acl *def;
+ 
+-private:
+-    CBDATA_CLASS2(ExternalACLEntry);
++    MEMPROXY_CLASS(ExternalACLEntry);
+ };
+ 
+-typedef class ExternalACLEntry external_acl_entry;
++MEMPROXY_CLASS_INLINE(ExternalACLEntry);
+ 
+ #endif
+
+=== modified file 'src/acl/FilledChecklist.cc'
+--- src/acl/FilledChecklist.cc	2013-06-03 14:05:16 +0000
++++ src/acl/FilledChecklist.cc	2014-10-09 11:53:28 +0000
+@@ -3,6 +3,7 @@
+ #include "client_side.h"
+ #include "comm/Connection.h"
+ #include "comm/forward.h"
++#include "ExternalACLEntry.h"
+ #include "HttpReply.h"
+ #include "HttpRequest.h"
+ #include "SquidConfig.h"
+@@ -27,7 +28,6 @@
+ #if USE_SSL
+         sslErrors(NULL),
+ #endif
+-        extacl_entry (NULL),
+         conn_(NULL),
+         fd_(-1),
+         destinationDomainChecked_(false),
+@@ -45,9 +45,6 @@
+ 
+     safe_free(dst_rdns); // created by xstrdup().
+ 
+-    if (extacl_entry)
+-        cbdataReferenceDone(extacl_entry);
+-
+     HTTPMSGUNLOCK(request);
+ 
+     HTTPMSGUNLOCK(reply);
+@@ -143,7 +140,6 @@
+ #if USE_SSL
+         sslErrors(NULL),
+ #endif
+-        extacl_entry (NULL),
+         conn_(NULL),
+         fd_(-1),
+         destinationDomainChecked_(false),
+
+=== modified file 'src/acl/FilledChecklist.h'
+--- src/acl/FilledChecklist.h	2013-06-06 13:53:16 +0000
++++ src/acl/FilledChecklist.h	2014-10-09 11:53:28 +0000
+@@ -3,6 +3,7 @@
+ 
+ #include "acl/Checklist.h"
+ #include "acl/forward.h"
++#include "base/CbcPointer.h"
+ #include "ip/Address.h"
+ #if USE_AUTH
+ #include "auth/UserRequest.h"
+@@ -13,7 +14,6 @@
+ 
+ class CachePeer;
+ class ConnStateData;
+-class ExternalACLEntry;
+ class HttpRequest;
+ class HttpReply;
+ 
+@@ -75,7 +75,7 @@
+     Ssl::X509_Pointer serverCert;
+ #endif
+ 
+-    ExternalACLEntry *extacl_entry;
++    ExternalACLEntryPointer extacl_entry;
+ 
+ private:
+     ConnStateData * conn_;          /**< hack for ident and NTLM */
+
+=== modified file 'src/acl/forward.h'
+--- src/acl/forward.h	2013-05-28 15:05:58 +0000
++++ src/acl/forward.h	2014-10-09 11:53:28 +0000
+@@ -1,6 +1,8 @@
+ #ifndef SQUID_ACL_FORWARD_H
+ #define SQUID_ACL_FORWARD_H
+ 
++#include "base/RefCount.h"
++
+ class ACL;
+ class ACLChecklist;
+ class ACLFilledChecklist;
+@@ -28,4 +30,7 @@
+ #define acl_access Acl::Tree
+ #define ACLList Acl::Tree
+ 
++class ExternalACLEntry;
++typedef RefCount<ExternalACLEntry> ExternalACLEntryPointer;
++
+ #endif /* SQUID_ACL_FORWARD_H */
+
+=== modified file 'src/external_acl.cc'
+--- src/external_acl.cc	2014-08-03 11:13:01 +0000
++++ src/external_acl.cc	2014-10-09 11:53:28 +0000
+@@ -85,11 +85,11 @@
+ typedef struct _external_acl_format external_acl_format;
+ 
+ static char *makeExternalAclKey(ACLFilledChecklist * ch, external_acl_data * acl_data);
+-static void external_acl_cache_delete(external_acl * def, external_acl_entry * entry);
+-static int external_acl_entry_expired(external_acl * def, external_acl_entry * entry);
+-static int external_acl_grace_expired(external_acl * def, external_acl_entry * entry);
+-static void external_acl_cache_touch(external_acl * def, external_acl_entry * entry);
+-static external_acl_entry *external_acl_cache_add(external_acl * def, const char *key, ExternalACLEntryData const &data);
++static void external_acl_cache_delete(external_acl * def, const ExternalACLEntryPointer &entry);
++static int external_acl_entry_expired(external_acl * def, const ExternalACLEntryPointer &entry);
++static int external_acl_grace_expired(external_acl * def, const ExternalACLEntryPointer &entry);
++static void external_acl_cache_touch(external_acl * def, const ExternalACLEntryPointer &entry);
++static ExternalACLEntryPointer external_acl_cache_add(external_acl * def, const char *key, ExternalACLEntryData const &data);
+ 
+ /******************************************************************
+  * external_acl directive
+@@ -101,7 +101,7 @@
+ public:
+     external_acl *next;
+ 
+-    void add(ExternalACLEntry *);
++    void add(const ExternalACLEntryPointer &);
+ 
+     void trimCache();
+ 
+@@ -239,8 +239,10 @@
+         p->theHelper = NULL;
+     }
+ 
+-    while (p->lru_list.tail)
+-        external_acl_cache_delete(p, static_cast<external_acl_entry *>(p->lru_list.tail->data));
++    while (p->lru_list.tail) {
++        ExternalACLEntryPointer e(static_cast<ExternalACLEntry *>(p->lru_list.tail->data));
++        external_acl_cache_delete(p, e);
++    }
+     if (p->cache)
+         hashFreeMemory(p->cache);
+ }
+@@ -670,21 +672,26 @@
+ }
+ 
+ void
+-external_acl::add(ExternalACLEntry *anEntry)
++external_acl::add(const ExternalACLEntryPointer &anEntry)
+ {
+     trimCache();
++    assert(anEntry != NULL);
+     assert (anEntry->def == NULL);
+     anEntry->def = this;
+-    hash_join(cache, anEntry);
+-    dlinkAdd(anEntry, &anEntry->lru, &lru_list);
++    ExternalACLEntry *e = const_cast<ExternalACLEntry *>(anEntry.getRaw()); // XXX: make hash a std::map of Pointer.
++    hash_join(cache, e);
++    dlinkAdd(e, &e->lru, &lru_list);
++    e->lock(); //cbdataReference(e); // lock it on behalf of the hash
+     ++cache_entries;
+ }
+ 
+ void
+ external_acl::trimCache()
+ {
+-    if (cache_size && cache_entries >= cache_size)
+-        external_acl_cache_delete(this, static_cast<external_acl_entry *>(lru_list.tail->data));
++    if (cache_size && cache_entries >= cache_size) {
++        ExternalACLEntryPointer e(static_cast<ExternalACLEntry *>(lru_list.tail->data));
++        external_acl_cache_delete(this, e);
++    }
+ }
+ 
+ /******************************************************************
+@@ -771,7 +778,7 @@
+ }
+ 
+ static void
+-copyResultsFromEntry(HttpRequest *req, external_acl_entry *entry)
++copyResultsFromEntry(HttpRequest *req, const ExternalACLEntryPointer &entry)
+ {
+     if (req) {
+ #if USE_AUTH
+@@ -796,32 +803,30 @@
+ aclMatchExternal(external_acl_data *acl, ACLFilledChecklist *ch)
+ {
+     debugs(82, 9, HERE << "acl=\"" << acl->def->name << "\"");
+-    external_acl_entry *entry = ch->extacl_entry;
++    ExternalACLEntryPointer entry = ch->extacl_entry;
+ 
+     external_acl_message = "MISSING REQUIRED INFORMATION";
+ 
+-    if (entry) {
+-        if (cbdataReferenceValid(entry) && entry->def == acl->def) {
++    if (entry != NULL) {
++        if (entry->def == acl->def) {
+             /* Ours, use it.. if the key matches */
+             const char *key = makeExternalAclKey(ch, acl);
+             if (!key)
+                 return ACCESS_DUNNO; // insufficent data to continue
+             if (strcmp(key, (char*)entry->key) != 0) {
+-                debugs(82, 9, HERE << "entry key='" << (char *)entry->key << "', our key='" << key << "' dont match. Discarded.");
++                debugs(82, 9, "entry key='" << (char *)entry->key << "', our key='" << key << "' dont match. Discarded.");
+                 // too bad. need a new lookup.
+-                cbdataReferenceDone(ch->extacl_entry);
+-                entry = NULL;
++                entry = ch->extacl_entry = NULL;
+             }
+         } else {
+-            /* Not valid, or not ours.. get rid of it */
+-            debugs(82, 9, HERE << "entry " << entry << " not valid or not ours. Discarded.");
+-            if (entry) {
+-                debugs(82, 9, HERE << "entry def=" << entry->def << ", our def=" << acl->def);
++            /* Not ours.. get rid of it */
++            debugs(82, 9, "entry " << entry << " not valid or not ours. Discarded.");
++            if (entry != NULL) {
++                debugs(82, 9, "entry def=" << entry->def << ", our def=" << acl->def);
+                 const char *key = makeExternalAclKey(ch, acl); // may be nil
+-                debugs(82, 9, HERE << "entry key='" << (char *)entry->key << "', our key='" << key << "'");
++                debugs(82, 9, "entry key='" << (char *)entry->key << "', our key='" << key << "'");
+             }
+-            cbdataReferenceDone(ch->extacl_entry);
+-            entry = NULL;
++            entry = ch->extacl_entry = NULL;
+         }
+     }
+ 
+@@ -846,13 +851,13 @@
+             return ACCESS_DUNNO;
+         }
+ 
+-        entry = static_cast<external_acl_entry *>(hash_lookup(acl->def->cache, key));
++        entry = static_cast<ExternalACLEntry *>(hash_lookup(acl->def->cache, key));
+ 
+-        external_acl_entry *staleEntry = entry;
+-        if (entry && external_acl_entry_expired(acl->def, entry))
++        const ExternalACLEntryPointer staleEntry = entry;
++        if (entry != NULL && external_acl_entry_expired(acl->def, entry))
+             entry = NULL;
+ 
+-        if (entry && external_acl_grace_expired(acl->def, entry)) {
++        if (entry != NULL && external_acl_grace_expired(acl->def, entry)) {
+             // refresh in the background
+             ExternalACLLookup::Start(ch, acl, true);
+             debugs(82, 4, HERE << "no need to wait for the refresh of '" <<
+@@ -861,8 +866,6 @@
+ 
+         if (!entry) {
+             debugs(82, 2, HERE << acl->def->name << "(\"" << key << "\") = lookup needed");
+-            debugs(82, 2, HERE << "\"" << key << "\": entry=@" <<
+-                   entry << ", age=" << (entry ? (long int) squid_curtime - entry->date : 0));
+ 
+             if (acl->def->theHelper->stats.queue_size < (int)acl->def->theHelper->childs.n_active) {
+                 debugs(82, 2, HERE << "\"" << key << "\": queueing a call.");
+@@ -951,14 +954,15 @@
+  */
+ 
+ static void
+-external_acl_cache_touch(external_acl * def, external_acl_entry * entry)
++external_acl_cache_touch(external_acl * def, const ExternalACLEntryPointer &entry)
+ {
+     // this must not be done when nothing is being cached.
+     if (def->cache_size <= 0 || (def->ttl <= 0 && entry->result == 1) || (def->negative_ttl <= 0 && entry->result != 1))
+         return;
+ 
+     dlinkDelete(&entry->lru, &def->lru_list);
+-    dlinkAdd(entry, &entry->lru, &def->lru_list);
++    ExternalACLEntry *e = const_cast<ExternalACLEntry *>(entry.getRaw()); // XXX: make hash a std::map of Pointer.
++    dlinkAdd(e, &entry->lru, &def->lru_list);
+ }
+ 
+ static char *
+@@ -1240,7 +1244,7 @@
+ }
+ 
+ static int
+-external_acl_entry_expired(external_acl * def, external_acl_entry * entry)
++external_acl_entry_expired(external_acl * def, const ExternalACLEntryPointer &entry)
+ {
+     if (def->cache_size <= 0)
+         return 1;
+@@ -1252,7 +1256,7 @@
+ }
+ 
+ static int
+-external_acl_grace_expired(external_acl * def, external_acl_entry * entry)
++external_acl_grace_expired(external_acl * def, const ExternalACLEntryPointer &entry)
+ {
+     if (def->cache_size <= 0)
+         return 1;
+@@ -1267,10 +1271,10 @@
+         return 0;
+ }
+ 
+-static external_acl_entry *
++static ExternalACLEntryPointer
+ external_acl_cache_add(external_acl * def, const char *key, ExternalACLEntryData const & data)
+ {
+-    ExternalACLEntry *entry;
++    ExternalACLEntryPointer entry;
+ 
+     // do not bother caching this result if TTL is going to expire it immediately
+     if (def->cache_size <= 0 || (def->ttl <= 0 && data.result == 1) || (def->negative_ttl <= 0 && data.result != 1)) {
+@@ -1285,11 +1289,10 @@
+     entry = static_cast<ExternalACLEntry *>(hash_lookup(def->cache, key));
+     debugs(82, 2, "external_acl_cache_add: Adding '" << key << "' = " << data.result);
+ 
+-    if (entry) {
+-        debugs(82, 3, "ExternalACLEntry::update: updating existing entry");
++    if (entry != NULL) {
++        debugs(82, 3, "updating existing entry");
+         entry->update(data);
+         external_acl_cache_touch(def, entry);
+-
+         return entry;
+     }
+ 
+@@ -1303,13 +1306,15 @@
+ }
+ 
+ static void
+-external_acl_cache_delete(external_acl * def, external_acl_entry * entry)
++external_acl_cache_delete(external_acl * def, const ExternalACLEntryPointer &entry)
+ {
++    assert(entry != NULL);
+     assert(def->cache_size > 0 && entry->def == def);
+-    hash_remove_link(def->cache, entry);
+-    dlinkDelete(&entry->lru, &def->lru_list);
++    ExternalACLEntry *e = const_cast<ExternalACLEntry *>(entry.getRaw()); // XXX: make hash a std::map of Pointer.
++    hash_remove_link(def->cache, e);
++    dlinkDelete(&e->lru, &def->lru_list);
++    e->unlock(); // unlock on behalf of the hash
+     def->cache_entries -= 1;
+-    delete entry;
+ }
+ 
+ /******************************************************************
+@@ -1366,7 +1371,6 @@
+     externalAclState *next;
+     ExternalACLEntryData entryData;
+     entryData.result = ACCESS_DENIED;
+-    external_acl_entry *entry = NULL;
+ 
+     debugs(82, 2, HERE << "reply=" << reply);
+ 
+@@ -1402,14 +1406,15 @@
+ 
+     dlinkDelete(&state->list, &state->def->queue);
+ 
++    ExternalACLEntryPointer entry;
+     if (cbdataReferenceValid(state->def)) {
+         // only cache OK and ERR results.
+         if (reply.result == HelperReply::Okay || reply.result == HelperReply::Error)
+             entry = external_acl_cache_add(state->def, state->key, entryData);
+         else {
+-            external_acl_entry *oldentry = (external_acl_entry *)hash_lookup(state->def->cache, state->key);
++            const ExternalACLEntryPointer oldentry = static_cast<ExternalACLEntry *>(hash_lookup(state->def->cache, state->key));
+ 
+-            if (oldentry)
++            if (oldentry != NULL)
+                 external_acl_cache_delete(state->def, oldentry);
+         }
+     }
+@@ -1597,13 +1602,13 @@
+ 
+ /// Called when an async lookup returns
+ void
+-ExternalACLLookup::LookupDone(void *data, void *result)
++ExternalACLLookup::LookupDone(void *data, const ExternalACLEntryPointer &result)
+ {
+     ACLFilledChecklist *checklist = Filled(static_cast<ACLChecklist*>(data));
+-    checklist->extacl_entry = cbdataReference((external_acl_entry *)result);
++    checklist->extacl_entry = result;
+ 
+     // attach the helper kv-pair to the transaction
+-    if (checklist->extacl_entry) {
++    if (checklist->extacl_entry != NULL) {
+         if (HttpRequest * req = checklist->request) {
+             // XXX: we have no access to the transaction / AccessLogEntry so cant SyncNotes().
+             // workaround by using anything already set in HttpRequest
+

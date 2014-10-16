@@ -2,3 +2,4 @@
 02-makefile-defaults.patch
 15-cachemgr-default-config.patch
 16-ipc-statedir.patch
+squid-3.4-13176.patch

@@ -1,4 +1,6 @@
-squid3 (3.4.8-1) UNRELEASED; urgency=high
+squid3 (3.4.8-1) unstable; urgency=high
+ 
+  * Urgency high due to security fixes
 
   [ Amos Jeffries <amosjeffries@squid-cache.org> ]
   * New upstream release (Closes: #737008)

@@ -41,30 +41,17 @@
 #include "DiskIO/WriteRequest.h"
 #include "StatCounters.h"
 
+#if HAVE_SYS_IPC_H
 #include <sys/ipc.h>
+#endif
+#if HAVE_SYS_MSG_H
 #include <sys/msg.h>
+#endif
+#if HAVE_SYS_SHM_H
 #include <sys/shm.h>
+#endif
 
 CBDATA_CLASS_INIT(DiskdFile);
-
-void *
-DiskdFile::operator new(size_t unused)
-{
-    CBDATA_INIT_TYPE(DiskdFile);
-    DiskdFile *result = cbdataAlloc(DiskdFile);
-    /* Mark result as being owned - we want the refcounter to do the delete
-     * call */
-    debugs(79, 3, "diskdFile with base " << result << " allocating");
-    return result;
-}
-
-void
-DiskdFile::operator delete(void *address)
-{
-    DiskdFile *t = static_cast<DiskdFile *>(address);
-    debugs(79, 3, "diskdFile with base " << t << " deleting");
-    cbdataFree(t);
-}
 
 DiskdFile::DiskdFile(char const *aPath, DiskdIOStrategy *anIO) :
         errorOccured(false),
@@ -385,7 +372,7 @@ DiskdFile::readDone(diomsg * M)
 
     /* remove the free protection */
     if (readRequest != NULL)
-        readRequest->RefCountDereference();
+        readRequest->unlock();
 
     if (M->status < 0) {
         ++diskd_stats.read.fail;
@@ -410,7 +397,7 @@ DiskdFile::writeDone(diomsg *M)
     WriteRequest::Pointer writeRequest = dynamic_cast<WriteRequest *>(M->requestor);
     /* remove the free protection */
     if (writeRequest != NULL)
-        writeRequest->RefCountDereference();
+        writeRequest->unlock();
 
     if (M->status < 0) {
         errorOccured = true;

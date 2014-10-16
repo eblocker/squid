@@ -1,8 +1,8 @@
 #ifndef SQUID_CLIENTREQUESTCONTEXT_H
 #define SQUID_CLIENTREQUESTCONTEXT_H
 
+#include "base/RefCount.h"
 #include "cbdata.h"
-#include "RefCount.h"
 #include "ipcache.h"
 
 #if USE_ADAPTATION
@@ -14,13 +14,12 @@ class ClientHttpRequest;
 class DnsLookupDetails;
 class ErrorState;
 
+class HelperReply;
+
 class ClientRequestContext : public RefCountable
 {
 
 public:
-    void *operator new(size_t);
-    void operator delete(void *);
-
     ClientRequestContext(ClientHttpRequest *);
     ~ClientRequestContext();
 
@@ -32,7 +31,9 @@ public:
     void clientAccessCheck2();
     void clientAccessCheckDone(const allow_t &answer);
     void clientRedirectStart();
-    void clientRedirectDone(char *result);
+    void clientRedirectDone(const HelperReply &reply);
+    void clientStoreIdStart();
+    void clientStoreIdDone(const HelperReply &reply);
     void checkNoCache();
     void checkNoCacheDone(const allow_t &answer);
 #if USE_ADAPTATION
@@ -53,6 +54,16 @@ public:
     ClientHttpRequest *http;
     ACLChecklist *acl_checklist;        /* need ptr back so we can unreg if needed */
     int redirect_state;
+    int store_id_state;
+
+    /**
+     * URL-rewrite/redirect helper may return BH for internal errors.
+     * We attempt to recover by trying the lookup again, but limit the
+     * number of retries to prevent lag and lockups.
+     * This tracks the number of previous failures for the current context.
+     */
+    uint8_t redirect_fail_count;
+    uint8_t store_id_fail_count;
 
     bool host_header_verify_done;
     bool http_access_done;
@@ -61,6 +72,7 @@ public:
     bool adaptation_acl_check_done;
 #endif
     bool redirect_done;
+    bool store_id_done;
     bool no_cache_done;
     bool interpreted_req_hdrs;
     bool tosToClientDone;
@@ -72,7 +84,7 @@ public:
     bool readNextRequest; ///< whether Squid should read after error handling
 
 private:
-    CBDATA_CLASS(ClientRequestContext);
+    CBDATA_CLASS2(ClientRequestContext);
 };
 
 #endif /* SQUID_CLIENTREQUESTCONTEXT_H */

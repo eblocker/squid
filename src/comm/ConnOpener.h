@@ -43,11 +43,11 @@ private:
     void sendAnswer(comm_err_t errFlag, int xerrno, const char *why);
     static void InProgressConnectRetry(int fd, void *data);
     static void DelayedConnectRetry(void *data);
-    void connect();
+    void doConnect();
     void connected();
     void lookupLocalAddress();
 
-    void sleep();
+    void retrySleep();
     void restart();
 
     bool createFd();

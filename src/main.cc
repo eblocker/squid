@@ -53,9 +53,9 @@
 #include "ExternalACL.h"
 #include "fd.h"
 #include "format/Token.h"
-#include "forward.h"
 #include "fs/Module.h"
 #include "fqdncache.h"
+#include "FwdState.h"
 #include "globals.h"
 #include "htcp.h"
 #include "HttpHeader.h"
@@ -120,10 +120,10 @@
 #include "LoadableModules.h"
 #endif
 #if USE_SSL_CRTD
-#include "ssl/helper.h"
 #include "ssl/certificate_db.h"
 #endif
 #if USE_SSL
+#include "ssl/helper.h"
 #include "ssl/context_storage.h"
 #endif
 #if ICAP_CLIENT
@@ -153,7 +153,6 @@
 #endif
 
 #if USE_WIN32_SERVICE
-#include "squid_windows.h"
 #include <process.h>
 
 static int opt_install_service = FALSE;
@@ -162,11 +161,6 @@ static int opt_signal_service = FALSE;
 static int opt_command_line = FALSE;
 void WIN32_svcstatusupdate(DWORD, DWORD);
 void WINAPI WIN32_svcHandler(DWORD);
-
-#endif
-
-#if !defined(SQUID_BUILD_INFO)
-#define SQUID_BUILD_INFO ""
 #endif
 
 static char *opt_syslog_facility = NULL;
@@ -203,7 +197,7 @@ static void SquidShutdown(void);
 static void mainSetCwd(void);
 static int checkRunningPid(void);
 
-#if !_SQUID_MSWIN_
+#if !_SQUID_WINDOWS_
 static const char *squid_start_script = "squid_start";
 #endif
 
@@ -302,7 +296,11 @@ usage(void)
 #if USE_WIN32_SERVICE
             "       -i        Installs as a Windows Service (see -n option).\n"
 #endif
-            "       -k reconfigure|rotate|shutdown|interrupt|kill|debug|check|parse\n"
+            "       -k reconfigure|rotate|shutdown|"
+#ifdef SIGTTIN
+            "restart|"
+#endif
+            "interrupt|kill|debug|check|parse\n"
             "                 Parse configuration file, then send signal to \n"
             "                 running copy (except -k parse) and exit.\n"
 #if USE_WIN32_SERVICE
@@ -507,12 +505,6 @@ mainParseOptions(int argc, char *argv[])
                 fatal("Need to add -DMALLOC_DBG when compiling to use -mX option");
 #endif
 
-            } else {
-#if XMALLOC_TRACE
-                xmalloc_trace = !xmalloc_trace;
-#else
-                fatal("Need to configure --enable-xmalloc-debug-trace to use -m option");
-#endif
             }
             break;
 
@@ -619,7 +611,7 @@ rotate_logs(int sig)
 {
     do_rotate = 1;
     RotateSignal = sig;
-#if !_SQUID_MSWIN_
+#if !_SQUID_WINDOWS_
 #if !HAVE_SIGACTION
 
     signal(sig, rotate_logs);
@@ -633,7 +625,7 @@ reconfigure(int sig)
 {
     do_reconfigure = 1;
     ReconfigureSignal = sig;
-#if !_SQUID_MSWIN_
+#if !_SQUID_WINDOWS_
 #if !HAVE_SIGACTION
 
     signal(sig, reconfigure);
@@ -662,7 +654,7 @@ shut_down(int sig)
                    " pid " << ppid << ": " << xstrerror());
     }
 
-#if !_SQUID_MSWIN_
+#if !_SQUID_WINDOWS_
 #if KILL_PARENT_OPT
 
     if (!IamMasterProcess() && ppid > 1) {
@@ -706,7 +698,6 @@ serverConnectionsOpen(void)
         snmpOpenPorts();
 #endif
 
-        clientdbInit();
         icmpEngine.Open();
         netdbInit();
         asnInit();
@@ -769,6 +760,8 @@ mainReconfigureStart(void)
     Ssl::Helper::GetInstance()->Shutdown();
 #endif
 #if USE_SSL
+    if (Ssl::CertValidationHelper::GetInstance())
+        Ssl::CertValidationHelper::GetInstance()->Shutdown();
     Ssl::TheGlobalContextStorage.reconfigureStart();
 #endif
     redirectShutdown();
@@ -808,7 +801,7 @@ mainReconfigureFinish(void *)
     if (oldWorkers != Config.workers) {
         debugs(1, DBG_CRITICAL, "WARNING: Changing 'workers' (from " <<
                oldWorkers << " to " << Config.workers <<
-               ") is not supported and ignored");
+               ") requires a full restart. It has been ignored by reconfigure.");
         Config.workers = oldWorkers;
     }
 
@@ -850,6 +843,10 @@ mainReconfigureFinish(void *)
     dnsInit();
 #if USE_SSL_CRTD
     Ssl::Helper::GetInstance()->Init();
+#endif
+#if USE_SSL
+    if (Ssl::CertValidationHelper::GetInstance())
+        Ssl::CertValidationHelper::GetInstance()->Init();
 #endif
 
     redirectInit();
@@ -947,23 +944,42 @@ setEffectiveUser(void)
     }
 }
 
+/// changes working directory, providing error reporting
+static bool
+mainChangeDir(const char *dir)
+{
+    if (chdir(dir) == 0)
+        return true;
+
+    debugs(50, DBG_CRITICAL, "cannot change current directory to " << dir <<
+           ": " << xstrerror());
+    return false;
+}
+
+/// set the working directory.
 static void
 mainSetCwd(void)
 {
-    char pathbuf[MAXPATHLEN];
+    static bool chrooted = false;
+    if (Config.chroot_dir && !chrooted) {
+        chrooted = true;
 
-    if (Config.coredump_dir) {
-        if (0 == strcmp("none", Config.coredump_dir)) {
-            (void) 0;
-        } else if (chdir(Config.coredump_dir) == 0) {
+        if (chroot(Config.chroot_dir) != 0)
+            fatalf("chroot to %s failed: %s", Config.chroot_dir, xstrerror());
+
+        if (!mainChangeDir("/"))
+            fatalf("chdir to / after chroot to %s failed", Config.chroot_dir);
+    }
+
+    if (Config.coredump_dir && strcmp("none", Config.coredump_dir) != 0) {
+        if (mainChangeDir(Config.coredump_dir)) {
             debugs(0, DBG_IMPORTANT, "Set Current Directory to " << Config.coredump_dir);
             return;
-        } else {
-            debugs(50, DBG_CRITICAL, "chdir: " << Config.coredump_dir << ": " << xstrerror());
         }
     }
 
     /* If we don't have coredump_dir or couldn't cd there, report current dir */
+    char pathbuf[MAXPATHLEN];
     if (getcwd(pathbuf, MAXPATHLEN)) {
         debugs(0, DBG_IMPORTANT, "Current Directory is " << pathbuf);
     } else {
@@ -975,10 +991,7 @@ static void
 mainInitialize(void)
 {
     /* chroot if configured to run inside chroot */
-
-    if (Config.chroot_dir && (chroot(Config.chroot_dir) != 0 || chdir("/") != 0)) {
-        fatal("failed to chroot");
-    }
+    mainSetCwd();
 
     if (opt_catch_signals) {
         squid_signal(SIGSEGV, death, SA_NODEFER | SA_RESETHAND);
@@ -1020,7 +1033,7 @@ mainInitialize(void)
     setSystemLimits();
     debugs(1, DBG_IMPORTANT, "With " << Squid_MaxFD << " file descriptors available");
 
-#if _SQUID_MSWIN_
+#if _SQUID_WINDOWS_
 
     debugs(1, DBG_IMPORTANT, "With " << _getmaxstdio() << " CRT stdio descriptors available");
 
@@ -1046,6 +1059,11 @@ mainInitialize(void)
 
 #if USE_SSL_CRTD
     Ssl::Helper::GetInstance()->Init();
+#endif
+
+#if USE_SSL
+    if (Ssl::CertValidationHelper::GetInstance())
+        Ssl::CertValidationHelper::GetInstance()->Init();
 #endif
 
     redirectInit();
@@ -1282,10 +1300,6 @@ SquidMain(int argc, char **argv)
 {
     ConfigureCurrentKid(argv[0]);
 
-#if HAVE_SBRK
-    sbrk_start = sbrk(0);
-#endif
-
     Debug::parseOptions(NULL);
     debug_log = stderr;
 
@@ -1416,11 +1430,8 @@ SquidMain(int argc, char **argv)
     /* send signal to running copy and exit */
     if (opt_send_signal != -1) {
         /* chroot if configured to run inside chroot */
-
+        mainSetCwd();
         if (Config.chroot_dir) {
-            if (chroot(Config.chroot_dir))
-                fatal("failed to chroot");
-
             no_suid();
         } else {
             leave_suid();
@@ -1442,10 +1453,7 @@ SquidMain(int argc, char **argv)
 
     if (opt_create_swap_dirs) {
         /* chroot if configured to run inside chroot */
-
-        if (Config.chroot_dir && chroot(Config.chroot_dir)) {
-            fatal("failed to chroot");
-        }
+        mainSetCwd();
 
         setEffectiveUser();
         debugs(0, DBG_CRITICAL, "Creating missing swap directories");
@@ -1577,7 +1585,7 @@ sendSignal(void)
     exit(0);
 }
 
-#if !_SQUID_MSWIN_
+#if !_SQUID_WINDOWS_
 /*
  * This function is run when Squid is in daemon mode, just
  * before the parent forks and starts up the child process.
@@ -1620,7 +1628,7 @@ mainStartScript(const char *prog)
     }
 }
 
-#endif /* _SQUID_MSWIN_ */
+#endif /* _SQUID_WINDOWS_ */
 
 static int
 checkRunningPid(void)
@@ -1650,7 +1658,7 @@ checkRunningPid(void)
 static void
 watch_child(char *argv[])
 {
-#if !_SQUID_MSWIN_
+#if !_SQUID_WINDOWS_
     char *prog;
 #if _SQUID_NEXT_
 
@@ -1819,7 +1827,7 @@ watch_child(char *argv[])
     }
 
     /* NOTREACHED */
-#endif /* _SQUID_MSWIN_ */
+#endif /* _SQUID_WINDOWS_ */
 
 }
 
@@ -1840,6 +1848,10 @@ SquidShutdown()
     dnsShutdown();
 #if USE_SSL_CRTD
     Ssl::Helper::GetInstance()->Shutdown();
+#endif
+#if USE_SSL
+    if (Ssl::CertValidationHelper::GetInstance())
+        Ssl::CertValidationHelper::GetInstance()->Shutdown();
 #endif
     redirectShutdown();
     externalAclShutdown();
@@ -1909,15 +1921,6 @@ SquidShutdown()
     mimeFreeMemory();
     errorClean();
 #endif
-#if !XMALLOC_TRACE
-
-    if (opt_no_daemon) {
-        file_close(0);
-        file_close(1);
-        file_close(2);
-    }
-
-#endif
     // clear StoreController
     Store::Root(NULL);
 
@@ -1927,13 +1930,6 @@ SquidShutdown()
 
     memClean();
 
-#if XMALLOC_TRACE
-
-    xmalloc_find_leaks();
-
-    debugs(1, DBG_CRITICAL, "Memory used after shutdown: " << xmalloc_total);
-
-#endif
 #if MEM_GEN_TRACE
 
     log_trace_done();

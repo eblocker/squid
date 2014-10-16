@@ -59,8 +59,6 @@ class store_client
 {
 
 public:
-    void *operator new (size_t);
-    void operator delete (void *);
     store_client(StoreEntry *);
     ~store_client();
     bool memReaderHasLowerOffset(int64_t) const;
@@ -83,9 +81,9 @@ public:
     StoreIOState::Pointer swapin_sio;
 
     struct {
-        unsigned int disk_io_pending:1;
-        unsigned int store_copying:1;
-        unsigned int copy_event_pending:1;
+        bool disk_io_pending;
+        bool store_copying;
+        bool copy_event_pending;
     } flags;
 
 #if USE_DELAY_POOLS
@@ -122,7 +120,7 @@ public:
     } _callback;
 
 private:
-    CBDATA_CLASS(store_client);
+    CBDATA_CLASS2(store_client);
 };
 
 void storeClientCopy(store_client *, StoreEntry *, StoreIOBuffer, STCB *, void *);

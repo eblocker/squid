@@ -43,6 +43,7 @@
 #include "fde.h"
 #include "globals.h"
 #include "SquidConfig.h"
+#include "ssl/Config.h"
 #include "ssl/ErrorDetail.h"
 #include "ssl/support.h"
 #include "ssl/gadgets.h"
@@ -238,10 +239,28 @@ ssl_verify_cb(int ok, X509_STORE_CTX * ctx)
     X509_NAME_oneline(X509_get_subject_name(peer_cert), buffer,
                       sizeof(buffer));
 
+    // detect infinite loops
+    uint32_t *validationCounter = static_cast<uint32_t *>(SSL_get_ex_data(ssl, ssl_ex_index_ssl_validation_counter));
+    if (!validationCounter) {
+        validationCounter = new uint32_t(1);
+        SSL_set_ex_data(ssl, ssl_ex_index_ssl_validation_counter, validationCounter);
+    } else {
+        // overflows allowed if SQUID_CERT_VALIDATION_ITERATION_MAX >= UINT32_MAX
+        (*validationCounter)++;
+    }
+
+    if ((*validationCounter) >= SQUID_CERT_VALIDATION_ITERATION_MAX) {
+        ok = 0; // or the validation loop will never stop
+        error_no = SQUID_X509_V_ERR_INFINITE_VALIDATION;
+        debugs(83, 2, "SQUID_X509_V_ERR_INFINITE_VALIDATION: " <<
+               *validationCounter << " iterations while checking " << buffer);
+    }
+
     if (ok) {
         debugs(83, 5, "SSL Certificate signature OK: " << buffer);
 
-        if (server) {
+        // Check for domain mismatch only if the current certificate is the peer certificate.
+        if (server && peer_cert == X509_STORE_CTX_get_current_cert(ctx)) {
             if (!Ssl::checkX509ServerValidity(peer_cert, server)) {
                 debugs(83, 2, "SQUID_X509_V_ERR_DOMAIN_MISMATCH: Certificate " << buffer << " does not match domainname " << server);
                 ok = 0;
@@ -260,34 +279,55 @@ ssl_verify_cb(int ok, X509_STORE_CTX * ctx)
     }
 
     if (!ok) {
-        Ssl::Errors *errs = static_cast<Ssl::Errors *>(SSL_get_ex_data(ssl, ssl_ex_index_ssl_errors));
+        X509 *broken_cert =  X509_STORE_CTX_get_current_cert(ctx);
+        if (!broken_cert)
+            broken_cert = peer_cert;
+
+        Ssl::CertErrors *errs = static_cast<Ssl::CertErrors *>(SSL_get_ex_data(ssl, ssl_ex_index_ssl_errors));
         if (!errs) {
-            errs = new Ssl::Errors(error_no);
+            errs = new Ssl::CertErrors(Ssl::CertError(error_no, broken_cert));
             if (!SSL_set_ex_data(ssl, ssl_ex_index_ssl_errors,  (void *)errs)) {
                 debugs(83, 2, "Failed to set ssl error_no in ssl_verify_cb: Certificate " << buffer);
                 delete errs;
                 errs = NULL;
             }
         } else // remember another error number
-            errs->push_back_unique(error_no);
+            errs->push_back_unique(Ssl::CertError(error_no, broken_cert));
 
         if (const char *err_descr = Ssl::GetErrorDescr(error_no))
             debugs(83, 5, err_descr << ": " << buffer);
         else
             debugs(83, DBG_IMPORTANT, "SSL unknown certificate error " << error_no << " in " << buffer);
 
-        if (check) {
-            ACLFilledChecklist *filledCheck = Filled(check);
-            assert(!filledCheck->sslErrors);
-            filledCheck->sslErrors = new Ssl::Errors(error_no);
-            if (check->fastCheck() == ACCESS_ALLOWED) {
-                debugs(83, 3, "bypassing SSL error " << error_no << " in " << buffer);
-                ok = 1;
-            } else {
-                debugs(83, 5, "confirming SSL error " << error_no);
+        // Check if the certificate error can be bypassed.
+        // Infinity validation loop errors can not bypassed.
+        if (error_no != SQUID_X509_V_ERR_INFINITE_VALIDATION) {
+            if (check) {
+                ACLFilledChecklist *filledCheck = Filled(check);
+                assert(!filledCheck->sslErrors);
+                filledCheck->sslErrors = new Ssl::CertErrors(Ssl::CertError(error_no, broken_cert));
+                filledCheck->serverCert.resetAndLock(peer_cert);
+                if (check->fastCheck() == ACCESS_ALLOWED) {
+                    debugs(83, 3, "bypassing SSL error " << error_no << " in " << buffer);
+                    ok = 1;
+                } else {
+                    debugs(83, 5, "confirming SSL error " << error_no);
+                }
+                delete filledCheck->sslErrors;
+                filledCheck->sslErrors = NULL;
+                filledCheck->serverCert.reset(NULL);
             }
-            delete filledCheck->sslErrors;
-            filledCheck->sslErrors = NULL;
+            // If the certificate validator is used then we need to allow all errors and
+            // pass them to certficate validator for more processing
+            else if (Ssl::TheConfig.ssl_crt_validator) {
+                ok = 1;
+                // Check if we have stored certificates chain. Store if not.
+                if (!SSL_get_ex_data(ssl, ssl_ex_index_ssl_cert_chain)) {
+                    STACK_OF(X509) *certStack = X509_STORE_CTX_get1_chain(ctx);
+                    if (certStack && !SSL_set_ex_data(ssl, ssl_ex_index_ssl_cert_chain, certStack))
+                        sk_X509_pop_free(certStack, X509_free);
+                }
+            }
         }
     }
 
@@ -628,8 +668,28 @@ static void
 ssl_free_SslErrors(void *, void *ptr, CRYPTO_EX_DATA *,
                    int, long, void *)
 {
-    Ssl::Errors *errs = static_cast <Ssl::Errors*>(ptr);
+    Ssl::CertErrors *errs = static_cast <Ssl::CertErrors*>(ptr);
     delete errs;
+}
+
+// "free" function for SSL_get_ex_new_index("ssl_ex_index_ssl_validation_counter")
+static void
+ssl_free_int(void *, void *ptr, CRYPTO_EX_DATA *,
+             int, long, void *)
+{
+    uint32_t *counter = static_cast <uint32_t *>(ptr);
+    delete counter;
+}
+
+/// \ingroup ServerProtocolSSLInternal
+/// Callback handler function to release STACK_OF(X509) "ex" data stored
+/// in an SSL object.
+static void
+ssl_free_CertChain(void *, void *ptr, CRYPTO_EX_DATA *,
+                   int, long, void *)
+{
+    STACK_OF(X509) *certsChain = static_cast <STACK_OF(X509) *>(ptr);
+    sk_X509_pop_free(certsChain,X509_free);
 }
 
 // "free" function for X509 certificates
@@ -645,36 +705,29 @@ ssl_free_X509(void *, void *ptr, CRYPTO_EX_DATA *,
 static void
 ssl_initialize(void)
 {
-    static int ssl_initialized = 0;
+    static bool initialized = false;
+    if (initialized)
+        return;
+    initialized = true;
 
-    if (!ssl_initialized) {
-        ssl_initialized = 1;
-        SSL_load_error_strings();
-        SSLeay_add_ssl_algorithms();
+    SSL_load_error_strings();
+    SSLeay_add_ssl_algorithms();
+
 #if HAVE_OPENSSL_ENGINE_H
+    if (Config.SSL.ssl_engine) {
+        ENGINE *e;
+        if (!(e = ENGINE_by_id(Config.SSL.ssl_engine)))
+            fatalf("Unable to find SSL engine '%s'\n", Config.SSL.ssl_engine);
 
-        if (Config.SSL.ssl_engine) {
-            ENGINE *e;
-
-            if (!(e = ENGINE_by_id(Config.SSL.ssl_engine))) {
-                fatalf("Unable to find SSL engine '%s'\n", Config.SSL.ssl_engine);
-            }
-
-            if (!ENGINE_set_default(e, ENGINE_METHOD_ALL)) {
-                int ssl_error = ERR_get_error();
-                fatalf("Failed to initialise SSL engine: %s\n",
-                       ERR_error_string(ssl_error, NULL));
-            }
+        if (!ENGINE_set_default(e, ENGINE_METHOD_ALL)) {
+            int ssl_error = ERR_get_error();
+            fatalf("Failed to initialise SSL engine: %s\n", ERR_error_string(ssl_error, NULL));
         }
-
-#else
-        if (Config.SSL.ssl_engine) {
-            fatalf("Your OpenSSL has no SSL engine support\n");
-        }
-
-#endif
-
     }
+#else
+    if (Config.SSL.ssl_engine)
+        fatalf("Your OpenSSL has no SSL engine support\n");
+#endif
 
     ssl_ex_index_server = SSL_get_ex_new_index(0, (void *) "server", NULL, NULL, NULL);
     ssl_ctx_ex_index_dont_verify_domain = SSL_CTX_get_ex_new_index(0, (void *) "dont_verify_domain", NULL, NULL, NULL);
@@ -682,6 +735,8 @@ ssl_initialize(void)
     ssl_ex_index_ssl_error_detail = SSL_get_ex_new_index(0, (void *) "ssl_error_detail", NULL, NULL, &ssl_free_ErrorDetail);
     ssl_ex_index_ssl_peeked_cert  = SSL_get_ex_new_index(0, (void *) "ssl_peeked_cert", NULL, NULL, &ssl_free_X509);
     ssl_ex_index_ssl_errors =  SSL_get_ex_new_index(0, (void *) "ssl_errors", NULL, NULL, &ssl_free_SslErrors);
+    ssl_ex_index_ssl_cert_chain = SSL_get_ex_new_index(0, (void *) "ssl_cert_chain", NULL, NULL, &ssl_free_CertChain);
+    ssl_ex_index_ssl_validation_counter = SSL_get_ex_new_index(0, (void *) "ssl_validation_counter", NULL, NULL, &ssl_free_int);
 }
 
 /// \ingroup ServerProtocolSSLInternal
@@ -1109,9 +1164,9 @@ ssl_read_method(int fd, char *buf, int len)
 
     if (i > 0 && SSL_pending(ssl) > 0) {
         debugs(83, 2, "SSL FD " << fd << " is pending");
-        fd_table[fd].flags.read_pending = 1;
+        fd_table[fd].flags.read_pending = true;
     } else
-        fd_table[fd].flags.read_pending = 0;
+        fd_table[fd].flags.read_pending = false;
 
     return i;
 }
@@ -1168,16 +1223,10 @@ done:
 
 /// \ingroup ServerProtocolSSLInternal
 const char *
-sslGetUserAttribute(SSL * ssl, const char *attribute_name)
+Ssl::GetX509UserAttribute(X509 * cert, const char *attribute_name)
 {
-    X509 *cert;
     X509_NAME *name;
     const char *ret;
-
-    if (!ssl)
-        return NULL;
-
-    cert = SSL_get_peer_certificate(ssl);
 
     if (!cert)
         return NULL;
@@ -1186,23 +1235,39 @@ sslGetUserAttribute(SSL * ssl, const char *attribute_name)
 
     ret = ssl_get_attribute(name, attribute_name);
 
-    X509_free(cert);
-
     return ret;
+}
+
+const char *
+Ssl::GetX509Fingerprint(X509 * cert, const char *)
+{
+    static char buf[1024];
+    if (!cert)
+        return NULL;
+
+    unsigned int n;
+    unsigned char md[EVP_MAX_MD_SIZE];
+    if (!X509_digest(cert, EVP_sha1(), md, &n))
+        return NULL;
+
+    assert(3 * n + 1 < sizeof(buf));
+
+    char *s = buf;
+    for (unsigned int i=0; i < n; ++i, s += 3) {
+        const char term = (i + 1 < n) ? ':' : '\0';
+        snprintf(s, 4, "%02X%c", md[i], term);
+    }
+
+    return buf;
 }
 
 /// \ingroup ServerProtocolSSLInternal
 const char *
-sslGetCAAttribute(SSL * ssl, const char *attribute_name)
+Ssl::GetX509CAAttribute(X509 * cert, const char *attribute_name)
 {
-    X509 *cert;
+
     X509_NAME *name;
     const char *ret;
-
-    if (!ssl)
-        return NULL;
-
-    cert = SSL_get_peer_certificate(ssl);
 
     if (!cert)
         return NULL;
@@ -1211,9 +1276,33 @@ sslGetCAAttribute(SSL * ssl, const char *attribute_name)
 
     ret = ssl_get_attribute(name, attribute_name);
 
-    X509_free(cert);
-
     return ret;
+}
+
+const char *sslGetUserAttribute(SSL *ssl, const char *attribute_name)
+{
+    if (!ssl)
+        return NULL;
+
+    X509 *cert = SSL_get_peer_certificate(ssl);
+
+    const char *attr = Ssl::GetX509UserAttribute(cert, attribute_name);
+
+    X509_free(cert);
+    return attr;
+}
+
+const char *sslGetCAAttribute(SSL *ssl, const char *attribute_name)
+{
+    if (!ssl)
+        return NULL;
+
+    X509 *cert = SSL_get_peer_certificate(ssl);
+
+    const char *attr = Ssl::GetX509CAAttribute(cert, attribute_name);
+
+    X509_free(cert);
+    return attr;
 }
 
 const char *
@@ -1488,11 +1577,7 @@ static X509 * readSslX509CertificatesChain(char const * certFilename,  STACK_OF(
         if (X509_check_issued(certificate, certificate) == X509_V_OK)
             debugs(83, 5, "Certificate is self-signed, will not be chained");
         else {
-            if (sk_X509_push(chain, certificate))
-                CRYPTO_add(&(certificate->references), 1, CRYPTO_LOCK_X509);
-            else
-                debugs(83, DBG_IMPORTANT, "WARNING: unable to add signing certificate to cert chain");
-            // and add to the chain any certificate loaded from the file
+            // and add to the chain any other certificate exist in the file
             while (X509 *ca = PEM_read_bio_X509(bio.get(), NULL, NULL, NULL)) {
                 if (!sk_X509_push(chain, ca))
                     debugs(83, DBG_IMPORTANT, "WARNING: unable to add CA certificate to cert chain");
@@ -1549,6 +1634,36 @@ bool Ssl::generateUntrustedCert(X509_Pointer &untrustedCert, EVP_PKEY_Pointer &u
     certProperties.signWithPkey.resetAndLock(pkey.get());
     certProperties.mimicCert.resetAndLock(cert.get());
     return Ssl::generateSslCertificate(untrustedCert, untrustedPkey, certProperties);
+}
+
+Ssl::CertError::CertError(ssl_error_t anErr, X509 *aCert): code(anErr)
+{
+    cert.resetAndLock(aCert);
+}
+
+Ssl::CertError::CertError(CertError const &err): code(err.code)
+{
+    cert.resetAndLock(err.cert.get());
+}
+
+Ssl::CertError &
+Ssl::CertError::operator = (const CertError &old)
+{
+    code = old.code;
+    cert.resetAndLock(old.cert.get());
+    return *this;
+}
+
+bool
+Ssl::CertError::operator == (const CertError &ce) const
+{
+    return code == ce.code && cert.get() == ce.cert.get();
+}
+
+bool
+Ssl::CertError::operator != (const CertError &ce) const
+{
+    return code != ce.code || cert.get() != ce.cert.get();
 }
 
 #endif /* USE_SSL */

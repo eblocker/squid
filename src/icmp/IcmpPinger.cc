@@ -58,7 +58,7 @@ IcmpPinger::~IcmpPinger()
     Close();
 }
 
-#if _SQUID_MSWIN_
+#if _SQUID_WINDOWS_
 void
 Win32SockCleanup(void)
 {
@@ -70,7 +70,7 @@ Win32SockCleanup(void)
 int
 IcmpPinger::Open(void)
 {
-#if _SQUID_MSWIN_
+#if _SQUID_WINDOWS_
 
     WSADATA wsaData;
     WSAPROTOCOL_INFO wpi;
@@ -152,7 +152,7 @@ IcmpPinger::Open(void)
 
     return icmp_sock;
 
-#else /* !_SQUID_MSWIN_ */
+#else /* !_SQUID_WINDOWS_ */
 
     /* non-windows apps use stdin/out pipes as the squid channel(s) */
     socket_from_squid = 0; // use STDIN macro ??
@@ -164,7 +164,7 @@ IcmpPinger::Open(void)
 void
 IcmpPinger::Close(void)
 {
-#if _SQUID_MSWIN_
+#if _SQUID_WINDOWS_
 
     shutdown(icmp_sock, SD_BOTH);
     close(icmp_sock);
@@ -209,7 +209,7 @@ IcmpPinger::Recv(void)
     }
 
     /* pass request for ICMPv6 handing */
-    if (pecho.to.IsIPv6()) {
+    if (pecho.to.isIPv6()) {
         debugs(42, 2, HERE << " Pass " << pecho.to << " off to ICMPv6 module.");
         icmp6.SendEcho(pecho.to,
                        pecho.opcode,
@@ -218,7 +218,7 @@ IcmpPinger::Recv(void)
     }
 
     /* pass the packet for ICMP handling */
-    else if (pecho.to.IsIPv4()) {
+    else if (pecho.to.isIPv4()) {
         debugs(42, 2, HERE << " Pass " << pecho.to << " off to ICMPv4 module.");
         icmp4.SendEcho(pecho.to,
                        pecho.opcode,

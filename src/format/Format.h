@@ -1,7 +1,7 @@
 #ifndef _SQUID_FORMAT_FORMAT_H
 #define _SQUID_FORMAT_FORMAT_H
 
-#include "RefCount.h"
+#include "base/RefCount.h"
 /*
  * Squid configuration allows users to define custom formats in
  * several components.
@@ -41,7 +41,7 @@ public:
     void assemble(MemBuf &mb, const AccessLogEntryPointer &al, int logSequenceNumber) const;
 
     /// dump this whole list of formats into the provided StoreEntry
-    void dump(StoreEntry * entry, const char *name);
+    void dump(StoreEntry * entry, const char *directiveName);
 
     char *name;
     Token *format;

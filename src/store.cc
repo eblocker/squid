@@ -380,32 +380,47 @@ StoreEntry::storeClientType() const
     return STORE_DISK_CLIENT;
 }
 
-StoreEntry::StoreEntry():
+StoreEntry::StoreEntry() :
+        mem_obj(NULL),
         hidden_mem_obj(NULL),
-        swap_file_sz(0)
+        timestamp(-1),
+        lastref(-1),
+        expires(-1),
+        lastmod(-1),
+        swap_file_sz(0),
+        refcount(0),
+        flags(0),
+        swap_filen(-1),
+        swap_dirn(-1),
+        lock_count(0),
+        mem_status(NOT_IN_MEMORY),
+        ping_status(PING_NONE),
+        store_status(STORE_PENDING),
+        swap_status(SWAPOUT_NONE)
 {
     debugs(20, 3, HERE << "new StoreEntry " << this);
-    mem_obj = NULL;
-
-    expires = lastmod = lastref = timestamp = -1;
-
-    swap_status = SWAPOUT_NONE;
-    swap_filen = -1;
-    swap_dirn = -1;
 }
 
-StoreEntry::StoreEntry(const char *aUrl, const char *aLogUrl):
+StoreEntry::StoreEntry(const char *aUrl, const char *aLogUrl) :
+        mem_obj(NULL),
         hidden_mem_obj(NULL),
-        swap_file_sz(0)
+        timestamp(-1),
+        lastref(-1),
+        expires(-1),
+        lastmod(-1),
+        swap_file_sz(0),
+        refcount(0),
+        flags(0),
+        swap_filen(-1),
+        swap_dirn(-1),
+        lock_count(0),
+        mem_status(NOT_IN_MEMORY),
+        ping_status(PING_NONE),
+        store_status(STORE_PENDING),
+        swap_status(SWAPOUT_NONE)
 {
     debugs(20, 3, HERE << "new StoreEntry " << this);
     mem_obj = new MemObject(aUrl, aLogUrl);
-
-    expires = lastmod = lastref = timestamp = -1;
-
-    swap_status = SWAPOUT_NONE;
-    swap_filen = -1;
-    swap_dirn = -1;
 }
 
 StoreEntry::~StoreEntry()
@@ -642,9 +657,9 @@ storeGetPublicByRequest(HttpRequest * req)
 {
     StoreEntry *e = storeGetPublicByRequestMethod(req, req->method);
 
-    if (e == NULL && req->method == METHOD_HEAD)
+    if (e == NULL && req->method == Http::METHOD_HEAD)
         /* We can generate a HEAD reply from a cached GET object */
-        e = storeGetPublicByRequestMethod(req, METHOD_GET);
+        e = storeGetPublicByRequestMethod(req, Http::METHOD_GET);
 
     return e;
 }
@@ -688,7 +703,7 @@ StoreEntry::setPrivateKey()
         mem_obj->id = getKeyCounter();
         newkey = storeKeyPrivate(mem_obj->url, mem_obj->method, mem_obj->id);
     } else {
-        newkey = storeKeyPrivate("JUNK", METHOD_NONE, getKeyCounter());
+        newkey = storeKeyPrivate("JUNK", Http::METHOD_NONE, getKeyCounter());
     }
 
     assert(hash_lookup(store_table, newkey) == NULL);
@@ -761,7 +776,7 @@ StoreEntry::setPublicKey()
             StoreEntry *pe = storeCreateEntry(mem_obj->url, mem_obj->log_url, request->flags, request->method);
             /* We are allowed to do this typecast */
             HttpReply *rep = new HttpReply;
-            rep->setHeaders(HTTP_OK, "Internal marker object", "x-squid-internal/vary", -1, -1, squid_curtime + 100000);
+            rep->setHeaders(Http::scOkay, "Internal marker object", "x-squid-internal/vary", -1, -1, squid_curtime + 100000);
             vary = mem_obj->getReply()->header.getList(HDR_VARY);
 
             if (vary.size()) {
@@ -780,11 +795,13 @@ StoreEntry::setPublicKey()
             }
 
 #endif
-            pe->replaceHttpReply(rep);
+            pe->replaceHttpReply(rep, false); // no write until key is public
 
             pe->timestampsSet();
 
             pe->makePublic();
+
+            pe->startWriting(); // after makePublic()
 
             pe->complete();
 
@@ -982,7 +999,7 @@ StoreEntry::checkCachable()
 {
 #if CACHE_ALL_METHODS
 
-    if (mem_obj->method != METHOD_GET) {
+    if (mem_obj->method != Http::METHOD_GET) {
         debugs(20, 2, "StoreEntry::checkCachable: NO: non-GET method");
         ++store_check_cachable_hist.no.non_get;
     } else
@@ -1382,15 +1399,15 @@ StoreEntry::validLength() const
         return 1;
     }
 
-    if (mem_obj->method == METHOD_HEAD) {
+    if (mem_obj->method == Http::METHOD_HEAD) {
         debugs(20, 5, "storeEntryValidLength: HEAD request: " << getMD5Text());
         return 1;
     }
 
-    if (reply->sline.status == HTTP_NOT_MODIFIED)
+    if (reply->sline.status() == Http::scNotModified)
         return 1;
 
-    if (reply->sline.status == HTTP_NO_CONTENT)
+    if (reply->sline.status() == Http::scNoContent)
         return 1;
 
     diff = reply->hdr_sz + reply->content_length - objectLen();
@@ -1678,6 +1695,8 @@ StoreEntry::url() const
 void
 StoreEntry::createMemObject(const char *aUrl, const char *aLogUrl)
 {
+    debugs(20, 3, "A mem_obj create attempted using : " << aUrl);
+
     if (mem_obj)
         return;
 
@@ -1952,6 +1971,17 @@ StoreEntry::modifiedSince(HttpRequest * request) const
 }
 
 bool
+StoreEntry::hasEtag(ETag &etag) const
+{
+    if (const HttpReply *reply = getReply()) {
+        etag = reply->header.getETag(HDR_ETAG);
+        if (etag.str)
+            return true;
+    }
+    return false;
+}
+
+bool
 StoreEntry::hasIfMatchEtag(const HttpRequest &request) const
 {
     const String reqETags = request.header.getList(HDR_IF_MATCH);
@@ -1964,7 +1994,7 @@ StoreEntry::hasIfNoneMatchEtag(const HttpRequest &request) const
     const String reqETags = request.header.getList(HDR_IF_NONE_MATCH);
     // weak comparison is allowed only for HEAD or full-body GET requests
     const bool allowWeakMatch = !request.flags.isRanged &&
-                                (request.method == METHOD_GET || request.method == METHOD_HEAD);
+                                (request.method == Http::METHOD_GET || request.method == Http::METHOD_HEAD);
     return hasOneOfEtags(reqETags, allowWeakMatch);
 }
 

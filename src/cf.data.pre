@@ -64,6 +64,31 @@ COMMENT_START
   from causing Squid entering an infinite loop whilst trying to load
   configuration files.
 
+  Values with byte units
+
+	Squid accepts size units on some size related directives. All
+	such directives are documented with a default value displaying
+	a unit.
+
+	Units accepted by Squid are:
+		bytes - byte
+		KB - Kilobyte (1024 bytes)
+		MB - Megabyte
+		GB - Gigabyte
+
+  Values with spaces, quotes, and other special characters
+
+	Squid supports directive parameters with spaces, quotes, and other
+	special characters. Surround such parameters with "double quotes". Use
+	the configuration_includes_quoted_values directive to enable or
+	disable that support.
+
+	For example;
+
+		configuration_includes_quoted_values on
+		acl group external groupCheck Administrators "Internet Users" Guest
+		configuration_includes_quoted_values off
+
 
   Conditional configuration
 
@@ -135,12 +160,6 @@ DOC_START
 	This option is not yet supported by Squid-3.
 DOC_END
 
-NAME: ignore_ims_on_miss
-TYPE: obsolete
-DOC_START
-	This option is not yet supported by Squid-3.
-DOC_END
-
 NAME: location_rewrite_program location_rewrite_access location_rewrite_children location_rewrite_concurrency
 TYPE: obsolete
 DOC_START
@@ -153,10 +172,11 @@ DOC_START
 	This option is not yet supported by Squid-3.
 DOC_END
 
-NAME: storeurl_access storeurl_rewrite_program storeurl_rewrite_concurrency storeurl_rewrite_children
+# Options Removed in 3.3
+NAME: ignore_ims_on_miss
 TYPE: obsolete
 DOC_START
-	This option is not yet supported by this version of Squid-3. Please try a later release.
+	Remove this line. The HTTP/1.1 feature is now configured by 'cache_miss_revalidate'.
 DOC_END
 
 # Options Removed in 3.2
@@ -315,9 +335,22 @@ DOC_START
 
 	"program" cmdline
 	Specify the command for the external authenticator.  Such a program
-	reads a line containing "username password" and replies "OK" or
-	"ERR" in an endless loop. "ERR" responses may optionally be followed
-	by a error description available as %m in the returned error page.
+	reads a line containing "username password" and	replies with one of
+	three results:
+
+	  OK
+		the user exists.
+
+	  ERR
+		the user does not exist.
+
+	  BH
+		An internal error occurred in the helper, preventing
+		a result being identified.
+
+	"ERR" and "BH" results may optionally be followed by message="..."
+	containing a description available as %m in the returned error page.
+
 	If you use an authenticator, make sure you have 1 acl of type
 	proxy_auth.
 
@@ -388,11 +421,22 @@ DOC_START
 	"program" cmdline
 	Specify the command for the external authenticator.  Such
 	a program reads a line containing "username":"realm" and
-	replies with the appropriate H(A1) value hex encoded or
-	ERR if the user (or his H(A1) hash) does not exists.
-	See rfc 2616 for the definition of H(A1).
-	"ERR" responses may optionally be followed by a error description
-	available as %m in the returned error page.
+	replies with one of three results:
+
+	  OK ha1="..."
+		the user exists. The ha1= key is mandatory and
+		contains the appropriate H(A1) value, hex encoded.
+		See rfc 2616 for the definition of H(A1).
+
+	  ERR
+		the user does not exist.
+
+	  BH
+		An internal error occurred in the helper, preventing
+		a result being identified.
+
+	"ERR" and "BH" results may optionally be followed by message="..."
+	containing a description available as %m in the returned error page.
 
 	By default, the digest authentication scheme is not used unless a
 	program is specified.
@@ -474,7 +518,7 @@ DOC_START
 	Such a program reads exchanged NTLMSSP packets with
 	the browser via Squid until authentication is completed.
 	If you use an NTLM authenticator, make sure you have 1 acl
-	of type proxy_auth.  By default, the NTLM authenticator_program
+	of type proxy_auth.  By default, the NTLM authenticator program
 	is not used.
 
 	auth_param ntlm program /usr/bin/ntlm_auth
@@ -514,7 +558,7 @@ DOC_START
 	using the Kerberos mechanisms.
 	If you use a Negotiate authenticator, make sure you have at least
 	one acl of type proxy_auth active. By default, the negotiate
-	authenticator_program is not used.
+	authenticator program is not used.
 	The only supported program for this role is the ntlm_auth
 	program distributed as part of Samba, version 4 or later.
 
@@ -595,7 +639,7 @@ DOC_END
 NAME: authenticate_ip_ttl
 TYPE: time_t
 LOC: Config.authenticateIpTTL
-DEFAULT: 0 seconds
+DEFAULT: 1 second
 DOC_START
 	If you use proxy authentication and the 'max_user_ip' ACL,
 	this directive controls how long Squid remembers the IP
@@ -642,7 +686,7 @@ DOC_START
 			Up to the value of children-max. (default 1)
 	  concurrency=n	concurrency level per process. Only used with helpers
 			capable of processing more than one query at a time.
-	  cache=n	limit the result cache size, default is unbounded.
+	  cache=n	limit the result cache size, default is 262144.
 	  grace=n	Percentage remaining of TTL where a refresh of a
 			cached entry should be initiated without needing to
 			wait for a new reply. (default is for no grace period)
@@ -671,7 +715,7 @@ DOC_START
 	  %USER_CERT	SSL User certificate in PEM format
 	  %USER_CERTCHAIN SSL User certificate chain in PEM format
 	  %USER_CERT_xx	SSL User certificate subject attribute xx
-	  %USER_CA_xx	SSL User certificate issuer attribute xx
+	  %USER_CA_CERT_xx SSL User certificate issuer attribute xx
 
 	  %>{Header}	HTTP request header "Header"
 	  %>{Hdr:member}
@@ -699,40 +743,87 @@ DOC_START
 	  %%		The percent sign. Useful for helpers which need
 			an unchanging input format.
 
-	In addition to the above, any string specified in the referencing
-	acl will also be included in the helper request line, after the
-	specified formats (see the "acl external" directive)
 
-	The helper receives lines per the above format specification,
-	and returns lines starting with OK or ERR indicating the validity
-	of the request and optionally followed by additional keywords with
-	more details.
+	General request syntax:
+
+	  [channel-ID] FORMAT-values [acl-values ...]
+
+
+	FORMAT-values consists of transaction details expanded with
+	whitespace separation per the config file FORMAT specification
+	using the FORMAT macros listed above.
+
+	acl-values consists of any string specified in the referencing
+	config 'acl ... external' line. see the "acl external" directive.
+
+	Request values sent to the helper are URL escaped to protect
+	each value in requests against whitespaces.
+
+	If using protocol=2.5 then the request sent to the helper is not
+	URL escaped to protect against whitespace.
+
+	NOTE: protocol=3.0 is deprecated as no longer necessary.
+
+	When using the concurrency= option the protocol is changed by
+	introducing a query channel tag in front of the request/response.
+	The query channel tag is a number between 0 and concurrency-1.
+	This value must be echoed back unchanged to Squid as the first part
+	of the response relating to its request.
+
+
+	The helper receives lines expanded per the above format specification
+	and for each input line returns 1 line starting with OK/ERR/BH result
+	code and optionally followed by additional keywords with more details.
+
 
 	General result syntax:
 
-	  OK/ERR keyword=value ...
+	  [channel-ID] result keyword=value ...
+
+	Result consists of one of the codes:
+
+	  OK
+		the ACL test produced a match.
+
+	  ERR
+		the ACL test does not produce a match.
+
+	  BH
+		An internal error occurred in the helper, preventing
+		a result being identified.
+
+	The meaning of 'a match' is determined by your squid.conf
+	access control configuration. See the Squid wiki for details.
 
 	Defined keywords:
 
 	  user=		The users name (login)
+
 	  password=	The users password (for login= cache_peer option)
-	  message=	Message describing the reason. Available as %o
-	  		in error pages
-	  tag=		Apply a tag to a request (for both ERR and OK results)
-	  		Only sets a tag, does not alter existing tags.
+
+	  message=	Message describing the reason for this response.
+			Available as %o in error pages.
+			Useful on (ERR and BH results).
+
+	  tag=		Apply a tag to a request. Only sets a tag once,
+			does not alter existing tags.
+
 	  log=		String to be logged in access.log. Available as
-	  		%ea in logformat specifications
+	  		%ea in logformat specifications.
 
-	If protocol=3.0 (the default) then URL escaping is used to protect
-	each value in both requests and responses.
+	Any keywords may be sent on any response whether OK, ERR or BH.
 
-	If using protocol=2.5 then all values need to be enclosed in quotes
-	if they may contain whitespace, or the whitespace escaped using \.
-	And quotes or \ characters within the keyword value must be \ escaped.
+	All response keyword values need to be a single token with URL
+	escaping, or enclosed in double quotes (") and escaped using \ on
+	any double quotes or \ characters within the value. The wrapping
+	double quotes are removed before the value is interpreted by Squid.
+	\r and \n are also replace by CR and LF.
 
-	When using the concurrency= option the protocol is changed by
-	introducing a query channel tag infront of the request/response.
-	The query channel tag is a number between 0 and concurrency-1.
+	Some example key values:
+
+		user=John%20Smith
+		user="John Smith"
+		user="J. \"Bob\" Smith"
 DOC_END
 
 NAME: acl
@@ -762,9 +853,23 @@ DOC_START
 
 	When using "file", the file should contain one item per line.
 
-	By default, regular expressions are CASE-SENSITIVE.
-	To make them case-insensitive, use the -i option. To return case-sensitive
-	use the +i option between patterns, or make a new ACL line without -i.
+	Some acl types supports options which changes their default behaviour.
+	The available options are:
+
+	-i,+i	By default, regular expressions are CASE-SENSITIVE. To make them
+		case-insensitive, use the -i option. To return case-sensitive
+		use the +i option between patterns, or make a new ACL line
+		without -i.	
+
+	-n	Disable lookups and address type conversions.  If lookup or
+		conversion is required because the parameter type (IP or
+		domain name) does not match the message address type (domain
+		name or IP), then the ACL would immediately declare a mismatch
+		without any warnings or lookups.
+
+	--	Used to stop processing all options, in the case the first acl
+		value has '-' character as first character (for example the '-'
+		is a valid domain name)
 
 	Some acl types require suspending the current request in order
 	to access some external data source.
@@ -777,7 +882,7 @@ DOC_START
 
 	acl aclname src ip-address/mask ...	# clients IP address [fast]
 	acl aclname src addr1-addr2/mask ...	# range of addresses [fast]
-	acl aclname dst ip-address/mask ...	# URL host's IP address [slow]
+	acl aclname dst [-n] ip-address/mask ...	# URL host's IP address [slow]
 	acl aclname localip ip-address/mask ... # IP address the client connected to [fast]
 
 	acl aclname arp      mac-address ... (xx:xx:xx:xx:xx:xx notation)
@@ -793,11 +898,11 @@ DOC_START
 
 	acl aclname srcdomain   .foo.com ...
 	  # reverse lookup, from client IP [slow]
-	acl aclname dstdomain   .foo.com ...
+	acl aclname dstdomain [-n] .foo.com ...
 	  # Destination server from URL [fast]
 	acl aclname srcdom_regex [-i] \.foo\.com ...
 	  # regex matching client name [slow]
-	acl aclname dstdom_regex [-i] \.foo\.com ...
+	acl aclname dstdom_regex [-n] [-i] \.foo\.com ...
 	  # regex matching server [fast]
 	  #
 	  # For dstdomain and dstdom_regex a reverse lookup is tried if a IP
@@ -971,6 +1076,15 @@ DOC_START
 	  # effect in rules that affect the reply data stream such as
 	  # http_reply_access.
 
+	acl aclname note name [value ...]
+	  # match transaction annotation [fast]
+	  # Without values, matches any annotation with a given name.
+	  # With value(s), matches any annotation with a given name that
+	  # also has one of the given values.
+	  # Names and values are compared using a string equality test.
+	  # Annotation sources include note and adaptation_meta directives
+	  # as well as helper and eCAP responses.
+
 IF USE_SSL
 	acl aclname ssl_error errorname
 	  # match against SSL certificate validation error [fast]
@@ -992,7 +1106,39 @@ IF USE_SSL
 	  #
 	  # NOTE: The ssl_error ACL is only supported with sslproxy_cert_error,
 	  # sslproxy_cert_sign, and sslproxy_cert_adapt options.
+
+	acl aclname server_cert_fingerprint [-sha1] fingerprint
+	  # match against server SSL certificate fingerprint [fast]
+	  #
+	  # The fingerprint is the digest of the DER encoded version 
+	  # of the whole certificate. The user should use the form: XX:XX:...
+	  # Optional argument specifies the digest algorithm to use.
+	  # The SHA1 digest algorithm is the default and is currently
+	  # the only algorithm supported (-sha1).
 ENDIF
+	acl aclname any-of acl1 acl2 ...
+	  # match any one of the acls [fast or slow]
+	  # The first matching ACL stops further ACL evaluation.
+	  #
+	  # ACLs from multiple any-of lines with the same name are ORed.
+	  # For example, A = (a1 or a2) or (a3 or a4) can be written as
+	  #   acl A any-of a1 a2
+	  #   acl A any-of a3 a4
+	  #
+	  # This group ACL is fast if all evaluated ACLs in the group are fast
+	  # and slow otherwise.
+
+	acl aclname all-of acl1 acl2 ... 
+	  # match all of the acls [fast or slow]
+	  # The first mismatching ACL stops further ACL evaluation.
+	  #
+	  # ACLs from multiple all-of lines with the same name are ORed.
+	  # For example, B = (b1 and b2) or (b3 and b4) can be written as
+	  #   acl B all-of b1 b2
+	  #   acl B all-of b3 b4
+	  #
+	  # This group ACL is fast if all evaluated ACLs in the group are fast
+	  # and slow otherwise.
 
 	Examples:
 		acl macaddress arp 09:00:2b:23:45:67
@@ -1139,6 +1285,26 @@ DOC_START
 	and should not be used trivially. Correct configuration
 	of follow_x_forewarded_for with a limited set of trusted
 	sources is required to prevent abuse of your proxy.
+DOC_END
+
+NAME: spoof_client_ip
+TYPE: acl_access
+LOC: Config.accessList.spoof_client_ip
+DEFAULT: none
+DEFAULT_DOC: Allow spoofing on all TPROXY traffic.
+DOC_START
+	Control client IP address spoofing of TPROXY traffic based on
+	defined access lists.
+
+	spoof_client_ip allow|deny [!]aclname ...
+
+	If there are no "spoof_client_ip" lines present, the default
+	is to "allow" spoofing of any suitable request.
+
+	Note that the cache_peer "no-tproxy" option overrides this ACL.
+
+	This clause supports fast acl types.
+	See http://wiki.squid-cache.org/SquidFaq/SquidAcl for details.
 DOC_END
 
 NAME: http_access
@@ -1880,9 +2046,18 @@ DEFAULT: none
 LOC: Ip::Qos::TheConfig
 DOC_START
 	Allows you to select a TOS/DSCP value to mark outgoing
-	connections with, based on where the reply was sourced.	For
-	platforms using netfilter, allows you to set a netfilter mark
+	connections to the client, based on where the reply was sourced.
+	For platforms using netfilter, allows you to set a netfilter mark
 	value instead of, or in addition to, a TOS value.
+
+	By default this functionality is disabled. To enable it with the default
+	settings simply use "qos_flows mark" or "qos_flows tos". Default
+	settings will result in the netfilter mark or TOS value being copied
+	from the upstream connection to the client. Note that it is the connection
+	CONNMARK value not the packet MARK value that is copied.
+
+	It is not currently possible to copy the mark or TOS value from the
+	client to the upstream connection request.
 
 	TOS values really only have local significance - so you should
 	know what you're specifying. For more information, see RFC2474,
@@ -2295,6 +2470,9 @@ DOC_START
 	Without this option, all server certificate validation errors
 	terminate the transaction to protect Squid and the client.
 
+	SQUID_X509_V_ERR_INFINITE_VALIDATION error cannot be bypassed
+	but should not happen unless your OpenSSL library is buggy.
+
 	SECURITY WARNING:
 		Bypassing validation errors is dangerous because an
 		error usually implies that the server cannot be trusted
@@ -2454,6 +2632,65 @@ DOC_START
 	configured. A minimum setting of 1 is required.
 	
 	You must have at least one ssl_crtd process.
+DOC_END
+
+NAME: sslcrtvalidator_program
+TYPE: eol
+IFDEF: USE_SSL
+DEFAULT: none
+LOC: Ssl::TheConfig.ssl_crt_validator
+DOC_START
+	Specify the location and options of the executable for ssl_crt_validator
+	process.
+
+	Usage:  sslcrtvalidator_program [ttl=n] [cache=n] path ...
+
+	Options:
+	  ttl=n         TTL in seconds for cached results. The default is 60 secs
+	  cache=n       limit the result cache size. The default value is 2048
+DOC_END
+
+NAME: sslcrtvalidator_children
+TYPE: HelperChildConfig
+IFDEF: USE_SSL
+DEFAULT: 32 startup=5 idle=1 concurrency=1
+LOC: Ssl::TheConfig.ssl_crt_validator_Children
+DOC_START
+	The maximum number of processes spawn to service SSL server.
+	The maximum this may be safely set to is 32.
+	
+	The startup= and idle= options allow some measure of skew in your
+	tuning.
+	
+		startup=N
+	
+	Sets the minimum number of processes to spawn when Squid
+	starts or reconfigures. When set to zero the first request will
+	cause spawning of the first child process to handle it.
+	
+	Starting too few children temporary slows Squid under load while it
+	tries to spawn enough additional processes to cope with traffic.
+	
+		idle=N
+	
+	Sets a minimum of how many processes Squid is to try and keep available
+	at all times. When traffic begins to rise above what the existing
+	processes can handle this many more will be spawned up to the maximum
+	configured. A minimum setting of 1 is required.
+
+		concurrency=
+	
+	The number of requests each certificate validator helper can handle in
+	parallel. A value of 0 indicates the certficate validator does not
+	support concurrency. Defaults to 1.
+	
+	When this directive is set to a value >= 1 then the protocol
+	used to communicate with the helper is modified to include
+	a request ID in front of the request/response. The request
+	ID from the request must be echoed back with the response
+	to that request.
+	
+	You must have at least one ssl_crt_validator process.
 DOC_END
 
 COMMENT_START
@@ -2818,6 +3055,7 @@ DOC_START
 	
 	no-tproxy	Do not use the client-spoof TPROXY support when forwarding
 			requests to this peer. Use normal address selection instead.
+			This overrides the spoof_client_ip ACL.
 	
 	proxy-only	objects fetched from the peer will not be stored locally.
 	
@@ -3102,6 +3340,39 @@ DOC_START
 	and http://fog.hpl.external.hp.com/techreports/98/HPL-98-173.html.
 DOC_END
 
+NAME: minimum_object_size
+COMMENT: (bytes)
+TYPE: b_int64_t
+DEFAULT: 0 KB
+DEFAULT_DOC: no limit
+LOC: Config.Store.minObjectSize
+DOC_START
+	Objects smaller than this size will NOT be saved on disk.  The
+	value is specified in bytes, and the default is 0 KB, which
+	means all responses can be stored.
+DOC_END
+
+NAME: maximum_object_size
+COMMENT: (bytes)
+TYPE: b_int64_t
+DEFAULT: 4 MB
+LOC: Config.Store.maxObjectSize
+DOC_START
+	Set the default value for max-size parameter on any cache_dir.
+	The value is specified in bytes, and the default is 4 MB.
+	
+	If you wish to get a high BYTES hit ratio, you should probably
+	increase this (one 32 MB object hit counts for 3200 10KB
+	hits).
+	
+	If you wish to increase hit ratio more than you want to
+	save bandwidth you should leave this low.
+	
+	NOTE: if using the LFUDA replacement policy you should increase
+	this value to maximize the byte hit rate improvement of LFUDA!
+	See cache_replacement_policy for a discussion of this policy.
+DOC_END
+
 NAME: cache_dir
 TYPE: cachedir
 DEFAULT: none
@@ -3262,9 +3533,9 @@ DOC_START
 
 	max-size=n	the maximum object size in bytes this cache_dir
 			supports.
-			The value in maximum_object_size directive, sets
-			a default unless more specific details are available
-			about the cache_dir (ie a small store capacity).
+			The value in maximum_object_size directive sets
+			the default unless more specific details are
+			available (ie a small store capacity).
 
 	Note: To make optimal use of the max-size limits you should order
 	the cache_dir lines with the smallest max-size value first.
@@ -3339,40 +3610,6 @@ DOC_START
 	descriptors are open.
 
 	A value of 0 indicates no limit.
-DOC_END
-
-NAME: minimum_object_size
-COMMENT: (bytes)
-TYPE: b_int64_t
-DEFAULT: 0 KB
-DEFAULT_DOC: no limit
-LOC: Config.Store.minObjectSize
-DOC_START
-	Objects smaller than this size will NOT be saved on disk.  The
-	value is specified in bytes, and the default is 0 KB, which
-	means all responses can be stored.
-DOC_END
-
-NAME: maximum_object_size
-COMMENT: (bytes)
-TYPE: b_int64_t
-DEFAULT: 4 MB
-LOC: Config.Store.maxObjectSize
-DOC_START
-	The default limit on size of objects stored to disk.
-	This size is used for cache_dir where max-size is not set.
-	The value is specified in bytes, and the default is 4 MB.
-
-	If you wish to get a high BYTES hit ratio, you should probably
-	increase this (one 32 MB object hit counts for 3200 10KB
-	hits).
-
-	If you wish to increase hit ratio more than you want to
-	save bandwidth you should leave this low.
-
-	NOTE: if using the LFUDA replacement policy you should increase
-	this value to maximize the byte hit rate improvement of LFUDA!
-	See replacement_policy below for a discussion of this policy.
 DOC_END
 
 NAME: cache_swap_low
@@ -3463,6 +3700,22 @@ DOC_START
 		err_code    The ID of an error response served by Squid or
 				a similar internal error identifier.
 		err_detail  Additional err_code-dependent error information.
+		note	The annotation specified by the argument. Also
+			logs the adaptation meta headers set by the
+			adaptation_meta configuration parameter.
+			If no argument given all annotations logged.
+			The argument may include a separator to use with
+			annotation values:
+                            name[:separator]
+			By default, multiple note values are separated with ","
+			and multiple notes are separated with "\r\n".
+			When logging named notes with %{name}note, the
+			explicitly configured separator is used between note
+			values. When logging all notes with %note, the
+			explicitly configured separator is used between
+			individual notes. There is currently no way to
+			specify both value and notes separators when logging
+			all notes with %note.
 
 	Connection related format codes:
 
@@ -3472,6 +3725,8 @@ DOC_START
 		>eui	Client source EUI (MAC address, EUI-48 or EUI-64 identifier)
 		>la	Local IP address the client connected to
 		>lp	Local port number the client connected to
+		>qos    Client connection TOS/DSCP value set by Squid
+		>nfmark Client connection netfilter mark set by Squid
 
 		la	Local listening IP address the client connection was connected to.
 		lp	Local listening port number the client connection was connected to.
@@ -3481,6 +3736,8 @@ DOC_START
 		<p	Server port number of the last server or peer connection
 		<la	Local IP address of the last server or peer connection
 		<lp     Local port number of the last server or peer connection
+		<qos	Server connection TOS/DSCP value set by Squid
+		<nfmark Server connection netfilter mark set by Squid
 
 	Time related format codes:
 
@@ -3651,16 +3908,47 @@ TYPE: access_log
 LOC: Config.Log.accesslogs
 DEFAULT_IF_NONE: daemon:@DEFAULT_ACCESS_LOG@ squid
 DOC_START
-	These files log client request activities. Has a line every HTTP or
-	ICP request. The format is:
+	Configures whether and how Squid logs HTTP and ICP transactions.
+	If access logging is enabled, a single line is logged for every 
+	matching HTTP or ICP request. The recommended directive formats are:
+
+	access_log <module>:<place> [option ...] [acl acl ...]
+	access_log none [acl acl ...]
+
+	The following directive format is accepted but may be deprecated:
 	access_log <module>:<place> [<logformat name> [acl acl ...]]
-	access_log none [acl acl ...]]
+
+        In most cases, the first ACL name must not contain the '=' character
+	and should not be equal to an existing logformat name. You can always
+	start with an 'all' ACL to work around those restrictions.
 	
 	Will log to the specified module:place using the specified format (which
 	must be defined in a logformat directive) those entries which match
 	ALL the acl's specified (which must be defined in acl clauses).
 	If no acl is specified, all requests will be logged to this destination.
 	
+	===== Available options for the recommended directive format =====
+
+	logformat=name		Names log line format (either built-in or
+				defined by a logformat directive). Defaults
+				to 'squid'.
+
+	buffer-size=64KB	Defines approximate buffering limit for log
+				records (see buffered_logs).  Squid should not
+				keep more than the specified size and, hence,
+				should flush records before the buffer becomes
+				full to avoid overflows under normal
+				conditions (the exact flushing algorithm is
+				module-dependent though).  The on-error option
+				controls overflow handling.
+
+	on-error=die|drop	Defines action on unrecoverable errors. The
+				'drop' action ignores (i.e., does not log)
+				affected log records. The default 'die' action
+				kills the affected worker. The drop action 
+				support has not been tested for modules other
+				than tcp.
+
 	===== Modules Currently available =====
 	
 	none	Do not log any requests matching these ACL.
@@ -3691,6 +3979,7 @@ DOC_START
 		Place Format:   //host:port
 
 	tcp	To send each log line as text data to a TCP receiver.
+		Lines may be accumulated before sending (see buffered_logs).
 		Place: The destination host name or IP and port.
 		Place Format:   //host:port
 
@@ -3808,29 +4097,29 @@ DOC_START
 DOC_END
 
 NAME: log_access
+TYPE: obsolete
+DOC_START
+	Remove this line. Use acls with access_log directives to control access logging
+DOC_END
+
+NAME: log_icap
+TYPE: obsolete
+DOC_START
+	Remove this line. Use acls with icap_log directives to control icap logging
+DOC_END
+
+NAME: stats_collection
 TYPE: acl_access
-LOC: Config.accessList.log
+LOC: Config.accessList.stats_collection
 DEFAULT: none
 DEFAULT_DOC: Allow logging for all transactions.
 COMMENT: allow|deny acl acl...
 DOC_START
-	This options allows you to control which requests gets logged
-	to access.log (see access_log directive). Requests denied for
-	logging will also not be accounted for in performance counters.
+	This options allows you to control which requests gets accounted
+	in performance counters.
 
 	This clause only supports fast acl types.
 	See http://wiki.squid-cache.org/SquidFaq/SquidAcl for details.
-DOC_END
-
-NAME: log_icap
-TYPE: acl_access
-IFDEF: ICAP_CLIENT
-LOC: Config.accessList.icap
-DEFAULT: none
-DEFAULT_DOC: Allow logging for all ICAP transactions.
-DOC_START
-	This options allows you to control which requests get logged
-	to icap.log. See the icap_log directive for ICAP log details.
 DOC_END
 
 NAME: cache_store_log
@@ -4019,7 +4308,7 @@ DOC_START
 	records if it cannot write/send them immediately due to pending I/Os
 	(e.g., the I/O writing the previous log record) or connectivity loss.
 
-	Currently honored by 'daemon' access_log module only.
+	Currently honored by 'daemon' and 'tcp' access_log modules only.
 DOC_END
 
 NAME: netdb_filename
@@ -4275,19 +4564,59 @@ DOC_START
 
 	For each requested URL, the rewriter will receive on line with the format
 
-	URL <SP> client_ip "/" fqdn <SP> user <SP> method [<SP> kvpairs]<NL>
+	  [channel-ID <SP>] URL <SP> client_ip "/" fqdn <SP> user <SP> method [<SP> kv-pairs]<NL>
 
-	In the future, the rewriter interface will be extended with
-	key=value pairs ("kvpairs" shown above).  Rewriter programs
+
+	After processing the request the helper must reply using the following format:
+
+	  [channel-ID <SP>] result [<SP> kv-pairs]
+
+	The result code can be:
+
+	  OK status=30N url="..."
+		Redirect the URL to the one supplied in 'url='.
+		'status=' is optional and contains the status code to send
+		the client in Squids HTTP response. It must be one of the
+		HTTP redirect status codes: 301, 302, 303, 307, 308.
+		When no status is given Squid will use 302.
+
+	  OK rewrite-url="..."
+		Rewrite the URL to the one supplied in 'rewrite-url='.
+		The new URL is fetched directly by Squid and returned to
+		the client as the response to its request.
+
+	  OK
+		When neither of url= and rewrite-url= are sent Squid does
+		not change the URL.
+
+	  ERR
+		Do not change the URL.
+
+	  BH
+		An internal error occurred in the helper, preventing
+		a result being identified. The 'message=' key name is
+		reserved for delivering a log message.
+
+
+	In the future, the interface protocol will be extended with
+	key=value pairs ("kv-pairs" shown above).  Helper programs
 	should be prepared to receive and possibly ignore additional
 	whitespace-separated tokens on each input line.
 
-	And the rewriter may return a rewritten URL. The other components of
-	the request line does not need to be returned (ignored if they are).
+	When using the concurrency= option the protocol is changed by
+	introducing a query channel tag in front of the request/response.
+	The query channel tag is a number between 0 and concurrency-1.
+	This value must be echoed back unchanged to Squid as the first part
+	of the response relating to its request.
 
-	The rewriter can also indicate that a client-side redirect should
-	be performed to the new URL. This is done by prefixing the returned
-	URL with "301:" (moved permanently) or 302: (moved temporarily), etc.
+	WARNING: URL re-writing ability should be avoided whenever possible.
+		 Use the URL redirect form of response instead.
+
+	Re-write creates a difference in the state held by the client
+	and server. Possibly causing confusion when the server response
+	contains snippets of its view state. Embeded URLs, response
+	and content Location headers, etc. are not re-written by this
+	interface.
 
 	By default, a URL rewriter is not used.
 DOC_END
@@ -4329,9 +4658,8 @@ DOC_START
 
 	When this directive is set to a value >= 1 then the protocol
 	used to communicate with the helper is modified to include
-	a request ID in front of the request/response. The request
-	ID from the request must be echoed back with the response
-	to that request.
+	an ID in front of the request/response. The ID from the request
+	must be echoed back with the response to that request.
 DOC_END
 
 NAME: url_rewrite_host_header redirect_rewrites_host_header
@@ -4382,6 +4710,129 @@ DOC_START
 	redirectors for access control, and you enable this option,
 	users may have access to pages they should not
 	be allowed to request.
+DOC_END
+
+COMMENT_START
+ OPTIONS FOR STORE ID
+ -----------------------------------------------------------------------------
+COMMENT_END
+
+NAME: store_id_program storeurl_rewrite_program
+TYPE: wordlist
+LOC: Config.Program.store_id
+DEFAULT: none
+DOC_START
+	Specify the location of the executable StoreID helper to use.
+	Since they can perform almost any function there isn't one included.
+
+	For each requested URL, the helper will receive one line with the format
+
+	  [channel-ID <SP>] URL <SP> client_ip "/" fqdn <SP> user <SP> method [<SP> kv-pairs]<NL>
+
+
+	After processing the request the helper must reply using the following format:
+
+	  [channel-ID <SP>] result [<SP> kv-pairs]
+
+	The result code can be:
+
+	  OK store-id="..."
+		Use the StoreID supplied in 'store-id='.
+
+	  ERR
+		The default is to use HTTP request URL as the store ID.
+
+	  BH
+		An internal error occured in the helper, preventing
+		a result being identified.
+
+
+	Helper programs should be prepared to receive and possibly ignore additional
+	kv-pairs with keys they do not support.
+
+	When using the concurrency= option the protocol is changed by
+	introducing a query channel tag in front of the request/response.
+	The query channel tag is a number between 0 and concurrency-1.
+	This value must be echoed back unchanged to Squid as the first part
+	of the response relating to its request.
+
+	NOTE: when using StoreID refresh_pattern will apply to the StoreID
+	      returned from the helper and not the URL.
+
+	WARNING: Wrong StoreID value returned by a careless helper may result
+	         in the wrong cached response returned to the user.
+
+	By default, a StoreID helper is not used.
+DOC_END
+
+NAME: store_id_children storeurl_rewrite_children
+TYPE: HelperChildConfig
+DEFAULT: 20 startup=0 idle=1 concurrency=0
+LOC: Config.storeIdChildren
+DOC_START
+	The maximum number of StoreID helper processes to spawn. If you limit
+	it too few Squid will have to wait for them to process a backlog of
+	requests, slowing it down. If you allow too many they will use RAM
+	and other system resources noticably.
+	
+	The startup= and idle= options allow some measure of skew in your
+	tuning.
+	
+		startup=
+	
+	Sets a minimum of how many processes are to be spawned when Squid
+	starts or reconfigures. When set to zero the first request will
+	cause spawning of the first child process to handle it.
+	
+	Starting too few will cause an initial slowdown in traffic as Squid
+	attempts to simultaneously spawn enough processes to cope.
+	
+		idle=
+	
+	Sets a minimum of how many processes Squid is to try and keep available
+	at all times. When traffic begins to rise above what the existing
+	processes can handle this many more will be spawned up to the maximum
+	configured. A minimum setting of 1 is required.
+
+		concurrency=
+
+	The number of requests each storeID helper can handle in
+	parallel. Defaults to 0 which indicates the helper
+	is a old-style single threaded program.
+
+	When this directive is set to a value >= 1 then the protocol
+	used to communicate with the helper is modified to include
+	an ID in front of the request/response. The ID from the request
+	must be echoed back with the response to that request.
+DOC_END
+
+NAME: store_id_access storeurl_rewrite_access
+TYPE: acl_access
+DEFAULT: none
+DEFAULT_DOC: Allow, unless rules exist in squid.conf.
+LOC: Config.accessList.store_id
+DOC_START
+	If defined, this access list specifies which requests are
+	sent to the StoreID processes.  By default all requests
+	are sent.
+
+	This clause supports both fast and slow acl types.
+	See http://wiki.squid-cache.org/SquidFaq/SquidAcl for details.
+DOC_END
+
+NAME: store_id_bypass storeurl_rewrite_bypass
+TYPE: onoff
+LOC: Config.onoff.store_id_bypass
+DEFAULT: on
+DOC_START
+	When this is 'on', a request will not go through the
+	helper if all helpers are busy.  If this is 'off'
+	and the helper queue grows too large, Squid will exit
+	with a FATAL error and ask you to increase the number of
+	helpers.  You should only enable this if the helperss
+	are not critical to your caching system.  If you use
+	helpers for critical caching components, and you enable this 
+	option,	users may not get objects from cache.
 DOC_END
 
 COMMENT_START
@@ -4466,10 +4917,12 @@ DOC_START
 		override-lastmod enforces min age even on objects
 		that were modified recently.
 
-		reload-into-ims changes client no-cache or ``reload''
-		to If-Modified-Since requests. Doing this VIOLATES the
-		HTTP standard. Enabling this feature could make you
-		liable for problems which it causes.
+		reload-into-ims changes a client no-cache or ``reload''
+		request for a cached entry into a conditional request using
+		If-Modified-Since and/or If-None-Match headers, provided the
+		cached entry has a Last-Modified and/or a strong ETag header.
+		Doing this VIOLATES the HTTP standard. Enabling this feature
+		could make you liable for problems which it causes.
 
 		ignore-reload ignores a client no-cache or ``reload''
 		header. Doing this VIOLATES the HTTP standard. Enabling
@@ -4568,7 +5021,7 @@ DOC_START
 	downloads.
 
 	When the user aborts a request, Squid will check the
-	quick_abort values to the amount of data transfered until
+	quick_abort values to the amount of data transferred until
 	then.
 
 	If the transfer has less than 'quick_abort_min' KB remaining,
@@ -5125,6 +5578,22 @@ DOC_START
 	ACLs in an option ACL list must be satisfied for the insertion
 	to happen. The request_header_add option supports fast ACLs
 	only.
+DOC_END
+
+NAME: note
+TYPE: note
+LOC: Config.notes
+DEFAULT: none
+DOC_START
+	This option used to log custom information about the master
+	transaction. For example, an admin may configure Squid to log
+	which "user group" the transaction belongs to, where "user group"
+	will be determined based on a set of ACLs and not [just]
+	authentication information.
+	Values of key/value pairs can be logged using %{key}note macros:
+
+	    note key value acl ...
+	    logformat myFormat ... %{key}note ...
 DOC_END
 
 NAME: relaxed_header_parser
@@ -6874,6 +7343,33 @@ DOC_START
 	acts on cacheable requests.
 DOC_END
 
+NAME: cache_miss_revalidate
+COMMENT: on|off
+TYPE: onoff
+DEFAULT: on
+LOC: Config.onoff.cache_miss_revalidate
+DOC_START
+	RFC 7232 defines a conditional request mechanism to prevent
+	response objects being unnecessarily transferred over the network.
+	If that mechanism is used by the client and a cache MISS occurs
+	it can prevent new cache entries being created.
+
+	This option determines whether Squid on cache MISS will pass the
+	client revalidation request to the server or tries to fetch new
+	content for caching. It can be useful while the cache is mostly
+	empty to more quickly have the cache populated by generating
+	non-conditional GETs.
+
+	When set to 'on' (default), Squid will pass all client If-* headers
+	to the server. This permits server responses without a cacheable
+	payload to be delivered and on MISS no new cache entry is created.
+
+	When set to 'off' and if the request is cacheable, Squid will
+	remove the clients If-Modified-Since and If-None-Match headers from
+	the request sent to the server. This requests a 200 status response
+	from the server to create a new cache entry with.
+DOC_END
+
 NAME: always_direct
 TYPE: acl_access
 LOC: Config.accessList.AlwaysDirect
@@ -7690,7 +8186,7 @@ adaptation_masterx_shared_names X-Subscriber-ID
 DOC_END
 
 NAME: adaptation_meta
-TYPE: adaptation_meta_type
+TYPE: note
 IFDEF: USE_ADAPTATION
 LOC: Adaptation::Config::metaHeaders
 DEFAULT: none
@@ -7722,6 +8218,12 @@ DOC_START
 	any character, which is currently only useful for escaping backslashes
 	and double quotes. For example,
 	    "this string has one backslash (\\) and two \"quotes\""
+
+	Used adaptation_meta header values may be logged via %note
+	logformat code. If multiple adaptation_meta headers with the same name
+	are used during master transaction lifetime, the header values are
+	logged in the order they were used and duplicate values are ignored
+	(only the first repeated value will be logged).
 DOC_END
 
 NAME: icap_retry
@@ -7890,6 +8392,19 @@ DOC_START
 	Squid to handle single-component names, enable this option.
 DOC_END
 
+NAME: dns_multicast_local
+COMMENT: on|off
+TYPE: onoff
+DEFAULT: off
+DEFAULT_DOC: Search for .local and .arpa names is disabled.
+LOC: Config.onoff.dns_mdns
+DOC_START
+	When set to on, Squid sends multicast DNS lookups on the local
+	network for domains ending in .local and .arpa.
+	This enables local servers and devices to be contacted in an
+	ad-hoc or zero-configuration network environment.
+DOC_END
+
 NAME: dns_nameservers
 TYPE: wordlist
 DEFAULT: none
@@ -8024,6 +8539,35 @@ COMMENT_START
  MISCELLANEOUS
  -----------------------------------------------------------------------------
 COMMENT_END
+
+NAME: configuration_includes_quoted_values
+COMMENT: on|off
+TYPE: onoff
+DEFAULT: off
+LOC: ConfigParser::RecognizeQuotedValues
+DOC_START
+	Previous Squid versions have defined "quoted/string" as syntax for
+	ACL to signifiy the value is an included file containing values and
+	has treated the " characters in other places of the configuration file
+	as part of the parameter value it was used for.
+
+	For compatibility with existing installations that behaviour
+	remains the default.
+
+	If this directive is set to 'on', Squid will start parsing each
+	"quoted string" as a single configuration directive parameter. The
+	quotes are stripped before the parameter value is interpreted or use.
+
+	That will continue for all lines until this directive is set to 'off',
+	where Squid will return to the default configuration parsing.
+
+	For example;
+
+		configuration_includes_quoted_values on
+		acl group external groupCheck Administrators "Internet Users" Guest
+		configuration_includes_quoted_values off
+
+DOC_END
 
 NAME: memory_pools
 COMMENT: on|off
@@ -8320,16 +8864,22 @@ DOC_START
 DOC_END
 
 NAME: pipeline_prefetch
-TYPE: onoff
-LOC: Config.onoff.pipeline_prefetch
-DEFAULT: off
+TYPE: pipelinePrefetch
+LOC: Config.pipeline_max_prefetch
+DEFAULT: 0
+DEFAULT_DOC: Do not pre-parse pipelined requests.
 DOC_START
-	To boost the performance of pipelined requests to closer
-	match that of a non-proxied environment Squid can try to fetch
-	up to two requests in parallel from a pipeline.
+	HTTP clients may send a pipeline of 1+N requests to Squid using a
+	single connection, without waiting for Squid to respond to the first
+	of those requests. This option limits the number of concurrent
+	requests Squid will try to handle in parallel. If set to N, Squid
+	will try to receive and process up to 1+N requests on the same
+	connection concurrently.
 
-	Defaults to off for bandwidth management and access logging
+	Defaults to 0 (off) for bandwidth management and access logging
 	reasons.
+
+	NOTE: pipelining requires persistent connections to clients.
 
 	WARNING: pipelining breaks NTLM and Negotiate/Kerberos authentication.
 DOC_END
@@ -8361,6 +8911,7 @@ DOC_END
 NAME: high_memory_warning
 TYPE: b_size_t
 LOC: Config.warnings.high_memory
+IFDEF: HAVE_MSTATS&&HAVE_GNUMALLOC_H
 DEFAULT: 0 KB
 DEFAULT_DOC: disabled.
 DOC_START
@@ -8388,7 +8939,7 @@ DOC_START
 DOC_END
 
 NAME: windows_ipaddrchangemonitor
-IFDEF: _SQUID_MSWIN_
+IFDEF: _SQUID_WINDOWS_
 COMMENT: on|off
 TYPE: onoff
 DEFAULT: on

@@ -176,7 +176,7 @@ CossSwapDir::readCompleted(const char *buf, int len, int errflag, RefCount<ReadR
     ssize_t rlen;
 
     debugs(79, 3, "storeCossReadDone: fileno " << sio->swap_filen << ", len " << len);
-    cstate->flags.reading = 0;
+    cstate->flags.reading = false;
 
     if (errflag) {
         ++ StoreFScoss::GetInstance().stats.read.fail;
@@ -901,14 +901,7 @@ CossSwapDir::create()
 
     if (::stat(path, &swap_sb) < 0) {
         debugs (47, 2, "COSS swap space space being allocated.");
-#if _SQUID_MSWIN_
-
-        mkdir(path);
-#else
-
         mkdir(path, 0700);
-#endif
-
     }
 
     /* should check here for directories instead of files, and for file size

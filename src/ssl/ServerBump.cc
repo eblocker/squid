@@ -6,7 +6,7 @@
 #include "squid.h"
 
 #include "client_side.h"
-#include "forward.h"
+#include "FwdState.h"
 #include "ssl/ServerBump.h"
 #include "Store.h"
 #include "StoreClient.h"
@@ -19,7 +19,7 @@ Ssl::ServerBump::ServerBump(HttpRequest *fakeRequest, StoreEntry *e):
         sslErrors(NULL)
 {
     debugs(33, 4, HERE << "will peek at " << request->GetHost() << ':' << request->port);
-    const char *uri = urlCanonical(request);
+    const char *uri = urlCanonical(request.getRaw());
     if (e) {
         entry = e;
         entry->lock();

@@ -33,6 +33,7 @@
 #include "squid.h"
 #include "cache_cf.h"
 #include "compat/strtoll.h"
+#include "ConfigParser.h"
 #include "Parsing.h"
 #include "globals.h"
 #include "Debug.h"
@@ -161,7 +162,7 @@ GetInteger64(void)
 int
 GetInteger(void)
 {
-    char *token = strtok(NULL, w_space);
+    char *token = ConfigParser::strtokFile();
     int i;
 
     if (token == NULL)
@@ -301,14 +302,14 @@ GetHostWithPort(char *token, Ip::Address *ipa)
     }
 
     if (NULL == host)
-        ipa->SetAnyAddr();
+        ipa->setAnyAddr();
     else if ( ipa->GetHostByName(host) ) /* dont use ipcache. Accept either FQDN or IPA. */
         (void) 0;
     else
         return false;
 
     /* port MUST be set after the IPA lookup/conversion is performed. */
-    ipa->SetPort(port);
+    ipa->port(port);
 
     return true;
 }

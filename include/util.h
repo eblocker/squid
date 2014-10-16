@@ -63,20 +63,6 @@ SQUIDCEXTERN void Tolower(char *);
 #include "SquidNew.h"
 #endif
 
-#if XMALLOC_TRACE
-#define xmalloc(size) (xmalloc_func="xmalloc",xmalloc_line=__LINE__,xmalloc_file=__FILE__,xmalloc(size))
-#define xfree(ptr) (xmalloc_func="xfree",xmalloc_line=__LINE__,xmalloc_file=__FILE__,xfree(ptr))
-#define xrealloc(ptr,size) (xmalloc_func="xrealloc",xmalloc_line=__LINE__,xmalloc_file=__FILE__,xrealloc(ptr,size))
-#define xcalloc(n,size) (xmalloc_func="xcalloc",xmalloc_line=__LINE__,xmalloc_file=__FILE__,xcalloc(n,size))
-#define xstrdup(ptr) (xmalloc_func="xstrdup",xmalloc_line=__LINE__,xmalloc_file=__FILE__,xstrdup(ptr))
-extern int xmalloc_line;
-extern char *xmalloc_file;
-extern char *xmalloc_func;
-extern int xmalloc_trace;
-extern size_t xmalloc_total;
-extern void xmalloc_find_leaks(void);
-#endif
-
 SQUIDCEXTERN time_t parse_iso3307_time(const char *buf);
 
 SQUIDCEXTERN double xpercent(double part, double whole);
@@ -109,25 +95,4 @@ int statMemoryAccounted(void);
 
 SQUIDCEXTERN unsigned int RoundTo(const unsigned int num, const unsigned int what);
 
-/* Windows Port */
-/* win32lib.c */
-#if _SQUID_MSWIN_
-SQUIDCEXTERN int chroot (const char *);
-#if !HAVE_GETTIMEOFDAY
-SQUIDCEXTERN int gettimeofday(struct timeval * ,void *);
-#endif
-SQUIDCEXTERN int kill(pid_t, int);
-SQUIDCEXTERN int statfs(const char *, struct statfs *);
-SQUIDCEXTERN struct passwd *getpwnam(char *);
-SQUIDCEXTERN struct group *getgrnam(char *);
-SQUIDCEXTERN uid_t geteuid(void);
-SQUIDCEXTERN uid_t getuid(void);
-SQUIDCEXTERN int setuid(uid_t);
-SQUIDCEXTERN int seteuid(uid_t);
-SQUIDCEXTERN gid_t getgid(void);
-SQUIDCEXTERN gid_t getegid(void);
-SQUIDCEXTERN int setgid(gid_t);
-SQUIDCEXTERN int setegid(gid_t);
-SQUIDCEXTERN void WIN32_maperror(unsigned long);
-#endif
 #endif /* SQUID_UTIL_H */

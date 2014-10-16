@@ -327,7 +327,7 @@ parse_externalAclHelper(external_acl ** list)
     a->children.n_max = DEFAULT_EXTERNAL_ACL_CHILDREN;
     a->children.n_startup = a->children.n_max;
     a->children.n_idle = 1;
-    a->local_addr.SetLocalhost();
+    a->local_addr.setLocalhost();
     a->quote = external_acl::QUOTE_METHOD_URL;
 
     token = strtok(NULL, w_space);
@@ -363,16 +363,19 @@ parse_externalAclHelper(external_acl ** list)
         } else if (strcmp(token, "protocol=2.5") == 0) {
             a->quote = external_acl::QUOTE_METHOD_SHELL;
         } else if (strcmp(token, "protocol=3.0") == 0) {
+            debugs(3, DBG_PARSE_NOTE(2), "WARNING: external_acl_type option protocol=3.0 is deprecated. Remove this from your config.");
             a->quote = external_acl::QUOTE_METHOD_URL;
         } else if (strcmp(token, "quote=url") == 0) {
+            debugs(3, DBG_PARSE_NOTE(2), "WARNING: external_acl_type option quote=url is deprecated. Remove this from your config.");
             a->quote = external_acl::QUOTE_METHOD_URL;
         } else if (strcmp(token, "quote=shell") == 0) {
+            debugs(3, DBG_PARSE_NOTE(2), "WARNING: external_acl_type option quote=shell is deprecated. Use protocol=2.5 if still needed.");
             a->quote = external_acl::QUOTE_METHOD_SHELL;
 
             /* INET6: allow admin to configure some helpers explicitly to
                       bind to IPv4/v6 localhost port. */
         } else if (strcmp(token, "ipv4") == 0) {
-            if ( !a->local_addr.SetIPv4() ) {
+            if ( !a->local_addr.setIPv4() ) {
                 debugs(3, DBG_CRITICAL, "WARNING: Error converting " << a->local_addr << " to IPv4 in " << a->name );
             }
         } else if (strcmp(token, "ipv6") == 0) {
@@ -470,13 +473,13 @@ parse_externalAclHelper(external_acl ** list)
         else if (strncmp(token, "%USER_CERT_", 11) == 0) {
             format->type = _external_acl_format::EXT_ACL_USER_CERT;
             format->header = xstrdup(token + 11);
-        } else if (strncmp(token, "%USER_CA_CERT_", 11) == 0) {
+        } else if (strncmp(token, "%USER_CA_CERT_", 14) == 0) {
             format->type = _external_acl_format::EXT_ACL_USER_CA_CERT;
-            format->header = xstrdup(token + 11);
-        } else if (strncmp(token, "%CA_CERT_", 11) == 0) {
+            format->header = xstrdup(token + 14);
+        } else if (strncmp(token, "%CA_CERT_", 9) == 0) {
             debugs(82, DBG_PARSE_NOTE(DBG_IMPORTANT), "WARNING: external_acl_type %CA_CERT_* code is obsolete. Use %USER_CA_CERT_* instead");
             format->type = _external_acl_format::EXT_ACL_USER_CA_CERT;
-            format->header = xstrdup(token + 11);
+            format->header = xstrdup(token + 9);
         }
 #endif
 #if USE_AUTH
@@ -532,7 +535,7 @@ dump_externalAclHelper(StoreEntry * sentry, const char *name, const external_acl
     for (node = list; node; node = node->next) {
         storeAppendPrintf(sentry, "%s %s", name, node->name);
 
-        if (!node->local_addr.IsIPv6())
+        if (!node->local_addr.isIPv6())
             storeAppendPrintf(sentry, " ipv4");
         else
             storeAppendPrintf(sentry, " ipv6");
@@ -560,6 +563,9 @@ dump_externalAclHelper(StoreEntry * sentry, const char *name, const external_acl
 
         if (node->cache)
             storeAppendPrintf(sentry, " cache=%d", node->cache_size);
+
+        if (node->quote == external_acl::QUOTE_METHOD_SHELL)
+            storeAppendPrintf(sentry, " protocol=2.5");
 
         for (format = node->format; format; format = format->next) {
             switch (format->type) {
@@ -713,7 +719,7 @@ ACLExternal::parse()
 
     data = cbdataAlloc(external_acl_data);
 
-    token = strtok(NULL, w_space);
+    token = strtokFile();
 
     if (!token)
         self_destruct();
@@ -789,14 +795,17 @@ copyResultsFromEntry(HttpRequest *req, external_acl_entry *entry)
 static allow_t
 aclMatchExternal(external_acl_data *acl, ACLFilledChecklist *ch)
 {
-    const char *key = "";
     debugs(82, 9, HERE << "acl=\"" << acl->def->name << "\"");
     external_acl_entry *entry = ch->extacl_entry;
+
+    external_acl_message = "MISSING REQUIRED INFORMATION";
 
     if (entry) {
         if (cbdataReferenceValid(entry) && entry->def == acl->def) {
             /* Ours, use it.. if the key matches */
-            key = makeExternalAclKey(ch, acl);
+            const char *key = makeExternalAclKey(ch, acl);
+            if (!key)
+                return ACCESS_DUNNO; // insufficent data to continue
             if (strcmp(key, (char*)entry->key) != 0) {
                 debugs(82, 9, HERE << "entry key='" << (char *)entry->key << "', our key='" << key << "' dont match. Discarded.");
                 // too bad. need a new lookup.
@@ -808,15 +817,13 @@ aclMatchExternal(external_acl_data *acl, ACLFilledChecklist *ch)
             debugs(82, 9, HERE << "entry " << entry << " not valid or not ours. Discarded.");
             if (entry) {
                 debugs(82, 9, HERE << "entry def=" << entry->def << ", our def=" << acl->def);
-                key = makeExternalAclKey(ch, acl);
+                const char *key = makeExternalAclKey(ch, acl); // may be nil
                 debugs(82, 9, HERE << "entry key='" << (char *)entry->key << "', our key='" << key << "'");
             }
             cbdataReferenceDone(ch->extacl_entry);
             entry = NULL;
         }
     }
-
-    external_acl_message = "MISSING REQUIRED INFORMATION";
 
     if (!entry) {
         debugs(82, 9, HERE << "No helper entry available");
@@ -832,7 +839,7 @@ aclMatchExternal(external_acl_data *acl, ACLFilledChecklist *ch)
             debugs(82, 3, HERE << acl->def->name << " user is authenticated.");
         }
 #endif
-        key = makeExternalAclKey(ch, acl);
+        const char *key = makeExternalAclKey(ch, acl);
 
         if (!key) {
             /* Not sufficient data to process */
@@ -859,7 +866,8 @@ aclMatchExternal(external_acl_data *acl, ACLFilledChecklist *ch)
 
             if (acl->def->theHelper->stats.queue_size < (int)acl->def->theHelper->childs.n_active) {
                 debugs(82, 2, HERE << "\"" << key << "\": queueing a call.");
-                ch->changeState(ExternalACLLookup::Instance());
+                if (!ch->goAsync(ExternalACLLookup::Instance()))
+                    debugs(82, 2, "\"" << key << "\": no async support!");
                 debugs(82, 2, HERE << "\"" << key << "\": return -1.");
                 return ACCESS_DUNNO; // expired cached or simply absent entry
             } else {
@@ -912,8 +920,8 @@ ACLExternal::match(ACLChecklist *checklist)
     case ACCESS_AUTH_REQUIRED:
     default:
         // If the answer is not allowed or denied (matches/not matches) and
-        // async authentication is not needed (asyncNeeded), then we are done.
-        if (!checklist->asyncNeeded())
+        // async authentication is not in progress, then we are done.
+        if (checklist->keepMatching())
             checklist->markFinished(answer, "aclMatchExternal exception");
         return -1; // other
     }
@@ -987,7 +995,9 @@ makeExternalAclKey(ACLFilledChecklist * ch, external_acl_data * acl_data)
             str = ch->rfc931;
 
             if (!str || !*str) {
-                ch->changeState(IdentLookup::Instance());
+                // if we fail to go async, we still return NULL and the caller
+                // will detect the failure in ACLExternal::match().
+                (void)ch->goAsync(IdentLookup::Instance());
                 return NULL;
             }
 
@@ -995,11 +1005,11 @@ makeExternalAclKey(ACLFilledChecklist * ch, external_acl_data * acl_data)
 #endif
 
         case _external_acl_format::EXT_ACL_SRC:
-            str = ch->src_addr.NtoA(buf,sizeof(buf));
+            str = ch->src_addr.toStr(buf,sizeof(buf));
             break;
 
         case _external_acl_format::EXT_ACL_SRCPORT:
-            snprintf(buf, sizeof(buf), "%d", request->client_addr.GetPort());
+            snprintf(buf, sizeof(buf), "%d", request->client_addr.port());
             str = buf;
             break;
 
@@ -1018,11 +1028,11 @@ makeExternalAclKey(ACLFilledChecklist * ch, external_acl_data * acl_data)
 #endif
 
         case _external_acl_format::EXT_ACL_MYADDR:
-            str = request->my_addr.NtoA(buf, sizeof(buf));
+            str = request->my_addr.toStr(buf, sizeof(buf));
             break;
 
         case _external_acl_format::EXT_ACL_MYPORT:
-            snprintf(buf, sizeof(buf), "%d", request->my_addr.GetPort());
+            snprintf(buf, sizeof(buf), "%d", request->my_addr.port());
             str = buf;
             break;
 
@@ -1346,68 +1356,55 @@ free_externalAclState(void *data)
  *
  * Other keywords may be added to the protocol later
  *
- * value needs to be enclosed in quotes if it may contain whitespace, or
- * the whitespace escaped using \ (\ escaping obviously also applies to
- * any " characters)
+ * value needs to be URL-encoded or enclosed in double quotes (")
+ * with \-escaping on any whitespace, quotes, or slashes (\).
  */
-
 static void
-externalAclHandleReply(void *data, char *reply)
+externalAclHandleReply(void *data, const HelperReply &reply)
 {
     externalAclState *state = static_cast<externalAclState *>(data);
     externalAclState *next;
-    char *status;
-    char *token;
-    char *value;
-    char *t = NULL;
     ExternalACLEntryData entryData;
     entryData.result = ACCESS_DENIED;
     external_acl_entry *entry = NULL;
 
-    debugs(82, 2, "externalAclHandleReply: reply=\"" << reply << "\"");
+    debugs(82, 2, HERE << "reply=" << reply);
 
-    if (reply) {
-        status = strwordtok(reply, &t);
+    if (reply.result == HelperReply::Okay)
+        entryData.result = ACCESS_ALLOWED;
+    // XXX: handle other non-DENIED results better
 
-        if (status && strcmp(status, "OK") == 0)
-            entryData.result = ACCESS_ALLOWED;
+    // XXX: make entryData store a proper HelperReply object instead of copying.
 
-        while ((token = strwordtok(NULL, &t))) {
-            value = strchr(token, '=');
+    entryData.notes.append(&reply.notes);
 
-            if (value) {
-                *value = '\0';	/* terminate the token, and move up to the value */
-                ++value;
+    const char *label = reply.notes.findFirst("tag");
+    if (label != NULL && *label != '\0')
+        entryData.tag = label;
 
-                if (state->def->quote == external_acl::QUOTE_METHOD_URL)
-                    rfc1738_unescape(value);
+    label = reply.notes.findFirst("message");
+    if (label != NULL && *label != '\0')
+        entryData.message = label;
 
-                if (strcmp(token, "message") == 0)
-                    entryData.message = value;
-                else if (strcmp(token, "error") == 0)
-                    entryData.message = value;
-                else if (strcmp(token, "tag") == 0)
-                    entryData.tag = value;
-                else if (strcmp(token, "log") == 0)
-                    entryData.log = value;
+    label = reply.notes.findFirst("log");
+    if (label != NULL && *label != '\0')
+        entryData.log = label;
+
 #if USE_AUTH
-                else if (strcmp(token, "user") == 0)
-                    entryData.user = value;
-                else if (strcmp(token, "password") == 0)
-                    entryData.password = value;
-                else if (strcmp(token, "passwd") == 0)
-                    entryData.password = value;
-                else if (strcmp(token, "login") == 0)
-                    entryData.user = value;
+    label = reply.notes.findFirst("user");
+    if (label != NULL && *label != '\0')
+        entryData.user = label;
+
+    label = reply.notes.findFirst("password");
+    if (label != NULL && *label != '\0')
+        entryData.password = label;
 #endif
-            }
-        }
-    }
 
     dlinkDelete(&state->list, &state->def->queue);
 
     if (cbdataReferenceValid(state->def)) {
-        if (reply)
+        // only cache OK and ERR results.
+        if (reply.result == HelperReply::Okay || reply.result == HelperReply::Error)
             entry = external_acl_cache_add(state->def, state->key, entryData);
         else {
             external_acl_entry *oldentry = (external_acl_entry *)hash_lookup(state->def->cache, state->key);
@@ -1445,7 +1442,7 @@ ExternalACLLookup::Start(ACLChecklist *checklist, external_acl_data *acl, bool i
 
     ACLFilledChecklist *ch = Filled(checklist);
     const char *key = makeExternalAclKey(ch, acl);
-    assert(key);
+    assert(key); // XXX: will fail if EXT_ACL_IDENT case needs an async lookup
 
     debugs(82, 2, HERE << (inBackground ? "bg" : "fg") << " lookup in '" <<
            def->name << "' for '" << key << "'");
@@ -1595,7 +1592,6 @@ ExternalACLLookup::checkForAsync(ACLChecklist *checklist)const
     assert(acl);
     ACLExternal *me = dynamic_cast<ACLExternal *> (acl);
     assert (me);
-    checklist->asyncInProgress(true);
     ACLExternal::ExternalAclLookup(checklist, me);
 }
 
@@ -1605,9 +1601,21 @@ ExternalACLLookup::LookupDone(void *data, void *result)
 {
     ACLFilledChecklist *checklist = Filled(static_cast<ACLChecklist*>(data));
     checklist->extacl_entry = cbdataReference((external_acl_entry *)result);
-    checklist->asyncInProgress(false);
-    checklist->changeState (ACLChecklist::NullState::Instance());
-    checklist->matchNonBlocking();
+
+    // attach the helper kv-pair to the transaction
+    if (checklist->extacl_entry) {
+        if (HttpRequest * req = checklist->request) {
+            // XXX: we have no access to the transaction / AccessLogEntry so cant SyncNotes().
+            // workaround by using anything already set in HttpRequest
+            // OR use new and rely on a later Sync copying these to AccessLogEntry
+            if (!req->notes)
+                req->notes = new NotePairs;
+
+            req->notes->appendNewOnly(&checklist->extacl_entry->notes);
+        }
+    }
+
+    checklist->resumeNonBlockingCheck(ExternalACLLookup::Instance());
 }
 
 /* This registers "external" in the registry. To do dynamic definitions

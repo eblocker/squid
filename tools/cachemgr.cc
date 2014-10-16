@@ -164,7 +164,7 @@ static const char *make_auth_header(const cachemgr_request * req);
 
 static int check_target_acl(const char *hostname, int port);
 
-#if _SQUID_MSWIN_
+#if _SQUID_WINDOWS_
 static int s_iInitCount = 0;
 
 int Win32SockInit(void)
@@ -610,7 +610,7 @@ static int
 read_reply(int s, cachemgr_request * req)
 {
     char buf[4 * 1024];
-#if _SQUID_MSWIN_
+#if _SQUID_WINDOWS_
 
     int reply;
     char *tmpfile = tempnam(NULL, "tmp0000");
@@ -634,7 +634,7 @@ read_reply(int s, cachemgr_request * req)
         parse_menu = 1;
 
     if (fp == NULL) {
-#if _SQUID_MSWIN_
+#if _SQUID_WINDOWS_
         perror(tmpfile);
         xfree(tmpfile);
 #else
@@ -646,7 +646,7 @@ read_reply(int s, cachemgr_request * req)
         return 1;
     }
 
-#if _SQUID_MSWIN_
+#if _SQUID_WINDOWS_
 
     while ((reply=recv(s, buf , sizeof(buf), 0)) > 0)
         fwrite(buf, 1, reply, fp);
@@ -785,7 +785,7 @@ read_reply(int s, cachemgr_request * req)
     }
 
     fclose(fp);
-#if _SQUID_MSWIN_
+#if _SQUID_WINDOWS_
 
     remove(tmpfile);
     xfree(tmpfile);
@@ -838,7 +838,7 @@ process_request(cachemgr_request * req)
 
     S = *gethostbyname(req->hostname);
 
-    if ( !S.IsAnyAddr() ) {
+    if ( !S.isAnyAddr() ) {
         (void) 0;
     } else if ((S = req->hostname))
         (void) 0;
@@ -848,9 +848,9 @@ process_request(cachemgr_request * req)
         return 1;
     }
 
-    S.SetPort(req->port);
+    S.port(req->port);
 
-    S.GetAddrInfo(AI);
+    S.getAddrInfo(AI);
 
 #if USE_IPV6
     if ((s = socket( AI->ai_family, SOCK_STREAM, 0)) < 0) {
@@ -859,21 +859,21 @@ process_request(cachemgr_request * req)
 #endif
         snprintf(buf, sizeof(buf), "socket: %s\n", xstrerror());
         error_html(buf);
-        S.FreeAddrInfo(AI);
+        Ip::Address::FreeAddrInfo(AI);
         return 1;
     }
 
     if (connect(s, AI->ai_addr, AI->ai_addrlen) < 0) {
         snprintf(buf, sizeof(buf), "connect %s: %s\n",
-                 S.ToURL(ipbuf,MAX_IPSTRLEN),
+                 S.toUrl(ipbuf,MAX_IPSTRLEN),
                  xstrerror());
         error_html(buf);
-        S.FreeAddrInfo(AI);
+        Ip::Address::FreeAddrInfo(AI);
         close(s);
         return 1;
     }
 
-    S.FreeAddrInfo(AI);
+    Ip::Address::FreeAddrInfo(AI);
 
     l = snprintf(buf, sizeof(buf),
                  "GET cache_object://%s/%s%s%s HTTP/1.0\r\n"
@@ -902,7 +902,7 @@ main(int argc, char *argv[])
     cachemgr_request *req;
 
     now = time(NULL);
-#if _SQUID_MSWIN_
+#if _SQUID_WINDOWS_
 
     Win32SockInit();
     atexit(Win32SockCleanup);
@@ -1027,7 +1027,7 @@ read_request(void)
     else
         return NULL;
 
-#if _SQUID_MSWIN_
+#if _SQUID_WINDOWS_
 
     if (strlen(buf) == 0 || strlen(buf) == 4000)
 #else
@@ -1054,23 +1054,23 @@ read_request(void)
 
         rfc1738_unescape(q);
 
-        if (0 == strcasecmp(t, "server") && strlen(q))
+        if (0 == strcmp(t, "server") && strlen(q))
             req->server = xstrdup(q);
-        else if (0 == strcasecmp(t, "host") && strlen(q))
+        else if (0 == strcmp(t, "host") && strlen(q))
             req->hostname = xstrdup(q);
-        else if (0 == strcasecmp(t, "port") && strlen(q))
+        else if (0 == strcmp(t, "port") && strlen(q))
             req->port = atoi(q);
-        else if (0 == strcasecmp(t, "user_name") && strlen(q))
+        else if (0 == strcmp(t, "user_name") && strlen(q))
             req->user_name = xstrdup(q);
-        else if (0 == strcasecmp(t, "passwd") && strlen(q))
+        else if (0 == strcmp(t, "passwd") && strlen(q))
             req->passwd = xstrdup(q);
-        else if (0 == strcasecmp(t, "auth") && strlen(q))
+        else if (0 == strcmp(t, "auth") && strlen(q))
             req->pub_auth = xstrdup(q), decode_pub_auth(req);
-        else if (0 == strcasecmp(t, "operation"))
+        else if (0 == strcmp(t, "operation"))
             req->action = xstrdup(q);
-        else if (0 == strcasecmp(t, "workers") && strlen(q))
+        else if (0 == strcmp(t, "workers") && strlen(q))
             req->workers = xstrdup(q);
-        else if (0 == strcasecmp(t, "processes") && strlen(q))
+        else if (0 == strcmp(t, "processes") && strlen(q))
             req->processes = xstrdup(q);
     }
 
@@ -1289,7 +1289,7 @@ check_target_acl(const char *hostname, int port)
             if (strcmp(token, "*") == 0)
 
                 ;   /* Wildcard port specification */
-            else if (strcasecmp(token, "any") == 0)
+            else if (strcmp(token, "any") == 0)
 
                 ;   /* Wildcard port specification */
             else if (sscanf(token, "%d", &i) != 1)

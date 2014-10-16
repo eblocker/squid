@@ -33,6 +33,7 @@
 #include "squid.h"
 #include "comm.h"
 #include "comm/Loops.h"
+#include "defines.h"
 #include "fd.h"
 #include "icmp/IcmpSquid.h"
 #include "icmp/net_db.h"
@@ -51,9 +52,6 @@ IcmpSquid icmpEngine;
 #if USE_ICMP
 
 #define S_ICMP_ECHO     1
-#if DEAD_CODE
-#define S_ICMP_ICP      2
-#endif
 #define S_ICMP_DOM      3
 
 static void * hIpc;
@@ -179,7 +177,7 @@ IcmpSquid::Recv()
 
     F = preply.from;
 
-    F.SetPort(0);
+    F.port(0);
 
     switch (preply.opcode) {
 
@@ -226,7 +224,7 @@ IcmpSquid::Open(void)
 
     args[0] = "(pinger)";
     args[1] = NULL;
-    localhost.SetLocalhost();
+    localhost.setLocalhost();
 
     /*
      * Do NOT use IPC_DGRAM (=IPC_UNIX_DGRAM) here because you can't
@@ -260,14 +258,14 @@ IcmpSquid::Open(void)
     /* Tests the pinger immediately using localhost */
     if (Ip::EnableIpv6)
         SendEcho(localhost, S_ICMP_ECHO, "ip6-localhost");
-    if (localhost.SetIPv4())
+    if (localhost.setIPv4())
         SendEcho(localhost, S_ICMP_ECHO, "localhost");
 
-#if _SQUID_MSWIN_
+#if _SQUID_WINDOWS_
 
     debugs(37, 4, HERE << "Pinger handle: 0x" << std::hex << hIpc << std::dec << ", PID: " << pid);
 
-#endif /* _SQUID_MSWIN_ */
+#endif /* _SQUID_WINDOWS_ */
     return icmp_sock;
 #else /* USE_ICMP */
     return -1;
@@ -284,7 +282,7 @@ IcmpSquid::Close(void)
 
     debugs(37, DBG_IMPORTANT, HERE << "Closing Pinger socket on FD " << icmp_sock);
 
-#if _SQUID_MSWIN_
+#if _SQUID_WINDOWS_
 
     send(icmp_sock, (const void *) "$shutdown\n", 10, 0);
 
@@ -292,7 +290,7 @@ IcmpSquid::Close(void)
 
     comm_close(icmp_sock);
 
-#if _SQUID_MSWIN_
+#if _SQUID_WINDOWS_
 
     if (hIpc) {
         if (WaitForSingleObject(hIpc, 12000) != WAIT_OBJECT_0) {

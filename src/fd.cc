@@ -42,14 +42,14 @@
 
 // Solaris and possibly others lack MSG_NOSIGNAL optimization
 // TODO: move this into compat/? Use a dedicated compat file to avoid dragging
-// sys/types.h and sys/socket.h into the rest of Squid??
+// sys/socket.h into the rest of Squid??
 #ifndef MSG_NOSIGNAL
 #define MSG_NOSIGNAL 0
 #endif
 
 int default_read_method(int, char *, int);
 int default_write_method(int, const char *, int);
-#if _SQUID_MSWIN_
+#if _SQUID_WINDOWS_
 int socket_read_method(int, char *, int);
 int socket_write_method(int, const char *, int);
 int file_read_method(int, char *, int);
@@ -106,7 +106,7 @@ fd_close(int fd)
     fde *F = &fd_table[fd];
 
     assert(fd >= 0);
-    assert(F->flags.open == 1);
+    assert(F->flags.open);
 
     if (F->type == FD_FILE) {
         assert(F->read_handler == NULL);
@@ -116,13 +116,13 @@ fd_close(int fd)
     debugs(51, 3, "fd_close FD " << fd << " " << F->desc);
     Comm::SetSelect(fd, COMM_SELECT_READ, NULL, NULL, 0);
     Comm::SetSelect(fd, COMM_SELECT_WRITE, NULL, NULL, 0);
-    F->flags.open = 0;
+    F->flags.open = false;
     fdUpdateBiggest(fd, 0);
     --Number_FD;
     *F = fde();
 }
 
-#if _SQUID_MSWIN_
+#if _SQUID_WINDOWS_
 
 int
 socket_read_method(int fd, char *buf, int len)
@@ -220,9 +220,9 @@ fd_open(int fd, unsigned int type, const char *desc)
     assert(!F->flags.open);
     debugs(51, 3, "fd_open() FD " << fd << " " << desc);
     F->type = type;
-    F->flags.open = 1;
+    F->flags.open = true;
     F->epoll_state = 0;
-#if _SQUID_MSWIN_
+#if _SQUID_WINDOWS_
 
     F->win32.handle = _get_osfhandle(fd);
 
@@ -369,6 +369,7 @@ fdAdjustReserved(void)
     if (Squid_MaxFD - newReserve < min(256, Squid_MaxFD / 2))
         fatalf("Too few filedescriptors available in the system (%d usable of %d).\n", Squid_MaxFD - newReserve, Squid_MaxFD);
 
-    debugs(51, DBG_CRITICAL, "Reserved FD adjusted from " << RESERVED_FD << " to " << newReserve << " due to failures");
+    debugs(51, DBG_CRITICAL, "Reserved FD adjusted from " << RESERVED_FD << " to " << newReserve <<
+           " due to failures (" << (Squid_MaxFD - newReserve) << "/" << Squid_MaxFD << " file descriptors available)");
     RESERVED_FD = newReserve;
 }

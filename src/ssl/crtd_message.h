@@ -27,7 +27,11 @@ public:
         INCOMPLETE,
         ERROR
     };
-    CrtdMessage();
+    enum MessageKind {
+        REPLY,
+        REQUEST
+    };
+    CrtdMessage(MessageKind kind);
     /**Parse buffer of length len
      \retval OK          if parsing completes
      \retval INCOMPLETE  if more data required
@@ -76,7 +80,7 @@ public:
     static const std::string param_SetCommonName;
     /// Parameter name for passing signing algorithm
     static const std::string param_Sign;
-private:
+protected:
     enum ParseState {
         BEFORE_CODE,
         CODE,

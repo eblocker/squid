@@ -167,22 +167,22 @@ Auth::Basic::Config::~Config()
 void
 Auth::Basic::Config::parse(Auth::Config * scheme, int n_configured, char *param_str)
 {
-    if (strcasecmp(param_str, "program") == 0) {
+    if (strcmp(param_str, "program") == 0) {
         if (authenticateProgram)
             wordlistDestroy(&authenticateProgram);
 
         parse_wordlist(&authenticateProgram);
 
         requirePathnameExists("auth_param basic program", authenticateProgram->key);
-    } else if (strcasecmp(param_str, "children") == 0) {
+    } else if (strcmp(param_str, "children") == 0) {
         authenticateChildren.parseConfig();
-    } else if (strcasecmp(param_str, "realm") == 0) {
+    } else if (strcmp(param_str, "realm") == 0) {
         parse_eol(&basicAuthRealm);
-    } else if (strcasecmp(param_str, "credentialsttl") == 0) {
+    } else if (strcmp(param_str, "credentialsttl") == 0) {
         parse_time_t(&credentialsTTL);
-    } else if (strcasecmp(param_str, "casesensitive") == 0) {
+    } else if (strcmp(param_str, "casesensitive") == 0) {
         parse_onoff(&casesensitive);
-    } else if (strcasecmp(param_str, "utf8") == 0) {
+    } else if (strcmp(param_str, "utf8") == 0) {
         parse_onoff(&utf8);
     } else {
         debugs(29, DBG_CRITICAL, HERE << "unrecognised basic auth scheme parameter '" << param_str << "'");
@@ -193,25 +193,6 @@ static void
 authenticateBasicStats(StoreEntry * sentry)
 {
     helperStats(sentry, basicauthenticators, "Basic Authenticator Statistics");
-}
-
-static Auth::User::Pointer
-authBasicAuthUserFindUsername(const char *username)
-{
-    AuthUserHashPointer *usernamehash;
-    debugs(29, 9, HERE << "Looking for user '" << username << "'");
-
-    if (username && (usernamehash = static_cast<AuthUserHashPointer *>(hash_lookup(proxy_auth_username_cache, username)))) {
-        while (usernamehash) {
-            if ((usernamehash->user()->auth_type == Auth::AUTH_BASIC) &&
-                    !strcmp(username, (char const *)usernamehash->key))
-                return usernamehash->user();
-
-            usernamehash = static_cast<AuthUserHashPointer *>(usernamehash->next);
-        }
-    }
-
-    return NULL;
 }
 
 char *
@@ -310,7 +291,7 @@ Auth::Basic::Config::decode(char const *proxy_auth)
     /* now lookup and see if we have a matching auth_user structure in memory. */
     Auth::User::Pointer auth_user;
 
-    if ((auth_user = authBasicAuthUserFindUsername(lb->username())) == NULL) {
+    if ((auth_user = findUserInCache(lb->username(), Auth::AUTH_BASIC)) == NULL) {
         /* the user doesn't exist in the username cache yet */
         /* save the credentials */
         debugs(29, 9, HERE << "Creating new user '" << lb->username() << "'");

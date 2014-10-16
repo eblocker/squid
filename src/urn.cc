@@ -31,8 +31,9 @@
  */
 
 #include "squid.h"
+#include "cbdata.h"
 #include "errorpage.h"
-#include "forward.h"
+#include "FwdState.h"
 #include "globals.h"
 #include "HttpReply.h"
 #include "HttpRequest.h"
@@ -54,8 +55,6 @@ class UrnState : public StoreClient
 
 public:
     void created (StoreEntry *newEntry);
-    void *operator new (size_t byteCount);
-    void operator delete (void *address);
     void start (HttpRequest *, StoreEntry *);
     char *getHost (String &urlpath);
     void setUriResFromRequest(HttpRequest *);
@@ -68,17 +67,19 @@ public:
     StoreEntry *entry;
     store_client *sc;
     StoreEntry *urlres_e;
-    HttpRequest *request;
-    HttpRequest *urlres_r;
+    HttpRequest::Pointer request;
+    HttpRequest::Pointer urlres_r;
 
     struct {
-        unsigned int force_menu:1;
+        bool force_menu;
     } flags;
     char reqbuf[URN_REQBUF_SZ];
     int reqofs;
 
 private:
     char *urlres;
+
+    CBDATA_CLASS2(UrnState);
 };
 
 typedef struct {
@@ -96,25 +97,9 @@ static url_entry *urnParseReply(const char *inbuf, const HttpRequestMethod&);
 static const char *const crlf = "\r\n";
 static QS url_entry_sort;
 
-CBDATA_TYPE(UrnState);
-void *
-UrnState::operator new (size_t byteCount)
-{
-    /* derived classes with different sizes must implement their own new */
-    assert (byteCount == sizeof (UrnState));
-    CBDATA_INIT_TYPE(UrnState);
-    return cbdataAlloc(UrnState);
+CBDATA_CLASS_INIT(UrnState);
 
-}
-
-void
-UrnState::operator delete (void *address)
-{
-    UrnState * tmp = (UrnState *)address;
-    cbdataFree (tmp);
-}
-
-UrnState::~UrnState ()
+UrnState::~UrnState()
 {
     safe_free(urlres);
 }
@@ -216,21 +201,20 @@ UrnState::setUriResFromRequest(HttpRequest *r)
 {
     if (RequestNeedsMenu(r)) {
         updateRequestURL(r, r->urlpath.rawBuf() + 5, r->urlpath.size() - 5 );
-        flags.force_menu = 1;
+        flags.force_menu = true;
     }
 
     createUriResRequest (r->urlpath);
 
     if (urlres_r == NULL) {
         debugs(52, 3, "urnStart: Bad uri-res URL " << urlres);
-        ErrorState *err = new ErrorState(ERR_URN_RESOLVE, HTTP_NOT_FOUND, r);
+        ErrorState *err = new ErrorState(ERR_URN_RESOLVE, Http::scNotFound, r);
         err->url = urlres;
         urlres = NULL;
         errorAppendEntry(entry, err);
         return;
     }
 
-    HTTPMSGLOCK(urlres_r);
     urlres_r->header.putStr(HDR_ACCEPT, "text/plain");
 }
 
@@ -239,7 +223,7 @@ UrnState::start(HttpRequest * r, StoreEntry * e)
 {
     debugs(52, 3, "urnStart: '" << e->url() << "'" );
     entry = e;
-    request = HTTPMSGLOCK(r);
+    request = r;
 
     entry->lock();
     setUriResFromRequest(r);
@@ -247,7 +231,7 @@ UrnState::start(HttpRequest * r, StoreEntry * e)
     if (urlres_r == NULL)
         return;
 
-    StoreEntry::getPublic (this, urlres, METHOD_GET);
+    StoreEntry::getPublic (this, urlres, Http::METHOD_GET);
 }
 
 void
@@ -256,11 +240,10 @@ UrnState::created(StoreEntry *newEntry)
     urlres_e = newEntry;
 
     if (urlres_e->isNull()) {
-        urlres_e = storeCreateEntry(urlres, urlres, RequestFlags(), METHOD_GET);
+        urlres_e = storeCreateEntry(urlres, urlres, RequestFlags(), Http::METHOD_GET);
         sc = storeClientListAdd(urlres_e, this);
-        FwdState::fwdStart(Comm::ConnectionPointer(), urlres_e, urlres_r);
+        FwdState::fwdStart(Comm::ConnectionPointer(), urlres_e, urlres_r.getRaw());
     } else {
-
         urlres_e->lock();
         sc = storeClientListAdd(urlres_e, this);
     }
@@ -304,8 +287,6 @@ urnHandleReplyError(UrnState *urnState, StoreEntry *urlres_e)
 {
     urlres_e->unlock();
     urnState->entry->unlock();
-    HTTPMSGUNLOCK(urnState->request);
-    HTTPMSGUNLOCK(urnState->urlres_r);
     delete urnState;
 }
 
@@ -371,11 +352,11 @@ urnHandleReply(void *data, StoreIOBuffer result)
     assert(urlres_e->getReply());
     rep = new HttpReply;
     rep->parseCharBuf(buf, k);
-    debugs(52, 3, "reply exists, code=" << rep->sline.status << ".");
+    debugs(52, 3, "reply exists, code=" << rep->sline.status() << ".");
 
-    if (rep->sline.status != HTTP_OK) {
+    if (rep->sline.status() != Http::scOkay) {
         debugs(52, 3, "urnHandleReply: failed.");
-        err = new ErrorState(ERR_URN_RESOLVE, HTTP_NOT_FOUND, urnState->request);
+        err = new ErrorState(ERR_URN_RESOLVE, Http::scNotFound, urnState->request.getRaw());
         err->url = xstrdup(e->url());
         errorAppendEntry(e, err);
         delete rep;
@@ -396,8 +377,8 @@ urnHandleReply(void *data, StoreIOBuffer result)
     debugs(53, 3, "urnFindMinRtt: Counted " << i << " URLs");
 
     if (urls == NULL) {		/* unkown URN error */
-        debugs(52, 3, "urnTranslateDone: unknown URN " << e->url()  );
-        err = new ErrorState(ERR_URN_RESOLVE, HTTP_NOT_FOUND, urnState->request);
+        debugs(52, 3, "urnTranslateDone: unknown URN " << e->url());
+        err = new ErrorState(ERR_URN_RESOLVE, Http::scNotFound, urnState->request.getRaw());
         err->url = xstrdup(e->url());
         errorAppendEntry(e, err);
         urnHandleReplyError(urnState, urlres_e);
@@ -438,7 +419,7 @@ urnHandleReply(void *data, StoreIOBuffer result)
         "</ADDRESS>\n",
         APP_FULLNAME, getMyHostname());
     rep = new HttpReply;
-    rep->setHeaders(HTTP_MOVED_TEMPORARILY, NULL, "text/html", mb->contentSize(), 0, squid_curtime);
+    rep->setHeaders(Http::scFound, NULL, "text/html", mb->contentSize(), 0, squid_curtime);
 
     if (urnState->flags.force_menu) {
         debugs(51, 3, "urnHandleReply: forcing menu");

@@ -33,6 +33,7 @@
 #include "squid.h"
 #include "cbdata.h"
 #include "CacheManager.h"
+#include "dlink.h"
 #include "DnsLookupDetails.h"
 #include "event.h"
 #include "ip/Address.h"
@@ -113,8 +114,8 @@ public:
     dlink_node lru;
     unsigned short locks;
     struct {
-        unsigned int negcached:1;
-        unsigned int fromhosts:1;
+        bool negcached;
+        bool fromhosts;
     } flags;
 
     int age() const; ///< time passed since request_time or -1 if unknown
@@ -429,7 +430,7 @@ ipcacheParse(ipcache_entry *i, const char *inbuf)
 
         i->addrs.in_addrs = static_cast<Ip::Address *>(xcalloc(ipcount, sizeof(Ip::Address)));
         for (int l = 0; l < ipcount; ++l)
-            i->addrs.in_addrs[l].SetEmpty(); // perform same init actions as constructor would.
+            i->addrs.in_addrs[l].setEmpty(); // perform same init actions as constructor would.
         i->addrs.bad_mask = (unsigned char *)xcalloc(ipcount, sizeof(unsigned char));
         memset(i->addrs.bad_mask, 0, sizeof(unsigned char) * ipcount);
 
@@ -473,7 +474,7 @@ ipcacheParse(ipcache_entry *i, const rfc1035_rr * answers, int nr, const char *e
     int cname_found = 0;
 
     i->expires = squid_curtime + Config.negativeDnsTtl;
-    i->flags.negcached = 1;
+    i->flags.negcached = true;
     safe_free(i->addrs.in_addrs);
     assert(i->addrs.in_addrs == NULL);
     safe_free(i->addrs.bad_mask);
@@ -539,7 +540,7 @@ ipcacheParse(ipcache_entry *i, const rfc1035_rr * answers, int nr, const char *e
 
     i->addrs.in_addrs = static_cast<Ip::Address *>(xcalloc(na, sizeof(Ip::Address)));
     for (int l = 0; l < na; ++l)
-        i->addrs.in_addrs[l].SetEmpty(); // perform same init actions as constructor would.
+        i->addrs.in_addrs[l].setEmpty(); // perform same init actions as constructor would.
     i->addrs.bad_mask = (unsigned char *)xcalloc(na, sizeof(unsigned char));
 
     for (j = 0, k = 0; k < nr; ++k) {
@@ -585,7 +586,7 @@ ipcacheParse(ipcache_entry *i, const rfc1035_rr * answers, int nr, const char *e
 
     i->expires = squid_curtime + ttl;
 
-    i->flags.negcached = 0;
+    i->flags.negcached = false;
 
     return i->addrs.count;
 }
@@ -595,7 +596,7 @@ ipcacheParse(ipcache_entry *i, const rfc1035_rr * answers, int nr, const char *e
 /// \ingroup IPCacheInternal
 static void
 #if USE_DNSHELPER
-ipcacheHandleReply(void *data, char *reply)
+ipcacheHandleReply(void *data, const HelperReply &reply)
 #else
 ipcacheHandleReply(void *data, const rfc1035_rr * answers, int na, const char *error_message)
 #endif
@@ -607,7 +608,7 @@ ipcacheHandleReply(void *data, const rfc1035_rr * answers, int na, const char *e
     statCounter.dns.svcTime.count(age);
 
 #if USE_DNSHELPER
-    ipcacheParse(i, reply);
+    ipcacheParse(i, reply.other().content());
 #else
 
     int done = ipcacheParse(i, answers, na, error_message);
@@ -732,7 +733,7 @@ ipcache_init(void)
     memset(&static_addrs, '\0', sizeof(ipcache_addrs));
 
     static_addrs.in_addrs = static_cast<Ip::Address *>(xcalloc(1, sizeof(Ip::Address)));
-    static_addrs.in_addrs->SetEmpty(); // properly setup the Ip::Address!
+    static_addrs.in_addrs->setEmpty(); // properly setup the Ip::Address!
     static_addrs.bad_mask = (unsigned char *)xcalloc(1, sizeof(unsigned char));
     ipcache_high = (long) (((float) Config.ipcache.size *
                             (float) Config.ipcache.high) / (float) 100);
@@ -843,12 +844,12 @@ ipcacheStatPrint(ipcache_entry * i, StoreEntry * sentry)
         /* Display tidy-up: IPv6 are so big make the list vertical */
         if (k == 0)
             storeAppendPrintf(sentry, " %45.45s-%3s\n",
-                              i->addrs.in_addrs[k].NtoA(buf,MAX_IPSTRLEN),
+                              i->addrs.in_addrs[k].toStr(buf,MAX_IPSTRLEN),
                               i->addrs.bad_mask[k] ? "BAD" : "OK ");
         else
             storeAppendPrintf(sentry, "%s %45.45s-%3s\n",
                               "                                                         ", /* blank-space indenting IP list */
-                              i->addrs.in_addrs[k].NtoA(buf,MAX_IPSTRLEN),
+                              i->addrs.in_addrs[k].toStr(buf,MAX_IPSTRLEN),
                               i->addrs.bad_mask[k] ? "BAD" : "OK ");
     }
 }
@@ -1071,7 +1072,6 @@ ipcacheMarkBadAddr(const char *name, const Ip::Address &addr)
     if (!ia->bad_mask[k]) {
         ia->bad_mask[k] = TRUE;
         ++ia->badcount;
-        i->expires = min(squid_curtime + max((time_t)60, Config.negativeDnsTtl), i->expires);
         debugs(14, 2, "ipcacheMarkBadAddr: " << name << " " << addr );
     }
 
@@ -1218,7 +1218,7 @@ ipcacheAddEntryFromHosts(const char *name, const char *ipaddr)
     i->addrs.bad_mask = (unsigned char *)xcalloc(1, sizeof(unsigned char));
     i->addrs.in_addrs[0] = ip;
     i->addrs.bad_mask[0] = FALSE;
-    i->flags.fromhosts = 1;
+    i->flags.fromhosts = true;
     ipcacheAddEntry(i);
     ipcacheLockEntry(i);
     return 0;

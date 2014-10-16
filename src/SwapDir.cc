@@ -271,7 +271,7 @@ SwapDir::getOptionTree() const
 void
 SwapDir::parseOptions(int isaReconfig)
 {
-    unsigned int old_read_only = flags.read_only;
+    const bool old_read_only = flags.read_only;
     char *name, *value;
 
     ConfigOption *newOption = getOptionTree();
@@ -327,12 +327,12 @@ SwapDir::optionReadOnlyParse(char const *option, const char *value, int isaRecon
         debugs(3, DBG_PARSE_NOTE(3), "UPGRADE WARNING: Replace cache_dir option 'read-only' with 'no-store'.");
     }
 
-    int read_only = 0;
+    bool read_only = 0;
 
     if (value)
-        read_only = xatoi(value);
+        read_only = (xatoi(value) != 0);
     else
-        read_only = 1;
+        read_only = true;
 
     flags.read_only = read_only;
 

@@ -7,6 +7,10 @@
 #include "globals.h"
 #include "ipc/Kid.h"
 
+#if HAVE_TIME_H
+#include <time.h>
+#endif
+
 #if HAVE_SYS_WAIT_H
 #include <sys/wait.h>
 #endif
@@ -44,7 +48,7 @@ void Kid::start(pid_t cpid)
 }
 
 /// called when kid terminates, sets exiting status
-void Kid::stop(status_type exitStatus)
+void Kid::stop(status_type theExitStatus)
 {
     assert(running());
     assert(startTime != 0);
@@ -58,7 +62,7 @@ void Kid::stop(status_type exitStatus)
     else
         badFailures = 0; // the failures are not "frequent" [any more]
 
-    status = exitStatus;
+    status = theExitStatus;
 }
 
 /// returns true if tracking of kid is stopped

@@ -4,11 +4,11 @@
 #include "acl/Strategised.h"
 #include "ssl/support.h"
 
-class ACLSslErrorStrategy : public ACLStrategy<const Ssl::Errors *>
+class ACLSslErrorStrategy : public ACLStrategy<const Ssl::CertErrors *>
 {
 
 public:
-    virtual int match (ACLData<MatchType> * &, ACLFilledChecklist *);
+    virtual int match (ACLData<MatchType> * &, ACLFilledChecklist *, ACLFlags &);
     static ACLSslErrorStrategy *Instance();
     /* Not implemented to prevent copies of the instance. */
     /* Not private to prevent brain dead g+++ warnings about
@@ -27,7 +27,7 @@ class ACLSslError
 
 private:
     static ACL::Prototype RegistryProtoype;
-    static ACLStrategised<const Ssl::Errors *> RegistryEntry_;
+    static ACLStrategised<const Ssl::CertErrors *> RegistryEntry_;
 };
 
 #endif /* SQUID_ACLSSL_ERROR_H */

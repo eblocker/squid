@@ -15,7 +15,7 @@ CPPUNIT_TEST_SUITE_REGISTRATION( testHttpRequest );
 class PrivateHttpRequest : public HttpRequest
 {
 public:
-    bool doSanityCheckStartLine(MemBuf *b, const size_t h, http_status *e) { return sanityCheckStartLine(b,h,e); };
+    bool doSanityCheckStartLine(MemBuf *b, const size_t h, Http::StatusCode *e) { return sanityCheckStartLine(b,h,e); };
 };
 
 /* init memory pools */
@@ -36,11 +36,11 @@ testHttpRequest::testCreateFromUrlAndMethod()
     /* vanilla url */
     unsigned short expected_port;
     char * url = xstrdup("http://foo:90/bar");
-    HttpRequest *aRequest = HttpRequest::CreateFromUrlAndMethod(url, METHOD_GET);
+    HttpRequest *aRequest = HttpRequest::CreateFromUrlAndMethod(url, Http::METHOD_GET);
     expected_port = 90;
     HttpRequest *nullRequest = NULL;
     CPPUNIT_ASSERT_EQUAL(expected_port, aRequest->port);
-    CPPUNIT_ASSERT(aRequest->method == METHOD_GET);
+    CPPUNIT_ASSERT(aRequest->method == Http::METHOD_GET);
     CPPUNIT_ASSERT_EQUAL(String("foo"), String(aRequest->GetHost()));
     CPPUNIT_ASSERT_EQUAL(String("/bar"), aRequest->urlpath);
     CPPUNIT_ASSERT_EQUAL(AnyP::PROTO_HTTP, aRequest->protocol);
@@ -49,10 +49,10 @@ testHttpRequest::testCreateFromUrlAndMethod()
 
     /* vanilla url, different method */
     url = xstrdup("http://foo/bar");
-    aRequest = HttpRequest::CreateFromUrlAndMethod(url, METHOD_PUT);
+    aRequest = HttpRequest::CreateFromUrlAndMethod(url, Http::METHOD_PUT);
     expected_port = 80;
     CPPUNIT_ASSERT_EQUAL(expected_port, aRequest->port);
-    CPPUNIT_ASSERT(aRequest->method == METHOD_PUT);
+    CPPUNIT_ASSERT(aRequest->method == Http::METHOD_PUT);
     CPPUNIT_ASSERT_EQUAL(String("foo"), String(aRequest->GetHost()));
     CPPUNIT_ASSERT_EQUAL(String("/bar"), aRequest->urlpath);
     CPPUNIT_ASSERT_EQUAL(AnyP::PROTO_HTTP, aRequest->protocol);
@@ -61,16 +61,16 @@ testHttpRequest::testCreateFromUrlAndMethod()
 
     /* a connect url with non-CONNECT data */
     url = xstrdup(":foo/bar");
-    aRequest = HttpRequest::CreateFromUrlAndMethod(url, METHOD_CONNECT);
+    aRequest = HttpRequest::CreateFromUrlAndMethod(url, Http::METHOD_CONNECT);
     xfree(url);
     CPPUNIT_ASSERT_EQUAL(nullRequest, aRequest);
 
     /* a CONNECT url with CONNECT data */
     url = xstrdup("foo:45");
-    aRequest = HttpRequest::CreateFromUrlAndMethod(url, METHOD_CONNECT);
+    aRequest = HttpRequest::CreateFromUrlAndMethod(url, Http::METHOD_CONNECT);
     expected_port = 45;
     CPPUNIT_ASSERT_EQUAL(expected_port, aRequest->port);
-    CPPUNIT_ASSERT(aRequest->method == METHOD_CONNECT);
+    CPPUNIT_ASSERT(aRequest->method == Http::METHOD_CONNECT);
     CPPUNIT_ASSERT_EQUAL(String("foo"), String(aRequest->GetHost()));
     CPPUNIT_ASSERT_EQUAL(String(""), aRequest->urlpath);
     CPPUNIT_ASSERT_EQUAL(AnyP::PROTO_NONE, aRequest->protocol);
@@ -90,7 +90,7 @@ testHttpRequest::testCreateFromUrl()
     HttpRequest *aRequest = HttpRequest::CreateFromUrl(url);
     expected_port = 90;
     CPPUNIT_ASSERT_EQUAL(expected_port, aRequest->port);
-    CPPUNIT_ASSERT(aRequest->method == METHOD_GET);
+    CPPUNIT_ASSERT(aRequest->method == Http::METHOD_GET);
     CPPUNIT_ASSERT_EQUAL(String("foo"), String(aRequest->GetHost()));
     CPPUNIT_ASSERT_EQUAL(String("/bar"), aRequest->urlpath);
     CPPUNIT_ASSERT_EQUAL(AnyP::PROTO_HTTP, aRequest->protocol);
@@ -110,10 +110,10 @@ testHttpRequest::testIPv6HostColonBug()
 
     /* valid IPv6 address without port */
     url = xstrdup("http://[2000:800::45]/foo");
-    aRequest = HttpRequest::CreateFromUrlAndMethod(url, METHOD_GET);
+    aRequest = HttpRequest::CreateFromUrlAndMethod(url, Http::METHOD_GET);
     expected_port = 80;
     CPPUNIT_ASSERT_EQUAL(expected_port, aRequest->port);
-    CPPUNIT_ASSERT(aRequest->method == METHOD_GET);
+    CPPUNIT_ASSERT(aRequest->method == Http::METHOD_GET);
     CPPUNIT_ASSERT_EQUAL(String("[2000:800::45]"), String(aRequest->GetHost()));
     CPPUNIT_ASSERT_EQUAL(String("/foo"), aRequest->urlpath);
     CPPUNIT_ASSERT_EQUAL(AnyP::PROTO_HTTP, aRequest->protocol);
@@ -122,10 +122,10 @@ testHttpRequest::testIPv6HostColonBug()
 
     /* valid IPv6 address with port */
     url = xstrdup("http://[2000:800::45]:90/foo");
-    aRequest = HttpRequest::CreateFromUrlAndMethod(url, METHOD_GET);
+    aRequest = HttpRequest::CreateFromUrlAndMethod(url, Http::METHOD_GET);
     expected_port = 90;
     CPPUNIT_ASSERT_EQUAL(expected_port, aRequest->port);
-    CPPUNIT_ASSERT(aRequest->method == METHOD_GET);
+    CPPUNIT_ASSERT(aRequest->method == Http::METHOD_GET);
     CPPUNIT_ASSERT_EQUAL(String("[2000:800::45]"), String(aRequest->GetHost()));
     CPPUNIT_ASSERT_EQUAL(String("/foo"), aRequest->urlpath);
     CPPUNIT_ASSERT_EQUAL(AnyP::PROTO_HTTP, aRequest->protocol);
@@ -134,10 +134,10 @@ testHttpRequest::testIPv6HostColonBug()
 
     /* IPv6 address as invalid (bug trigger) */
     url = xstrdup("http://2000:800::45/foo");
-    aRequest = HttpRequest::CreateFromUrlAndMethod(url, METHOD_GET);
+    aRequest = HttpRequest::CreateFromUrlAndMethod(url, Http::METHOD_GET);
     expected_port = 80;
     CPPUNIT_ASSERT_EQUAL(expected_port, aRequest->port);
-    CPPUNIT_ASSERT(aRequest->method == METHOD_GET);
+    CPPUNIT_ASSERT(aRequest->method == Http::METHOD_GET);
     CPPUNIT_ASSERT_EQUAL(String("[2000:800::45]"), String(aRequest->GetHost()));
     CPPUNIT_ASSERT_EQUAL(String("/foo"), aRequest->urlpath);
     CPPUNIT_ASSERT_EQUAL(AnyP::PROTO_HTTP, aRequest->protocol);
@@ -150,7 +150,7 @@ testHttpRequest::testSanityCheckStartLine()
 {
     MemBuf input;
     PrivateHttpRequest engine;
-    http_status error = HTTP_STATUS_NONE;
+    Http::StatusCode error = Http::scNone;
     size_t hdr_len;
     input.init();
 
@@ -158,31 +158,31 @@ testHttpRequest::testSanityCheckStartLine()
     input.append("GET / HTTP/1.1\n\n", 16);
     hdr_len = headersEnd(input.content(), input.contentSize());
     CPPUNIT_ASSERT(engine.doSanityCheckStartLine(&input, hdr_len, &error) );
-    CPPUNIT_ASSERT_EQUAL(error, HTTP_STATUS_NONE);
+    CPPUNIT_ASSERT_EQUAL(error, Http::scNone);
     input.reset();
-    error = HTTP_STATUS_NONE;
+    error = Http::scNone;
 
     input.append("GET  /  HTTP/1.1\n\n", 18);
     hdr_len = headersEnd(input.content(), input.contentSize());
     CPPUNIT_ASSERT(engine.doSanityCheckStartLine(&input, hdr_len, &error) );
-    CPPUNIT_ASSERT_EQUAL(error, HTTP_STATUS_NONE);
+    CPPUNIT_ASSERT_EQUAL(error, Http::scNone);
     input.reset();
-    error = HTTP_STATUS_NONE;
+    error = Http::scNone;
 
     // strange but valid methods
     input.append(". / HTTP/1.1\n\n", 14);
     hdr_len = headersEnd(input.content(), input.contentSize());
     CPPUNIT_ASSERT(engine.doSanityCheckStartLine(&input, hdr_len, &error) );
-    CPPUNIT_ASSERT_EQUAL(error, HTTP_STATUS_NONE);
+    CPPUNIT_ASSERT_EQUAL(error, Http::scNone);
     input.reset();
-    error = HTTP_STATUS_NONE;
+    error = Http::scNone;
 
     input.append("OPTIONS * HTTP/1.1\n\n", 20);
     hdr_len = headersEnd(input.content(), input.contentSize());
     CPPUNIT_ASSERT(engine.doSanityCheckStartLine(&input, hdr_len, &error) );
-    CPPUNIT_ASSERT_EQUAL(error, HTTP_STATUS_NONE);
+    CPPUNIT_ASSERT_EQUAL(error, Http::scNone);
     input.reset();
-    error = HTTP_STATUS_NONE;
+    error = Http::scNone;
 
 // TODO no method
 
@@ -197,7 +197,7 @@ testHttpRequest::testSanityCheckStartLine()
     input.append("      \n\n", 8);
     hdr_len = headersEnd(input.content(), input.contentSize());
     CPPUNIT_ASSERT(!engine.doSanityCheckStartLine(&input, hdr_len, &error) );
-    CPPUNIT_ASSERT_EQUAL(error, HTTP_INVALID_HEADER);
+    CPPUNIT_ASSERT_EQUAL(error, Http::scInvalidHeader);
     input.reset();
-    error = HTTP_STATUS_NONE;
+    error = Http::scNone;
 }

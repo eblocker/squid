@@ -47,6 +47,8 @@ extern char tmp_error_buf[ERROR_BUF_SZ];
 extern char ThisCache[RFC2181_MAXHOSTNAMELEN << 1];
 extern char ThisCache2[RFC2181_MAXHOSTNAMELEN << 1];
 extern char config_input_line[BUFSIZ];
+/// During parsing, the name of the current squid.conf directive being parsed.
+extern const char *cfg_directive; /* NULL */
 extern const char *DefaultConfigFile;	/* DEFAULT_CONFIG_FILE */
 extern const char *cfg_filename;	/* NULL */
 extern const char *dash_str;	/* "-" */
@@ -113,7 +115,7 @@ extern size_t store_pages_max;	/* 0 */
 extern int64_t store_maxobjsize;	/* -1 */
 extern hash_table *proxy_auth_username_cache;	/* NULL */
 extern int incoming_sockets_accepted;
-#if _SQUID_MSWIN_
+#if _SQUID_WINDOWS_
 extern unsigned int WIN32_Socks_initialized;	/* 0 */
 #endif
 #if _SQUID_WINDOWS_
@@ -124,9 +126,6 @@ extern char *WIN32_Command_Line;        /* NULL */
 extern char *WIN32_Service_Command_Line; /* NULL */
 extern unsigned int WIN32_run_mode;     /* _WIN_SQUID_RUN_MODE_INTERACTIVE */
 #endif
-#if HAVE_SBRK
-extern void *sbrk_start;	/* 0 */
-#endif
 
 extern int ssl_ex_index_server;	/* -1 */
 extern int ssl_ctx_ex_index_dont_verify_domain; /* -1 */
@@ -134,6 +133,8 @@ extern int ssl_ex_index_cert_error_check;	/* -1 */
 extern int ssl_ex_index_ssl_error_detail;      /* -1 */
 extern int ssl_ex_index_ssl_peeked_cert;      /* -1 */
 extern int ssl_ex_index_ssl_errors;   /* -1 */
+extern int ssl_ex_index_ssl_cert_chain;  /* -1 */
+extern int ssl_ex_index_ssl_validation_counter;  /* -1 */
 
 extern const char *external_acl_message;      /* NULL */
 extern int opt_send_signal;	/* -1 */

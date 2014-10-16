@@ -591,12 +591,6 @@ GetInfo(Mgr::InfoActionData& stats)
     stats.cpu_usage5 = statCPUUsage(5);
     stats.cpu_usage60 = statCPUUsage(60);
 
-#if HAVE_SBRK
-
-    stats.proc_data_seg = ((char *) sbrk(0) - (char *) sbrk_start);
-
-#endif
-
     stats.maxrss = rusage_maxrss(&rusage);
 
     stats.page_faults = rusage_pagefaults(&rusage);
@@ -672,6 +666,8 @@ DumpInfo(Mgr::InfoActionData& stats, StoreEntry* sentry)
 {
     storeAppendPrintf(sentry, "Squid Object Cache: Version %s\n",
                       version_string);
+
+    storeAppendPrintf(sentry, "Build Info: " SQUID_BUILD_INFO "\n");
 
 #if _SQUID_WINDOWS_
     if (WIN32_run_mode == _WIN_SQUID_RUN_MODE_SERVICE) {
@@ -812,13 +808,6 @@ DumpInfo(Mgr::InfoActionData& stats, StoreEntry* sentry)
 
     storeAppendPrintf(sentry, "\tCPU Usage, 60 minute avg:\t%.2f%%\n",
                       stats.cpu_usage60);
-
-#if HAVE_SBRK
-
-    storeAppendPrintf(sentry, "\tProcess Data Segment Size via sbrk(): %.0f KB\n",
-                      stats.proc_data_seg / 1024);
-
-#endif
 
     storeAppendPrintf(sentry, "\tMaximum Resident Size: %.0f KB\n",
                       stats.maxrss);
@@ -1460,18 +1449,12 @@ statAvgTick(void *notused)
     if (Config.warnings.high_memory) {
         size_t i = 0;
 #if HAVE_MSTATS && HAVE_GNUMALLOC_H
-
         struct mstats ms = mstats();
         i = ms.bytes_total;
 #elif HAVE_MALLINFO && HAVE_STRUCT_MALLINFO
-
         struct mallinfo mp = mallinfo();
         i = mp.arena;
-#elif HAVE_SBRK
-
-        i = (size_t) ((char *) sbrk(0) - (char *) sbrk_start);
 #endif
-
         if (Config.warnings.high_memory < i)
             debugs(18, DBG_CRITICAL, "WARNING: Memory usage at " << ((unsigned long int)(i >> 20)) << " MB");
     }
@@ -2025,26 +2008,20 @@ statClientRequests(StoreEntry * s)
             storeAppendPrintf(s, "\tin: buf %p, offset %ld, size %ld\n",
                               conn->in.buf, (long int) conn->in.notYetUsed, (long int) conn->in.allocatedSize);
             storeAppendPrintf(s, "\tremote: %s\n",
-                              conn->clientConnection->remote.ToURL(buf,MAX_IPSTRLEN));
+                              conn->clientConnection->remote.toUrl(buf,MAX_IPSTRLEN));
             storeAppendPrintf(s, "\tlocal: %s\n",
-                              conn->clientConnection->local.ToURL(buf,MAX_IPSTRLEN));
+                              conn->clientConnection->local.toUrl(buf,MAX_IPSTRLEN));
             storeAppendPrintf(s, "\tnrequests: %d\n",
                               conn->nrequests);
         }
 
         storeAppendPrintf(s, "uri %s\n", http->uri);
-        storeAppendPrintf(s, "logType %s\n", Format::log_tags[http->logType]);
+        storeAppendPrintf(s, "logType %s\n", LogTags_str[http->logType]);
         storeAppendPrintf(s, "out.offset %ld, out.size %lu\n",
                           (long int) http->out.offset, (unsigned long int) http->out.size);
         storeAppendPrintf(s, "req_sz %ld\n", (long int) http->req_sz);
         e = http->storeEntry();
         storeAppendPrintf(s, "entry %p/%s\n", e, e ? e->getMD5Text() : "N/A");
-#if 0
-        /* Not a member anymore */
-        e = http->old_entry;
-        storeAppendPrintf(s, "old_entry %p/%s\n", e, e ? e->getMD5Text() : "N/A");
-#endif
-
         storeAppendPrintf(s, "start %ld.%06d (%f seconds ago)\n",
                           (long int) http->start_time.tv_sec,
                           (int) http->start_time.tv_usec,

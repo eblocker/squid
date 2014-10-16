@@ -267,7 +267,7 @@ static void htcpFreeDetail(htcpDetail * s);
 
 static void htcpHandleMsg(char *buf, int sz, Ip::Address &from);
 
-static void htcpLogHtcp(Ip::Address &, int, log_type, const char *);
+static void htcpLogHtcp(Ip::Address &, int, LogTags, const char *);
 static void htcpHandleMon(htcpDataHeader *, char *buf, int sz, Ip::Address &from);
 
 static void htcpHandleNop(htcpDataHeader *, char *buf, int sz, Ip::Address &from);
@@ -748,7 +748,7 @@ htcpUnpackSpecifier(char *buf, int sz)
      */
     method = HttpRequestMethod(s->method, NULL);
 
-    s->request = HttpRequest::CreateFromUrlAndMethod(s->uri, method == METHOD_NONE ? HttpRequestMethod(METHOD_GET) : method);
+    s->request = HttpRequest::CreateFromUrlAndMethod(s->uri, method == Http::METHOD_NONE ? HttpRequestMethod(Http::METHOD_GET) : method);
 
     if (s->request)
         HTTPMSGLOCK(s->request);
@@ -850,7 +850,7 @@ htcpAccessAllowed(acl_access * acl, htcpSpecifier * s, Ip::Address &from)
 
     ACLFilledChecklist checklist(acl, s->request, NULL);
     checklist.src_addr = from;
-    checklist.my_addr.SetNoAddr();
+    checklist.my_addr.setNoAddr();
     return (checklist.fastCheck() == ACCESS_ALLOWED);
 }
 
@@ -1121,7 +1121,7 @@ htcpHandleTstResponse(htcpDataHeader * hdr, char *buf, int sz, Ip::Address &from
 
     peer = &queried_addr[hdr->msg_id % N_QUERIED_KEYS];
 
-    if ( *peer != from || peer->GetPort() != from.GetPort() ) {
+    if ( *peer != from || peer->port() != from.port() ) {
         debugs(31, 3, "htcpHandleTstResponse: Unexpected response source " << from );
         return;
     }
@@ -1485,15 +1485,15 @@ htcpOpenPorts(void)
 
     htcpIncomingConn = new Comm::Connection;
     htcpIncomingConn->local = Config.Addrs.udp_incoming;
-    htcpIncomingConn->local.SetPort(Config.Port.htcp);
+    htcpIncomingConn->local.port(Config.Port.htcp);
 
-    if (!Ip::EnableIpv6 && !htcpIncomingConn->local.SetIPv4()) {
+    if (!Ip::EnableIpv6 && !htcpIncomingConn->local.setIPv4()) {
         debugs(31, DBG_CRITICAL, "ERROR: IPv6 is disabled. " << htcpIncomingConn->local << " is not an IPv4 address.");
         fatal("HTCP port cannot be opened.");
     }
     /* split-stack for now requires default IPv4-only HTCP */
-    if (Ip::EnableIpv6&IPV6_SPECIAL_SPLITSTACK && htcpIncomingConn->local.IsAnyAddr()) {
-        htcpIncomingConn->local.SetIPv4();
+    if (Ip::EnableIpv6&IPV6_SPECIAL_SPLITSTACK && htcpIncomingConn->local.isAnyAddr()) {
+        htcpIncomingConn->local.setIPv4();
     }
 
     AsyncCall::Pointer call = asyncCall(31, 2,
@@ -1505,18 +1505,18 @@ htcpOpenPorts(void)
                         htcpIncomingConn,
                         Ipc::fdnInHtcpSocket, call);
 
-    if (!Config.Addrs.udp_outgoing.IsNoAddr()) {
+    if (!Config.Addrs.udp_outgoing.isNoAddr()) {
         htcpOutgoingConn = new Comm::Connection;
         htcpOutgoingConn->local = Config.Addrs.udp_outgoing;
-        htcpOutgoingConn->local.SetPort(Config.Port.htcp);
+        htcpOutgoingConn->local.port(Config.Port.htcp);
 
-        if (!Ip::EnableIpv6 && !htcpOutgoingConn->local.SetIPv4()) {
+        if (!Ip::EnableIpv6 && !htcpOutgoingConn->local.setIPv4()) {
             debugs(31, DBG_CRITICAL, "ERROR: IPv6 is disabled. " << htcpOutgoingConn->local << " is not an IPv4 address.");
             fatal("HTCP port cannot be opened.");
         }
         /* split-stack for now requires default IPv4-only HTCP */
-        if (Ip::EnableIpv6&IPV6_SPECIAL_SPLITSTACK && htcpOutgoingConn->local.IsAnyAddr()) {
-            htcpOutgoingConn->local.SetIPv4();
+        if (Ip::EnableIpv6&IPV6_SPECIAL_SPLITSTACK && htcpOutgoingConn->local.isAnyAddr()) {
+            htcpOutgoingConn->local.setIPv4();
         }
 
         enter_suid();
@@ -1546,7 +1546,7 @@ htcpIncomingConnectionOpened(const Comm::ConnectionPointer &conn, int)
 
     debugs(31, DBG_CRITICAL, "Accepting HTCP messages on " << conn->local);
 
-    if (Config.Addrs.udp_outgoing.IsNoAddr()) {
+    if (Config.Addrs.udp_outgoing.isNoAddr()) {
         htcpOutgoingConn = conn;
         debugs(31, DBG_IMPORTANT, "Sending HTCP messages from " << htcpOutgoingConn->local);
     }
@@ -1721,7 +1721,7 @@ htcpClosePorts(void)
 }
 
 static void
-htcpLogHtcp(Ip::Address &caddr, int opcode, log_type logcode, const char *url)
+htcpLogHtcp(Ip::Address &caddr, int opcode, LogTags logcode, const char *url)
 {
     AccessLogEntry::Pointer al = new AccessLogEntry;
     if (LOG_TAG_NONE == logcode)

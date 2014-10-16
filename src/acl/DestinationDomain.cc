@@ -53,7 +53,6 @@ void
 DestinationDomainLookup::checkForAsync(ACLChecklist *cl) const
 {
     ACLFilledChecklist *checklist = Filled(cl);
-    checklist->asyncInProgress(true);
     fqdncache_nbgethostbyaddr(checklist->dst_addr, LookupDone, checklist);
 }
 
@@ -61,22 +60,23 @@ void
 DestinationDomainLookup::LookupDone(const char *fqdn, const DnsLookupDetails &details, void *data)
 {
     ACLFilledChecklist *checklist = Filled((ACLChecklist*)data);
-    assert (checklist->asyncState() == DestinationDomainLookup::Instance());
-
-    checklist->asyncInProgress(false);
-    checklist->changeState (ACLChecklist::NullState::Instance());
     checklist->markDestinationDomainChecked();
     checklist->request->recordLookup(details);
-    checklist->matchNonBlocking();
+    checklist->resumeNonBlockingCheck(DestinationDomainLookup::Instance());
 }
 
 int
-ACLDestinationDomainStrategy::match (ACLData<MatchType> * &data, ACLFilledChecklist *checklist)
+ACLDestinationDomainStrategy::match (ACLData<MatchType> * &data, ACLFilledChecklist *checklist, ACLFlags &flags)
 {
     assert(checklist != NULL && checklist->request != NULL);
 
     if (data->match(checklist->request->GetHost())) {
         return 1;
+    }
+
+    if (flags.isSet(ACL_F_NO_LOOKUP)) {
+        debugs(28, 3, "aclMatchAcl:  No-lookup DNS ACL '" << AclMatchedName << "' for '" << checklist->request->GetHost() << "'");
+        return 0;
     }
 
     /* numeric IPA? no, trust the above result. */
@@ -107,8 +107,9 @@ ACLDestinationDomainStrategy::match (ACLData<MatchType> * &data, ACLFilledCheckl
     } else if (!checklist->destinationDomainChecked()) {
         /* FIXME: Using AclMatchedName here is not OO correct. Should find a way to the current acl */
         debugs(28, 3, "aclMatchAcl: Can't yet compare '" << AclMatchedName << "' ACL for '" << checklist->request->GetHost() << "'");
-        checklist->changeState(DestinationDomainLookup::Instance());
-        return 0;
+        if (checklist->goAsync(DestinationDomainLookup::Instance()))
+            return -1;
+        // else fall through to "none" match, hiding the lookup failure (XXX)
     }
 
     return data->match("none");

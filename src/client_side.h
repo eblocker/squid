@@ -33,15 +33,9 @@
 #ifndef SQUID_CLIENTSIDE_H
 #define SQUID_CLIENTSIDE_H
 
-#include "base/AsyncJob.h"
-#include "BodyPipe.h"
 #include "comm.h"
-#include "CommCalls.h"
-#include "HttpRequest.h"
 #include "HttpControlMsg.h"
 #include "HttpParser.h"
-#include "RefCount.h"
-#include "StoreIOBuffer.h"
 #if USE_AUTH
 #include "auth/UserRequest.h"
 #endif
@@ -53,6 +47,7 @@ class ConnStateData;
 class ClientHttpRequest;
 class clientStreamNode;
 class ChunkedCodingParser;
+class HelperReply;
 namespace AnyP
 {
 class PortCfg;
@@ -88,8 +83,6 @@ class ClientSocketContext : public RefCountable
 
 public:
     typedef RefCount<ClientSocketContext> Pointer;
-    void *operator new(size_t);
-    void operator delete(void *);
     ClientSocketContext();
     ~ClientSocketContext();
     bool startOfOutput() const;
@@ -164,7 +157,7 @@ private:
     bool mayUseConnection_; /* This request may use the connection. Don't read anymore requests for now */
     bool connRegistered_;
 
-    CBDATA_CLASS(ClientSocketContext);
+    CBDATA_CLASS2(ClientSocketContext);
 };
 
 class ConnectionDetail;
@@ -177,7 +170,7 @@ class ServerBump;
 /**
  * Manages a connection to a client.
  *
- * Multiple requests (up to 2) can be pipelined. This object is responsible for managing
+ * Multiple requests (up to pipeline_prefetch) can be pipelined. This object is responsible for managing
  * which one is currently being fulfilled and what happens to the queue if the current one
  * causes the client connection to be closed early.
  *
@@ -192,8 +185,7 @@ class ConnStateData : public BodyProducer, public HttpControlMsgSink
 {
 
 public:
-
-    ConnStateData();
+    explicit ConnStateData(const MasterXaction::Pointer &xact);
     ~ConnStateData();
 
     void readSomeData();
@@ -238,10 +230,20 @@ public:
 
 #if USE_AUTH
     /**
-     * note this is ONLY connection based because NTLM and Negotiate is against HTTP spec.
-     * the user details for connection based authentication
+     * Fetch the user details for connection based authentication
+     * NOTE: this is ONLY connection based because NTLM and Negotiate is against HTTP spec.
      */
-    Auth::UserRequest::Pointer auth_user_request;
+    const Auth::UserRequest::Pointer &getAuth() const { return auth_; }
+
+    /**
+     * Set the user details for connection-based authentication to use from now until connection closure.
+     *
+     * Any change to existing credentials shows that something invalid has happened. Such as:
+     * - NTLM/Negotiate auth was violated by the per-request headers missing a revalidation token
+     * - NTLM/Negotiate auth was violated by the per-request headers being for another user
+     * - SSL-Bump CONNECT tunnel with persistent credentials has ended
+     */
+    void setAuth(const Auth::UserRequest::Pointer &aur, const char *cause);
 #endif
 
     /**
@@ -265,9 +267,11 @@ public:
         bool auth;               /* pinned for www authentication */
         bool zeroReply; ///< server closed w/o response (ERR_ZERO_SIZE_OBJECT)
         CachePeer *peer;             /* CachePeer the connection goes via */
+        AsyncCall::Pointer readHandler; ///< detects serverConnection closure
         AsyncCall::Pointer closeHandler; /*The close handler for pinned server side connection*/
     } pinning;
 
+    /// Squid listening port details where this connection arrived.
     AnyP::PortCfg *port;
 
     bool transparent() const;
@@ -330,6 +334,9 @@ public:
     /// the client-side-detected error response instead of getting stuck.
     void quitAfterError(HttpRequest *request); // meant to be private
 
+    /// The caller assumes responsibility for connection closure detection.
+    void stopPinnedConnectionMonitoring();
+
 #if USE_SSL
     /// called by FwdState when it is done bumping the server
     void httpsPeeked(Comm::ConnectionPointer serverConnection);
@@ -343,9 +350,9 @@ public:
      */
     void getSslContextDone(SSL_CTX * sslContext, bool isNew = false);
     /// Callback function. It is called when squid receive message from ssl_crtd.
-    static void sslCrtdHandleReplyWrapper(void *data, char *reply);
+    static void sslCrtdHandleReplyWrapper(void *data, const HelperReply &reply);
     /// Proccess response from ssl_crtd.
-    void sslCrtdHandleReply(const char * reply);
+    void sslCrtdHandleReply(const HelperReply &reply);
 
     void switchToHttps(HttpRequest *request, Ssl::BumpMode bumpServerMode);
     bool switchedToHttps() const { return switchedToHttps_; }
@@ -377,12 +384,20 @@ protected:
     void abortChunkedRequestBody(const err_type error);
     err_type handleChunkedRequestBody(size_t &putSize);
 
+    void startPinnedConnectionMonitoring();
+    void clientPinnedConnectionRead(const CommIoCbParams &io);
+
 private:
     int connReadWasError(comm_err_t flag, int size, int xerrno);
     int connFinishedWithConn(int size);
     void clientAfterReadingRequests();
+    bool concurrentRequestQueueFilled() const;
 
-private:
+#if USE_AUTH
+    /// some user details that can be used to perform authentication on this connection
+    Auth::UserRequest::Pointer auth_;
+#endif
+
     HttpParser parser_;
 
     // XXX: CBDATA plays with public/private and leaves the following 'private' fields all public... :(

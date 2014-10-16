@@ -14,7 +14,7 @@ Description: Change default statedir for IPC to /var/run/squid3
 +	$(mkinstalldirs) $(DESTDIR)$(localstatedir)/run/squid3;
 --- a/src/ipc/Makefile.in
 +++ b/src/ipc/Makefile.in
-@@ -128,7 +128,7 @@
+@@ -479,7 +479,7 @@
  DEFAULT_LOG_DIR = @DEFAULT_LOG_DIR@
  DEFAULT_PID_FILE = @DEFAULT_PID_FILE@
  DEFAULT_SWAP_DIR = @DEFAULT_SWAP_DIR@
@@ -23,7 +23,7 @@ Description: Change default statedir for IPC to /var/run/squid3
  DEPDIR = @DEPDIR@
  DIGEST_AUTH_HELPERS = @DIGEST_AUTH_HELPERS@
  DISK_LIBS = @DISK_LIBS@
-@@ -821,7 +821,7 @@
+@@ -1264,7 +1264,7 @@
  .PHONY: testHeaders
  
  install-data-local:

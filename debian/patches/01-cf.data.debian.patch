@@ -1,11 +1,9 @@
 Author: Luigi Gangitano <luigi@debian.org>
 Description: Default configuration file for debian
 === modified file 'src/cf.data.pre'
-Index: squid-3.4.2/src/cf.data.pre
-===================================================================
---- squid-3.4.2.orig/src/cf.data.pre	2013-12-31 00:33:27.000000000 +1300
-+++ squid-3.4.2/src/cf.data.pre	2014-02-01 20:43:33.000000000 +1300
-@@ -349,7 +349,7 @@
+--- a/src/cf.data.pre
++++ b/src/cf.data.pre
+@@ -360,7 +360,7 @@
  	If you want to use the traditional NCSA proxy authentication, set
  	this line to something like
  
@@ -14,7 +12,7 @@ Index: squid-3.4.2/src/cf.data.pre
  
  	"utf8" on|off
  	HTTP uses iso-latin-1 as character set, while some authentication
-@@ -433,7 +433,7 @@
+@@ -444,7 +444,7 @@
  	If you want to use a digest authenticator, set this line to
  	something like
  
@@ -23,7 +21,7 @@ Index: squid-3.4.2/src/cf.data.pre
  
  	"utf8" on|off
  	HTTP uses iso-latin-1 as character set, while some authentication
-@@ -510,6 +510,9 @@
+@@ -521,6 +521,9 @@
  	of type proxy_auth.  By default, the NTLM authenticator program
  	is not used.
  
@@ -33,7 +31,7 @@ Index: squid-3.4.2/src/cf.data.pre
  	auth_param ntlm program /usr/bin/ntlm_auth
  
  	"children" numberofchildren [startup=N] [idle=N]
-@@ -551,6 +554,9 @@
+@@ -562,6 +565,9 @@
  	The only supported program for this role is the ntlm_auth
  	program distributed as part of Samba, version 4 or later.
  
@@ -43,7 +41,7 @@ Index: squid-3.4.2/src/cf.data.pre
  	auth_param negotiate program /usr/bin/ntlm_auth --helper-protocol=gss-spnego
  
  	"children" numberofchildren [startup=N] [idle=N]
-@@ -1144,11 +1150,11 @@
+@@ -1155,11 +1161,11 @@
  # Example rule allowing access from your local networks.
  # Adapt to list your (internal) IP networks from where browsing
  # should be allowed
@@ -60,7 +58,7 @@ Index: squid-3.4.2/src/cf.data.pre
  
  acl SSL_ports port 443
  acl Safe_ports port 80		# http
-@@ -1349,7 +1355,7 @@
+@@ -1360,7 +1366,7 @@
  # Example rule allowing access from your local networks.
  # Adapt localnet in the ACL section to list your (internal) IP networks
  # from where browsing should be allowed
@@ -69,7 +67,7 @@ Index: squid-3.4.2/src/cf.data.pre
  http_access allow localhost
  
  # And finally deny all other access to this proxy
-@@ -4147,7 +4153,7 @@
+@@ -4178,7 +4184,7 @@
  
  NAME: logfile_rotate
  TYPE: int
@@ -78,7 +76,7 @@ Index: squid-3.4.2/src/cf.data.pre
  LOC: Config.Log.rotateNumber
  DOC_START
  	Specifies the number of logfile rotations to make when you
-@@ -4166,6 +4172,9 @@
+@@ -4197,6 +4203,9 @@
  
  	Note, from Squid-3.1 this option is only a default for cache.log,
  	that log can be rotated separately by using debug_options.
@@ -88,7 +86,7 @@ Index: squid-3.4.2/src/cf.data.pre
  DOC_END
  
  NAME: emulate_httpd_log
-@@ -8458,8 +8467,8 @@
+@@ -8497,8 +8506,8 @@
  
  	WARNING:
  	  This option will restrict the situations under which IPv6

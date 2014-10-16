@@ -11,6 +11,7 @@ squid3 (3.4.8-1) UNRELEASED; urgency=high
     - remove 17-pod2man-check.patch obsoleted by new version
     - add upstream patch 21-squid-3.4-13176-memoryleak.patch:
       memory leak in external_acl_type helper with cache=0 or ttl=0
+    - refreshed all patches to match 3.4.8
 
   * debian/rules
     - add --disable-arch-native to build with portable CPU support

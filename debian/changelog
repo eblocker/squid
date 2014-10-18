@@ -3,6 +3,13 @@ squid3 (3.4.8-2) UNRELEASED; urgency=medium
   [ Santiago Garcia Mantinan <manty@debian.org> ]
   * Add patch to remove bashisms from cert_tool
   * Add manual page for squid-purge
+  * Create run_dir needed for SMP with several workers to run. This
+    fixes #710126 (Closes: #732183, #760400)
+  * Use CONFIG instead of sq (Closes: #763867)
+  * Remove find_cache_type and use grepconf (both functions were =).
+  * Allow find_cache_dir and grepconf to have whitespace in the beginning
+    (Closes: #761209)
+  * Add config check before reload/restart, thanks Freddy (Closes: #728222)
 
  -- Santiago Garcia Mantinan <manty@debian.org>  Sun, 19 Oct 2014 00:59:51 +0200
 

@@ -33,9 +33,9 @@ PATH=/bin:/usr/bin:/sbin:/usr/sbin
 ulimit -n 65535
 
 find_cache_dir () {
-        w="     " # space tab
+	w=" 	" # space tab
         res=`sed -ne '
-                s/^'$1'['"$w"']\+[^'"$w"']\+['"$w"']\+\([^'"$w"']\+\).*$/\1/p;
+                s/^['"$w"']*'$1'['"$w"']\+[^'"$w"']\+['"$w"']\+\([^'"$w"']\+\).*$/\1/p;
                 t end;
                 d;
                 :end q' < $CONFIG`
@@ -43,26 +43,13 @@ find_cache_dir () {
         echo "$res"
 }
 
-find_cache_type () {
+grepconf () {
 	w=" 	" # space tab
 	res=`sed -ne '
-		s/^'$1'['"$w"']\+\([^'"$w"']\+\).*$/\1/p;
+		s/^['"$w"']*'$1'['"$w"']\+\([^'"$w"']\+\).*$/\1/p;
 		t end;
 		d;
 		:end q' < $CONFIG`
-	[ -n "$res" ] || res=$2
-	echo "$res"
-}
-
-grepconf () {
-	w=" 	" # space tab
-	sq=/etc/squid3/squid.conf
-	# sed is cool.
-	res=`sed -ne '
-		s/^'$1'['"$w"']\+\([^'"$w"']\+\).*$/\1/p;
-		t end;
-		d;
-		:end q' < $sq`
 	[ -n "$res" ] || res=$2
 	echo "$res"
 }
@@ -72,18 +59,23 @@ create_run_dir () {
 	usr=`grepconf cache_effective_user proxy`
 	grp=`grepconf cache_effective_group proxy`
 
-	if [ "$(stat -c %U $run_dir)" != "$usr" ] ||
-	   [ "$(stat -c %G $run_dir)" != "$grp" ] ; then
-		if [ "$(dpkg-statoverride --list $run_dir)" = "" ] ; then
-	  		chown -R $usr:$grp $run_dir
-		fi
+
+	if [ "$(dpkg-statoverride --list $run_dir)" = "" ] &&
+	   [ ! -e $run_dir ] ; then
+		mkdir -p $run_dir
+	  	chown $usr:$grp $run_dir
 	fi
 	 
 }
 
 start () {
 	cache_dir=`find_cache_dir cache_dir`
-	cache_type=`find_cache_type cache_dir`
+	cache_type=`grepconf cache_dir`
+
+	#
+	# Create run dir (needed for several workers on SMP)
+	#
+	create_run_dir
 
 	#
 	# Create spool dirs if they don't exist.
@@ -150,18 +142,32 @@ case "$1" in
 	fi
 	;;
     reload|force-reload)
-	log_action_msg "Reloading $DESC configuration files"
-	start-stop-daemon --stop --signal 1 \
-		--pidfile $PIDFILE --quiet --exec $DAEMON
-	log_action_end_msg 0
+	res=`$DAEMON -k check 2>&1`
+	if test -n "$res";
+	then
+		log_failure_msg "$res"
+		exit 3
+	else
+		log_action_msg "Reloading $DESC configuration files"
+	  	start-stop-daemon --stop --signal 1 \
+			--pidfile $PIDFILE --quiet --exec $DAEMON
+		log_action_end_msg 0
+	fi
 	;;
     restart)
-	log_daemon_msg "Restarting $DESC" "$NAME"
-	stop
-	if start ; then
-		log_end_msg $?
+	res=`$DAEMON -k check 2>&1`
+	if test -n "$res";
+	then
+		log_failure_msg "$res"
+		exit 3
 	else
-		log_end_msg $?
+		log_daemon_msg "Restarting $DESC" "$NAME"
+		stop
+		if start ; then
+			log_end_msg $?
+		else
+			log_end_msg $?
+		fi
 	fi
 	;;
     status)

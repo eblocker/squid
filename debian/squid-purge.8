@@ -1,0 +1,247 @@
+.TH SQUID-PURGE 8 "October 12, 2014" "" ""
+.SH NAME
+squid-purge \- magnifying glass into your squid cache
+.SH SYNOPSIS
+.BR "squid-purge [-a] [-c cf] [-d l] [-(f|F) fn | -(e|E) re] [-p h[:p]]
+                [-P #] [-s] [-v] [-C dir [-H]] [-n]"
+.SH DESCRIPTION
+.B squid-purge
+is used to have a look at what URLs are stored in which file within
+your cache. The purge tool can also be used to release objects which URLs
+match user specified regular expressions. A more troublesome feature is the
+ability to remove files squid does not seem to know about any longer.
+
+This is a tool for expert usage only, use it under your own responsability.
+
+.SH SQUID PREPARATION
+In order to use purge for real PURGEs, you will have to enable this feature
+in squid. By default, PURGE is disabled. You should watch closely for whom
+you enable the PURGE ability, otherwise total stranger just might wipe your
+cache content. The following lines will need to be added to your squid.conf
+(you may want to add further networks to the src_local ACL):
+.PP
+.RS
+.P
+.B acl purge method PURGE
+.br
+.B acl src_local src 127.0.0.0/8
+.br
+.B http_access allow purge src_local
+.br
+.B http_access deny  purge
+.RE
+.PP
+Reconfigure or restart (preferred) your squid after changing the
+configuration file.
+
+.SH MODES OF OPERATION (Usage)
+
+.B squid-purge   [-a] [-c cf] [-d l] [-(f|F) fn | -(e|E) re] [-p h[:p]]
+                [-P #] [-s] [-v] [-C dir [-H]] [-n]
+
+.B -a	is a kind of "i am alive" flag. It can only be activated, if
+your stdout is a tty. If active, it will display a little 
+rotating line to indicate that there is actually something
+happening. You should not use this switch, if you capture 
+your stdout in a file, or if your expression list produces
+many matches. The -a flag is also incompatible with the
+(default) multi cache_dir mode.
+
+default: off		See also: -n
+
+.B -c cd
+this option lets you specify the location of the squid.conf file.
+Purge now understands about more than one cache_dir, and does so
+by parsing Squid's configuration file. It knows about both ways
+of Squid-2 cache_dir specifications, and will automatically try
+to use the correct one.
+
+default: /usr/local/squid/etc/squid.conf
+
+.B -C cd
+if you want to rescue files from your cache, you need to specify
+the directory into which the files will be copied. Please note
+that purge will try to establish the original server's directory 
+structure. This switch also activates copy-out mode. Please do 
+not use copy-out mode with any purge mode (-P) other than 0.
+
+For instance, if you specified "-C /tmp", purge will try to 
+recreate /tmp/www.server.1/url/path/file, and so forth. 
+
+default: off		See also: -H, -P
+
+.B -d l
+lets you specify a debug level. Differents bits are reserved for
+different output.
+
+default: 0
+
+.B -e re
+the "-e" options let you specify one regular expression at the 
+
+.B -E re
+commandline. This is useful, if there is only a handful you
+want to check. Please remember to escape the shell metachars
+used in your regular expression. The use of single quotes 
+around your expression is recommended. The capital letter
+version works case sensitive, the lower caps version does not.
+
+default: (no default)
+
+.B -f fn
+if you have more than a handful of expression, or want to check
+
+.B -F fn
+the same set at regular intervals, the file option might be more
+useful to you. Each line in the text file will be regarded as
+one regular expression.  Again, the capital letter version works
+case sensitive, the lower caps version does not.
+
+default: (no default)
+
+.B -H
+if in copy-out mode (see: -C), you can specify to keep the
+HTTP Header in the recreated file. 
+
+default: off		See also: -C
+
+.B -n
+by specifying the "-n" switch, you will tell purge to process 
+one cache_dir after another, instead of doing things in parallel.
+If you have more than one cache_dir in your configuration
+purge will fork off a worker process for each cache_dir to
+do the checks for optimum speed, assuming a decently designed
+cache. Since parallel execution will put quite some load on the 
+system and its controllers, it is sometimes preferred to use 
+less resources,	though it will take longer. 
+
+default: parallel mode for more than one cache_dir
+
+.B -p h[:p]
+Some cache admins use a different port than 3128. The
+purge tool will need to connect to your cache in order to send
+the PURGE request (see -P). This option lets you specify the
+host and port to connect to. The port is optional. The port
+can be a name (check your /etc/services) or number. It is
+separated from the host name portion by a single colon, no
+spaces allowed.
+
+default: localhost:3128
+
+.B -P #
+If you want to do more than just print your cache content, you
+will need to specify this option. Each bit is reserved for a
+different action. Only the use of the LSB is recommended, the
+rest should be considered experimental.
+
+.PP
+.RS
+.B no bit set:	just print
+.br
+.B bit#0 set:	send PURGE for matches
+.br
+.B bit#1 set:	unlink object file for 404 not found PURGEs
+.br
+.B bit#2 set:	unlink weird object files
+.RE
+.PP
+
+If you use a value other than 0 or 1, you will need to slow
+rebuild your cache content. A warning message will remind you
+of that. If you use bit#1, all unsuccessful PURGEs will result
+in the object file in your cache directory to be removed, because
+squid does not seem to know about it any longer. Beware that the
+asyncio might try to remove it after the purge tool, and thus
+complains bitterly. Bit#1 only makes sense, if Bit#0 is also
+set, otherwise it has no effect (since the HTTP status 404 is
+never returned).
+
+Bit#2 is reserved for strange files which do not even contain
+a URL. Beware that these files may indicate a new object squid
+currently intends to swap onto disk. If the file suddenly went
+away, or is removed when squid tries to fetch the object, it
+will complain bitterly. You must slow rebuild your cache, if
+you use this option.
+
+It is recommended that if you dare to use bit#1 or bit#2, you
+should only grant the purge tool access to your squid, e.g. 
+move the HTTP and ICP listening port of squid to a different
+non-standard location during the purge.
+
+default: 0 (just print)
+
+.B -s
+If you specify this switch, all commandline parameters will be
+shown after they were parsed.
+
+default: off
+
+.B -v
+be verbose in the things reported about the file. See the output
+section below.
+
+
+.SH OUTPUT
+
+In regular mode, the output of purge consists of four columns. If the
+URL contains not encoded whitespaces, it may look as if there are more
+columns, but the last one is the URI.
+
+ # name   meaning
+ - ------ -----------------------------------------------------------
+ 1 file   name of cache file eximed which matches the re.
+ 2 status return result of purge request, "  0" in print mode.
+ 3 size   object size including stored headers, not file size.
+ 4 uri    perceived uri
+
+Example for non-verbose output in print-mode:
+
+/cache3/00/00/0000004A   0     5682 http://graphics.userfriendly.org/images/slovenia.gif
+
+In verbose mode, additional columns are inserted before the uri. Time
+stamps are reported using hexadecimal notation, and Squid's standard
+for reporting "no such timestamp" == -1, and "unparsable timestamp" == -2.
+
+ # name   meaning
+ - ------ -----------------------------------------------------------
+ 1 file   name of cache file eximed which matches the re.
+ 2 status return result of purge request, "  0" in print mode "-P 0".
+ 3 size   object size including stored headers, not file size.
+ 4 md5    MD5 of URI from file, or "(no_md5_data_available)" string.
+ 5 ts     UTC of Value of Date: header in hex notation
+ 6 lr     UTC of last time the object was referenced
+ 7 ex     UTC of Expires: header
+ 8 lr     UTC of Last-Modified: header
+ 9 flags  Value of objects flags field in hex, see: Programmers Guide
+10 refcnt number of times the object was referenced.
+11 uri    STORE_META_URL uri or "strange_file"
+
+Example for verbose output in print-mode:
+
+/cache1/00/00/000000B7   0      406 7CFCB1D319F158ADC9CFD991BB8F6DCE 397d449b 39bf677b ffffffff 3820abfc 0460     1  http://www.netscape.com/images/nc_vera_tile.gif
+
+
+.SH LIMITATIONS
+
+.B Purge does not slow rebuild the cache for you.
+
+.B It is still relatively slow, especially if your machine is low on memory
+and/or unable to hold all OS directory cache entries in main memory.
+
+.B should never be used on "busy" caches with purge modes higher than 1.
+
+
+.SH TODO
+
+1) use the stat() result on weird files to have a look at their ctime and 
+mtime. If they are younger than, lets say 30 seconds, they were just
+created by squid and should not be removed.
+
+2) Add a query before purging objects or removing files, and add another
+option to remove nagging for the experienced user.
+
+3) The reported object size may be off by one.
+
+
+.SH AUTHOR
+Santiago Garcia Mantinan <manty@debian.org> based on purge's README

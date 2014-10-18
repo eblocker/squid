@@ -80,6 +80,7 @@ install/squid3::
 	install -m 750 -o proxy -g proxy -d debian/squid3/var/spool/squid3
 	install -m 755 -g root -d $(INSTALLDIR)/usr/share/man/man1
 	mv $(INSTALLDIR)/usr/bin/purge $(INSTALLDIR)/usr/bin/squid-purge
+	install -m 644 -g root debian/squid-purge.8  $(INSTALLDIR)/usr/share/man/man8
 	chmod 4755 $(INSTALLDIR)/usr/lib/squid3/pinger
 
 clean::

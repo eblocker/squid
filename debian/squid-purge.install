@@ -1,1 +1,2 @@
-/usr/bin/squid-purge
+usr/bin/squid-purge
+usr/share/man/man8/squid-purge.8

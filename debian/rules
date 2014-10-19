@@ -45,7 +45,11 @@ DEB_CONFIGURE_EXTRA_FLAGS := --datadir=/usr/share/squid3 \
 		--with-large-files \
 		--with-default-user=proxy
 
+BUILDINFO := $(shell lsb_release -si 2>/dev/null)
+
 DEB_HOST_ARCH_OS := $(shell dpkg-architecture -qDEB_HOST_ARCH_OS 2>/dev/null)
+
+DEB_CONFIGURE_EXTRA_FLAGS += --enable-build-info="$(BUILDINFO) $(DEB_HOST_ARCH_OS)"
 
 ifeq ($(DEB_HOST_ARCH_OS), kfreebsd)
 		DEB_CONFIGURE_EXTRA_FLAGS += --enable-kqueue

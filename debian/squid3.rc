@@ -59,13 +59,11 @@ create_run_dir () {
 	usr=`grepconf cache_effective_user proxy`
 	grp=`grepconf cache_effective_group proxy`
 
-
 	if [ "$(dpkg-statoverride --list $run_dir)" = "" ] &&
 	   [ ! -e $run_dir ] ; then
 		mkdir -p $run_dir
 	  	chown $usr:$grp $run_dir
 	fi
-	 
 }
 
 start () {
@@ -80,7 +78,7 @@ start () {
 	#
 	# Create spool dirs if they don't exist.
 	#
-	if [ "$cache_type" = "coss" -a -d "$cache_dir" -a ! -f "$cache_dir/stripe" ] || [ "$cache_type" != "coss" -a -d "$cache_dir" -a ! -d "$cache_dir/00" ]
+	if test -d "$cache_dir" -a ! -d "$cache_dir/00"
 	then
 		log_warning_msg "Creating $DESC cache structure"
 		$DAEMON -z -f $CONFIG
@@ -180,4 +178,3 @@ case "$1" in
 esac
 
 exit 0
-

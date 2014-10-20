@@ -124,11 +124,18 @@ stop () {
 
 case "$1" in
     start)
-	log_daemon_msg "Starting $DESC" "$NAME"
-	if start ; then
-		log_end_msg $?
+	res=`$DAEMON -k parse 2>&1`
+	if test -n "$res";
+	then
+		log_failure_msg "$res"
+		exit 3
 	else
-		log_end_msg $?
+		log_daemon_msg "Starting $DESC" "$NAME"
+		if start ; then
+			log_end_msg $?
+		else
+			log_end_msg $?
+		fi
 	fi
 	;;
     stop)
@@ -140,7 +147,7 @@ case "$1" in
 	fi
 	;;
     reload|force-reload)
-	res=`$DAEMON -k check 2>&1`
+	res=`$DAEMON -k parse 2>&1`
 	if test -n "$res";
 	then
 		log_failure_msg "$res"
@@ -153,7 +160,7 @@ case "$1" in
 	fi
 	;;
     restart)
-	res=`$DAEMON -k check 2>&1`
+	res=`$DAEMON -k parse 2>&1`
 	if test -n "$res";
 	then
 		log_failure_msg "$res"

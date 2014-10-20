@@ -19,6 +19,10 @@ squid3 (3.4.8-2) UNRELEASED; urgency=medium
     - add distribution details to squid -v display output
       this obsoletes the Ubuntu fix-distribution.patch
 
+  [ Luigi Gangitano <luigi@debian.org> ]
+  * debian/squid3.rc
+    - Change config check to config parse on start/reload/restart
+
  -- Amos Jeffries <amosjeffries@squid-cache.org>  Sun, 19 Oct 2014 18:41:51 +1300
 
 squid3 (3.4.8-1) unstable; urgency=high

@@ -34,22 +34,28 @@ ulimit -n 65535
 
 find_cache_dir () {
 	w=" 	" # space tab
-        res=`sed -ne '
-                s/^['"$w"']*'$1'['"$w"']\+[^'"$w"']\+['"$w"']\+\([^'"$w"']\+\).*$/\1/p;
-                t end;
-                d;
-                :end q' < $CONFIG`
+        res=`$DAEMON -k parse -f $CONFIG 2>&1 |
+		grep "Processing:" |
+		sed s/.*Processing:\ // |
+		sed -ne '
+			s/^['"$w"']*'$1'['"$w"']\+[^'"$w"']\+['"$w"']\+\([^'"$w"']\+\).*$/\1/p;
+			t end;
+			d;
+			:end q'`
         [ -n "$res" ] || res=$2
         echo "$res"
 }
 
 grepconf () {
 	w=" 	" # space tab
-	res=`sed -ne '
-		s/^['"$w"']*'$1'['"$w"']\+\([^'"$w"']\+\).*$/\1/p;
-		t end;
-		d;
-		:end q' < $CONFIG`
+        res=`$DAEMON -k parse -f $CONFIG 2>&1 |
+		grep "Processing:" |
+		sed s/.*Processing:\ // |
+		sed -ne '
+			s/^['"$w"']*'$1'['"$w"']\+\([^'"$w"']\+\).*$/\1/p;
+			t end;
+			d;
+			:end q'`
 	[ -n "$res" ] || res=$2
 	echo "$res"
 }
@@ -124,7 +130,7 @@ stop () {
 
 case "$1" in
     start)
-	res=`$DAEMON -k parse 2>&1`
+	res=`$DAEMON -k parse -f $CONFIG 2>&1 | grep -o "FATAL .*"`
 	if test -n "$res";
 	then
 		log_failure_msg "$res"
@@ -147,7 +153,7 @@ case "$1" in
 	fi
 	;;
     reload|force-reload)
-	res=`$DAEMON -k parse 2>&1`
+	res=`$DAEMON -k parse -f $CONFIG 2>&1 | grep -o "FATAL .*"`
 	if test -n "$res";
 	then
 		log_failure_msg "$res"
@@ -160,7 +166,7 @@ case "$1" in
 	fi
 	;;
     restart)
-	res=`$DAEMON -k parse 2>&1`
+	res=`$DAEMON -k parse -f $CONFIG 2>&1 | grep -o "FATAL .*"`
 	if test -n "$res";
 	then
 		log_failure_msg "$res"

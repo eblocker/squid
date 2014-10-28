@@ -4,26 +4,30 @@ set -e
 
 grepconf () {
 	w=" 	" # space tab
-	sq=/etc/squid3/squid.conf
 	# sed is cool.
-	res=`sed -ne '
-		s/^'$1'['"$w"']\+\([^'"$w"']\+\).*$/\1/p;
-		t end;
-		d;
-		:end q' < $sq`
+	res=`squid3 -k parse 2>&1 |
+		grep "Processing:" |
+		sed s/.*Processing:\ // |
+		sed -ne '
+			s/^'$1'['"$w"']\+\([^'"$w"']\+\).*$/\1/p;
+			t end;
+			d;
+			:end q'`
 	[ -n "$res" ] || res=$2
 	echo "$res"
 }
 
 grepconf2 () {
 	w=" 	" # space tab
-	sq=/etc/squid3/squid.conf
 	# sed is cool.
-	res=`sed -ne '
-		s/^'$1'['"$w"']\+[^'"$w"']\+['"$w"']\+\([^'"$w"']\+\).*$/\1/p;
-		t end;
-		d;
-		:end q' < $sq`
+	res=`squid3 -k parse 2>&1 |
+		grep "Processing:" |
+		sed s/.*Processing:\ // |
+		sed -ne '
+			s/^'$1'['"$w"']\+[^'"$w"']\+['"$w"']\+\([^'"$w"']\+\).*$/\1/p;
+			t end;
+			d;
+			:end q'`
 	[ -n "$res" ] || res=$2
 	echo "$res"
 }
@@ -37,19 +41,19 @@ case "$1" in
 		cache_dir=`grepconf2 cache_dir /var/spool/squid3`
 		usr=`grepconf cache_effective_user proxy`
 		grp=`grepconf cache_effective_group proxy`
-		
+
 		if [ "$(stat -c %U $cache_dir)" != "$usr" ] ||
 		   [ "$(stat -c %G $cache_dir)" != "$grp" ] ; then
 			chown $usr:$grp $cache_dir -R
 		fi
-		
+
 		if [ "$(stat -c %U $log_dir)" != "$usr" ] ||
 		   [ "$(stat -c %G $log_dir)" != "$grp" ] ; then
 			if [ "$(dpkg-statoverride --list $log_dir)" = "" ] ; then
 		  		chown -R $usr:$grp $log_dir
 			fi
 		fi
-	 
+
 		#
 		# Create spool dirs if they don't exist.
 		#

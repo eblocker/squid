@@ -1,4 +1,4 @@
-squid3 (3.4.8-2) UNRELEASED; urgency=medium
+squid3 (3.4.8-2) unstable; urgency=medium
 
   [ Santiago Garcia Mantinan <manty@debian.org> ]
   * Add patch to remove bashisms from cert_tool
@@ -37,7 +37,7 @@ squid3 (3.4.8-2) UNRELEASED; urgency=medium
   * debian/control
     - Fixed XS-Vcs-Git Header pointing anonscm.debian.org
 
- -- Amos Jeffries <amosjeffries@squid-cache.org>  Wed, 29 Oct 2014 00:16:51 +1300
+ -- Luigi Gangitano <luigi@debian.org>  Wed, 29 Oct 2014 15:50:51 +0100
 
 squid3 (3.4.8-1) unstable; urgency=high
  

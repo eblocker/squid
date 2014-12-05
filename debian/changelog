@@ -1,4 +1,4 @@
-squid3 (3.4.8-3) UNRELEASED; urgency=medium
+squid3 (3.4.8-3) unstable; urgency=medium
 
   [ Amos Jeffries <amosjeffries@squid-cache.org> ]
   * debian/squid3.preinst

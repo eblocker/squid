@@ -18,9 +18,9 @@ case "$1" in
 		#
 		# Revert the automated configuration changes we may have done
 		#
-		if test -f /etc/squid3/squid.conf.upgrade-backup; then
+		if test -f /etc/squid3/squid.conf.pre_3.4_upgrade; then
 			echo "Removing squid.conf changes."
-			mv /etc/squid3/squid.conf.upgrade-backup /etc/squid3/squid.conf
+			mv /etc/squid3/squid.conf.pre_3.4_upgrade /etc/squid3/squid.conf
 		fi
 		exit 0
 		;;

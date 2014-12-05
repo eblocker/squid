@@ -5,6 +5,11 @@ squid3 (3.4.8-3) UNRELEASED; urgency=medium
     - Remove obsolete manager ACL definition from squid.conf
       when upgrading squid3 package (Closes: #768170)
 
+
+  [ Luigi Gangitano <luigi@debian.org> ]
+  * debian/squid3.preinst
+    - Fix configuration file only if needed and match any uncommented line
+
  -- Amos Jeffries <amosjeffries@squid-cache.org>  Fri, 07 Nov 2014 05:59:51 +1300
 
 squid3 (3.4.8-2) unstable; urgency=medium

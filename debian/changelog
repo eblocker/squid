@@ -1,3 +1,11 @@
+squid3 (3.4.8-5) unstable; urgency=medium
+
+  [ Luigi Gangitano <luigi@debian.org> ]
+  * debian/squid3.{pre,post}inst
+    - Moved ACL manager fix to postinst (Closes: #773032)
+
+ -- Luigi Gangitano <luigi@debian.org>  Tue, 16 Dec 2014 13:43:03 +0100
+
 squid3 (3.4.8-4) unstable; urgency=medium
 
   [ Luigi Gangitano <luigi@debian.org> ]

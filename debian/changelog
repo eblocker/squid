@@ -1,3 +1,10 @@
+squid3 (3.4.8-5~bpo70+1) wheezy-backports; urgency=medium
+
+  [ Luigi Gangitano <luigi@debian.org> ]
+  * Rebuild for wheezy-backports.
+
+ -- Luigi Gangitano <luigi@debian.org>  Mon, 26 Jan 2015 19:19:29 +0100
+
 squid3 (3.4.8-5) unstable; urgency=medium
 
   [ Luigi Gangitano <luigi@debian.org> ]

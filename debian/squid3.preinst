@@ -4,24 +4,8 @@ set -e
 
 case "$1" in
 	upgrade|install-upgrade)
-		#
-		# Remove obsolete manager ACL definition.
-		# It will halt upgrade with fatal error if left.
-		#
-		if test -f /etc/squid3/squid.conf && dpkg --compare-versions "$2" lt '3.4.8-3' && grep -q "^[[:blank:]]*acl manager" /etc/squid3/squid.conf ; then
-			echo "Filtering squid.conf manager ACL."
-			cp /etc/squid3/squid.conf /etc/squid3/squid.conf.pre_3.4_upgrade
-			sed -e "s/^\([ \t]*acl manager.*\)/# \1 # Commented out on upgrade to 3.4/" </etc/squid3/squid.conf.pre_3.4_upgrade >/etc/squid3/squid.conf
-		fi
 		;;
 	abort-upgrade)
-		#
-		# Revert the automated configuration changes we may have done
-		#
-		if test -f /etc/squid3/squid.conf.pre_3.4_upgrade; then
-			echo "Removing squid.conf changes."
-			mv /etc/squid3/squid.conf.pre_3.4_upgrade /etc/squid3/squid.conf
-		fi
 		exit 0
 		;;
 esac

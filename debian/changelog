@@ -16,6 +16,10 @@ squid3 (3.4.8-6) unstable; urgency=medium
     - Added upstream patch fixing incorrect security permissions for
       TOS/DiffServ packet marking (Closes: #776468)
 
+  * debian/patches/35-squid-3.4-13203.patch 
+    - Added upstream patch fixing squidclient unable to connect to host with
+      both IPv4 and IPv6 addresses (Closes: #742425)
+
  -- Luigi Gangitano <luigi@debian.org>  Wed, 28 Jan 2015 12:34:42 +0100
 
 squid3 (3.4.8-5) unstable; urgency=medium

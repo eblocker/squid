@@ -1,0 +1,25 @@
+From: Luigi Gangitano <luigi@debian.org>
+Date: Wed, 28 Jan 2015 12:31:10 +0100
+Subject: squid-3.4-13213.patch Adds corrects capabilities to set TOS/DiffServ
+ marks on output packages
+
+---
+ src/tools.cc | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/src/tools.cc b/src/tools.cc
+index 076446e..21923a0 100644
+--- a/src/tools.cc
++++ b/src/tools.cc
+@@ -1319,7 +1319,10 @@ restoreCapabilities(int keep)
+         cap_value_t cap_list[10];
+         cap_list[ncaps] = CAP_NET_BIND_SERVICE;
+         ++ncaps;
+-        if (Ip::Interceptor.TransparentActive() || Ip::Qos::TheConfig.isHitNfmarkActive() || Ip::Qos::TheConfig.isAclNfmarkActive()) {
++        if (Ip::Interceptor.TransparentActive() ||
++                Ip::Qos::TheConfig.isHitNfmarkActive() ||
++                Ip::Qos::TheConfig.isAclNfmarkActive() ||
++                Ip::Qos::TheConfig.isAclTosActive()) {
+             cap_list[ncaps] = CAP_NET_ADMIN;
+             ++ncaps;
+         }

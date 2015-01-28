@@ -12,6 +12,10 @@ squid3 (3.4.8-6) unstable; urgency=medium
     - Added upstream patch fixing a possible replay vulnerability on Digest
       authentication (Closes: #776464)
 
+  * debian/patches/34-squid-3.4-13213.patch
+    - Added upstream patch fixing incorrect security permissions for
+      TOS/DiffServ packet marking (Closes: #776468)
+
  -- Luigi Gangitano <luigi@debian.org>  Wed, 28 Jan 2015 12:34:42 +0100
 
 squid3 (3.4.8-5) unstable; urgency=medium

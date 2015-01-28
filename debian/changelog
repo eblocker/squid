@@ -1,3 +1,11 @@
+squid3 (3.4.8-6) unstable; urgency=medium
+
+  [ Luigi Gangitano <luigi@debian.org> ]
+  * debian/patches/31-squid-3.4-13199.patch
+    - Added upstream patch fixing excessive CPU usage (Closes: #776461)
+
+ -- Luigi Gangitano <luigi@debian.org>  Wed, 28 Jan 2015 12:34:42 +0100
+
 squid3 (3.4.8-5) unstable; urgency=medium
 
   [ Luigi Gangitano <luigi@debian.org> ]

@@ -4,3 +4,4 @@
 16-ipc-statedir.patch
 21-squid-3.4-13176-memoryleak.patch
 30-cert_tool.patch
+31-squid-3.4-13199.patch

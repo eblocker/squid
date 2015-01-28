@@ -4,6 +4,10 @@ squid3 (3.4.8-6) unstable; urgency=medium
   * debian/patches/31-squid-3.4-13199.patch
     - Added upstream patch fixing excessive CPU usage (Closes: #776461)
 
+  * debian/patches/32-squid-3.4-13210.patch
+    - Added upstream patch fixing excessive CPU and memory usage in 
+      NTLM and Negotiate authentication helpers (Closes: #776463) 
+
  -- Luigi Gangitano <luigi@debian.org>  Wed, 28 Jan 2015 12:34:42 +0100
 
 squid3 (3.4.8-5) unstable; urgency=medium

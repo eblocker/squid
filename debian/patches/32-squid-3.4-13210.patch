@@ -1,0 +1,94 @@
+From: Luigi Gangitano <luigi@debian.org>
+Date: Wed, 28 Jan 2015 12:28:51 +0100
+Subject: squid-3.4-13210.patch Fixes excessive NTLM or Negotiate auth helper
+ annotations, which lead to excessive CPU and memory use
+
+---
+ src/Notes.cc                      | 15 +++++++++++++++
+ src/Notes.h                       |  5 +++++
+ src/auth/digest/UserRequest.cc    |  2 ++
+ src/auth/negotiate/UserRequest.cc |  2 ++
+ src/auth/ntlm/UserRequest.cc      |  2 ++
+ 5 files changed, 26 insertions(+)
+
+diff --git a/src/Notes.cc b/src/Notes.cc
+index 0003956..13d530e 100644
+--- a/src/Notes.cc
++++ b/src/Notes.cc
+@@ -189,6 +189,21 @@ NotePairs::add(const char *key, const char *note)
+ }
+ 
+ void
++NotePairs::remove(const char *key)
++{
++    Vector<NotePairs::Entry *>::iterator i = entries.begin();
++    while (i != entries.end()) {
++        if ((*i)->name.cmp(key) == 0) {
++            NotePairs::Entry *e = (*i);
++            entries.prune(e);
++            delete e;
++            i = entries.begin(); // vector changed underneath us
++        } else
++            ++i;
++    }
++}
++
++void
+ NotePairs::addStrList(const char *key, const char *values)
+ {
+     String strValues(values);
+diff --git a/src/Notes.h b/src/Notes.h
+index 47950d4..401c8b9 100644
+--- a/src/Notes.h
++++ b/src/Notes.h
+@@ -155,6 +155,11 @@ public:
+     void add(const char *key, const char *value);
+ 
+     /**
++     * Remove all notes with a given key.
++     */
++    void remove(const char *key);
++
++    /**
+      * Adds a note key and values strList to the notes list.
+      * If the key name already exists in list, add the new values to its set
+      * of values.
+diff --git a/src/auth/digest/UserRequest.cc b/src/auth/digest/UserRequest.cc
+index f625bd8..9107d73 100644
+--- a/src/auth/digest/UserRequest.cc
++++ b/src/auth/digest/UserRequest.cc
+@@ -298,6 +298,8 @@ Auth::Digest::UserRequest::HandleReply(void *data, const HelperReply &reply)
+     // add new helper kv-pair notes to the credentials object
+     // so that any transaction using those credentials can access them
+     auth_user_request->user()->notes.appendNewOnly(&reply.notes);
++    // remove any private credentials detail which got added.
++    auth_user_request->user()->notes.remove("ha1");
+ 
+     static bool oldHelperWarningDone = false;
+     switch (reply.result) {
+diff --git a/src/auth/negotiate/UserRequest.cc b/src/auth/negotiate/UserRequest.cc
+index 086da9f..64cffc9 100644
+--- a/src/auth/negotiate/UserRequest.cc
++++ b/src/auth/negotiate/UserRequest.cc
+@@ -229,6 +229,8 @@ Auth::Negotiate::UserRequest::HandleReply(void *data, const HelperReply &reply)
+     // add new helper kv-pair notes to the credentials object
+     // so that any transaction using those credentials can access them
+     auth_user_request->user()->notes.appendNewOnly(&reply.notes);
++    // remove any private credentials detail which got added.
++    auth_user_request->user()->notes.remove("token");
+ 
+     Auth::Negotiate::UserRequest *lm_request = dynamic_cast<Auth::Negotiate::UserRequest *>(auth_user_request.getRaw());
+     assert(lm_request != NULL);
+diff --git a/src/auth/ntlm/UserRequest.cc b/src/auth/ntlm/UserRequest.cc
+index 4ce04eb..ebfe895 100644
+--- a/src/auth/ntlm/UserRequest.cc
++++ b/src/auth/ntlm/UserRequest.cc
+@@ -223,6 +223,8 @@ Auth::Ntlm::UserRequest::HandleReply(void *data, const HelperReply &reply)
+     // add new helper kv-pair notes to the credentials object
+     // so that any transaction using those credentials can access them
+     auth_user_request->user()->notes.appendNewOnly(&reply.notes);
++    // remove any private credentials detail which got added.
++    auth_user_request->user()->notes.remove("token");
+ 
+     Auth::Ntlm::UserRequest *lm_request = dynamic_cast<Auth::Ntlm::UserRequest *>(auth_user_request.getRaw());
+     assert(lm_request != NULL);

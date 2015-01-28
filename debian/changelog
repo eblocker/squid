@@ -8,6 +8,10 @@ squid3 (3.4.8-6) unstable; urgency=medium
     - Added upstream patch fixing excessive CPU and memory usage in 
       NTLM and Negotiate authentication helpers (Closes: #776463) 
 
+  * debian/patches/33-squid-3.4-13211.patch
+    - Added upstream patch fixing a possible replay vulnerability on Digest
+      authentication (Closes: #776464)
+
  -- Luigi Gangitano <luigi@debian.org>  Wed, 28 Jan 2015 12:34:42 +0100
 
 squid3 (3.4.8-5) unstable; urgency=medium

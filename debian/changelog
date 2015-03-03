@@ -1,3 +1,11 @@
+squid3 (3.4.8-7) UNRELEASED; urgency=medium
+
+  [ Amos Jeffries <amosjeffries@squid-cache.org> ]
+  * debian/patches/36-squid-3.5-13407.patch
+    - Add upstream patch fixing use-after-free in adaptation (Closes: #760303)
+
+ -- Amos Jeffries <amosjeffries@squid-cache.org>  Tue, 03 Mar 2015 16:50:00 +1300
+
 squid3 (3.4.8-6) unstable; urgency=medium
 
   [ Luigi Gangitano <luigi@debian.org> ]

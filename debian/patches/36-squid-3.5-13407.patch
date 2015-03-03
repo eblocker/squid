@@ -1,0 +1,76 @@
+------------------------------------------------------------
+revno: 13407
+revision-id: chtsanti@users.sourceforge.net-20140509151940-b1w133m4kqeaspcr
+parent: rousskov@measurement-factory.com-20140509044554-qtglf409zzv9n997
+committer: Christos Tsantilas <chtsanti@users.sourceforge.net>
+branch nick: trunk
+timestamp: Fri 2014-05-09 18:19:40 +0300
+message:
+  author: Alex Rousskov <rousskov@measurement-factory.com>
+  Avoid on-exit crashes when adaptation is enabled.
+  
+  After trunk r13269 (Vector refactor) destroyed vector objects still have
+  positive item counts. This exposes use-after-delete bugs. In this particular
+  case, global adaptation rule/group/service arrays are destructed by global
+  destruction sequence first and then again by Adaptation::*::TheConfig objects
+  destructors.
+  
+  This change avoiding static destruction order dependencies by storing those
+  global adaptation arrays on heap.
+------------------------------------------------------------
+# Bazaar merge directive format 2 (Bazaar 0.90)
+# revision_id: chtsanti@users.sourceforge.net-20140509151940-\
+#   b1w133m4kqeaspcr
+# target_branch: http://bzr.squid-cache.org/bzr/squid3/trunk/
+# testament_sha1: c53d932132330a40baf79e101cc1ecdd7af2de7e
+# timestamp: 2014-05-09 15:53:46 +0000
+# source_branch: http://bzr.squid-cache.org/bzr/squid3/trunk/
+# base_revision_id: rousskov@measurement-factory.com-20140509044554-\
+#   qtglf409zzv9n997
+# 
+# Begin patch
+=== modified file 'src/adaptation/AccessRule.cc'
+--- a/src/adaptation/AccessRule.cc	2013-05-13 22:48:23 +0000
++++ b/src/adaptation/AccessRule.cc	2014-05-09 15:19:40 +0000
+@@ -51,8 +51,8 @@
+ Adaptation::AccessRules &
+ Adaptation::AllRules()
+ {
+-    static AccessRules TheRules;
+-    return TheRules;
++    static AccessRules *TheRules = new AccessRules;
++    return *TheRules;
+ }
+ 
+ // TODO: make AccessRules::find work
+
+=== modified file 'src/adaptation/Service.cc'
+--- a/src/adaptation/Service.cc	2014-02-04 19:47:14 +0000
++++ b/src/adaptation/Service.cc	2014-05-09 15:19:40 +0000
+@@ -54,8 +54,8 @@
+ Adaptation::Services &
+ Adaptation::AllServices()
+ {
+-    static Services TheServices;
+-    return TheServices;
++    static Services *TheServices = new Services;
++    return *TheServices;
+ }
+ 
+ Adaptation::ServicePointer
+
+=== modified file 'src/adaptation/ServiceGroups.cc'
+--- a/src/adaptation/ServiceGroups.cc	2014-02-02 09:42:23 +0000
++++ b/src/adaptation/ServiceGroups.cc	2014-05-09 15:19:40 +0000
+@@ -315,8 +315,8 @@
+ Adaptation::Groups &
+ Adaptation::AllGroups()
+ {
+-    static Groups TheGroups;
+-    return TheGroups;
++    static Groups *TheGroups = new Groups;
++    return *TheGroups;
+ }
+ 
+ Adaptation::ServiceGroupPointer
+

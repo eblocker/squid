@@ -1,5 +1,6 @@
 
 <html><head>
+<meta type="copyright" content="Copyright (C) 1996-2015 The Squid Software Foundation and contributors">
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
 <title>VIRHE: Pyydettyä URL-osoitetta ei voitu hakea</title>
 <style type="text/css"><!-- 
@@ -23,7 +24,7 @@ body
 <pre>%R</pre>
 </blockquote>
 
-<p>Mahdollisia ongelmia:</p>
+<p>Muutamia mahdollisia ongelmia ovat:</p>
 <ul>
 <li id="missing-method"><p>Puuttuva tai tuntematon hakupyynnön tyyppi</p></li>
 <li id="missing-url"><p>Puuttuva URL</p></li>

@@ -1,8 +1,15 @@
+/*
+ * Copyright (C) 1996-2015 The Squid Software Foundation and contributors
+ *
+ * Squid software is distributed under GPLv2+ license and includes
+ * contributions from numerous individuals and organizations.
+ * Please see the COPYING and CONTRIBUTORS files for details.
+ */
+
 #include "squid.h"
 #include "acl/BoolOps.h"
 #include "acl/Checklist.h"
 #include "Debug.h"
-#include "wordlist.h"
 
 /* Acl::NotNode */
 
@@ -52,11 +59,11 @@ Acl::NotNode::clone() const
     return NULL;
 }
 
-wordlist*
+SBufList
 Acl::NotNode::dump() const
 {
-    wordlist *text = NULL;
-    wordlistAdd(&text, name);
+    SBufList text;
+    text.push_back(SBuf(name));
     return text;
 }
 
@@ -134,3 +141,4 @@ Acl::OrNode::parse()
     // Not implemented: OrNode cannot be configured directly. See Acl::AnyOf.
     assert(false);
 }
+

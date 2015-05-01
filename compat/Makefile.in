@@ -83,16 +83,16 @@ POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
 DIST_COMMON = $(top_srcdir)/src/Common.am $(srcdir)/Makefile.in \
-	$(srcdir)/Makefile.am drand48.c inet_pton.c psignal.c \
-	strtoll.c strerror.c tempnam.c initgroups.c getaddrinfo.c \
-	inet_ntop.c getnameinfo.c $(top_srcdir)/cfgaux/depcomp \
+	$(srcdir)/Makefile.am psignal.c initgroups.c drand48.c \
+	tempnam.c strtoll.c strerror.c $(top_srcdir)/cfgaux/depcomp \
 	$(top_srcdir)/cfgaux/test-driver
 check_PROGRAMS = testPreCompiler$(EXEEXT)
 TESTS = testPreCompiler$(EXEEXT) testHeaders
-@USE_LOADABLE_MODULES_TRUE@am__append_1 = $(INCLTDL)
+@ENABLE_LOADABLE_MODULES_TRUE@am__append_1 = $(INCLTDL)
 subdir = compat
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
-am__aclocal_m4_deps = $(top_srcdir)/acinclude/init.m4 \
+am__aclocal_m4_deps = $(top_srcdir)/acinclude/ax_with_prog.m4 \
+	$(top_srcdir)/acinclude/init.m4 \
 	$(top_srcdir)/acinclude/squid-util.m4 \
 	$(top_srcdir)/acinclude/compiler-flags.m4 \
 	$(top_srcdir)/acinclude/os-deps.m4 \
@@ -105,7 +105,6 @@ am__aclocal_m4_deps = $(top_srcdir)/acinclude/init.m4 \
 	$(top_srcdir)/helpers/basic_auth/DB/required.m4 \
 	$(top_srcdir)/helpers/basic_auth/LDAP/required.m4 \
 	$(top_srcdir)/helpers/basic_auth/MSNT-multi-domain/required.m4 \
-	$(top_srcdir)/helpers/basic_auth/MSNT/required.m4 \
 	$(top_srcdir)/helpers/basic_auth/NCSA/required.m4 \
 	$(top_srcdir)/helpers/basic_auth/NIS/required.m4 \
 	$(top_srcdir)/helpers/basic_auth/PAM/required.m4 \
@@ -113,21 +112,22 @@ am__aclocal_m4_deps = $(top_srcdir)/acinclude/init.m4 \
 	$(top_srcdir)/helpers/basic_auth/RADIUS/required.m4 \
 	$(top_srcdir)/helpers/basic_auth/SASL/required.m4 \
 	$(top_srcdir)/helpers/basic_auth/SMB/required.m4 \
+	$(top_srcdir)/helpers/basic_auth/SMB_LM/required.m4 \
 	$(top_srcdir)/helpers/basic_auth/SSPI/required.m4 \
 	$(top_srcdir)/helpers/basic_auth/fake/required.m4 \
 	$(top_srcdir)/helpers/basic_auth/getpwnam/required.m4 \
-	$(top_srcdir)/helpers/ntlm_auth/modules.m4 \
-	$(top_srcdir)/helpers/ntlm_auth/fake/required.m4 \
-	$(top_srcdir)/helpers/ntlm_auth/SSPI/required.m4 \
-	$(top_srcdir)/helpers/ntlm_auth/smb_lm/required.m4 \
-	$(top_srcdir)/helpers/negotiate_auth/modules.m4 \
-	$(top_srcdir)/helpers/negotiate_auth/SSPI/required.m4 \
-	$(top_srcdir)/helpers/negotiate_auth/kerberos/required.m4 \
-	$(top_srcdir)/helpers/negotiate_auth/wrapper/required.m4 \
 	$(top_srcdir)/helpers/digest_auth/modules.m4 \
 	$(top_srcdir)/helpers/digest_auth/LDAP/required.m4 \
 	$(top_srcdir)/helpers/digest_auth/eDirectory/required.m4 \
 	$(top_srcdir)/helpers/digest_auth/file/required.m4 \
+	$(top_srcdir)/helpers/negotiate_auth/modules.m4 \
+	$(top_srcdir)/helpers/negotiate_auth/SSPI/required.m4 \
+	$(top_srcdir)/helpers/negotiate_auth/kerberos/required.m4 \
+	$(top_srcdir)/helpers/negotiate_auth/wrapper/required.m4 \
+	$(top_srcdir)/helpers/ntlm_auth/modules.m4 \
+	$(top_srcdir)/helpers/ntlm_auth/fake/required.m4 \
+	$(top_srcdir)/helpers/ntlm_auth/SSPI/required.m4 \
+	$(top_srcdir)/helpers/ntlm_auth/smb_lm/required.m4 \
 	$(top_srcdir)/helpers/log_daemon/modules.m4 \
 	$(top_srcdir)/helpers/log_daemon/DB/required.m4 \
 	$(top_srcdir)/helpers/log_daemon/file/required.m4 \
@@ -135,6 +135,7 @@ am__aclocal_m4_deps = $(top_srcdir)/acinclude/init.m4 \
 	$(top_srcdir)/helpers/external_acl/AD_group/required.m4 \
 	$(top_srcdir)/helpers/external_acl/LDAP_group/required.m4 \
 	$(top_srcdir)/helpers/external_acl/LM_group/required.m4 \
+	$(top_srcdir)/helpers/external_acl/delayer/required.m4 \
 	$(top_srcdir)/helpers/external_acl/SQL_session/required.m4 \
 	$(top_srcdir)/helpers/external_acl/eDirectory_userip/required.m4 \
 	$(top_srcdir)/helpers/external_acl/file_userip/required.m4 \
@@ -157,15 +158,16 @@ CONFIG_CLEAN_VPATH_FILES =
 LTLIBRARIES = $(noinst_LTLIBRARIES)
 libcompat_squid_la_DEPENDENCIES = $(LTLIBOBJS)
 am_libcompat_squid_la_OBJECTS = assert.lo compat.lo debug.lo \
-	eui64_aton.lo GnuRegex.lo shm.lo strnstr.lo strnrchr.lo \
-	xalloc.lo xstrerror.lo xstring.lo xstrto.lo mswindows.lo
+	eui64_aton.lo getaddrinfo.lo getnameinfo.lo GnuRegex.lo \
+	inet_ntop.lo inet_pton.lo memrchr.lo shm.lo statvfs.lo \
+	strnstr.lo strnrchr.lo xalloc.lo xstrerror.lo xstring.lo \
+	xstrto.lo mswindows.lo
 libcompat_squid_la_OBJECTS = $(am_libcompat_squid_la_OBJECTS)
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
 am__v_lt_0 = --silent
 am__v_lt_1 = 
-am_testPreCompiler_OBJECTS = testPreCompiler.$(OBJEXT) \
-	testMain.$(OBJEXT)
+am_testPreCompiler_OBJECTS = testPreCompiler.$(OBJEXT)
 testPreCompiler_OBJECTS = $(am_testPreCompiler_OBJECTS)
 am__DEPENDENCIES_1 =
 testPreCompiler_DEPENDENCIES = $(am__DEPENDENCIES_1) \
@@ -473,6 +475,8 @@ AUTOHEADER = @AUTOHEADER@
 AUTOMAKE = @AUTOMAKE@
 AWK = @AWK@
 BASIC_AUTH_HELPERS = @BASIC_AUTH_HELPERS@
+BUILDCXX = @BUILDCXX@
+BUILDCXXFLAGS = @BUILDCXXFLAGS@
 BZR = @BZR@
 CACHE_EFFECTIVE_USER = @CACHE_EFFECTIVE_USER@
 CC = @CC@
@@ -520,7 +524,6 @@ FALSE = @FALSE@
 FGREP = @FGREP@
 GREP = @GREP@
 HAVE_CXX11 = @HAVE_CXX11@
-HOSTCXX = @HOSTCXX@
 ICAP_LIBS = @ICAP_LIBS@
 INCLTDL = @INCLTDL@
 INSTALL = @INSTALL@
@@ -538,12 +541,18 @@ LIBADD_DL = @LIBADD_DL@
 LIBADD_DLD_LINK = @LIBADD_DLD_LINK@
 LIBADD_DLOPEN = @LIBADD_DLOPEN@
 LIBADD_SHL_LOAD = @LIBADD_SHL_LOAD@
+LIBGNUTLS_CFLAGS = @LIBGNUTLS_CFLAGS@
+LIBGNUTLS_LIBS = @LIBGNUTLS_LIBS@
 LIBLTDL = @LIBLTDL@
 LIBOBJS = @LIBOBJS@
+LIBOPENSSL_CFLAGS = @LIBOPENSSL_CFLAGS@
+LIBOPENSSL_LIBS = @LIBOPENSSL_LIBS@
 LIBS = @LIBS@
 LIBSASL = @LIBSASL@
 LIBTOOL = @LIBTOOL@
 LIB_DB = @LIB_DB@
+LIB_KRB5_CFLAGS = @LIB_KRB5_CFLAGS@
+LIB_KRB5_LIBS = @LIB_KRB5_LIBS@
 LIPO = @LIPO@
 LN = @LN@
 LN_S = @LN_S@
@@ -626,7 +635,6 @@ ac_ct_AR = @ac_ct_AR@
 ac_ct_CC = @ac_ct_CC@
 ac_ct_CXX = @ac_ct_CXX@
 ac_ct_DUMPBIN = @ac_ct_DUMPBIN@
-ac_krb5_config = @ac_krb5_config@
 am__include = @am__include@
 am__leading_dot = @am__leading_dot@
 am__quote = @am__quote@
@@ -653,13 +661,13 @@ htmldir = @htmldir@
 includedir = @includedir@
 infodir = @infodir@
 install_sh = @install_sh@
+krb5_config = @krb5_config@
 libdir = @libdir@
 libexecdir = @libexecdir@
 localedir = @localedir@
 localstatedir = @localstatedir@
 ltdl_LIBOBJS = @ltdl_LIBOBJS@
 ltdl_LTLIBOBJS = @ltdl_LTLIBOBJS@
-makesnmplib = @makesnmplib@
 mandir = @mandir@
 mkdir_p = @mkdir_p@
 oldincludedir = @oldincludedir@
@@ -680,13 +688,15 @@ top_srcdir = @top_srcdir@
 AM_CFLAGS = $(SQUID_CFLAGS)
 AM_CXXFLAGS = $(SQUID_CXXFLAGS)
 CLEANFILES = testHeaders
-INCLUDES = -I$(top_srcdir) -I$(top_srcdir)/include -I$(top_srcdir)/lib \
-	-I$(top_srcdir)/src -I$(top_builddir)/include \
-	$(SQUID_CPPUNIT_INC) $(KRB5INCS) $(am__append_1)
+AM_CPPFLAGS = -I$(top_srcdir) -I$(top_srcdir)/include \
+	-I$(top_srcdir)/lib -I$(top_srcdir)/src \
+	-I$(top_builddir)/include $(SQUID_CPPUNIT_INC) $(KRB5INCS) \
+	$(am__append_1)
 @ENABLE_XPROF_STATS_FALSE@LIBPROFILER = 
 @ENABLE_XPROF_STATS_TRUE@LIBPROFILER = $(top_builddir)/lib/profiler/libprofiler.la
 COMPAT_LIB = $(top_builddir)/compat/libcompat-squid.la $(LIBPROFILER)
 subst_perlshell = sed -e 's,[@]PERL[@],$(PERL),g' <$(srcdir)/$@.pl.in >$@ || ($(RM) -f $@ ; exit 1)
+AUTOMAKE_OPTIONS = subdir-objects
 
 # Ideally this would be 100% inline functions and macro wrappers.
 
@@ -707,17 +717,25 @@ libcompat_squid_la_SOURCES = \
 	eui64_aton.h \
 	eui64_aton.c \
 	fdsetsize.h \
+	getaddrinfo.cc \
 	getaddrinfo.h \
+	getnameinfo.cc \
 	getnameinfo.h \
 	GnuRegex.c \
 	GnuRegex.h \
+	inet_ntop.cc \
 	inet_ntop.h \
+	inet_pton.cc \
 	inet_pton.h \
 	initgroups.h \
+	memrchr.cc \
+	memrchr.h \
 	osdetect.h \
 	psignal.h \
 	shm.cc \
 	shm.h \
+	statvfs.h \
+	statvfs.cc \
 	stdio.h \
 	stdvarargs.h \
 	strnstr.cc \
@@ -759,8 +777,7 @@ libcompat_squid_la_SOURCES = \
 libcompat_squid_la_LIBADD = $(LTLIBOBJS)
 testPreCompiler_SOURCES = \
 	testPreCompiler.h \
-	testPreCompiler.cc \
-	$(top_srcdir)/src/tests/testMain.cc
+	testPreCompiler.cc
 
 testPreCompiler_LDADD = $(SQUID_CPPUNIT_LA) $(SQUID_CPPUNIT_LIBS)
 testPreCompiler_LDFLAGS = 
@@ -834,10 +851,6 @@ distclean-compile:
 	-rm -f *.tab.c
 
 @AMDEP_TRUE@@am__include@ @am__quote@$(DEPDIR)/drand48.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@$(DEPDIR)/getaddrinfo.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@$(DEPDIR)/getnameinfo.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@$(DEPDIR)/inet_ntop.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@$(DEPDIR)/inet_pton.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@$(DEPDIR)/initgroups.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@$(DEPDIR)/psignal.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@$(DEPDIR)/strerror.Plo@am__quote@
@@ -848,11 +861,16 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/compat.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/debug.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/eui64_aton.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/getaddrinfo.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/getnameinfo.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/inet_ntop.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/inet_pton.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/memrchr.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mswindows.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/shm.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/statvfs.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/strnrchr.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/strnstr.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/testMain.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/testPreCompiler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/xalloc.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/xstrerror.Plo@am__quote@
@@ -860,60 +878,52 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/xstrto.Plo@am__quote@
 
 .c.o:
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(COMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/$*.Tpo $(DEPDIR)/$*.Po
+@am__fastdepCC_TRUE@	$(AM_V_CC)depbase=`echo $@ | sed 's|[^/]*$$|$(DEPDIR)/&|;s|\.o$$||'`;\
+@am__fastdepCC_TRUE@	$(COMPILE) -MT $@ -MD -MP -MF $$depbase.Tpo -c -o $@ $< &&\
+@am__fastdepCC_TRUE@	$(am__mv) $$depbase.Tpo $$depbase.Po
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='$<' object='$@' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(COMPILE) -c -o $@ $<
 
 .c.obj:
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(COMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ `$(CYGPATH_W) '$<'`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/$*.Tpo $(DEPDIR)/$*.Po
+@am__fastdepCC_TRUE@	$(AM_V_CC)depbase=`echo $@ | sed 's|[^/]*$$|$(DEPDIR)/&|;s|\.obj$$||'`;\
+@am__fastdepCC_TRUE@	$(COMPILE) -MT $@ -MD -MP -MF $$depbase.Tpo -c -o $@ `$(CYGPATH_W) '$<'` &&\
+@am__fastdepCC_TRUE@	$(am__mv) $$depbase.Tpo $$depbase.Po
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='$<' object='$@' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(COMPILE) -c -o $@ `$(CYGPATH_W) '$<'`
 
 .c.lo:
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(LTCOMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/$*.Tpo $(DEPDIR)/$*.Plo
+@am__fastdepCC_TRUE@	$(AM_V_CC)depbase=`echo $@ | sed 's|[^/]*$$|$(DEPDIR)/&|;s|\.lo$$||'`;\
+@am__fastdepCC_TRUE@	$(LTCOMPILE) -MT $@ -MD -MP -MF $$depbase.Tpo -c -o $@ $< &&\
+@am__fastdepCC_TRUE@	$(am__mv) $$depbase.Tpo $$depbase.Plo
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='$<' object='$@' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LTCOMPILE) -c -o $@ $<
 
 .cc.o:
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXXCOMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/$*.Tpo $(DEPDIR)/$*.Po
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)depbase=`echo $@ | sed 's|[^/]*$$|$(DEPDIR)/&|;s|\.o$$||'`;\
+@am__fastdepCXX_TRUE@	$(CXXCOMPILE) -MT $@ -MD -MP -MF $$depbase.Tpo -c -o $@ $< &&\
+@am__fastdepCXX_TRUE@	$(am__mv) $$depbase.Tpo $$depbase.Po
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='$<' object='$@' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXXCOMPILE) -c -o $@ $<
 
 .cc.obj:
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXXCOMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ `$(CYGPATH_W) '$<'`
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/$*.Tpo $(DEPDIR)/$*.Po
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)depbase=`echo $@ | sed 's|[^/]*$$|$(DEPDIR)/&|;s|\.obj$$||'`;\
+@am__fastdepCXX_TRUE@	$(CXXCOMPILE) -MT $@ -MD -MP -MF $$depbase.Tpo -c -o $@ `$(CYGPATH_W) '$<'` &&\
+@am__fastdepCXX_TRUE@	$(am__mv) $$depbase.Tpo $$depbase.Po
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='$<' object='$@' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXXCOMPILE) -c -o $@ `$(CYGPATH_W) '$<'`
 
 .cc.lo:
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(LTCXXCOMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/$*.Tpo $(DEPDIR)/$*.Plo
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)depbase=`echo $@ | sed 's|[^/]*$$|$(DEPDIR)/&|;s|\.lo$$||'`;\
+@am__fastdepCXX_TRUE@	$(LTCXXCOMPILE) -MT $@ -MD -MP -MF $$depbase.Tpo -c -o $@ $< &&\
+@am__fastdepCXX_TRUE@	$(am__mv) $$depbase.Tpo $$depbase.Plo
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='$<' object='$@' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(LTCXXCOMPILE) -c -o $@ $<
-
-testMain.o: $(top_srcdir)/src/tests/testMain.cc
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT testMain.o -MD -MP -MF $(DEPDIR)/testMain.Tpo -c -o testMain.o `test -f '$(top_srcdir)/src/tests/testMain.cc' || echo '$(srcdir)/'`$(top_srcdir)/src/tests/testMain.cc
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/testMain.Tpo $(DEPDIR)/testMain.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='$(top_srcdir)/src/tests/testMain.cc' object='testMain.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o testMain.o `test -f '$(top_srcdir)/src/tests/testMain.cc' || echo '$(srcdir)/'`$(top_srcdir)/src/tests/testMain.cc
-
-testMain.obj: $(top_srcdir)/src/tests/testMain.cc
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT testMain.obj -MD -MP -MF $(DEPDIR)/testMain.Tpo -c -o testMain.obj `if test -f '$(top_srcdir)/src/tests/testMain.cc'; then $(CYGPATH_W) '$(top_srcdir)/src/tests/testMain.cc'; else $(CYGPATH_W) '$(srcdir)/$(top_srcdir)/src/tests/testMain.cc'; fi`
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/testMain.Tpo $(DEPDIR)/testMain.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='$(top_srcdir)/src/tests/testMain.cc' object='testMain.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o testMain.obj `if test -f '$(top_srcdir)/src/tests/testMain.cc'; then $(CYGPATH_W) '$(top_srcdir)/src/tests/testMain.cc'; else $(CYGPATH_W) '$(srcdir)/$(top_srcdir)/src/tests/testMain.cc'; fi`
 
 mostlyclean-libtool:
 	-rm -f *.lo

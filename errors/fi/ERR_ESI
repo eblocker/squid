@@ -1,5 +1,6 @@
 
 <html><head>
+<meta type="copyright" content="Copyright (C) 1996-2015 The Squid Software Foundation and contributors">
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
 <title>VIRHE: Pyydettyä URL-osoitetta ei voitu hakea</title>
 <style type="text/css"><!-- 
@@ -23,7 +24,7 @@ body
 <p><b>ESI Processing failed.</b></p>
 </blockquote>
 
-<p>The ESI processor returned:</p>
+<p>ESI prosessori palautti:</p>
 <blockquote id="data">
 <pre>%Z</pre>
 </blockquote>

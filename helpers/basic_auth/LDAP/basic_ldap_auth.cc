@@ -1,4 +1,12 @@
 /*
+ * Copyright (C) 1996-2015 The Squid Software Foundation and contributors
+ *
+ * Squid software is distributed under GPLv2+ license and includes
+ * contributions from numerous individuals and organizations.
+ * Please see the COPYING and CONTRIBUTORS files for details.
+ */
+
+/*
  * squid_ldap_auth: authentication via ldap for squid proxy server
  *
  * Authors:
@@ -89,9 +97,8 @@
 #include "rfc1738.h"
 #include "util.h"
 
-#include <stdio.h>
-#include <string.h>
-#include <ctype.h>
+#include <cctype>
+#include <cstring>
 
 #if _SQUID_WINDOWS_ && !_SQUID_CYGWIN_
 #define snprintf _snprintf
@@ -381,7 +388,7 @@ main(int argc, char **argv)
             fprintf(stderr, "ERROR: Your LDAP library does not have URI support\n");
             exit(1);
 #endif
-            /* Fall thru to -h */
+        /* Fall thru to -h */
         case 'h':
             if (ldapServer) {
                 int len = strlen(ldapServer) + 1 + strlen(value) + 1;
@@ -789,3 +796,4 @@ readSecret(const char *filename)
 
     return 0;
 }
+

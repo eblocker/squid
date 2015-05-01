@@ -1,5 +1,6 @@
 
 <html><head>
+<meta type="copyright" content="Copyright (C) 1996-2015 The Squid Software Foundation and contributors">
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
 <title>ПОМИЛКА: Запитаний URL не може бути отриманий</title>
 <style type="text/css"><!-- 
@@ -30,7 +31,7 @@ body
 <pre>%g</pre>
 </blockquote>
 
-<p>This might be caused by an FTP URL with an absolute path (which does not comply with RFC 1738). If this is the cause, then the file can be found at <a href="%B">%B</a>.</p>
+<p>Це може бути викликано FTP адресою з абсолютним шляхом (що не відповідає стандарту RFC 1738). В такому випадку, файл може бути знайдений за адресою <a href="%B">%B</a>.</p>
 
 <p>Адміністратор даного кешу <a href="mailto:%w%W">%w</a>.</p>
 <br>

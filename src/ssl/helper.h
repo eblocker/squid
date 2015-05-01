@@ -1,8 +1,16 @@
+/*
+ * Copyright (C) 1996-2015 The Squid Software Foundation and contributors
+ *
+ * Squid software is distributed under GPLv2+ license and includes
+ * contributions from numerous individuals and organizations.
+ * Please see the COPYING and CONTRIBUTORS files for details.
+ */
+
 #ifndef SQUID_SSL_HELPER_H
 #define SQUID_SSL_HELPER_H
 
 #include "base/LruMap.h"
-#include "../helper.h"
+#include "helper/forward.h"
 #include "ssl/cert_validate_message.h"
 #include "ssl/crtd_message.h"
 
@@ -52,3 +60,4 @@ public:
 
 } //namespace Ssl
 #endif // SQUID_SSL_HELPER_H
+

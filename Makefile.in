@@ -13,8 +13,6 @@
 # PARTICULAR PURPOSE.
 
 @SET_MAKE@
-
-#
 VPATH = @srcdir@
 am__is_gnu_make = test -n '$(MAKEFILE_LIST)' && test -n '$(MAKELEVEL)'
 am__make_running_with_option = \
@@ -79,7 +77,7 @@ PRE_UNINSTALL = :
 POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
-@USE_LOADABLE_MODULES_TRUE@am__append_1 = libltdl
+@ENABLE_LOADABLE_MODULES_TRUE@am__append_1 = libltdl
 subdir = .
 DIST_COMMON = $(srcdir)/Makefile.in $(srcdir)/Makefile.am \
 	$(top_srcdir)/configure $(am__configure_deps) \
@@ -91,7 +89,8 @@ DIST_COMMON = $(srcdir)/Makefile.in $(srcdir)/Makefile.am \
 	$(top_srcdir)/cfgaux/install-sh $(top_srcdir)/cfgaux/ltmain.sh \
 	$(top_srcdir)/cfgaux/missing
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
-am__aclocal_m4_deps = $(top_srcdir)/acinclude/init.m4 \
+am__aclocal_m4_deps = $(top_srcdir)/acinclude/ax_with_prog.m4 \
+	$(top_srcdir)/acinclude/init.m4 \
 	$(top_srcdir)/acinclude/squid-util.m4 \
 	$(top_srcdir)/acinclude/compiler-flags.m4 \
 	$(top_srcdir)/acinclude/os-deps.m4 \
@@ -104,7 +103,6 @@ am__aclocal_m4_deps = $(top_srcdir)/acinclude/init.m4 \
 	$(top_srcdir)/helpers/basic_auth/DB/required.m4 \
 	$(top_srcdir)/helpers/basic_auth/LDAP/required.m4 \
 	$(top_srcdir)/helpers/basic_auth/MSNT-multi-domain/required.m4 \
-	$(top_srcdir)/helpers/basic_auth/MSNT/required.m4 \
 	$(top_srcdir)/helpers/basic_auth/NCSA/required.m4 \
 	$(top_srcdir)/helpers/basic_auth/NIS/required.m4 \
 	$(top_srcdir)/helpers/basic_auth/PAM/required.m4 \
@@ -112,21 +110,22 @@ am__aclocal_m4_deps = $(top_srcdir)/acinclude/init.m4 \
 	$(top_srcdir)/helpers/basic_auth/RADIUS/required.m4 \
 	$(top_srcdir)/helpers/basic_auth/SASL/required.m4 \
 	$(top_srcdir)/helpers/basic_auth/SMB/required.m4 \
+	$(top_srcdir)/helpers/basic_auth/SMB_LM/required.m4 \
 	$(top_srcdir)/helpers/basic_auth/SSPI/required.m4 \
 	$(top_srcdir)/helpers/basic_auth/fake/required.m4 \
 	$(top_srcdir)/helpers/basic_auth/getpwnam/required.m4 \
-	$(top_srcdir)/helpers/ntlm_auth/modules.m4 \
-	$(top_srcdir)/helpers/ntlm_auth/fake/required.m4 \
-	$(top_srcdir)/helpers/ntlm_auth/SSPI/required.m4 \
-	$(top_srcdir)/helpers/ntlm_auth/smb_lm/required.m4 \
-	$(top_srcdir)/helpers/negotiate_auth/modules.m4 \
-	$(top_srcdir)/helpers/negotiate_auth/SSPI/required.m4 \
-	$(top_srcdir)/helpers/negotiate_auth/kerberos/required.m4 \
-	$(top_srcdir)/helpers/negotiate_auth/wrapper/required.m4 \
 	$(top_srcdir)/helpers/digest_auth/modules.m4 \
 	$(top_srcdir)/helpers/digest_auth/LDAP/required.m4 \
 	$(top_srcdir)/helpers/digest_auth/eDirectory/required.m4 \
 	$(top_srcdir)/helpers/digest_auth/file/required.m4 \
+	$(top_srcdir)/helpers/negotiate_auth/modules.m4 \
+	$(top_srcdir)/helpers/negotiate_auth/SSPI/required.m4 \
+	$(top_srcdir)/helpers/negotiate_auth/kerberos/required.m4 \
+	$(top_srcdir)/helpers/negotiate_auth/wrapper/required.m4 \
+	$(top_srcdir)/helpers/ntlm_auth/modules.m4 \
+	$(top_srcdir)/helpers/ntlm_auth/fake/required.m4 \
+	$(top_srcdir)/helpers/ntlm_auth/SSPI/required.m4 \
+	$(top_srcdir)/helpers/ntlm_auth/smb_lm/required.m4 \
 	$(top_srcdir)/helpers/log_daemon/modules.m4 \
 	$(top_srcdir)/helpers/log_daemon/DB/required.m4 \
 	$(top_srcdir)/helpers/log_daemon/file/required.m4 \
@@ -134,6 +133,7 @@ am__aclocal_m4_deps = $(top_srcdir)/acinclude/init.m4 \
 	$(top_srcdir)/helpers/external_acl/AD_group/required.m4 \
 	$(top_srcdir)/helpers/external_acl/LDAP_group/required.m4 \
 	$(top_srcdir)/helpers/external_acl/LM_group/required.m4 \
+	$(top_srcdir)/helpers/external_acl/delayer/required.m4 \
 	$(top_srcdir)/helpers/external_acl/SQL_session/required.m4 \
 	$(top_srcdir)/helpers/external_acl/eDirectory_userip/required.m4 \
 	$(top_srcdir)/helpers/external_acl/file_userip/required.m4 \
@@ -267,6 +267,8 @@ AUTOHEADER = @AUTOHEADER@
 AUTOMAKE = @AUTOMAKE@
 AWK = @AWK@
 BASIC_AUTH_HELPERS = @BASIC_AUTH_HELPERS@
+BUILDCXX = @BUILDCXX@
+BUILDCXXFLAGS = @BUILDCXXFLAGS@
 BZR = @BZR@
 CACHE_EFFECTIVE_USER = @CACHE_EFFECTIVE_USER@
 CC = @CC@
@@ -314,7 +316,6 @@ FALSE = @FALSE@
 FGREP = @FGREP@
 GREP = @GREP@
 HAVE_CXX11 = @HAVE_CXX11@
-HOSTCXX = @HOSTCXX@
 ICAP_LIBS = @ICAP_LIBS@
 INCLTDL = @INCLTDL@
 INSTALL = @INSTALL@
@@ -332,12 +333,18 @@ LIBADD_DL = @LIBADD_DL@
 LIBADD_DLD_LINK = @LIBADD_DLD_LINK@
 LIBADD_DLOPEN = @LIBADD_DLOPEN@
 LIBADD_SHL_LOAD = @LIBADD_SHL_LOAD@
+LIBGNUTLS_CFLAGS = @LIBGNUTLS_CFLAGS@
+LIBGNUTLS_LIBS = @LIBGNUTLS_LIBS@
 LIBLTDL = @LIBLTDL@
 LIBOBJS = @LIBOBJS@
+LIBOPENSSL_CFLAGS = @LIBOPENSSL_CFLAGS@
+LIBOPENSSL_LIBS = @LIBOPENSSL_LIBS@
 LIBS = @LIBS@
 LIBSASL = @LIBSASL@
 LIBTOOL = @LIBTOOL@
 LIB_DB = @LIB_DB@
+LIB_KRB5_CFLAGS = @LIB_KRB5_CFLAGS@
+LIB_KRB5_LIBS = @LIB_KRB5_LIBS@
 LIPO = @LIPO@
 LN = @LN@
 LN_S = @LN_S@
@@ -420,7 +427,6 @@ ac_ct_AR = @ac_ct_AR@
 ac_ct_CC = @ac_ct_CC@
 ac_ct_CXX = @ac_ct_CXX@
 ac_ct_DUMPBIN = @ac_ct_DUMPBIN@
-ac_krb5_config = @ac_krb5_config@
 am__include = @am__include@
 am__leading_dot = @am__leading_dot@
 am__quote = @am__quote@
@@ -447,13 +453,13 @@ htmldir = @htmldir@
 includedir = @includedir@
 infodir = @infodir@
 install_sh = @install_sh@
+krb5_config = @krb5_config@
 libdir = @libdir@
 libexecdir = @libexecdir@
 localedir = @localedir@
 localstatedir = @localstatedir@
 ltdl_LIBOBJS = @ltdl_LIBOBJS@
 ltdl_LTLIBOBJS = @ltdl_LTLIBOBJS@
-makesnmplib = @makesnmplib@
 mandir = @mandir@
 mkdir_p = @mkdir_p@
 oldincludedir = @oldincludedir@
@@ -472,16 +478,15 @@ top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 AUTOMAKE_OPTIONS = dist-bzip2 subdir-objects 1.5 foreign
-DIST_SUBDIRS = compat lib libltdl snmplib scripts icons errors contrib doc helpers src test-suite tools
-SUBDIRS = compat lib $(makesnmplib) $(am__append_1) scripts icons \
-	errors doc helpers src tools test-suite
+DIST_SUBDIRS = compat lib libltdl scripts icons errors contrib doc helpers src test-suite tools
+SUBDIRS = compat lib $(am__append_1) scripts icons errors doc helpers \
+	src tools test-suite
 DISTCLEANFILES = include/stamp-h include/stamp-h[0-9]*
 DEFAULT_PINGER = $(libexecdir)/`echo pinger | sed '$(transform);s/$$/$(EXEEXT)/'`
 EXTRA_DIST = \
 	ChangeLog \
 	CONTRIBUTORS \
 	COPYING \
-	COPYRIGHT \
 	CREDITS \
 	INSTALL \
 	QUICKSTART \

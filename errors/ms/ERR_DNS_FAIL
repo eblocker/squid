@@ -1,5 +1,6 @@
 
 <html><head>
+<meta type="copyright" content="Copyright (C) 1996-2015 The Squid Software Foundation and contributors">
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
 <title>RALAT: URL yang diminta tidak dapat diterima</title>
 <style type="text/css"><!-- 
@@ -23,7 +24,7 @@ body
 <p><b>Unable to determine IP address from host name <q>%H</q></b></p>
 </blockquote>
 
-<p>The DNS server returned:</p>
+<p>Pelayan DNS hantar :</p>
 <blockquote id="data">
 <pre>%z</pre>
 </blockquote>

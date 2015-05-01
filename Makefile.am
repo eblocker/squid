@@ -1,10 +1,14 @@
-## Process this file with automake to produce Makefile.in
-#
+## Copyright (C) 1996-2015 The Squid Software Foundation and contributors
+##
+## Squid software is distributed under GPLv2+ license and includes
+## contributions from numerous individuals and organizations.
+## Please see the COPYING and CONTRIBUTORS files for details.
+##
 
 AUTOMAKE_OPTIONS = dist-bzip2 subdir-objects 1.5 foreign
-DIST_SUBDIRS	= compat lib libltdl snmplib scripts icons errors contrib doc helpers src test-suite tools
-SUBDIRS		= compat lib $(makesnmplib)
-if USE_LOADABLE_MODULES
+DIST_SUBDIRS	= compat lib libltdl scripts icons errors contrib doc helpers src test-suite tools
+SUBDIRS		= compat lib
+if ENABLE_LOADABLE_MODULES
 SUBDIRS += libltdl
 endif
 SUBDIRS += scripts icons errors doc helpers src tools test-suite
@@ -38,7 +42,6 @@ EXTRA_DIST = \
 	ChangeLog \
 	CONTRIBUTORS \
 	COPYING \
-	COPYRIGHT \
 	CREDITS \
 	INSTALL \
 	QUICKSTART \

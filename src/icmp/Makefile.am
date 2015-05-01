@@ -1,3 +1,10 @@
+## Copyright (C) 1996-2015 The Squid Software Foundation and contributors
+##
+## Squid software is distributed under GPLv2+ license and includes
+## contributions from numerous individuals and organizations.
+## Please see the COPYING and CONTRIBUTORS files for details.
+##
+
 include $(top_srcdir)/src/Common.am
 include $(top_srcdir)/src/TestHeaders.am
 
@@ -21,6 +28,20 @@ EXTRA_PROGRAMS = \
 libexec_PROGRAMS = $(PINGER)
 
 noinst_LTLIBRARIES = libicmp-core.la libicmp.la
+
+SBUF_SOURCE= \
+	$(top_srcdir)/src/base/CharacterSet.h \
+	$(top_srcdir)/src/SBuf.h \
+	$(top_srcdir)/src/SBuf.cc \
+	$(top_srcdir)/src/MemBlob.h \
+	$(top_srcdir)/src/MemBlob.cc \
+	$(top_srcdir)/src/OutOfBoundsException.h \
+	$(top_srcdir)/src/SBufExceptions.h \
+	$(top_srcdir)/src/SBufExceptions.cc \
+	$(top_srcdir)/src/String.cc \
+	$(top_srcdir)/src/SquidString.h \
+	$(top_srcdir)/src/base/TextException.h \
+	$(top_srcdir)/src/base/TextException.cc
 
 # ICMP API definition ...
 libicmp_core_la_SOURCES = \
@@ -88,7 +109,6 @@ testIcmp_SOURCES = \
 	testIcmp.h \
 	testIcmp.cc
 nodist_testIcmp_SOURCES = \
-	$(top_srcdir)/src/tests/testMain.cc \
 	$(top_srcdir)/src/SquidTime.h \
 	$(top_srcdir)/src/tests/stub_debug.cc \
 	$(top_srcdir)/src/time.cc \
@@ -100,6 +120,7 @@ testIcmp_LDADD=\
 	$(SQUID_CPPUNIT_LA) \
 	libicmp-core.la \
 	../ip/libip.la \
+	../base/libbase.la \
 	$(COMPAT_LIB) \
 	$(XTRA_LIBS)
 testIcmp_DEPENDENCIES= $(SQUID_CPPUNIT_LA)

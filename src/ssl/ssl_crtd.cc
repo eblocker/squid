@@ -1,23 +1,21 @@
+/*
+ * Copyright (C) 1996-2015 The Squid Software Foundation and contributors
+ *
+ * Squid software is distributed under GPLv2+ license and includes
+ * contributions from numerous individuals and organizations.
+ * Please see the COPYING and CONTRIBUTORS files for details.
+ */
+
 #include "squid.h"
 #include "helpers/defines.h"
-#include "ssl/crtd_message.h"
 #include "ssl/certificate_db.h"
+#include "ssl/crtd_message.h"
 
-#if HAVE_CSTRING
 #include <cstring>
-#endif
-#if HAVE_SSTREAM
-#include <sstream>
-#endif
-#if HAVE_IOSTREAM
 #include <iostream>
-#endif
-#if HAVE_STDEXCEPT
+#include <sstream>
 #include <stdexcept>
-#endif
-#if HAVE_STRING
 #include <string>
-#endif
 #if HAVE_GETOPT_H
 #include <getopt.h>
 #endif
@@ -295,8 +293,11 @@ int main(int argc, char *argv[])
         }
 
         {
-            Ssl::CertificateDb::check(db_path, max_db_size);
+            Ssl::CertificateDb::check(db_path, max_db_size, fs_block_size);
         }
+        // Initialize SSL subsystem
+        SSL_load_error_strings();
+        SSLeay_add_ssl_algorithms();
         // proccess request.
         for (;;) {
             char request[HELPER_INPUT_BUFFER];
@@ -325,3 +326,4 @@ int main(int argc, char *argv[])
     }
     return 0;
 }
+

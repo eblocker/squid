@@ -1,13 +1,20 @@
-#define SQUID_UNIT_TEST 1
+/*
+ * Copyright (C) 1996-2015 The Squid Software Foundation and contributors
+ *
+ * Squid software is distributed under GPLv2+ license and includes
+ * contributions from numerous individuals and organizations.
+ * Please see the COPYING and CONTRIBUTORS files for details.
+ */
+
 #include "squid.h"
-//#include "compat/getaddrinfo.h"
-#include "testAddress.h"
 #include "ip/Address.h"
 #include "ip/tools.h"
+#include "testAddress.h"
+#include "unitTestMain.h"
 
-#if HAVE_CSTRING
 #include <cstring>
-#endif
+#include <stdexcept>
+#include <string>
 #if HAVE_NETINET_IN_H
 #include <netinet/in.h>
 #endif
@@ -17,14 +24,10 @@
 #if HAVE_NETDB_H
 #include <netdb.h>
 #endif
-#if HAVE_STRING
-#include <string>
-#endif
-#if HAVE_STDEXCEPT
-#include <stdexcept>
-#endif
 
 CPPUNIT_TEST_SUITE_REGISTRATION( testIpAddress );
+
+#include "tests/stub_SBuf.cc"
 
 /* so that we don't break POD dependency just for the test */
 struct timeval current_time;
@@ -711,7 +714,7 @@ testIpAddress::testAddrInfo()
     CPPUNIT_ASSERT( memcmp( expect->ai_addr, ipval->ai_addr, expect->ai_addrlen ) == 0 );
 
     freeaddrinfo(expect);
-    Ip::Address::FreeAddrInfo(ipval);
+    Ip::Address::FreeAddr(ipval);
 }
 
 void
@@ -782,3 +785,4 @@ testIpAddress::testBugNullingDisplay()
     CPPUNIT_ASSERT( memcmp( &expectval, &outval, sizeof(struct in_addr)) == 0 );
 
 }
+

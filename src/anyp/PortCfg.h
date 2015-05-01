@@ -1,32 +1,41 @@
+/*
+ * Copyright (C) 1996-2015 The Squid Software Foundation and contributors
+ *
+ * Squid software is distributed under GPLv2+ license and includes
+ * contributions from numerous individuals and organizations.
+ * Please see the COPYING and CONTRIBUTORS files for details.
+ */
+
 #ifndef SQUID_ANYP_PORTCFG_H
 #define SQUID_ANYP_PORTCFG_H
 
 #include "anyp/forward.h"
+#include "anyp/ProtocolVersion.h"
 #include "anyp/TrafficMode.h"
 #include "comm/Connection.h"
 
-#if USE_SSL
+#if USE_OPENSSL
 #include "ssl/gadgets.h"
 #endif
 
 namespace AnyP
 {
 
-class PortCfg
+class PortCfg : public RefCountable
 {
 public:
-    PortCfg(const char *aProtocol);
+    PortCfg();
     ~PortCfg();
-    AnyP::PortCfg *clone() const;
-#if USE_SSL
+    AnyP::PortCfgPointer clone() const;
+#if USE_OPENSSL
     /// creates, configures, and validates SSL context and related port options
     void configureSslServerContext();
 #endif
 
-    PortCfg *next;
+    PortCfgPointer next;
 
     Ip::Address s;
-    char *protocol;            /* protocol name */
+    AnyP::ProtocolVersion transport; ///< transport protocol and version received by this port
     char *name;                /* visible name */
     char *defaultsite;         /* default web site */
 
@@ -38,6 +47,8 @@ public:
     bool ignore_cc;          ///< Ignore request Cache-Control directives
 
     bool connection_auth_disabled; ///< Don't support connection oriented auth
+
+    bool ftp_track_dirs; ///< whether transactions should track FTP directories
 
     int vport;               ///< virtual port support. -1 if dynamic, >0 static
     int disable_pmtu_discovery;
@@ -56,7 +67,7 @@ public:
      */
     Comm::ConnectionPointer listenConn;
 
-#if USE_SSL
+#if USE_OPENSSL
     char *cert;
     char *key;
     int version;
@@ -86,11 +97,20 @@ public:
     long sslContextFlags; ///< flags modifying the use of SSL
     long sslOptions; ///< SSL engine options
 #endif
-
-    CBDATA_CLASS2(PortCfg); // namespaced
 };
 
 } // namespace AnyP
+
+/// list of Squid http_port configured
+extern AnyP::PortCfgPointer HttpPortList;
+
+#if USE_OPENSSL
+/// list of Squid https_port configured
+extern AnyP::PortCfgPointer HttpsPortList;
+#endif
+
+/// list of Squid ftp_port configured
+extern AnyP::PortCfgPointer FtpPortList;
 
 #if !defined(MAXTCPLISTENPORTS)
 // Max number of TCP listening ports
@@ -102,3 +122,4 @@ extern int NHttpSockets;
 extern int HttpSockets[MAXTCPLISTENPORTS];
 
 #endif /* SQUID_ANYP_PORTCFG_H */
+

@@ -1,4 +1,12 @@
 /*
+ * Copyright (C) 1996-2015 The Squid Software Foundation and contributors
+ *
+ * Squid software is distributed under GPLv2+ license and includes
+ * contributions from numerous individuals and organizations.
+ * Please see the COPYING and CONTRIBUTORS files for details.
+ */
+
+/*
   NT_auth -  Version 2.0
 
   Modified to act as a Squid authenticator module.
@@ -60,8 +68,7 @@ extern char Default_NTDomain[DNLEN+1];
 extern const char * errormsg;
 
 /* Debugging stuff */
-#if defined(__GNUC__)			/* this is really a gcc-ism */
-#include <stdio.h>
+#if defined(__GNUC__)           /* this is really a gcc-ism */
 #include <unistd.h>
 static char *__foo;
 #define debug(X...) if (debug_enabled) { \
@@ -84,6 +91,5 @@ debug(char *format,...)
 }
 #endif /* __GNUC__ */
 
-int Valid_User(char *,char *, char *);
-
 #endif
+

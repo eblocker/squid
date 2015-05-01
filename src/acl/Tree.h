@@ -1,7 +1,16 @@
+/*
+ * Copyright (C) 1996-2015 The Squid Software Foundation and contributors
+ *
+ * Squid software is distributed under GPLv2+ license and includes
+ * contributions from numerous individuals and organizations.
+ * Please see the COPYING and CONTRIBUTORS files for details.
+ */
+
 #ifndef SQUID_ACL_TREE_H
 #define SQUID_ACL_TREE_H
 
 #include "acl/BoolOps.h"
+#include "SBufList.h"
 
 namespace Acl
 {
@@ -14,7 +23,7 @@ public:
     /// dumps <name, action, rule, new line> tuples
     /// action.kind is mapped to a string using the supplied conversion table
     typedef const char **ActionToString;
-    wordlist* treeDump(const char *name, const ActionToString &convert) const;
+    SBufList treeDump(const char *name, const ActionToString &convert) const;
 
     /// Returns the corresponding action after a successful tree match.
     allow_t winningAction() const;
@@ -42,3 +51,4 @@ private:
 } // namespace Acl
 
 #endif /* SQUID_ACL_TREE_H */
+

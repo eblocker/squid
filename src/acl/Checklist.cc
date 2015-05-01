@@ -1,6 +1,12 @@
 /*
- * DEBUG: section 28    Access Control
+ * Copyright (C) 1996-2015 The Squid Software Foundation and contributors
+ *
+ * Squid software is distributed under GPLv2+ license and includes
+ * contributions from numerous individuals and organizations.
+ * Please see the COPYING and CONTRIBUTORS files for details.
  */
+
+/* DEBUG: section 28    Access Control */
 
 #include "squid.h"
 #include "acl/Checklist.h"
@@ -167,16 +173,16 @@ ACLChecklist::checkCallback(allow_t answer)
 }
 
 ACLChecklist::ACLChecklist() :
-        accessList (NULL),
-        callback (NULL),
-        callback_data (NULL),
-        asyncCaller_(false),
-        occupied_(false),
-        finished_(false),
-        allow_(ACCESS_DENIED),
-        asyncStage_(asyncNone),
-        state_(NullState::Instance()),
-        asyncLoopDepth_(0)
+    accessList (NULL),
+    callback (NULL),
+    callback_data (NULL),
+    asyncCaller_(false),
+    occupied_(false),
+    finished_(false),
+    allow_(ACCESS_DENIED),
+    asyncStage_(asyncNone),
+    state_(NullState::Instance()),
+    asyncLoopDepth_(0)
 {
 }
 
@@ -384,3 +390,4 @@ ACLChecklist::callerGone()
 {
     return !cbdataReferenceValid(callback_data);
 }
+

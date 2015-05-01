@@ -1,5 +1,6 @@
 
 <html><head>
+<meta type="copyright" content="Copyright (C) 1996-2015 The Squid Software Foundation and contributors">
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
 <title>ERROR: The requested URL could not be retrieved</title>
 <style type="text/css"><!-- 
@@ -30,7 +31,7 @@ body
 <p>Some possible problems are:</p>
 <ul>
 <li><p>The ICAP server is not reachable.</p></li>
-<li><p>Sebuah tanggapan Illegal diterima dari ICAP server.</p></li>
+<li><p>Jawaban Ilegal diterima dari server ICAP.</p></li>
 </ul>
 
 <br>

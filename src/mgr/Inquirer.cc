@@ -1,7 +1,12 @@
 /*
- * DEBUG: section 16    Cache Manager API
+ * Copyright (C) 1996-2015 The Squid Software Foundation and contributors
  *
+ * Squid software is distributed under GPLv2+ license and includes
+ * contributions from numerous individuals and organizations.
+ * Please see the COPYING and CONTRIBUTORS files for details.
  */
+
+/* DEBUG: section 16    Cache Manager API */
 
 #include "squid.h"
 #include "base/TextException.h"
@@ -9,17 +14,17 @@
 #include "comm/Connection.h"
 #include "comm/Write.h"
 #include "CommCalls.h"
+#include "errorpage.h"
 #include "HttpReply.h"
 #include "HttpRequest.h"
 #include "ipc/UdsOp.h"
 #include "mgr/ActionWriter.h"
-#include "mgr/IntParam.h"
-#include "mgr/Inquirer.h"
 #include "mgr/Command.h"
+#include "mgr/Inquirer.h"
+#include "mgr/IntParam.h"
 #include "mgr/Request.h"
 #include "mgr/Response.h"
 #include "SquidTime.h"
-#include "errorpage.h"
 #include <memory>
 #include <algorithm>
 
@@ -27,8 +32,8 @@ CBDATA_NAMESPACED_CLASS_INIT(Mgr, Inquirer);
 
 Mgr::Inquirer::Inquirer(Action::Pointer anAction,
                         const Request &aCause, const Ipc::StrandCoords &coords):
-        Ipc::Inquirer(aCause.clone(), applyQueryParams(coords, aCause.params.queryParams), anAction->atomic() ? 10 : 100),
-        aggrAction(anAction)
+    Ipc::Inquirer(aCause.clone(), applyQueryParams(coords, aCause.params.queryParams), anAction->atomic() ? 10 : 100),
+    aggrAction(anAction)
 {
     conn = aCause.conn;
     Ipc::ImportFdIntoComm(conn, SOCK_STREAM, IPPROTO_TCP, Ipc::fdnHttpSocket);
@@ -104,7 +109,7 @@ Mgr::Inquirer::noteWroteHeader(const CommIoCbParams& params)
 {
     debugs(16, 5, HERE);
     writer = NULL;
-    Must(params.flag == COMM_OK);
+    Must(params.flag == Comm::OK);
     Must(params.conn.getRaw() == conn.getRaw());
     Must(params.size != 0);
     // start inquiries at the initial pos
@@ -186,3 +191,4 @@ Mgr::Inquirer::applyQueryParams(const Ipc::StrandCoords& aStrands, const QueryPa
 
     return sc;
 }
+

@@ -1,12 +1,17 @@
+/*
+ * Copyright (C) 1996-2015 The Squid Software Foundation and contributors
+ *
+ * Squid software is distributed under GPLv2+ license and includes
+ * contributions from numerous individuals and organizations.
+ * Please see the COPYING and CONTRIBUTORS files for details.
+ */
+
 #include "squid.h"
 #include "errorpage.h"
 #include "ssl/ErrorDetail.h"
-#if HAVE_MAP
-#include <map>
-#endif
-#if HAVE_CLIMITS
+
 #include <climits>
-#endif
+#include <map>
 
 struct SslErrorEntry {
     Ssl::ssl_error_t value;
@@ -19,76 +24,111 @@ typedef std::map<Ssl::ssl_error_t, const SslErrorEntry *> SslErrors;
 SslErrors TheSslErrors;
 
 static SslErrorEntry TheSslErrorArray[] = {
-    {SQUID_X509_V_ERR_INFINITE_VALIDATION,
-        "SQUID_X509_V_ERR_INFINITE_VALIDATION"},
-    {SQUID_X509_V_ERR_CERT_CHANGE,
-     "SQUID_X509_V_ERR_CERT_CHANGE"},
-    {SQUID_ERR_SSL_HANDSHAKE,
-     "SQUID_ERR_SSL_HANDSHAKE"},
-    {SQUID_X509_V_ERR_DOMAIN_MISMATCH,
-     "SQUID_X509_V_ERR_DOMAIN_MISMATCH"},
-    {X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT,
-     "X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT"},
-    {X509_V_ERR_UNABLE_TO_GET_CRL,
-     "X509_V_ERR_UNABLE_TO_GET_CRL"},
-    {X509_V_ERR_UNABLE_TO_DECRYPT_CERT_SIGNATURE,
-     "X509_V_ERR_UNABLE_TO_DECRYPT_CERT_SIGNATURE"},
-    {X509_V_ERR_UNABLE_TO_DECRYPT_CRL_SIGNATURE,
-     "X509_V_ERR_UNABLE_TO_DECRYPT_CRL_SIGNATURE"},
-    {X509_V_ERR_UNABLE_TO_DECODE_ISSUER_PUBLIC_KEY,
-     "X509_V_ERR_UNABLE_TO_DECODE_ISSUER_PUBLIC_KEY"},
-    {X509_V_ERR_CERT_SIGNATURE_FAILURE,
-     "X509_V_ERR_CERT_SIGNATURE_FAILURE"},
-    {X509_V_ERR_CRL_SIGNATURE_FAILURE,
-     "X509_V_ERR_CRL_SIGNATURE_FAILURE"},
-    {X509_V_ERR_CERT_NOT_YET_VALID,
-     "X509_V_ERR_CERT_NOT_YET_VALID"},
-    {X509_V_ERR_CERT_HAS_EXPIRED,
-     "X509_V_ERR_CERT_HAS_EXPIRED"},
-    {X509_V_ERR_CRL_NOT_YET_VALID,
-     "X509_V_ERR_CRL_NOT_YET_VALID"},
-    {X509_V_ERR_CRL_HAS_EXPIRED,
-     "X509_V_ERR_CRL_HAS_EXPIRED"},
-    {X509_V_ERR_ERROR_IN_CERT_NOT_BEFORE_FIELD,
-     "X509_V_ERR_ERROR_IN_CERT_NOT_BEFORE_FIELD"},
-    {X509_V_ERR_ERROR_IN_CERT_NOT_AFTER_FIELD,
-     "X509_V_ERR_ERROR_IN_CERT_NOT_AFTER_FIELD"},
-    {X509_V_ERR_ERROR_IN_CRL_LAST_UPDATE_FIELD,
-     "X509_V_ERR_ERROR_IN_CRL_LAST_UPDATE_FIELD"},
-    {X509_V_ERR_ERROR_IN_CRL_NEXT_UPDATE_FIELD,
-     "X509_V_ERR_ERROR_IN_CRL_NEXT_UPDATE_FIELD"},
-    {X509_V_ERR_OUT_OF_MEM,
-     "X509_V_ERR_OUT_OF_MEM"},
-    {X509_V_ERR_DEPTH_ZERO_SELF_SIGNED_CERT,
-     "X509_V_ERR_DEPTH_ZERO_SELF_SIGNED_CERT"},
-    {X509_V_ERR_SELF_SIGNED_CERT_IN_CHAIN,
-     "X509_V_ERR_SELF_SIGNED_CERT_IN_CHAIN"},
-    {X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY,
-     "X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY"},
-    {X509_V_ERR_UNABLE_TO_VERIFY_LEAF_SIGNATURE,
-     "X509_V_ERR_UNABLE_TO_VERIFY_LEAF_SIGNATURE"},
-    {X509_V_ERR_CERT_CHAIN_TOO_LONG,
-     "X509_V_ERR_CERT_CHAIN_TOO_LONG"},
-    {X509_V_ERR_CERT_REVOKED,
-     "X509_V_ERR_CERT_REVOKED"},
-    {X509_V_ERR_INVALID_CA,
-     "X509_V_ERR_INVALID_CA"},
-    {X509_V_ERR_PATH_LENGTH_EXCEEDED,
-     "X509_V_ERR_PATH_LENGTH_EXCEEDED"},
-    {X509_V_ERR_INVALID_PURPOSE,
-     "X509_V_ERR_INVALID_PURPOSE"},
-    {X509_V_ERR_CERT_UNTRUSTED,
-     "X509_V_ERR_CERT_UNTRUSTED"},
-    {X509_V_ERR_CERT_REJECTED,
-     "X509_V_ERR_CERT_REJECTED"},
-    {X509_V_ERR_SUBJECT_ISSUER_MISMATCH,
-     "X509_V_ERR_SUBJECT_ISSUER_MISMATCH"},
-    {X509_V_ERR_AKID_SKID_MISMATCH,
-     "X509_V_ERR_AKID_SKID_MISMATCH"},
-    {X509_V_ERR_AKID_ISSUER_SERIAL_MISMATCH,
-     "X509_V_ERR_AKID_ISSUER_SERIAL_MISMATCH"},
-    {X509_V_ERR_KEYUSAGE_NO_CERTSIGN,
-     "X509_V_ERR_KEYUSAGE_NO_CERTSIGN"},
+    {   SQUID_X509_V_ERR_INFINITE_VALIDATION,
+        "SQUID_X509_V_ERR_INFINITE_VALIDATION"
+    },
+    {   SQUID_X509_V_ERR_CERT_CHANGE,
+        "SQUID_X509_V_ERR_CERT_CHANGE"
+    },
+    {   SQUID_ERR_SSL_HANDSHAKE,
+        "SQUID_ERR_SSL_HANDSHAKE"
+    },
+    {   SQUID_X509_V_ERR_DOMAIN_MISMATCH,
+        "SQUID_X509_V_ERR_DOMAIN_MISMATCH"
+    },
+    {   X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT,
+        "X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT"
+    },
+    {   X509_V_ERR_UNABLE_TO_GET_CRL,
+        "X509_V_ERR_UNABLE_TO_GET_CRL"
+    },
+    {   X509_V_ERR_UNABLE_TO_DECRYPT_CERT_SIGNATURE,
+        "X509_V_ERR_UNABLE_TO_DECRYPT_CERT_SIGNATURE"
+    },
+    {   X509_V_ERR_UNABLE_TO_DECRYPT_CRL_SIGNATURE,
+        "X509_V_ERR_UNABLE_TO_DECRYPT_CRL_SIGNATURE"
+    },
+    {   X509_V_ERR_UNABLE_TO_DECODE_ISSUER_PUBLIC_KEY,
+        "X509_V_ERR_UNABLE_TO_DECODE_ISSUER_PUBLIC_KEY"
+    },
+    {   X509_V_ERR_CERT_SIGNATURE_FAILURE,
+        "X509_V_ERR_CERT_SIGNATURE_FAILURE"
+    },
+    {   X509_V_ERR_CRL_SIGNATURE_FAILURE,
+        "X509_V_ERR_CRL_SIGNATURE_FAILURE"
+    },
+    {   X509_V_ERR_CERT_NOT_YET_VALID,
+        "X509_V_ERR_CERT_NOT_YET_VALID"
+    },
+    {   X509_V_ERR_CERT_HAS_EXPIRED,
+        "X509_V_ERR_CERT_HAS_EXPIRED"
+    },
+    {   X509_V_ERR_CRL_NOT_YET_VALID,
+        "X509_V_ERR_CRL_NOT_YET_VALID"
+    },
+    {   X509_V_ERR_CRL_HAS_EXPIRED,
+        "X509_V_ERR_CRL_HAS_EXPIRED"
+    },
+    {   X509_V_ERR_ERROR_IN_CERT_NOT_BEFORE_FIELD,
+        "X509_V_ERR_ERROR_IN_CERT_NOT_BEFORE_FIELD"
+    },
+    {   X509_V_ERR_ERROR_IN_CERT_NOT_AFTER_FIELD,
+        "X509_V_ERR_ERROR_IN_CERT_NOT_AFTER_FIELD"
+    },
+    {   X509_V_ERR_ERROR_IN_CRL_LAST_UPDATE_FIELD,
+        "X509_V_ERR_ERROR_IN_CRL_LAST_UPDATE_FIELD"
+    },
+    {   X509_V_ERR_ERROR_IN_CRL_NEXT_UPDATE_FIELD,
+        "X509_V_ERR_ERROR_IN_CRL_NEXT_UPDATE_FIELD"
+    },
+    {   X509_V_ERR_OUT_OF_MEM,
+        "X509_V_ERR_OUT_OF_MEM"
+    },
+    {   X509_V_ERR_DEPTH_ZERO_SELF_SIGNED_CERT,
+        "X509_V_ERR_DEPTH_ZERO_SELF_SIGNED_CERT"
+    },
+    {   X509_V_ERR_SELF_SIGNED_CERT_IN_CHAIN,
+        "X509_V_ERR_SELF_SIGNED_CERT_IN_CHAIN"
+    },
+    {   X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY,
+        "X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY"
+    },
+    {   X509_V_ERR_UNABLE_TO_VERIFY_LEAF_SIGNATURE,
+        "X509_V_ERR_UNABLE_TO_VERIFY_LEAF_SIGNATURE"
+    },
+    {   X509_V_ERR_CERT_CHAIN_TOO_LONG,
+        "X509_V_ERR_CERT_CHAIN_TOO_LONG"
+    },
+    {   X509_V_ERR_CERT_REVOKED,
+        "X509_V_ERR_CERT_REVOKED"
+    },
+    {   X509_V_ERR_INVALID_CA,
+        "X509_V_ERR_INVALID_CA"
+    },
+    {   X509_V_ERR_PATH_LENGTH_EXCEEDED,
+        "X509_V_ERR_PATH_LENGTH_EXCEEDED"
+    },
+    {   X509_V_ERR_INVALID_PURPOSE,
+        "X509_V_ERR_INVALID_PURPOSE"
+    },
+    {   X509_V_ERR_CERT_UNTRUSTED,
+        "X509_V_ERR_CERT_UNTRUSTED"
+    },
+    {   X509_V_ERR_CERT_REJECTED,
+        "X509_V_ERR_CERT_REJECTED"
+    },
+    {   X509_V_ERR_SUBJECT_ISSUER_MISMATCH,
+        "X509_V_ERR_SUBJECT_ISSUER_MISMATCH"
+    },
+    {   X509_V_ERR_AKID_SKID_MISMATCH,
+        "X509_V_ERR_AKID_SKID_MISMATCH"
+    },
+    {   X509_V_ERR_AKID_ISSUER_SERIAL_MISMATCH,
+        "X509_V_ERR_AKID_ISSUER_SERIAL_MISMATCH"
+    },
+    {   X509_V_ERR_KEYUSAGE_NO_CERTSIGN,
+        "X509_V_ERR_KEYUSAGE_NO_CERTSIGN"
+    },
 #if defined(X509_V_ERR_UNABLE_TO_GET_CRL_ISSUER)
     {
         X509_V_ERR_UNABLE_TO_GET_CRL_ISSUER, //33
@@ -215,8 +255,9 @@ static SslErrorEntry TheSslErrorArray[] = {
         "X509_V_ERR_CRL_PATH_VALIDATION_ERROR"
     },
 #endif
-    {X509_V_ERR_APPLICATION_VERIFICATION,
-     "X509_V_ERR_APPLICATION_VERIFICATION"},
+    {   X509_V_ERR_APPLICATION_VERIFICATION,
+        "X509_V_ERR_APPLICATION_VERIFICATION"
+    },
     { SSL_ERROR_NONE, "SSL_ERROR_NONE"},
     {SSL_ERROR_NONE, NULL}
 };
@@ -255,11 +296,11 @@ static const Ssl::ssl_error_t hasExpired[] = {X509_V_ERR_CERT_HAS_EXPIRED, SSL_E
 static const Ssl::ssl_error_t notYetValid[] = {X509_V_ERR_CERT_NOT_YET_VALID, SSL_ERROR_NONE};
 static const Ssl::ssl_error_t domainMismatch[] = {SQUID_X509_V_ERR_DOMAIN_MISMATCH, SSL_ERROR_NONE};
 static const Ssl::ssl_error_t certUntrusted[] = {X509_V_ERR_INVALID_CA,
-        X509_V_ERR_SELF_SIGNED_CERT_IN_CHAIN,
-        X509_V_ERR_UNABLE_TO_VERIFY_LEAF_SIGNATURE,
-        X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT,
-        X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY,
-        X509_V_ERR_CERT_UNTRUSTED, SSL_ERROR_NONE
+                                                 X509_V_ERR_SELF_SIGNED_CERT_IN_CHAIN,
+                                                 X509_V_ERR_UNABLE_TO_VERIFY_LEAF_SIGNATURE,
+                                                 X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT,
+                                                 X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY,
+                                                 X509_V_ERR_CERT_UNTRUSTED, SSL_ERROR_NONE
                                                 };
 static const Ssl::ssl_error_t certSelfSigned[] = {X509_V_ERR_DEPTH_ZERO_SELF_SIGNED_CERT, SSL_ERROR_NONE};
 
@@ -404,7 +445,7 @@ static int copy_cn(void *check_data,  ASN1_STRING *cn_data)
     String *str = (String *)check_data;
     if (!str) // no data? abort
         return 0;
-    if (str->defined())
+    if (str->size() > 0)
         str->append(", ");
     str->append((const char *)cn_data->data, cn_data->length);
     return 1;
@@ -501,7 +542,7 @@ const char *Ssl::ErrorDetail::err_descr() const
 
 const char *Ssl::ErrorDetail::err_lib_error() const
 {
-    if (errReason.defined())
+    if (errReason.size() > 0)
         return errReason.termedBuf();
     else if (lib_error_no != SSL_ERROR_NONE)
         return ERR_error_string(lib_error_no, NULL);
@@ -574,7 +615,7 @@ void Ssl::ErrorDetail::buildDetail() const
 
 const String &Ssl::ErrorDetail::toString() const
 {
-    if (!errDetailStr.defined())
+    if (errDetailStr.size() == 0)
         buildDetail();
     return errDetailStr;
 }
@@ -609,3 +650,4 @@ Ssl::ErrorDetail::ErrorDetail(Ssl::ErrorDetail const &anErrDetail)
 
     lib_error_no = anErrDetail.lib_error_no;
 }
+

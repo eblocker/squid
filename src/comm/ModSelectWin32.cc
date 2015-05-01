@@ -1,33 +1,13 @@
 /*
- * DEBUG: section 05    Socket Functions
+ * Copyright (C) 1996-2015 The Squid Software Foundation and contributors
  *
- * SQUID Web Proxy Cache          http://www.squid-cache.org/
- * ----------------------------------------------------------
- *
- *  Squid is the result of efforts by numerous individuals from
- *  the Internet community; see the CONTRIBUTORS file for full
- *  details.   Many organizations have provided support for Squid's
- *  development; see the SPONSORS file for full details.  Squid is
- *  Copyrighted (C) 2001 by the Regents of the University of
- *  California; see the COPYRIGHT file for full details.  Squid
- *  incorporates software developed and/or copyrighted by other
- *  sources; see the CREDITS file for full details.
- *
- *  This program is free software; you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2 of the License, or
- *  (at your option) any later version.
- *
- *  This program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with this program; if not, write to the Free Software
- *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
- *
+ * Squid software is distributed under GPLv2+ license and includes
+ * contributions from numerous individuals and organizations.
+ * Please see the COPYING and CONTRIBUTORS files for details.
  */
+
+/* DEBUG: section 05    Socket Functions */
+
 #include "squid.h"
 
 #if USE_SELECT_WIN32
@@ -42,11 +22,9 @@
 #include "StatHist.h"
 #include "Store.h"
 
-#if HAVE_ERRNO_H
-#include <errno.h>
-#endif
+#include <cerrno>
 
-static int MAX_POLL_TIME = 1000;	/* see also Comm::QuickPollRequired() */
+static int MAX_POLL_TIME = 1000;    /* see also Comm::QuickPollRequired() */
 
 #ifndef        howmany
 #define howmany(x, y)   (((x)+((y)-1))/(y))
@@ -193,7 +171,7 @@ fdIsDns(int fd)
 static int
 fdIsTcpListener(int fd)
 {
-    for (const AnyP::PortCfg *s = Config.Sockaddr.http; s; s = s->next) {
+    for (AnyP::PortCfgPointer s = HttpPortList; s != NULL; s = s->next) {
         if (s->listenConn != NULL && s->listenConn->fd == fd)
             return 1;
     }
@@ -319,7 +297,7 @@ comm_select_tcp_incoming(void)
 
     // XXX: only poll sockets that won't be deferred. But how do we identify them?
 
-    for (const AnyP::PortCfg *s = Config.Sockaddr.http; s; s = s->next) {
+    for (AnyP::PortCfgPointer s = HttpPortList; s != NULL; s = s->next) {
         if (Comm::IsConnOpen(s->listenConn)) {
             fds[nfds] = s->listenConn->fd;
             ++nfds;
@@ -343,7 +321,7 @@ comm_select_tcp_incoming(void)
 
 #define DEBUG_FDBITS 0
 /* Select on all sockets; call handlers for those that are ready. */
-comm_err_t
+Comm::Flag
 Comm::DoSelect(int msec)
 {
     fd_set readfds;
@@ -436,7 +414,7 @@ Comm::DoSelect(int msec)
 #endif
         if (nreadfds + nwritefds == 0) {
             assert(shutting_down);
-            return COMM_SHUTDOWN;
+            return Comm::SHUTDOWN;
         }
 
         if (msec > MAX_POLL_TIME)
@@ -462,7 +440,7 @@ Comm::DoSelect(int msec)
 
             examine_select(&readfds, &writefds);
 
-            return COMM_ERROR;
+            return Comm::COMM_ERROR;
 
             /* NOTREACHED */
         }
@@ -644,11 +622,11 @@ Comm::DoSelect(int msec)
 
         statCounter.select_time += (current_dtime - start);
 
-        return COMM_OK;
+        return Comm::OK;
     } while (timeout > current_dtime);
     debugs(5, 8, "comm_select: time out: " << squid_curtime);
 
-    return COMM_TIMEOUT;
+    return Comm::TIMEOUT;
 }
 
 static void
@@ -827,3 +805,4 @@ Comm::QuickPollRequired(void)
 }
 
 #endif /* USE_SELECT_WIN32 */
+

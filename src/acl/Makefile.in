@@ -83,12 +83,18 @@ DIST_COMMON = $(top_srcdir)/src/Common.am \
 	$(srcdir)/Makefile.am $(top_srcdir)/cfgaux/depcomp \
 	$(top_srcdir)/cfgaux/test-driver
 check_PROGRAMS =
-@USE_LOADABLE_MODULES_TRUE@am__append_1 = $(INCLTDL)
+@ENABLE_LOADABLE_MODULES_TRUE@am__append_1 = $(INCLTDL)
 @ENABLE_SSL_TRUE@am__append_2 = $(SSL_ACLS)
-@USE_SQUID_EUI_TRUE@am__append_3 = $(ARP_ACLS)
+@USE_ADAPTATION_TRUE@am__append_3 = AdaptationService.h \
+@USE_ADAPTATION_TRUE@	AdaptationService.cc \
+@USE_ADAPTATION_TRUE@	AdaptationServiceData.h \
+@USE_ADAPTATION_TRUE@	AdaptationServiceData.cc
+
+@USE_SQUID_EUI_TRUE@am__append_4 = $(ARP_ACLS)
 subdir = src/acl
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
-am__aclocal_m4_deps = $(top_srcdir)/acinclude/init.m4 \
+am__aclocal_m4_deps = $(top_srcdir)/acinclude/ax_with_prog.m4 \
+	$(top_srcdir)/acinclude/init.m4 \
 	$(top_srcdir)/acinclude/squid-util.m4 \
 	$(top_srcdir)/acinclude/compiler-flags.m4 \
 	$(top_srcdir)/acinclude/os-deps.m4 \
@@ -101,7 +107,6 @@ am__aclocal_m4_deps = $(top_srcdir)/acinclude/init.m4 \
 	$(top_srcdir)/helpers/basic_auth/DB/required.m4 \
 	$(top_srcdir)/helpers/basic_auth/LDAP/required.m4 \
 	$(top_srcdir)/helpers/basic_auth/MSNT-multi-domain/required.m4 \
-	$(top_srcdir)/helpers/basic_auth/MSNT/required.m4 \
 	$(top_srcdir)/helpers/basic_auth/NCSA/required.m4 \
 	$(top_srcdir)/helpers/basic_auth/NIS/required.m4 \
 	$(top_srcdir)/helpers/basic_auth/PAM/required.m4 \
@@ -109,21 +114,22 @@ am__aclocal_m4_deps = $(top_srcdir)/acinclude/init.m4 \
 	$(top_srcdir)/helpers/basic_auth/RADIUS/required.m4 \
 	$(top_srcdir)/helpers/basic_auth/SASL/required.m4 \
 	$(top_srcdir)/helpers/basic_auth/SMB/required.m4 \
+	$(top_srcdir)/helpers/basic_auth/SMB_LM/required.m4 \
 	$(top_srcdir)/helpers/basic_auth/SSPI/required.m4 \
 	$(top_srcdir)/helpers/basic_auth/fake/required.m4 \
 	$(top_srcdir)/helpers/basic_auth/getpwnam/required.m4 \
-	$(top_srcdir)/helpers/ntlm_auth/modules.m4 \
-	$(top_srcdir)/helpers/ntlm_auth/fake/required.m4 \
-	$(top_srcdir)/helpers/ntlm_auth/SSPI/required.m4 \
-	$(top_srcdir)/helpers/ntlm_auth/smb_lm/required.m4 \
-	$(top_srcdir)/helpers/negotiate_auth/modules.m4 \
-	$(top_srcdir)/helpers/negotiate_auth/SSPI/required.m4 \
-	$(top_srcdir)/helpers/negotiate_auth/kerberos/required.m4 \
-	$(top_srcdir)/helpers/negotiate_auth/wrapper/required.m4 \
 	$(top_srcdir)/helpers/digest_auth/modules.m4 \
 	$(top_srcdir)/helpers/digest_auth/LDAP/required.m4 \
 	$(top_srcdir)/helpers/digest_auth/eDirectory/required.m4 \
 	$(top_srcdir)/helpers/digest_auth/file/required.m4 \
+	$(top_srcdir)/helpers/negotiate_auth/modules.m4 \
+	$(top_srcdir)/helpers/negotiate_auth/SSPI/required.m4 \
+	$(top_srcdir)/helpers/negotiate_auth/kerberos/required.m4 \
+	$(top_srcdir)/helpers/negotiate_auth/wrapper/required.m4 \
+	$(top_srcdir)/helpers/ntlm_auth/modules.m4 \
+	$(top_srcdir)/helpers/ntlm_auth/fake/required.m4 \
+	$(top_srcdir)/helpers/ntlm_auth/SSPI/required.m4 \
+	$(top_srcdir)/helpers/ntlm_auth/smb_lm/required.m4 \
 	$(top_srcdir)/helpers/log_daemon/modules.m4 \
 	$(top_srcdir)/helpers/log_daemon/DB/required.m4 \
 	$(top_srcdir)/helpers/log_daemon/file/required.m4 \
@@ -131,6 +137,7 @@ am__aclocal_m4_deps = $(top_srcdir)/acinclude/init.m4 \
 	$(top_srcdir)/helpers/external_acl/AD_group/required.m4 \
 	$(top_srcdir)/helpers/external_acl/LDAP_group/required.m4 \
 	$(top_srcdir)/helpers/external_acl/LM_group/required.m4 \
+	$(top_srcdir)/helpers/external_acl/delayer/required.m4 \
 	$(top_srcdir)/helpers/external_acl/SQL_session/required.m4 \
 	$(top_srcdir)/helpers/external_acl/eDirectory_userip/required.m4 \
 	$(top_srcdir)/helpers/external_acl/file_userip/required.m4 \
@@ -173,15 +180,21 @@ am__libacls_la_SOURCES_DIST = IntRange.cc IntRange.h RegexData.cc \
 	Tag.h Url.cc Url.h UrlLogin.cc UrlLogin.h UrlPath.cc UrlPath.h \
 	UrlPort.cc UrlPort.h UserData.cc UserData.h AclNameList.h \
 	AclDenyInfoList.h Gadgets.cc Gadgets.h AclSizeLimit.h \
+	AtStep.cc AtStep.h AtStepData.cc AtStepData.h \
 	CertificateData.cc CertificateData.h Certificate.cc \
 	Certificate.h ServerCertificate.cc ServerCertificate.h \
-	SslError.cc SslError.h SslErrorData.cc SslErrorData.h Arp.cc \
-	Arp.h Eui64.cc Eui64.h
-am__objects_1 = CertificateData.lo Certificate.lo ServerCertificate.lo \
-	SslError.lo SslErrorData.lo
+	ServerName.cc ServerName.h SslError.cc SslError.h \
+	SslErrorData.cc SslErrorData.h AdaptationService.h \
+	AdaptationService.cc AdaptationServiceData.h \
+	AdaptationServiceData.cc Arp.cc Arp.h Eui64.cc Eui64.h
+am__objects_1 = AtStep.lo AtStepData.lo CertificateData.lo \
+	Certificate.lo ServerCertificate.lo ServerName.lo SslError.lo \
+	SslErrorData.lo
 @ENABLE_SSL_TRUE@am__objects_2 = $(am__objects_1)
-am__objects_3 = Arp.lo Eui64.lo
-@USE_SQUID_EUI_TRUE@am__objects_4 = $(am__objects_3)
+@USE_ADAPTATION_TRUE@am__objects_3 = AdaptationService.lo \
+@USE_ADAPTATION_TRUE@	AdaptationServiceData.lo
+am__objects_4 = Arp.lo Eui64.lo
+@USE_SQUID_EUI_TRUE@am__objects_5 = $(am__objects_4)
 am_libacls_la_OBJECTS = IntRange.lo RegexData.lo StringData.lo Time.lo \
 	TimeData.lo AllOf.lo AnyOf.lo Asn.lo Browser.lo \
 	DestinationDomain.lo DestinationIp.lo DomainData.lo ExtUser.lo \
@@ -191,7 +204,8 @@ am_libacls_la_OBJECTS = IntRange.lo RegexData.lo StringData.lo Time.lo \
 	NoteData.lo PeerName.lo Protocol.lo ProtocolData.lo Random.lo \
 	Referer.lo ReplyMimeType.lo RequestMimeType.lo SourceDomain.lo \
 	SourceIp.lo Tag.lo Url.lo UrlLogin.lo UrlPath.lo UrlPort.lo \
-	UserData.lo Gadgets.lo $(am__objects_2) $(am__objects_4)
+	UserData.lo Gadgets.lo $(am__objects_2) $(am__objects_3) \
+	$(am__objects_5)
 libacls_la_OBJECTS = $(am_libacls_la_OBJECTS)
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
@@ -506,6 +520,8 @@ AUTOHEADER = @AUTOHEADER@
 AUTOMAKE = @AUTOMAKE@
 AWK = @AWK@
 BASIC_AUTH_HELPERS = @BASIC_AUTH_HELPERS@
+BUILDCXX = @BUILDCXX@
+BUILDCXXFLAGS = @BUILDCXXFLAGS@
 BZR = @BZR@
 CACHE_EFFECTIVE_USER = @CACHE_EFFECTIVE_USER@
 CC = @CC@
@@ -553,7 +569,6 @@ FALSE = @FALSE@
 FGREP = @FGREP@
 GREP = @GREP@
 HAVE_CXX11 = @HAVE_CXX11@
-HOSTCXX = @HOSTCXX@
 ICAP_LIBS = @ICAP_LIBS@
 INCLTDL = @INCLTDL@
 INSTALL = @INSTALL@
@@ -571,12 +586,18 @@ LIBADD_DL = @LIBADD_DL@
 LIBADD_DLD_LINK = @LIBADD_DLD_LINK@
 LIBADD_DLOPEN = @LIBADD_DLOPEN@
 LIBADD_SHL_LOAD = @LIBADD_SHL_LOAD@
+LIBGNUTLS_CFLAGS = @LIBGNUTLS_CFLAGS@
+LIBGNUTLS_LIBS = @LIBGNUTLS_LIBS@
 LIBLTDL = @LIBLTDL@
 LIBOBJS = @LIBOBJS@
+LIBOPENSSL_CFLAGS = @LIBOPENSSL_CFLAGS@
+LIBOPENSSL_LIBS = @LIBOPENSSL_LIBS@
 LIBS = @LIBS@
 LIBSASL = @LIBSASL@
 LIBTOOL = @LIBTOOL@
 LIB_DB = @LIB_DB@
+LIB_KRB5_CFLAGS = @LIB_KRB5_CFLAGS@
+LIB_KRB5_LIBS = @LIB_KRB5_LIBS@
 LIPO = @LIPO@
 LN = @LN@
 LN_S = @LN_S@
@@ -659,7 +680,6 @@ ac_ct_AR = @ac_ct_AR@
 ac_ct_CC = @ac_ct_CC@
 ac_ct_CXX = @ac_ct_CXX@
 ac_ct_DUMPBIN = @ac_ct_DUMPBIN@
-ac_krb5_config = @ac_krb5_config@
 am__include = @am__include@
 am__leading_dot = @am__leading_dot@
 am__quote = @am__quote@
@@ -686,13 +706,13 @@ htmldir = @htmldir@
 includedir = @includedir@
 infodir = @infodir@
 install_sh = @install_sh@
+krb5_config = @krb5_config@
 libdir = @libdir@
 libexecdir = @libexecdir@
 localedir = @localedir@
 localstatedir = @localstatedir@
 ltdl_LIBOBJS = @ltdl_LIBOBJS@
 ltdl_LTLIBOBJS = @ltdl_LTLIBOBJS@
-makesnmplib = @makesnmplib@
 mandir = @mandir@
 mkdir_p = @mkdir_p@
 oldincludedir = @oldincludedir@
@@ -714,9 +734,10 @@ AM_CFLAGS = $(SQUID_CFLAGS)
 AM_CXXFLAGS = $(SQUID_CXXFLAGS)
 CLEANFILES = testHeaders
 TESTS = testHeaders
-INCLUDES = -I$(top_srcdir) -I$(top_srcdir)/include -I$(top_srcdir)/lib \
-	-I$(top_srcdir)/src -I$(top_builddir)/include \
-	$(SQUID_CPPUNIT_INC) $(KRB5INCS) $(am__append_1)
+AM_CPPFLAGS = -I$(top_srcdir) -I$(top_srcdir)/include \
+	-I$(top_srcdir)/lib -I$(top_srcdir)/src \
+	-I$(top_builddir)/include $(SQUID_CPPUNIT_INC) $(KRB5INCS) \
+	$(am__append_1)
 @ENABLE_XPROF_STATS_FALSE@LIBPROFILER = 
 @ENABLE_XPROF_STATS_TRUE@LIBPROFILER = $(top_builddir)/lib/profiler/libprofiler.la
 COMPAT_LIB = $(top_builddir)/compat/libcompat-squid.la $(LIBPROFILER)
@@ -766,15 +787,21 @@ libacls_la_SOURCES = IntRange.cc IntRange.h RegexData.cc RegexData.h \
 	Tag.h Url.cc Url.h UrlLogin.cc UrlLogin.h UrlPath.cc UrlPath.h \
 	UrlPort.cc UrlPort.h UserData.cc UserData.h AclNameList.h \
 	AclDenyInfoList.h Gadgets.cc Gadgets.h AclSizeLimit.h \
-	$(am__append_2) $(am__append_3)
+	$(am__append_2) $(am__append_3) $(am__append_4)
 EXTRA_libacls_la_SOURCES = $(SSL_ACLS) $(ARP_ACLS)
 SSL_ACLS = \
+	AtStep.cc \
+	AtStep.h \
+	AtStepData.cc \
+	AtStepData.h \
         CertificateData.cc \
         CertificateData.h  \
         Certificate.cc \
         Certificate.h  \
 	ServerCertificate.cc \
 	ServerCertificate.h \
+	ServerName.cc \
+	ServerName.h \
         SslError.cc \
         SslError.h \
         SslErrorData.cc \
@@ -854,10 +881,14 @@ distclean-compile:
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Acl.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/AclAddress.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/AdaptationService.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/AdaptationServiceData.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/AllOf.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/AnyOf.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Arp.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Asn.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/AtStep.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/AtStepData.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/BoolOps.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Browser.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Certificate.Plo@am__quote@
@@ -896,6 +927,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ReplyMimeType.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/RequestMimeType.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ServerCertificate.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ServerName.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/SourceDomain.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/SourceIp.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/SslError.Plo@am__quote@
@@ -1316,7 +1348,7 @@ uninstall-am:
 $(OBJS): $(top_srcdir)/include/version.h $(top_builddir)/include/autoconf.h
 
 testHeaders: $(srcdir)/*.h
-	$(SHELL) $(top_srcdir)/test-suite/testheaders.sh "$(CXXCOMPILE)" "$(srcdir)" || exit 1
+	$(SHELL) $(top_srcdir)/test-suite/testheaders.sh "$(CXXCOMPILE)" $^ || exit 1
 
 .PHONY: testHeaders
 

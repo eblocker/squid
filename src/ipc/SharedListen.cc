@@ -1,18 +1,24 @@
 /*
- * DEBUG: section 54    Interprocess Communication
+ * Copyright (C) 1996-2015 The Squid Software Foundation and contributors
+ *
+ * Squid software is distributed under GPLv2+ license and includes
+ * contributions from numerous individuals and organizations.
+ * Please see the COPYING and CONTRIBUTORS files for details.
  */
 
+/* DEBUG: section 54    Interprocess Communication */
+
 #include "squid.h"
-#include "comm.h"
 #include "base/TextException.h"
+#include "comm.h"
 #include "comm/Connection.h"
 #include "globals.h"
-#include "ipc/Port.h"
-#include "ipc/Messages.h"
 #include "ipc/Kids.h"
-#include "ipc/TypedMsgHdr.h"
-#include "ipc/StartListening.h"
+#include "ipc/Messages.h"
+#include "ipc/Port.h"
 #include "ipc/SharedListen.h"
+#include "ipc/StartListening.h"
+#include "ipc/TypedMsgHdr.h"
 #include "tools.h"
 
 #include <map>
@@ -80,12 +86,12 @@ void Ipc::SharedListenRequest::pack(TypedMsgHdr &hdrMsg) const
 }
 
 Ipc::SharedListenResponse::SharedListenResponse(int aFd, int anErrNo, int aMapId):
-        fd(aFd), errNo(anErrNo), mapId(aMapId)
+    fd(aFd), errNo(anErrNo), mapId(aMapId)
 {
 }
 
 Ipc::SharedListenResponse::SharedListenResponse(const TypedMsgHdr &hdrMsg):
-        fd(-1), errNo(0), mapId(-1)
+    fd(-1), errNo(0), mapId(-1)
 {
     hdrMsg.checkType(mtSharedListenResponse);
     hdrMsg.getPod(*this);
@@ -117,7 +123,7 @@ void Ipc::JoinSharedListen(const OpenListenerParams &params,
 
     TypedMsgHdr message;
     request.pack(message);
-    SendMessage(coordinatorAddr, message);
+    SendMessage(Ipc::Port::CoordinatorAddr(), message);
 }
 
 void Ipc::SharedListenJoined(const SharedListenResponse &response)
@@ -146,10 +152,11 @@ void Ipc::SharedListenJoined(const SharedListenResponse &response)
         AI->ai_socktype = p.sock_type;
         AI->ai_protocol = p.proto;
         comm_import_opened(cbd->conn, FdNote(p.fdNote), AI);
-        Ip::Address::FreeAddrInfo(AI);
+        Ip::Address::FreeAddr(AI);
     }
 
     cbd->errNo = response.errNo;
     cbd->handlerSubscription = por.params.handlerSubscription;
     ScheduleCallHere(por.callback);
 }
+

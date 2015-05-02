@@ -2,7 +2,7 @@ Author: Luigi Gangitano <luigi@debian.org>
 Description: Change default statedir for IPC to /var/run/squid3
 --- a/src/ipc/Makefile.am
 +++ b/src/ipc/Makefile.am
-@@ -59,7 +59,7 @@
+@@ -70,7 +70,7 @@ libipc_la_SOURCES = \
  	mem/Segment.cc \
  	mem/Segment.h
  
@@ -14,7 +14,7 @@ Description: Change default statedir for IPC to /var/run/squid3
 +	$(mkinstalldirs) $(DESTDIR)$(localstatedir)/run/squid3;
 --- a/src/ipc/Makefile.in
 +++ b/src/ipc/Makefile.in
-@@ -479,7 +479,7 @@
+@@ -484,7 +484,7 @@ DEFAULT_HOSTS = @DEFAULT_HOSTS@
  DEFAULT_LOG_DIR = @DEFAULT_LOG_DIR@
  DEFAULT_PID_FILE = @DEFAULT_PID_FILE@
  DEFAULT_SWAP_DIR = @DEFAULT_SWAP_DIR@
@@ -23,7 +23,7 @@ Description: Change default statedir for IPC to /var/run/squid3
  DEPDIR = @DEPDIR@
  DIGEST_AUTH_HELPERS = @DIGEST_AUTH_HELPERS@
  DISK_LIBS = @DISK_LIBS@
-@@ -1264,7 +1264,7 @@
+@@ -1262,7 +1262,7 @@ testHeaders: $(srcdir)/*.h
  .PHONY: testHeaders
  
  install-data-local:

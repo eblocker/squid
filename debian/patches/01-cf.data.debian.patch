@@ -1,47 +1,8 @@
 Author: Luigi Gangitano <luigi@debian.org>
 Description: Default configuration file for debian
-=== modified file 'src/cf.data.pre'
 --- a/src/cf.data.pre
 +++ b/src/cf.data.pre
-@@ -360,7 +360,7 @@
- 	If you want to use the traditional NCSA proxy authentication, set
- 	this line to something like
- 
--	auth_param basic program @DEFAULT_PREFIX@/libexec/basic_ncsa_auth @DEFAULT_PREFIX@/etc/passwd
-+	auth_param basic program @DEFAULT_PREFIX@/lib/squid3/basic_ncsa_auth @DEFAULT_PREFIX@/etc/passwd
- 
- 	"utf8" on|off
- 	HTTP uses iso-latin-1 as character set, while some authentication
-@@ -444,7 +444,7 @@
- 	If you want to use a digest authenticator, set this line to
- 	something like
- 
--	auth_param digest program @DEFAULT_PREFIX@/bin/digest_pw_auth @DEFAULT_PREFIX@/etc/digpass
-+	auth_param digest program @DEFAULT_PREFIX@/lib/squid3/digest_pw_auth @DEFAULT_PREFIX@/etc/digpass
- 
- 	"utf8" on|off
- 	HTTP uses iso-latin-1 as character set, while some authentication
-@@ -521,6 +521,9 @@
- 	of type proxy_auth.  By default, the NTLM authenticator program
- 	is not used.
- 
-+	NOTE: In Debian the ntlm_auth program is distributed in the winbindd package
-+	      which is required for this auth scheme to work
-+
- 	auth_param ntlm program /usr/bin/ntlm_auth
- 
- 	"children" numberofchildren [startup=N] [idle=N]
-@@ -562,6 +565,9 @@
- 	The only supported program for this role is the ntlm_auth
- 	program distributed as part of Samba, version 4 or later.
- 
-+	NOTE: In Debian the ntlm_auth program is distributed in the winbindd package
-+	      which is required for this auth scheme to work
-+
- 	auth_param negotiate program /usr/bin/ntlm_auth --helper-protocol=gss-spnego
- 
- 	"children" numberofchildren [startup=N] [idle=N]
-@@ -1155,11 +1161,11 @@
+@@ -1155,11 +1155,11 @@ NOCOMMENT_START
  # Example rule allowing access from your local networks.
  # Adapt to list your (internal) IP networks from where browsing
  # should be allowed
@@ -58,7 +19,7 @@ Description: Default configuration file for debian
  
  acl SSL_ports port 443
  acl Safe_ports port 80		# http
-@@ -1360,7 +1366,7 @@
+@@ -1408,7 +1408,7 @@ http_access deny manager
  # Example rule allowing access from your local networks.
  # Adapt localnet in the ACL section to list your (internal) IP networks
  # from where browsing should be allowed
@@ -67,7 +28,7 @@ Description: Default configuration file for debian
  http_access allow localhost
  
  # And finally deny all other access to this proxy
-@@ -4178,7 +4184,7 @@
+@@ -4431,7 +4431,7 @@ DOC_END
  
  NAME: logfile_rotate
  TYPE: int
@@ -76,7 +37,7 @@ Description: Default configuration file for debian
  LOC: Config.Log.rotateNumber
  DOC_START
  	Specifies the number of logfile rotations to make when you
-@@ -4197,6 +4203,9 @@
+@@ -4450,6 +4450,9 @@ DOC_START
  
  	Note, from Squid-3.1 this option is only a default for cache.log,
  	that log can be rotated separately by using debug_options.
@@ -85,8 +46,8 @@ Description: Default configuration file for debian
 +	zero, since it includes external logfile-rotation methods.
  DOC_END
  
- NAME: emulate_httpd_log
-@@ -8497,8 +8506,8 @@
+ NAME: mime_table
+@@ -8794,8 +8797,8 @@ DOC_START
  
  	WARNING:
  	  This option will restrict the situations under which IPv6

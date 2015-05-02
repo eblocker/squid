@@ -2,6 +2,9 @@
 
 set -e
 
+dpkg-maintscript-helper rm_conffile \
+	/etc/squid3/msntauth.conf 3.5.4-1~ squid3 -- "$@"
+
 case "$1" in
 	remove)
 		;;

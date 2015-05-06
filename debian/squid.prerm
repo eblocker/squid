@@ -7,7 +7,7 @@ case "$1" in
 		#
 		#	Stop the daemon
 		#
-		invoke-rc.d squid3 stop
+		invoke-rc.d squid stop
 		;;
 	upgrade|failed-upgrade)
 		;;

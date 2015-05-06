@@ -10,7 +10,7 @@ Squid 3.3 is configured by the /etc/squid3/squid.conf file. Syntax of that
 file is the same of previous versions of squid and each directive is largely
 commented there. Configuration files from 2.x versions of squid will mostly
 work in squid 3.3. Changes to the configuration file are reported in
-/usr/share/doc/squid3-common/RELEASENOTES.html
+/usr/share/doc/squid-common/RELEASENOTES.html
 
 This package can be installed alongside a squid-2.x package, for testing and
 migration purpose. Please note that the default http_port for both packages is

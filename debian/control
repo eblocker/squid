@@ -7,10 +7,13 @@ Standards-Version: 3.9.6
 Xs-Vcs-Git: git://anonscm.debian.org/pkg-squid/pkg-squid3.git/
 Build-Depends: libldap2-dev, libpam0g-dev, libdb-dev, cdbs, libsasl2-dev, debhelper (>=5), libcppunit-dev, libkrb5-dev, comerr-dev, libcap2-dev [linux-any], libecap2-dev (>= 1.0.0), libexpat1-dev, libxml2-dev, autotools-dev, libltdl-dev, dpkg-dev (>= 1.16.1~), pkg-config, libnetfilter-conntrack-dev [linux-any], nettle-dev
 
-Package: squid3
+Package: squid
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, netbase, adduser, logrotate (>= 3.5.4-1), squid3-common (= ${source:Version}), lsb-base
+Depends: ${shlibs:Depends}, ${misc:Depends}, netbase, adduser, logrotate (>= 3.5.4-1), squid-common (= ${source:Version}), lsb-base
 Suggests: squidclient, squid-cgi, squid-purge, resolvconf (>= 0.40), smbclient, ufw, winbindd
+Provides: squid3
+Conflicts: squid3
+Replaces: squid3
 Description: Full featured Web Proxy cache (HTTP proxy)
  Squid is a high-performance proxy caching server for web clients, supporting
  FTP, gopher, ICY and HTTP data objects.
@@ -18,11 +21,11 @@ Description: Full featured Web Proxy cache (HTTP proxy)
  Squid version 3 is a major rewrite of Squid in C++ and introduces a number of
  new features including ICAP and ESI support.
 
-Package: squid3-dbg
+Package: squid-dbg
 Architecture: any
 Section: debug
 Priority: extra
-Depends: squid3 (= ${binary:Version}), ${misc:Depends}
+Depends: squid (= ${binary:Version}), ${misc:Depends}
 Description: Full featured Web Proxy cache (HTTP proxy) - Debug symbols
  Squid is a high-performance proxy caching server for web clients, supporting
  FTP, gopher, ICY and HTTP data objects.
@@ -30,11 +33,12 @@ Description: Full featured Web Proxy cache (HTTP proxy) - Debug symbols
  Squid version 3 is a major rewrite of Squid in C++ and introduces a number of
  new features including ICAP and ESI support.
  .
- This package contains debugging symbols for binaries in squid3.
+ This package contains debugging symbols for binaries in squid.
 
-Package: squid3-common
+Package: squid-common
 Architecture: all
 Depends: ${misc:Depends}, squid-langpack (>= 20110214-1)
+Conflicts: squid-common (<< 3.5.4-1)
 Description: Full featured Web Proxy cache (HTTP proxy) - common files
  Squid is a high-performance proxy caching server for web clients, supporting
  FTP, gopher, ICY and HTTP data objects.

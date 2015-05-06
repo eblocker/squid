@@ -14,7 +14,14 @@ case "$1" in
 		   [ -d "/usr/share/squid3/errors" ])
 		then
 			rm -rf /usr/share/squid3/errors
-			ln -s /usr/share/squid-langpack /usr/share/squid3/errors
+			ln -s /usr/share/squid-langpack /usr/share/squid/errors
+		fi
+		if (dpkg --compare-versions "$2" lt '3.0.STABLE15-1' &&
+		   [ ! -h "/usr/share/squid/errors" ] &&
+		   [ -d "/usr/share/squid/errors" ])
+		then
+			rm -rf /usr/share/squid/errors
+			ln -s /usr/share/squid-langpack /usr/share/squid/errors
 		fi
 		;;
 

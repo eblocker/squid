@@ -1,11 +1,11 @@
 #! /bin/sh
 #
-# squid3		Startup script for the SQUID HTTP proxy-cache.
+# squid		Startup script for the SQUID HTTP proxy-cache.
 #
-# Version:	@(#)squid3.rc  1.0  07-Jul-2006  luigi@debian.org
+# Version:	@(#)squid.rc  1.0  07-Jul-2006  luigi@debian.org
 #
 ### BEGIN INIT INFO
-# Provides:          squid3
+# Provides:          squid
 # Required-Start:    $network $remote_fs $syslog
 # Required-Stop:     $network $remote_fs $syslog
 # Should-Start:      $named
@@ -15,14 +15,14 @@
 # Short-Description: Squid HTTP Proxy version 3.x
 ### END INIT INFO
 
-NAME=squid3
-DESC="Squid HTTP Proxy 3.x"
-DAEMON=/usr/sbin/squid3
+NAME=squid
+DESC="Squid HTTP Proxy"
+DAEMON=/usr/sbin/squid
 PIDFILE=/var/run/$NAME.pid
-CONFIG=/etc/squid3/squid.conf
+CONFIG=/etc/squid/squid.conf
 SQUID_ARGS="-YC -f $CONFIG"
 
-[ ! -f /etc/default/squid3 ] || . /etc/default/squid3
+[ ! -f /etc/default/squid ] || . /etc/default/squid
 
 . /lib/lsb/init-functions
 
@@ -61,7 +61,7 @@ grepconf () {
 }
 
 create_run_dir () {
-	run_dir=/var/run/squid3
+	run_dir=/var/run/squid
 	usr=`grepconf cache_effective_user proxy`
 	grp=`grepconf cache_effective_group proxy`
 

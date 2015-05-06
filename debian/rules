@@ -8,14 +8,15 @@ include /usr/share/cdbs/1/rules/debhelper.mk
 include /usr/share/cdbs/1/class/autotools.mk
  
 INSTALLDIR := $(CURDIR)/debian/tmp
-datadir=/usr/share/squid3
+datadir=/usr/share/squid
 
 DEB_DH_INSTALL_SOURCEDIR := $(INSTALLDIR)
-DEB_INSTALL_DOCS_squid3-common := CONTRIBUTORS CREDITS QUICKSTART RELEASENOTES.html \
+DEB_INSTALL_DOCS_squid-common := CONTRIBUTORS CREDITS QUICKSTART RELEASENOTES.html \
 						SPONSORS 
 
-DEB_CONFIGURE_EXTRA_FLAGS := --datadir=/usr/share/squid3 \
-		--sysconfdir=/etc/squid3 \
+DEB_CONFIGURE_EXTRA_FLAGS := --datadir=/usr/share/squid \
+		--sysconfdir=/etc/squid \
+		--libexecdir=/usr/lib/squid \
 		--mandir=/usr/share/man \
 		--enable-inline \
 		--disable-arch-native \
@@ -38,9 +39,9 @@ DEB_CONFIGURE_EXTRA_FLAGS := --datadir=/usr/share/squid3 \
 		--enable-zph-qos \
 		--enable-ecap \
 		--disable-translation \
-		--with-swapdir=/var/spool/squid3 \
-		--with-logdir=/var/log/squid3 \
-		--with-pidfile=/var/run/squid3.pid \
+		--with-swapdir=/var/spool/squid \
+		--with-logdir=/var/log/squid \
+		--with-pidfile=/var/run/squid.pid \
 		--with-filedescriptors=65536 \
 		--with-large-files \
 		--with-default-user=proxy
@@ -60,32 +61,30 @@ endif
 
 DEB_MAKE_CLEAN_TARGET = distclean
 
-DEB_FIXPERMS_EXCLUDE = /usr/lib/squid3/pinger
+DEB_FIXPERMS_EXCLUDE = /usr/lib/squid/pinger
 
-install/squid3::
+install/squid::
 	install -m 755 -g root -d $(INSTALLDIR)/usr/lib/cgi-bin
-	mv $(INSTALLDIR)/etc/squid3/squid.conf.documented $(INSTALLDIR)/etc/squid3/squid.conf
-	mv $(INSTALLDIR)/usr/lib/squid3/cachemgr.cgi $(INSTALLDIR)/usr/lib/cgi-bin/cachemgr.cgi
-	mv $(INSTALLDIR)/usr/sbin/squid $(INSTALLDIR)/usr/sbin/squid3
-	mv $(INSTALLDIR)/usr/share/man/man8/squid.8 $(INSTALLDIR)/usr/share/man/man8/squid3.8
+	mv $(INSTALLDIR)/etc/squid/squid.conf.documented $(INSTALLDIR)/etc/squid/squid.conf
+	mv $(INSTALLDIR)/usr/lib/squid/cachemgr.cgi $(INSTALLDIR)/usr/lib/cgi-bin/cachemgr.cgi
 	install -m 755 -g root -d $(INSTALLDIR)/etc/init.d
 	install -m 755 -g root -d $(INSTALLDIR)/etc/logrotate.d
 	install -m 755 -g root -d $(INSTALLDIR)/etc/resolvconf
 	install -m 755 -g root -d $(INSTALLDIR)/etc/resolvconf/update-libc.d
 	install -m 755 -g root -d $(INSTALLDIR)/etc/ufw/applications.d
-	install -m 755 -g root debian/squid3.rc $(INSTALLDIR)/etc/init.d/squid3
-	install -m 755 -g root debian/squid3.resolvconf $(INSTALLDIR)/etc/resolvconf/update-libc.d/squid3
-	install -m 644 -g root debian/squid3.logrotate $(INSTALLDIR)/etc/logrotate.d/squid3
-	install -m 644 -g root debian/squid3.ufw.profile $(INSTALLDIR)/etc/ufw/applications.d/squid3
-	install -m 755 -g root -d debian/squid3/var/log
-	install -m 755 -g root -d debian/squid3/var/spool
-	install -m 755 -g root -d debian/squid3/var/run
-	install -m 750 -o proxy -g proxy -d debian/squid3/var/log/squid3
-	install -m 750 -o proxy -g proxy -d debian/squid3/var/spool/squid3
+	install -m 755 -g root debian/squid.rc $(INSTALLDIR)/etc/init.d/squid
+	install -m 755 -g root debian/squid.resolvconf $(INSTALLDIR)/etc/resolvconf/update-libc.d/squid
+	install -m 644 -g root debian/squid.logrotate $(INSTALLDIR)/etc/logrotate.d/squid
+	install -m 644 -g root debian/squid.ufw.profile $(INSTALLDIR)/etc/ufw/applications.d/squid
+	install -m 755 -g root -d debian/squid/var/log
+	install -m 755 -g root -d debian/squid/var/spool
+	install -m 755 -g root -d debian/squid/var/run
+	install -m 750 -o proxy -g proxy -d debian/squid/var/log/squid
+	install -m 750 -o proxy -g proxy -d debian/squid/var/spool/squid
 	install -m 755 -g root -d $(INSTALLDIR)/usr/share/man/man1
 	mv $(INSTALLDIR)/usr/bin/purge $(INSTALLDIR)/usr/bin/squid-purge
 	install -m 644 -g root debian/squid-purge.8  $(INSTALLDIR)/usr/share/man/man8
-	chmod 4755 $(INSTALLDIR)/usr/lib/squid3/pinger
+	chmod 4755 $(INSTALLDIR)/usr/lib/squid/pinger
 
 clean::
 	# nothing to do

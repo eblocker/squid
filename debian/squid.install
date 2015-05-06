@@ -1,11 +1,11 @@
-etc/squid3/squid.conf
-etc/squid3/errorpage.css
+etc/squid/squid.conf
+etc/squid/errorpage.css
 etc/logrotate.d
 etc/resolvconf
-etc/init.d/squid3
+etc/init.d/squid
 etc/ufw
-usr/lib/squid3
-usr/sbin/squid3
+usr/lib/squid
+usr/sbin/squid
 usr/share/man/man8/basic_db_auth.8
 usr/share/man/man8/basic_getpwnam_auth.8
 usr/share/man/man8/basic_ldap_auth.8
@@ -21,4 +21,4 @@ usr/share/man/man8/ext_unix_group_acl.8
 usr/share/man/man8/ext_wbinfo_group_acl.8
 usr/share/man/man8/log_db_daemon.8
 usr/share/man/man8/negotiate_kerberos_auth.8
-usr/share/man/man8/squid3.8
+usr/share/man/man8/squid.8

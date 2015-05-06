@@ -3,12 +3,18 @@ squid3 (3.5.4-1) UNRELEASED; urgency=medium
   [ Amos Jeffries <amosjeffries@squid-cache.org> ]
   * New upstream release
 
+  * Removed deprecated MSNT and MSNT-multi-domain authentication helpers
+
+  * Transition squid3 to squid
+    - Renamed squid3 package to squid (Closes: #521053, #565555, #672156, #779127)
+      (Closes: #294431, #569575, #714334, #279840)
+    - Renamed squid3-common package to squid-common
+    - Renamed squid3-dbg package to squid-dbg
+
   * debian/patches/
     - Removed patches included upstream and refresh others
 
-  * Removed deprecated MSNT and MSNT-multi-domain authentication helpers
-
- -- Amos Jeffries <amosjeffries@squid-cache.org>  Sat, 02 May 2015 19:36:00 +1200
+ -- Amos Jeffries <amosjeffries@squid-cache.org>  Sun, 03 May 2015 23:30:00 +1200
 
 squid3 (3.4.8-6) unstable; urgency=medium
 

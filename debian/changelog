@@ -14,7 +14,11 @@ squid3 (3.5.4-1) UNRELEASED; urgency=medium
   * debian/patches/
     - Removed patches included upstream and refresh others
 
- -- Amos Jeffries <amosjeffries@squid-cache.org>  Sun, 03 May 2015 23:30:00 +1200
+  [ Luigi Gangitano <luigi@debian.org> ]
+  * debian/control
+    - Changed dependency on libecap3-dev
+
+ -- Luigi Gangitano <luigi@debian.org>  Mon, 11 May 2015 12:30:00 +0200
 
 squid3 (3.4.8-6) unstable; urgency=medium
 

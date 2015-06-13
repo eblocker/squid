@@ -6,6 +6,10 @@ set -e
 # If the squid3 package was being used previously...
 #
 if test -d /etc/squid3 ; then
+	if test ! -d /etc/squid; then
+		mkdir /etc/squid
+	fi
+
 	#
 	# Remove obsolete MSNT helper config
 	#

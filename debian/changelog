@@ -10,6 +10,7 @@ squid3 (3.5.4-1) UNRELEASED; urgency=medium
       (Closes: #294431, #569575, #714334, #279840)
     - Renamed squid3-common package to squid-common
     - Renamed squid3-dbg package to squid-dbg
+    - Add dummy transitional package squid3
 
   * debian/patches/
     - Removed patches included upstream and refresh others

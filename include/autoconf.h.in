@@ -664,9 +664,6 @@
 /* Define to 1 if you have the <net/route.h> header file. */
 #undef HAVE_NET_ROUTE_H
 
-/* Define to 1 if nullptr is supported */
-#undef HAVE_NULLPTR
-
 /* Define to 1 if nullptr_t is supported */
 #undef HAVE_NULLPTR_T
 
@@ -1577,6 +1574,9 @@
    a type exists and the standard includes do not define it. */
 #undef int8_t
 
+/* Leave undefined if nullptr is supported */
+#undef nullptr
+
 /* Define to `long int' if <sys/types.h> does not define. */
 #undef off_t
 
@@ -1607,3 +1607,6 @@
 /* Define to the type of an unsigned integer type of width exactly 8 bits if
    such a type exists and the standard includes do not define it. */
 #undef uint8_t
+
+/* Leave undefined if std::unique_ptr<T> is supported */
+#undef unique_ptr

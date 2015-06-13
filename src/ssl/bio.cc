@@ -130,6 +130,28 @@ Ssl::Bio::read(char *buf, int size, BIO *table)
     return result;
 }
 
+int
+Ssl::Bio::readAndBuffer(char *buf, int size, BIO *table, const char *description)
+{
+    prepReadBuf();
+
+    size = min((int)rbuf.potentialSpaceSize(), size);
+    if (size <= 0) {
+        debugs(83, DBG_IMPORTANT, "Not enough space to hold " <<
+               rbuf.contentSize() << "+ byte " << description);
+        return -1;
+    }
+
+    const int bytes = Ssl::Bio::read(buf, size, table);
+    debugs(83, 5, "read " << bytes << " out of " << size << " bytes"); // move to Ssl::Bio::read()
+
+    if (bytes > 0) {
+        rbuf.append(buf, bytes);
+        debugs(83, 5, "recorded " << bytes << " bytes of " << description);
+    }
+    return bytes;
+}
+
 /// Called whenever the SSL connection state changes, an alert appears, or an
 /// error occurs. See SSL_set_info_callback().
 void
@@ -146,6 +168,13 @@ Ssl::Bio::stateChanged(const SSL *ssl, int where, int ret)
 
     debugs(83, 7, "FD " << fd_ << " now: 0x" << std::hex << where << std::dec << ' ' <<
            SSL_state_string(ssl) << " (" << SSL_state_string_long(ssl) << ")");
+}
+
+void
+Ssl::Bio::prepReadBuf()
+{
+    if (rbuf.isNull())
+        rbuf.init(4096, 65536);
 }
 
 bool
@@ -196,20 +225,9 @@ int
 Ssl::ClientBio::read(char *buf, int size, BIO *table)
 {
     if (helloState < atHelloReceived) {
-
-        if (rbuf.isNull())
-            rbuf.init(1024, 16384);
-
-        size = rbuf.spaceSize() > size ? size : rbuf.spaceSize();
-
-        if (!size)
-            return 0;
-
-        int bytes = Ssl::Bio::read(buf, size, table);
+        int bytes = readAndBuffer(buf, size, table, "TLS client Hello");
         if (bytes <= 0)
             return bytes;
-        rbuf.append(buf, bytes);
-        debugs(83, 7, "rbuf size: " << rbuf.contentSize());
     }
 
     if (helloState == atHelloNone) {
@@ -272,16 +290,8 @@ Ssl::ServerBio::setClientFeatures(const Ssl::Bio::sslFeatures &features)
 int
 Ssl::ServerBio::read(char *buf, int size, BIO *table)
 {
-    int bytes = Ssl::Bio::read(buf, size, table);
-
-    if (bytes > 0 && record_) {
-        if (rbuf.isNull())
-            rbuf.init(1024, 16384);
-        rbuf.append(buf, bytes);
-        debugs(83, 5, "Record is enabled store " << bytes << " bytes");
-    }
-    debugs(83, 5, "Read " << bytes << " from " << size << " bytes");
-    return bytes;
+    return record_ ?
+           readAndBuffer(buf, size, table, "TLS server Hello") : Ssl::Bio::read(buf, size, table);
 }
 
 // This function makes the required checks to examine if the client hello

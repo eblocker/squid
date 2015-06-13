@@ -15,6 +15,9 @@ squid3 (3.5.4-1) UNRELEASED; urgency=medium
   * debian/patches/
     - Removed patches included upstream and refresh others
 
+  * debian/squid3-cgi.dirs
+    - Removed old unused packaging file
+
   [ Luigi Gangitano <luigi@debian.org> ]
   * debian/control
     - Changed dependency on libecap3-dev

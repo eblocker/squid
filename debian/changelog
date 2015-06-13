@@ -18,6 +18,9 @@ squid3 (3.5.5-1) UNRELEASED; urgency=medium
   * debian/squid3-cgi.dirs
     - Removed old unused packaging file
 
+  * debian/control
+    - Add dependency on libgnutls28-dev for squidclient HTTPS support
+
   [ Luigi Gangitano <luigi@debian.org> ]
   * debian/control
     - Changed dependency on libecap3-dev

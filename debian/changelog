@@ -1,13 +1,13 @@
 squid3 (3.5.5-1) UNRELEASED; urgency=medium
 
   [ Amos Jeffries <amosjeffries@squid-cache.org> ]
-  * New upstream release
+  * New upstream release (Closes: #760303)
 
   * Removed deprecated MSNT and MSNT-multi-domain authentication helpers
 
   * Transition squid3 to squid
-    - Renamed squid3 package to squid (Closes: #521053, #565555, #672156, #779127)
-      (Closes: #294431, #569575, #714334, #279840, #576423)
+    - Renamed squid3 package to squid (Closes: #521053, #565555, #672156)
+      (Closes: #294431, #569575, #714334, #279840, #576423, #779127)
     - Renamed squid3-common package to squid-common
     - Renamed squid3-dbg package to squid-dbg
     - Add dummy transitional package squid3

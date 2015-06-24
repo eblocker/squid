@@ -23,7 +23,7 @@ squid3 (3.5.5-1) UNRELEASED; urgency=medium
 
   [ Luigi Gangitano <luigi@debian.org> ]
   * debian/control
-    - Changed dependency on libecap3-dev
+    - Changed dependency on libecap3-dev (Closes: #789774)
 
  -- Luigi Gangitano <luigi@debian.org>  Mon, 11 May 2015 12:30:00 +0200
 

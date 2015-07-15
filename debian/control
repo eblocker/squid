@@ -43,7 +43,8 @@ Description: Full featured Web Proxy cache (HTTP proxy) - Debug symbols
 Package: squid-common
 Architecture: all
 Depends: ${misc:Depends}, squid-langpack (>= 20110214-1)
-Conflicts: squid-common (<< 3.5.4-1)
+Conflicts: squid3-common (<< ${binary:Version})
+Replaces: squid3-common
 Description: Full featured Web Proxy cache (HTTP proxy) - common files
  Squid is a high-performance proxy caching server for web clients, supporting
  FTP, gopher, ICY and HTTP data objects.

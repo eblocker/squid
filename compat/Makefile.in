@@ -83,8 +83,8 @@ POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
 DIST_COMMON = $(top_srcdir)/src/Common.am $(srcdir)/Makefile.in \
-	$(srcdir)/Makefile.am strtoll.c tempnam.c drand48.c psignal.c \
-	initgroups.c strerror.c $(top_srcdir)/cfgaux/depcomp \
+	$(srcdir)/Makefile.am initgroups.c tempnam.c drand48.c \
+	strtoll.c strerror.c psignal.c $(top_srcdir)/cfgaux/depcomp \
 	$(top_srcdir)/cfgaux/test-driver
 check_PROGRAMS = testPreCompiler$(EXEEXT)
 TESTS = testPreCompiler$(EXEEXT) testHeaders

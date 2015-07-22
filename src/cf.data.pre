@@ -360,7 +360,7 @@ DOC_START
 	If you want to use the traditional NCSA proxy authentication, set
 	this line to something like
 
-	auth_param basic program @DEFAULT_PREFIX@/libexec/basic_ncsa_auth @DEFAULT_PREFIX@/etc/passwd
+	auth_param basic program @DEFAULT_PREFIX@/lib/squid3/basic_ncsa_auth @DEFAULT_PREFIX@/etc/passwd
 
 	"utf8" on|off
 	HTTP uses iso-latin-1 as character set, while some authentication
@@ -444,7 +444,7 @@ DOC_START
 	If you want to use a digest authenticator, set this line to
 	something like
 
-	auth_param digest program @DEFAULT_PREFIX@/bin/digest_pw_auth @DEFAULT_PREFIX@/etc/digpass
+	auth_param digest program @DEFAULT_PREFIX@/lib/squid3/digest_pw_auth @DEFAULT_PREFIX@/etc/digpass
 
 	"utf8" on|off
 	HTTP uses iso-latin-1 as character set, while some authentication
@@ -521,6 +521,9 @@ DOC_START
 	of type proxy_auth.  By default, the NTLM authenticator program
 	is not used.
 
+	NOTE: In Debian the ntlm_auth program is distributed in the winbindd package
+	      which is required for this auth scheme to work
+
 	auth_param ntlm program /usr/bin/ntlm_auth
 
 	"children" numberofchildren [startup=N] [idle=N]
@@ -561,6 +564,9 @@ DOC_START
 	authenticator program is not used.
 	The only supported program for this role is the ntlm_auth
 	program distributed as part of Samba, version 4 or later.
+
+	NOTE: In Debian the ntlm_auth program is distributed in the winbindd package
+	      which is required for this auth scheme to work
 
 	auth_param negotiate program /usr/bin/ntlm_auth --helper-protocol=gss-spnego
 
@@ -1155,11 +1161,11 @@ NOCOMMENT_START
 # Example rule allowing access from your local networks.
 # Adapt to list your (internal) IP networks from where browsing
 # should be allowed
-acl localnet src 10.0.0.0/8	# RFC1918 possible internal network
-acl localnet src 172.16.0.0/12	# RFC1918 possible internal network
-acl localnet src 192.168.0.0/16	# RFC1918 possible internal network
-acl localnet src fc00::/7       # RFC 4193 local private network range
-acl localnet src fe80::/10      # RFC 4291 link-local (directly plugged) machines
+#acl localnet src 10.0.0.0/8	# RFC1918 possible internal network
+#acl localnet src 172.16.0.0/12	# RFC1918 possible internal network
+#acl localnet src 192.168.0.0/16	# RFC1918 possible internal network
+#acl localnet src fc00::/7       # RFC 4193 local private network range
+#acl localnet src fe80::/10      # RFC 4291 link-local (directly plugged) machines
 
 acl SSL_ports port 443
 acl Safe_ports port 80		# http
@@ -1360,7 +1366,7 @@ http_access deny manager
 # Example rule allowing access from your local networks.
 # Adapt localnet in the ACL section to list your (internal) IP networks
 # from where browsing should be allowed
-http_access allow localnet
+#http_access allow localnet
 http_access allow localhost
 
 # And finally deny all other access to this proxy
@@ -4178,7 +4184,7 @@ DOC_END
 
 NAME: logfile_rotate
 TYPE: int
-DEFAULT: 10
+DEFAULT: 0
 LOC: Config.Log.rotateNumber
 DOC_START
 	Specifies the number of logfile rotations to make when you
@@ -4197,6 +4203,9 @@ DOC_START
 
 	Note, from Squid-3.1 this option is only a default for cache.log,
 	that log can be rotated separately by using debug_options.
+
+	Note2, for Debian/Linux the default of logfile_rotate is
+	zero, since it includes external logfile-rotation methods.
 DOC_END
 
 NAME: emulate_httpd_log
@@ -8497,8 +8506,8 @@ DOC_START
 
 	WARNING:
 	  This option will restrict the situations under which IPv6
-	  connectivity is used (and tested). Hiding network problems
-	  which would otherwise be detected and warned about.
+	  connectivity is used (and tested), potentially hiding network
+	  problems which would otherwise be detected and warned about.
 DOC_END
 
 NAME: ipcache_size

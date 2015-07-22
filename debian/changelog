@@ -3,6 +3,8 @@ squid3 (3.5.6-1) UNRELEASED; urgency=medium
   [ Amos Jeffries <amosjeffries@squid-cache.org> ]
   * New upstream release (Closes: #760303)
     - Fixed upstream macro issue that fail to pass reproducible builds test
+    - Fixes CVE-2015-5400: Improper Protection of Alternate Path
+      (Closes: #793128)
 
   * Removed deprecated MSNT and MSNT-multi-domain authentication helpers
 

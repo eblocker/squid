@@ -479,7 +479,7 @@ DEFAULT_HOSTS = @DEFAULT_HOSTS@
 DEFAULT_LOG_DIR = @DEFAULT_LOG_DIR@
 DEFAULT_PID_FILE = @DEFAULT_PID_FILE@
 DEFAULT_SWAP_DIR = @DEFAULT_SWAP_DIR@
-DEFS = @DEFS@ -DDEFAULT_STATEDIR=\"$(localstatedir)/run/squid\"
+DEFS = @DEFS@ -DDEFAULT_STATEDIR=\"$(localstatedir)/run/squid3\"
 DEPDIR = @DEPDIR@
 DIGEST_AUTH_HELPERS = @DIGEST_AUTH_HELPERS@
 DISK_LIBS = @DISK_LIBS@
@@ -1264,7 +1264,7 @@ testHeaders: $(srcdir)/*.h
 .PHONY: testHeaders
 
 install-data-local:
-	$(mkinstalldirs) $(DESTDIR)$(localstatedir)/run/squid;
+	$(mkinstalldirs) $(DESTDIR)$(localstatedir)/run/squid3;
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.

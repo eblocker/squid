@@ -59,7 +59,7 @@ libipc_la_SOURCES = \
 	mem/Segment.cc \
 	mem/Segment.h
 
-DEFS += -DDEFAULT_STATEDIR=\"$(localstatedir)/run/squid\"
+DEFS += -DDEFAULT_STATEDIR=\"$(localstatedir)/run/squid3\"
 
 install-data-local:
-	$(mkinstalldirs) $(DESTDIR)$(localstatedir)/run/squid;
+	$(mkinstalldirs) $(DESTDIR)$(localstatedir)/run/squid3;

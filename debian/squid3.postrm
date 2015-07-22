@@ -27,7 +27,6 @@ case "$1" in
 		;;
 	purge)
 		echo "Purging startup links..."
-		update-rc.d squid3 remove > /dev/null
 		rm -f /etc/init.d/squid3
 
 		echo "Purging logfiles..."

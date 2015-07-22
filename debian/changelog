@@ -1,4 +1,4 @@
-squid3 (3.5.6-1) UNRELEASED; urgency=medium
+squid3 (3.5.6-1) unstable; urgency=medium
 
   [ Amos Jeffries <amosjeffries@squid-cache.org> ]
   * New upstream release (Closes: #760303)
@@ -33,7 +33,7 @@ squid3 (3.5.6-1) UNRELEASED; urgency=medium
   * {NEWS,README}.Debian
     - Added information on package name migration
 
- -- Luigi Gangitano <luigi@debian.org>  Wed, 15 Jul 2015 01:30:00 +0200
+ -- Luigi Gangitano <luigi@debian.org>  Wed, 22 Jul 2015 23:24:00 +0200
 
 squid3 (3.4.8-6) unstable; urgency=medium
 

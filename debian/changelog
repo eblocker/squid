@@ -1,3 +1,12 @@
+squid3 (3.4.8-6+deb8u1) jessie-security; urgency=high
+
+  [ Luigi Gangitano <luigi@debian.org> ]
+  * debian/patches/36-squid-3.4-13225.patch
+    - Added upstream patch fixing Improper Protection of Alternate Path
+      (Ref: SQUID-2015:2, CVE-2015-5400) (Closes: #793128)
+
+ -- Luigi Gangitano <luigi@debian.org>  Wed, 22 Jul 2015 18:36:08 +0200
+
 squid3 (3.4.8-6) unstable; urgency=medium
 
   [ Luigi Gangitano <luigi@debian.org> ]

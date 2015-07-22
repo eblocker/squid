@@ -69,7 +69,7 @@ man_MANS += squidclient.1
 
 ## ##### cachemgr.cgi  #####
 
-DEFAULT_CACHEMGR_CONFIG = $(sysconfdir)/cachemgr.conf
+DEFAULT_CACHEMGR_CONFIG = /etc/squid/cachemgr.conf
 
 libexec_PROGRAMS = cachemgr$(CGIEXT)
 
@@ -92,6 +92,7 @@ cachemgr.cgi.8: $(srcdir)/cachemgr.cgi.8.in Makefile
 ## Shared
 
 install-data-local:
+	test -z "/etc/squid" || $(MKDIR_P) "$(DESTDIR)/etc/squid"
 	$(INSTALL_DATA) $(srcdir)/cachemgr.conf $(DESTDIR)$(DEFAULT_CACHEMGR_CONFIG).default
 	@if test -f $(DESTDIR)$(DEFAULT_CACHEMGR_CONFIG) ; then \
 	        echo "$@ will not overwrite existing $(DESTDIR)$(DEFAULT_CACHEMGR_CONFIG)" ; \

@@ -28,6 +28,7 @@ squid3 (3.5.6-1) UNRELEASED; urgency=medium
   * debian/control
     - Changed dependency on libecap3-dev (Closes: #789774)
     - Made squid-common conflict and replace squid3-common
+    - Fixed dependencies and sections of transitional packages
 
   * {NEWS,README}.Debian
     - Added information on package name migration

@@ -1,7 +1,8 @@
 squid3 (3.5.6-2) UNRELEASED; urgency=medium
 
   [ Amos Jeffries <amosjeffries@squid-cache.org> ]
-  * Add BUILDCXXFLAGS to utilize hardening flags during build
+  * debian/rules
+    - Add BUILDCXXFLAGS to use hardening flags during build
 
  -- Amos Jeffries <amosjeffries@squid-cache.org>  Sun, 26 Jul 2015 17:22:00 +1200
 

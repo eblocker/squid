@@ -203,6 +203,18 @@ private:
             EventLoop::Running->stop();
     }
 
+    static void FinalShutdownRunners(void *) {
+        RunRegisteredHere(RegisteredRunner::endingShutdown);
+
+        // XXX: this should be a Runner.
+#if USE_AUTH
+        /* detach the auth components (only do this on full shutdown) */
+        Auth::Scheme::FreeAll();
+#endif
+
+        eventAdd("SquidTerminate", &StopEventLoop, NULL, 0, 1, false);
+    }
+
     void doShutdown(time_t wait);
 };
 
@@ -244,13 +256,8 @@ SignalEngine::doShutdown(time_t wait)
 
     /* run the closure code which can be shared with reconfigure */
     serverConnectionsClose();
-#if USE_AUTH
-    /* detach the auth components (only do this on full shutdown) */
-    Auth::Scheme::FreeAll();
-#endif
-
     RunRegisteredHere(RegisteredRunner::startShutdown);
-    eventAdd("SquidShutdown", &StopEventLoop, this, (double) (wait + 1), 1, false);
+    eventAdd("SquidShutdown", &FinalShutdownRunners, this, (double) (wait + 1), 1, false);
 }
 
 static void
@@ -774,10 +781,18 @@ mainReconfigureFinish(void *)
 
     // parse the config returns a count of errors encountered.
     const int oldWorkers = Config.workers;
-    if ( parseConfigFile(ConfigFile) != 0) {
+    try {
+        if (parseConfigFile(ConfigFile) != 0) {
+            // for now any errors are a fatal condition...
+            self_destruct();
+        }
+    } catch (...) {
         // for now any errors are a fatal condition...
+        debugs(1, DBG_CRITICAL, "FATAL: Unhandled exception parsing config file. " <<
+               " Run squid -k parse and check for errors.");
         self_destruct();
     }
+
     if (oldWorkers != Config.workers) {
         debugs(1, DBG_CRITICAL, "WARNING: Changing 'workers' (from " <<
                oldWorkers << " to " << Config.workers <<
@@ -1386,7 +1401,14 @@ SquidMain(int argc, char **argv)
 
         Format::Token::Init(); // XXX: temporary. Use a runners registry of pre-parse runners instead.
 
-        parse_err = parseConfigFile(ConfigFile);
+        try {
+            parse_err = parseConfigFile(ConfigFile);
+        } catch (...) {
+            // for now any errors are a fatal condition...
+            debugs(1, DBG_CRITICAL, "FATAL: Unhandled exception parsing config file." <<
+                   (opt_parse_cfg_only ? " Run squid -k parse and check for errors." : ""));
+            parse_err = 1;
+        }
 
         Mem::Report();
 

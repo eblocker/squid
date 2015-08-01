@@ -1,3 +1,39 @@
+Changes to squid-3.5.7 (01 Aug 2015):
+
+	- Bug 4293: wrong SNI sent to server after URL-rewrite
+	- Bug 4251: incorrect instance name for memory segments in /dev/shm
+	- Bug 4227: invalid key in AuthUserHashPointer causing assertation failure
+	- Bug 3345: support %un (any available user name) format code for external ACLs.
+	- basic_smb_auth: Fix several old issues identified by Debian users
+	- Support ssl-bump splicing to origin cache_peer
+	- Fix SSL errors relayed using invalid certificates
+	- Fix crash in TcpAccepter with profiler enabled
+	- Fix some cases of ssl_crtd SSL certificate DB corruption
+	- Fix performance regression in SBuf::chop operations
+	- Improve handling of client connections on shutdown
+	- Handle exceptions during squid.conf parse
+	- Make pod2man an optional dependency
+	- ... and polishing for several cache.log notification messages
+	- ... and all fixes from squid 3.4.14
+
+Changes to squid-3.5.6 (03 Jul 2015):
+
+	- Bug 4274: ssl_crtd.8 not being installed
+	- Bug 4193: memory leak on FTP listings
+	- Bug 4183: segfault when freeing https_port clientca on reconfigure or exit
+	- Bug 3875: bad mimeLoadIconFile error handling
+	- Bug 3483: assertion failed store.cc:1866: 'isEmpty()'
+	- Bug 3329: pinned server connection is not closed properly
+	- TLS: Disable client-initiated renegotiation
+	- ext_edirectory_userip_acl: fix uninitialized variable
+	- Support custom OIDs in *_cert ACLs
+	- Fix CONNECT failover to IPv4 after trying broken IPv6 servers
+	- Use relative-URL in errorpage.css for SN.png
+	- Do not blindly forward cache peer CONNECT responses
+	- Fix assertion String.cc:221: "str"
+	- Fix assertion comm.cc:759: "Comm::IsConnOpen(conn)" in ConnStateData::getSslContextDone
+	- Translations: add Spanish US dialect alias
+
 Changes to squid-3.5.5 (28 May 2015):
 
 	- Regression Bug 4132: short_icon_urls with global_internal_static on
@@ -163,6 +199,10 @@ Changes to squid-3.5.0.1 (17 Oct 2014):
 	- digest_ldap_auth: support concurrency
 	- ... and many error page translation updates
 	- ... and much code cleanup and polishing
+
+Changes to squid-3.4.14 (01 Aug 2015):
+
+	- Do not blindly forward cache peer CONNECT responses (CVE-2015-5400)
 
 Changes to squid-3.4.13 (01 May 2015):
 

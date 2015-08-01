@@ -814,6 +814,7 @@ ConnStateData::swanSong()
 {
     debugs(33, 2, HERE << clientConnection);
     flags.readMore = false;
+    DeregisterRunner(this);
     clientdbEstablished(clientConnection->remote, -1);  /* decrement */
     assert(areAllContextsForThisConnection());
     freeAllContexts();
@@ -1889,6 +1890,32 @@ ConnStateData::abortRequestParsing(const char *const uri)
                      clientReplyStatus, new clientReplyContext(http), clientSocketRecipient,
                      clientSocketDetach, context, tempBuffer);
     return context;
+}
+
+void
+ConnStateData::startShutdown()
+{
+    // RegisteredRunner API callback - Squid has been shut down
+
+    // if connection is idle terminate it now,
+    // otherwise wait for grace period to end
+    if (getConcurrentRequestCount() == 0)
+        endingShutdown();
+}
+
+void
+ConnStateData::endingShutdown()
+{
+    // RegisteredRunner API callback - Squid shutdown grace period is over
+
+    // force the client connection to close immediately
+    // swanSong() in the close handler will cleanup.
+    if (Comm::IsConnOpen(clientConnection))
+        clientConnection->close();
+
+    // deregister now to ensure finalShutdown() does not kill us prematurely.
+    // fd_table purge will cleanup if close handler was not fast enough.
+    DeregisterRunner(this);
 }
 
 char *
@@ -3519,6 +3546,10 @@ ConnStateData::ConnStateData(const MasterXaction::Pointer &xact) :
     port = xact->squidPort;
     log_addr = xact->tcpClient->remote;
     log_addr.applyMask(Config.Addrs.client_netmask);
+
+    // register to receive notice of Squid signal events
+    // which may affect long persisting client connections
+    RegisterRunner(this);
 }
 
 void
@@ -3687,19 +3718,19 @@ Squid_SSL_accept(ConnStateData *conn, PF *callback)
                 debugs(83, (xerrno == ECONNRESET) ? 1 : 2, "Error negotiating SSL connection on FD " << fd << ": " <<
                        (xerrno == 0 ? ERR_error_string(ssl_error, NULL) : xstrerr(xerrno)));
             }
-            comm_close(fd);
+            conn->clientConnection->close();
             return false;
 
         case SSL_ERROR_ZERO_RETURN:
             debugs(83, DBG_IMPORTANT, "Error negotiating SSL connection on FD " << fd << ": Closed by client");
-            comm_close(fd);
+            conn->clientConnection->close();
             return false;
 
         default:
             debugs(83, DBG_IMPORTANT, "Error negotiating SSL connection on FD " <<
                    fd << ": " << ERR_error_string(ERR_get_error(), NULL) <<
                    " (" << ssl_error << "/" << ret << ")");
-            comm_close(fd);
+            conn->clientConnection->close();
             return false;
         }
 
@@ -3947,6 +3978,11 @@ ConnStateData::sslCrtdHandleReplyWrapper(void *data, const Helper::Reply &reply)
 void
 ConnStateData::sslCrtdHandleReply(const Helper::Reply &reply)
 {
+    if (!isOpen()) {
+        debugs(33, 3, "Connection gone while waiting for ssl_crtd helper reply; helper reply:" << reply);
+        return;
+    }
+
     if (reply.result == Helper::BrokenHelper) {
         debugs(33, 5, HERE << "Certificate for " << sslConnectHostOrIp << " cannot be generated. ssl_crtd response: " << reply);
     } else if (!reply.other().hasContent()) {
@@ -4306,7 +4342,7 @@ void httpsSslBumpStep2AccessCheckDone(allow_t answer, void *data)
     connState->sslBumpMode = bumpAction;
 
     if (bumpAction == Ssl::bumpTerminate) {
-        comm_close(connState->clientConnection->fd);
+        connState->clientConnection->close();
     } else if (bumpAction != Ssl::bumpSplice) {
         connState->startPeekAndSpliceDone();
     } else {
@@ -4851,6 +4887,7 @@ ConnStateData::clientPinnedConnectionClosed(const CommCloseCbParams &io)
     assert(pinning.serverConnection == io.conn);
     pinning.closeHandler = NULL; // Comm unregisters handlers before calling
     const bool sawZeroReply = pinning.zeroReply; // reset when unpinning
+    pinning.serverConnection->noteClosure();
     unpinConnection(false);
 
     if (sawZeroReply && clientConnection != NULL) {

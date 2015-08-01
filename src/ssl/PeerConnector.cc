@@ -189,8 +189,13 @@ Ssl::PeerConnector::initializeSsl()
 
             // Use SNI TLS extension only when we connect directly
             // to the origin server and we know the server host name.
-            const char *sniServer = hostName ? hostName->c_str() :
-                                    (!request->GetHostIsNumeric() ? request->GetHost() : NULL);
+            const char *sniServer = NULL;
+            const bool redirected = request->flags.redirected && ::Config.onoff.redir_rewrites_host;
+            if (!hostName || redirected)
+                sniServer = !request->GetHostIsNumeric() ? request->GetHost() : NULL;
+            else
+                sniServer = hostName->c_str();
+
             if (sniServer)
                 Ssl::setClientSNI(ssl, sniServer);
         }
@@ -274,13 +279,29 @@ Ssl::PeerConnector::handleServerCertificate()
 
         serverCertificateHandled = true;
 
-        csd->resetSslCommonName(Ssl::CommonHostName(serverCert.get()));
-        debugs(83, 5, "HTTPS server CN: " << csd->sslCommonName() <<
-               " bumped: " << *serverConnection());
-
         // remember the server certificate for later use
         if (Ssl::ServerBump *serverBump = csd->serverBump()) {
             serverBump->serverCert.reset(serverCert.release());
+        }
+    }
+}
+
+void
+Ssl::PeerConnector::serverCertificateVerified()
+{
+    if (ConnStateData *csd = request->clientConnectionManager.valid()) {
+        Ssl::X509_Pointer serverCert;
+        if(Ssl::ServerBump *serverBump = csd->serverBump())
+            serverCert.resetAndLock(serverBump->serverCert.get());
+        else {
+            const int fd = serverConnection()->fd;
+            SSL *ssl = fd_table[fd].ssl;
+            serverCert.reset(SSL_get_peer_certificate(ssl));
+        }
+        if (serverCert.get()) {
+            csd->resetSslCommonName(Ssl::CommonHostName(serverCert.get()));
+            debugs(83, 5, "HTTPS server CN: " << csd->sslCommonName() <<
+                   " bumped: " << *serverConnection());
         }
     }
 }
@@ -338,6 +359,8 @@ Ssl::PeerConnector::sslFinalized()
             return true;
         }
     }
+
+    serverCertificateVerified();
     return true;
 }
 
@@ -393,8 +416,8 @@ Ssl::PeerConnector::checkForPeekAndSpliceDone(Ssl::BumpMode const action)
     }
 
     if (finalAction == Ssl::bumpTerminate) {
-        comm_close(serverConn->fd);
-        comm_close(clientConn->fd);
+        serverConn->close();
+        clientConn->close();
     } else if (finalAction != Ssl::bumpSplice) {
         //Allow write, proceed with the connection
         srvBio->holdWrite(false);
@@ -435,6 +458,7 @@ Ssl::PeerConnector::sslCrtvdHandleReply(Ssl::CertValidationResponse const &valid
         validatorFailed = true;
 
     if (!errDetails && !validatorFailed) {
+        serverCertificateVerified();
         if (splice)
             switchToTunnel(request.getRaw(), clientConn, serverConn);
         else

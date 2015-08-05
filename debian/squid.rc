@@ -75,6 +75,7 @@ create_run_dir () {
 start () {
 	cache_dir=`find_cache_dir cache_dir`
 	cache_type=`grepconf cache_dir`
+	run_dir=/var/run/squid
 
 	#
 	# Create run dir (needed for several workers on SMP)
@@ -92,7 +93,7 @@ start () {
 
 	umask 027
 	ulimit -n 65535
-	cd $cache_dir
+	cd $run_dir
 	start-stop-daemon --quiet --start \
 		--pidfile $PIDFILE \
 		--exec $DAEMON -- $SQUID_ARGS < /dev/null

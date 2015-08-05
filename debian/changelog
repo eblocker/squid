@@ -18,6 +18,9 @@ squid3 (3.5.7-1) UNRELEASED; urgency=medium
   * debian/squid.postinst
     - Check for squid3 initscript before we try to execute it
 
+  * debian/squid.rc
+    - Set working directory to /var/run/squid
+
  -- Amos Jeffries <amosjeffries@squid-cache.org>  Thu,  6 Aug 2015 03:34:00 +1200
 
 squid3 (3.5.6-1) unstable; urgency=medium

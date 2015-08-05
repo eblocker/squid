@@ -1,4 +1,4 @@
-squid3 (3.5.7-1) UNRELEASED; urgency=medium
+squid3 (3.5.7-1) unstable; urgency=medium
 
   [ Amos Jeffries <amosjeffries@squid-cache.org> ]
   * New upstream release (Closes: #789602, #793400, #253777)
@@ -21,7 +21,7 @@ squid3 (3.5.7-1) UNRELEASED; urgency=medium
   * debian/squid.rc
     - Set working directory to /var/run/squid
 
- -- Amos Jeffries <amosjeffries@squid-cache.org>  Thu,  6 Aug 2015 03:34:00 +1200
+ -- Luigi Gangitano <luigi@debian.org>  Thu,  6 Aug 2015 01:14:00 +0200
 
 squid3 (3.5.6-1) unstable; urgency=medium
 

@@ -9,7 +9,10 @@ squid3 (3.5.7-1) UNRELEASED; urgency=medium
   * debian/squid.links
     - Add symlink for squid3.8 man(8) page to resolve lintian issue
 
- -- Amos Jeffries <amosjeffries@squid-cache.org>  Sat,  1 Aug 2015 20:45:00 +1200
+  * debian/squid.postinst
+    - Remove unnecessary 'squid -z' (Closes: #794639)
+
+ -- Amos Jeffries <amosjeffries@squid-cache.org>  Thu,  6 Aug 2015 03:34:00 +1200
 
 squid3 (3.5.6-1) unstable; urgency=medium
 

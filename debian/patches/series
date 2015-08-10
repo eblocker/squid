@@ -4,3 +4,4 @@
 20-ipv6-fix
 30-CVE-2012-5643-CVE-2013-0189.patch
 fix-701123-regression-in-cachemgr.patch
+fix-712754-assertion-failure-commHandleRead.patch

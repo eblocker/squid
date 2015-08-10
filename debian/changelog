@@ -1,3 +1,11 @@
+squid3 (3.1.20-2.2+deb7u1) stable-proposed-updates; urgency=medium
+
+  * Non-maintainer upload.
+  * Add fix-712754-assertion-failure-commHandleRead.patch. Fix sporadic
+    assertion failure under high load. (Closes: #712754)
+
+ -- Helmut Grohne <helmut@subdivi.de>  Thu, 12 Jun 2014 23:02:19 +0200
+
 squid3 (3.1.20-2.2) unstable; urgency=low
 
   * Non-maintainer upload.

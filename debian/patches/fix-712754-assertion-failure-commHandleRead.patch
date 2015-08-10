@@ -1,0 +1,36 @@
+Description: fix assertion failure in commHandleRead
+Origin: upstream, http://bugs.squid-cache.org/attachment.cgi?id=2276
+Bug: http://bugs.squid-cache.org/show_bug.cgi?id=3048
+Bug-Debian: http://bugs.debian.org/712754
+Author: Alex Rousskov
+Last-Update: 2014-06-12
+Applied-Upstream: yes
+
+Fix for comm.cc:322 "commio_has_callback(fd, IOCB_READ, ccb)" assertion
+may also be applicable to a similar IOCB_WITE assertion.
+
+When we start closing a descriptor, we call commio_finish_callback() to remove
+I/O callbacks. If this is not done from commHandleRead or commHandleWrite,
+then select(2) structures may still have our descriptor registration and will
+call Comm back to read or write before the descriptor is closed for good. This
+will trigger a commio_has_callback() assertion.
+
+=== modified file 'src/comm.cc'
+--- a/src/comm.cc	2010-05-06 05:01:14 +0000
++++ b/src/comm.cc	2010-05-09 21:32:23 +0000
+@@ -1635,11 +1635,13 @@
+         commStopHalfClosedMonitor(fd);
+     commSetTimeout(fd, -1, NULL, NULL);
+ 
+-    // notify read/write handlers
++    // notify read/write handlers after canceling select reservations, if any
+     if (commio_has_callback(fd, IOCB_WRITE, COMMIO_FD_WRITECB(fd))) {
++        commSetSelect(fd, COMM_SELECT_WRITE, NULL, NULL, 0);
+         commio_finish_callback(fd, COMMIO_FD_WRITECB(fd), COMM_ERR_CLOSING, errno);
+     }
+     if (commio_has_callback(fd, IOCB_READ, COMMIO_FD_READCB(fd))) {
++        commSetSelect(fd, COMM_SELECT_READ, NULL, NULL, 0);
+         commio_finish_callback(fd, COMMIO_FD_READCB(fd), COMM_ERR_CLOSING, errno);
+     }
+ 
+

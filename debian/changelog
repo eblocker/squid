@@ -1,3 +1,12 @@
+squid3 (3.1.20-2.2+deb7u3) wheezy-security; urgency=high
+
+  * Non-maintainer upload by the Security Team.
+  * Add CVE-2015-5400.patch patch.
+    CVE-2015-5400: Information disclosure due to incorrect handling of peer
+    responses. (Closes: #793128)
+
+ -- Salvatore Bonaccorso <carnil@debian.org>  Sun, 02 Aug 2015 15:57:21 +0200
+
 squid3 (3.1.20-2.2+deb7u2) wheezy-security; urgency=high
 
   * Non-maintainer upload by the Security Team.

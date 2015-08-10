@@ -6,3 +6,4 @@
 fix-701123-regression-in-cachemgr.patch
 fix-712754-assertion-failure-commHandleRead.patch
 CVE-2014-3609.patch
+CVE-2015-5400.patch

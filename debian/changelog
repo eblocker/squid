@@ -1,3 +1,14 @@
+squid3 (3.1.20-2.2+deb7u2) wheezy-security; urgency=high
+
+  * Non-maintainer upload by the Security Team.
+  * Add CVE-2014-3609.patch patch.
+    CVE-2014-3609: Denial of Service in Range header processing.
+    Ignore Range headers with unidentifiable byte-range values. If squid is
+    unable to determine the byte value for ranges, treat the header as
+    invalid.
+
+ -- Salvatore Bonaccorso <carnil@debian.org>  Wed, 27 Aug 2014 20:14:32 +0200
+
 squid3 (3.1.20-2.2+deb7u1) stable-proposed-updates; urgency=medium
 
   * Non-maintainer upload.

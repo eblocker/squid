@@ -356,6 +356,7 @@ LIBTOOL = @LIBTOOL@
 LIB_DB = @LIB_DB@
 LIB_KRB5_CFLAGS = @LIB_KRB5_CFLAGS@
 LIB_KRB5_LIBS = @LIB_KRB5_LIBS@
+LINUXDOC = @LINUXDOC@
 LIPO = @LIPO@
 LN = @LN@
 LN_S = @LN_S@
@@ -478,6 +479,7 @@ pdfdir = @pdfdir@
 prefix = @prefix@
 program_transform_name = @program_transform_name@
 psdir = @psdir@
+runstatedir = @runstatedir@
 sbindir = @sbindir@
 sharedstatedir = @sharedstatedir@
 srcdir = @srcdir@
@@ -488,7 +490,7 @@ target_alias = @target_alias@
 top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
-AUTOMAKE_OPTIONS = dist-bzip2 subdir-objects 1.5 foreign
+AUTOMAKE_OPTIONS = dist-bzip2 1.5 foreign
 DIST_SUBDIRS = compat lib libltdl scripts icons errors contrib doc helpers src test-suite tools
 SUBDIRS = compat lib $(am__append_1) scripts icons errors doc helpers \
 	src tools test-suite
@@ -1002,16 +1004,6 @@ dist-hook:
 	    rm -f $(distdir)/$$subdir/autoconf.h; \
 	  fi; \
 	done
-	@if [ -f $(top_srcdir)/RELEASENOTES.html ]; then \
-	  cp -p $(top_srcdir)/RELEASENOTES.html $(distdir)/RELEASENOTES.html; \
-	else \
-	  notes=`ls -1rt $(top_srcdir)/doc/release-notes/*.html | head -1`; \
-	  if [ -f $$notes ]; then \
-	    cp $$notes $(distdir)/RELEASENOTES.html; \
-	  else \
-	    touch $(distdir)/RELEASENOTES.html; \
-	  fi; \
-	fi
 
 install-pinger:
 	chown root $(DESTDIR)$(DEFAULT_PINGER)

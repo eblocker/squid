@@ -93,15 +93,17 @@ POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
 check_PROGRAMS = $(am__EXEEXT_1) tests/testBoilerplate$(EXEEXT) \
-	tests/testCacheManager$(EXEEXT) tests/testDiskIO$(EXEEXT) \
+	tests/testCacheManager$(EXEEXT) \
+	tests/testCharacterSet$(EXEEXT) tests/testDiskIO$(EXEEXT) \
 	tests/testEvent$(EXEEXT) tests/testEventLoop$(EXEEXT) \
 	tests/test_http_range$(EXEEXT) tests/testHttpParser$(EXEEXT) \
-	tests/testHttpReply$(EXEEXT) tests/testHttpRequest$(EXEEXT) \
-	tests/testStore$(EXEEXT) tests/testString$(EXEEXT) \
-	tests/testURL$(EXEEXT) tests/testSBuf$(EXEEXT) \
-	tests/testSBufList$(EXEEXT) tests/testConfigParser$(EXEEXT) \
-	tests/testStatHist$(EXEEXT) $(am__EXEEXT_2) $(am__EXEEXT_3) \
-	testRefCount$(EXEEXT)
+	tests/testTokenizer$(EXEEXT) tests/testHttpReply$(EXEEXT) \
+	tests/testHttpRequest$(EXEEXT) tests/testIcmp$(EXEEXT) \
+	tests/testIpAddress$(EXEEXT) tests/testStore$(EXEEXT) \
+	tests/testString$(EXEEXT) tests/testURL$(EXEEXT) \
+	tests/testSBuf$(EXEEXT) tests/testSBufList$(EXEEXT) \
+	tests/testConfigParser$(EXEEXT) tests/testStatHist$(EXEEXT) \
+	$(am__EXEEXT_2) $(am__EXEEXT_3) testRefCount$(EXEEXT)
 @ENABLE_LOADABLE_MODULES_TRUE@am__append_1 = $(INCLTDL)
 @ENABLE_AUTH_TRUE@am__append_2 = auth
 @ENABLE_AUTH_TRUE@am__append_3 = tests/testACLMaxUserIP
@@ -712,6 +714,19 @@ tests_testCacheManager_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CXX \
 	$(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link $(CXXLD) \
 	$(AM_CXXFLAGS) $(CXXFLAGS) $(tests_testCacheManager_LDFLAGS) \
 	$(LDFLAGS) -o $@
+am_tests_testCharacterSet_OBJECTS = tests/testCharacterSet.$(OBJEXT)
+nodist_tests_testCharacterSet_OBJECTS = $(am__objects_24) \
+	tests/stub_cbdata.$(OBJEXT) tests/stub_debug.$(OBJEXT) \
+	tests/stub_MemBuf.$(OBJEXT)
+tests_testCharacterSet_OBJECTS = $(am_tests_testCharacterSet_OBJECTS) \
+	$(nodist_tests_testCharacterSet_OBJECTS)
+tests_testCharacterSet_DEPENDENCIES = base/libbase.la \
+	$(am__DEPENDENCIES_2) $(am__DEPENDENCIES_3) \
+	$(am__DEPENDENCIES_3) $(am__DEPENDENCIES_3)
+tests_testCharacterSet_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CXX \
+	$(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link $(CXXLD) \
+	$(AM_CXXFLAGS) $(CXXFLAGS) $(tests_testCharacterSet_LDFLAGS) \
+	$(LDFLAGS) -o $@
 am_tests_testConfigParser_OBJECTS = tests/stub_mem.$(OBJEXT) \
 	tests/stub_MemBuf.$(OBJEXT) tests/stub_time.$(OBJEXT) \
 	$(am__objects_13) tests/stub_SBufDetailedStats.$(OBJEXT) \
@@ -1284,6 +1299,30 @@ tests_testHttpRequest_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CXX \
 	$(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link $(CXXLD) \
 	$(AM_CXXFLAGS) $(CXXFLAGS) $(tests_testHttpRequest_LDFLAGS) \
 	$(LDFLAGS) -o $@
+am_tests_testIcmp_OBJECTS = tests/testIcmp.$(OBJEXT)
+nodist_tests_testIcmp_OBJECTS = tests/stub_debug.$(OBJEXT) \
+	time.$(OBJEXT) globals.$(OBJEXT)
+tests_testIcmp_OBJECTS = $(am_tests_testIcmp_OBJECTS) \
+	$(nodist_tests_testIcmp_OBJECTS)
+tests_testIcmp_DEPENDENCIES = icmp/libicmp-core.la ip/libip.la \
+	base/libbase.la $(am__DEPENDENCIES_2) $(am__DEPENDENCIES_3) \
+	$(am__DEPENDENCIES_3) $(am__DEPENDENCIES_3)
+tests_testIcmp_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CXX \
+	$(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link $(CXXLD) \
+	$(AM_CXXFLAGS) $(CXXFLAGS) $(tests_testIcmp_LDFLAGS) \
+	$(LDFLAGS) -o $@
+am_tests_testIpAddress_OBJECTS = tests/testAddress.$(OBJEXT)
+nodist_tests_testIpAddress_OBJECTS = tests/stub_debug.$(OBJEXT) \
+	tests/stub_tools.$(OBJEXT)
+tests_testIpAddress_OBJECTS = $(am_tests_testIpAddress_OBJECTS) \
+	$(nodist_tests_testIpAddress_OBJECTS)
+tests_testIpAddress_DEPENDENCIES = ip/libip.la base/libbase.la \
+	$(am__DEPENDENCIES_2) $(am__DEPENDENCIES_3) \
+	$(am__DEPENDENCIES_3) $(am__DEPENDENCIES_3)
+tests_testIpAddress_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CXX \
+	$(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link $(CXXLD) \
+	$(AM_CXXFLAGS) $(CXXFLAGS) $(tests_testIpAddress_LDFLAGS) \
+	$(LDFLAGS) -o $@
 am__tests_testRock_SOURCES_DIST = cbdata.cc CacheDigest.h \
 	CollapsedForwarding.h CollapsedForwarding.cc \
 	tests/stub_CacheDigest.cc ConfigOption.cc ConfigParser.cc \
@@ -1572,6 +1611,21 @@ tests_testString_OBJECTS = $(am_tests_testString_OBJECTS) \
 tests_testString_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CXX \
 	$(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link $(CXXLD) \
 	$(AM_CXXFLAGS) $(CXXFLAGS) $(tests_testString_LDFLAGS) \
+	$(LDFLAGS) -o $@
+am_tests_testTokenizer_OBJECTS = tests/testTokenizer.$(OBJEXT)
+nodist_tests_testTokenizer_OBJECTS = $(am__objects_13) \
+	String.$(OBJEXT) $(am__objects_24) tests/stub_debug.$(OBJEXT) \
+	tests/stub_mem.$(OBJEXT) tests/stub_time.$(OBJEXT) \
+	tests/stub_SBufDetailedStats.$(OBJEXT)
+tests_testTokenizer_OBJECTS = $(am_tests_testTokenizer_OBJECTS) \
+	$(nodist_tests_testTokenizer_OBJECTS)
+tests_testTokenizer_DEPENDENCIES = parser/libsquid-parser.la \
+	base/libbase.la $(top_builddir)/lib/libmiscutil.la \
+	$(am__DEPENDENCIES_2) $(am__DEPENDENCIES_3) \
+	$(am__DEPENDENCIES_3) $(am__DEPENDENCIES_3)
+tests_testTokenizer_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CXX \
+	$(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link $(CXXLD) \
+	$(AM_CXXFLAGS) $(CXXFLAGS) $(tests_testTokenizer_LDFLAGS) \
 	$(LDFLAGS) -o $@
 am__tests_testURL_SOURCES_DIST = AccessLogEntry.cc BodyPipe.cc \
 	cache_cf.h AuthReg.h YesNoNone.h YesNoNone.cc RefreshPattern.h \
@@ -2030,6 +2084,8 @@ SOURCES = $(libAIO_a_SOURCES) $(libBlocking_a_SOURCES) \
 	$(nodist_tests_testBoilerplate_SOURCES) \
 	$(tests_testCacheManager_SOURCES) \
 	$(nodist_tests_testCacheManager_SOURCES) \
+	$(tests_testCharacterSet_SOURCES) \
+	$(nodist_tests_testCharacterSet_SOURCES) \
 	$(tests_testConfigParser_SOURCES) \
 	$(nodist_tests_testConfigParser_SOURCES) \
 	$(tests_testDiskIO_SOURCES) $(nodist_tests_testDiskIO_SOURCES) \
@@ -2042,6 +2098,9 @@ SOURCES = $(libAIO_a_SOURCES) $(libBlocking_a_SOURCES) \
 	$(nodist_tests_testHttpReply_SOURCES) \
 	$(tests_testHttpRequest_SOURCES) \
 	$(nodist_tests_testHttpRequest_SOURCES) \
+	$(tests_testIcmp_SOURCES) $(nodist_tests_testIcmp_SOURCES) \
+	$(tests_testIpAddress_SOURCES) \
+	$(nodist_tests_testIpAddress_SOURCES) \
 	$(tests_testRock_SOURCES) $(nodist_tests_testRock_SOURCES) \
 	$(tests_testSBuf_SOURCES) $(nodist_tests_testSBuf_SOURCES) \
 	$(tests_testSBufList_SOURCES) \
@@ -2050,8 +2109,10 @@ SOURCES = $(libAIO_a_SOURCES) $(libBlocking_a_SOURCES) \
 	$(nodist_tests_testStatHist_SOURCES) \
 	$(tests_testStore_SOURCES) $(nodist_tests_testStore_SOURCES) \
 	$(tests_testString_SOURCES) $(nodist_tests_testString_SOURCES) \
-	$(tests_testURL_SOURCES) $(nodist_tests_testURL_SOURCES) \
-	$(tests_testUfs_SOURCES) $(nodist_tests_testUfs_SOURCES) \
+	$(tests_testTokenizer_SOURCES) \
+	$(nodist_tests_testTokenizer_SOURCES) $(tests_testURL_SOURCES) \
+	$(nodist_tests_testURL_SOURCES) $(tests_testUfs_SOURCES) \
+	$(nodist_tests_testUfs_SOURCES) \
 	$(tests_test_http_range_SOURCES) \
 	$(nodist_tests_test_http_range_SOURCES) $(ufsdump_SOURCES) \
 	$(nodist_ufsdump_SOURCES) $(unlinkd_SOURCES)
@@ -2066,16 +2127,19 @@ DIST_SOURCES = $(am__libAIO_a_SOURCES_DIST) $(libBlocking_a_SOURCES) \
 	$(tests_testACLMaxUserIP_SOURCES) \
 	$(tests_testBoilerplate_SOURCES) \
 	$(am__tests_testCacheManager_SOURCES_DIST) \
+	$(tests_testCharacterSet_SOURCES) \
 	$(tests_testConfigParser_SOURCES) \
 	$(am__tests_testDiskIO_SOURCES_DIST) \
 	$(am__tests_testEvent_SOURCES_DIST) \
 	$(am__tests_testEventLoop_SOURCES_DIST) \
 	$(tests_testHttpParser_SOURCES) $(tests_testHttpReply_SOURCES) \
 	$(am__tests_testHttpRequest_SOURCES_DIST) \
+	$(tests_testIcmp_SOURCES) $(tests_testIpAddress_SOURCES) \
 	$(am__tests_testRock_SOURCES_DIST) $(tests_testSBuf_SOURCES) \
 	$(tests_testSBufList_SOURCES) $(tests_testStatHist_SOURCES) \
 	$(am__tests_testStore_SOURCES_DIST) \
-	$(tests_testString_SOURCES) $(am__tests_testURL_SOURCES_DIST) \
+	$(tests_testString_SOURCES) $(tests_testTokenizer_SOURCES) \
+	$(am__tests_testURL_SOURCES_DIST) \
 	$(am__tests_testUfs_SOURCES_DIST) \
 	$(am__tests_test_http_range_SOURCES_DIST) \
 	$(am__ufsdump_SOURCES_DIST) $(unlinkd_SOURCES)
@@ -2454,6 +2518,7 @@ LIBTOOL = @LIBTOOL@
 LIB_DB = @LIB_DB@
 LIB_KRB5_CFLAGS = @LIB_KRB5_CFLAGS@
 LIB_KRB5_LIBS = @LIB_KRB5_LIBS@
+LINUXDOC = @LINUXDOC@
 LIPO = @LIPO@
 LN = @LN@
 LN_S = @LN_S@
@@ -2576,6 +2641,7 @@ pdfdir = @pdfdir@
 prefix = @prefix@
 program_transform_name = @program_transform_name@
 psdir = @psdir@
+runstatedir = @runstatedir@
 sbindir = @sbindir@
 sharedstatedir = @sharedstatedir@
 srcdir = @srcdir@
@@ -2601,7 +2667,6 @@ AM_CPPFLAGS = -I$(top_srcdir) -I$(top_srcdir)/include \
 @ENABLE_XPROF_STATS_TRUE@LIBPROFILER = $(top_builddir)/lib/profiler/libprofiler.la
 COMPAT_LIB = $(top_builddir)/compat/libcompat-squid.la $(LIBPROFILER)
 subst_perlshell = sed -e 's,[@]PERL[@],$(PERL),g' <$(srcdir)/$@.pl.in >$@ || ($(RM) -f $@ ; exit 1)
-AUTOMAKE_OPTIONS = subdir-objects
 DNSSOURCE = \
 	dns_internal.cc \
 	SquidDns.h \
@@ -3516,6 +3581,25 @@ tests_testBoilerplate_LDADD = \
 tests_testBoilerplate_LDFLAGS = $(LIBADD_DL)
 tests_testBoilerplate_DEPENDENCIES = \
 	$(SQUID_CPPUNIT_LA)
+
+tests_testCharacterSet_SOURCES = \
+	tests/testCharacterSet.cc \
+	tests/testCharacterSet.h
+
+nodist_tests_testCharacterSet_SOURCES = \
+	base/CharacterSet.h \
+	$(TESTSOURCES) \
+	tests/stub_cbdata.cc \
+	tests/stub_debug.cc \
+	tests/stub_MemBuf.cc
+
+tests_testCharacterSet_LDFLAGS = $(LIBADD_DL)
+tests_testCharacterSet_LDADD = \
+	base/libbase.la \
+	$(COMPAT_LIB) \
+	$(SQUID_CPPUNIT_LA) \
+	$(SQUID_CPPUNIT_LIBS) \
+	$(XTRA_LIBS)
 
 tests_testCacheManager_SOURCES = \
 	AccessLogEntry.cc \
@@ -4740,6 +4824,31 @@ tests_testHttpParser_LDFLAGS = $(LIBADD_DL)
 tests_testHttpParser_DEPENDENCIES = \
 	$(SQUID_CPPUNIT_LA)
 
+tests_testTokenizer_SOURCES = \
+	tests/testTokenizer.h \
+	tests/testTokenizer.cc
+
+nodist_tests_testTokenizer_SOURCES = \
+	parser/Tokenizer.h \
+	$(SBUF_SOURCE) \
+	SquidString.h \
+	String.cc \
+	$(TESTSOURCES) \
+	tests/stub_debug.cc \
+	tests/stub_mem.cc \
+	tests/stub_time.cc \
+	tests/stub_SBufDetailedStats.cc
+
+tests_testTokenizer_LDFLAGS = $(LIBADD_DL)
+tests_testTokenizer_LDADD = \
+	parser/libsquid-parser.la \
+	base/libbase.la \
+	$(top_builddir)/lib/libmiscutil.la \
+	$(COMPAT_LIB) \
+	$(SQUID_CPPUNIT_LA) \
+	$(SQUID_CPPUNIT_LIBS) \
+	$(XTRA_LIBS)
+
 tests_testHttpRequest_SOURCES = \
 	AccessLogEntry.cc \
 	HttpParser.cc \
@@ -4984,6 +5093,47 @@ tests_testHttpRequest_DEPENDENCIES = \
 	$(REPL_OBJS) \
 	$(SQUID_CPPUNIT_LA)
 
+
+# icmp/libicmp-core.la is used by pinger so SHOULD NOT require more dependancies! :-(
+tests_testIcmp_SOURCES = \
+	tests/testIcmp.h \
+	tests/testIcmp.cc
+
+nodist_tests_testIcmp_SOURCES = \
+	icmp/Icmp.h \
+	SquidTime.h \
+	tests/stub_debug.cc \
+	time.cc \
+	globals.cc
+
+tests_testIcmp_LDFLAGS = $(LIBADD_DL)
+tests_testIcmp_LDADD = \
+	icmp/libicmp-core.la \
+	ip/libip.la \
+	base/libbase.la \
+	$(COMPAT_LIB) \
+	$(SQUID_CPPUNIT_LA) \
+	$(SQUID_CPPUNIT_LIBS) \
+	$(XTRA_LIBS)
+
+tests_testIpAddress_SOURCES = \
+	tests/testAddress.cc \
+	tests/testAddress.h
+
+nodist_tests_testIpAddress_SOURCES = \
+	ip/Address.h \
+	tests/stub_debug.cc \
+	tests/stub_tools.cc
+
+tests_testIpAddress_LDADD = \
+	ip/libip.la \
+	base/libbase.la \
+	$(COMPAT_LIB) \
+	$(SQUID_CPPUNIT_LA) \
+	$(SQUID_CPPUNIT_LIBS) \
+	$(XTRA_LIBS)
+
+tests_testIpAddress_LDFLAGS = $(LIBADD_DL)
 tests_testStore_SOURCES = \
 	CacheDigest.h \
 	tests/stub_CacheDigest.cc \
@@ -6503,6 +6653,12 @@ tests/stub_whois.$(OBJEXT): tests/$(am__dirstamp) \
 tests/testCacheManager$(EXEEXT): $(tests_testCacheManager_OBJECTS) $(tests_testCacheManager_DEPENDENCIES) $(EXTRA_tests_testCacheManager_DEPENDENCIES) tests/$(am__dirstamp)
 	@rm -f tests/testCacheManager$(EXEEXT)
 	$(AM_V_CXXLD)$(tests_testCacheManager_LINK) $(tests_testCacheManager_OBJECTS) $(tests_testCacheManager_LDADD) $(LIBS)
+tests/testCharacterSet.$(OBJEXT): tests/$(am__dirstamp) \
+	tests/$(DEPDIR)/$(am__dirstamp)
+
+tests/testCharacterSet$(EXEEXT): $(tests_testCharacterSet_OBJECTS) $(tests_testCharacterSet_DEPENDENCIES) $(EXTRA_tests_testCharacterSet_DEPENDENCIES) tests/$(am__dirstamp)
+	@rm -f tests/testCharacterSet$(EXEEXT)
+	$(AM_V_CXXLD)$(tests_testCharacterSet_LINK) $(tests_testCharacterSet_OBJECTS) $(tests_testCharacterSet_LDADD) $(LIBS)
 tests/testConfigParser.$(OBJEXT): tests/$(am__dirstamp) \
 	tests/$(DEPDIR)/$(am__dirstamp)
 tests/stub_HelperChildConfig.$(OBJEXT): tests/$(am__dirstamp) \
@@ -6585,6 +6741,18 @@ tests/testHttpRequestMethod.$(OBJEXT): tests/$(am__dirstamp) \
 tests/testHttpRequest$(EXEEXT): $(tests_testHttpRequest_OBJECTS) $(tests_testHttpRequest_DEPENDENCIES) $(EXTRA_tests_testHttpRequest_DEPENDENCIES) tests/$(am__dirstamp)
 	@rm -f tests/testHttpRequest$(EXEEXT)
 	$(AM_V_CXXLD)$(tests_testHttpRequest_LINK) $(tests_testHttpRequest_OBJECTS) $(tests_testHttpRequest_LDADD) $(LIBS)
+tests/testIcmp.$(OBJEXT): tests/$(am__dirstamp) \
+	tests/$(DEPDIR)/$(am__dirstamp)
+
+tests/testIcmp$(EXEEXT): $(tests_testIcmp_OBJECTS) $(tests_testIcmp_DEPENDENCIES) $(EXTRA_tests_testIcmp_DEPENDENCIES) tests/$(am__dirstamp)
+	@rm -f tests/testIcmp$(EXEEXT)
+	$(AM_V_CXXLD)$(tests_testIcmp_LINK) $(tests_testIcmp_OBJECTS) $(tests_testIcmp_LDADD) $(LIBS)
+tests/testAddress.$(OBJEXT): tests/$(am__dirstamp) \
+	tests/$(DEPDIR)/$(am__dirstamp)
+
+tests/testIpAddress$(EXEEXT): $(tests_testIpAddress_OBJECTS) $(tests_testIpAddress_DEPENDENCIES) $(EXTRA_tests_testIpAddress_DEPENDENCIES) tests/$(am__dirstamp)
+	@rm -f tests/testIpAddress$(EXEEXT)
+	$(AM_V_CXXLD)$(tests_testIpAddress_LINK) $(tests_testIpAddress_OBJECTS) $(tests_testIpAddress_LDADD) $(LIBS)
 tests/testRock.$(OBJEXT): tests/$(am__dirstamp) \
 	tests/$(DEPDIR)/$(am__dirstamp)
 
@@ -6633,6 +6801,12 @@ tests/testString.$(OBJEXT): tests/$(am__dirstamp) \
 tests/testString$(EXEEXT): $(tests_testString_OBJECTS) $(tests_testString_DEPENDENCIES) $(EXTRA_tests_testString_DEPENDENCIES) tests/$(am__dirstamp)
 	@rm -f tests/testString$(EXEEXT)
 	$(AM_V_CXXLD)$(tests_testString_LINK) $(tests_testString_OBJECTS) $(tests_testString_LDADD) $(LIBS)
+tests/testTokenizer.$(OBJEXT): tests/$(am__dirstamp) \
+	tests/$(DEPDIR)/$(am__dirstamp)
+
+tests/testTokenizer$(EXEEXT): $(tests_testTokenizer_OBJECTS) $(tests_testTokenizer_DEPENDENCIES) $(EXTRA_tests_testTokenizer_DEPENDENCIES) tests/$(am__dirstamp)
+	@rm -f tests/testTokenizer$(EXEEXT)
+	$(AM_V_CXXLD)$(tests_testTokenizer_LINK) $(tests_testTokenizer_OBJECTS) $(tests_testTokenizer_LDADD) $(LIBS)
 tests/testURL.$(OBJEXT): tests/$(am__dirstamp) \
 	tests/$(DEPDIR)/$(am__dirstamp)
 tests/testUriScheme.$(OBJEXT): tests/$(am__dirstamp) \
@@ -6959,8 +7133,10 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@tests/$(DEPDIR)/stub_whois.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@tests/$(DEPDIR)/stub_wordlist.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@tests/$(DEPDIR)/testACLMaxUserIP.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@tests/$(DEPDIR)/testAddress.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@tests/$(DEPDIR)/testBoilerplate.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@tests/$(DEPDIR)/testCacheManager.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@tests/$(DEPDIR)/testCharacterSet.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@tests/$(DEPDIR)/testConfigParser.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@tests/$(DEPDIR)/testDiskIO.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@tests/$(DEPDIR)/testEvent.Po@am__quote@
@@ -6969,6 +7145,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@tests/$(DEPDIR)/testHttpReply.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@tests/$(DEPDIR)/testHttpRequest.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@tests/$(DEPDIR)/testHttpRequestMethod.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@tests/$(DEPDIR)/testIcmp.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@tests/$(DEPDIR)/testRefCount.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@tests/$(DEPDIR)/testRock.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@tests/$(DEPDIR)/testSBuf.Po@am__quote@
@@ -6980,6 +7157,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@tests/$(DEPDIR)/testStoreHashIndex.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@tests/$(DEPDIR)/testStoreSupport.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@tests/$(DEPDIR)/testString.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@tests/$(DEPDIR)/testTokenizer.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@tests/$(DEPDIR)/testURL.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@tests/$(DEPDIR)/testUfs.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@tests/$(DEPDIR)/testUriScheme.Po@am__quote@
@@ -7363,6 +7541,13 @@ tests/testCacheManager.log: tests/testCacheManager$(EXEEXT)
 	--log-file $$b.log --trs-file $$b.trs \
 	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
 	"$$tst" $(AM_TESTS_FD_REDIRECT)
+tests/testCharacterSet.log: tests/testCharacterSet$(EXEEXT)
+	@p='tests/testCharacterSet$(EXEEXT)'; \
+	b='tests/testCharacterSet'; \
+	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
+	--log-file $$b.log --trs-file $$b.trs \
+	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
+	"$$tst" $(AM_TESTS_FD_REDIRECT)
 tests/testDiskIO.log: tests/testDiskIO$(EXEEXT)
 	@p='tests/testDiskIO$(EXEEXT)'; \
 	b='tests/testDiskIO'; \
@@ -7398,6 +7583,13 @@ tests/testHttpParser.log: tests/testHttpParser$(EXEEXT)
 	--log-file $$b.log --trs-file $$b.trs \
 	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
 	"$$tst" $(AM_TESTS_FD_REDIRECT)
+tests/testTokenizer.log: tests/testTokenizer$(EXEEXT)
+	@p='tests/testTokenizer$(EXEEXT)'; \
+	b='tests/testTokenizer'; \
+	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
+	--log-file $$b.log --trs-file $$b.trs \
+	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
+	"$$tst" $(AM_TESTS_FD_REDIRECT)
 tests/testHttpReply.log: tests/testHttpReply$(EXEEXT)
 	@p='tests/testHttpReply$(EXEEXT)'; \
 	b='tests/testHttpReply'; \
@@ -7408,6 +7600,20 @@ tests/testHttpReply.log: tests/testHttpReply$(EXEEXT)
 tests/testHttpRequest.log: tests/testHttpRequest$(EXEEXT)
 	@p='tests/testHttpRequest$(EXEEXT)'; \
 	b='tests/testHttpRequest'; \
+	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
+	--log-file $$b.log --trs-file $$b.trs \
+	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
+	"$$tst" $(AM_TESTS_FD_REDIRECT)
+tests/testIcmp.log: tests/testIcmp$(EXEEXT)
+	@p='tests/testIcmp$(EXEEXT)'; \
+	b='tests/testIcmp'; \
+	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
+	--log-file $$b.log --trs-file $$b.trs \
+	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
+	"$$tst" $(AM_TESTS_FD_REDIRECT)
+tests/testIpAddress.log: tests/testIpAddress$(EXEEXT)
+	@p='tests/testIpAddress$(EXEEXT)'; \
+	b='tests/testIpAddress'; \
 	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
 	--log-file $$b.log --trs-file $$b.trs \
 	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \

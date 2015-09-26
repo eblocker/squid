@@ -5,12 +5,12 @@
 ## Please see the COPYING and CONTRIBUTORS files for details.
 ##
 
-AC_INIT([Squid Web Proxy],[3.5.7],[http://bugs.squid-cache.org/],[squid])
+AC_INIT([Squid Web Proxy],[3.5.9],[http://bugs.squid-cache.org/],[squid])
 AC_PREREQ(2.61)
 AC_CONFIG_HEADERS([include/autoconf.h])
 AC_CONFIG_AUX_DIR(cfgaux)
 AC_CONFIG_SRCDIR([src/main.cc])
-AM_INIT_AUTOMAKE([tar-ustar nostdinc])
+AM_INIT_AUTOMAKE([tar-ustar nostdinc subdir-objects])
 AC_REVISION($Revision$)dnl
 AC_PREFIX_DEFAULT(/usr/local/squid)
 AM_MAINTAINER_MODE
@@ -140,6 +140,9 @@ if test "x$AR" = "x"; then
 fi
 AR_R="$AR r"
 AC_SUBST(AR_R)
+
+AC_PATH_PROG(LINUXDOC, linuxdoc, $FALSE)
+AM_CONDITIONAL(ENABLE_RELEASE_DOCS, test "x${ac_cv_path_LINUXDOC}" != "x$FALSE")
 
 # pre-define DEFAULT_PREFIX, some modules need it.
 if test "${prefix}" = "NONE" ; then
@@ -3835,6 +3838,7 @@ AC_CONFIG_FILES([
 	test-suite/Makefile
 	doc/Makefile
 	doc/manuals/Makefile
+	doc/release-notes/Makefile
 	helpers/Makefile
 	helpers/basic_auth/Makefile
 	helpers/basic_auth/DB/Makefile

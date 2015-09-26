@@ -901,15 +901,17 @@ DOC_START
 	acl aclname localip ip-address/mask ... # IP address the client connected to [fast]
 
 	acl aclname arp      mac-address ... (xx:xx:xx:xx:xx:xx notation)
-	  # The arp ACL requires the special configure option --enable-arp-acl.
-	  # Furthermore, the ARP ACL code is not portable to all operating systems.
-	  # It works on Linux, Solaris, Windows, FreeBSD, and some
-	  # other *BSD variants.
 	  # [fast]
+	  # The 'arp' ACL code is not portable to all operating systems.
+	  # It works on Linux, Solaris, Windows, FreeBSD, and some other
+	  # BSD variants.
 	  #
-	  # NOTE: Squid can only determine the MAC address for clients that are on
-	  # the same subnet. If the client is on a different subnet,
-	  # then Squid cannot find out its MAC address.
+	  # NOTE: Squid can only determine the MAC/EUI address for IPv4
+	  # clients that are on the same subnet. If the client is on a
+	  # different subnet, then Squid cannot find out its address.
+	  #
+	  # NOTE 2: IPv6 protocol does not contain ARP. MAC/EUI is either
+	  # encoded directly in the IPv6 address or not available.
 
 	acl aclname srcdomain   .foo.com ...
 	  # reverse lookup, from client IP [slow]
@@ -1380,7 +1382,7 @@ DOC_START
 
 	SECURITY WARNING: Usage of this option is dangerous
 	and should not be used trivially. Correct configuration
-	of follow_x_forewarded_for with a limited set of trusted
+	of follow_x_forwarded_for with a limited set of trusted
 	sources is required to prevent abuse of your proxy.
 DOC_END
 
@@ -1579,7 +1581,7 @@ LOC: Config.accessList.miss
 DEFAULT: none
 DEFAULT_DOC: Allow, unless rules exist in squid.conf.
 DOC_START
-	Determins whether network access is permitted when satisfying a request.
+	Determines whether network access is permitted when satisfying a request.
 
 	For example;
 	    to force your neighbors to use you as a sibling instead of
@@ -1704,13 +1706,13 @@ DOC_START
 
 	Modes:
 
-	   intercept	Support for IP-Layer interception of
-			outgoing requests without browser settings.
-			NP: disables authentication and IPv6 on the port.
+	   intercept	Support for IP-Layer NAT interception delivering
+			traffic to this Squid port.
+			NP: disables authentication on the port.
 
-	   tproxy	Support Linux TPROXY for spoofing outgoing
-			connections using the client IP address.
-			NP: disables authentication and maybe IPv6 on the port.
+	   tproxy	Support Linux TPROXY (or BSD divert-to) with spoofing
+			of outgoing connections using the client IP address.
+			NP: disables authentication on the port.
 
 	   accel	Accelerator / reverse proxy mode
 
@@ -2502,7 +2504,8 @@ DEFAULT: none
 LOC: Config.ssl_client.options
 TYPE: string
 DOC_START
-	SSL implementation options to use when proxying https:// URLs
+	Colon (:) or comma (,) separated list of SSL implementation options
+	to use when proxying https:// URLs
 	
 	The most important being:
 
@@ -2524,6 +2527,9 @@ DOC_START
 	
 	See the OpenSSL SSL_CTX_set_options documentation for a
 	complete list of possible options.
+	
+	WARNING: This directive takes a single token. If a space is used
+		 the value(s) after that space are SILENTLY IGNORED.
 DOC_END
 
 NAME: sslproxy_cipher
@@ -3888,18 +3894,26 @@ TYPE: int
 DEFAULT: 90
 LOC: Config.Swap.lowWaterMark
 DOC_START
-	The low-water mark for cache object replacement.
-	Replacement begins when the swap (disk) usage is above the
-	low-water mark and attempts to maintain utilization near the
-	low-water mark.  As swap utilization gets close to high-water
-	mark object eviction becomes more aggressive.  If utilization is
-	close to the low-water mark less replacement is done each time.
+	The low-water mark for AUFS/UFS/diskd cache object eviction by
+	the cache_replacement_policy algorithm.
+
+	Removal begins when the swap (disk) usage of a cache_dir is
+	above this low-water mark and attempts to maintain utilization
+	near the low-water mark.
+
+	As swap utilization increases towards the high-water mark set
+	by cache_swap_high object eviction becomes more agressive.
+
+	The value difference in percentages between low- and high-water
+	marks represent an eviction rate of 300 objects per second and
+	the rate continues to scale in agressiveness by multiples of
+	this above the high-water mark.
 
 	Defaults are 90% and 95%. If you have a large cache, 5% could be
 	hundreds of MB. If this is the case you may wish to set these
 	numbers closer together.
 
-	See also cache_swap_high
+	See also cache_swap_high and cache_replacement_policy
 DOC_END
 
 NAME: cache_swap_high
@@ -3908,18 +3922,26 @@ TYPE: int
 DEFAULT: 95
 LOC: Config.Swap.highWaterMark
 DOC_START
-	The high-water mark for cache object replacement.
-	Replacement begins when the swap (disk) usage is above the
-	low-water mark and attempts to maintain utilization near the
-	low-water mark.  As swap utilization gets close to high-water
-	mark object eviction becomes more aggressive.  If utilization is
-	close to the low-water mark less replacement is done each time.
+	The high-water mark for AUFS/UFS/diskd cache object eviction by
+	the cache_replacement_policy algorithm.
+
+	Removal begins when the swap (disk) usage of a cache_dir is
+	above the low-water mark set by cache_swap_low and attempts to
+	maintain utilization near the low-water mark.
+
+	As swap utilization increases towards this high-water mark object
+	eviction becomes more agressive.
+
+	The value difference in percentages between low- and high-water
+	marks represent an eviction rate of 300 objects per second and
+	the rate continues to scale in agressiveness by multiples of
+	this above the high-water mark.
 
 	Defaults are 90% and 95%. If you have a large cache, 5% could be
 	hundreds of MB. If this is the case you may wish to set these
 	numbers closer together.
 
-	See also cache_swap_low
+	See also cache_swap_low and cache_replacement_policy
 DOC_END
 
 COMMENT_START
@@ -4038,7 +4060,6 @@ DOC_START
 		ul	User name from authentication
 		ue	User name from external acl helper
 		ui	User name from ident
-		us	User name from SSL
 		un	A user name. Expands to the first available name
 			from the following list of information sources:
 			- authenticated user name, like %ul
@@ -5361,7 +5382,7 @@ DOC_START
 
 	Basically a cached object is:
 
-		FRESH if expires < now, else STALE
+		FRESH if expire > now, else STALE
 		STALE if age > max
 		FRESH if lm-factor < percent, else STALE
 		FRESH if age < min

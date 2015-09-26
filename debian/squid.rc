@@ -69,6 +69,7 @@ create_run_dir () {
 	   [ ! -e $run_dir ] ; then
 		mkdir -p $run_dir
 	  	chown $usr:$grp $run_dir
+		[ -x /sbin/restorecon ] && restorecon $run_dir
 	fi
 }
 
@@ -89,6 +90,7 @@ start () {
 	then
 		log_warning_msg "Creating $DESC cache structure"
 		$DAEMON -z -f $CONFIG
+		[ -x /sbin/restorecon ] && restorecon -R $cache_dir
 	fi
 
 	umask 027

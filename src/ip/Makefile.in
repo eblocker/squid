@@ -88,8 +88,7 @@ PRE_UNINSTALL = :
 POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
-check_PROGRAMS = testIpAddress$(EXEEXT)
-TESTS = testHeaders testIpAddress$(EXEEXT)
+check_PROGRAMS =
 @ENABLE_LOADABLE_MODULES_TRUE@am__append_1 = $(INCLTDL)
 subdir = src/ip
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
@@ -166,22 +165,6 @@ AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
 am__v_lt_0 = --silent
 am__v_lt_1 = 
-am_testIpAddress_OBJECTS = testAddress.$(OBJEXT)
-nodist_testIpAddress_OBJECTS = stub_debug.$(OBJEXT) \
-	stub_tools.$(OBJEXT)
-testIpAddress_OBJECTS = $(am_testIpAddress_OBJECTS) \
-	$(nodist_testIpAddress_OBJECTS)
-am__DEPENDENCIES_1 =
-@ENABLE_XPROF_STATS_TRUE@am__DEPENDENCIES_2 = $(top_builddir)/lib/profiler/libprofiler.la
-am__DEPENDENCIES_3 = $(top_builddir)/compat/libcompat-squid.la \
-	$(am__DEPENDENCIES_2)
-testIpAddress_DEPENDENCIES = libip.la ../base/libbase.la \
-	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_3) \
-	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1)
-testIpAddress_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CXX \
-	$(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link $(CXXLD) \
-	$(AM_CXXFLAGS) $(CXXFLAGS) $(testIpAddress_LDFLAGS) $(LDFLAGS) \
-	-o $@
 AM_V_P = $(am__v_P_@AM_V@)
 am__v_P_ = $(am__v_P_@AM_DEFAULT_V@)
 am__v_P_0 = false
@@ -234,9 +217,8 @@ AM_V_CCLD = $(am__v_CCLD_@AM_V@)
 am__v_CCLD_ = $(am__v_CCLD_@AM_DEFAULT_V@)
 am__v_CCLD_0 = @echo "  CCLD    " $@;
 am__v_CCLD_1 = 
-SOURCES = $(libip_la_SOURCES) $(testIpAddress_SOURCES) \
-	$(nodist_testIpAddress_SOURCES)
-DIST_SOURCES = $(libip_la_SOURCES) $(testIpAddress_SOURCES)
+SOURCES = $(libip_la_SOURCES)
+DIST_SOURCES = $(libip_la_SOURCES)
 am__can_run_installinfo = \
   case $$AM_UPDATE_INFO_DIR in \
     n|no|NO) false;; \
@@ -562,6 +544,7 @@ LIBTOOL = @LIBTOOL@
 LIB_DB = @LIB_DB@
 LIB_KRB5_CFLAGS = @LIB_KRB5_CFLAGS@
 LIB_KRB5_LIBS = @LIB_KRB5_LIBS@
+LINUXDOC = @LINUXDOC@
 LIPO = @LIPO@
 LN = @LN@
 LN_S = @LN_S@
@@ -684,6 +667,7 @@ pdfdir = @pdfdir@
 prefix = @prefix@
 program_transform_name = @program_transform_name@
 psdir = @psdir@
+runstatedir = @runstatedir@
 sbindir = @sbindir@
 sharedstatedir = @sharedstatedir@
 srcdir = @srcdir@
@@ -697,6 +681,7 @@ top_srcdir = @top_srcdir@
 AM_CFLAGS = $(SQUID_CFLAGS)
 AM_CXXFLAGS = $(SQUID_CXXFLAGS)
 CLEANFILES = testHeaders
+TESTS = testHeaders
 AM_CPPFLAGS = -I$(top_srcdir) -I$(top_srcdir)/include \
 	-I$(top_srcdir)/lib -I$(top_srcdir)/src \
 	-I$(top_builddir)/include $(SQUID_CPPUNIT_INC) $(KRB5INCS) \
@@ -718,23 +703,6 @@ libip_la_SOURCES = \
 	tools.cc \
 	tools.h
 
-testIpAddress_SOURCES = \
-	testAddress.cc \
-	testAddress.h
-
-nodist_testIpAddress_SOURCES = \
-	$(top_srcdir)/src/tests/stub_debug.cc \
-	$(top_srcdir)/src/tests/stub_tools.cc
-
-testIpAddress_LDADD = \
-	libip.la \
-	../base/libbase.la \
-	$(XTRA_LIBS) \
-	$(COMPAT_LIB) \
-	$(SQUID_CPPUNIT_LA) \
-	$(SQUID_CPPUNIT_LIBS)
-
-testIpAddress_LDFLAGS = $(LIBADD_DL)
 all: all-am
 
 .SUFFIXES:
@@ -793,10 +761,6 @@ clean-checkPROGRAMS:
 	echo " rm -f" $$list; \
 	rm -f $$list
 
-testIpAddress$(EXEEXT): $(testIpAddress_OBJECTS) $(testIpAddress_DEPENDENCIES) $(EXTRA_testIpAddress_DEPENDENCIES) 
-	@rm -f testIpAddress$(EXEEXT)
-	$(AM_V_CXXLD)$(testIpAddress_LINK) $(testIpAddress_OBJECTS) $(testIpAddress_LDADD) $(LIBS)
-
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
 
@@ -806,59 +770,31 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Address.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Intercept.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/QosConfig.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/stub_debug.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/stub_tools.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/testAddress.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/tools.Plo@am__quote@
 
 .cc.o:
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXXCOMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/$*.Tpo $(DEPDIR)/$*.Po
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)depbase=`echo $@ | sed 's|[^/]*$$|$(DEPDIR)/&|;s|\.o$$||'`;\
+@am__fastdepCXX_TRUE@	$(CXXCOMPILE) -MT $@ -MD -MP -MF $$depbase.Tpo -c -o $@ $< &&\
+@am__fastdepCXX_TRUE@	$(am__mv) $$depbase.Tpo $$depbase.Po
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='$<' object='$@' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXXCOMPILE) -c -o $@ $<
 
 .cc.obj:
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXXCOMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ `$(CYGPATH_W) '$<'`
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/$*.Tpo $(DEPDIR)/$*.Po
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)depbase=`echo $@ | sed 's|[^/]*$$|$(DEPDIR)/&|;s|\.obj$$||'`;\
+@am__fastdepCXX_TRUE@	$(CXXCOMPILE) -MT $@ -MD -MP -MF $$depbase.Tpo -c -o $@ `$(CYGPATH_W) '$<'` &&\
+@am__fastdepCXX_TRUE@	$(am__mv) $$depbase.Tpo $$depbase.Po
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='$<' object='$@' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXXCOMPILE) -c -o $@ `$(CYGPATH_W) '$<'`
 
 .cc.lo:
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(LTCXXCOMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/$*.Tpo $(DEPDIR)/$*.Plo
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)depbase=`echo $@ | sed 's|[^/]*$$|$(DEPDIR)/&|;s|\.lo$$||'`;\
+@am__fastdepCXX_TRUE@	$(LTCXXCOMPILE) -MT $@ -MD -MP -MF $$depbase.Tpo -c -o $@ $< &&\
+@am__fastdepCXX_TRUE@	$(am__mv) $$depbase.Tpo $$depbase.Plo
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='$<' object='$@' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(LTCXXCOMPILE) -c -o $@ $<
-
-stub_debug.o: $(top_srcdir)/src/tests/stub_debug.cc
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT stub_debug.o -MD -MP -MF $(DEPDIR)/stub_debug.Tpo -c -o stub_debug.o `test -f '$(top_srcdir)/src/tests/stub_debug.cc' || echo '$(srcdir)/'`$(top_srcdir)/src/tests/stub_debug.cc
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/stub_debug.Tpo $(DEPDIR)/stub_debug.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='$(top_srcdir)/src/tests/stub_debug.cc' object='stub_debug.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o stub_debug.o `test -f '$(top_srcdir)/src/tests/stub_debug.cc' || echo '$(srcdir)/'`$(top_srcdir)/src/tests/stub_debug.cc
-
-stub_debug.obj: $(top_srcdir)/src/tests/stub_debug.cc
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT stub_debug.obj -MD -MP -MF $(DEPDIR)/stub_debug.Tpo -c -o stub_debug.obj `if test -f '$(top_srcdir)/src/tests/stub_debug.cc'; then $(CYGPATH_W) '$(top_srcdir)/src/tests/stub_debug.cc'; else $(CYGPATH_W) '$(srcdir)/$(top_srcdir)/src/tests/stub_debug.cc'; fi`
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/stub_debug.Tpo $(DEPDIR)/stub_debug.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='$(top_srcdir)/src/tests/stub_debug.cc' object='stub_debug.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o stub_debug.obj `if test -f '$(top_srcdir)/src/tests/stub_debug.cc'; then $(CYGPATH_W) '$(top_srcdir)/src/tests/stub_debug.cc'; else $(CYGPATH_W) '$(srcdir)/$(top_srcdir)/src/tests/stub_debug.cc'; fi`
-
-stub_tools.o: $(top_srcdir)/src/tests/stub_tools.cc
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT stub_tools.o -MD -MP -MF $(DEPDIR)/stub_tools.Tpo -c -o stub_tools.o `test -f '$(top_srcdir)/src/tests/stub_tools.cc' || echo '$(srcdir)/'`$(top_srcdir)/src/tests/stub_tools.cc
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/stub_tools.Tpo $(DEPDIR)/stub_tools.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='$(top_srcdir)/src/tests/stub_tools.cc' object='stub_tools.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o stub_tools.o `test -f '$(top_srcdir)/src/tests/stub_tools.cc' || echo '$(srcdir)/'`$(top_srcdir)/src/tests/stub_tools.cc
-
-stub_tools.obj: $(top_srcdir)/src/tests/stub_tools.cc
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT stub_tools.obj -MD -MP -MF $(DEPDIR)/stub_tools.Tpo -c -o stub_tools.obj `if test -f '$(top_srcdir)/src/tests/stub_tools.cc'; then $(CYGPATH_W) '$(top_srcdir)/src/tests/stub_tools.cc'; else $(CYGPATH_W) '$(srcdir)/$(top_srcdir)/src/tests/stub_tools.cc'; fi`
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/stub_tools.Tpo $(DEPDIR)/stub_tools.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='$(top_srcdir)/src/tests/stub_tools.cc' object='stub_tools.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o stub_tools.obj `if test -f '$(top_srcdir)/src/tests/stub_tools.cc'; then $(CYGPATH_W) '$(top_srcdir)/src/tests/stub_tools.cc'; else $(CYGPATH_W) '$(srcdir)/$(top_srcdir)/src/tests/stub_tools.cc'; fi`
 
 mostlyclean-libtool:
 	-rm -f *.lo
@@ -1062,13 +998,6 @@ recheck: all $(check_PROGRAMS)
 testHeaders.log: testHeaders
 	@p='testHeaders'; \
 	b='testHeaders'; \
-	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
-	--log-file $$b.log --trs-file $$b.trs \
-	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
-	"$$tst" $(AM_TESTS_FD_REDIRECT)
-testIpAddress.log: testIpAddress$(EXEEXT)
-	@p='testIpAddress$(EXEEXT)'; \
-	b='testIpAddress'; \
 	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
 	--log-file $$b.log --trs-file $$b.trs \
 	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \

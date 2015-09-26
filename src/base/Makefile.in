@@ -88,10 +88,8 @@ PRE_UNINSTALL = :
 POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
-check_PROGRAMS = testCharacterSet$(EXEEXT)
-TESTS = testHeaders testCharacterSet$(EXEEXT)
+check_PROGRAMS =
 @ENABLE_LOADABLE_MODULES_TRUE@am__append_1 = $(INCLTDL)
-EXTRA_PROGRAMS = testCharacterSet$(EXEEXT)
 subdir = src/base
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/acinclude/ax_with_prog.m4 \
@@ -168,19 +166,6 @@ AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
 am__v_lt_0 = --silent
 am__v_lt_1 = 
-am_testCharacterSet_OBJECTS = testCharacterSet.$(OBJEXT)
-nodist_testCharacterSet_OBJECTS = stub_debug.$(OBJEXT) \
-	stub_MemBuf.$(OBJEXT) stub_cbdata.$(OBJEXT)
-testCharacterSet_OBJECTS = $(am_testCharacterSet_OBJECTS) \
-	$(nodist_testCharacterSet_OBJECTS)
-am__DEPENDENCIES_1 =
-@ENABLE_XPROF_STATS_TRUE@am__DEPENDENCIES_2 = $(top_builddir)/lib/profiler/libprofiler.la
-am__DEPENDENCIES_3 = $(top_builddir)/compat/libcompat-squid.la \
-	$(am__DEPENDENCIES_2)
-testCharacterSet_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CXX \
-	$(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link $(CXXLD) \
-	$(AM_CXXFLAGS) $(CXXFLAGS) $(testCharacterSet_LDFLAGS) \
-	$(LDFLAGS) -o $@
 AM_V_P = $(am__v_P_@AM_V@)
 am__v_P_ = $(am__v_P_@AM_DEFAULT_V@)
 am__v_P_0 = false
@@ -233,9 +218,8 @@ AM_V_CCLD = $(am__v_CCLD_@AM_V@)
 am__v_CCLD_ = $(am__v_CCLD_@AM_DEFAULT_V@)
 am__v_CCLD_0 = @echo "  CCLD    " $@;
 am__v_CCLD_1 = 
-SOURCES = $(libbase_la_SOURCES) $(testCharacterSet_SOURCES) \
-	$(nodist_testCharacterSet_SOURCES)
-DIST_SOURCES = $(libbase_la_SOURCES) $(testCharacterSet_SOURCES)
+SOURCES = $(libbase_la_SOURCES)
+DIST_SOURCES = $(libbase_la_SOURCES)
 am__can_run_installinfo = \
   case $$AM_UPDATE_INFO_DIR in \
     n|no|NO) false;; \
@@ -561,6 +545,7 @@ LIBTOOL = @LIBTOOL@
 LIB_DB = @LIB_DB@
 LIB_KRB5_CFLAGS = @LIB_KRB5_CFLAGS@
 LIB_KRB5_LIBS = @LIB_KRB5_LIBS@
+LINUXDOC = @LINUXDOC@
 LIPO = @LIPO@
 LN = @LN@
 LN_S = @LN_S@
@@ -683,6 +668,7 @@ pdfdir = @pdfdir@
 prefix = @prefix@
 program_transform_name = @program_transform_name@
 psdir = @psdir@
+runstatedir = @runstatedir@
 sbindir = @sbindir@
 sharedstatedir = @sharedstatedir@
 srcdir = @srcdir@
@@ -696,6 +682,7 @@ top_srcdir = @top_srcdir@
 AM_CFLAGS = $(SQUID_CFLAGS)
 AM_CXXFLAGS = $(SQUID_CXXFLAGS)
 CLEANFILES = testHeaders
+TESTS = testHeaders
 AM_CPPFLAGS = -I$(top_srcdir) -I$(top_srcdir)/include \
 	-I$(top_srcdir)/lib -I$(top_srcdir)/src \
 	-I$(top_builddir)/include $(SQUID_CPPUNIT_INC) $(KRB5INCS) \
@@ -716,7 +703,6 @@ libbase_la_SOURCES = \
 	AsyncCallQueue.h \
 	CharacterSet.h \
 	CharacterSet.cc \
-	TidyPointer.h \
 	CbcPointer.h \
 	InstanceId.h \
 	Lock.h \
@@ -725,27 +711,9 @@ libbase_la_SOURCES = \
 	RunnersRegistry.h \
 	Subscription.h \
 	TextException.cc \
-	TextException.h
+	TextException.h \
+	TidyPointer.h
 
-testCharacterSet_SOURCES = \
-	CharacterSet.h \
-	testCharacterSet.h \
-	testCharacterSet.cc
-
-nodist_testCharacterSet_SOURCES = \
-	$(top_srcdir)/src/tests/stub_debug.cc \
-	$(top_srcdir)/src/tests/stub_MemBuf.cc \
-	$(top_srcdir)/src/tests/stub_cbdata.cc
-
-testCharacterSet_LDFLAGS = $(LIBADD_DL)
-testCharacterSet_LDADD = \
-	$(SQUID_CPPUNIT_LIBS) \
-	$(SQUID_CPPUNIT_LA) \
-	libbase.la \
-	$(COMPAT_LIB) \
-	$(XTRA_LIBS)
-
-testCharacterSet_DEPENDENCIES = $(SQUID_CPPUNIT_LA)
 all: all-am
 
 .SUFFIXES:
@@ -804,10 +772,6 @@ clean-checkPROGRAMS:
 	echo " rm -f" $$list; \
 	rm -f $$list
 
-testCharacterSet$(EXEEXT): $(testCharacterSet_OBJECTS) $(testCharacterSet_DEPENDENCIES) $(EXTRA_testCharacterSet_DEPENDENCIES) 
-	@rm -f testCharacterSet$(EXEEXT)
-	$(AM_V_CXXLD)$(testCharacterSet_LINK) $(testCharacterSet_OBJECTS) $(testCharacterSet_LDADD) $(LIBS)
-
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
 
@@ -820,73 +784,30 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/CharacterSet.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/RunnersRegistry.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/TextException.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/stub_MemBuf.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/stub_cbdata.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/stub_debug.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/testCharacterSet.Po@am__quote@
 
 .cc.o:
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXXCOMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/$*.Tpo $(DEPDIR)/$*.Po
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)depbase=`echo $@ | sed 's|[^/]*$$|$(DEPDIR)/&|;s|\.o$$||'`;\
+@am__fastdepCXX_TRUE@	$(CXXCOMPILE) -MT $@ -MD -MP -MF $$depbase.Tpo -c -o $@ $< &&\
+@am__fastdepCXX_TRUE@	$(am__mv) $$depbase.Tpo $$depbase.Po
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='$<' object='$@' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXXCOMPILE) -c -o $@ $<
 
 .cc.obj:
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXXCOMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ `$(CYGPATH_W) '$<'`
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/$*.Tpo $(DEPDIR)/$*.Po
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)depbase=`echo $@ | sed 's|[^/]*$$|$(DEPDIR)/&|;s|\.obj$$||'`;\
+@am__fastdepCXX_TRUE@	$(CXXCOMPILE) -MT $@ -MD -MP -MF $$depbase.Tpo -c -o $@ `$(CYGPATH_W) '$<'` &&\
+@am__fastdepCXX_TRUE@	$(am__mv) $$depbase.Tpo $$depbase.Po
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='$<' object='$@' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXXCOMPILE) -c -o $@ `$(CYGPATH_W) '$<'`
 
 .cc.lo:
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(LTCXXCOMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/$*.Tpo $(DEPDIR)/$*.Plo
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)depbase=`echo $@ | sed 's|[^/]*$$|$(DEPDIR)/&|;s|\.lo$$||'`;\
+@am__fastdepCXX_TRUE@	$(LTCXXCOMPILE) -MT $@ -MD -MP -MF $$depbase.Tpo -c -o $@ $< &&\
+@am__fastdepCXX_TRUE@	$(am__mv) $$depbase.Tpo $$depbase.Plo
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='$<' object='$@' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(LTCXXCOMPILE) -c -o $@ $<
-
-stub_debug.o: $(top_srcdir)/src/tests/stub_debug.cc
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT stub_debug.o -MD -MP -MF $(DEPDIR)/stub_debug.Tpo -c -o stub_debug.o `test -f '$(top_srcdir)/src/tests/stub_debug.cc' || echo '$(srcdir)/'`$(top_srcdir)/src/tests/stub_debug.cc
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/stub_debug.Tpo $(DEPDIR)/stub_debug.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='$(top_srcdir)/src/tests/stub_debug.cc' object='stub_debug.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o stub_debug.o `test -f '$(top_srcdir)/src/tests/stub_debug.cc' || echo '$(srcdir)/'`$(top_srcdir)/src/tests/stub_debug.cc
-
-stub_debug.obj: $(top_srcdir)/src/tests/stub_debug.cc
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT stub_debug.obj -MD -MP -MF $(DEPDIR)/stub_debug.Tpo -c -o stub_debug.obj `if test -f '$(top_srcdir)/src/tests/stub_debug.cc'; then $(CYGPATH_W) '$(top_srcdir)/src/tests/stub_debug.cc'; else $(CYGPATH_W) '$(srcdir)/$(top_srcdir)/src/tests/stub_debug.cc'; fi`
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/stub_debug.Tpo $(DEPDIR)/stub_debug.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='$(top_srcdir)/src/tests/stub_debug.cc' object='stub_debug.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o stub_debug.obj `if test -f '$(top_srcdir)/src/tests/stub_debug.cc'; then $(CYGPATH_W) '$(top_srcdir)/src/tests/stub_debug.cc'; else $(CYGPATH_W) '$(srcdir)/$(top_srcdir)/src/tests/stub_debug.cc'; fi`
-
-stub_MemBuf.o: $(top_srcdir)/src/tests/stub_MemBuf.cc
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT stub_MemBuf.o -MD -MP -MF $(DEPDIR)/stub_MemBuf.Tpo -c -o stub_MemBuf.o `test -f '$(top_srcdir)/src/tests/stub_MemBuf.cc' || echo '$(srcdir)/'`$(top_srcdir)/src/tests/stub_MemBuf.cc
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/stub_MemBuf.Tpo $(DEPDIR)/stub_MemBuf.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='$(top_srcdir)/src/tests/stub_MemBuf.cc' object='stub_MemBuf.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o stub_MemBuf.o `test -f '$(top_srcdir)/src/tests/stub_MemBuf.cc' || echo '$(srcdir)/'`$(top_srcdir)/src/tests/stub_MemBuf.cc
-
-stub_MemBuf.obj: $(top_srcdir)/src/tests/stub_MemBuf.cc
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT stub_MemBuf.obj -MD -MP -MF $(DEPDIR)/stub_MemBuf.Tpo -c -o stub_MemBuf.obj `if test -f '$(top_srcdir)/src/tests/stub_MemBuf.cc'; then $(CYGPATH_W) '$(top_srcdir)/src/tests/stub_MemBuf.cc'; else $(CYGPATH_W) '$(srcdir)/$(top_srcdir)/src/tests/stub_MemBuf.cc'; fi`
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/stub_MemBuf.Tpo $(DEPDIR)/stub_MemBuf.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='$(top_srcdir)/src/tests/stub_MemBuf.cc' object='stub_MemBuf.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o stub_MemBuf.obj `if test -f '$(top_srcdir)/src/tests/stub_MemBuf.cc'; then $(CYGPATH_W) '$(top_srcdir)/src/tests/stub_MemBuf.cc'; else $(CYGPATH_W) '$(srcdir)/$(top_srcdir)/src/tests/stub_MemBuf.cc'; fi`
-
-stub_cbdata.o: $(top_srcdir)/src/tests/stub_cbdata.cc
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT stub_cbdata.o -MD -MP -MF $(DEPDIR)/stub_cbdata.Tpo -c -o stub_cbdata.o `test -f '$(top_srcdir)/src/tests/stub_cbdata.cc' || echo '$(srcdir)/'`$(top_srcdir)/src/tests/stub_cbdata.cc
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/stub_cbdata.Tpo $(DEPDIR)/stub_cbdata.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='$(top_srcdir)/src/tests/stub_cbdata.cc' object='stub_cbdata.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o stub_cbdata.o `test -f '$(top_srcdir)/src/tests/stub_cbdata.cc' || echo '$(srcdir)/'`$(top_srcdir)/src/tests/stub_cbdata.cc
-
-stub_cbdata.obj: $(top_srcdir)/src/tests/stub_cbdata.cc
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT stub_cbdata.obj -MD -MP -MF $(DEPDIR)/stub_cbdata.Tpo -c -o stub_cbdata.obj `if test -f '$(top_srcdir)/src/tests/stub_cbdata.cc'; then $(CYGPATH_W) '$(top_srcdir)/src/tests/stub_cbdata.cc'; else $(CYGPATH_W) '$(srcdir)/$(top_srcdir)/src/tests/stub_cbdata.cc'; fi`
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/stub_cbdata.Tpo $(DEPDIR)/stub_cbdata.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='$(top_srcdir)/src/tests/stub_cbdata.cc' object='stub_cbdata.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o stub_cbdata.obj `if test -f '$(top_srcdir)/src/tests/stub_cbdata.cc'; then $(CYGPATH_W) '$(top_srcdir)/src/tests/stub_cbdata.cc'; else $(CYGPATH_W) '$(srcdir)/$(top_srcdir)/src/tests/stub_cbdata.cc'; fi`
 
 mostlyclean-libtool:
 	-rm -f *.lo
@@ -1090,13 +1011,6 @@ recheck: all $(check_PROGRAMS)
 testHeaders.log: testHeaders
 	@p='testHeaders'; \
 	b='testHeaders'; \
-	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
-	--log-file $$b.log --trs-file $$b.trs \
-	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
-	"$$tst" $(AM_TESTS_FD_REDIRECT)
-testCharacterSet.log: testCharacterSet$(EXEEXT)
-	@p='testCharacterSet$(EXEEXT)'; \
-	b='testCharacterSet'; \
 	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
 	--log-file $$b.log --trs-file $$b.trs \
 	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \

@@ -877,9 +877,15 @@ clientSetKeepaliveFlag(ClientHttpRequest * http)
     request->flags.proxyKeepalive = request->persistent();
 }
 
+/// checks body length of non-chunked requests
 static int
 clientIsContentLengthValid(HttpRequest * r)
 {
+    // No Content-Length means this request just has no body, but conflicting
+    // Content-Lengths mean a message framing error (RFC 7230 Section 3.3.3 #4).
+    if (r->header.conflictingContentLength())
+        return 0;
+
     switch (r->method.id()) {
 
     case Http::METHOD_GET:
@@ -957,6 +963,8 @@ ClientSocketContext::lengthToSend(Range<int64_t> const &available)
 void
 ClientSocketContext::noteSentBodyBytes(size_t bytes)
 {
+    debugs(33, 7, bytes << " body bytes");
+
     http->out.offset += bytes;
 
     if (!http->request->range)
@@ -3618,7 +3626,8 @@ ConnStateData::start()
 
             /* pools require explicit 'allow' to assign a client into them */
             if (pools[pool].access) {
-                ch.accessList = pools[pool].access;
+                cbdataReferenceDone(ch.accessList);
+                ch.accessList = cbdataReference(pools[pool].access);
                 allow_t answer = ch.fastCheck();
                 if (answer == ACCESS_ALLOWED) {
 
@@ -3890,22 +3899,7 @@ httpsSslBumpAccessCheckDone(allow_t answer, void *data)
         debugs(33, 2, HERE << "sslBump not needed for " << connState->clientConnection);
         connState->sslBumpMode = Ssl::bumpNone;
     }
-
-    // fake a CONNECT request to force connState to tunnel
-    static char ip[MAX_IPSTRLEN];
-    connState->clientConnection->local.toUrl(ip, sizeof(ip));
-    // Pre-pend this fake request to the TLS bits already in the buffer
-    SBuf retStr;
-    retStr.append("CONNECT ").append(ip).append(" HTTP/1.1\r\nHost: ").append(ip).append("\r\n\r\n");
-    connState->in.buf = retStr.append(connState->in.buf);
-    bool ret = connState->handleReadData();
-    if (ret)
-        ret = connState->clientParseRequests();
-
-    if (!ret) {
-        debugs(33, 2, "Failed to start fake CONNECT request for SSL bumped connection: " << connState->clientConnection);
-        connState->clientConnection->close();
-    }
+    connState->fakeAConnectRequest("ssl-bump", connState->in.buf);
 }
 
 /** handle a new HTTPS connection */
@@ -4329,12 +4323,7 @@ void httpsSslBumpStep2AccessCheckDone(allow_t answer, void *data)
     assert(connState->serverBump());
     Ssl::BumpMode bumpAction;
     if (answer == ACCESS_ALLOWED) {
-        if (answer.kind == Ssl::bumpNone)
-            bumpAction = Ssl::bumpSplice;
-        else if (answer.kind == Ssl::bumpClientFirst || answer.kind == Ssl::bumpServerFirst)
-            bumpAction = Ssl::bumpBump;
-        else
-            bumpAction = (Ssl::BumpMode)answer.kind;
+        bumpAction = (Ssl::BumpMode)answer.kind;
     } else
         bumpAction = Ssl::bumpSplice;
 
@@ -4358,17 +4347,10 @@ void httpsSslBumpStep2AccessCheckDone(allow_t answer, void *data)
 
         if (connState->transparent()) {
             // fake a CONNECT request to force connState to tunnel
-            static char ip[MAX_IPSTRLEN];
-            connState->clientConnection->local.toUrl(ip, sizeof(ip));
-            connState->in.buf.assign("CONNECT ").append(ip).append(" HTTP/1.1\r\nHost: ").append(ip).append("\r\n\r\n").append(rbuf.content(), rbuf.contentSize());
-            bool ret = connState->handleReadData();
-            if (ret)
-                ret = connState->clientParseRequests();
-
-            if (!ret) {
-                debugs(33, 2, "Failed to start fake CONNECT request for ssl spliced connection: " << connState->clientConnection);
-                connState->clientConnection->close();
-            }
+            // XXX: copy from MemBuf reallocates, not a regression since old code did too
+            SBuf temp;
+            temp.append(rbuf.content(), rbuf.contentSize());
+            connState->fakeAConnectRequest("intercepted TLS spliced", temp);
         } else {
             // in.buf still has the "CONNECT ..." request data, reset it to SSL hello message
             connState->in.buf.append(rbuf.content(), rbuf.contentSize());
@@ -4391,6 +4373,9 @@ ConnStateData::startPeekAndSpliceDone()
         ACLFilledChecklist *acl_checklist = new ACLFilledChecklist(Config.accessList.ssl_bump, sslServerBump->request.getRaw(), NULL);
         //acl_checklist->src_addr = params.conn->remote;
         //acl_checklist->my_addr = s->s;
+        acl_checklist->banAction(allow_t(ACCESS_ALLOWED, Ssl::bumpNone));
+        acl_checklist->banAction(allow_t(ACCESS_ALLOWED, Ssl::bumpClientFirst));
+        acl_checklist->banAction(allow_t(ACCESS_ALLOWED, Ssl::bumpServerFirst));
         acl_checklist->nonBlockingCheck(httpsSslBumpStep2AccessCheckDone, this);
         return;
     }
@@ -4434,6 +4419,41 @@ ConnStateData::httpsPeeked(Comm::ConnectionPointer serverConnection)
 }
 
 #endif /* USE_OPENSSL */
+
+void
+ConnStateData::fakeAConnectRequest(const char *reason, const SBuf &payload)
+{
+    // fake a CONNECT request to force connState to tunnel
+    SBuf connectHost;
+#if USE_OPENSSL
+    if (serverBump() && !serverBump()->clientSni.isEmpty()) {
+        connectHost.assign(serverBump()->clientSni);
+        if (clientConnection->local.port() > 0)
+            connectHost.appendf(":%d",clientConnection->local.port());
+    } else
+#endif
+    {
+        static char ip[MAX_IPSTRLEN];
+        connectHost.assign(clientConnection->local.toUrl(ip, sizeof(ip)));
+    }
+    // Pre-pend this fake request to the TLS bits already in the buffer
+    SBuf retStr;
+    retStr.append("CONNECT ");
+    retStr.append(connectHost);
+    retStr.append(" HTTP/1.1\r\nHost: ");
+    retStr.append(connectHost);
+    retStr.append("\r\n\r\n");
+    retStr.append(payload);
+    in.buf = retStr;
+    bool ret = handleReadData();
+    if (ret)
+        ret = clientParseRequests();
+
+    if (!ret) {
+        debugs(33, 2, "Failed to start fake CONNECT request for " << reason << " connection: " << clientConnection);
+        clientConnection->close();
+    }
+}
 
 /// check FD after clientHttp[s]ConnectionOpened, adjust HttpSockets as needed
 static bool

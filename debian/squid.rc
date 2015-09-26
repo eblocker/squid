@@ -129,6 +129,13 @@ stop () {
 	fi
 }
 
+cfg_pidfile=`grepconf pid_filename`
+if test "${cfg_pidfile:-none}" != "none" -a "$cfg_pidfile" != "$PIDFILE"
+then
+	log_warning_msg "squid.conf pid_filename overrides init script"
+	PIDFILE="$cfg_pidfile"
+fi
+
 case "$1" in
     start)
 	res=`$DAEMON -k parse -f $CONFIG 2>&1 | grep -o "FATAL .*"`

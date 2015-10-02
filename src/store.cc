@@ -144,25 +144,6 @@ Store::unlink (StoreEntry &anEntry)
     fatal("Store::unlink on invalid Store\n");
 }
 
-void *
-StoreEntry::operator new (size_t bytecount)
-{
-    assert (bytecount == sizeof (StoreEntry));
-
-    if (!pool) {
-        pool = memPoolCreate ("StoreEntry", bytecount);
-        pool->setChunkSize(2048 * 1024);
-    }
-
-    return pool->alloc();
-}
-
-void
-StoreEntry::operator delete (void *address)
-{
-    pool->freeOne(address);
-}
-
 void
 StoreEntry::makePublic()
 {

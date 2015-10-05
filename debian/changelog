@@ -1,4 +1,4 @@
-squid3 (3.5.10-1) UNRELEASED; urgency=high
+squid3 (3.5.10-1) unstable; urgency=high
 
   [ Amos Jeffries <amosjeffries@squid-cache.org> ]
   * New Upstream Release (Closes: #799923, #800876)
@@ -7,7 +7,10 @@ squid3 (3.5.10-1) UNRELEASED; urgency=high
     - Grok pid_filename from squid.conf (Closes: #520736)
     - Update SELinux context when creating directories (Closes: #798827)
 
- -- Amos Jeffries <amosjeffries@squid-cache.org>  Fri, 05 Oct 2015 16:28:00 +1200
+  [ Luigi Gangitano <luigi@debian.org> ]
+    - Urgency high due to regression fix for CVE-2015-3400.
+
+ -- Luigi Gangitano <luigi@debian.org>  Mon, 05 Oct 2015 23:28:00 +0200
 
 squid3 (3.5.7-1) unstable; urgency=medium
 

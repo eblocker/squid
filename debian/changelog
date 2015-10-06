@@ -8,7 +8,7 @@ squid3 (3.5.10-1) unstable; urgency=high
     - Update SELinux context when creating directories (Closes: #798827)
 
   [ Luigi Gangitano <luigi@debian.org> ]
-    - Urgency high due to regression fix for CVE-2015-3400.
+    - Urgency high due to regression fix for CVE-2015-5400.
 
  -- Luigi Gangitano <luigi@debian.org>  Mon, 05 Oct 2015 23:28:00 +0200
 

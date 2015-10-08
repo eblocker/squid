@@ -4,6 +4,8 @@
 #
 # Version:	@(#)squid.rc  1.0  07-Jul-2006  luigi@debian.org
 #
+# pidfile: /var/run/squid.pid
+#
 ### BEGIN INIT INFO
 # Provides:          squid
 # Required-Start:    $network $remote_fs $syslog

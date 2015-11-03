@@ -1,2 +1,3 @@
 01-cf.data.debian.patch
 02-makefile-defaults.patch
+03-squid-3.5-13944.patch

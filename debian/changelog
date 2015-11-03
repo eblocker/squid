@@ -3,6 +3,9 @@ squid3 (3.5.11-1) UNRELEASED; urgency=medium
   [ Amos Jeffries <amosjeffries@squid-cache.org> ]
   * New Upstream Release
 
+  * debian/squid.postinst
+    - remove unneeded config edits for manager ACL (Closes: #801564)
+
   [ Mathieu Parent ]
   * Fix FATAL parsing before start/reload/restart (Closes: #800341)
   * Set pidfile for systemd's sysv-generator (Closes: #800341)

@@ -1,4 +1,4 @@
-squid3 (3.5.12-1) UNRELEASED; urgency=medium
+squid3 (3.5.12-1) unstable; urgency=medium
 
   [ Amos Jeffries <amosjeffries@squid-cache.org> ]
   * New Upstream Release
@@ -13,7 +13,7 @@ squid3 (3.5.12-1) UNRELEASED; urgency=medium
   * Fix FATAL parsing before start/reload/restart (Closes: #800341)
   * Set pidfile for systemd's sysv-generator (Closes: #800341)
 
- -- Luigi Gangitano <luigi@debian.org>  Wed, 07 Oct 2015 16:03:47 +0200
+ -- Luigi Gangitano <luigi@debian.org>  Wed, 09 Dec 2015 19:03:47 +0100
 
 squid3 (3.5.10-1) unstable; urgency=high
 

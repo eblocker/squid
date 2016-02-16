@@ -1,4 +1,4 @@
-## Copyright (C) 1996-2015 The Squid Software Foundation and contributors
+## Copyright (C) 1996-2016 The Squid Software Foundation and contributors
 ##
 ## Squid software is distributed under GPLv2+ license and includes
 ## contributions from numerous individuals and organizations.
@@ -667,10 +667,14 @@ DOC_START
 			cached entry should be initiated without needing to
 			wait for a new reply. (default is for no grace period)
 
-	  cache=n	Limit the result cache size, default is 262144.
-			The expanded FORMAT value is used as the cache key, so
-			if the details in FORMAT are highly variable a larger
-			cache may be needed to produce reduction in helper load.
+	  cache=n	The maximum number of entries in the result cache. The
+			default limit is 262144 entries.  Each cache entry usually
+			consumes at least 256 bytes. Squid currently does not remove
+			expired cache entries until the limit is reached, so a proxy
+			will sooner or later reach the limit. The expanded FORMAT
+			value is used as the cache key, so if the details in FORMAT
+			are highly variable, a larger cache may be needed to produce
+			reduction in helper load.
 
 	  children-max=n
 			Maximum number of acl helper processes spawned to service
@@ -1824,6 +1828,12 @@ DOC_START
 			    SINGLE_DH_USE Always create a new key when using
 				      temporary/ephemeral DH key exchanges
 			    NO_TICKET Disables TLS tickets extension
+
+			    SINGLE_ECDH_USE
+				      Enable ephemeral ECDH key exchange.
+				      The adopted curve should be specified
+				      using the tls-dh option.
+
 			    ALL       Enable various bug workarounds
 				      suggested as "harmless" by OpenSSL
 				      Be warned that this reduces SSL/TLS
@@ -1845,11 +1855,15 @@ DOC_START
 			the client certificate, in addition to CRLs stored in
 			the capath. Implies VERIFY_CRL flag below.
 
-	   dhparams=	File containing DH parameters for temporary/ephemeral
-			DH key exchanges. See OpenSSL documentation for details
-			on how to create this file.
-			WARNING: EDH ciphers will be silently disabled if this
-				 option is not set.
+	   tls-dh=[curve:]file
+			File containing DH parameters for temporary/ephemeral DH key
+			exchanges, optionally prefixed by a curve for ephemeral ECDH
+			key exchanges.
+			See OpenSSL documentation for details on how to create the
+			DH parameter file. Supported curves for ECDH can be listed
+			using the "openssl ecparam -list_curves" command.
+			WARNING: EDH and EECDH ciphers will be silently disabled if
+				 this option is not set.
 
 	   sslflags=	Various flags modifying the use of SSL:
 			    DELAYED_AUTH
@@ -1988,8 +2002,15 @@ DOC_START
 			    NO_SSLv2  Disallow the use of SSLv2
 			    NO_SSLv3  Disallow the use of SSLv3
 			    NO_TLSv1  Disallow the use of TLSv1
+
 			    SINGLE_DH_USE Always create a new key when using
 				      temporary/ephemeral DH key exchanges
+
+			    SINGLE_ECDH_USE
+				      Enable ephemeral ECDH key exchange.
+				      The adopted curve should be specified
+				      using the tls-dh option.
+
 			See src/ssl_support.c or OpenSSL SSL_CTX_set_options
 			documentation for a complete list of options.
 
@@ -2007,8 +2028,10 @@ DOC_START
 			the client certificate, in addition to CRLs stored in
 			the capath. Implies VERIFY_CRL flag below.
 
-	   dhparams=	File containing DH parameters for temporary/ephemeral
-			DH key exchanges.
+	   tls-dh=[curve:]file
+			File containing DH parameters for temporary/ephemeral DH key
+			exchanges, optionally prefixed by a curve for ephemeral ECDH
+			key exchanges.
 
 	   sslflags=	Various flags modifying the use of SSL:
 			    DELAYED_AUTH
@@ -2581,6 +2604,26 @@ DOC_START
         Sets the cache size to use for ssl session
 DOC_END
 
+NAME: sslproxy_foreign_intermediate_certs
+IFDEF: USE_OPENSSL
+DEFAULT: none
+LOC: Config.ssl_client.foreignIntermediateCertsPath
+TYPE: string
+DOC_START
+	Many origin servers fail to send their full server certificate
+	chain for verification, assuming the client already has or can
+	easily locate any missing intermediate certificates.
+
+	Squid uses the certificates from the specified file to fill in
+	these missing chains when trying to validate origin server
+	certificate chains.
+
+	The file is expected to contain zero or more PEM-encoded
+	intermediate certificates. These certificates are not treated
+	as trusted root certificates, and any self-signed certificate in
+	this file will be ignored.
+DOC_END
+
 NAME: sslproxy_cert_sign_hash
 IFDEF: USE_OPENSSL
 DEFAULT: none
@@ -2675,10 +2718,10 @@ DOC_START
 	See also: http_port ssl-bump, https_port ssl-bump, and acl at_step.
 
 
-	# Example: Bump all requests except those originating from
+	# Example: Bump all TLS connections except those originating from
 	# localhost or those going to example.com.
 
-	acl broken_sites dstdomain .example.com
+	acl broken_sites ssl::server_name .example.com
 	ssl_bump splice localhost
 	ssl_bump splice broken_sites
 	ssl_bump bump all

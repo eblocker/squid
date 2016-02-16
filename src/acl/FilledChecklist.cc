@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2015 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -69,7 +69,7 @@ ACLFilledChecklist::~ACLFilledChecklist()
 ConnStateData *
 ACLFilledChecklist::conn() const
 {
-    return  conn_;
+    return cbdataReferenceValid(conn_) ? conn_ : NULL;
 }
 
 void
@@ -84,13 +84,15 @@ ACLFilledChecklist::conn(ConnStateData *aConn)
 int
 ACLFilledChecklist::fd() const
 {
-    return (conn_ != NULL && conn_->clientConnection != NULL) ? conn_->clientConnection->fd : fd_;
+    const ConnStateData *c = conn();
+    return (c != NULL && c->clientConnection != NULL) ? c->clientConnection->fd : fd_;
 }
 
 void
 ACLFilledChecklist::fd(int aDescriptor)
 {
-    assert(!conn() || conn()->clientConnection == NULL || conn()->clientConnection->fd == aDescriptor);
+    const ConnStateData *c = conn();
+    assert(!c || !c->clientConnection || c->clientConnection->fd == aDescriptor);
     fd_ = aDescriptor;
 }
 

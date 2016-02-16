@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2015 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -725,7 +725,7 @@ MemStore::unlink(StoreEntry &e)
     if (e.mem_obj && e.mem_obj->memCache.index >= 0) {
         map->freeEntry(e.mem_obj->memCache.index);
         disconnect(e);
-    } else {
+    } else if (map) {
         // the entry may have been loaded and then disconnected from the cache
         map->freeEntryByKey(reinterpret_cast<cache_key*>(e.key));
     }

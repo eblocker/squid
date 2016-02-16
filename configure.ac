@@ -1,11 +1,11 @@
-## Copyright (C) 1996-2015 The Squid Software Foundation and contributors
+## Copyright (C) 1996-2016 The Squid Software Foundation and contributors
 ##
 ## Squid software is distributed under GPLv2+ license and includes
 ## contributions from numerous individuals and organizations.
 ## Please see the COPYING and CONTRIBUTORS files for details.
 ##
 
-AC_INIT([Squid Web Proxy],[3.5.12],[http://bugs.squid-cache.org/],[squid])
+AC_INIT([Squid Web Proxy],[3.5.14],[http://bugs.squid-cache.org/],[squid])
 AC_PREREQ(2.61)
 AC_CONFIG_HEADERS([include/autoconf.h])
 AC_CONFIG_AUX_DIR(cfgaux)
@@ -1259,19 +1259,21 @@ case "$with_gnutls" in
 ])
 AH_TEMPLATE(USE_GNUTLS,[GnuTLS support is available])
 if test "x$with_gnutls" != "xno"; then
-  AC_CHECK_HEADERS(gnutls/gnutls.h gnutls/x509.h)
+  SQUID_STATE_SAVE(squid_gnutls_state)
 
   # User may have provided a custom location for GnuTLS. Otherwise...
-  SQUID_STATE_SAVE(squid_gnutls_state)
   LIBS="$LIBS $LIBGNUTLS_PATH"
 
   # auto-detect using pkg-config
-  PKG_CHECK_MODULES([LIBGNUTLS],[gnutls >= 3.1.5],,[
+  PKG_CHECK_MODULES([LIBGNUTLS],[gnutls >= 3.1.5],[
+    CPPFLAGS="$CPPFLAGS $LIBGNUTLS_CFLAGS"
+    ],[
     ## find the package without pkg-config
     ## check that the library is actually new enough.
     ## by testing for a 3.1.5+ function which we use
     AC_CHECK_LIB(gnutls,gnutls_certificate_verify_peers3,[LIBGNUTLS_LIBS="-lgnutls"])
   ])
+  AC_CHECK_HEADERS(gnutls/gnutls.h gnutls/x509.h)
 
   SQUID_STATE_ROLLBACK(squid_gnutls_state) #de-pollute LIBS
 
@@ -1433,8 +1435,8 @@ if test "x$with_mit_krb5" != "xno"; then
   fi
 fi
 
-# detect MIT Kerberos or Apple Kerberos dependencies
-if test "x$with_mit_krb5" != "xno" || test "x$with_apple_krb5" = "xyes" ; then
+# detect MIT Kerberos dependencies (except on Solaris)
+if test "x$with_mit_krb5" != "xno" -a "x$with_solaris_krb5" != "xyes"; then
   SQUID_STATE_SAVE([squid_krb5_save])
   LIBS="$LIBS $LIB_KRB5_PATH"
 

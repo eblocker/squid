@@ -1,3 +1,30 @@
+Changes to squid-3.5.14 (16 Feb 2016):
+
+	- Bug 4437: Fix Segfault on Certain SSL Handshake Errors
+	- Bug 4431: C code is not compiled with CFLAGS
+	- Bug 4418: FlexibleArray compile error with GCC 6
+	- Bug 4378: assertion failed: DestinationIp.cc:60:
+		'checklist->conn() && checklist->conn()->clientConnection != NULL'
+	- Fix invalid FTP connection handling on blocked content
+	- Fix handling of shared memory left over by Squid crashes or bugs
+	- Fix mgr:config report 'qos_flows mark' output
+	- Fix compile error in CPU affinity
+	- Fix %un logging external ACL username
+	- Avoid more certificate validation memory leaks
+	- ... and some documentation updates
+
+Changes to squid-3.5.13 (06 Jan 2016):
+
+	- Bug 4397: DragonFly BSD, POSIX shared memory is implemented as filepath
+	- Bug 4387: Kerberos build errors on Solaris
+	- TLS: Support Ephemeral Elliptic Curve Diffie-Hellman (EECDH) key exchange
+	- TLS: Complete certificate chains using external intermediate certificates
+	- Avoid memory leaks when an X.509 certificate validator is used with SslBump
+	- Fix connection retry and fallback after failed server TLS connections
+	- Fix GnuTLS detection via pkg-config
+	- Fix startup crash with a misconfigured (too-small) shared memory cache
+	- ... and some documentation updates
+
 Changes to squid-3.5.12 (28 Nov 2015):
 
 	- Bug 4374: refresh_pattern config parser (%)

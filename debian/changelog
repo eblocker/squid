@@ -11,7 +11,7 @@ squid3 (3.5.14-1) UNRELEASED; urgency=medium
   * debian/rules
     - build ext_time_quota_acl helper (LP: #1391159)
 
- * debian/squid.install
+  * debian/squid.install
     - add missing helper man pages
 
  -- Amos Jeffries <amosjeffries@squid-cache.org>  Tue, 16 Feb 2016 09:14:00 +1300

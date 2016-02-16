@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2015 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -199,6 +199,9 @@ Ssl::PeerConnector::initializeSsl()
             if (sniServer)
                 Ssl::setClientSNI(ssl, sniServer);
         }
+
+        if (Ssl::ServerBump *serverBump = csd->serverBump())
+            serverBump->attachServerSSL(ssl);
     }
 
     // If CertValidation Helper used do not lookup checklist for errors,
@@ -319,14 +322,6 @@ Ssl::PeerConnector::sslFinalized()
 
     handleServerCertificate();
 
-    if (ConnStateData *csd = request->clientConnectionManager.valid()) {
-        if (Ssl::ServerBump *serverBump = csd->serverBump()) {
-            // remember validation errors, if any
-            if (Ssl::CertErrors *errs = static_cast<Ssl::CertErrors *>(SSL_get_ex_data(ssl, ssl_ex_index_ssl_errors)))
-                serverBump->sslErrors = cbdataReference(errs);
-        }
-    }
-
     if (Ssl::TheConfig.ssl_crt_validator) {
         Ssl::CertValidationRequest validationRequest;
         // WARNING: Currently we do not use any locking for any of the
@@ -342,7 +337,8 @@ Ssl::PeerConnector::sslFinalized()
             validationRequest.errors = NULL;
         try {
             debugs(83, 5, "Sending SSL certificate for validation to ssl_crtvd.");
-            Ssl::CertValidationHelper::GetInstance()->sslSubmit(validationRequest, sslCrtvdHandleReplyWrapper, this);
+            AsyncCall::Pointer call = asyncCall(83,5, "Ssl::PeerConnector::sslCrtvdHandleReply", Ssl::CertValidationHelper::CbDialer(this, &Ssl::PeerConnector::sslCrtvdHandleReply, NULL));
+            Ssl::CertValidationHelper::GetInstance()->sslSubmit(validationRequest, call);
             return false;
         } catch (const std::exception &e) {
             debugs(83, DBG_IMPORTANT, "ERROR: Failed to compose ssl_crtvd " <<
@@ -465,27 +461,26 @@ Ssl::PeerConnector::checkForPeekAndSpliceGuess() const
 }
 
 void
-Ssl::PeerConnector::sslCrtvdHandleReplyWrapper(void *data, Ssl::CertValidationResponse const &validationResponse)
+Ssl::PeerConnector::sslCrtvdHandleReply(Ssl::CertValidationResponse::Pointer validationResponse)
 {
-    Ssl::PeerConnector *connector = (Ssl::PeerConnector *)(data);
-    connector->sslCrtvdHandleReply(validationResponse);
-}
+    Must(validationResponse != NULL);
 
-void
-Ssl::PeerConnector::sslCrtvdHandleReply(Ssl::CertValidationResponse const &validationResponse)
-{
-    Ssl::CertErrors *errs = NULL;
     Ssl::ErrorDetail *errDetails = NULL;
     bool validatorFailed = false;
     if (!Comm::IsConnOpen(serverConnection())) {
         return;
     }
 
-    debugs(83,5, request->GetHost() << " cert validation result: " << validationResponse.resultCode);
+    debugs(83,5, request->GetHost() << " cert validation result: " << validationResponse->resultCode);
 
-    if (validationResponse.resultCode == ::Helper::Error)
-        errs = sslCrtvdCheckForErrors(validationResponse, errDetails);
-    else if (validationResponse.resultCode != ::Helper::Okay)
+    if (validationResponse->resultCode == ::Helper::Error) {
+        if (Ssl::CertErrors *errs = sslCrtvdCheckForErrors(*validationResponse, errDetails)) {
+            SSL *ssl = fd_table[serverConnection()->fd].ssl;
+            Ssl::CertErrors *oldErrs = static_cast<Ssl::CertErrors*>(SSL_get_ex_data(ssl, ssl_ex_index_ssl_errors));
+            SSL_set_ex_data(ssl, ssl_ex_index_ssl_errors,  (void *)errs);
+            delete oldErrs;
+        }
+    } else if (validationResponse->resultCode != ::Helper::Okay)
         validatorFailed = true;
 
     if (!errDetails && !validatorFailed) {
@@ -501,20 +496,6 @@ Ssl::PeerConnector::sslCrtvdHandleReply(Ssl::CertValidationResponse const &valid
     if (validatorFailed) {
         anErr = new ErrorState(ERR_GATEWAY_FAILURE, Http::scInternalServerError, request.getRaw());
     }  else {
-
-        // Check the list error with
-        if (errDetails && request->clientConnectionManager.valid()) {
-            // remember the server certificate from the ErrorDetail object
-            if (Ssl::ServerBump *serverBump = request->clientConnectionManager->serverBump()) {
-                // remember validation errors, if any
-                if (errs) {
-                    if (serverBump->sslErrors)
-                        cbdataReferenceDone(serverBump->sslErrors);
-                    serverBump->sslErrors = cbdataReference(errs);
-                }
-            }
-        }
-
         anErr =  new ErrorState(ERR_SECURE_CONNECT_FAIL, Http::scServiceUnavailable, request.getRaw());
         anErr->detail = errDetails;
         /*anErr->xerrno= Should preserved*/
@@ -697,13 +678,8 @@ Ssl::PeerConnector::handleNegotiateError(const int ret)
 
     if (request->clientConnectionManager.valid()) {
         // remember the server certificate from the ErrorDetail object
-        if (Ssl::ServerBump *serverBump = request->clientConnectionManager->serverBump()) {
+        if (Ssl::ServerBump *serverBump = request->clientConnectionManager->serverBump())
             serverBump->serverCert.resetAndLock(anErr->detail->peerCert());
-
-            // remember validation errors, if any
-            if (Ssl::CertErrors *errs = static_cast<Ssl::CertErrors*>(SSL_get_ex_data(ssl, ssl_ex_index_ssl_errors)))
-                serverBump->sslErrors = cbdataReference(errs);
-        }
 
         // For intercepted connections, set the host name to the server
         // certificate CN. Otherwise, we just hope that CONNECT is using

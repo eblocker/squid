@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-## Copyright (C) 1996-2015 The Squid Software Foundation and contributors
+## Copyright (C) 1996-2016 The Squid Software Foundation and contributors
 ##
 ## Squid software is distributed under GPLv2+ license and includes
 ## contributions from numerous individuals and organizations.
@@ -85,20 +85,6 @@ bootstrap_libtoolize() {
     ltdl="--ltdl"
 
     bootstrap $tool $ltdl --force --copy --automake
-
-    # customize generated libltdl, if any
-    if test -d libltdl
-    then
-        src=libltdl
-
-        # do not bundle with the huge standard license text
-        rm -f $src/COPYING.LIB
-        makefile=$src/Makefile.in
-        sed 's/COPYING.LIB/ /g' $makefile > $makefile.new;
-        chmod u+w $makefile
-        mv $makefile.new $makefile
-        chmod u-w $makefile
-    fi
 }
 
 # On MAC OS X, GNU libtool is named 'glibtool':

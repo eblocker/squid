@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2015 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -810,8 +810,14 @@ Format::Format::assemble(MemBuf &mb, const AccessLogEntry::Pointer &al, int logS
             if (al->request && al->request->auth_user_request != NULL)
                 out = strOrNull(al->request->auth_user_request->username());
 #endif
+            if (!out && al->request && al->request->extacl_user.size()) {
+                if (const char *t = al->request->extacl_user.termedBuf())
+                    out = t;
+            }
+
             if (!out)
                 out = strOrNull(al->cache.extuser);
+
 #if USE_OPENSSL
             if (!out)
                 out = strOrNull(al->cache.ssluser);
@@ -832,7 +838,13 @@ Format::Format::assemble(MemBuf &mb, const AccessLogEntry::Pointer &al, int logS
             break;
 
         case LFT_USER_EXTERNAL:
-            out = strOrNull(al->cache.extuser);
+            if (al->request && al->request->extacl_user.size()) {
+                if (const char *t = al->request->extacl_user.termedBuf())
+                    out = t;
+            }
+
+            if (!out)
+                out = strOrNull(al->cache.extuser);
             break;
 
         /* case LFT_USER_REALM: */

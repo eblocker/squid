@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2015 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -113,7 +113,7 @@ CtoCpp1(SSL_CTX_free, SSL_CTX *)
 typedef TidyPointer<SSL_CTX, SSL_CTX_free_cpp> SSL_CTX_Pointer;
 
 CtoCpp1(SSL_free, SSL *)
-typedef TidyPointer<SSL, SSL_free_cpp> SSL_Pointer;
+typedef LockingPointer<SSL, SSL_free_cpp, CRYPTO_LOCK_SSL> SSL_Pointer;
 
 CtoCpp1(DH_free, DH *);
 typedef TidyPointer<DH, DH_free_cpp> DH_Pointer;

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2015 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -878,13 +878,18 @@ configDoConfigure(void)
     }
 
 #if USE_OPENSSL
+    if (Config.ssl_client.foreignIntermediateCertsPath)
+        Ssl::loadSquidUntrusted(Config.ssl_client.foreignIntermediateCertsPath);
+#endif
 
+#if USE_OPENSSL
     debugs(3, DBG_IMPORTANT, "Initializing https proxy context");
 
     Config.ssl_client.sslContext = sslCreateClientContext(Config.ssl_client.cert, Config.ssl_client.key, Config.ssl_client.version, Config.ssl_client.cipher, NULL, Config.ssl_client.flags, Config.ssl_client.cafile, Config.ssl_client.capath, Config.ssl_client.crlfile);
     // Pre-parse SSL client options to be applied when the client SSL objects created.
     // Options must not used in the case of peek or stare bump mode.
     Config.ssl_client.parsedOptions = Ssl::parse_options(::Config.ssl_client.options);
+    Ssl::useSquidUntrusted(Config.ssl_client.sslContext);
 
     for (CachePeer *p = Config.peers; p != NULL; p = p->next) {
         if (p->use_ssl) {
@@ -3749,8 +3754,13 @@ parse_port_option(AnyP::PortCfgPointer &s, char *token)
         safe_free(s->crlfile);
         s->crlfile = xstrdup(token + 8);
     } else if (strncmp(token, "dhparams=", 9) == 0) {
+        debugs(3, DBG_PARSE_NOTE(DBG_IMPORTANT), "WARNING: '" << token << "' is deprecated " <<
+               "in " << cfg_directive << ". Use 'tls-dh=' instead.");
         safe_free(s->dhfile);
         s->dhfile = xstrdup(token + 9);
+    } else if (strncmp(token, "tls-dh=", 7) == 0) {
+        safe_free(s->tls_dh);
+        s->tls_dh = xstrdup(token + 7);
     } else if (strncmp(token, "sslflags=", 9) == 0) {
         safe_free(s->sslflags);
         s->sslflags = xstrdup(token + 9);
@@ -3974,6 +3984,9 @@ dump_generic_port(StoreEntry * e, const char *n, const AnyP::PortCfgPointer &s)
     if (s->dhfile)
         storeAppendPrintf(e, " dhparams=%s", s->dhfile);
 
+    if (s->tls_dh)
+        storeAppendPrintf(e, " tls-dh=%s", s->tls_dh);
+
     if (s->sslflags)
         storeAppendPrintf(e, " sslflags=%s", s->sslflags);
 
@@ -4003,6 +4016,7 @@ configFreeMemory(void)
     free_all();
 #if USE_OPENSSL
     SSL_CTX_free(Config.ssl_client.sslContext);
+    Ssl::unloadSquidUntrusted();
 #endif
 }
 

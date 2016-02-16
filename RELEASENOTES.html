@@ -2,10 +2,10 @@
 <HTML>
 <HEAD>
  <META NAME="GENERATOR" CONTENT="LinuxDoc-Tools 0.9.71">
- <TITLE>Squid 3.5.12 release notes</TITLE>
+ <TITLE>Squid 3.5.14 release notes</TITLE>
 </HEAD>
 <BODY>
-<H1>Squid 3.5.12 release notes</H1>
+<H1>Squid 3.5.14 release notes</H1>
 
 <H2>Squid Developers</H2>
 <HR>
@@ -33,6 +33,7 @@ for Applied Network Research and members of the Web Caching community.</EM>
 <LI><A NAME="toc2.6">2.6</A> <A HREF="#ss2.6">Native FTP Relay</A>
 <LI><A NAME="toc2.7">2.7</A> <A HREF="#ss2.7">Receive PROXY protocol, Versions 1 &amp; 2</A>
 <LI><A NAME="toc2.8">2.8</A> <A HREF="#ss2.8">Basic authentication MSNT helper changes</A>
+<LI><A NAME="toc2.9">2.9</A> <A HREF="#ss2.9">Elliptic Curve Diffie-Hellman (ECDH)</A>
 </UL>
 <P>
 <H2><A NAME="toc3">3.</A> <A HREF="#s3">Changes to squid.conf since Squid-3.4</A></H2>
@@ -63,7 +64,7 @@ for Applied Network Research and members of the Web Caching community.</EM>
 <HR>
 <H2><A NAME="s1">1.</A> <A HREF="#toc1">Notice</A></H2>
 
-<P>The Squid Team are pleased to announce the release of Squid-3.5.12.</P>
+<P>The Squid Team are pleased to announce the release of Squid-3.5.14.</P>
 <P>This new release is available for download from 
 <A HREF="http://www.squid-cache.org/Versions/v3/3.5/">http://www.squid-cache.org/Versions/v3/3.5/</A> or the
 <A HREF="http://www.squid-cache.org/Download/http-mirrors.html">mirrors</A>.</P>
@@ -122,6 +123,7 @@ a simple, consistent way to document that fact.</P>
 <LI>Native FTP Relay</LI>
 <LI>Receive PROXY protocol, Versions 1 &amp; 2</LI>
 <LI>Basic authentication MSNT helper changes</LI>
+<LI>Elliptic Curve Diffie-Hellman (ECDH) (since 3.5.13)</LI>
 </UL>
 </P>
 <P>Most user-facing changes are reflected in squid.conf (see below).</P>
@@ -318,8 +320,8 @@ relay the original client source details without having to alter or understand
 the protocol being relayed on the connection.</P>
 
 <P>Squid currently supports receiving HTTP traffic from a client proxy using this protocol.
-An http_port which has been configured to receive this protocol may only be used to
-receive traffic from client software sending in this protocol.
+An <EM>http_port</EM> which has been configured to receive this protocol may only be used
+to receive traffic from client software sending in this protocol.
 HTTP traffic without the PROXY header is not accepted on such a port.</P>
 
 <P>The <EM>accel</EM> and <EM>intercept</EM> options are still used to identify the HTTP
@@ -375,6 +377,21 @@ order configured until one matches or all have confirmed a non-match.</P>
 is also deprecated. It will be removed in the Squid-3.6 series.</P>
 
 
+<H2><A NAME="ss2.9">2.9</A> <A HREF="#toc2.9">Elliptic Curve Diffie-Hellman (ECDH)</A>
+</H2>
+
+<P>All listening port which supported Diffie-Hellman key exchange are now updated
+to support Elliptic Curve configuration which allows for forward secrecy with
+better performance than traditional ephemeral Diffie-Hellman.</P>
+
+<P>The http(s)_port <EM>dhparams=</EM> option is replaced with <EM>tls-dh=</EM> that
+takes an optional curve name as well as filename for curve parameters. The new
+option configured without a curve name uses the traditional ephemeral DH.</P>
+
+<P>A new <EM>options=SINGLE_ECDH_USE</EM> parameter is added to enable ephemeral
+key exchanges for Elliptic Curve DH.</P>
+
+
 
 <H2><A NAME="s3">3.</A> <A HREF="#toc3">Changes to squid.conf since Squid-3.4</A></H2>
 
@@ -413,6 +430,10 @@ of the process parsing the config.</P>
 <P>Ported from Squid-2 with no configuration or visible behaviour changes.
 Collapsing of requests is performed across SMP workers.</P>
 
+<DT><B>sslproxy_foreign_intermediate_certs</B><DD>
+<P>New directive to load intermediate TLS certificates for
+filling incomplete server certificate chains. Added in 3.5.13.</P>
+
 <DT><B>ftp_client_idle_timeout</B><DD>
 <P>New directive controlling how long to wait for an FTP request on a
 client connection to Squid <EM>ftp_port</EM>.</P>
@@ -438,6 +459,10 @@ response details.</P>
 
 <DT><B>sslproxy_cert_sign_hash</B><DD>
 <P>New directive to set the hashing algorithm to use when signing generated certificates.</P>
+
+<DT><B>sslproxy_foreign_intermediate_certs</B><DD>
+<P>New directive to load intermediate certificates for validating server
+certificate chains. This directive is only available in 3.5.13 and later.</P>
 
 <DT><B>sslproxy_session_cache_size</B><DD>
 <P>New directive which sets the cache size to use for TLS/SSL sessions cache.</P>
@@ -492,6 +517,8 @@ Never matches and should not be used outside of <EM>ssl_bump</EM>.</P>
 <P>New types <EM>ssl::server_name</EM> and <EM>ssl::server_name_regex</EM>
 to match server name from various sources (CONNECT authority name,
 TLS SNI domain, or X.509 certificate Subject Name).</P>
+<P>Extended <EM>user_cert</EM> and <EM>ca_cert</EM> types to accept
+numeric OID for certificate attributes.</P>
 
 <DT><B>auth_param</B><DD>
 <P>New parameter <EM>key_extras</EM> to send additional parameters to
@@ -551,10 +578,26 @@ Do not combine use of on/off values with ACL configuration.</P>
 Currently supported values are: HTTP, HTTP/1.1, HTTPS, HTTPS/1.1</P>
 <P>New option <EM>require-proxy-header</EM> to mark ports receiving PROXY
 protocol version 1 or 2 traffic.</P>
+<P>New <EM>options=NO_TICKET</EM> parameter to disable TLS tickets
+extension.</P>
+<P>New <EM>options=SINGLE_ECDH_USE</EM> parameter to enable ephemeral
+ECDH key exchange. Added in 3.5.13.</P>
+<P>Deprecated <EM>dhparams=</EM> option. Use <EM>tls-dh=</EM> instead.
+The new option allows to optionally specify an elliptic curve for
+ephemeral ECDH by adding <EM>curve-name:</EM> in front of the
+parameter file name. Added in 3.5.13.</P>
 
 <DT><B>https_port</B><DD>
 <P><EM>protocol=</EM> option altered to accept protocol version details.
 Currently supported values are: HTTP, HTTP/1.1, HTTPS, HTTPS/1.1</P>
+<P>New <EM>options=NO_TICKET</EM> parameter to disable TLS tickets
+extension.</P>
+<P>New <EM>options=SINGLE_ECDH_USE</EM> parameter to enable ephemeral
+ECDH key exchange. Added in 3.5.13.</P>
+<P>Deprecated <EM>dhparams=</EM> option. Use <EM>tls-dh=</EM> instead.
+The new option allows to optionally specify an elliptic curve for
+ephemeral ECDH by adding <EM>curve-name:</EM> in front of the
+parameter file name. Added in 3.5.13.</P>
 
 <DT><B>logformat</B><DD>
 <P>New format code <EM>%credentials</EM> to log the client credentials token.</P>
@@ -756,7 +799,7 @@ It has been replaced by <EM>rock</EM> cache type.</P>
 
 <H2><A NAME="s6">6.</A> <A HREF="#toc6">Copyright</A></H2>
 
-<P>Copyright (C) 1996-2015 The Squid Software Foundation and contributors</P>
+<P>Copyright (C) 1996-2016 The Squid Software Foundation and contributors</P>
 <P>Squid software is distributed under GPLv2+ license and includes
 contributions from numerous individuals and organizations.
 Please see the COPYING and CONTRIBUTORS files for details.</P>

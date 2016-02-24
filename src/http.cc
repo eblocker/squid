@@ -152,6 +152,7 @@ void
 HttpStateData::httpStateConnClosed(const CommCloseCbParams &params)
 {
     debugs(11, 5, "httpStateFree: FD " << params.fd << ", httpState=" << params.data);
+    doneWithFwd = "httpStateConnClosed()"; // assume FwdState is monitoring too
     mustStop("HttpStateData::httpStateConnClosed");
 }
 
@@ -719,11 +720,8 @@ HttpStateData::processReplyHeader()
         if (!parsed && error > 0) { // unrecoverable parsing error
             debugs(11, 3, "processReplyHeader: Non-HTTP-compliant header: '" <<  readBuf->content() << "'");
             flags.headers_parsed = true;
-            // XXX: when sanityCheck is gone and Http::StatusLine is used to parse,
-            //   the sline should be already set the appropriate values during that parser stage
             newrep->sline.set(Http::ProtocolVersion(1,1), error);
-            HttpReply *vrep = setVirginReply(newrep);
-            entry->replaceHttpReply(vrep);
+            setVirginReply(newrep);
             ctx_exit(ctx);
             return;
         }
@@ -1759,7 +1757,8 @@ HttpStateData::httpBuildRequestHeader(HttpRequest * request,
 
         String strFwd = hdr_in->getList(HDR_X_FORWARDED_FOR);
 
-        if (strFwd.size() > 65536/2) {
+        // if we cannot double strFwd size, then it grew past 50% of the limit
+        if (!strFwd.canGrowBy(strFwd.size())) {
             // There is probably a forwarding loop with Via detection disabled.
             // If we do nothing, String will assert on overflow soon.
             // TODO: Terminate all transactions with huge XFF?
@@ -2410,21 +2409,11 @@ HttpStateData::sentRequestBody(const CommIoCbParams &io)
     Client::sentRequestBody(io);
 }
 
-// Quickly abort the transaction
-// TODO: destruction should be sufficient as the destructor should cleanup,
-// including canceling close handlers
 void
 HttpStateData::abortAll(const char *reason)
 {
     debugs(11,5, HERE << "aborting transaction for " << reason <<
            "; " << serverConnection << ", this " << this);
-
-    if (Comm::IsConnOpen(serverConnection)) {
-        serverConnection->close();
-        return;
-    }
-
-    fwd->handleUnregisteredServerEnd();
-    mustStop("HttpStateData::abortAll");
+    mustStop(reason);
 }
 

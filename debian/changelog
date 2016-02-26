@@ -2,7 +2,8 @@ squid3 (3.5.15-1) UNRELEASED; urgency=high
 
   [ Amos Jeffries <amosjeffries@squid-cache.org> ]
   * New Upstream Release
-    - Fixes security issues SQUID-2016:2 (CVE pending)
+    - Fixes security issues SQUID-2016:2
+      (CVE-2016-2569, CVE-2016-2570, CVE-2016-2571)
 
   [ Robie Basak <robie.basak@canonical.com> ]
   * debian/control

@@ -1,11 +1,12 @@
-squid3 (3.5.15-1) UNRELEASED; urgency=high
+squid3 (3.5.15-1) unstable; urgency=high
 
   [ Amos Jeffries <amosjeffries@squid-cache.org> ]
   * New Upstream Release
     - Fixes security issues SQUID-2016:2
       (CVE-2016-2569, CVE-2016-2570, CVE-2016-2571)
+      (Closes: #816011)
 
-  * debian/patches/
+  * debian/patches/03-upstream-bug4447.patch
     - add upstream patch for their bug #4447
 
   [ Robie Basak <robie.basak@canonical.com> ]
@@ -16,7 +17,12 @@ squid3 (3.5.15-1) UNRELEASED; urgency=high
   * debian/squid.logrotate
     - Run sarg-reports if present before rotating logs.
 
- -- Amos Jeffries <amosjeffries@squid-cache.org>  Tue, 01 Mar 2016 17:33:00 +1300
+
+  [ Luigi Gangitano <luigi@debian.org> ]
+  * debian/control
+    - Bumped Standards-Version to 3.9.7, no change needed
+
+ -- Luigi Gangitano <luigi@debian.org>  Tue, 01 Mar 2016 19:39:00 +0100
 
 squid3 (3.5.14-1) unstable; urgency=medium
 

@@ -5,6 +5,9 @@ squid3 (3.5.15-1) UNRELEASED; urgency=high
     - Fixes security issues SQUID-2016:2
       (CVE-2016-2569, CVE-2016-2570, CVE-2016-2571)
 
+  * debian/patches/
+    - add upstream patch for their bug #4447
+
   [ Robie Basak <robie.basak@canonical.com> ]
   * debian/control
     - Add lsb-release build dep. This is required for the --enable-build-info
@@ -13,7 +16,7 @@ squid3 (3.5.15-1) UNRELEASED; urgency=high
   * debian/squid.logrotate
     - Run sarg-reports if present before rotating logs.
 
- -- Amos Jeffries <amosjeffries@squid-cache.org>  Thu, 25 Feb 2016 15:44:00 +1300
+ -- Amos Jeffries <amosjeffries@squid-cache.org>  Tue, 01 Mar 2016 17:33:00 +1300
 
 squid3 (3.5.14-1) unstable; urgency=medium
 

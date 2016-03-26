@@ -1,3 +1,11 @@
+squid3 (3.4.8-6+deb8u2) jessie-security; urgency=high
+
+  * Non-maintainer upload by the Security Team.
+  * CVE-2016-2571: better handling of huge response headers in
+    src/http.cc
+
+ -- Salvatore Bonaccorso <carnil@debian.org>  Sun, 20 Mar 2016 14:13:54 +0100
+
 squid3 (3.4.8-6+deb8u1) jessie-security; urgency=high
 
   [ Luigi Gangitano <luigi@debian.org> ]

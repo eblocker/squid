@@ -1,3 +1,11 @@
+squid3 (3.1.20-2.2+deb7u4) wheezy-security; urgency=high
+
+  * Non-maintainer upload by the Security Team.
+  * CVE-2016-2571: better handling of huge response headers in
+    src/http.cc
+
+ -- Salvatore Bonaccorso <carnil@debian.org>  Sun, 20 Mar 2016 14:12:43 +0100
+
 squid3 (3.1.20-2.2+deb7u3) wheezy-security; urgency=high
 
   * Non-maintainer upload by the Security Team.

@@ -1,0 +1,28 @@
+From: Luigi Gangitano <luigi@debian.org>
+Date: Wed, 28 Jan 2015 12:27:49 +0100
+Subject: 31-squid-3.4-13199.patch Deleting first fs left psstate->servers
+ pointing to uninitialized memory, fixing excessive use of CPU
+
+---
+ src/peer_select.cc | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/src/peer_select.cc b/src/peer_select.cc
+index 19e3371..9c26a20 100644
+--- a/src/peer_select.cc
++++ b/src/peer_select.cc
+@@ -271,11 +271,12 @@ peerSelectDnsPaths(ps_state *psstate)
+     // due to the allocation method of fs, we must deallocate each manually.
+     // TODO: use a std::list so we can get the size and abort adding whenever the selection loops reach Config.forward_max_tries
+     if (fs && psstate->paths->size() >= (unsigned int)Config.forward_max_tries) {
++        assert(fs == psstate->servers);
+         while (fs) {
+-            FwdServer *next = fs->next;
++            psstate->servers = fs->next;
+             cbdataReferenceDone(fs->_peer);
+             memFree(fs, MEM_FWD_SERVER);
+-            fs = next;
++            fs = psstate->servers;
+         }
+     }
+ 

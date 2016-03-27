@@ -1,9 +1,50 @@
-squid3 (3.4.8-5~bpo70+1) wheezy-backports; urgency=medium
+squid3 (3.4.8-6+deb8u2~bpo70+1) wheezy-backports; urgency=medium
 
   [ Luigi Gangitano <luigi@debian.org> ]
   * Rebuild for wheezy-backports.
 
- -- Luigi Gangitano <luigi@debian.org>  Mon, 26 Jan 2015 19:19:29 +0100
+ -- Luigi Gangitano <luigi@debian.org>  Sun, 27 Mar 2016 23:19:29 +0200
+
+squid3 (3.4.8-6+deb8u2) jessie-security; urgency=high
+
+  * Non-maintainer upload by the Security Team.
+  * CVE-2016-2571: better handling of huge response headers in
+    src/http.cc
+
+ -- Salvatore Bonaccorso <carnil@debian.org>  Sun, 20 Mar 2016 14:13:54 +0100
+
+squid3 (3.4.8-6+deb8u1) jessie-security; urgency=high
+
+  [ Luigi Gangitano <luigi@debian.org> ]
+  * debian/patches/36-squid-3.4-13225.patch
+    - Added upstream patch fixing Improper Protection of Alternate Path
+      (Ref: SQUID-2015:2, CVE-2015-5400) (Closes: #793128)
+
+ -- Luigi Gangitano <luigi@debian.org>  Wed, 22 Jul 2015 18:36:08 +0200
+
+squid3 (3.4.8-6) unstable; urgency=medium
+
+  [ Luigi Gangitano <luigi@debian.org> ]
+  * debian/patches/31-squid-3.4-13199.patch
+    - Added upstream patch fixing excessive CPU usage (Closes: #776461)
+
+  * debian/patches/32-squid-3.4-13210.patch
+    - Added upstream patch fixing excessive CPU and memory usage in 
+      NTLM and Negotiate authentication helpers (Closes: #776463) 
+
+  * debian/patches/33-squid-3.4-13211.patch
+    - Added upstream patch fixing a possible replay vulnerability on Digest
+      authentication (Closes: #776464)
+
+  * debian/patches/34-squid-3.4-13213.patch
+    - Added upstream patch fixing incorrect security permissions for
+      TOS/DiffServ packet marking (Closes: #776468)
+
+  * debian/patches/35-squid-3.4-13203.patch 
+    - Added upstream patch fixing squidclient unable to connect to host with
+      both IPv4 and IPv6 addresses (Closes: #742425)
+
+ -- Luigi Gangitano <luigi@debian.org>  Wed, 28 Jan 2015 12:34:42 +0100
 
 squid3 (3.4.8-5) unstable; urgency=medium
 

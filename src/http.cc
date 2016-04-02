@@ -165,7 +165,8 @@ HttpStateData::httpTimeout(const CommTimeoutCbParams &params)
         fwd->fail(new ErrorState(ERR_READ_TIMEOUT, Http::scGatewayTimeout, fwd->request));
     }
 
-    serverConnection->close();
+    closeServer();
+    mustStop("HttpStateData::httpTimeout");
 }
 
 /// Remove an existing public store entry if the incoming response (to be
@@ -574,9 +575,9 @@ HttpStateData::cacheableReply()
 /*
  * For Vary, store the relevant request headers as
  * virtual headers in the reply
- * Returns false if the variance cannot be stored
+ * Returns an empty SBuf if the variance cannot be stored
  */
-const char *
+SBuf
 httpMakeVaryMark(HttpRequest * request, HttpReply const * reply)
 {
     String vary, hdr;
@@ -584,9 +585,9 @@ httpMakeVaryMark(HttpRequest * request, HttpReply const * reply)
     const char *item;
     const char *value;
     int ilen;
-    static String vstr;
+    SBuf vstr;
+    static const SBuf asterisk("*");
 
-    vstr.clean();
     vary = reply->header.getList(HDR_VARY);
 
     while (strListGetItem(&vary, ',', &item, &ilen, &pos)) {
@@ -597,11 +598,13 @@ httpMakeVaryMark(HttpRequest * request, HttpReply const * reply)
         if (strcmp(name, "*") == 0) {
             /* Can not handle "Vary: *" withtout ETag support */
             safe_free(name);
-            vstr.clean();
+            vstr.clear();
             break;
         }
 
-        strListAdd(&vstr, name, ',');
+        if (!vstr.isEmpty())
+            vstr.append(", ", 2);
+        vstr.append(name);
         hdr = request->header.getByName(name);
         safe_free(name);
         value = hdr.termedBuf();
@@ -626,7 +629,17 @@ httpMakeVaryMark(HttpRequest * request, HttpReply const * reply)
         char *name = (char *)xmalloc(ilen + 1);
         xstrncpy(name, item, ilen + 1);
         Tolower(name);
-        strListAdd(&vstr, name, ',');
+
+        if (strcmp(name, "*") == 0) {
+            /* Can not handle "Vary: *" withtout ETag support */
+            safe_free(name);
+            vstr.clear();
+            break;
+        }
+
+        if (!vstr.isEmpty())
+            vstr.append(", ", 2);
+        vstr.append(name);
         hdr = request->header.getByName(name);
         safe_free(name);
         value = hdr.termedBuf();
@@ -644,8 +657,8 @@ httpMakeVaryMark(HttpRequest * request, HttpReply const * reply)
     vary.clean();
 #endif
 
-    debugs(11, 3, "httpMakeVaryMark: " << vstr);
-    return vstr.termedBuf();
+    debugs(11, 3, vstr);
+    return vstr;
 }
 
 void
@@ -915,15 +928,15 @@ HttpStateData::haveParsedReplyHeaders()
             || rep->header.has(HDR_X_ACCELERATOR_VARY)
 #endif
        ) {
-        const char *vary = httpMakeVaryMark(request, rep);
+        const SBuf vary(httpMakeVaryMark(request, rep));
 
-        if (!vary) {
+        if (vary.isEmpty()) {
             entry->makePrivate();
             if (!fwd->reforwardableStatus(rep->sline.status()))
                 EBIT_CLR(entry->flags, ENTRY_FWD_HDR_WAIT);
             varyFailure = true;
         } else {
-            entry->mem_obj->vary_headers = xstrdup(vary);
+            entry->mem_obj->vary_headers = vary;
         }
     }
 
@@ -1150,7 +1163,8 @@ HttpStateData::readReply(const CommIoCbParams &io)
             err->xerrno = io.xerrno;
             fwd->fail(err);
             flags.do_next_read = false;
-            serverConnection->close();
+            closeServer();
+            mustStop("HttpStateData::readReply");
         }
 
         return;
@@ -1306,7 +1320,8 @@ HttpStateData::continueAfterParsingHeader()
     entry->reset();
     fwd->fail(new ErrorState(error, Http::scBadGateway, fwd->request));
     flags.do_next_read = false;
-    serverConnection->close();
+    closeServer();
+    mustStop("HttpStateData::continueAfterParsingHeader");
     return false; // quit on error
 }
 
@@ -1540,7 +1555,8 @@ HttpStateData::wroteLast(const CommIoCbParams &io)
         ErrorState *err = new ErrorState(ERR_WRITE_ERROR, Http::scBadGateway, fwd->request);
         err->xerrno = io.xerrno;
         fwd->fail(err);
-        serverConnection->close();
+        closeServer();
+        mustStop("HttpStateData::wroteLast");
         return;
     }
 
@@ -1568,7 +1584,6 @@ HttpStateData::sendComplete()
     request->hier.peer_http_request_sent = current_time;
 }
 
-// Close the HTTP server connection. Used by serverComplete().
 void
 HttpStateData::closeServer()
 {
@@ -2371,7 +2386,8 @@ HttpStateData::handleMoreRequestBodyAvailable()
             debugs(11, DBG_IMPORTANT, "http handleMoreRequestBodyAvailable: Likely proxy abuse detected '" << request->client_addr << "' -> '" << entry->url() << "'" );
 
             if (virginReply()->sline.status() == Http::scInvalidHeader) {
-                serverConnection->close();
+                closeServer();
+                mustStop("HttpStateData::handleMoreRequestBodyAvailable");
                 return;
             }
         }

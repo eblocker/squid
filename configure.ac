@@ -5,7 +5,7 @@
 ## Please see the COPYING and CONTRIBUTORS files for details.
 ##
 
-AC_INIT([Squid Web Proxy],[3.5.15],[http://bugs.squid-cache.org/],[squid])
+AC_INIT([Squid Web Proxy],[3.5.16],[http://bugs.squid-cache.org/],[squid])
 AC_PREREQ(2.61)
 AC_CONFIG_HEADERS([include/autoconf.h])
 AC_CONFIG_AUX_DIR(cfgaux)
@@ -371,7 +371,7 @@ dnl TODO: check if the problem will be present in any other newer MinGW release.
     SQUID_CFLAGS="$squid_cv_cc_option_wall -Wpointer-arith -Wwrite-strings -Wmissing-prototypes -Wmissing-declarations -Wcomments -Wshadow"
     ;;
   esac
-  SQUID_CXXFLAGS="$squid_cv_cc_option_wall -Wpointer-arith -Wwrite-strings -Wcomments -Wshadow"
+  SQUID_CXXFLAGS="$squid_cv_cc_option_wall -Wpointer-arith -Wwrite-strings -Wcomments -Wshadow -Woverloaded-virtual"
 else
   SQUID_CFLAGS=
   SQUID_CXXFLAGS=
@@ -833,15 +833,18 @@ for fs in $squid_storeio_module_candidates none; do
       fi
       ;;
     rock)
-	if test "x$squid_disk_module_candidates_IpcIo" != "xyes" -a \
-	  "x$squid_disk_module_candidates_Blocking" != "xyes"; then
-	  AC_MSG_ERROR([Storage module Rock requires IpcIo or Blocking DiskIO module])
-	fi
-	squid_do_build_rock=true
-	;;
+      if test "x$squid_disk_module_candidates_IpcIo" != "xyes" -a \
+        "x$squid_disk_module_candidates_Blocking" != "xyes"; then
+         AC_MSG_ERROR([Storage module Rock requires DiskIO module: Blocking or IpcIo])
+      fi
+      squid_do_build_rock=true
+      ;;
     ufs)
-	squid_do_build_ufs=true
-	;;
+      if test "x$squid_disk_module_candidates_Blocking" != "xyes"; then
+        AC_MSG_ERROR([Storage module ufs requires DiskIO module: Blocking])
+      fi
+      squid_do_build_ufs=true
+      ;;
     esac
 done
  
@@ -1640,13 +1643,13 @@ if test "x$with_heimdal_krb5" != "xno" -a "x$KRB5LIBS" = "x"; then
   if test "x$squid_pc_krb5_name" = "x"; then
     PKG_CHECK_EXISTS(heimdal-gssapi, [squid_pc_krb5_name="heimdal-gssapi"])
   fi
-  if test "x$squid_pc_krb5_name" != "x" -a "$cross_compiling" = "no"; then
+  if test "x$squid_pc_krb5_name" = "x" -a "$cross_compiling" = "no"; then
     # Look for krb5-config (unless cross-compiling)
     AC_PATH_PROG(krb5_config,krb5-config,no)
     if test "x$ac_cv_path_krb5_config" != "xno" ; then
       krb5confpath="`dirname $ac_cv_path_krb5_config`"
       ac_heimdal="`$ac_cv_path_krb5_config --version 2>/dev/null | grep -c -i heimdal`"
-      if test "x$with_heimdal_krb5" = "xyes"; then
+      if test "x$with_heimdal_krb5" = "xyes" -a $ac_heimdal = 0; then
         AC_MSG_ERROR([Could not find pkg-config or krb5-config for Heimdal Kerberos])
       fi
     else

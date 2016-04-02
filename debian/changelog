@@ -2,8 +2,8 @@ squid3 (3.5.16-1) UNRELEASED; urgency=high
 
   [ Amos Jeffries <amosjeffries@squid-cache.org> ]
   * New Upstream Release
-    - Fixes security issues SQUID-2016:3, SQUID-2016:4
-      (CVE-2016-3947, CVE-2016-3948)
+    - Fixes security issue SQUID-2016:3 (CVE-2016-3947) (Closes: #819783)
+    - Fixes security issue SQUID-2016:4 (CVE-2016-3948) (Closes: #819784)
 
   * debian/patches/
     - Remove patch included upstream

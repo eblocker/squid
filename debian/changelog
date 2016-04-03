@@ -1,4 +1,4 @@
-squid3 (3.5.16-1) UNRELEASED; urgency=high
+squid3 (3.5.16-1) unstable; urgency=high
 
   [ Amos Jeffries <amosjeffries@squid-cache.org> ]
   * New Upstream Release
@@ -8,7 +8,7 @@ squid3 (3.5.16-1) UNRELEASED; urgency=high
   * debian/patches/
     - Remove patch included upstream
 
- -- Amos Jeffries <amosjeffries@squid-cache.org>  Sun, 03 Apr 2016 00:08:00 +1300
+ -- Luigi Gangitano <luigi@debian.org>  Sun, 03 Apr 2016 19:57:00 +0200
 
 squid3 (3.5.15-1) unstable; urgency=high
 

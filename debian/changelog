@@ -1,3 +1,13 @@
+squid3 (3.5.17-1) UNRELEASED; urgency=high
+
+  [ Amos Jeffries <amosjeffries@squid-cache.org> ]
+  * New Upstream Release
+    - Fixes security issue SQUID-2016:5 (CVE-2016-4051)
+    - Fixes security issue SQUID-2016:6 (CVE-2016-4052, CVE-2016-4053,
+      CVE-2016-4054)
+
+ -- Amos Jeffries <amosjeffries@squid-cache.org>  Fri, 22 Apr 2016 02:41:00 +1200
+
 squid3 (3.5.16-1) unstable; urgency=high
 
   [ Amos Jeffries <amosjeffries@squid-cache.org> ]

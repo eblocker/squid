@@ -5,7 +5,7 @@
 ## Please see the COPYING and CONTRIBUTORS files for details.
 ##
 
-AC_INIT([Squid Web Proxy],[3.5.16],[http://bugs.squid-cache.org/],[squid])
+AC_INIT([Squid Web Proxy],[3.5.17],[http://bugs.squid-cache.org/],[squid])
 AC_PREREQ(2.61)
 AC_CONFIG_HEADERS([include/autoconf.h])
 AC_CONFIG_AUX_DIR(cfgaux)
@@ -399,8 +399,8 @@ AC_ARG_ENABLE(optimizations,
                   --disable-inline]), [
 if test "x$enableval" = "xno" ; then
   AC_MSG_NOTICE([Disabling compiler optimizations (-O flag)])
-  CFLAGS="`echo $CFLAGS | sed -e 's/-O[[0-9]]*//'`"
-  CXXFLAGS="`echo $CXXFLAGS | sed -e 's/-O[[0-9]]*//'`"
+  CFLAGS="`echo $CFLAGS | sed -e 's/-O[[0-9g]]*//'`"
+  CXXFLAGS="`echo $CXXFLAGS | sed -e 's/-O[[0-9g]]*//'`"
   enable_inline="no"
 fi
 ])
@@ -3237,7 +3237,7 @@ case "$host" in
   i386-*-solaris2.*)
     if test "x$GCC" = "xyes"; then
       AC_MSG_NOTICE([Removing -O for gcc on $host])
-      CFLAGS="`echo $CFLAGS | sed -e 's/-O[[0-9]]*//'`"
+      CFLAGS="`echo $CFLAGS | sed -e 's/-O[[0-9g]]*//'`"
     fi
   ;;
 

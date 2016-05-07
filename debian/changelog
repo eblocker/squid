@@ -1,3 +1,11 @@
+squid3 (3.5.17-1) UNRELEASED; urgency=low
+
+  [ Amos Jeffries <amosjeffries@squid-cache.org> ]
+  * debian/control
+    - Bumped Standards-Version to 3.9.8, no change needed
+
+ -- Amos Jeffries <amosjeffries@squid-cache.org>  Sat, 07 May 2016 15:23:00 +1200
+
 squid3 (3.5.17-1) unstable; urgency=high
 
   [ Amos Jeffries <amosjeffries@squid-cache.org> ]

@@ -1,4 +1,4 @@
-squid3 (3.5.18-1) UNRELEASED; urgency=high
+squid3 (3.5.19-1) UNRELEASED; urgency=high
 
   [ Amos Jeffries <amosjeffries@squid-cache.org> ]
   * New Upstream Release
@@ -9,7 +9,7 @@ squid3 (3.5.18-1) UNRELEASED; urgency=high
   * debian/control
     - Bumped Standards-Version to 3.9.8, no change needed
 
- -- Amos Jeffries <amosjeffries@squid-cache.org>  Sat, 07 May 2016 15:23:00 +1200
+ -- Amos Jeffries <amosjeffries@squid-cache.org>  Mon, 09 May 2016 04:14:00 +1200
 
 squid3 (3.5.17-1) unstable; urgency=high
 

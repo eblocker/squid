@@ -9,7 +9,10 @@ squid3 (3.5.19-1) UNRELEASED; urgency=high
   * debian/control
     - Bumped Standards-Version to 3.9.8, no change needed
 
- -- Amos Jeffries <amosjeffries@squid-cache.org>  Mon, 09 May 2016 04:14:00 +1200
+  * debian/rules
+    - Send hardening CPPFLAGS to custom build tools
+
+ -- Amos Jeffries <amosjeffries@squid-cache.org>  Tue, 09 May 2016 16:44:00 +1200
 
 squid3 (3.5.17-1) unstable; urgency=high
 

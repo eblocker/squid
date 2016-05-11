@@ -1,7 +1,7 @@
-squid3 (3.5.19-1) UNRELEASED; urgency=high
+squid3 (3.5.19-2) UNRELEASED; urgency=high
 
   [ Amos Jeffries <amosjeffries@squid-cache.org> ]
-  * New Upstream Release
+  * New Upstream Release (Closes: #823968)
     - Fixes security issue SQUID-2016:7 (CVE-2016-4553)
     - Fixes security issue SQUID-2016:8 (CVE-2016-4554)
     - Fixes security issue SQUID-2016:9 (CVE-2016-4555, CVE-2016-4556)
@@ -12,7 +12,7 @@ squid3 (3.5.19-1) UNRELEASED; urgency=high
   * debian/rules
     - Send hardening CPPFLAGS to custom build tools
 
- -- Amos Jeffries <amosjeffries@squid-cache.org>  Tue, 09 May 2016 16:44:00 +1200
+ -- Amos Jeffries <amosjeffries@squid-cache.org>  Wed, 11 May 2016 14:54:00 +1200
 
 squid3 (3.5.17-1) unstable; urgency=high
 

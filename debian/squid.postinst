@@ -73,6 +73,22 @@ case "$1" in
 		  		chown -R $usr:$grp $log_dir
 			fi
 		fi
+
+		# If we have setcap is installed, try setting cap_net_raw+ep,
+		# which allows us to install our binaries without the setuid
+		# bit.
+		PINGER=/usr/lib/squid/pinger
+		if command -v setcap > /dev/null; then
+			if setcap cap_net_raw+ep $PINGER; then
+				echo "Setcap worked! $PINGER is not suid!"
+			else
+				echo "Setcap failed on $PINGER, falling back to setuid" >&2
+				chmod u+s $PINGER
+			fi
+		else
+			echo "Setcap is not installed, falling back to setuid" >&2
+			chmod u+s $PINGER
+		fi
 		;;
 	abort-upgrade|abort-remove|abort-deconfigure)
 		;;

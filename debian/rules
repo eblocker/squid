@@ -62,8 +62,6 @@ endif
 
 DEB_MAKE_CLEAN_TARGET = distclean
 
-DEB_FIXPERMS_EXCLUDE = /usr/lib/squid/pinger
-
 install/squid::
 	install -m 755 -g root -d $(INSTALLDIR)/usr/lib/cgi-bin
 	mv $(INSTALLDIR)/etc/squid/squid.conf.documented $(INSTALLDIR)/etc/squid/squid.conf
@@ -85,7 +83,6 @@ install/squid::
 	install -m 755 -g root -d $(INSTALLDIR)/usr/share/man/man1
 	mv $(INSTALLDIR)/usr/bin/purge $(INSTALLDIR)/usr/bin/squid-purge
 	install -m 644 -g root debian/squid-purge.8  $(INSTALLDIR)/usr/share/man/man8
-	chmod 4755 $(INSTALLDIR)/usr/lib/squid/pinger
 
 clean::
 	# nothing to do

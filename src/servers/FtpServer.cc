@@ -218,12 +218,18 @@ Ftp::Server::shovelUploadData()
 void
 Ftp::Server::noteMoreBodySpaceAvailable(BodyPipe::Pointer)
 {
+    if (!isOpen()) // if we are closing, nothing to do
+        return;
+
     shovelUploadData();
 }
 
 void
 Ftp::Server::noteBodyConsumerAborted(BodyPipe::Pointer ptr)
 {
+    if (!isOpen()) // if we are closing, nothing to do
+        return;
+
     ConnStateData::noteBodyConsumerAborted(ptr);
     closeDataConnection();
 }
@@ -1303,7 +1309,7 @@ Ftp::Server::handleRequest(HttpRequest *request)
     Must(header.has(HDR_FTP_ARGUMENTS));
     String &params = header.findEntry(HDR_FTP_ARGUMENTS)->value;
 
-    if (do_debug(9, 2)) {
+    if (Debug::Enabled(9, 2)) {
         MemBuf mb;
         Packer p;
         mb.init();
@@ -1712,6 +1718,9 @@ Ftp::Server::callException(const std::exception &e)
 void
 Ftp::Server::startWaitingForOrigin()
 {
+    if (!isOpen()) // if we are closing, nothing to do
+        return;
+
     debugs(33, 5, "waiting for Ftp::Client data transfer to end");
     waitingForOrigin = true;
 }
@@ -1721,6 +1730,9 @@ Ftp::Server::stopWaitingForOrigin(int originStatus)
 {
     Must(waitingForOrigin);
     waitingForOrigin = false;
+
+    if (!isOpen()) // if we are closing, nothing to do
+        return;
 
     // if we have already decided how to respond, respond now
     if (delayedReply != NULL) {

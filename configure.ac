@@ -5,7 +5,7 @@
 ## Please see the COPYING and CONTRIBUTORS files for details.
 ##
 
-AC_INIT([Squid Web Proxy],[3.5.19],[http://bugs.squid-cache.org/],[squid])
+AC_INIT([Squid Web Proxy],[3.5.20],[http://bugs.squid-cache.org/],[squid])
 AC_PREREQ(2.61)
 AC_CONFIG_HEADERS([include/autoconf.h])
 AC_CONFIG_AUX_DIR(cfgaux)
@@ -95,6 +95,9 @@ fi
 # Guess the compiler type (sets squid_cv_compiler)
 SQUID_CC_GUESS_VARIANT
 
+# If the user did not specify a C++ version.
+user_cxx=`echo "$PRESET_CXXFLAGS" | grep -o -E "\-std="`
+if test "x$user_cxx" = "x"; then
 # Check for C++11 compiler support
 #
 # BUG 3613: when clang -std=c++0x is used, it activates a "strict mode"
@@ -103,8 +106,9 @@ SQUID_CC_GUESS_VARIANT
 #
 # Similar POSIX issues on MinGW 32-bit and Cygwin
 #
-if ! test "x$squid_host_os" = "xmingw" -o "x$squid_host_os" = "xcygwin" -o "x$squid_cv_compiler" = "xclang"; then
-  AX_CXX_COMPILE_STDCXX_11([noext],[optional])
+  if ! test "x$squid_host_os" = "xmingw" -o "x$squid_host_os" = "xcygwin" -o "x$squid_cv_compiler" = "xclang"; then
+    AX_CXX_COMPILE_STDCXX_11([noext],[optional])
+  fi
 fi
 
 # test for programs
@@ -1344,10 +1348,10 @@ if test "x$with_openssl" = "xyes"; then
 
     AC_CHECK_LIB(crypto,[CRYPTO_new_ex_data],[LIBOPENSSL_LIBS="-lcrypto $LIBOPENSSL_LIBS"],[
       AC_MSG_ERROR([library 'crypto' is required for OpenSSL])
-    ])
+    ],$LIBOPENSSL_LIBS)
     AC_CHECK_LIB(ssl,[SSL_library_init],[LIBOPENSSL_LIBS="-lssl $LIBOPENSSL_LIBS"],[
       AC_MSG_ERROR([library 'ssl' is required for OpenSSL])
-    ])
+    ],$LIBOPENSSL_LIBS)
   ])
 
   # This is a workaround for RedHat 9 brain damage..

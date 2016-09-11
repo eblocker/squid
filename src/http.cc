@@ -572,6 +572,38 @@ HttpStateData::cacheableReply()
     /* NOTREACHED */
 }
 
+/// assemble a variant key (vary-mark) from the given Vary header and HTTP request
+static void
+assembleVaryKey(String &vary, SBuf &vstr, const HttpRequest &request)
+{
+    static const SBuf asterisk("*");
+    const char *pos = nullptr;
+    const char *item = nullptr;
+    int ilen = 0;
+
+    while (strListGetItem(&vary, ',', &item, &ilen, &pos)) {
+        SBuf name(item, ilen);
+        if (name == asterisk) {
+            vstr.clear();
+            break;
+        }
+        name.toLower();
+        if (!vstr.isEmpty())
+            vstr.append(", ", 2);
+        vstr.append(name);
+        String hdr(request.header.getByName(name.c_str()));
+        const char *value = hdr.termedBuf();
+        if (value) {
+            value = rfc1738_escape_part(value);
+            vstr.append("=\"", 2);
+            vstr.append(value);
+            vstr.append("\"", 1);
+        }
+
+        hdr.clean();
+    }
+}
+
 /*
  * For Vary, store the relevant request headers as
  * virtual headers in the reply
@@ -580,81 +612,16 @@ HttpStateData::cacheableReply()
 SBuf
 httpMakeVaryMark(HttpRequest * request, HttpReply const * reply)
 {
-    String vary, hdr;
-    const char *pos = NULL;
-    const char *item;
-    const char *value;
-    int ilen;
     SBuf vstr;
-    static const SBuf asterisk("*");
+    String vary;
 
     vary = reply->header.getList(HDR_VARY);
+    assembleVaryKey(vary, vstr, *request);
 
-    while (strListGetItem(&vary, ',', &item, &ilen, &pos)) {
-        char *name = (char *)xmalloc(ilen + 1);
-        xstrncpy(name, item, ilen + 1);
-        Tolower(name);
-
-        if (strcmp(name, "*") == 0) {
-            /* Can not handle "Vary: *" withtout ETag support */
-            safe_free(name);
-            vstr.clear();
-            break;
-        }
-
-        if (!vstr.isEmpty())
-            vstr.append(", ", 2);
-        vstr.append(name);
-        hdr = request->header.getByName(name);
-        safe_free(name);
-        value = hdr.termedBuf();
-
-        if (value) {
-            value = rfc1738_escape_part(value);
-            vstr.append("=\"", 2);
-            vstr.append(value);
-            vstr.append("\"", 1);
-        }
-
-        hdr.clean();
-    }
-
-    vary.clean();
 #if X_ACCELERATOR_VARY
-
-    pos = NULL;
-    vary = reply->header.getList(HDR_X_ACCELERATOR_VARY);
-
-    while (strListGetItem(&vary, ',', &item, &ilen, &pos)) {
-        char *name = (char *)xmalloc(ilen + 1);
-        xstrncpy(name, item, ilen + 1);
-        Tolower(name);
-
-        if (strcmp(name, "*") == 0) {
-            /* Can not handle "Vary: *" withtout ETag support */
-            safe_free(name);
-            vstr.clear();
-            break;
-        }
-
-        if (!vstr.isEmpty())
-            vstr.append(", ", 2);
-        vstr.append(name);
-        hdr = request->header.getByName(name);
-        safe_free(name);
-        value = hdr.termedBuf();
-
-        if (value) {
-            value = rfc1738_escape_part(value);
-            vstr.append("=\"", 2);
-            vstr.append(value);
-            vstr.append("\"", 1);
-        }
-
-        hdr.clean();
-    }
-
     vary.clean();
+    vary = reply->header.getList(HDR_X_ACCELERATOR_VARY);
+    assembleVaryKey(vary, vstr, *request);
 #endif
 
     debugs(11, 3, vstr);
@@ -991,8 +958,10 @@ HttpStateData::haveParsedReplyHeaders()
             // CC:private (yes, these can sometimes be stored)
             const bool ccPrivate = rep->cache_control->hasPrivate();
 
-            if (ccMustRevalidate || ccNoCacheNoParams || ccSMaxAge || ccPrivate)
-                EBIT_SET(entry->flags, ENTRY_REVALIDATE);
+            if (ccNoCacheNoParams || ccPrivate)
+                EBIT_SET(entry->flags, ENTRY_REVALIDATE_ALWAYS);
+            else if (ccMustRevalidate || ccSMaxAge)
+                EBIT_SET(entry->flags, ENTRY_REVALIDATE_STALE);
         }
 #if USE_HTTP_VIOLATIONS // response header Pragma::no-cache is undefined in HTTP
         else {
@@ -1002,7 +971,7 @@ HttpStateData::haveParsedReplyHeaders()
              * but servers like "Active Imaging Webcast/2.0" sure do use it */
             if (rep->header.has(HDR_PRAGMA) &&
                     rep->header.hasListMember(HDR_PRAGMA,"no-cache",','))
-                EBIT_SET(entry->flags, ENTRY_REVALIDATE);
+                EBIT_SET(entry->flags, ENTRY_REVALIDATE_ALWAYS);
         }
 #endif
     }

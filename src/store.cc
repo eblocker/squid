@@ -162,12 +162,12 @@ StoreEntry::operator delete (void *address)
 }
 
 void
-StoreEntry::makePublic()
+StoreEntry::makePublic(const KeyScope scope)
 {
     /* This object can be cached for a long time */
 
     if (!EBIT_TEST(flags, RELEASE_REQUEST))
-        setPublicKey();
+        setPublicKey(scope);
 }
 
 void
@@ -355,7 +355,7 @@ StoreEntry::StoreEntry() :
     timestamp(-1),
     lastref(-1),
     expires(-1),
-    lastmod(-1),
+    lastModified_(-1),
     swap_file_sz(0),
     refcount(0),
     flags(0),
@@ -585,19 +585,19 @@ storeGetPublic(const char *uri, const HttpRequestMethod& method)
 }
 
 StoreEntry *
-storeGetPublicByRequestMethod(HttpRequest * req, const HttpRequestMethod& method)
+storeGetPublicByRequestMethod(HttpRequest * req, const HttpRequestMethod& method, const KeyScope keyScope)
 {
-    return Store::Root().get(storeKeyPublicByRequestMethod(req, method));
+    return Store::Root().get(storeKeyPublicByRequestMethod(req, method, keyScope));
 }
 
 StoreEntry *
-storeGetPublicByRequest(HttpRequest * req)
+storeGetPublicByRequest(HttpRequest * req, const KeyScope keyScope)
 {
-    StoreEntry *e = storeGetPublicByRequestMethod(req, req->method);
+    StoreEntry *e = storeGetPublicByRequestMethod(req, req->method, keyScope);
 
     if (e == NULL && req->method == Http::METHOD_HEAD)
         /* We can generate a HEAD reply from a cached GET object */
-        e = storeGetPublicByRequestMethod(req, Http::METHOD_GET);
+        e = storeGetPublicByRequestMethod(req, Http::METHOD_GET, keyScope);
 
     return e;
 }
@@ -653,10 +653,8 @@ StoreEntry::setPrivateKey()
 }
 
 void
-StoreEntry::setPublicKey()
+StoreEntry::setPublicKey(const KeyScope scope)
 {
-    const cache_key *newkey;
-
     if (key && !EBIT_TEST(flags, KEY_PRIVATE))
         return;                 /* is already public */
 
@@ -680,80 +678,35 @@ StoreEntry::setPublicKey()
 
     assert(!EBIT_TEST(flags, RELEASE_REQUEST));
 
-    if (mem_obj->request) {
-        HttpRequest *request = mem_obj->request;
+    adjustVary();
+    forcePublicKey(calcPublicKey(scope));
+}
 
-        if (mem_obj->vary_headers.isEmpty()) {
-            /* First handle the case where the object no longer varies */
-            request->vary_headers.clear();
-        } else {
-            if (!request->vary_headers.isEmpty() && request->vary_headers.cmp(mem_obj->vary_headers) != 0) {
-                /* Oops.. the variance has changed. Kill the base object
-                 * to record the new variance key
-                 */
-                request->vary_headers.clear();       /* free old "bad" variance key */
-                if (StoreEntry *pe = storeGetPublic(mem_obj->storeId(), mem_obj->method))
-                    pe->release();
-            }
+void
+StoreEntry::clearPublicKeyScope()
+{
+    if (!key || EBIT_TEST(flags, KEY_PRIVATE))
+        return; // probably the old public key was deleted or made private
 
-            /* Make sure the request knows the variance status */
-            if (request->vary_headers.isEmpty())
-                request->vary_headers = httpMakeVaryMark(request, mem_obj->getReply());
-        }
+    // TODO: adjustVary() when collapsed revalidation supports that
 
-        // TODO: storeGetPublic() calls below may create unlocked entries.
-        // We should add/use storeHas() API or lock/unlock those entries.
-        if (!mem_obj->vary_headers.isEmpty() && !storeGetPublic(mem_obj->storeId(), mem_obj->method)) {
-            /* Create "vary" base object */
-            String vary;
-            StoreEntry *pe = storeCreateEntry(mem_obj->storeId(), mem_obj->logUri(), request->flags, request->method);
-            /* We are allowed to do this typecast */
-            HttpReply *rep = new HttpReply;
-            rep->setHeaders(Http::scOkay, "Internal marker object", "x-squid-internal/vary", -1, -1, squid_curtime + 100000);
-            vary = mem_obj->getReply()->header.getList(HDR_VARY);
+    const cache_key *newKey = calcPublicKey(ksDefault);
+    if (!storeKeyHashCmp(key, newKey))
+        return; // probably another collapsed revalidation beat us to this change
 
-            if (vary.size()) {
-                /* Again, we own this structure layout */
-                rep->header.putStr(HDR_VARY, vary.termedBuf());
-                vary.clean();
-            }
+    forcePublicKey(newKey);
+}
 
-#if X_ACCELERATOR_VARY
-            vary = mem_obj->getReply()->header.getList(HDR_X_ACCELERATOR_VARY);
-
-            if (vary.size() > 0) {
-                /* Again, we own this structure layout */
-                rep->header.putStr(HDR_X_ACCELERATOR_VARY, vary.termedBuf());
-                vary.clean();
-            }
-
-#endif
-            pe->replaceHttpReply(rep, false); // no write until key is public
-
-            pe->timestampsSet();
-
-            pe->makePublic();
-
-            pe->startWriting(); // after makePublic()
-
-            pe->complete();
-
-            pe->unlock("StoreEntry::setPublicKey+Vary");
-        }
-
-        newkey = storeKeyPublicByRequest(mem_obj->request);
-    } else
-        newkey = storeKeyPublic(mem_obj->storeId(), mem_obj->method);
-
+/// Unconditionally sets public key for this store entry.
+/// Releases the old entry with the same public key (if any).
+void
+StoreEntry::forcePublicKey(const cache_key *newkey)
+{
     if (StoreEntry *e2 = (StoreEntry *)hash_lookup(store_table, newkey)) {
+        assert(e2 != this);
         debugs(20, 3, "Making old " << *e2 << " private.");
         e2->setPrivateKey();
         e2->release();
-
-        if (mem_obj->request)
-            newkey = storeKeyPublicByRequest(mem_obj->request);
-        else
-            newkey = storeKeyPublic(mem_obj->storeId(), mem_obj->method);
     }
 
     if (key)
@@ -765,6 +718,84 @@ StoreEntry::setPublicKey()
 
     if (swap_filen > -1)
         storeDirSwapLog(this, SWAP_LOG_ADD);
+}
+
+/// Calculates correct public key for feeding forcePublicKey().
+/// Assumes adjustVary() has been called for this entry already.
+const cache_key *StoreEntry::calcPublicKey(const KeyScope keyScope) {
+    assert(mem_obj);
+    return mem_obj->request ?  storeKeyPublicByRequest(mem_obj->request, keyScope) :
+           storeKeyPublic(mem_obj->storeId(), mem_obj->method, keyScope);
+}
+
+/// Updates mem_obj->request->vary_headers to reflect the current Vary.
+/// The vary_headers field is used to calculate the Vary marker key.
+/// Releases the old Vary marker with an outdated key (if any).
+void StoreEntry::adjustVary() {
+    assert(mem_obj);
+
+    if (!mem_obj->request)
+        return;
+
+    HttpRequest *request = mem_obj->request;
+
+    if (mem_obj->vary_headers.isEmpty()) {
+        /* First handle the case where the object no longer varies */
+        request->vary_headers.clear();
+    } else {
+        if (!request->vary_headers.isEmpty() && request->vary_headers.cmp(mem_obj->vary_headers) != 0) {
+            /* Oops.. the variance has changed. Kill the base object
+             * to record the new variance key
+             */
+            request->vary_headers.clear();       /* free old "bad" variance key */
+            if (StoreEntry *pe = storeGetPublic(mem_obj->storeId(), mem_obj->method))
+                pe->release();
+        }
+
+        /* Make sure the request knows the variance status */
+        if (request->vary_headers.isEmpty())
+            request->vary_headers = httpMakeVaryMark(request, mem_obj->getReply());
+    }
+
+    // TODO: storeGetPublic() calls below may create unlocked entries.
+    // We should add/use storeHas() API or lock/unlock those entries.
+    if (!mem_obj->vary_headers.isEmpty() && !storeGetPublic(mem_obj->storeId(), mem_obj->method)) {
+        /* Create "vary" base object */
+        String vary;
+        StoreEntry *pe = storeCreateEntry(mem_obj->storeId(), mem_obj->logUri(), request->flags, request->method);
+        /* We are allowed to do this typecast */
+        HttpReply *rep = new HttpReply;
+        rep->setHeaders(Http::scOkay, "Internal marker object", "x-squid-internal/vary", -1, -1, squid_curtime + 100000);
+        vary = mem_obj->getReply()->header.getList(HDR_VARY);
+
+        if (vary.size()) {
+            /* Again, we own this structure layout */
+            rep->header.putStr(HDR_VARY, vary.termedBuf());
+            vary.clean();
+        }
+
+#if X_ACCELERATOR_VARY
+        vary = mem_obj->getReply()->header.getList(HDR_X_ACCELERATOR_VARY);
+
+        if (vary.size() > 0) {
+            /* Again, we own this structure layout */
+            rep->header.putStr(HDR_X_ACCELERATOR_VARY, vary.termedBuf());
+            vary.clean();
+        }
+
+#endif
+        pe->replaceHttpReply(rep, false); // no write until key is public
+
+        pe->timestampsSet();
+
+        pe->makePublic();
+
+        pe->startWriting(); // after makePublic()
+
+        pe->complete();
+
+        pe->unlock("StoreEntry::forcePublicKey+Vary");
+    }
 }
 
 StoreEntry *
@@ -1549,7 +1580,7 @@ StoreEntry::validToSend() const
     return 1;
 }
 
-void
+bool
 StoreEntry::timestampsSet()
 {
     const HttpReply *reply = getReply();
@@ -1587,14 +1618,27 @@ StoreEntry::timestampsSet()
             served_date -= (squid_curtime - request_sent);
     }
 
+    time_t exp = 0;
     if (reply->expires > 0 && reply->date > -1)
-        expires = served_date + (reply->expires - reply->date);
+        exp = served_date + (reply->expires - reply->date);
     else
-        expires = reply->expires;
+        exp = reply->expires;
 
-    lastmod = reply->last_modified;
+    if (timestamp == served_date && expires == exp) {
+        // if the reply lacks LMT, then we now know that our effective
+        // LMT (i.e., timestamp) will stay the same, otherwise, old and
+        // new modification times must match
+        if (reply->last_modified < 0 || reply->last_modified == lastModified())
+            return false; // nothing has changed
+    }
+
+    expires = exp;
+
+    lastModified_ = reply->last_modified;
 
     timestamp = served_date;
+
+    return true;
 }
 
 void
@@ -1625,7 +1669,7 @@ StoreEntry::dump(int l) const
     debugs(20, l, "StoreEntry->timestamp: " << timestamp);
     debugs(20, l, "StoreEntry->lastref: " << lastref);
     debugs(20, l, "StoreEntry->expires: " << expires);
-    debugs(20, l, "StoreEntry->lastmod: " << lastmod);
+    debugs(20, l, "StoreEntry->lastModified_: " << lastModified_);
     debugs(20, l, "StoreEntry->swap_file_sz: " << swap_file_sz);
     debugs(20, l, "StoreEntry->refcount: " << refcount);
     debugs(20, l, "StoreEntry->flags: " << storeEntryFlags(this));
@@ -1756,7 +1800,7 @@ StoreEntry::reset()
     mem_obj->reset();
     HttpReply *rep = (HttpReply *) getReply();       // bypass const
     rep->reset();
-    expires = lastmod = timestamp = -1;
+    expires = lastModified_ = timestamp = -1;
 }
 
 /*
@@ -1966,13 +2010,10 @@ StoreEntry::trimMemory(const bool preserveSwappable)
 }
 
 bool
-StoreEntry::modifiedSince(HttpRequest * request) const
+StoreEntry::modifiedSince(const time_t ims, const int imslen) const
 {
     int object_length;
-    time_t mod_time = lastmod;
-
-    if (mod_time < 0)
-        mod_time = timestamp;
+    const time_t mod_time = lastModified();
 
     debugs(88, 3, "modifiedSince: '" << url() << "'");
 
@@ -1987,16 +2028,16 @@ StoreEntry::modifiedSince(HttpRequest * request) const
     if (object_length < 0)
         object_length = contentLen();
 
-    if (mod_time > request->ims) {
+    if (mod_time > ims) {
         debugs(88, 3, "--> YES: entry newer than client");
         return true;
-    } else if (mod_time < request->ims) {
+    } else if (mod_time < ims) {
         debugs(88, 3, "-->  NO: entry older than client");
         return false;
-    } else if (request->imslen < 0) {
+    } else if (imslen < 0) {
         debugs(88, 3, "-->  NO: same LMT, no client length");
         return false;
-    } else if (request->imslen == object_length) {
+    } else if (imslen == object_length) {
         debugs(88, 3, "-->  NO: same LMT, same length");
         return false;
     } else {
@@ -2091,6 +2132,18 @@ StoreEntry::isAccepting() const
         return false;
 
     return true;
+}
+
+const char *
+StoreEntry::describeTimestamps() const
+{
+    LOCAL_ARRAY(char, buf, 256);
+    snprintf(buf, 256, "LV:%-9d LU:%-9d LM:%-9d EX:%-9d",
+             static_cast<int>(timestamp),
+             static_cast<int>(lastref),
+             static_cast<int>(lastModified_),
+             static_cast<int>(expires));
+    return buf;
 }
 
 std::ostream &operator <<(std::ostream &os, const StoreEntry &e)

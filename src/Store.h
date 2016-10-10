@@ -23,6 +23,7 @@
 #include "MemObject.h"
 #include "Range.h"
 #include "RemovalPolicy.h"
+#include "store_key_md5.h"
 #include "StoreIOBuffer.h"
 #include "StoreStats.h"
 
@@ -93,9 +94,13 @@ public:
 
     void abort();
     void unlink();
-    void makePublic();
+    void makePublic(const KeyScope keyScope = ksDefault);
     void makePrivate();
-    void setPublicKey();
+    void setPublicKey(const KeyScope keyScope = ksDefault);
+    /// Resets existing public key to a public key with default scope,
+    /// releasing the old default-scope entry (if any).
+    /// Does nothing if the existing public key already has default scope.
+    void clearPublicKeyScope();
     void setPrivateKey();
     void expireNow();
     void releaseRequest();
@@ -130,7 +135,7 @@ public:
     void registerAbort(STABH * cb, void *);
     void reset();
     void setMemStatus(mem_status_t);
-    void timestampsSet();
+    bool timestampsSet();
     void unregisterAbort();
     void destroyMemObject();
     int checkTooSmall();
@@ -138,7 +143,16 @@ public:
     void delayAwareRead(const Comm::ConnectionPointer &conn, char *buf, int len, AsyncCall::Pointer callback);
 
     void setNoDelay (bool const);
-    bool modifiedSince(HttpRequest * request) const;
+    void lastModified(const time_t when) { lastModified_ = when; }
+    /// \returns entry's 'effective' modification time
+    time_t lastModified() const {
+        // may still return -1 if timestamp is not set
+        return lastModified_ < 0 ? timestamp : lastModified_;
+    }
+    /// \returns a formatted string with entry's timestamps
+    const char *describeTimestamps() const;
+    // TODO: consider removing currently unsupported imslen parameter
+    bool modifiedSince(const time_t ims, const int imslen = -1) const;
     /// has ETag matching at least one of the If-Match etags
     bool hasIfMatchEtag(const HttpRequest &request) const;
     /// has ETag matching at least one of the If-None-Match etags
@@ -155,7 +169,9 @@ public:
     time_t timestamp;
     time_t lastref;
     time_t expires;
-    time_t lastmod;
+private:
+    time_t lastModified_; ///< received Last-Modified value or -1; use lastModified()
+public:
     uint64_t swap_file_sz;
     uint16_t refcount;
     uint16_t flags;
@@ -228,6 +244,9 @@ protected:
 
 private:
     bool checkTooBig() const;
+    void forcePublicKey(const cache_key *newkey);
+    void adjustVary();
+    const cache_key *calcPublicKey(const KeyScope keyScope);
 
     static MemAllocator *pool;
 
@@ -430,6 +449,9 @@ public:
     /// update a local collapsed entry with fresh info from this cache (if any)
     virtual bool updateCollapsed(StoreEntry &collapsed) { return false; }
 
+    /// whether this storage is capable of serving multiple workers
+    virtual bool smpAware() const = 0;
+
 private:
     static RefCount<Store> CurrentRoot;
 };
@@ -450,10 +472,10 @@ void storeEntryReplaceObject(StoreEntry *, HttpReply *);
 StoreEntry *storeGetPublic(const char *uri, const HttpRequestMethod& method);
 
 /// \ingroup StoreAPI
-StoreEntry *storeGetPublicByRequest(HttpRequest * request);
+StoreEntry *storeGetPublicByRequest(HttpRequest * request, const KeyScope keyScope = ksDefault);
 
 /// \ingroup StoreAPI
-StoreEntry *storeGetPublicByRequestMethod(HttpRequest * request, const HttpRequestMethod& method);
+StoreEntry *storeGetPublicByRequestMethod(HttpRequest * request, const HttpRequestMethod& method, const KeyScope keyScope = ksDefault);
 
 /// \ingroup StoreAPI
 /// Like storeCreatePureEntry(), but also locks the entry and sets entry key.

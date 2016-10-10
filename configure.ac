@@ -5,7 +5,7 @@
 ## Please see the COPYING and CONTRIBUTORS files for details.
 ##
 
-AC_INIT([Squid Web Proxy],[3.5.21],[http://bugs.squid-cache.org/],[squid])
+AC_INIT([Squid Web Proxy],[3.5.22],[http://bugs.squid-cache.org/],[squid])
 AC_PREREQ(2.61)
 AC_CONFIG_HEADERS([include/autoconf.h])
 AC_CONFIG_AUX_DIR(cfgaux)
@@ -1778,7 +1778,7 @@ if test "x$with_heimdal_krb5" != "xno" -a "x$KRB5LIBS" = "x"; then
     SQUID_CHECK_KRB5_FUNCS
   fi
   if test "x$KRB5LIBS" = "x"; then
-    if test test "x$with_heimdal_krb5" = "xyes"; then
+    if test "x$with_heimdal_krb5" = "xyes"; then
       AC_MSG_ERROR([Required Heimdal Kerberos library not found])
     else
       AC_MSG_WARN([Heimdal Kerberos library not found])
@@ -1848,7 +1848,7 @@ if test "x$with_gnugss" != "xno" -a "x$KRB5LIBS" = "x"; then
     SQUID_DEFINE_BOOL(HAVE_KRB5,$squid_cv_working_krb5,[KRB5 support])
   fi
   if test "x$KRB5LIBS" = "x"; then
-    if test test "x$with_gnugss" = "xyes"; then
+    if test "x$with_gnugss" = "xyes"; then
       AC_MSG_ERROR([Required GNU GSS Kerberos library not found])
     else
       AC_MSG_WARN([GNU GSS Kerberos library not found])

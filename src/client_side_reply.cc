@@ -72,7 +72,8 @@ clientReplyContext::~clientReplyContext()
     HTTPMSGUNLOCK(reply);
 }
 
-clientReplyContext::clientReplyContext(ClientHttpRequest *clientContext) : http (cbdataReference(clientContext)), old_entry (NULL), old_sc(NULL), deleting(false)
+clientReplyContext::clientReplyContext(ClientHttpRequest *clientContext) : http (cbdataReference(clientContext)), old_entry (NULL), old_sc(NULL), deleting(false),
+    collapsedRevalidation(crNone)
 {}
 
 /** Create an error in the store awaiting the client side to read it.
@@ -245,9 +246,9 @@ void
 clientReplyContext::processExpired()
 {
     const char *url = storeId();
-    StoreEntry *entry = NULL;
     debugs(88, 3, "clientReplyContext::processExpired: '" << http->uri << "'");
-    assert(http->storeEntry()->lastmod >= 0);
+    const time_t lastmod = http->storeEntry()->lastModified();
+    assert(lastmod >= 0);
     /*
      * check if we are allowed to contact other servers
      * @?@: Instead of a 504 (Gateway Timeout) reply, we may want to return
@@ -267,16 +268,43 @@ clientReplyContext::processExpired()
 #endif
     /* Prepare to make a new temporary request */
     saveState();
-    entry = storeCreateEntry(url,
-                             http->log_uri, http->request->flags, http->request->method);
-    /* NOTE, don't call StoreEntry->lock(), storeCreateEntry() does it */
+
+    // TODO: support collapsed revalidation of Vary-controlled entries
+    const bool collapsingAllowed = Config.onoff.collapsed_forwarding &&
+                                   !Store::Root().smpAware() &&
+                                   http->request->vary_headers.isEmpty();
+
+    StoreEntry *entry = nullptr;
+    if (collapsingAllowed) {
+        if ((entry = storeGetPublicByRequest(http->request, ksRevalidation)))
+            entry->lock("clientReplyContext::processExpired#alreadyRevalidating");
+    }
+
+    if (entry) {
+        debugs(88, 5, "collapsed on existing revalidation entry: " << *entry);
+        collapsedRevalidation = crSlave;
+    } else {
+        entry = storeCreateEntry(url,
+                                 http->log_uri, http->request->flags, http->request->method);
+        /* NOTE, don't call StoreEntry->lock(), storeCreateEntry() does it */
+
+        if (collapsingAllowed) {
+            debugs(88, 5, "allow other revalidation requests to collapse on " << *entry);
+            Store::Root().allowCollapsing(entry, http->request->flags,
+                                          http->request->method);
+            collapsedRevalidation = crInitiator;
+        } else {
+            collapsedRevalidation = crNone;
+        }
+    }
+
     sc = storeClientListAdd(entry, this);
 #if USE_DELAY_POOLS
     /* delay_id is already set on original store client */
     sc->setDelayId(DelayId::DelayClient(http));
 #endif
 
-    http->request->lastmod = old_entry->lastmod;
+    http->request->lastmod = lastmod;
 
     if (!http->request->header.has(HDR_IF_NONE_MATCH)) {
         ETag etag = {NULL, -1}; // TODO: make that a default ETag constructor
@@ -284,17 +312,19 @@ clientReplyContext::processExpired()
             http->request->etag = etag.str;
     }
 
-    debugs(88, 5, "clientReplyContext::processExpired : lastmod " << entry->lastmod );
+    debugs(88, 5, "lastmod " << entry->lastModified());
     http->storeEntry(entry);
     assert(http->out.offset == 0);
     assert(http->request->clientConnectionManager == http->getConn());
 
-    /*
-     * A refcounted pointer so that FwdState stays around as long as
-     * this clientReplyContext does
-     */
-    Comm::ConnectionPointer conn = http->getConn() != NULL ? http->getConn()->clientConnection : NULL;
-    FwdState::Start(conn, http->storeEntry(), http->request, http->al);
+    if (collapsedRevalidation != crSlave) {
+        /*
+         * A refcounted pointer so that FwdState stays around as long as
+         * this clientReplyContext does
+         */
+        Comm::ConnectionPointer conn = http->getConn() != NULL ? http->getConn()->clientConnection : NULL;
+        FwdState::Start(conn, http->storeEntry(), http->request, http->al);
+    }
 
     /* Register with storage manager to receive updates when data comes in. */
 
@@ -358,7 +388,7 @@ clientReplyContext::handleIMSReply(StoreIOBuffer result)
     if (deleting)
         return;
 
-    debugs(88, 3, "handleIMSReply: " << http->storeEntry()->url() << ", " << (long unsigned) result.length << " bytes" );
+    debugs(88, 3, http->storeEntry()->url() << ", " << (long unsigned) result.length << " bytes");
 
     if (http->storeEntry() == NULL)
         return;
@@ -373,7 +403,7 @@ clientReplyContext::handleIMSReply(StoreIOBuffer result)
 
     // request to origin was aborted
     if (EBIT_TEST(http->storeEntry()->flags, ENTRY_ABORTED)) {
-        debugs(88, 3, "handleIMSReply: request to origin aborted '" << http->storeEntry()->url() << "', sending old entry to client" );
+        debugs(88, 3, "request to origin aborted '" << http->storeEntry()->url() << "', sending old entry to client");
         http->logType = LOG_TCP_REFRESH_FAIL_OLD;
         sendClientOldEntry();
     }
@@ -391,13 +421,13 @@ clientReplyContext::handleIMSReply(StoreIOBuffer result)
 
         // if client sent IMS
 
-        if (http->request->flags.ims && !old_entry->modifiedSince(http->request)) {
+        if (http->request->flags.ims && !old_entry->modifiedSince(http->request->ims, http->request->imslen)) {
             // forward the 304 from origin
-            debugs(88, 3, "handleIMSReply: origin replied 304, revalidating existing entry and forwarding 304 to client");
+            debugs(88, 3, "origin replied 304, revalidating existing entry and forwarding 304 to client");
             sendClientUpstreamResponse();
         } else {
             // send existing entry, it's still valid
-            debugs(88, 3, "handleIMSReply: origin replied 304, revalidating existing entry and sending " <<
+            debugs(88, 3, "origin replied 304, revalidating existing entry and sending " <<
                    old_rep->sline.status() << " to client");
             sendClientOldEntry();
         }
@@ -405,22 +435,37 @@ clientReplyContext::handleIMSReply(StoreIOBuffer result)
 
     // origin replied with a non-error code
     else if (status > Http::scNone && status < Http::scInternalServerError) {
-        // forward response from origin
-        http->logType = LOG_TCP_REFRESH_MODIFIED;
-        debugs(88, 3, "handleIMSReply: origin replied " << status << ", replacing existing entry and forwarding to client");
-        sendClientUpstreamResponse();
+        const HttpReply *new_rep = http->storeEntry()->getReply();
+        // RFC 7234 section 4: a cache MUST use the most recent response
+        // (as determined by the Date header field)
+        if (new_rep->olderThan(old_rep)) {
+            http->logType = LOG_TCP_REFRESH_IGNORED;
+            debugs(88, 3, "origin replied " << status <<
+                   " but with an older date header, sending old entry (" <<
+                   old_rep->sline.status() << ") to client");
+            sendClientOldEntry();
+        } else {
+            http->logType = LOG_TCP_REFRESH_MODIFIED;
+            debugs(88, 3, "origin replied " << status <<
+                   ", replacing existing entry and forwarding to client");
+
+            if (collapsedRevalidation)
+                http->storeEntry()->clearPublicKeyScope();
+
+            sendClientUpstreamResponse();
+        }
     }
 
     // origin replied with an error
     else if (http->request->flags.failOnValidationError) {
         http->logType = LOG_TCP_REFRESH_FAIL_ERR;
-        debugs(88, 3, "handleIMSReply: origin replied with error " << status <<
+        debugs(88, 3, "origin replied with error " << status <<
                ", forwarding to client due to fail_on_validation_err");
         sendClientUpstreamResponse();
     } else {
         // ignore and let client have old entry
         http->logType = LOG_TCP_REFRESH_FAIL_OLD;
-        debugs(88, 3, "handleIMSReply: origin replied with error " <<
+        debugs(88, 3, "origin replied with error " <<
                status << ", sending old entry (" << old_rep->sline.status() << ") to client");
         sendClientOldEntry();
     }
@@ -563,11 +608,12 @@ clientReplyContext::cacheHit(StoreIOBuffer result)
          */
         r->flags.needValidation = true;
 
-        if (e->lastmod < 0) {
-            debugs(88, 3, "validate HIT object? NO. Missing Last-Modified header. Do MISS.");
+        if (e->lastModified() < 0) {
+            debugs(88, 3, "validate HIT object? NO. Can't calculate entry modification time. Do MISS.");
             /*
-             * Previous reply didn't have a Last-Modified header,
-             * we cannot revalidate it.
+             * We cannot revalidate entries without knowing their
+             * modification time.
+             * XXX: BUG 1890 objects without Date do not get one added.
              */
             http->logType = LOG_TCP_MISS;
             processMiss();
@@ -756,7 +802,7 @@ clientReplyContext::processConditional(StoreIOBuffer &result)
 
     if (r.flags.ims) {
         // handle If-Modified-Since requests from the client
-        if (e->modifiedSince(&r)) {
+        if (e->modifiedSince(r.ims, r.imslen)) {
             http->logType = LOG_TCP_IMS_HIT;
             sendMoreData(result);
             return;

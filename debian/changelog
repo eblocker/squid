@@ -3,10 +3,13 @@ squid3 (3.5.22-1) UNRELEASED; urgency=medium
   [ Amos Jeffries <amosjeffries@squid-cache.org> ]
   * New Upstream Release
 
+  * debian/patches
+    - Add upstream patch to fix adaptation crashes
+
   * debian/{control, rules, squid.postinst}
     - Accept patch to remove setuid from pinger (Closes: #822992)
 
- -- Amos Jeffries <amosjeffries@squid-cache.org>  Tue, 11 Oct 2016 02:37:00 +1200
+ -- Amos Jeffries <amosjeffries@squid-cache.org>  Thu, 27 Oct 2016 01:26:00 +1300
 
 squid3 (3.5.19-1) unstable; urgency=high
 

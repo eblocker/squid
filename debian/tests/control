@@ -1,0 +1,3 @@
+Tests: upstream-test-suite
+Depends: fakeroot, squid
+Restrictions: allow-stderr

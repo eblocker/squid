@@ -1,0 +1,22 @@
+From: Luigi Gangitano <luigi@debian.org>
+Date: Sat, 29 Oct 2016 17:57:19 +0200
+Subject: Fix regression bug introduced by r14089
+
+---
+ src/adaptation/icap/ModXact.cc | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/src/adaptation/icap/ModXact.cc b/src/adaptation/icap/ModXact.cc
+index f8a57ae..f9375d3 100644
+--- a/src/adaptation/icap/ModXact.cc
++++ b/src/adaptation/icap/ModXact.cc
+@@ -1303,7 +1303,8 @@ void Adaptation::Icap::ModXact::finalizeLogInfo()
+         virgin_msg = virgin_request_;
+     assert(virgin_msg != virgin.cause);
+     al.http.clientRequestSz.header = virgin_msg->hdr_sz;
+-    al.http.clientRequestSz.payloadData = virgin_msg->body_pipe->producedSize();
++    if (virgin_msg->body_pipe != NULL)
++        al.http.clientRequestSz.payloadData = virgin_msg->body_pipe->producedSize();
+ 
+     // leave al.icap.bodyBytesRead negative if no body
+     if (replyHttpHeaderSize >= 0 || replyHttpBodySize >= 0) {

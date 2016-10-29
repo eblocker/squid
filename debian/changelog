@@ -14,8 +14,8 @@ squid3 (3.5.22-1) unstable; urgency=medium
     - Bump to debhelper compatibility level 10
 
   * debian/{control,tests/}
-    - Add DEP-8 autopkgtest for upstream test suite, thanks to  Santiago Ruano Rincan
-      (Closes: #829141)
+    - Add DEP-8 autopkgtest for upstream test suite, thanks to
+      Santiago Ruano Rincan (Closes: #829141)
 
   * debian/rules
     - Avoid linking with unneeded libraries, thanks to Yuriy M. Kaminskiyi

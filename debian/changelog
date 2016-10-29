@@ -9,7 +9,11 @@ squid3 (3.5.22-1) UNRELEASED; urgency=medium
   * debian/{control, rules, squid.postinst}
     - Accept patch to remove setuid from pinger (Closes: #822992)
 
- -- Amos Jeffries <amosjeffries@squid-cache.org>  Thu, 27 Oct 2016 01:26:00 +1300
+  [ Luigi Gangitano ]
+  * debian/compat
+    - Bump to debhelper compatibility level 10
+
+ -- Luigi Gangitano <luigi@debian.org>  Sat, 29 Oct 2016 23:13:00 +0200
 
 squid3 (3.5.19-1) unstable; urgency=high
 

@@ -1,4 +1,4 @@
-squid3 (3.5.22-1) UNRELEASED; urgency=medium
+squid3 (3.5.22-1) unstable; urgency=medium
 
   [ Amos Jeffries <amosjeffries@squid-cache.org> ]
   * New Upstream Release
@@ -14,7 +14,12 @@ squid3 (3.5.22-1) UNRELEASED; urgency=medium
     - Bump to debhelper compatibility level 10
 
   * debian/{control,tests/}
-    - Add DEP-8 autopkgtest for upstream test suite (Closes: #829141)
+    - Add DEP-8 autopkgtest for upstream test suite, thanks to  Santiago Ruano Rincan
+      (Closes: #829141)
+
+  * debian/rules
+    - Avoid linking with unneeded libraries, thanks to Yuriy M. Kaminskiyi
+      (Closes: #822998)
 
  -- Luigi Gangitano <luigi@debian.org>  Sat, 29 Oct 2016 23:13:00 +0200
 

@@ -396,6 +396,15 @@ clientReplyContext::handleIMSReply(StoreIOBuffer result)
     if (result.flags.error && !EBIT_TEST(http->storeEntry()->flags, ENTRY_ABORTED))
         return;
 
+    if (collapsedRevalidation == crSlave && EBIT_TEST(http->storeEntry()->flags, KEY_PRIVATE)) {
+        debugs(88, 3, "CF slave hit private " << *http->storeEntry() << ". MISS");
+        // restore context to meet processMiss() expectations
+        restoreState();
+        http->logType = LOG_TCP_MISS;
+        processMiss();
+        return;
+    }
+
     /* update size of the request */
     reqsize = result.length + reqofs;
 
@@ -518,6 +527,16 @@ clientReplyContext::cacheHit(StoreIOBuffer result)
         return;
     }
 
+    // The previously identified hit suddenly became unsharable!
+    // This is common for collapsed forwarding slaves but might also
+    // happen to regular hits because we are called asynchronously.
+    if (EBIT_TEST(e->flags, KEY_PRIVATE)) {
+        debugs(88, 3, "unsharable " << *e << ". MISS");
+        http->logType = LOG_TCP_MISS;
+        processMiss();
+        return;
+    }
+
     if (result.length == 0) {
         debugs(88, 5, "store IO buffer has no content. MISS");
         /* the store couldn't get enough data from the file for us to id the
@@ -589,6 +608,7 @@ clientReplyContext::cacheHit(StoreIOBuffer result)
         debugs(88, 5, "negative-HIT");
         http->logType = LOG_TCP_NEGATIVE_HIT;
         sendMoreData(result);
+        return;
     } else if (blockedHit()) {
         debugs(88, 5, "send_hit forces a MISS");
         http->logType = LOG_TCP_MISS;
@@ -641,27 +661,29 @@ clientReplyContext::cacheHit(StoreIOBuffer result)
             http->logType = LOG_TCP_MISS;
             processMiss();
         }
+        return;
     } else if (r->conditional()) {
         debugs(88, 5, "conditional HIT");
-        processConditional(result);
-    } else {
-        /*
-         * plain ol' cache hit
-         */
-        debugs(88, 5, "plain old HIT");
+        if (processConditional(result))
+            return;
+    }
+
+    /*
+     * plain ol' cache hit
+     */
+    debugs(88, 5, "plain old HIT");
 
 #if USE_DELAY_POOLS
-        if (e->store_status != STORE_OK)
-            http->logType = LOG_TCP_MISS;
-        else
+    if (e->store_status != STORE_OK)
+        http->logType = LOG_TCP_MISS;
+    else
 #endif
-            if (e->mem_status == IN_MEMORY)
-                http->logType = LOG_TCP_MEM_HIT;
-            else if (Config.onoff.offline)
-                http->logType = LOG_TCP_OFFLINE_HIT;
+        if (e->mem_status == IN_MEMORY)
+            http->logType = LOG_TCP_MEM_HIT;
+        else if (Config.onoff.offline)
+            http->logType = LOG_TCP_OFFLINE_HIT;
 
-        sendMoreData(result);
-    }
+    sendMoreData(result);
 }
 
 /**
@@ -755,17 +777,16 @@ clientReplyContext::processOnlyIfCachedMiss()
 }
 
 /// process conditional request from client
-void
+bool
 clientReplyContext::processConditional(StoreIOBuffer &result)
 {
     StoreEntry *const e = http->storeEntry();
 
     if (e->getReply()->sline.status() != Http::scOkay) {
-        debugs(88, 4, "clientReplyContext::processConditional: Reply code " <<
-               e->getReply()->sline.status() << " != 200");
+        debugs(88, 4, "Reply code " << e->getReply()->sline.status() << " != 200");
         http->logType = LOG_TCP_MISS;
         processMiss();
-        return;
+        return true;
     }
 
     HttpRequest &r = *http->request;
@@ -773,51 +794,39 @@ clientReplyContext::processConditional(StoreIOBuffer &result)
     if (r.header.has(HDR_IF_MATCH) && !e->hasIfMatchEtag(r)) {
         // RFC 2616: reply with 412 Precondition Failed if If-Match did not match
         sendPreconditionFailedError();
-        return;
+        return true;
     }
 
-    bool matchedIfNoneMatch = false;
     if (r.header.has(HDR_IF_NONE_MATCH)) {
-        if (!e->hasIfNoneMatchEtag(r)) {
-            // RFC 2616: ignore IMS if If-None-Match did not match
-            r.flags.ims = false;
-            r.ims = -1;
-            r.imslen = 0;
-            r.header.delById(HDR_IF_MODIFIED_SINCE);
-            http->logType = LOG_TCP_MISS;
-            sendMoreData(result);
-            return;
-        }
+        // RFC 7232: If-None-Match recipient MUST ignore IMS
+        r.flags.ims = false;
+        r.ims = -1;
+        r.imslen = 0;
+        r.header.delById(HDR_IF_MODIFIED_SINCE);
 
-        if (!r.flags.ims) {
-            // RFC 2616: if If-None-Match matched and there is no IMS,
-            // reply with 304 Not Modified or 412 Precondition Failed
+        if (e->hasIfNoneMatchEtag(r)) {
             sendNotModifiedOrPreconditionFailedError();
-            return;
+            return true;
         }
 
-        // otherwise check IMS below to decide if we reply with 304 or 412
-        matchedIfNoneMatch = true;
+        // None-Match is true (no ETag matched); treat as an unconditional hit
+        return false;
     }
 
     if (r.flags.ims) {
         // handle If-Modified-Since requests from the client
         if (e->modifiedSince(r.ims, r.imslen)) {
-            http->logType = LOG_TCP_IMS_HIT;
-            sendMoreData(result);
-            return;
-        }
+            // Modified-Since is true; treat as an unconditional hit
+            return false;
 
-        if (matchedIfNoneMatch) {
-            // If-None-Match matched, reply with 304 Not Modified or
-            // 412 Precondition Failed
-            sendNotModifiedOrPreconditionFailedError();
-            return;
+        } else {
+            // otherwise reply with 304 Not Modified
+            sendNotModified();
         }
-
-        // otherwise reply with 304 Not Modified
-        sendNotModified();
+        return true;
     }
+
+    return false;
 }
 
 /// whether squid.conf send_hit prevents us from serving this hit
@@ -1345,7 +1354,7 @@ clientReplyContext::buildReplyHeader()
     hdr->delById(HDR_ETAG);
 #endif
 
-    if (is_hit)
+    if (is_hit || collapsedRevalidation == crSlave)
         hdr->delById(HDR_SET_COOKIE);
     // TODO: RFC 2965 : Must honour Cache-Control: no-cache="set-cookie2" and remove header.
 
@@ -1646,7 +1655,9 @@ clientReplyContext::identifyStoreObject()
 {
     HttpRequest *r = http->request;
 
-    if (r->flags.cachable || r->flags.internal) {
+    // client sent CC:no-cache or some other condition has been
+    // encountered which prevents delivering a public/cached object.
+    if (!r->flags.noCache || r->flags.internal) {
         lookingforstore = 5;
         StoreEntry::getPublicByRequest (this, r);
     } else {
@@ -1969,7 +1980,12 @@ clientReplyContext::sendNotModified()
     StoreEntry *e = http->storeEntry();
     const time_t timestamp = e->timestamp;
     HttpReply *const temprep = e->getReply()->make304();
-    http->logType = LOG_TCP_IMS_HIT;
+    // log as TCP_INM_HIT if code 304 generated for
+    // If-None-Match request
+    if (!http->request->flags.ims)
+        http->logType = LOG_TCP_INM_HIT;
+    else
+        http->logType = LOG_TCP_IMS_HIT;
     removeClientStoreReference(&sc, http);
     createStoreEntry(http->request->method, RequestFlags());
     e = http->storeEntry();

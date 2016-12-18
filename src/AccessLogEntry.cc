@@ -32,11 +32,14 @@ AccessLogEntry::getLogClientIp(char *buf, size_t bufsz) const
 #endif
         if (tcpClient != NULL)
             log_ip = tcpClient->remote;
-        else if (cache.caddr.isNoAddr()) { // e.g., ICAP OPTIONS lack client
-            strncpy(buf, "-", bufsz);
-            return;
-        } else
+        else
             log_ip = cache.caddr;
+
+    // internally generated requests (and some ICAP) lack client IP
+    if (log_ip.isNoAddr()) {
+        strncpy(buf, "-", bufsz);
+        return;
+    }
 
     // Apply so-called 'privacy masking' to IPv4 clients
     // - localhost IP is always shown in full

@@ -191,6 +191,12 @@ httpMaybeRemovePublic(StoreEntry * e, Http::StatusCode status)
     if (!EBIT_TEST(e->flags, KEY_PRIVATE))
         return;
 
+    // If the new/incoming response cannot be stored, then it does not
+    // compete with the old stored response for the public key, and the
+    // old stored response should be left as is.
+    if (e->mem_obj->request && !e->mem_obj->request->flags.cachable)
+        return;
+
     switch (status) {
 
     case Http::scOkay:
@@ -202,6 +208,8 @@ httpMaybeRemovePublic(StoreEntry * e, Http::StatusCode status)
     case Http::scMovedPermanently:
 
     case Http::scFound:
+
+    case Http::scSeeOther:
 
     case Http::scGone:
 
@@ -594,7 +602,7 @@ assembleVaryKey(String &vary, SBuf &vstr, const HttpRequest &request)
     while (strListGetItem(&vary, ',', &item, &ilen, &pos)) {
         SBuf name(item, ilen);
         if (name == asterisk) {
-            vstr.clear();
+            vstr = asterisk;
             break;
         }
         name.toLower();
@@ -917,6 +925,12 @@ HttpStateData::haveParsedReplyHeaders()
             varyFailure = true;
         } else {
             entry->mem_obj->vary_headers = vary;
+
+            // RFC 7231 section 7.1.4
+            // Vary:* can be cached, but has mandatory revalidation
+            static const SBuf asterisk("*");
+            if (vary == asterisk)
+                EBIT_SET(entry->flags, ENTRY_REVALIDATE_ALWAYS);
         }
     }
 

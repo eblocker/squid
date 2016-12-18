@@ -1,4 +1,4 @@
-squid3 (3.5.23-1) UNRELEASED; urgency=high
+squid3 (3.5.23-1) unstable; urgency=high
 
   [ Amos Jeffries <amosjeffries@squid-cache.org> ]
   * New Upstream Release (Closes: #793473, #822952)
@@ -8,10 +8,10 @@ squid3 (3.5.23-1) UNRELEASED; urgency=high
   * debian/patches/
     - Remove patch included upstream
 
- * debian/tests/
+  * debian/tests/
     - Use package build-deps when testing so the make commands will work
 
- -- Amos Jeffries <amosjeffries@squid-cache.org>  Sun, 18 Dec 2016 19:39:24 +1300
+ -- Luigi Gangitano <luigi@debian.org>  Sun, 18 Dec 2016 23:39:24 +0200
 
 squid3 (3.5.22-1) unstable; urgency=medium
 

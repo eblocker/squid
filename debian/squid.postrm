@@ -45,9 +45,17 @@ case "$1" in
 		#
 		echo "Please, remove /var/spool/squid yourself."
 		;;
-	failed-upgrade)
+	failed-upgrade|abort-upgrade)
+		#
+		# If the squid (2.7) package was being used previously we protected
+		# the squid.conf file, which was not tracked as a conffile.
+		# Restore it when aborting.
+		#
+		if test -f /etc/squid/squid.conf.pre3.5_upgrade ; then
+			mv /etc/squid/squid.conf.pre3.5_upgrade /etc/squid/squid.conf
+		fi
 		;;
-	upgrade|abort-install|abort-upgrade|disappear)
+	upgrade|abort-install|disappear)
 		;;
 esac
 

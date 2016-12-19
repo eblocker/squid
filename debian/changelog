@@ -1,3 +1,11 @@
+squid3 (3.5.23-2) UNRELEASED; urgency=medium
+
+  [ Santiago Garcia Mantinan <manty@debian.org> ]
+  * debian/squid.{preinst,postinst,postrm}
+    - Fix upgrade sequence from 2.7 packages (Closes: #801564)
+
+  -- Amos Jeffries <amosjeffries@squid-cache.org>  Mon, 19 Dec 2016 17:10:17 +1300
+
 squid3 (3.5.23-1) unstable; urgency=high
 
   [ Amos Jeffries <amosjeffries@squid-cache.org> ]

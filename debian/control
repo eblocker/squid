@@ -22,7 +22,7 @@ Description: Transitional package
 
 Package: squid
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, netbase, adduser, logrotate (>= 3.5.4-1), squid-common (= ${source:Version}), lsb-base, libdbi-perl
+Depends: ${shlibs:Depends}, ${misc:Depends}, netbase, adduser, logrotate (>= 3.5.4-1), squid-common (>= ${source:Version}), lsb-base, libdbi-perl
 Suggests: squidclient, squid-cgi, squid-purge, resolvconf (>= 0.40), smbclient, ufw, winbindd
 Recommends: libcap2-bin [linux-any]
 Conflicts: squid3 (<< ${binary:Version})

@@ -3,31 +3,14 @@ Date: Sat, 29 Oct 2016 17:55:02 +0200
 Subject: Default configuration file for debian
 
 ---
- src/cf.data.pre | 21 ++++++++++++---------
- 1 file changed, 12 insertions(+), 9 deletions(-)
+ src/cf.data.pre | 10 ++++++----
+ 1 file changed, 6 insertions(+), 4 deletions(-)
 
 diff --git a/src/cf.data.pre b/src/cf.data.pre
-index 4ba0803..d2f11a8 100644
+index 79f1e3d0..fc594bca 100644
 --- a/src/cf.data.pre
 +++ b/src/cf.data.pre
-@@ -1210,11 +1210,11 @@ NOCOMMENT_START
- # Example rule allowing access from your local networks.
- # Adapt to list your (internal) IP networks from where browsing
- # should be allowed
--acl localnet src 10.0.0.0/8	# RFC1918 possible internal network
--acl localnet src 172.16.0.0/12	# RFC1918 possible internal network
--acl localnet src 192.168.0.0/16	# RFC1918 possible internal network
--acl localnet src fc00::/7       # RFC 4193 local private network range
--acl localnet src fe80::/10      # RFC 4291 link-local (directly plugged) machines
-+#acl localnet src 10.0.0.0/8	# RFC1918 possible internal network
-+#acl localnet src 172.16.0.0/12	# RFC1918 possible internal network
-+#acl localnet src 192.168.0.0/16	# RFC1918 possible internal network
-+#acl localnet src fc00::/7       # RFC 4193 local private network range
-+#acl localnet src fe80::/10      # RFC 4291 link-local (directly plugged) machines
- 
- acl SSL_ports port 443
- acl Safe_ports port 80		# http
-@@ -1463,7 +1463,7 @@ http_access deny manager
+@@ -1618,7 +1618,7 @@ http_access deny manager
  # Example rule allowing access from your local networks.
  # Adapt localnet in the ACL section to list your (internal) IP networks
  # from where browsing should be allowed
@@ -36,7 +19,7 @@ index 4ba0803..d2f11a8 100644
  http_access allow localhost
  
  # And finally deny all other access to this proxy
-@@ -4603,7 +4603,7 @@ DOC_END
+@@ -4698,7 +4698,7 @@ DOC_END
  
  NAME: logfile_rotate
  TYPE: int
@@ -44,18 +27,17 @@ index 4ba0803..d2f11a8 100644
 +DEFAULT: 0
  LOC: Config.Log.rotateNumber
  DOC_START
- 	Specifies the number of logfile rotations to make when you
-@@ -4622,6 +4622,9 @@ DOC_START
+ 	Specifies the default number of logfile rotations to make when you
+@@ -4722,6 +4722,8 @@ DOC_START
+ 	in the habit of using 'squid -k rotate' instead of 'kill -USR1
+ 	<pid>'.
  
- 	Note, from Squid-3.1 this option is only a default for cache.log,
- 	that log can be rotated separately by using debug_options.
-+
-+	Note2, for Debian/Linux the default of logfile_rotate is
++	Note, for Debian/Linux the default of logfile_rotate is
 +	zero, since it includes external logfile-rotation methods.
  DOC_END
  
  NAME: mime_table
-@@ -8978,8 +8981,8 @@ DOC_START
+@@ -9303,8 +9305,8 @@ DOC_START
  
  	WARNING:
  	  This option will restrict the situations under which IPv6

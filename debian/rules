@@ -1,0 +1,89 @@
+#! /usr/bin/make -f
+
+export DEB_BUILD_MAINT_OPTIONS = hardening=+all
+export DEB_CFLAGS_MAINT_APPEND = -Wall
+export DEB_LDFLAGS_MAINT_APPEND = -Wl,--as-needed
+include /usr/share/dpkg/buildflags.mk
+
+include /usr/share/cdbs/1/rules/debhelper.mk
+include /usr/share/cdbs/1/class/autotools.mk
+ 
+INSTALLDIR := $(CURDIR)/debian/tmp
+datadir=/usr/share/squid
+
+DEB_DH_INSTALL_SOURCEDIR := $(INSTALLDIR)
+DEB_INSTALL_DOCS_squid-common := CONTRIBUTORS CREDITS QUICKSTART RELEASENOTES.html \
+						SPONSORS 
+
+DEB_CONFIGURE_EXTRA_FLAGS := BUILDCXXFLAGS="$(CXXFLAGS) $(CPPFLAGS) $(LDFLAGS)" \
+		--datadir=/usr/share/squid \
+		--sysconfdir=/etc/squid \
+		--libexecdir=/usr/lib/squid \
+		--mandir=/usr/share/man \
+		--enable-inline \
+		--disable-arch-native \
+		--enable-async-io=8 \
+		--enable-storeio="ufs,aufs,diskd,rock" \
+		--enable-removal-policies="lru,heap" \
+		--enable-delay-pools \
+		--enable-cache-digests \
+		--enable-icap-client \
+		--enable-follow-x-forwarded-for \
+		--enable-auth-basic="DB,fake,getpwnam,LDAP,NCSA,NIS,PAM,POP3,RADIUS,SASL,SMB" \
+		--enable-auth-digest="file,LDAP" \
+		--enable-auth-negotiate="kerberos,wrapper" \
+		--enable-auth-ntlm="fake,smb_lm" \
+		--enable-external-acl-helpers="file_userip,kerberos_ldap_group,LDAP_group,session,SQL_session,time_quota,unix_group,wbinfo_group" \
+		--enable-url-rewrite-helpers="fake" \
+		--enable-eui \
+		--enable-esi \
+		--enable-icmp \
+		--enable-zph-qos \
+		--enable-ecap \
+		--disable-translation \
+		--with-swapdir=/var/spool/squid \
+		--with-logdir=/var/log/squid \
+		--with-pidfile=/var/run/squid.pid \
+		--with-filedescriptors=65536 \
+		--with-large-files \
+		--with-default-user=proxy
+
+BUILDINFO := $(shell lsb_release -si 2>/dev/null)
+
+DEB_HOST_ARCH_OS := $(shell dpkg-architecture -qDEB_HOST_ARCH_OS 2>/dev/null)
+
+DEB_CONFIGURE_EXTRA_FLAGS += --enable-build-info="$(BUILDINFO) $(DEB_HOST_ARCH_OS)"
+
+ifeq ($(DEB_HOST_ARCH_OS), kfreebsd)
+		DEB_CONFIGURE_EXTRA_FLAGS += --enable-kqueue
+endif
+ifeq ($(DEB_HOST_ARCH_OS), linux)
+		DEB_CONFIGURE_EXTRA_FLAGS += --enable-linux-netfilter
+endif
+
+DEB_MAKE_CLEAN_TARGET = distclean
+
+install/squid::
+	install -m 755 -g root -d $(INSTALLDIR)/usr/lib/cgi-bin
+	mv $(INSTALLDIR)/etc/squid/squid.conf.documented $(INSTALLDIR)/etc/squid/squid.conf
+	mv $(INSTALLDIR)/usr/lib/squid/cachemgr.cgi $(INSTALLDIR)/usr/lib/cgi-bin/cachemgr.cgi
+	install -m 755 -g root -d $(INSTALLDIR)/etc/init.d
+	install -m 755 -g root -d $(INSTALLDIR)/etc/logrotate.d
+	install -m 755 -g root -d $(INSTALLDIR)/etc/resolvconf
+	install -m 755 -g root -d $(INSTALLDIR)/etc/resolvconf/update-libc.d
+	install -m 755 -g root -d $(INSTALLDIR)/etc/ufw/applications.d
+	install -m 755 -g root debian/squid.rc $(INSTALLDIR)/etc/init.d/squid
+	install -m 755 -g root debian/squid.resolvconf $(INSTALLDIR)/etc/resolvconf/update-libc.d/squid
+	install -m 644 -g root debian/squid.logrotate $(INSTALLDIR)/etc/logrotate.d/squid
+	install -m 644 -g root debian/squid.ufw.profile $(INSTALLDIR)/etc/ufw/applications.d/squid
+	install -m 755 -g root -d debian/squid/var/log
+	install -m 755 -g root -d debian/squid/var/spool
+	install -m 755 -g root -d debian/squid/var/run
+	install -m 750 -o proxy -g proxy -d debian/squid/var/log/squid
+	install -m 750 -o proxy -g proxy -d debian/squid/var/spool/squid
+	install -m 755 -g root -d $(INSTALLDIR)/usr/share/man/man1
+	mv $(INSTALLDIR)/usr/bin/purge $(INSTALLDIR)/usr/bin/squid-purge
+	install -m 644 -g root debian/squid-purge.8  $(INSTALLDIR)/usr/share/man/man8
+
+clean::
+	# nothing to do

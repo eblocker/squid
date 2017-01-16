@@ -9,7 +9,6 @@
 #ifndef SQUID_CUSTOMLOG_H_
 #define SQUID_CUSTOMLOG_H_
 
-//#include "format/Format.h"
 #include "acl/forward.h"
 #include "log/Formats.h"
 
@@ -19,7 +18,7 @@ namespace Format
 class Format;
 }
 
-/// representaiton of a custom log directive. Currently a POD.
+/// representation of a custom log directive.
 class CustomLog
 {
 public:
@@ -33,6 +32,8 @@ public:
     size_t bufferSize;
     /// whether unrecoverable errors (e.g., dropping a log record) kill worker
     bool fatal;
+    /// How many log files to retain when rotating. Default: obey logfile_rotate
+    int16_t rotateCount;
 };
 
 #endif /* SQUID_CUSTOMLOG_H_ */

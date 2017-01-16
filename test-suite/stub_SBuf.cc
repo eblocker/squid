@@ -11,7 +11,7 @@
 #define STUB_API "SBuf.cc"
 #include "tests/STUB.h"
 
-#include "SBuf.h"
+#include "sbuf/SBuf.h"
 
 InstanceIdDefinitions(SBuf, "SBuf");
 
@@ -26,7 +26,7 @@ SBufStats& SBufStats::operator +=(const SBufStats&) STUB_RETVAL(*this)
 SBuf::SBuf() {}
 SBuf::SBuf(const SBuf &S) {}
 SBuf::SBuf(const char *S, size_type n) {}
-SBuf::SBuf(const String &S) {}
+SBuf::SBuf(const char *S) {}
 SBuf::SBuf(const std::string &s) {}
 SBuf::~SBuf() {}
 SBuf& SBuf::assign(const SBuf &S) STUB_RETVAL(*this)
@@ -63,8 +63,6 @@ SBuf::size_type SBuf::rfind(char c, size_type endPos) const STUB_RETVAL(SBuf::np
 SBuf::size_type SBuf::rfind(const SBuf &str, size_type endPos) const STUB_RETVAL(SBuf::npos)
 SBuf::size_type SBuf::findFirstOf(const CharacterSet &set, size_type startPos) const STUB_RETVAL(SBuf::npos)
 SBuf::size_type SBuf::findFirstNotOf(const CharacterSet &set, size_type startPos) const STUB_RETVAL(SBuf::npos)
-int SBuf::scanf(const char *format, ...) STUB_RETVAL(-1)
 void SBuf::toLower() STUB
 void SBuf::toUpper() STUB
-String SBuf::toString() const STUB_RETVAL(String(""))
 

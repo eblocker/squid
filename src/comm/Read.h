@@ -12,8 +12,7 @@
 #include "base/AsyncCall.h"
 #include "comm/forward.h"
 #include "CommCalls.h"
-
-class SBuf;
+#include "sbuf/forward.h"
 
 namespace Comm
 {
@@ -31,6 +30,9 @@ bool MonitorsRead(int fd);
 
 /**
  * Perform a read(2) on a connection immediately.
+ *
+ * If params.size is non-zero will limit size of the read to either
+ * the buffer free space or params.size, whichever is smallest.
  *
  * The returned flag is also placed in params.flag.
  *

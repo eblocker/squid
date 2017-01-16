@@ -10,6 +10,7 @@
 
 #include "squid.h"
 #include "client_side_request.h"
+#include "http/Stream.h"
 #include "HttpHeaderRange.h"
 #include "HttpHeaderTools.h"
 #include "HttpReply.h"
@@ -105,15 +106,14 @@ HttpHdrRangeSpec::parseInit(const char *field, int flen)
 }
 
 void
-HttpHdrRangeSpec::packInto(Packer * packer) const
+HttpHdrRangeSpec::packInto(Packable * p) const
 {
     if (!known_spec(offset))    /* suffix */
-        packerPrintf(packer, "-%" PRId64,  length);
+        p->appendf("-%" PRId64, length);
     else if (!known_spec(length))       /* trailer */
-        packerPrintf(packer, "%" PRId64 "-", offset);
+        p->appendf("%" PRId64 "-", offset);
     else            /* range */
-        packerPrintf(packer, "%" PRId64 "-%" PRId64,
-                     offset, offset + length - 1);
+        p->appendf("%" PRId64 "-%" PRId64, offset, offset + length - 1);
 }
 
 void
@@ -303,13 +303,13 @@ HttpHdrRange::end() const
 }
 
 void
-HttpHdrRange::packInto(Packer * packer) const
+HttpHdrRange::packInto(Packable * packer) const
 {
     const_iterator pos = begin();
 
     while (pos != end()) {
         if (pos != begin())
-            packerAppend(packer, ",", 1);
+            packer->append(",", 1);
 
         (*pos)->packInto(packer);
 

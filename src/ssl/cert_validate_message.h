@@ -27,7 +27,7 @@ class CertValidationRequest
 {
 public:
     SSL *ssl;
-    CertErrors *errors; ///< The list of errors detected
+    Security::CertErrors *errors; ///< The list of errors detected
     std::string domainName; ///< The server name
     CertValidationRequest() : ssl(NULL), errors(NULL) {}
 };
@@ -48,14 +48,15 @@ public:
     class  RecvdError
     {
     public:
-        RecvdError(): id(0), error_no(SSL_ERROR_NONE), cert(NULL) {}
+        RecvdError(): id(0), error_no(SSL_ERROR_NONE), cert(NULL), error_depth(-1) {}
         RecvdError(const RecvdError &);
         RecvdError & operator =(const RecvdError &);
         void setCert(X509 *);  ///< Sets cert to the given certificate
         int id; ///<  The id of the error
-        ssl_error_t error_no; ///< The OpenSSL error code
+        Security::ErrorCode error_no; ///< The OpenSSL error code
         std::string error_reason; ///< A string describing the error
-        X509_Pointer cert; ///< The broken certificate
+        Security::CertPointer cert; ///< The broken certificate
+        int error_depth; ///< The error depth
     };
 
     typedef std::vector<RecvdError> RecvdErrors;
@@ -84,7 +85,7 @@ private:
     {
     public:
         std::string name; ///< The certificate Id to use
-        X509_Pointer cert;       ///< A pointer to certificate
+        Security::CertPointer cert;       ///< A pointer to certificate
         CertItem(): cert(NULL) {}
         CertItem(const CertItem &);
         CertItem & operator =(const CertItem &);
@@ -116,6 +117,8 @@ public:
     static const std::string param_error_reason;
     /// Parameter name for passing the error cert ID
     static const std::string param_error_cert;
+    /// Parameter name for passing the error depth
+    static const std::string param_error_depth;
     /// Parameter name for SSL version
     static const std::string param_proto_version;
     /// Parameter name for SSL cipher

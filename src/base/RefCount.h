@@ -39,6 +39,12 @@ public:
         reference (p);
     }
 
+#if __cplusplus >= 201103L
+    RefCount (RefCount &&p) : p_(std::move(p.p_)) {
+        p.p_=NULL;
+    }
+#endif
+
     RefCount& operator = (const RefCount& p) {
         // DO NOT CHANGE THE ORDER HERE!!!
         // This preserves semantics on self assignment
@@ -47,6 +53,18 @@ public:
         dereference(newP_);
         return *this;
     }
+
+#if __cplusplus >= 201103L
+    RefCount& operator = (RefCount&& p) {
+        if (this != &p) {
+            dereference(p.p_);
+            p.p_ = NULL;
+        }
+        return *this;
+    }
+#endif
+
+    explicit operator bool() const { return p_; }
 
     bool operator !() const { return !p_; }
 

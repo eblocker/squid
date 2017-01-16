@@ -13,8 +13,8 @@
 #include "err_type.h"
 #include "esi/Element.h"
 #include "esi/Parser.h"
+#include "http/forward.h"
 #include "http/StatusCode.h"
-#include "HttpReply.h"
 
 class ESIVarState;
 class ClientHttpRequest;
@@ -23,6 +23,7 @@ class ClientHttpRequest;
 
 class ESIContext : public esiTreeParent, public ESIParserClient
 {
+    CBDATA_CLASS(ESIContext);
 
 public:
     typedef RefCount<ESIContext> Pointer;
@@ -92,7 +93,7 @@ public:
     err_type errorpage; /* if we error what page to use */
     Http::StatusCode errorstatus; /* if we error, what code to return */
     char *errormessage; /* error to pass to error page */
-    HttpReply::Pointer rep; /* buffered until we pass data downstream */
+    HttpReplyPointer rep; /* buffered until we pass data downstream */
     ESISegment::Pointer buffered; /* unprocessed data - for whatever reason */
     ESISegment::Pointer incoming;
     /* processed data we are waiting to send, or for
@@ -156,8 +157,6 @@ private:
     virtual void parserDefault (const char *s, int len);
     virtual void parserComment (const char *s);
     bool processing;
-
-    CBDATA_CLASS2(ESIContext);
 };
 
 #endif /* SQUID_ESICONTEXT_H */

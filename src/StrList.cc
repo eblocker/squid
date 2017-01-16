@@ -18,7 +18,7 @@ void
 strListAdd(String * str, const char *item, char del)
 {
     assert(str && item);
-    const String::size_type itemSize = strlen(item);
+    const auto itemSize = strlen(item);
     if (str->size()) {
         char buf[3];
         buf[0] = del;

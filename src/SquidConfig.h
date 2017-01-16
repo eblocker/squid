@@ -11,23 +11,21 @@
 
 #include "acl/forward.h"
 #include "base/RefCount.h"
+#include "base/YesNoNone.h"
 #include "ClientDelayConfig.h"
 #include "DelayConfig.h"
 #include "helper/ChildConfig.h"
 #include "HttpHeaderTools.h"
-#include "icmp/IcmpConfig.h"
 #include "ip/Address.h"
 #include "Notes.h"
+#include "security/forward.h"
+#include "SquidTime.h"
 #if USE_OPENSSL
 #include "ssl/support.h"
 #endif
-#include "YesNoNone.h"
+#include "store/forward.h"
 
 #if USE_OPENSSL
-#if HAVE_OPENSSL_SSL_H
-#include <openssl/ssl.h>
-#endif
-
 class sslproxy_cert_sign;
 class sslproxy_cert_adapt;
 #endif
@@ -36,17 +34,29 @@ namespace Mgr
 {
 class ActionPasswordList;
 } // namespace Mgr
+class CachePeer;
 class CustomLog;
 class CpuAffinityMap;
 class external_acl;
 class HeaderManglers;
 class RefreshPattern;
 class RemovalPolicySettings;
-class SwapDir;
 
 namespace AnyP
 {
 class PortCfg;
+}
+
+namespace Store {
+class DiskConfig {
+public:
+    RefCount<SwapDir> *swapDirs;
+    int n_allocated;
+    int n_configured;
+    /// number of disk processes required to support all cache_dirs
+    int n_strands;
+};
+#define INDEXSD(i) (Config.cacheSwap.swapDirs[i].getRaw())
 }
 
 /// the representation of the configuration. POD.
@@ -62,6 +72,7 @@ public:
     } Swap;
 
     YesNoNone memShared; ///< whether the memory cache is shared among workers
+    YesNoNone shmLocking; ///< shared_memory_locking
     size_t memMaxSize;
 
     struct {
@@ -92,14 +103,17 @@ public:
         time_t clientIdlePconn;
         time_t serverIdlePconn;
         time_t ftpClientIdle;
+        time_t pconnLifetime; ///< pconn_lifetime in squid.conf
         time_t siteSelect;
         time_t deadPeer;
+        time_t request_start_timeout;
         int icp_query;      /* msec */
         int icp_query_max;  /* msec */
         int icp_query_min;  /* msec */
         int mcast_icp_query;    /* msec */
         time_msec_t idns_retransmit;
         time_msec_t idns_query;
+        time_t urlRewrite;
     } Timeout;
     size_t maxRequestHeaderSize;
     int64_t maxRequestBodySize;
@@ -146,10 +160,6 @@ public:
         int rebuildwait;
         void *info;
     } Wccp2;
-#endif
-
-#if USE_ICMP
-    IcmpConfig pinger;
 #endif
 
     char *as_whois_server;
@@ -295,7 +305,6 @@ public:
         int digest_generation;
 #endif
 
-        int ie_refresh;
         int vary_ignore_expire;
         int surrogate_is_remote;
         int request_entities;
@@ -326,7 +335,12 @@ public:
         int hostStrictVerify;
         int client_dst_passthru;
         int dns_mdns;
+#if USE_OPENSSL
+        bool logTlsServerHelloDetails;
+#endif
     } onoff;
+
+    int64_t collapsed_forwarding_shared_entries_limit;
 
     int pipeline_max_prefetch;
 
@@ -357,7 +371,7 @@ public:
         acl_access *redirector;
         acl_access *store_id;
         acl_access *reply;
-        AclAddress *outgoing_address;
+        Acl::Address *outgoing_address;
 #if USE_HTCP
 
         acl_access *htcp;
@@ -377,8 +391,12 @@ public:
         /// spoof_client_ip squid.conf acl.
         /// nil unless configured
         acl_access* spoof_client_ip;
+        acl_access *on_unsupported_protocol;
 
         acl_access *ftp_epsv;
+
+        acl_access *forceRequestBodyContinuation;
+        acl_access *serverPconnForNonretriable;
     } accessList;
     AclDenyInfoList *denyInfoList;
 
@@ -395,17 +413,7 @@ public:
     } Ftp;
     RefreshPattern *Refresh;
 
-    struct _cacheSwap {
-        RefCount<SwapDir> *swapDirs;
-        int n_allocated;
-        int n_configured;
-        /// number of disk processes required to support all cache_dirs
-        int n_strands;
-    } cacheSwap;
-    /*
-     * I'm sick of having to keep doing this ..
-     */
-#define INDEXSD(i)   (Config.cacheSwap.swapDirs[(i)].getRaw())
+    Store::DiskConfig cacheSwap;
 
     struct {
         char *directory;
@@ -457,6 +465,8 @@ public:
     HeaderManglers *reply_header_access;
     ///request_header_add access list
     HeaderWithAclList *request_header_add;
+    ///reply_header_add access list
+    HeaderWithAclList *reply_header_add;
     ///note
     Notes notes;
     char *coredump_dir;
@@ -482,8 +492,6 @@ public:
     } SSL;
 #endif
 
-    wordlist *ext_methods;
-
     struct {
         int high_rptm;
         int high_pf;
@@ -494,26 +502,15 @@ public:
     time_t minimum_expiry_time; /* seconds */
     external_acl *externalAclHelperList;
 
-#if USE_OPENSSL
-
     struct {
-        char *cert;
-        char *key;
-        int version;
-        char *options;
-        long parsedOptions;
-        char *cipher;
-        char *cafile;
-        char *capath;
-        char *crlfile;
-        char *flags;
+        Security::ContextPointer sslContext;
+#if USE_OPENSSL
         char *foreignIntermediateCertsPath;
         acl_access *cert_error;
-        SSL_CTX *sslContext;
         sslproxy_cert_sign *cert_sign;
         sslproxy_cert_adapt *cert_adapt;
-    } ssl_client;
 #endif
+    } ssl_client;
 
     char *accept_filter;
     int umask;
@@ -529,6 +526,11 @@ public:
 
     char *redirector_extras;
 
+    struct UrlHelperTimeout {
+        int action;
+        char *response;
+    } onUrlRewriteTimeout;
+
     char *storeId_extras;
 
     struct {
@@ -543,12 +545,15 @@ extern SquidConfig Config;
 class SquidConfig2
 {
 public:
+    void clear() {
+        *this = SquidConfig2();
+    }
+
     struct {
-        int enable_purge;
-        int mangle_request_headers;
+        int enable_purge = 0;
     } onoff;
-    uid_t effectiveUserID;
-    gid_t effectiveGroupID;
+    uid_t effectiveUserID = 0;
+    gid_t effectiveGroupID = 0;
 };
 
 extern SquidConfig2 Config2;

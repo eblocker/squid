@@ -410,7 +410,8 @@ Comm::ConnOpener::lookupLocalAddress()
     Ip::Address::InitAddr(addr);
 
     if (getsockname(conn_->fd, addr->ai_addr, &(addr->ai_addrlen)) != 0) {
-        debugs(50, DBG_IMPORTANT, "ERROR: Failed to retrieve TCP/UDP details for socket: " << conn_ << ": " << xstrerror());
+        int xerrno = errno;
+        debugs(50, DBG_IMPORTANT, "ERROR: Failed to retrieve TCP/UDP details for socket: " << conn_ << ": " << xstrerr(xerrno));
         Ip::Address::FreeAddr(addr);
         return;
     }
@@ -448,7 +449,7 @@ Comm::ConnOpener::timeout(const CommTimeoutCbParams &)
  * XXX: As soon as Comm::SetSelect() accepts Async calls we can use a ConnOpener::doConnect call
  */
 void
-Comm::ConnOpener::InProgressConnectRetry(int fd, void *data)
+Comm::ConnOpener::InProgressConnectRetry(int, void *data)
 {
     Pointer *ptr = static_cast<Pointer*>(data);
     assert(ptr);

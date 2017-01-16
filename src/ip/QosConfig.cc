@@ -22,6 +22,22 @@
 
 #include <cerrno>
 
+CBDATA_CLASS_INIT(acl_tos);
+
+acl_tos::~acl_tos()
+{
+    aclDestroyAclList(&aclList);
+    delete next;
+}
+
+CBDATA_CLASS_INIT(acl_nfmark);
+
+acl_nfmark::~acl_nfmark()
+{
+    aclDestroyAclList(&aclList);
+    delete next;
+}
+
 void
 Ip::Qos::getTosFromServer(const Comm::ConnectionPointer &server, fde *clientFde)
 {
@@ -52,10 +68,12 @@ Ip::Qos::getTosFromServer(const Comm::ConnectionPointer &server, fde *clientFde)
                 pbuf += CMSG_LEN(o->cmsg_len);
             }
         } else {
-            debugs(33, DBG_IMPORTANT, "QOS: error in getsockopt(IP_PKTOPTIONS) on " << server << " " << xstrerror());
+            int xerrno = errno;
+            debugs(33, DBG_IMPORTANT, "QOS: error in getsockopt(IP_PKTOPTIONS) on " << server << " " << xstrerr(xerrno));
         }
     } else {
-        debugs(33, DBG_IMPORTANT, "QOS: error in setsockopt(IP_RECVTOS) on " << server << " " << xstrerror());
+        int xerrno = errno;
+        debugs(33, DBG_IMPORTANT, "QOS: error in setsockopt(IP_RECVTOS) on " << server << " " << xstrerr(xerrno));
     }
 #endif
 }
@@ -117,7 +135,7 @@ void Ip::Qos::getNfmarkFromServer(const Comm::ConnectionPointer &server, const f
 
 #if USE_LIBNETFILTERCONNTRACK
 int
-Ip::Qos::getNfMarkCallback(enum nf_conntrack_msg_type type,
+Ip::Qos::getNfMarkCallback(enum nf_conntrack_msg_type,
                            struct nf_conntrack *ct,
                            void *data)
 {

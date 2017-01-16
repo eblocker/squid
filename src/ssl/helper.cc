@@ -9,19 +9,17 @@
 #include "squid.h"
 #include "../helper.h"
 #include "anyp/PortCfg.h"
+#include "fs_io.h"
 #include "helper/Reply.h"
-#include "HttpRequest.h"
 #include "SquidConfig.h"
 #include "SquidString.h"
 #include "SquidTime.h"
 #include "ssl/cert_validate_message.h"
 #include "ssl/Config.h"
 #include "ssl/helper.h"
-#include "ssl/PeerConnector.h"
-#include "SwapDir.h"
 #include "wordlist.h"
 
-Ssl::CertValidationHelper::LruCache *Ssl::CertValidationHelper::HelperCache = NULL;
+Ssl::CertValidationHelper::LruCache *Ssl::CertValidationHelper::HelperCache = nullptr;
 
 #if USE_SSL_CRTD
 Ssl::Helper * Ssl::Helper::GetInstance()
@@ -48,12 +46,10 @@ void Ssl::Helper::Init()
     bool found = false;
     for (AnyP::PortCfgPointer s = HttpPortList; !found && s != NULL; s = s->next)
         found = s->flags.tunnelSslBumping && s->generateHostCertificates;
-    for (AnyP::PortCfgPointer s = HttpsPortList; !found && s != NULL; s = s->next)
-        found = s->flags.tunnelSslBumping && s->generateHostCertificates;
     if (!found)
         return;
 
-    ssl_crtd = new helper("ssl_crtd");
+    ssl_crtd = new helper(Ssl::TheConfig.ssl_crtd);
     ssl_crtd->childs.updateLimits(Ssl::TheConfig.ssl_crtdChildren);
     ssl_crtd->ipc_type = IPC_STREAM;
     // The crtd messages may contain the eol ('\n') character. We are
@@ -84,26 +80,16 @@ void Ssl::Helper::Shutdown()
 
 void Ssl::Helper::sslSubmit(CrtdMessage const & message, HLPCB * callback, void * data)
 {
-    static time_t first_warn = 0;
     assert(ssl_crtd);
 
-    if (ssl_crtd->stats.queue_size >= (int)(ssl_crtd->childs.n_running * 2)) {
-        if (first_warn == 0)
-            first_warn = squid_curtime;
-        if (squid_curtime - first_warn > 3 * 60)
-            fatal("SSL servers not responding for 3 minutes");
-        debugs(34, DBG_IMPORTANT, HERE << "Queue overload, rejecting");
-        ::Helper::Reply failReply;
-        failReply.result = ::Helper::BrokenHelper;
+    std::string msg = message.compose();
+    msg += '\n';
+    if (!ssl_crtd->trySubmit(msg.c_str(), callback, data)) {
+        ::Helper::Reply failReply(::Helper::BrokenHelper);
         failReply.notes.add("message", "error 45 Temporary network problem, please retry later");
         callback(data, failReply);
         return;
     }
-
-    first_warn = 0;
-    std::string msg = message.compose();
-    msg += '\n';
-    helperSubmit(ssl_crtd, msg.c_str(), callback, data);
 }
 #endif //USE_SSL_CRTD
 
@@ -131,8 +117,6 @@ void Ssl::CertValidationHelper::Init()
     // we need to start ssl_crtd only if some port(s) need to bump SSL
     bool found = false;
     for (AnyP::PortCfgPointer s = HttpPortList; !found && s != NULL; s = s->next)
-        found = s->flags.tunnelSslBumping;
-    for (AnyP::PortCfgPointer s = HttpsPortList; !found && s != NULL; s = s->next)
         found = s->flags.tunnelSslBumping;
     if (!found)
         return;
@@ -190,11 +174,14 @@ void Ssl::CertValidationHelper::Shutdown()
     HelperCache = NULL;
 }
 
-struct submitData {
+class submitData
+{
+    CBDATA_CLASS(submitData);
+
+public:
     std::string query;
     AsyncCall::Pointer callback;
-    SSL *ssl;
-    CBDATA_CLASS2(submitData);
+    Security::SessionPointer ssl;
 };
 CBDATA_CLASS_INIT(submitData);
 
@@ -206,9 +193,12 @@ sslCrtvdHandleReplyWrapper(void *data, const ::Helper::Reply &reply)
     std::string error;
 
     submitData *crtdvdData = static_cast<submitData *>(data);
-    STACK_OF(X509) *peerCerts = SSL_get_peer_cert_chain(crtdvdData->ssl);
+    STACK_OF(X509) *peerCerts = SSL_get_peer_cert_chain(crtdvdData->ssl.get());
     if (reply.result == ::Helper::BrokenHelper) {
         debugs(83, DBG_IMPORTANT, "\"ssl_crtvd\" helper error response: " << reply.other().content());
+        validationResponse->resultCode = ::Helper::BrokenHelper;
+    } else if (!reply.other().hasContent()) {
+        debugs(83, DBG_IMPORTANT, "\"ssl_crtvd\" helper returned NULL response");
         validationResponse->resultCode = ::Helper::BrokenHelper;
     } else if (replyMsg.parse(reply.other().content(), reply.other().contentSize()) != Ssl::CrtdMessage::OK ||
                !replyMsg.parseResponse(*validationResponse, peerCerts, error) ) {
@@ -230,30 +220,12 @@ sslCrtvdHandleReplyWrapper(void *data, const ::Helper::Reply &reply)
             delete item;
     }
 
-    SSL_free(crtdvdData->ssl);
     delete crtdvdData;
 }
 
 void Ssl::CertValidationHelper::sslSubmit(Ssl::CertValidationRequest const &request, AsyncCall::Pointer &callback)
 {
-    static time_t first_warn = 0;
     assert(ssl_crt_validator);
-
-    if (ssl_crt_validator->stats.queue_size >= (int)(ssl_crt_validator->childs.n_running * 2)) {
-        if (first_warn == 0)
-            first_warn = squid_curtime;
-        if (squid_curtime - first_warn > 3 * 60)
-            fatal("ssl_crtvd queue being overloaded for long time");
-        debugs(83, DBG_IMPORTANT, "WARNING: ssl_crtvd queue overload, rejecting");
-        Ssl::CertValidationResponse::Pointer resp = new Ssl::CertValidationResponse;
-        resp->resultCode = ::Helper::BrokenHelper;
-        Ssl::CertValidationHelper::CbDialer *dialer = dynamic_cast<Ssl::CertValidationHelper::CbDialer*>(callback->getDialer());
-        Must(dialer);
-        dialer->arg1 = resp;
-        ScheduleCallHere(callback);
-        return;
-    }
-    first_warn = 0;
 
     Ssl::CertValidationMsg message(Ssl::CrtdMessage::REQUEST);
     message.setCode(Ssl::CertValidationMsg::code_cert_validate);
@@ -264,8 +236,7 @@ void Ssl::CertValidationHelper::sslSubmit(Ssl::CertValidationRequest const &requ
     crtdvdData->query = message.compose();
     crtdvdData->query += '\n';
     crtdvdData->callback = callback;
-    crtdvdData->ssl = request.ssl;
-    CRYPTO_add(&crtdvdData->ssl->references,1,CRYPTO_LOCK_SSL);
+    crtdvdData->ssl.resetAndLock(request.ssl);
     Ssl::CertValidationResponse::Pointer const*validationResponse;
 
     if (CertValidationHelper::HelperCache &&
@@ -275,10 +246,19 @@ void Ssl::CertValidationHelper::sslSubmit(Ssl::CertValidationRequest const &requ
         Must(dialer);
         dialer->arg1 = *validationResponse;
         ScheduleCallHere(callback);
-        SSL_free(crtdvdData->ssl);
         delete crtdvdData;
         return;
     }
-    helperSubmit(ssl_crt_validator, crtdvdData->query.c_str(), sslCrtvdHandleReplyWrapper, crtdvdData);
+
+    if (!ssl_crt_validator->trySubmit(crtdvdData->query.c_str(), sslCrtvdHandleReplyWrapper, crtdvdData)) {
+        Ssl::CertValidationResponse::Pointer resp = new Ssl::CertValidationResponse;;
+        resp->resultCode = ::Helper::BrokenHelper;
+        Ssl::CertValidationHelper::CbDialer *dialer = dynamic_cast<Ssl::CertValidationHelper::CbDialer*>(callback->getDialer());
+        Must(dialer);
+        dialer->arg1 = resp;
+        ScheduleCallHere(callback);
+        delete crtdvdData;
+        return;
+    }
 }
 

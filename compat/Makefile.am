@@ -14,8 +14,8 @@ include $(top_srcdir)/src/Common.am
 
 # Port Specific Configurations
 
-noinst_LTLIBRARIES = libcompat-squid.la
-libcompat_squid_la_SOURCES = \
+noinst_LTLIBRARIES = libcompatsquid.la
+libcompatsquid_la_SOURCES = \
 	assert.cc \
 	assert.h \
 	cmsg.h \
@@ -26,7 +26,6 @@ libcompat_squid_la_SOURCES = \
 	cppunit.h \
 	debug.cc \
 	debug.h \
-	drand48.h \
 	eui64_aton.h \
 	eui64_aton.c \
 	fdsetsize.h \
@@ -87,7 +86,7 @@ libcompat_squid_la_SOURCES = \
 	os/solaris.h \
 	os/sunos.h
 
-libcompat_squid_la_LIBADD= $(LTLIBOBJS)
+libcompatsquid_la_LIBADD= $(LTLIBOBJS)
 
 check_PROGRAMS += testPreCompiler
 TESTS += testPreCompiler
@@ -95,7 +94,7 @@ TESTS += testPreCompiler
 testPreCompiler_SOURCES= \
 	testPreCompiler.h \
 	testPreCompiler.cc
-testPreCompiler_LDADD= $(SQUID_CPPUNIT_LA) $(SQUID_CPPUNIT_LIBS)
+testPreCompiler_LDADD= $(LIBCPPUNIT_LIBS)
 testPreCompiler_LDFLAGS=
 
 # os/ subdir prevents us using src/TestHeaders.am

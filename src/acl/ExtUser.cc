@@ -17,6 +17,7 @@
 #include "acl/RegexData.h"
 #include "acl/UserData.h"
 #include "client_side.h"
+#include "http/Stream.h"
 
 ACLExtUser::~ACLExtUser()
 {
@@ -45,8 +46,6 @@ ACLExtUser::typeString() const
 void
 ACLExtUser::parse()
 {
-    debugs(28, 3, "aclParseUserList: current is null. Creating");
-    data = new ACLUserData;
     data->parse();
 }
 

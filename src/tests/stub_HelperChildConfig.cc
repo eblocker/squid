@@ -21,7 +21,10 @@ Helper::ChildConfig::ChildConfig():
     n_idle(1),
     concurrency(0),
     n_running(0),
-    n_active(0)
+    n_active(0),
+    queue_size(0),
+    onPersistentOverload(actDie),
+    defaultQueueSize(true)
 {}
 
 Helper::ChildConfig::ChildConfig(const unsigned int m):
@@ -30,7 +33,10 @@ Helper::ChildConfig::ChildConfig(const unsigned int m):
     n_idle(1),
     concurrency(0),
     n_running(0),
-    n_active(0)
+    n_active(0),
+    queue_size(2 * m),
+    onPersistentOverload(actDie),
+    defaultQueueSize(true)
 {}
 
 int

@@ -12,6 +12,7 @@
 #include "base/TextException.h"
 #include "ipc/TypedMsgHdr.h"
 #include "mgr/ActionParams.h"
+#include "sbuf/StringConvert.h"
 
 Mgr::ActionParams::ActionParams(): httpMethod(Http::METHOD_NONE)
 {
@@ -23,7 +24,7 @@ Mgr::ActionParams::ActionParams(const Ipc::TypedMsgHdr &msg)
 
     String method;
     msg.getString(method);
-    httpMethod = HttpRequestMethod(method.termedBuf(), NULL);
+    httpMethod.HttpRequestMethodXXX(method.termedBuf());
 
     msg.getPod(httpFlags);
     msg.getString(httpOrigin);
@@ -38,7 +39,7 @@ void
 Mgr::ActionParams::pack(Ipc::TypedMsgHdr &msg) const
 {
     msg.putString(httpUri);
-    String foo(httpMethod.image().toString());
+    auto foo = SBufToString(httpMethod.image());
     msg.putString(foo);
     msg.putPod(httpFlags);
     msg.putString(httpOrigin);

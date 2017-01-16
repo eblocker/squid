@@ -10,7 +10,6 @@
 
 #include "squid.h"
 #include "md5.h"
-#include "Mem.h"
 #include "StatCounters.h"
 #include "Store.h"
 #include "store_key_md5.h"
@@ -18,6 +17,7 @@
 #if USE_CACHE_DIGESTS
 
 #include "CacheDigest.h"
+#include "util.h"
 
 /* local types */
 
@@ -34,140 +34,124 @@ static void cacheDigestHashKey(const CacheDigest * cd, const cache_key * key);
 /* static array used by cacheDigestHashKey for optimization purposes */
 static uint32_t hashed_keys[4];
 
-static void
-cacheDigestInit(CacheDigest * cd, uint64_t capacity, uint8_t bpe)
+void
+CacheDigest::init(uint64_t newCapacity)
 {
-    const uint32_t mask_size = cacheDigestCalcMaskSize(capacity, bpe);
-    assert(cd);
-    assert(capacity > 0 && bpe > 0);
-    assert(mask_size != 0);
-    cd->capacity = capacity;
-    cd->bits_per_entry = bpe;
-    cd->mask_size = mask_size;
-    cd->mask = (char *)xcalloc(cd->mask_size, 1);
-    debugs(70, 2, "cacheDigestInit: capacity: " << cd->capacity << " entries, bpe: " << cd->bits_per_entry << "; size: "
-           << cd->mask_size << " bytes");
+    const auto newMaskSz = CacheDigest::CalcMaskSize(newCapacity, bits_per_entry);
+    assert(newCapacity > 0 && bits_per_entry > 0);
+    assert(newMaskSz != 0);
+    capacity = newCapacity;
+    mask_size = newMaskSz;
+    mask = static_cast<char *>(xcalloc(mask_size,1));
+    debugs(70, 2, "capacity: " << capacity << " entries, bpe: " << bits_per_entry << "; size: "
+           << mask_size << " bytes");
 }
 
-CacheDigest *
-cacheDigestCreate(uint64_t capacity, uint8_t bpe)
+CacheDigest::CacheDigest(uint64_t aCapacity, uint8_t bpe) :
+    count(0),
+    del_count(0),
+    capacity(0),
+    mask(nullptr),
+    mask_size(0),
+    bits_per_entry(bpe)
 {
-    CacheDigest *cd = (CacheDigest *)memAllocate(MEM_CACHE_DIGEST);
     assert(SQUID_MD5_DIGEST_LENGTH == 16);  /* our hash functions rely on 16 byte keys */
-    cacheDigestInit(cd, capacity, bpe);
-    return cd;
+    updateCapacity(aCapacity);
 }
 
-static void
-cacheDigestClean(CacheDigest * cd)
+CacheDigest::~CacheDigest()
 {
-    assert(cd);
-    xfree(cd->mask);
-    cd->mask = NULL;
-}
-
-void
-cacheDigestDestroy(CacheDigest * cd)
-{
-    assert(cd);
-    cacheDigestClean(cd);
-    memFree(cd, MEM_CACHE_DIGEST);
+    xfree(mask);
 }
 
 CacheDigest *
-cacheDigestClone(const CacheDigest * cd)
+CacheDigest::clone() const
 {
-    CacheDigest *clone;
-    assert(cd);
-    clone = cacheDigestCreate(cd->capacity, cd->bits_per_entry);
-    clone->count = cd->count;
-    clone->del_count = cd->del_count;
-    assert(cd->mask_size == clone->mask_size);
-    memcpy(clone->mask, cd->mask, cd->mask_size);
-    return clone;
+    CacheDigest *cl = new CacheDigest(capacity, bits_per_entry);
+    cl->count = count;
+    cl->del_count = del_count;
+    assert(mask_size == cl->mask_size);
+    memcpy(cl->mask, mask, mask_size);
+    return cl;
 }
 
 void
-cacheDigestClear(CacheDigest * cd)
+CacheDigest::clear()
 {
-    assert(cd);
-    cd->count = cd->del_count = 0;
-    memset(cd->mask, 0, cd->mask_size);
+    count = del_count = 0;
+    memset(mask, 0, mask_size);
 }
 
-/* changes mask size, resets bits to 0, preserves "cd" pointer */
 void
-cacheDigestChangeCap(CacheDigest * cd, uint64_t new_cap)
+CacheDigest::updateCapacity(uint64_t newCapacity)
 {
-    assert(cd);
-    cacheDigestClean(cd);
-    cacheDigestInit(cd, new_cap, cd->bits_per_entry);
+    safe_free(mask);
+    init(newCapacity); // will re-init mask and mask_size
 }
 
-/* returns true if the key belongs to the digest */
-int
-cacheDigestTest(const CacheDigest * cd, const cache_key * key)
+bool
+CacheDigest::contains(const cache_key * key) const
 {
-    assert(cd && key);
+    assert(key);
     /* hash */
-    cacheDigestHashKey(cd, key);
+    cacheDigestHashKey(this, key);
     /* test corresponding bits */
     return
-        CBIT_TEST(cd->mask, hashed_keys[0]) &&
-        CBIT_TEST(cd->mask, hashed_keys[1]) &&
-        CBIT_TEST(cd->mask, hashed_keys[2]) &&
-        CBIT_TEST(cd->mask, hashed_keys[3]);
+        CBIT_TEST(mask, hashed_keys[0]) &&
+        CBIT_TEST(mask, hashed_keys[1]) &&
+        CBIT_TEST(mask, hashed_keys[2]) &&
+        CBIT_TEST(mask, hashed_keys[3]);
 }
 
 void
-cacheDigestAdd(CacheDigest * cd, const cache_key * key)
+CacheDigest::add(const cache_key * key)
 {
-    assert(cd && key);
+    assert(key);
     /* hash */
-    cacheDigestHashKey(cd, key);
+    cacheDigestHashKey(this, key);
     /* turn on corresponding bits */
 #if CD_FAST_ADD
 
-    CBIT_SET(cd->mask, hashed_keys[0]);
-    CBIT_SET(cd->mask, hashed_keys[1]);
-    CBIT_SET(cd->mask, hashed_keys[2]);
-    CBIT_SET(cd->mask, hashed_keys[3]);
+    CBIT_SET(mask, hashed_keys[0]);
+    CBIT_SET(mask, hashed_keys[1]);
+    CBIT_SET(mask, hashed_keys[2]);
+    CBIT_SET(mask, hashed_keys[3]);
 #else
 
     {
         int on_xition_cnt = 0;
 
-        if (!CBIT_TEST(cd->mask, hashed_keys[0])) {
-            CBIT_SET(cd->mask, hashed_keys[0]);
+        if (!CBIT_TEST(mask, hashed_keys[0])) {
+            CBIT_SET(mask, hashed_keys[0]);
             ++on_xition_cnt;
         }
 
-        if (!CBIT_TEST(cd->mask, hashed_keys[1])) {
-            CBIT_SET(cd->mask, hashed_keys[1]);
+        if (!CBIT_TEST(mask, hashed_keys[1])) {
+            CBIT_SET(mask, hashed_keys[1]);
             ++on_xition_cnt;
         }
 
-        if (!CBIT_TEST(cd->mask, hashed_keys[2])) {
-            CBIT_SET(cd->mask, hashed_keys[2]);
+        if (!CBIT_TEST(mask, hashed_keys[2])) {
+            CBIT_SET(mask, hashed_keys[2]);
             ++on_xition_cnt;
         }
 
-        if (!CBIT_TEST(cd->mask, hashed_keys[3])) {
-            CBIT_SET(cd->mask, hashed_keys[3]);
+        if (!CBIT_TEST(mask, hashed_keys[3])) {
+            CBIT_SET(mask, hashed_keys[3]);
             ++on_xition_cnt;
         }
 
         statCounter.cd.on_xition_count.count(on_xition_cnt);
     }
 #endif
-    ++ cd->count;
+    ++count;
 }
 
 void
-cacheDigestDel(CacheDigest * cd, const cache_key * key)
+CacheDigest::remove(const cache_key * key)
 {
-    assert(cd && key);
-    ++ cd->del_count;
+    assert(key);
+    ++del_count;
     /* we do not support deletions from the digest */
 }
 
@@ -206,13 +190,12 @@ cacheDigestStats(const CacheDigest * cd, CacheDigestStats * stats)
     stats->bseq_count = seq_count;
 }
 
-int
-cacheDigestBitUtil(const CacheDigest * cd)
+double
+CacheDigest::usedMaskPercent() const
 {
     CacheDigestStats stats;
-    assert(cd);
-    cacheDigestStats(cd, &stats);
-    return xpercentInt(stats.bit_on_count, stats.bit_count);
+    cacheDigestStats(this, &stats);
+    return xpercent(stats.bit_on_count, stats.bit_count);
 }
 
 void
@@ -298,7 +281,7 @@ cacheDigestReport(CacheDigest * cd, const char *label, StoreEntry * e)
 }
 
 uint32_t
-cacheDigestCalcMaskSize(uint64_t cap, uint8_t bpe)
+CacheDigest::CalcMaskSize(uint64_t cap, uint8_t bpe)
 {
     uint64_t bitCount = (cap * bpe) + 7;
     assert(bitCount < INT_MAX); // dont 31-bit overflow later

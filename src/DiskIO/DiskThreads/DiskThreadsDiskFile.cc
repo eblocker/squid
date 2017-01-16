@@ -9,12 +9,12 @@
 /* DEBUG: section 79    Disk IO Routines */
 
 #include "squid.h"
-#include "disk.h"
 #include "DiskIO/IORequestor.h"
 #include "DiskIO/ReadRequest.h"
 #include "DiskIO/WriteRequest.h"
 #include "DiskThreadsDiskFile.h"
 #include "fd.h"
+#include "fs_io.h"
 #include "Generic.h"
 #include "globals.h"
 #include "StatCounters.h"
@@ -135,7 +135,7 @@ DiskThreadsDiskFile::OpenDone(int fd, void *cbdata, const char *buf, int aio_ret
 }
 
 void
-DiskThreadsDiskFile::openDone(int unused, const char *unused2, int anFD, int errflag)
+DiskThreadsDiskFile::openDone(int, const char *, int anFD, int errflag)
 {
     debugs(79, 3, "DiskThreadsDiskFile::openDone: FD " << anFD << ", errflag " << errflag);
     --Opening_FD;
@@ -143,8 +143,7 @@ DiskThreadsDiskFile::openDone(int unused, const char *unused2, int anFD, int err
     fd = anFD;
 
     if (errflag || fd < 0) {
-        errno = errflag;
-        debugs(79, DBG_CRITICAL, "DiskThreadsDiskFile::openDone: " << xstrerror());
+        debugs(79, DBG_CRITICAL, MYNAME << xstrerr(errflag));
         debugs(79, DBG_IMPORTANT, "\t" << path_);
         errorOccured = true;
     } else {

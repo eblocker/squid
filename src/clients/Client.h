@@ -58,7 +58,7 @@ public:
 
     /// abnormal data transfer termination
     /// \retval true the transaction will be terminated (abortAll called)
-    /// \retval false the transaction will survive
+    /// \reval false the transaction will survive
     virtual bool abortOnData(const char *reason);
 
     /// a hack to reach HttpStateData::orignal_request
@@ -151,7 +151,10 @@ protected:
     void adaptOrFinalizeReply();
     void addVirginReplyBody(const char *buf, ssize_t len);
     void storeReplyBody(const char *buf, ssize_t len);
+    /// \deprecated use SBuf I/O API and calcBufferSpaceToReserve() instead
     size_t replyBodySpace(const MemBuf &readBuf, const size_t minSpace) const;
+    /// determine how much space the buffer needs to reserve
+    size_t calcBufferSpaceToReserve(const size_t space, const size_t wantSpace) const;
 
     void adjustBodyBytesRead(const int64_t delta);
 

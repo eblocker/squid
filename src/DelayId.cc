@@ -20,6 +20,7 @@
 #include "DelayId.h"
 #include "DelayPool.h"
 #include "DelayPools.h"
+#include "http/Stream.h"
 #include "HttpRequest.h"
 #include "SquidConfig.h"
 
@@ -63,7 +64,7 @@ DelayId::operator bool() const
 
 /* create a delay Id for a given request */
 DelayId
-DelayId::DelayClient(ClientHttpRequest * http)
+DelayId::DelayClient(ClientHttpRequest * http, HttpReply *reply)
 {
     HttpRequest *r;
     unsigned short pool;
@@ -85,6 +86,10 @@ DelayId::DelayClient(ClientHttpRequest * http)
         }
 
         ACLFilledChecklist ch(DelayPools::delay_data[pool].access, r, NULL);
+        if (reply) {
+            ch.reply = reply;
+            HTTPMSGLOCK(reply);
+        }
 #if FOLLOW_X_FORWARDED_FOR
         if (Config.onoff.delay_pool_uses_indirect_client)
             ch.src_addr = r->indirect_client_addr;

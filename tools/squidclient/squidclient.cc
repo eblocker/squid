@@ -111,7 +111,7 @@ usage(const char *progname)
             << "HTTP Options:" << std::endl
             << "    -a           Do NOT include Accept: header." << std::endl
             << "    -A           User-Agent: header. Use \"\" to omit." << std::endl
-            << "    -H 'string'  Extra headers to send. Use '\\n' for new lines." << std::endl
+            << "    -H 'string'  Extra headers to send. Supports '\\\\', '\\n', '\\r' and '\\t'." << std::endl
             << "    -i IMS       If-Modified-Since time (in Epoch seconds)." << std::endl
             << "    -j hosthdr   Host header content" << std::endl
             << "    -k           Keep the connection active. Default is to do only one request then close." << std::endl
@@ -130,6 +130,56 @@ usage(const char *progname)
             << "    -W password  WWW authentication password" << std::endl
             ;
     exit(1);
+}
+
+static void
+shellUnescape(char *buf)
+{
+    if (!buf)
+        return;
+
+    unsigned char *p, *d;
+
+    d = p = reinterpret_cast<unsigned char *>(buf);
+
+    while (auto ch = *p) {
+
+        if (ch == '\\') {
+            ++p;
+
+            switch (*p) {
+            case 'n':
+                ch = '\n';
+                break;
+            case 'r':
+                ch = '\r';
+                break;
+            case 't':
+                ch = '\t';
+                break;
+            case '\\':
+                ch = '\\';
+                break;
+            default:
+                ch = *p;
+                debugVerbose(1, "Warning: unsupported shell code '\\" << ch << "'");
+                break;
+            }
+
+            *d = ch;
+
+            if (!ch)
+                continue;
+
+        } else {
+            *d = *p;
+        }
+
+        ++p;
+        ++d;
+    }
+
+    *d = '\0';
 }
 
 int
@@ -262,10 +312,8 @@ main(int argc, char *argv[])
 
             case 'H':
                 if (strlen(optarg)) {
-                    char *t;
                     strncpy(extra_hdrs, optarg, sizeof(extra_hdrs));
-                    while ((t = strstr(extra_hdrs, "\\n")))
-                        *t = '\r', *(t + 1) = '\n';
+                    shellUnescape(extra_hdrs);
                 }
                 break;
 
@@ -347,7 +395,8 @@ main(int argc, char *argv[])
         set_our_signal();
 
         if (put_fd < 0) {
-            std::cerr << "ERROR: can't open file (" << xstrerror() << ")" << std::endl;
+            int xerrno = errno;
+            std::cerr << "ERROR: can't open file (" << xstrerr(xerrno) << ")" << std::endl;
             exit(-1);
         }
 #if _SQUID_WINDOWS_
@@ -355,7 +404,8 @@ main(int argc, char *argv[])
 #endif
 
         if (fstat(put_fd, &sb) < 0) {
-            std::cerr << "ERROR: can't identify length of file (" << xstrerror() << ")" << std::endl;
+            int xerrno = errno;
+            std::cerr << "ERROR: can't identify length of file (" << xstrerr(xerrno) << ")" << std::endl;
         }
     }
 
@@ -417,6 +467,9 @@ main(int argc, char *argv[])
             snprintf(buf, BUFSIZ, "Max-Forwards: %d\r\n", max_forwards);
             strcat(msg, buf);
         }
+        struct base64_encode_ctx ctx;
+        base64_encode_init(&ctx);
+        size_t blen;
         if (proxy_user) {
             const char *user = proxy_user;
             const char *password = proxy_password;
@@ -428,9 +481,14 @@ main(int argc, char *argv[])
                 std::cerr << "ERROR: Proxy password missing" << std::endl;
                 exit(1);
             }
-            snprintf(buf, BUFSIZ, "%s:%s", user, password);
-            snprintf(buf, BUFSIZ, "Proxy-Authorization: Basic %s\r\n", old_base64_encode(buf));
+            uint8_t *pwdBuf = new uint8_t[base64_encode_len(strlen(user)+1+strlen(password))];
+            blen = base64_encode_update(&ctx, pwdBuf, strlen(user), reinterpret_cast<const uint8_t*>(user));
+            blen += base64_encode_update(&ctx, pwdBuf+blen, 1, reinterpret_cast<const uint8_t*>(":"));
+            blen += base64_encode_update(&ctx, pwdBuf+blen, strlen(password), reinterpret_cast<const uint8_t*>(password));
+            blen += base64_encode_final(&ctx, pwdBuf+blen);
+            snprintf(buf, BUFSIZ, "Proxy-Authorization: Basic %.*s\r\n", (int)blen, reinterpret_cast<char*>(pwdBuf));
             strcat(msg, buf);
+            delete[] pwdBuf;
         }
         if (www_user) {
             const char *user = www_user;
@@ -443,22 +501,31 @@ main(int argc, char *argv[])
                 std::cerr << "ERROR: WWW password missing" << std::endl;
                 exit(1);
             }
-            snprintf(buf, BUFSIZ, "%s:%s", user, password);
-            snprintf(buf, BUFSIZ, "Authorization: Basic %s\r\n", old_base64_encode(buf));
+            uint8_t *pwdBuf = new uint8_t[base64_encode_len(strlen(user)+1+strlen(password))];
+            blen = base64_encode_update(&ctx, pwdBuf, strlen(user), reinterpret_cast<const uint8_t*>(user));
+            blen += base64_encode_update(&ctx, pwdBuf+blen, 1, reinterpret_cast<const uint8_t*>(":"));
+            blen += base64_encode_update(&ctx, pwdBuf+blen, strlen(password), reinterpret_cast<const uint8_t*>(password));
+            blen += base64_encode_final(&ctx, pwdBuf+blen);
+            snprintf(buf, BUFSIZ, "Authorization: Basic %.*s\r\n", (int)blen, reinterpret_cast<char*>(pwdBuf));
             strcat(msg, buf);
+            delete[] pwdBuf;
         }
 #if HAVE_GSSAPI
         if (www_neg) {
             if (host) {
-                snprintf(buf, BUFSIZ, "Authorization: Negotiate %s\r\n", GSSAPI_token(host));
+                const char *token = GSSAPI_token(host);
+                snprintf(buf, BUFSIZ, "Authorization: Negotiate %s\r\n", token);
                 strcat(msg, buf);
+                delete[] token;
             } else
                 std::cerr << "ERROR: server host missing" << std::endl;
         }
         if (proxy_neg) {
             if (Transport::Config.hostname) {
-                snprintf(buf, BUFSIZ, "Proxy-Authorization: Negotiate %s\r\n", GSSAPI_token(Transport::Config.hostname));
+                const char *token = GSSAPI_token(Transport::Config.hostname);
+                snprintf(buf, BUFSIZ, "Proxy-Authorization: Negotiate %s\r\n", token);
                 strcat(msg, buf);
+                delete[] token;
             } else
                 std::cerr << "ERROR: proxy server host missing" << std::endl;
         }
@@ -527,8 +594,10 @@ main(int argc, char *argv[])
         while ((len = Transport::Read(buf, sizeof(buf))) > 0) {
             fsize += len;
 
-            if (to_stdout && fwrite(buf, len, 1, stdout) != 1)
-                std::cerr << "ERROR: writing to stdout: " << xstrerror() << std::endl;
+            if (to_stdout && fwrite(buf, len, 1, stdout) != 1) {
+                int xerrno = errno;
+                std::cerr << "ERROR: writing to stdout: " << xstrerr(xerrno) << std::endl;
+            }
         }
 
 #if USE_GNUTLS
@@ -561,7 +630,7 @@ main(int argc, char *argv[])
 }
 
 void
-pipe_handler(int sig)
+pipe_handler(int)
 {
     std::cerr << "SIGPIPE received." << std::endl;
 }

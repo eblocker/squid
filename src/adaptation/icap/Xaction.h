@@ -15,7 +15,9 @@
 #include "comm/ConnOpener.h"
 #include "HttpReply.h"
 #include "ipcache.h"
-#include "MemBuf.h"
+#include "sbuf/SBuf.h"
+
+class MemBuf;
 
 namespace Adaptation
 {
@@ -69,8 +71,9 @@ protected:
     virtual void handleCommTimedout();
     virtual void handleCommClosed();
 
+    void handleSecuredPeer(Security::EncryptorAnswer &answer);
     /// record error detail if possible
-    virtual void detailError(int errDetail) {}
+    virtual void detailError(int) {}
 
     void openConnection();
     void closeConnection();
@@ -108,6 +111,7 @@ public:
     virtual void callEnd();
     /// clear stored error details, if any; used for retries/repeats
     virtual void clearError() {}
+    virtual AccessLogEntry::Pointer masterLogEntry();
     void dnsLookupDone(const ipcache_addrs *ia);
 
 protected:
@@ -126,20 +130,7 @@ protected:
     Comm::ConnectionPointer connection;     ///< ICAP server connection
     Adaptation::Icap::ServiceRep::Pointer theService;
 
-    /*
-     * We have two read buffers.   We would prefer to read directly
-     * into the MemBuf, but since comm_read isn't MemBuf-aware, and
-     * uses event-delayed callbacks, it leaves the MemBuf in an
-     * inconsistent state.  There would be data in the buffer, but
-     * MemBuf.size won't be updated until the (delayed) callback
-     * occurs.   To avoid that situation we use a plain buffer
-     * (commBuf) and then copy (append) its contents to readBuf in
-     * the callback.  If comm_read ever becomes MemBuf-aware, we
-     * can eliminate commBuf and this extra buffer copy.
-     */
-    MemBuf readBuf;
-    char *commBuf;
-    size_t commBufSize;
+    SBuf readBuf;
     bool commEof;
     bool reuseConnection;
     bool isRetriable;  ///< can retry on persistent connection failures
@@ -163,6 +154,7 @@ protected:
 
 private:
     Comm::ConnOpener::Pointer cs;
+    AsyncCall::Pointer securer; ///< whether we are securing a connection
 };
 
 } // namespace Icap

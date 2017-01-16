@@ -13,7 +13,6 @@
 #include "base/TextException.h"
 #include "ipc/mem/PagePool.h"
 #include "ipc/mem/Pages.h"
-#include "SwapDir.h"
 #include "tools.h"
 
 // Uses a single PagePool instance, for now.
@@ -132,9 +131,6 @@ SharedMemPagesRr::open()
 
 SharedMemPagesRr::~SharedMemPagesRr()
 {
-    if (!UsingSmp())
-        return;
-
     delete ThePagePool;
     ThePagePool = NULL;
     delete owner;

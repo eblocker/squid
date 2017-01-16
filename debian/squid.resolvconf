@@ -1,9 +1,0 @@
-#!/bin/sh
-
-PATH="/usr/sbin:/usr/bin:/sbin:/bin"
-
-# Make squid aware of changes to resolv.conf
-# Avoid reload before /usr is mounted
-if [ -d /usr/sbin ] ; then
-   invoke-rc.d squid reload || true
-fi

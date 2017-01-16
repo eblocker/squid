@@ -11,15 +11,16 @@
 
 #include "clients/Client.h"
 #include "comm.h"
-#include "HttpStateFlags.h"
-#include "SBuf.h"
+#include "http/forward.h"
+#include "http/StateFlags.h"
+#include "sbuf/SBuf.h"
 
-class ChunkedCodingParser;
 class FwdState;
 class HttpHeader;
 
 class HttpStateData : public Client
 {
+    CBDATA_CLASS(HttpStateData);
 
 public:
     HttpStateData(FwdState *);
@@ -29,7 +30,7 @@ public:
                                        StoreEntry * entry,
                                        const AccessLogEntryPointer &al,
                                        HttpHeader * hdr_out,
-                                       const HttpStateFlags &flags);
+                                       const Http::StateFlags &flags);
 
     virtual const Comm::ConnectionPointer & dataConnection() const;
     /* should be private */
@@ -45,12 +46,9 @@ public:
     CachePeer *_peer;       /* CachePeer request made to */
     int eof;            /* reached end-of-object? */
     int lastChunk;      /* reached last chunk of a chunk-encoded reply */
-    HttpStateFlags flags;
+    Http::StateFlags flags;
     size_t read_sz;
-    int header_bytes_read;  // to find end of response,
-    int64_t reply_bytes_read;   // without relying on StoreEntry
-    int body_bytes_truncated; // positive when we read more than we wanted
-    MemBuf *readBuf;
+    SBuf inBuf;                ///< I/O buffer for receiving server responses
     bool ignoreCacheControl;
     bool surrogateNoStore;
 
@@ -90,11 +88,23 @@ private:
     virtual void abortAll(const char *reason); // abnormal termination
     virtual bool mayReadVirginReplyBody() const;
 
+    void abortTransaction(const char *reason) { abortAll(reason); } // abnormal termination
+
+    /**
+     * determine if read buffer can have space made available
+     * for a read.
+     *
+     * \param grow  whether to actually expand the buffer
+     *
+     * \return whether the buffer can be grown to provide space
+     *         regardless of whether the grow actually happened.
+     */
+    bool maybeMakeSpaceAvailable(bool grow);
+
     // consuming request body
     virtual void handleMoreRequestBodyAvailable();
     virtual void handleRequestBodyProducerAborted();
 
-    void abortTransaction(const char *reason) { abortAll(reason); } // abnormal termination
     void writeReplyBody();
     bool decodeAndWriteReplyBody();
     bool finishingBrokenPost();
@@ -111,12 +121,18 @@ private:
     static bool decideIfWeDoRanges (HttpRequest * orig_request);
     bool peerSupportsConnectionPinning() const;
 
-    ChunkedCodingParser *httpChunkDecoder;
+    /// Parser being used at present to parse the HTTP/ICY server response.
+    Http1::ResponseParserPointer hp;
+    Http1::TeChunkedParser *httpChunkDecoder;
+
+    /// amount of message payload/body received so far.
+    int64_t payloadSeen;
+    /// positive when we read more than we wanted
+    int64_t payloadTruncated;
+
     /// Whether we received a Date header older than that of a matching
     /// cached response.
     bool sawDateGoBack;
-private:
-    CBDATA_CLASS2(HttpStateData);
 };
 
 int httpCachable(const HttpRequestMethod&);

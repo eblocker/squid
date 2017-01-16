@@ -24,9 +24,7 @@ namespace Comm
  */
 class ConnOpener : public AsyncJob
 {
-protected:
-    virtual void start();
-    virtual void swanSong();
+    CBDATA_CLASS(ConnOpener);
 
 public:
     void noteAbort() { mustStop("externally aborted"); }
@@ -40,6 +38,10 @@ public:
 
     void setHost(const char *);    ///< set the hostname note for this connection
     const char * getHost() const;  ///< get the hostname noted for this connection
+
+protected:
+    virtual void start();
+    virtual void swanSong();
 
 private:
     // Undefined because two openers cannot share a connection
@@ -85,8 +87,6 @@ private:
         /// [that we can cancel], but it will probably become one eventually.
         bool sleep_;
     } calls_;
-
-    CBDATA_CLASS2(ConnOpener);
 };
 
 }; // namespace Comm

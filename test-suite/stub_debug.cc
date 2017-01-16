@@ -27,22 +27,21 @@ int Debug::log_stderr = 1;
 bool Debug::log_syslog = false;
 
 Ctx
-ctx_enter(const char *descr)
+ctx_enter(const char *)
 {
     return -1;
 }
 
 void
-ctx_exit(Ctx ctx)
-{
-}
-
-void
-_db_init(const char *logfile, const char *options)
+ctx_exit(Ctx)
 {}
 
 void
-_db_set_syslog(const char *facility)
+_db_init(const char *, const char *)
+{}
+
+void
+_db_set_syslog(const char *)
 {}
 
 void
@@ -86,9 +85,7 @@ _db_print_stderr(const char *format, va_list args)
 
 void
 Debug::parseOptions(char const *)
-{
-    return;
-}
+{}
 
 const char*
 SkipBuildPrefix(const char* path)
@@ -96,7 +93,7 @@ SkipBuildPrefix(const char* path)
     return path;
 }
 
-Debug::Context *Debug::Current = NULL;
+Debug::Context *Debug::Current = nullptr;
 
 Debug::Context::Context(const int aSection, const int aLevel):
     level(aLevel),
@@ -120,7 +117,7 @@ Debug::Finish()
     if (Current) {
         _db_print("%s\n", Current->buf.str().c_str());
         delete Current;
-        Current = NULL;
+        Current = nullptr;
     }
 }
 

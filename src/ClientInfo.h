@@ -9,12 +9,15 @@
 #ifndef SQUID__SRC_CLIENTINFO_H
 #define SQUID__SRC_CLIENTINFO_H
 
+#include "base/ByteCounter.h"
 #include "cbdata.h"
 #include "enums.h"
 #include "hash.h"
 #include "ip/Address.h"
 #include "LogTags.h"
+#include "mem/forward.h"
 #include "typedefs.h"
+
 #include <deque>
 
 #if USE_DELAY_POOLS
@@ -23,20 +26,31 @@ class CommQuotaQueue;
 
 class ClientInfo
 {
+    MEMPROXY_CLASS(ClientInfo);
+
 public:
+    explicit ClientInfo(const Ip::Address &);
+    ~ClientInfo();
+
     hash_link hash;             /* must be first */
 
     Ip::Address addr;
 
-    struct {
+    struct Protocol {
+        Protocol() : n_requests(0) {
+            memset(result_hist, 0, sizeof(result_hist));
+        }
+
         int result_hist[LOG_TYPE_MAX];
         int n_requests;
-        kb_t kbytes_in;
-        kb_t kbytes_out;
-        kb_t hit_kbytes_out;
+        ByteCounter kbytes_in;
+        ByteCounter kbytes_out;
+        ByteCounter hit_kbytes_out;
     } Http, Icp;
 
-    struct {
+    struct Cutoff {
+        Cutoff() : time(0), n_req(0), n_denied(0) {}
+
         time_t time;
         int n_req;
         int n_denied;
@@ -88,6 +102,8 @@ public:
 // a queue of Comm clients waiting for I/O quota controlled by delay pools
 class CommQuotaQueue
 {
+    CBDATA_CLASS(CommQuotaQueue);
+
 public:
     CommQuotaQueue(ClientInfo *info);
     ~CommQuotaQueue();
@@ -108,8 +124,6 @@ private:
     // TODO: optimize using a Ring- or List-based store?
     typedef std::deque<int> Store;
     Store fds; ///< descriptor queue
-
-    CBDATA_CLASS2(CommQuotaQueue);
 };
 #endif /* USE_DELAY_POOLS */
 

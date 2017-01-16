@@ -48,6 +48,11 @@ typedef union {
 #include <sys/resource.h>
 SQUIDCEXTERN int getrusage(int, struct rusage *);
 
+// Solaris 11 needs this before <sys/socket.h> to get the definition for msg_control
+// and possibly other type definitions we dont know about specifically
+#define _XPG4_2 1
+#include <sys/socket.h>
+
 /**
  * prototypes for system function missing from system includes
  * on some Solaris systems.
@@ -56,13 +61,6 @@ SQUIDCEXTERN int getpagesize(void);
 #if !defined(_XPG4_2) && !(defined(__EXTENSIONS__) || \
 (!defined(_POSIX_C_SOURCE) && !defined(_XOPEN_SOURCE)))
 SQUIDCEXTERN int gethostname(char *, int);
-#endif
-
-/*
- * SunPro CC handles extern inline as inline, PLUS extern symbols.
- */
-#if !defined(_SQUID_EXTERNNEW_) && defined(__SUNPRO_CC)
-#define _SQUID_EXTERNNEW_ extern
 #endif
 
 /*

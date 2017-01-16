@@ -12,17 +12,22 @@
 #define SQUID_FQDNCACHE_H_
 
 #include "ip/Address.h"
-#include "typedefs.h"
+#include "sbuf/forward.h"
 
 class StoreEntry;
-class wordlist;
+namespace Dns
+{
+class LookupDetails;
+}
+
+typedef void FQDNH(const char *, const Dns::LookupDetails &details, void *);
 
 void fqdncache_init(void);
 void fqdnStats(StoreEntry *);
 void fqdncacheFreeMemory(void);
 void fqdncache_restart(void);
 void fqdncache_purgelru(void *);
-void fqdncacheAddEntryFromHosts(char *addr, wordlist * hostnames);
+void fqdncacheAddEntryFromHosts(char *addr, SBufList &hostnames);
 
 const char *fqdncache_gethostbyaddr(const Ip::Address &, int flags);
 void fqdncache_nbgethostbyaddr(const Ip::Address &, FQDNH *, void *);

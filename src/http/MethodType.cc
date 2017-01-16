@@ -2,7 +2,7 @@
  * Auto-Generated File. Changes will be destroyed.
  */
 #include "squid.h"
-#include "SBuf.h"
+#include "sbuf/SBuf.h"
 #include "http/MethodType.h"
 namespace Http
 {

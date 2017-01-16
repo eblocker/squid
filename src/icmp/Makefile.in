@@ -105,53 +105,57 @@ am__aclocal_m4_deps = $(top_srcdir)/acinclude/ax_with_prog.m4 \
 	$(top_srcdir)/acinclude/lib-checks.m4 \
 	$(top_srcdir)/acinclude/ax_cxx_compile_stdcxx_11.m4 \
 	$(top_srcdir)/acinclude/ax_cxx_0x_types.m4 \
-	$(top_srcdir)/helpers/basic_auth/modules.m4 \
-	$(top_srcdir)/helpers/basic_auth/DB/required.m4 \
-	$(top_srcdir)/helpers/basic_auth/LDAP/required.m4 \
-	$(top_srcdir)/helpers/basic_auth/MSNT-multi-domain/required.m4 \
-	$(top_srcdir)/helpers/basic_auth/NCSA/required.m4 \
-	$(top_srcdir)/helpers/basic_auth/NIS/required.m4 \
-	$(top_srcdir)/helpers/basic_auth/PAM/required.m4 \
-	$(top_srcdir)/helpers/basic_auth/POP3/required.m4 \
-	$(top_srcdir)/helpers/basic_auth/RADIUS/required.m4 \
-	$(top_srcdir)/helpers/basic_auth/SASL/required.m4 \
-	$(top_srcdir)/helpers/basic_auth/SMB/required.m4 \
-	$(top_srcdir)/helpers/basic_auth/SMB_LM/required.m4 \
-	$(top_srcdir)/helpers/basic_auth/SSPI/required.m4 \
-	$(top_srcdir)/helpers/basic_auth/fake/required.m4 \
-	$(top_srcdir)/helpers/basic_auth/getpwnam/required.m4 \
-	$(top_srcdir)/helpers/digest_auth/modules.m4 \
-	$(top_srcdir)/helpers/digest_auth/LDAP/required.m4 \
-	$(top_srcdir)/helpers/digest_auth/eDirectory/required.m4 \
-	$(top_srcdir)/helpers/digest_auth/file/required.m4 \
-	$(top_srcdir)/helpers/negotiate_auth/modules.m4 \
-	$(top_srcdir)/helpers/negotiate_auth/SSPI/required.m4 \
-	$(top_srcdir)/helpers/negotiate_auth/kerberos/required.m4 \
-	$(top_srcdir)/helpers/negotiate_auth/wrapper/required.m4 \
-	$(top_srcdir)/helpers/ntlm_auth/modules.m4 \
-	$(top_srcdir)/helpers/ntlm_auth/fake/required.m4 \
-	$(top_srcdir)/helpers/ntlm_auth/SSPI/required.m4 \
-	$(top_srcdir)/helpers/ntlm_auth/smb_lm/required.m4 \
-	$(top_srcdir)/helpers/log_daemon/modules.m4 \
-	$(top_srcdir)/helpers/log_daemon/DB/required.m4 \
-	$(top_srcdir)/helpers/log_daemon/file/required.m4 \
-	$(top_srcdir)/helpers/external_acl/modules.m4 \
-	$(top_srcdir)/helpers/external_acl/AD_group/required.m4 \
-	$(top_srcdir)/helpers/external_acl/LDAP_group/required.m4 \
-	$(top_srcdir)/helpers/external_acl/LM_group/required.m4 \
-	$(top_srcdir)/helpers/external_acl/delayer/required.m4 \
-	$(top_srcdir)/helpers/external_acl/SQL_session/required.m4 \
-	$(top_srcdir)/helpers/external_acl/eDirectory_userip/required.m4 \
-	$(top_srcdir)/helpers/external_acl/file_userip/required.m4 \
-	$(top_srcdir)/helpers/external_acl/kerberos_ldap_group/required.m4 \
-	$(top_srcdir)/helpers/external_acl/session/required.m4 \
-	$(top_srcdir)/helpers/external_acl/time_quota/required.m4 \
-	$(top_srcdir)/helpers/external_acl/unix_group/required.m4 \
-	$(top_srcdir)/helpers/external_acl/wbinfo_group/required.m4 \
-	$(top_srcdir)/helpers/url_rewrite/modules.m4 \
-	$(top_srcdir)/helpers/url_rewrite/fake/required.m4 \
-	$(top_srcdir)/helpers/storeid_rewrite/modules.m4 \
-	$(top_srcdir)/helpers/storeid_rewrite/file/required.m4 \
+	$(top_srcdir)/src/auth/basic/helpers.m4 \
+	$(top_srcdir)/src/auth/basic/DB/required.m4 \
+	$(top_srcdir)/src/auth/basic/LDAP/required.m4 \
+	$(top_srcdir)/src/auth/basic/NCSA/required.m4 \
+	$(top_srcdir)/src/auth/basic/NIS/required.m4 \
+	$(top_srcdir)/src/auth/basic/PAM/required.m4 \
+	$(top_srcdir)/src/auth/basic/POP3/required.m4 \
+	$(top_srcdir)/src/auth/basic/RADIUS/required.m4 \
+	$(top_srcdir)/src/auth/basic/SASL/required.m4 \
+	$(top_srcdir)/src/auth/basic/SMB/required.m4 \
+	$(top_srcdir)/src/auth/basic/SMB_LM/required.m4 \
+	$(top_srcdir)/src/auth/basic/SSPI/required.m4 \
+	$(top_srcdir)/src/auth/basic/fake/required.m4 \
+	$(top_srcdir)/src/auth/basic/getpwnam/required.m4 \
+	$(top_srcdir)/src/auth/digest/helpers.m4 \
+	$(top_srcdir)/src/auth/digest/eDirectory/required.m4 \
+	$(top_srcdir)/src/auth/digest/file/required.m4 \
+	$(top_srcdir)/src/auth/digest/LDAP/required.m4 \
+	$(top_srcdir)/src/auth/negotiate/helpers.m4 \
+	$(top_srcdir)/src/auth/negotiate/SSPI/required.m4 \
+	$(top_srcdir)/src/auth/negotiate/kerberos/required.m4 \
+	$(top_srcdir)/src/auth/negotiate/wrapper/required.m4 \
+	$(top_srcdir)/src/auth/ntlm/helpers.m4 \
+	$(top_srcdir)/src/auth/ntlm/fake/required.m4 \
+	$(top_srcdir)/src/auth/ntlm/SMB_LM/required.m4 \
+	$(top_srcdir)/src/auth/ntlm/SSPI/required.m4 \
+	$(top_srcdir)/src/log/helpers.m4 \
+	$(top_srcdir)/src/log/DB/required.m4 \
+	$(top_srcdir)/src/log/file/required.m4 \
+	$(top_srcdir)/src/acl/external/helpers.m4 \
+	$(top_srcdir)/src/acl/external/AD_group/required.m4 \
+	$(top_srcdir)/src/acl/external/LDAP_group/required.m4 \
+	$(top_srcdir)/src/acl/external/LM_group/required.m4 \
+	$(top_srcdir)/src/acl/external/delayer/required.m4 \
+	$(top_srcdir)/src/acl/external/SQL_session/required.m4 \
+	$(top_srcdir)/src/acl/external/eDirectory_userip/required.m4 \
+	$(top_srcdir)/src/acl/external/file_userip/required.m4 \
+	$(top_srcdir)/src/acl/external/kerberos_ldap_group/required.m4 \
+	$(top_srcdir)/src/acl/external/session/required.m4 \
+	$(top_srcdir)/src/acl/external/time_quota/required.m4 \
+	$(top_srcdir)/src/acl/external/unix_group/required.m4 \
+	$(top_srcdir)/src/acl/external/wbinfo_group/required.m4 \
+	$(top_srcdir)/src/http/url_rewriters/helpers.m4 \
+	$(top_srcdir)/src/http/url_rewriters/fake/required.m4 \
+	$(top_srcdir)/src/http/url_rewriters/LFS/required.m4 \
+	$(top_srcdir)/src/security/cert_validators/helpers.m4 \
+	$(top_srcdir)/src/security/cert_validators/fake/required.m4 \
+	$(top_srcdir)/src/security/cert_generators/helpers.m4 \
+	$(top_srcdir)/src/security/cert_generators/file/required.m4 \
+	$(top_srcdir)/src/store/id_rewriters/helpers.m4 \
+	$(top_srcdir)/src/store/id_rewriters/file/required.m4 \
 	$(top_srcdir)/configure.ac
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
@@ -161,31 +165,33 @@ CONFIG_HEADER = $(top_builddir)/include/autoconf.h
 CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
 LTLIBRARIES = $(noinst_LTLIBRARIES)
-libicmp_core_la_LIBADD =
-am_libicmp_core_la_OBJECTS = Icmp.lo
-libicmp_core_la_OBJECTS = $(am_libicmp_core_la_OBJECTS)
+libicmp_la_DEPENDENCIES = libicmpcore.la
+am_libicmp_la_OBJECTS = IcmpConfig.lo IcmpSquid.lo net_db.lo
+libicmp_la_OBJECTS = $(am_libicmp_la_OBJECTS)
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
 am__v_lt_0 = --silent
 am__v_lt_1 = 
-libicmp_la_LIBADD =
-am_libicmp_la_OBJECTS = IcmpSquid.lo net_db.lo
-libicmp_la_OBJECTS = $(am_libicmp_la_OBJECTS)
+libicmpcore_la_LIBADD =
+am_libicmpcore_la_OBJECTS = Icmp.lo
+libicmpcore_la_OBJECTS = $(am_libicmpcore_la_OBJECTS)
 am__installdirs = "$(DESTDIR)$(libexecdir)"
 PROGRAMS = $(libexec_PROGRAMS)
 am_pinger_OBJECTS = IcmpPinger.$(OBJEXT) Icmp4.$(OBJEXT) \
 	Icmp6.$(OBJEXT) pinger.$(OBJEXT)
 am__objects_1 = debug.$(OBJEXT) globals.$(OBJEXT) \
 	SquidConfig.$(OBJEXT) SquidNew.$(OBJEXT) \
-	stub_HelperChildConfig.$(OBJEXT) time.$(OBJEXT)
+	stub_HelperChildConfig.$(OBJEXT) stub_libmem.$(OBJEXT) \
+	time.$(OBJEXT)
 nodist_pinger_OBJECTS = $(am__objects_1)
 pinger_OBJECTS = $(am_pinger_OBJECTS) $(nodist_pinger_OBJECTS)
 @ENABLE_XPROF_STATS_TRUE@am__DEPENDENCIES_1 = $(top_builddir)/lib/profiler/libprofiler.la
-am__DEPENDENCIES_2 = $(top_builddir)/compat/libcompat-squid.la \
+am__DEPENDENCIES_2 = $(top_builddir)/compat/libcompatsquid.la \
 	$(am__DEPENDENCIES_1)
 am__DEPENDENCIES_3 =
-pinger_DEPENDENCIES = libicmp-core.la ../ip/libip.la \
-	$(am__DEPENDENCIES_2) $(am__DEPENDENCIES_3)
+pinger_DEPENDENCIES = libicmpcore.la $(top_builddir)/src/ip/libip.la \
+	$(top_builddir)/src/base/libbase.la $(am__DEPENDENCIES_2) \
+	$(am__DEPENDENCIES_3) $(am__DEPENDENCIES_3)
 pinger_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) \
 	$(LIBTOOLFLAGS) --mode=link $(CXXLD) $(AM_CXXFLAGS) \
 	$(CXXFLAGS) $(pinger_LDFLAGS) $(LDFLAGS) -o $@
@@ -241,9 +247,9 @@ AM_V_CCLD = $(am__v_CCLD_@AM_V@)
 am__v_CCLD_ = $(am__v_CCLD_@AM_DEFAULT_V@)
 am__v_CCLD_0 = @echo "  CCLD    " $@;
 am__v_CCLD_1 = 
-SOURCES = $(libicmp_core_la_SOURCES) $(libicmp_la_SOURCES) \
+SOURCES = $(libicmp_la_SOURCES) $(libicmpcore_la_SOURCES) \
 	$(pinger_SOURCES) $(nodist_pinger_SOURCES)
-DIST_SOURCES = $(libicmp_core_la_SOURCES) $(libicmp_la_SOURCES) \
+DIST_SOURCES = $(libicmp_la_SOURCES) $(libicmpcore_la_SOURCES) \
 	$(pinger_SOURCES)
 am__can_run_installinfo = \
   case $$AM_UPDATE_INFO_DIR in \
@@ -479,11 +485,13 @@ am__DIST_COMMON = $(srcdir)/Makefile.in $(top_srcdir)/cfgaux/depcomp \
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
 ACLOCAL = @ACLOCAL@
 ADAPTATION_LIBS = @ADAPTATION_LIBS@
+AIOLIB = @AIOLIB@
 ALLOCA = @ALLOCA@
 AMTAR = @AMTAR@
 AM_DEFAULT_VERBOSITY = @AM_DEFAULT_VERBOSITY@
 AR = @AR@
 AR_R = @AR_R@
+ATOMICLIB = @ATOMICLIB@
 AUTH_LIBS_TO_BUILD = @AUTH_LIBS_TO_BUILD@
 AUTH_MODULES = @AUTH_MODULES@
 AUTOCONF = @AUTOCONF@
@@ -502,7 +510,6 @@ CGIEXT = @CGIEXT@
 CHMOD = @CHMOD@
 CPP = @CPP@
 CPPFLAGS = @CPPFLAGS@
-CPPUNITCONFIG = @CPPUNITCONFIG@
 CRYPTLIB = @CRYPTLIB@
 CXX = @CXX@
 CXXCPP = @CXXCPP@
@@ -520,14 +527,10 @@ DEFS = @DEFS@ -DDEFAULT_CONFIG_FILE=NULL
 DEPDIR = @DEPDIR@
 DIGEST_AUTH_HELPERS = @DIGEST_AUTH_HELPERS@
 DISK_LIBS = @DISK_LIBS@
-DISK_LINKOBJS = @DISK_LINKOBJS@
 DISK_MODULES = @DISK_MODULES@
-DISK_OS_LIBS = @DISK_OS_LIBS@
-DISK_PROGRAMS = @DISK_PROGRAMS@
 DLLTOOL = @DLLTOOL@
 DSYMUTIL = @DSYMUTIL@
 DUMPBIN = @DUMPBIN@
-ECAP_LIBS = @ECAP_LIBS@
 ECHO_C = @ECHO_C@
 ECHO_N = @ECHO_N@
 ECHO_T = @ECHO_T@
@@ -543,7 +546,6 @@ FALSE = @FALSE@
 FGREP = @FGREP@
 GREP = @GREP@
 HAVE_CXX11 = @HAVE_CXX11@
-ICAP_LIBS = @ICAP_LIBS@
 INCLTDL = @INCLTDL@
 INSTALL = @INSTALL@
 INSTALL_DATA = @INSTALL_DATA@
@@ -560,12 +562,15 @@ LIBADD_DL = @LIBADD_DL@
 LIBADD_DLD_LINK = @LIBADD_DLD_LINK@
 LIBADD_DLOPEN = @LIBADD_DLOPEN@
 LIBADD_SHL_LOAD = @LIBADD_SHL_LOAD@
+LIBCPPUNIT_CFLAGS = @LIBCPPUNIT_CFLAGS@
+LIBCPPUNIT_LIBS = @LIBCPPUNIT_LIBS@
 LIBGNUTLS_CFLAGS = @LIBGNUTLS_CFLAGS@
 LIBGNUTLS_LIBS = @LIBGNUTLS_LIBS@
 LIBLTDL = @LIBLTDL@
 LIBOBJS = @LIBOBJS@
 LIBOPENSSL_CFLAGS = @LIBOPENSSL_CFLAGS@
 LIBOPENSSL_LIBS = @LIBOPENSSL_LIBS@
+LIBPTHREADS = @LIBPTHREADS@
 LIBS = @LIBS@
 LIBSASL = @LIBSASL@
 LIBTOOL = @LIBTOOL@
@@ -623,6 +628,8 @@ REPL_LIBS = @REPL_LIBS@
 REPL_OBJS = @REPL_OBJS@
 REPL_POLICIES = @REPL_POLICIES@
 RM = @RM@
+SECURITY_CERTGEN_HELPERS = @SECURITY_CERTGEN_HELPERS@
+SECURITY_CERTV_HELPERS = @SECURITY_CERTV_HELPERS@
 SED = @SED@
 SET_MAKE = @SET_MAKE@
 SH = @SH@
@@ -630,9 +637,6 @@ SHELL = @SHELL@
 SMBCLIENT = @SMBCLIENT@
 SNMPLIB = @SNMPLIB@
 SQUID_CFLAGS = @SQUID_CFLAGS@
-SQUID_CPPUNIT_INC = @SQUID_CPPUNIT_INC@
-SQUID_CPPUNIT_LA = @SQUID_CPPUNIT_LA@
-SQUID_CPPUNIT_LIBS = @SQUID_CPPUNIT_LIBS@
 SQUID_CXXFLAGS = @SQUID_CXXFLAGS@
 SSLLIB = @SSLLIB@
 STOREID_REWRITE_HELPERS = @STOREID_REWRITE_HELPERS@
@@ -708,34 +712,55 @@ target_alias = @target_alias@
 top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
+DEFAULT_HTTP_PORT = 3128
+DEFAULT_ICP_PORT = 3130
+DEFAULT_PREFIX = $(prefix)
+DEFAULT_CONFIG_DIR = $(sysconfdir)
+DEFAULT_CONFIG_FILE = $(DEFAULT_CONFIG_DIR)/squid.conf
+DEFAULT_MIME_TABLE = $(DEFAULT_CONFIG_DIR)/mime.conf
+DEFAULT_SSL_CRTD = $(libexecdir)/`echo security_file_certgen | sed '$(transform);s/$$/$(EXEEXT)/'`
+DEFAULT_LOG_PREFIX = $(DEFAULT_LOG_DIR)
+DEFAULT_CACHE_LOG = $(DEFAULT_LOG_PREFIX)/cache.log
+DEFAULT_ACCESS_LOG = $(DEFAULT_LOG_PREFIX)/access.log
+DEFAULT_STORE_LOG = $(DEFAULT_LOG_PREFIX)/store.log
+DEFAULT_NETDB_FILE = $(DEFAULT_SWAP_DIR)/netdb.state
+DEFAULT_SSL_DB_DIR = $(DEFAULT_SWAP_DIR)/ssl_db
+DEFAULT_PINGER = $(libexecdir)/`echo pinger | sed '$(transform);s/$$/$(EXEEXT)/'`
+DEFAULT_UNLINKD = $(libexecdir)/`echo unlinkd | sed '$(transform);s/$$/$(EXEEXT)/'`
+DEFAULT_LOGFILED = $(libexecdir)/`echo log_file_daemon | sed '$(transform);s/$$/$(EXEEXT)/'`
+DEFAULT_DISKD = $(libexecdir)/`echo diskd | sed '$(transform);s/$$/$(EXEEXT)/'`
+DEFAULT_ICON_DIR = $(datadir)/icons
+DEFAULT_ERROR_DIR = $(datadir)/errors
 AM_CFLAGS = $(SQUID_CFLAGS)
 AM_CXXFLAGS = $(SQUID_CXXFLAGS)
 CLEANFILES = testHeaders $(COPIED_SOURCE)
 TESTS = testHeaders
 AM_CPPFLAGS = -I$(top_srcdir) -I$(top_srcdir)/include \
 	-I$(top_srcdir)/lib -I$(top_srcdir)/src \
-	-I$(top_builddir)/include $(SQUID_CPPUNIT_INC) $(KRB5INCS) \
+	-I$(top_builddir)/include $(LIBCPPUNIT_CFLAGS) $(KRB5INCS) \
 	$(am__append_1)
 @ENABLE_XPROF_STATS_FALSE@LIBPROFILER = 
 @ENABLE_XPROF_STATS_TRUE@LIBPROFILER = $(top_builddir)/lib/profiler/libprofiler.la
-COMPAT_LIB = $(top_builddir)/compat/libcompat-squid.la $(LIBPROFILER)
+COMPAT_LIB = $(top_builddir)/compat/libcompatsquid.la $(LIBPROFILER)
 subst_perlshell = sed -e 's,[@]PERL[@],$(PERL),g' <$(srcdir)/$@.pl.in >$@ || ($(RM) -f $@ ; exit 1)
-noinst_LTLIBRARIES = libicmp-core.la libicmp.la
+noinst_LTLIBRARIES = libicmpcore.la libicmp.la
 
 # ICMP API definition ...
-libicmp_core_la_SOURCES = \
+libicmpcore_la_SOURCES = \
 	Icmp.h \
 	Icmp.cc
 
 
 # Squid Internal ICMP helper interface
 libicmp_la_SOURCES = \
+	IcmpConfig.cc \
 	IcmpConfig.h \
 	IcmpSquid.h \
 	IcmpSquid.cc \
 	net_db.h \
 	net_db.cc
 
+libicmp_la_LIBADD = libicmpcore.la
 
 # pinger depends on these but install/dist is done elsewhere.
 COPIED_SOURCE = \
@@ -744,6 +769,8 @@ COPIED_SOURCE = \
 	SquidConfig.cc \
 	SquidNew.cc \
 	stub_HelperChildConfig.cc \
+	stub_libmem.cc \
+	STUB.h \
 	time.cc
 
 
@@ -761,9 +788,11 @@ pinger_SOURCES = \
 nodist_pinger_SOURCES = $(COPIED_SOURCE)
 pinger_LDFLAGS = $(LIBADD_DL)
 pinger_LDADD = \
-	libicmp-core.la \
-	../ip/libip.la \
+	libicmpcore.la \
+	$(top_builddir)/src/ip/libip.la \
+	$(top_builddir)/src/base/libbase.la \
 	$(COMPAT_LIB) \
+	$(SSLLIB) \
 	$(XTRA_LIBS)
 
 all: all-am
@@ -812,11 +841,11 @@ clean-noinstLTLIBRARIES:
 	  rm -f $${locs}; \
 	}
 
-libicmp-core.la: $(libicmp_core_la_OBJECTS) $(libicmp_core_la_DEPENDENCIES) $(EXTRA_libicmp_core_la_DEPENDENCIES) 
-	$(AM_V_CXXLD)$(CXXLINK)  $(libicmp_core_la_OBJECTS) $(libicmp_core_la_LIBADD) $(LIBS)
-
 libicmp.la: $(libicmp_la_OBJECTS) $(libicmp_la_DEPENDENCIES) $(EXTRA_libicmp_la_DEPENDENCIES) 
 	$(AM_V_CXXLD)$(CXXLINK)  $(libicmp_la_OBJECTS) $(libicmp_la_LIBADD) $(LIBS)
+
+libicmpcore.la: $(libicmpcore_la_OBJECTS) $(libicmpcore_la_DEPENDENCIES) $(EXTRA_libicmpcore_la_DEPENDENCIES) 
+	$(AM_V_CXXLD)$(CXXLINK)  $(libicmpcore_la_OBJECTS) $(libicmpcore_la_LIBADD) $(LIBS)
 
 clean-checkPROGRAMS:
 	@list='$(check_PROGRAMS)'; test -n "$$list" || exit 0; \
@@ -889,6 +918,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Icmp.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Icmp4.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Icmp6.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/IcmpConfig.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/IcmpPinger.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/IcmpSquid.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/SquidConfig.Po@am__quote@
@@ -898,6 +928,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/net_db.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pinger.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/stub_HelperChildConfig.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/stub_libmem.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/time.Po@am__quote@
 
 .cc.o:
@@ -1318,22 +1349,28 @@ testHeaders: $(srcdir)/*.h
 .PHONY: testHeaders
 
 debug.cc: $(top_srcdir)/src/debug.cc
-	cp $(top_srcdir)/src/debug.cc .
+	cp $(top_srcdir)/src/debug.cc $@
 
 globals.cc: $(top_srcdir)/src/globals.h
-	cp $(top_builddir)/src/globals.cc .
+	cp $(top_builddir)/src/globals.cc $@
 
 time.cc: $(top_srcdir)/src/time.cc
-	cp $(top_srcdir)/src/time.cc .
+	cp $(top_srcdir)/src/time.cc $@
 
 SquidConfig.cc: $(top_srcdir)/src/SquidConfig.cc
-	cp $(top_srcdir)/src/SquidConfig.cc .
+	cp $(top_srcdir)/src/SquidConfig.cc $@
 
 SquidNew.cc: $(top_srcdir)/src/SquidNew.cc
-	cp $(top_srcdir)/src/SquidNew.cc .
+	cp $(top_srcdir)/src/SquidNew.cc $@
 
 stub_HelperChildConfig.cc: $(top_srcdir)/src/tests/stub_HelperChildConfig.cc
-	cp $(top_srcdir)/src/tests/stub_HelperChildConfig.cc .
+	cp $(top_srcdir)/src/tests/stub_HelperChildConfig.cc $@
+
+stub_libmem.cc: $(top_srcdir)/src/tests/stub_libmem.cc STUB.h
+	cp $(top_srcdir)/src/tests/stub_libmem.cc $@
+
+STUB.h: $(top_srcdir)/src/tests/STUB.h
+	cp $(top_srcdir)/src/tests/STUB.h $@
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.

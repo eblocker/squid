@@ -9,11 +9,12 @@
 /* DEBUG: section 47    Store Directory Routines */
 
 #include "squid.h"
-#include "disk.h"
+#include "fs_io.h"
 #include "globals.h"
 #include "RebuildState.h"
 #include "SquidConfig.h"
 #include "SquidTime.h"
+#include "store/Disks.h"
 #include "store_key_md5.h"
 #include "store_rebuild.h"
 #include "StoreSwapLogData.h"
@@ -29,8 +30,24 @@
 CBDATA_NAMESPACED_CLASS_INIT(Fs::Ufs,RebuildState);
 
 Fs::Ufs::RebuildState::RebuildState(RefCount<UFSSwapDir> aSwapDir) :
-    sd (aSwapDir), LogParser(NULL), e(NULL), fromLog(true), _done (false)
+    sd(aSwapDir),
+    n_read(0),
+    LogParser(NULL),
+    curlvl1(0),
+    curlvl2(0),
+    in_dir(0),
+    done(0),
+    fn(0),
+    entry(NULL),
+    td(NULL),
+    e(NULL),
+    fromLog(true),
+    _done(false),
+    cbdata(NULL)
 {
+    *fullpath = 0;
+    *fullfilename = 0;
+
     /*
      * If the swap.state file exists in the cache_dir, then
      * we'll use commonUfsDirRebuildFromSwapLog(), otherwise we'll
@@ -154,7 +171,8 @@ Fs::Ufs::RebuildState::rebuildFromDirectory()
     ++n_read;
 
     if (fstat(fd, &sb) < 0) {
-        debugs(47, DBG_IMPORTANT, HERE << "fstat(FD " << fd << "): " << xstrerror());
+        int xerrno = errno;
+        debugs(47, DBG_IMPORTANT, MYNAME << "fstat(FD " << fd << "): " << xstrerr(xerrno));
         file_close(fd);
         --store_open_disk_fd;
         fd = -1;
@@ -331,7 +349,7 @@ Fs::Ufs::RebuildState::rebuildFromSwapLog()
             currentEntry()->lastModified(swapData.lastmod);
             currentEntry()->flags = swapData.flags;
             currentEntry()->refcount += swapData.refcount;
-            sd->dereference(*currentEntry(), false);
+            sd->dereference(*currentEntry());
         } else {
             debug_trap("commonUfsDirRebuildFromSwapLog: bad condition");
             debugs(47, DBG_IMPORTANT, HERE << "bad condition");
@@ -419,7 +437,7 @@ Fs::Ufs::RebuildState::undoAdd()
 }
 
 int
-Fs::Ufs::RebuildState::getNextFile(sfileno * filn_p, int *size)
+Fs::Ufs::RebuildState::getNextFile(sfileno * filn_p, int *)
 {
     int fd = -1;
     int dirs_opened = 0;
@@ -435,6 +453,7 @@ Fs::Ufs::RebuildState::getNextFile(sfileno * filn_p, int *size)
         fd = -1;
 
         if (!flags.init) {  /* initialize, open first file */
+            // XXX: 0's should not be needed, constructor inits now
             done = 0;
             curlvl1 = 0;
             curlvl2 = 0;
@@ -455,8 +474,9 @@ Fs::Ufs::RebuildState::getNextFile(sfileno * filn_p, int *size)
 
             ++dirs_opened;
 
-            if (td == NULL) {
-                debugs(47, DBG_IMPORTANT, HERE << "error in opendir (" << fullpath << "): " << xstrerror());
+            if (!td) {
+                int xerrno = errno;
+                debugs(47, DBG_IMPORTANT, MYNAME << "error in opendir (" << fullpath << "): " << xstrerr(xerrno));
             } else {
                 entry = readdir(td);    /* skip . and .. */
                 entry = readdir(td);
@@ -494,9 +514,10 @@ Fs::Ufs::RebuildState::getNextFile(sfileno * filn_p, int *size)
             debugs(47, 3, HERE << "Opening " << fullfilename);
             fd = file_open(fullfilename, O_RDONLY | O_BINARY);
 
-            if (fd < 0)
-                debugs(47, DBG_IMPORTANT, HERE << "error opening " << fullfilename << ": " << xstrerror());
-            else
+            if (fd < 0) {
+                int xerrno = errno;
+                debugs(47, DBG_IMPORTANT, MYNAME << "error opening " << fullfilename << ": " << xstrerr(xerrno));
+            } else
                 ++store_open_disk_fd;
 
             continue;

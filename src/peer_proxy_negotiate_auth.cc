@@ -499,7 +499,7 @@ restart:
  * peer_proxy_negotiate_auth gets a GSSAPI token for principal_name
  * and base64 encodes it.
  */
-char *peer_proxy_negotiate_auth(char *principal_name, char *proxy) {
+char *peer_proxy_negotiate_auth(char *principal_name, char *proxy, int flags) {
     int rc = 0;
     OM_uint32 major_status, minor_status;
     gss_ctx_id_t gss_context = GSS_C_NO_CONTEXT;
@@ -517,16 +517,18 @@ char *peer_proxy_negotiate_auth(char *principal_name, char *proxy) {
         return NULL;
     }
 
-    if (principal_name)
-        debugs(11, 5,
-               HERE << "Creating credential cache for " << principal_name);
-    else
-        debugs(11, 5, HERE << "Creating credential cache");
-    rc = krb5_create_cache(NULL, principal_name);
-    if (rc) {
-        debugs(11, 5, HERE << "Error : Failed to create Kerberos cache");
-        krb5_cleanup();
-        return NULL;
+    if (!(flags & PEER_PROXY_NEGOTIATE_NOKEYTAB)) {
+        if (principal_name)
+            debugs(11, 5,
+                   HERE << "Creating credential cache for " << principal_name);
+        else
+            debugs(11, 5, HERE << "Creating credential cache");
+        rc = krb5_create_cache(NULL, principal_name);
+        if (rc) {
+            debugs(11, 5, HERE << "Error : Failed to create Kerberos cache");
+            krb5_cleanup();
+            return NULL;
+        }
     }
 
     service.value = (void *) xmalloc(strlen("HTTP") + strlen(proxy) + 2);
@@ -557,10 +559,14 @@ char *peer_proxy_negotiate_auth(char *principal_name, char *proxy) {
 
     debugs(11, 5, HERE << "Got token with length " << output_token.length);
     if (output_token.length) {
+        static uint8_t b64buf[8192]; // XXX: 8KB only because base64_encode_bin() used to.
+        struct base64_encode_ctx ctx;
+        base64_encode_init(&ctx);
+        size_t blen = base64_encode_update(&ctx, b64buf, output_token.length, reinterpret_cast<const uint8_t*>(output_token.value));
+        blen += base64_encode_final(&ctx, b64buf+blen);
+        b64buf[blen] = '\0';
 
-        token =
-            (char *) base64_encode_bin((const char *) output_token.value,
-                                       output_token.length);
+        token = reinterpret_cast<char*>(b64buf);
     }
 
 cleanup:

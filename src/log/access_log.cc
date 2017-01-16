@@ -74,18 +74,11 @@ void
 accessLogLogTo(CustomLog* log, AccessLogEntry::Pointer &al, ACLChecklist * checklist)
 {
 
-    if (al->url == NULL)
-        al->url = dash_str;
+    if (al->url.isEmpty())
+        al->url = Format::Dash;
 
     if (!al->http.content_type || *al->http.content_type == '\0')
         al->http.content_type = dash_str;
-
-    if (al->icp.opcode)
-        al->_private.method_str = icp_opcode_str[al->icp.opcode];
-    else if (al->htcp.opcode)
-        al->_private.method_str = al->htcp.opcode;
-    else
-        al->_private.method_str = NULL;
 
     if (al->hier.host[0] == '\0')
         xstrncpy(al->hier.host, dash_str, SQUIDHOSTNAMELEN);
@@ -165,8 +158,8 @@ accessLogLog(AccessLogEntry::Pointer &al, ACLChecklist * checklist)
     else {
         unsigned int ibuf[365];
         size_t isize;
-        xstrncpy((char *) ibuf, al->url, 364 * sizeof(int));
-        isize = ((strlen(al->url) + 8) / 8) * 2;
+        xstrncpy((char *) ibuf, al->url.c_str(), 364 * sizeof(int));
+        isize = ((al->url.length() + 8) / 8) * 2;
 
         if (isize > 364)
             isize = 364;
@@ -193,13 +186,14 @@ accessLogRotate(void)
 
     for (log = Config.Log.accesslogs; log; log = log->next) {
         if (log->logfile) {
-            logfileRotate(log->logfile);
+            int16_t rc = (log->rotateCount >= 0 ? log->rotateCount : Config.Log.rotateNumber);
+            logfileRotate(log->logfile, rc);
         }
     }
 
 #if HEADERS_LOG
 
-    logfileRotate(headerslog);
+    logfileRotate(headerslog, Config.Log.rotateNumber);
 
 #endif
 }
@@ -231,10 +225,8 @@ HierarchyLogEntry::HierarchyLogEntry() :
     n_choices(0),
     n_ichoices(0),
     peer_reply_status(Http::scNone),
-    peer_response_time(-1),
     tcpServer(NULL),
-    bodyBytesRead(-1),
-    totalResponseTime_(-1)
+    bodyBytesRead(-1)
 {
     memset(host, '\0', SQUIDHOSTNAMELEN);
     memset(cd_host, '\0', SQUIDHOSTNAMELEN);
@@ -247,6 +239,12 @@ HierarchyLogEntry::HierarchyLogEntry() :
 
     peer_http_request_sent.tv_sec = 0;
     peer_http_request_sent.tv_usec = 0;
+
+    peer_response_time.tv_sec = -1;
+    peer_response_time.tv_usec = 0;
+
+    totalResponseTime_.tv_sec = -1;
+    totalResponseTime_.tv_usec = 0;
 
     firstConnStart_.tv_sec = 0;
     firstConnStart_.tv_usec = 0;
@@ -283,24 +281,25 @@ HierarchyLogEntry::stopPeerClock(const bool force)
 {
     debugs(46, 5, "First connection started: " << firstConnStart_.tv_sec << "." <<
            std::setfill('0') << std::setw(6) << firstConnStart_.tv_usec <<
-           ", current total response time value: " << totalResponseTime_ <<
+           ", current total response time value: " << (totalResponseTime_.tv_sec * 1000 +  totalResponseTime_.tv_usec/1000) <<
            (force ? ", force fixing" : ""));
-    if (!force && totalResponseTime_ >= 0)
+    if (!force && totalResponseTime_.tv_sec != -1)
         return;
 
-    totalResponseTime_ = firstConnStart_.tv_sec ? tvSubMsec(firstConnStart_, current_time) : -1;
+    if (firstConnStart_.tv_sec)
+        tvSub(totalResponseTime_, firstConnStart_, current_time);
 }
 
-int64_t
-HierarchyLogEntry::totalResponseTime()
+void
+HierarchyLogEntry::totalResponseTime(struct timeval &responseTime)
 {
     // This should not really happen, but there may be rare code
     // paths that lead to FwdState discarded (or transaction logged)
     // without (or before) a stopPeerClock() call.
-    if (firstConnStart_.tv_sec && totalResponseTime_ < 0)
+    if (firstConnStart_.tv_sec && totalResponseTime_.tv_sec == -1)
         stopPeerClock(false);
 
-    return totalResponseTime_;
+    responseTime = totalResponseTime_;
 }
 
 static void

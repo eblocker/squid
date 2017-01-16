@@ -10,15 +10,14 @@
 
 #include "squid.h"
 
-/* MS Visual Studio Projects are monolithic, so we need the following
- * #if to exclude the ESI code from compile process when not needed.
- */
-#if (USE_SQUID_ESI == 1)
+#if USE_SQUID_ESI
 
 #include "client_side.h"
 #include "client_side_request.h"
 #include "esi/Include.h"
 #include "esi/VarState.h"
+#include "fatal.h"
+#include "http/Stream.h"
 #include "HttpReply.h"
 #include "log/access_log.h"
 
@@ -279,7 +278,7 @@ ESIInclude::ESIInclude(ESIInclude const &old) :
 void
 ESIInclude::prepareRequestHeaders(HttpHeader &tempheaders, ESIVarState *vars)
 {
-    tempheaders.update (&vars->header());
+    tempheaders.update(&vars->header());
     tempheaders.removeHopByHopEntries();
 }
 
@@ -559,5 +558,5 @@ ESIInclude::subRequestDone (ESIStreamContext::Pointer stream, bool success)
     }
 }
 
-#endif /* USE_SQUID_ESI == 1 */
+#endif /* USE_SQUID_ESI */
 

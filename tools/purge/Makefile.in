@@ -104,53 +104,57 @@ am__aclocal_m4_deps = $(top_srcdir)/acinclude/ax_with_prog.m4 \
 	$(top_srcdir)/acinclude/lib-checks.m4 \
 	$(top_srcdir)/acinclude/ax_cxx_compile_stdcxx_11.m4 \
 	$(top_srcdir)/acinclude/ax_cxx_0x_types.m4 \
-	$(top_srcdir)/helpers/basic_auth/modules.m4 \
-	$(top_srcdir)/helpers/basic_auth/DB/required.m4 \
-	$(top_srcdir)/helpers/basic_auth/LDAP/required.m4 \
-	$(top_srcdir)/helpers/basic_auth/MSNT-multi-domain/required.m4 \
-	$(top_srcdir)/helpers/basic_auth/NCSA/required.m4 \
-	$(top_srcdir)/helpers/basic_auth/NIS/required.m4 \
-	$(top_srcdir)/helpers/basic_auth/PAM/required.m4 \
-	$(top_srcdir)/helpers/basic_auth/POP3/required.m4 \
-	$(top_srcdir)/helpers/basic_auth/RADIUS/required.m4 \
-	$(top_srcdir)/helpers/basic_auth/SASL/required.m4 \
-	$(top_srcdir)/helpers/basic_auth/SMB/required.m4 \
-	$(top_srcdir)/helpers/basic_auth/SMB_LM/required.m4 \
-	$(top_srcdir)/helpers/basic_auth/SSPI/required.m4 \
-	$(top_srcdir)/helpers/basic_auth/fake/required.m4 \
-	$(top_srcdir)/helpers/basic_auth/getpwnam/required.m4 \
-	$(top_srcdir)/helpers/digest_auth/modules.m4 \
-	$(top_srcdir)/helpers/digest_auth/LDAP/required.m4 \
-	$(top_srcdir)/helpers/digest_auth/eDirectory/required.m4 \
-	$(top_srcdir)/helpers/digest_auth/file/required.m4 \
-	$(top_srcdir)/helpers/negotiate_auth/modules.m4 \
-	$(top_srcdir)/helpers/negotiate_auth/SSPI/required.m4 \
-	$(top_srcdir)/helpers/negotiate_auth/kerberos/required.m4 \
-	$(top_srcdir)/helpers/negotiate_auth/wrapper/required.m4 \
-	$(top_srcdir)/helpers/ntlm_auth/modules.m4 \
-	$(top_srcdir)/helpers/ntlm_auth/fake/required.m4 \
-	$(top_srcdir)/helpers/ntlm_auth/SSPI/required.m4 \
-	$(top_srcdir)/helpers/ntlm_auth/smb_lm/required.m4 \
-	$(top_srcdir)/helpers/log_daemon/modules.m4 \
-	$(top_srcdir)/helpers/log_daemon/DB/required.m4 \
-	$(top_srcdir)/helpers/log_daemon/file/required.m4 \
-	$(top_srcdir)/helpers/external_acl/modules.m4 \
-	$(top_srcdir)/helpers/external_acl/AD_group/required.m4 \
-	$(top_srcdir)/helpers/external_acl/LDAP_group/required.m4 \
-	$(top_srcdir)/helpers/external_acl/LM_group/required.m4 \
-	$(top_srcdir)/helpers/external_acl/delayer/required.m4 \
-	$(top_srcdir)/helpers/external_acl/SQL_session/required.m4 \
-	$(top_srcdir)/helpers/external_acl/eDirectory_userip/required.m4 \
-	$(top_srcdir)/helpers/external_acl/file_userip/required.m4 \
-	$(top_srcdir)/helpers/external_acl/kerberos_ldap_group/required.m4 \
-	$(top_srcdir)/helpers/external_acl/session/required.m4 \
-	$(top_srcdir)/helpers/external_acl/time_quota/required.m4 \
-	$(top_srcdir)/helpers/external_acl/unix_group/required.m4 \
-	$(top_srcdir)/helpers/external_acl/wbinfo_group/required.m4 \
-	$(top_srcdir)/helpers/url_rewrite/modules.m4 \
-	$(top_srcdir)/helpers/url_rewrite/fake/required.m4 \
-	$(top_srcdir)/helpers/storeid_rewrite/modules.m4 \
-	$(top_srcdir)/helpers/storeid_rewrite/file/required.m4 \
+	$(top_srcdir)/src/auth/basic/helpers.m4 \
+	$(top_srcdir)/src/auth/basic/DB/required.m4 \
+	$(top_srcdir)/src/auth/basic/LDAP/required.m4 \
+	$(top_srcdir)/src/auth/basic/NCSA/required.m4 \
+	$(top_srcdir)/src/auth/basic/NIS/required.m4 \
+	$(top_srcdir)/src/auth/basic/PAM/required.m4 \
+	$(top_srcdir)/src/auth/basic/POP3/required.m4 \
+	$(top_srcdir)/src/auth/basic/RADIUS/required.m4 \
+	$(top_srcdir)/src/auth/basic/SASL/required.m4 \
+	$(top_srcdir)/src/auth/basic/SMB/required.m4 \
+	$(top_srcdir)/src/auth/basic/SMB_LM/required.m4 \
+	$(top_srcdir)/src/auth/basic/SSPI/required.m4 \
+	$(top_srcdir)/src/auth/basic/fake/required.m4 \
+	$(top_srcdir)/src/auth/basic/getpwnam/required.m4 \
+	$(top_srcdir)/src/auth/digest/helpers.m4 \
+	$(top_srcdir)/src/auth/digest/eDirectory/required.m4 \
+	$(top_srcdir)/src/auth/digest/file/required.m4 \
+	$(top_srcdir)/src/auth/digest/LDAP/required.m4 \
+	$(top_srcdir)/src/auth/negotiate/helpers.m4 \
+	$(top_srcdir)/src/auth/negotiate/SSPI/required.m4 \
+	$(top_srcdir)/src/auth/negotiate/kerberos/required.m4 \
+	$(top_srcdir)/src/auth/negotiate/wrapper/required.m4 \
+	$(top_srcdir)/src/auth/ntlm/helpers.m4 \
+	$(top_srcdir)/src/auth/ntlm/fake/required.m4 \
+	$(top_srcdir)/src/auth/ntlm/SMB_LM/required.m4 \
+	$(top_srcdir)/src/auth/ntlm/SSPI/required.m4 \
+	$(top_srcdir)/src/log/helpers.m4 \
+	$(top_srcdir)/src/log/DB/required.m4 \
+	$(top_srcdir)/src/log/file/required.m4 \
+	$(top_srcdir)/src/acl/external/helpers.m4 \
+	$(top_srcdir)/src/acl/external/AD_group/required.m4 \
+	$(top_srcdir)/src/acl/external/LDAP_group/required.m4 \
+	$(top_srcdir)/src/acl/external/LM_group/required.m4 \
+	$(top_srcdir)/src/acl/external/delayer/required.m4 \
+	$(top_srcdir)/src/acl/external/SQL_session/required.m4 \
+	$(top_srcdir)/src/acl/external/eDirectory_userip/required.m4 \
+	$(top_srcdir)/src/acl/external/file_userip/required.m4 \
+	$(top_srcdir)/src/acl/external/kerberos_ldap_group/required.m4 \
+	$(top_srcdir)/src/acl/external/session/required.m4 \
+	$(top_srcdir)/src/acl/external/time_quota/required.m4 \
+	$(top_srcdir)/src/acl/external/unix_group/required.m4 \
+	$(top_srcdir)/src/acl/external/wbinfo_group/required.m4 \
+	$(top_srcdir)/src/http/url_rewriters/helpers.m4 \
+	$(top_srcdir)/src/http/url_rewriters/fake/required.m4 \
+	$(top_srcdir)/src/http/url_rewriters/LFS/required.m4 \
+	$(top_srcdir)/src/security/cert_validators/helpers.m4 \
+	$(top_srcdir)/src/security/cert_validators/fake/required.m4 \
+	$(top_srcdir)/src/security/cert_generators/helpers.m4 \
+	$(top_srcdir)/src/security/cert_generators/file/required.m4 \
+	$(top_srcdir)/src/store/id_rewriters/helpers.m4 \
+	$(top_srcdir)/src/store/id_rewriters/file/required.m4 \
 	$(top_srcdir)/configure.ac
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
@@ -159,14 +163,14 @@ mkinstalldirs = $(install_sh) -d
 CONFIG_HEADER = $(top_builddir)/include/autoconf.h
 CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
-am__installdirs = "$(DESTDIR)$(bindir)"
+am__installdirs = "$(DESTDIR)$(bindir)" "$(DESTDIR)$(man1dir)"
 PROGRAMS = $(bin_PROGRAMS)
 am_purge_OBJECTS = convert.$(OBJEXT) socket.$(OBJEXT) signal.$(OBJEXT) \
 	squid-tlv.$(OBJEXT) copyout.$(OBJEXT) conffile.$(OBJEXT) \
 	purge.$(OBJEXT)
 purge_OBJECTS = $(am_purge_OBJECTS)
 @ENABLE_XPROF_STATS_TRUE@am__DEPENDENCIES_1 = $(top_builddir)/lib/profiler/libprofiler.la
-am__DEPENDENCIES_2 = $(top_builddir)/compat/libcompat-squid.la \
+am__DEPENDENCIES_2 = $(top_builddir)/compat/libcompatsquid.la \
 	$(am__DEPENDENCIES_1)
 am__DEPENDENCIES_3 =
 purge_DEPENDENCIES = $(am__DEPENDENCIES_2) $(am__DEPENDENCIES_3)
@@ -233,6 +237,36 @@ am__can_run_installinfo = \
     n|no|NO) false;; \
     *) (install-info --version) >/dev/null 2>&1;; \
   esac
+am__vpath_adj_setup = srcdirstrip=`echo "$(srcdir)" | sed 's|.|.|g'`;
+am__vpath_adj = case $$p in \
+    $(srcdir)/*) f=`echo "$$p" | sed "s|^$$srcdirstrip/||"`;; \
+    *) f=$$p;; \
+  esac;
+am__strip_dir = f=`echo $$p | sed -e 's|^.*/||'`;
+am__install_max = 40
+am__nobase_strip_setup = \
+  srcdirstrip=`echo "$(srcdir)" | sed 's/[].[^$$\\*|]/\\\\&/g'`
+am__nobase_strip = \
+  for p in $$list; do echo "$$p"; done | sed -e "s|$$srcdirstrip/||"
+am__nobase_list = $(am__nobase_strip_setup); \
+  for p in $$list; do echo "$$p $$p"; done | \
+  sed "s| $$srcdirstrip/| |;"' / .*\//!s/ .*/ ./; s,\( .*\)/[^/]*$$,\1,' | \
+  $(AWK) 'BEGIN { files["."] = "" } { files[$$2] = files[$$2] " " $$1; \
+    if (++n[$$2] == $(am__install_max)) \
+      { print $$2, files[$$2]; n[$$2] = 0; files[$$2] = "" } } \
+    END { for (dir in files) print dir, files[dir] }'
+am__base_list = \
+  sed '$$!N;$$!N;$$!N;$$!N;$$!N;$$!N;$$!N;s/\n/ /g' | \
+  sed '$$!N;$$!N;$$!N;$$!N;s/\n/ /g'
+am__uninstall_files_from_dir = { \
+  test -z "$$files" \
+    || { test ! -d "$$dir" && test ! -f "$$dir" && test ! -r "$$dir"; } \
+    || { echo " ( cd '$$dir' && rm -f" $$files ")"; \
+         $(am__cd) "$$dir" && rm -f $$files; }; \
+  }
+man1dir = $(mandir)/man1
+NROFF = nroff
+MANS = $(man_MANS)
 am__tagged_files = $(HEADERS) $(SOURCES) $(TAGS_FILES) $(LISP)
 # Read a list of newline-separated strings from the standard input,
 # and print each of them once, without duplicates.  Input order is
@@ -274,33 +308,6 @@ am__tty_colors = { \
     std='[m'; \
   fi; \
 }
-am__vpath_adj_setup = srcdirstrip=`echo "$(srcdir)" | sed 's|.|.|g'`;
-am__vpath_adj = case $$p in \
-    $(srcdir)/*) f=`echo "$$p" | sed "s|^$$srcdirstrip/||"`;; \
-    *) f=$$p;; \
-  esac;
-am__strip_dir = f=`echo $$p | sed -e 's|^.*/||'`;
-am__install_max = 40
-am__nobase_strip_setup = \
-  srcdirstrip=`echo "$(srcdir)" | sed 's/[].[^$$\\*|]/\\\\&/g'`
-am__nobase_strip = \
-  for p in $$list; do echo "$$p"; done | sed -e "s|$$srcdirstrip/||"
-am__nobase_list = $(am__nobase_strip_setup); \
-  for p in $$list; do echo "$$p $$p"; done | \
-  sed "s| $$srcdirstrip/| |;"' / .*\//!s/ .*/ ./; s,\( .*\)/[^/]*$$,\1,' | \
-  $(AWK) 'BEGIN { files["."] = "" } { files[$$2] = files[$$2] " " $$1; \
-    if (++n[$$2] == $(am__install_max)) \
-      { print $$2, files[$$2]; n[$$2] = 0; files[$$2] = "" } } \
-    END { for (dir in files) print dir, files[dir] }'
-am__base_list = \
-  sed '$$!N;$$!N;$$!N;$$!N;$$!N;$$!N;$$!N;s/\n/ /g' | \
-  sed '$$!N;$$!N;$$!N;$$!N;s/\n/ /g'
-am__uninstall_files_from_dir = { \
-  test -z "$$files" \
-    || { test ! -d "$$dir" && test ! -f "$$dir" && test ! -r "$$dir"; } \
-    || { echo " ( cd '$$dir' && rm -f" $$files ")"; \
-         $(am__cd) "$$dir" && rm -f $$files; }; \
-  }
 am__recheck_rx = ^[ 	]*:recheck:[ 	]*
 am__global_test_result_rx = ^[ 	]*:global-test-result:[ 	]*
 am__copy_in_global_log_rx = ^[ 	]*:copy-in-global-log:[ 	]*
@@ -455,16 +462,17 @@ am__set_b = \
       b='$*';; \
   esac
 am__DIST_COMMON = $(srcdir)/Makefile.in $(top_srcdir)/cfgaux/depcomp \
-	$(top_srcdir)/cfgaux/test-driver $(top_srcdir)/src/Common.am \
-	README
+	$(top_srcdir)/cfgaux/test-driver $(top_srcdir)/src/Common.am
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
 ACLOCAL = @ACLOCAL@
 ADAPTATION_LIBS = @ADAPTATION_LIBS@
+AIOLIB = @AIOLIB@
 ALLOCA = @ALLOCA@
 AMTAR = @AMTAR@
 AM_DEFAULT_VERBOSITY = @AM_DEFAULT_VERBOSITY@
 AR = @AR@
 AR_R = @AR_R@
+ATOMICLIB = @ATOMICLIB@
 AUTH_LIBS_TO_BUILD = @AUTH_LIBS_TO_BUILD@
 AUTH_MODULES = @AUTH_MODULES@
 AUTOCONF = @AUTOCONF@
@@ -483,7 +491,6 @@ CGIEXT = @CGIEXT@
 CHMOD = @CHMOD@
 CPP = @CPP@
 CPPFLAGS = @CPPFLAGS@
-CPPUNITCONFIG = @CPPUNITCONFIG@
 CRYPTLIB = @CRYPTLIB@
 CXX = @CXX@
 CXXCPP = @CXXCPP@
@@ -498,14 +505,10 @@ DEFS = @DEFS@
 DEPDIR = @DEPDIR@
 DIGEST_AUTH_HELPERS = @DIGEST_AUTH_HELPERS@
 DISK_LIBS = @DISK_LIBS@
-DISK_LINKOBJS = @DISK_LINKOBJS@
 DISK_MODULES = @DISK_MODULES@
-DISK_OS_LIBS = @DISK_OS_LIBS@
-DISK_PROGRAMS = @DISK_PROGRAMS@
 DLLTOOL = @DLLTOOL@
 DSYMUTIL = @DSYMUTIL@
 DUMPBIN = @DUMPBIN@
-ECAP_LIBS = @ECAP_LIBS@
 ECHO_C = @ECHO_C@
 ECHO_N = @ECHO_N@
 ECHO_T = @ECHO_T@
@@ -521,7 +524,6 @@ FALSE = @FALSE@
 FGREP = @FGREP@
 GREP = @GREP@
 HAVE_CXX11 = @HAVE_CXX11@
-ICAP_LIBS = @ICAP_LIBS@
 INCLTDL = @INCLTDL@
 INSTALL = @INSTALL@
 INSTALL_DATA = @INSTALL_DATA@
@@ -538,12 +540,15 @@ LIBADD_DL = @LIBADD_DL@
 LIBADD_DLD_LINK = @LIBADD_DLD_LINK@
 LIBADD_DLOPEN = @LIBADD_DLOPEN@
 LIBADD_SHL_LOAD = @LIBADD_SHL_LOAD@
+LIBCPPUNIT_CFLAGS = @LIBCPPUNIT_CFLAGS@
+LIBCPPUNIT_LIBS = @LIBCPPUNIT_LIBS@
 LIBGNUTLS_CFLAGS = @LIBGNUTLS_CFLAGS@
 LIBGNUTLS_LIBS = @LIBGNUTLS_LIBS@
 LIBLTDL = @LIBLTDL@
 LIBOBJS = @LIBOBJS@
 LIBOPENSSL_CFLAGS = @LIBOPENSSL_CFLAGS@
 LIBOPENSSL_LIBS = @LIBOPENSSL_LIBS@
+LIBPTHREADS = @LIBPTHREADS@
 LIBS = @LIBS@
 LIBSASL = @LIBSASL@
 LIBTOOL = @LIBTOOL@
@@ -601,6 +606,8 @@ REPL_LIBS = @REPL_LIBS@
 REPL_OBJS = @REPL_OBJS@
 REPL_POLICIES = @REPL_POLICIES@
 RM = @RM@
+SECURITY_CERTGEN_HELPERS = @SECURITY_CERTGEN_HELPERS@
+SECURITY_CERTV_HELPERS = @SECURITY_CERTV_HELPERS@
 SED = @SED@
 SET_MAKE = @SET_MAKE@
 SH = @SH@
@@ -608,9 +615,6 @@ SHELL = @SHELL@
 SMBCLIENT = @SMBCLIENT@
 SNMPLIB = @SNMPLIB@
 SQUID_CFLAGS = @SQUID_CFLAGS@
-SQUID_CPPUNIT_INC = @SQUID_CPPUNIT_INC@
-SQUID_CPPUNIT_LA = @SQUID_CPPUNIT_LA@
-SQUID_CPPUNIT_LIBS = @SQUID_CPPUNIT_LIBS@
 SQUID_CXXFLAGS = @SQUID_CXXFLAGS@
 SSLLIB = @SSLLIB@
 STOREID_REWRITE_HELPERS = @STOREID_REWRITE_HELPERS@
@@ -686,17 +690,37 @@ target_alias = @target_alias@
 top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
+DEFAULT_HTTP_PORT = 3128
+DEFAULT_ICP_PORT = 3130
+DEFAULT_PREFIX = $(prefix)
+DEFAULT_CONFIG_DIR = $(sysconfdir)
+DEFAULT_CONFIG_FILE = $(DEFAULT_CONFIG_DIR)/squid.conf
+DEFAULT_MIME_TABLE = $(DEFAULT_CONFIG_DIR)/mime.conf
+DEFAULT_SSL_CRTD = $(libexecdir)/`echo security_file_certgen | sed '$(transform);s/$$/$(EXEEXT)/'`
+DEFAULT_LOG_PREFIX = $(DEFAULT_LOG_DIR)
+DEFAULT_CACHE_LOG = $(DEFAULT_LOG_PREFIX)/cache.log
+DEFAULT_ACCESS_LOG = $(DEFAULT_LOG_PREFIX)/access.log
+DEFAULT_STORE_LOG = $(DEFAULT_LOG_PREFIX)/store.log
+DEFAULT_NETDB_FILE = $(DEFAULT_SWAP_DIR)/netdb.state
+DEFAULT_SSL_DB_DIR = $(DEFAULT_SWAP_DIR)/ssl_db
+DEFAULT_PINGER = $(libexecdir)/`echo pinger | sed '$(transform);s/$$/$(EXEEXT)/'`
+DEFAULT_UNLINKD = $(libexecdir)/`echo unlinkd | sed '$(transform);s/$$/$(EXEEXT)/'`
+DEFAULT_LOGFILED = $(libexecdir)/`echo log_file_daemon | sed '$(transform);s/$$/$(EXEEXT)/'`
+DEFAULT_DISKD = $(libexecdir)/`echo diskd | sed '$(transform);s/$$/$(EXEEXT)/'`
+DEFAULT_ICON_DIR = $(datadir)/icons
+DEFAULT_ERROR_DIR = $(datadir)/errors
 AM_CFLAGS = $(SQUID_CFLAGS)
 AM_CXXFLAGS = $(SQUID_CXXFLAGS)
 CLEANFILES = 
 AM_CPPFLAGS = -I$(top_srcdir) -I$(top_srcdir)/include \
 	-I$(top_srcdir)/lib -I$(top_srcdir)/src \
-	-I$(top_builddir)/include $(SQUID_CPPUNIT_INC) $(KRB5INCS) \
+	-I$(top_builddir)/include $(LIBCPPUNIT_CFLAGS) $(KRB5INCS) \
 	$(am__append_1)
 @ENABLE_XPROF_STATS_FALSE@LIBPROFILER = 
 @ENABLE_XPROF_STATS_TRUE@LIBPROFILER = $(top_builddir)/lib/profiler/libprofiler.la
-COMPAT_LIB = $(top_builddir)/compat/libcompat-squid.la $(LIBPROFILER)
+COMPAT_LIB = $(top_builddir)/compat/libcompatsquid.la $(LIBPROFILER)
 subst_perlshell = sed -e 's,[@]PERL[@],$(PERL),g' <$(srcdir)/$@.pl.in >$@ || ($(RM) -f $@ ; exit 1)
+@ENABLE_WIN32SPECIFIC_FALSE@man_MANS = purge.1
 purge_SOURCES = \
 	convert.cc \
 	convert.hh \
@@ -716,7 +740,7 @@ purge_LDADD = \
 	$(COMPAT_LIB) \
 	$(XTRA_LIBS)
 
-EXTRA_DIST = README
+EXTRA_DIST = purge.1
 all: all-am
 
 .SUFFIXES:
@@ -857,6 +881,49 @@ mostlyclean-libtool:
 
 clean-libtool:
 	-rm -rf .libs _libs
+install-man1: $(man_MANS)
+	@$(NORMAL_INSTALL)
+	@list1=''; \
+	list2='$(man_MANS)'; \
+	test -n "$(man1dir)" \
+	  && test -n "`echo $$list1$$list2`" \
+	  || exit 0; \
+	echo " $(MKDIR_P) '$(DESTDIR)$(man1dir)'"; \
+	$(MKDIR_P) "$(DESTDIR)$(man1dir)" || exit 1; \
+	{ for i in $$list1; do echo "$$i"; done;  \
+	if test -n "$$list2"; then \
+	  for i in $$list2; do echo "$$i"; done \
+	    | sed -n '/\.1[a-z]*$$/p'; \
+	fi; \
+	} | while read p; do \
+	  if test -f $$p; then d=; else d="$(srcdir)/"; fi; \
+	  echo "$$d$$p"; echo "$$p"; \
+	done | \
+	sed -e 'n;s,.*/,,;p;h;s,.*\.,,;s,^[^1][0-9a-z]*$$,1,;x' \
+	      -e 's,\.[0-9a-z]*$$,,;$(transform);G;s,\n,.,' | \
+	sed 'N;N;s,\n, ,g' | { \
+	list=; while read file base inst; do \
+	  if test "$$base" = "$$inst"; then list="$$list $$file"; else \
+	    echo " $(INSTALL_DATA) '$$file' '$(DESTDIR)$(man1dir)/$$inst'"; \
+	    $(INSTALL_DATA) "$$file" "$(DESTDIR)$(man1dir)/$$inst" || exit $$?; \
+	  fi; \
+	done; \
+	for i in $$list; do echo "$$i"; done | $(am__base_list) | \
+	while read files; do \
+	  test -z "$$files" || { \
+	    echo " $(INSTALL_DATA) $$files '$(DESTDIR)$(man1dir)'"; \
+	    $(INSTALL_DATA) $$files "$(DESTDIR)$(man1dir)" || exit $$?; }; \
+	done; }
+
+uninstall-man1:
+	@$(NORMAL_UNINSTALL)
+	@list=''; test -n "$(man1dir)" || exit 0; \
+	files=`{ for i in $$list; do echo "$$i"; done; \
+	l2='$(man_MANS)'; for i in $$l2; do echo "$$i"; done | \
+	  sed -n '/\.1[a-z]*$$/p'; \
+	} | sed -e 's,.*/,,;h;s,.*\.,,;s,^[^1][0-9a-z]*$$,1,;x' \
+	      -e 's,\.[0-9a-z]*$$,,;$(transform);G;s,\n,.,'`; \
+	dir='$(DESTDIR)$(man1dir)'; $(am__uninstall_files_from_dir)
 
 ID: $(am__tagged_files)
 	$(am__define_uniq_tagged_files); mkid -fID $$unique
@@ -1100,9 +1167,9 @@ check-am: all-am
 	$(MAKE) $(AM_MAKEFLAGS) $(check_PROGRAMS)
 	$(MAKE) $(AM_MAKEFLAGS) check-TESTS
 check: check-am
-all-am: Makefile $(PROGRAMS)
+all-am: Makefile $(PROGRAMS) $(MANS)
 installdirs:
-	for dir in "$(DESTDIR)$(bindir)"; do \
+	for dir in "$(DESTDIR)$(bindir)" "$(DESTDIR)$(man1dir)"; do \
 	  test -z "$$dir" || $(MKDIR_P) "$$dir"; \
 	done
 install: install-am
@@ -1162,7 +1229,7 @@ info: info-am
 
 info-am:
 
-install-data-am:
+install-data-am: install-man
 
 install-dvi: install-dvi-am
 
@@ -1178,7 +1245,7 @@ install-info: install-info-am
 
 install-info-am:
 
-install-man:
+install-man: install-man1
 
 install-pdf: install-pdf-am
 
@@ -1208,7 +1275,9 @@ ps: ps-am
 
 ps-am:
 
-uninstall-am: uninstall-binPROGRAMS
+uninstall-am: uninstall-binPROGRAMS uninstall-man
+
+uninstall-man: uninstall-man1
 
 .MAKE: check-am install-am install-strip
 
@@ -1220,13 +1289,13 @@ uninstall-am: uninstall-binPROGRAMS
 	install install-am install-binPROGRAMS install-data \
 	install-data-am install-dvi install-dvi-am install-exec \
 	install-exec-am install-html install-html-am install-info \
-	install-info-am install-man install-pdf install-pdf-am \
-	install-ps install-ps-am install-strip installcheck \
-	installcheck-am installdirs maintainer-clean \
+	install-info-am install-man install-man1 install-pdf \
+	install-pdf-am install-ps install-ps-am install-strip \
+	installcheck installcheck-am installdirs maintainer-clean \
 	maintainer-clean-generic mostlyclean mostlyclean-compile \
 	mostlyclean-generic mostlyclean-libtool pdf pdf-am ps ps-am \
 	recheck tags tags-am uninstall uninstall-am \
-	uninstall-binPROGRAMS
+	uninstall-binPROGRAMS uninstall-man uninstall-man1
 
 .PRECIOUS: Makefile
 

@@ -18,6 +18,7 @@
 #include "auth/User.h"
 #include "auth/UserRequest.h"
 #include "client_side.h"
+#include "http/Stream.h"
 #include "HttpRequest.h"
 
 ACLProxyAuth::~ACLProxyAuth()
@@ -25,9 +26,14 @@ ACLProxyAuth::~ACLProxyAuth()
     delete data;
 }
 
-ACLProxyAuth::ACLProxyAuth(ACLData<char const *> *newData, char const *theType) : data(newData), type_(theType) {}
+ACLProxyAuth::ACLProxyAuth(ACLData<char const *> *newData, char const *theType) :
+    data(newData),
+    type_(theType)
+{}
 
-ACLProxyAuth::ACLProxyAuth(ACLProxyAuth const &old) : data(old.data->clone()), type_(old.type_)
+ACLProxyAuth::ACLProxyAuth(ACLProxyAuth const &old) :
+    data(old.data->clone()),
+    type_(old.type_)
 {}
 
 ACLProxyAuth &

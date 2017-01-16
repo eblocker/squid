@@ -49,7 +49,7 @@
 #include <sys/epoll.h>
 #endif
 
-static int kdpfd;
+static int kdpfd = -1;
 static int max_poll_time = 1000;
 
 static struct epoll_event *pevents;
@@ -69,13 +69,15 @@ Comm::SelectLoopInit(void)
     pevents = (struct epoll_event *) xmalloc(SQUID_MAXFD * sizeof(struct epoll_event));
 
     if (!pevents) {
-        fatalf("comm_select_init: xmalloc() failed: %s\n",xstrerror());
+        int xerrno = errno;
+        fatalf("comm_select_init: xmalloc() failed: %s\n", xstrerr(xerrno));
     }
 
     kdpfd = epoll_create(SQUID_MAXFD);
 
     if (kdpfd < 0) {
-        fatalf("comm_select_init: epoll_create(): %s\n",xstrerror());
+        int xerrno = errno;
+        fatalf("comm_select_init: epoll_create(): %s\n", xstrerr(xerrno));
     }
 
     commEPollRegisterWithCacheManager();
@@ -109,17 +111,13 @@ Comm::SetSelect(int fd, unsigned int type, PF * handler, void *client_data, time
     fde *F = &fd_table[fd];
     int epoll_ctl_type = 0;
 
-    struct epoll_event ev;
     assert(fd >= 0);
     debugs(5, 5, HERE << "FD " << fd << ", type=" << type <<
            ", handler=" << handler << ", client_data=" << client_data <<
            ", timeout=" << timeout);
 
-    if (RUNNING_ON_VALGRIND) {
-        /* Keep valgrind happy.. complains about uninitialized bytes otherwise */
-        memset(&ev, 0, sizeof(ev));
-    }
-    ev.events = 0;
+    struct epoll_event ev;
+    memset(&ev, 0, sizeof(ev));
     ev.data.fd = fd;
 
     if (!F->flags.open) {
@@ -172,8 +170,9 @@ Comm::SetSelect(int fd, unsigned int type, PF * handler, void *client_data, time
         F->epoll_state = ev.events;
 
         if (epoll_ctl(kdpfd, epoll_ctl_type, fd, &ev) < 0) {
-            debugs(5, DEBUG_EPOLL ? 0 : 8, HERE << "epoll_ctl(," << epolltype_atoi(epoll_ctl_type) <<
-                   ",,): failed on FD " << fd << ": " << xstrerror());
+            int xerrno = errno;
+            debugs(5, DEBUG_EPOLL ? 0 : 8, "epoll_ctl(," << epolltype_atoi(epoll_ctl_type) <<
+                   ",,): failed on FD " << fd << ": " << xstrerr(xerrno));
         }
     }
 

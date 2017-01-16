@@ -9,7 +9,6 @@
 /* DEBUG: section 79    Squid-side Disk I/O functions. */
 
 #include "squid.h"
-
 #include "DiskThreadsDiskFile.h"
 #include "DiskThreadsIOStrategy.h"
 #include "fde.h"
@@ -18,13 +17,16 @@
 #include "StatCounters.h"
 #include "Store.h"
 
+/* squidaio_ctrl_t uses explicit alloc()/freeOne().
+ * XXX: convert to MEMPROXY_CLASS() API
+ */
+#include "mem/Pool.h"
+
 void
 DiskThreadsIOStrategy::init(void)
 {
     if (initialised)
         return;
-
-    squidaio_ctrl_pool = memPoolCreate("aio_ctrl", sizeof(squidaio_ctrl_t));
 
     initialised = true;
 
@@ -51,10 +53,6 @@ DiskThreadsIOStrategy::done(void)
         return;
 
     squidaio_shutdown();
-
-    delete squidaio_ctrl_pool;
-
-    squidaio_ctrl_pool = NULL;
 
     initialised = false;
 }
@@ -140,7 +138,7 @@ DiskThreadsIOStrategy::callback()
         if (ctrlp->operation == _AIO_READ)
             squidaio_xfree(ctrlp->bufp, ctrlp->len);
 
-        squidaio_ctrl_pool->freeOne(ctrlp);
+        delete ctrlp;
     }
 
     return retval;
@@ -164,8 +162,7 @@ DiskThreadsIOStrategy::sync()
 }
 
 DiskThreadsIOStrategy::DiskThreadsIOStrategy() :
-    initialised(false),
-    squidaio_ctrl_pool(NULL)
+    initialised(false)
 {}
 
 void

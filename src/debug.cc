@@ -14,6 +14,8 @@
 #include "SquidTime.h"
 #include "util.h"
 
+#include <algorithm>
+
 /* for shutting_down flag in xassert() */
 #include "globals.h"
 
@@ -473,7 +475,11 @@ _db_rotate_log(void)
         remove
         (to);
 #endif
-        rename(from, to);
+        errno = 0;
+        if (rename(from, to) == -1) {
+            const auto saved_errno = errno;
+            debugs(0, DBG_IMPORTANT, "log rotation failed: " << xstrerr(saved_errno));
+        }
     }
 
     /*
@@ -488,10 +494,18 @@ _db_rotate_log(void)
     if (Debug::rotateNumber > 0) {
         snprintf(to, MAXPATHLEN, "%s.%d", debug_log_file, 0);
 #if _SQUID_WINDOWS_
-        remove
-        (to);
+        errno = 0;
+        if (remove(to) == -1) {
+            const auto saved_errno = errno;
+            debugs(0, DBG_IMPORTANT, "removal of log file " << to << " failed: " << xstrerr(saved_errno));
+        }
 #endif
-        rename(debug_log_file, to);
+        errno = 0;
+        if (rename(debug_log_file, to) == -1) {
+            const auto saved_errno = errno;
+            debugs(0, DBG_IMPORTANT, "renaming file " << debug_log_file << " to "
+                   << to << "failed: " << xstrerr(saved_errno));
+        }
     }
 
     /* Close and reopen the log.  It may have been renamed "manually"
@@ -712,7 +726,7 @@ ctx_get_descr(Ctx ctx)
     return Ctx_Descrs[ctx] ? Ctx_Descrs[ctx] : "<null>";
 }
 
-Debug::Context *Debug::Current = NULL;
+Debug::Context *Debug::Current = nullptr;
 
 Debug::Context::Context(const int aSection, const int aLevel):
     level(aLevel),
@@ -752,7 +766,7 @@ Debug::Context::formatStream()
 std::ostringstream &
 Debug::Start(const int section, const int level)
 {
-    Context *future = NULL;
+    Context *future = nullptr;
 
     // prepare future context
     if (Current) {
@@ -806,6 +820,19 @@ SkipBuildPrefix(const char* path)
     return path+BuildPrefixLength;
 }
 
+/// print data bytes using hex notation
+void
+Raw::printHex(std::ostream &os) const
+{
+    const auto savedFill = os.fill('0');
+    const auto savedFlags = os.flags(); // std::ios_base::fmtflags
+    os << std::hex;
+    std::for_each(data_, data_ + size_,
+    [&os](const char &c) { os << std::setw(2) << static_cast<uint8_t>(c); });
+    os.flags(savedFlags);
+    os.fill(savedFill);
+}
+
 std::ostream &
 Raw::print(std::ostream &os) const
 {
@@ -820,10 +847,14 @@ Raw::print(std::ostream &os) const
                            (size_ > 40 ? DBG_DATA : Debug::SectionLevel());
     if (finalLevel <= Debug::SectionLevel()) {
         os << (label_ ? '=' : ' ');
-        if (data_)
-            os.write(data_, size_);
-        else
+        if (data_) {
+            if (useHex_)
+                printHex(os);
+            else
+                os.write(data_, size_);
+        } else {
             os << "[null]";
+        }
     }
 
     return os;

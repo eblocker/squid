@@ -15,6 +15,7 @@
 #include "acl/ServerName.h"
 #include "client_side.h"
 #include "fde.h"
+#include "http/Stream.h"
 #include "HttpRequest.h"
 #include "ipcache.h"
 #include "SquidString.h"
@@ -90,16 +91,17 @@ ACLServerNameStrategy::match (ACLData<MatchType> * &data, ACLFilledChecklist *ch
 {
     assert(checklist != NULL && checklist->request != NULL);
 
-    const char *serverName = NULL;
+    const char *serverName = nullptr;
     SBuf serverNameKeeper; // because c_str() is not constant
     if (ConnStateData *conn = checklist->conn()) {
+
         if (conn->serverBump()) {
             if (X509 *peer_cert = conn->serverBump()->serverCert.get())
                 return Ssl::matchX509CommonNames(peer_cert, (void *)data, check_cert_domain<MatchType>);
         }
 
         if (conn->sslCommonName().isEmpty()) {
-            const char *host = checklist->request->GetHost();
+            const char *host = checklist->request->url.host();
             if (host && *host) // paranoid first condition: host() is never nil
                 serverName = host;
         } else {

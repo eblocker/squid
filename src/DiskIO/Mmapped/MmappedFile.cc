@@ -10,11 +10,11 @@
 
 #include "squid.h"
 #include "Debug.h"
-#include "disk.h"
 #include "DiskIO/IORequestor.h"
 #include "DiskIO/Mmapped/MmappedFile.h"
 #include "DiskIO/ReadRequest.h"
 #include "DiskIO/WriteRequest.h"
+#include "fs_io.h"
 #include "globals.h"
 
 #include <cerrno>
@@ -69,7 +69,7 @@ MmappedFile::~MmappedFile()
 
 // XXX: almost a copy of BlockingFile::open
 void
-MmappedFile::open(int flags, mode_t mode, RefCount<IORequestor> callback)
+MmappedFile::open(int flags, mode_t, RefCount<IORequestor> callback)
 {
     assert(fd < 0);
 
@@ -78,11 +78,12 @@ MmappedFile::open(int flags, mode_t mode, RefCount<IORequestor> callback)
     ioRequestor = callback;
 
     if (fd < 0) {
-        debugs(79,3, HERE << "open error: " << xstrerror());
+        int xerrno = errno;
+        debugs(79,3, "open error: " << xstrerr(xerrno));
         error_ = true;
     } else {
         ++store_open_disk_fd;
-        debugs(79,3, HERE << "FD " << fd);
+        debugs(79,3, "FD " << fd);
 
         // setup mapping boundaries
         struct stat sb;

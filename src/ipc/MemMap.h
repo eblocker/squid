@@ -13,9 +13,12 @@
 #include "ipc/mem/FlexibleArray.h"
 #include "ipc/mem/Pointer.h"
 #include "ipc/ReadWriteLock.h"
-#include "SBuf.h"
+#include "sbuf/SBuf.h"
+#include "store/forward.h"
+#include "store_key_md5.h"
 #include "tools.h"
-#include "typedefs.h"
+
+#include <atomic>
 
 namespace Ipc
 {
@@ -39,7 +42,7 @@ public:
     bool reading() const { return lock.readers; }
     bool writing() const { return lock.writing; }
 
-    Atomic::WordT<uint8_t> waitingToBeFreed; ///< may be accessed w/o a lock
+    std::atomic<uint8_t> waitingToBeFreed; ///< may be accessed w/o a lock
     mutable ReadWriteLock lock; ///< protects slot data below
     unsigned char key[MEMMAP_SLOT_KEY_SIZE]; ///< The entry key
     unsigned char p[MEMMAP_SLOT_DATA_SIZE]; ///< The memory block;
@@ -66,7 +69,7 @@ public:
 
         const int limit; ///< maximum number of map slots
         const size_t extrasSize; ///< size of slot extra data
-        Atomic::Word count; ///< current number of map slots
+        std::atomic<int> count; ///< current number of map slots
         Ipc::Mem::FlexibleArray<Slot> slots; ///< storage
     };
 
@@ -121,7 +124,6 @@ protected:
 
     const SBuf path; ///< cache_dir path, used for logging
     Mem::Pointer<Shared> shared;
-    int ttl;
 
 private:
     int slotIndexByKey(const cache_key *const key) const;

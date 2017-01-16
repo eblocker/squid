@@ -30,7 +30,7 @@ AccessLogEntry::getLogClientIp(char *buf, size_t bufsz) const
         log_ip = request->indirect_client_addr;
     else
 #endif
-        if (tcpClient != NULL)
+        if (tcpClient)
             log_ip = tcpClient->remote;
         else
             log_ip = cache.caddr;
@@ -52,6 +52,19 @@ AccessLogEntry::getLogClientIp(char *buf, size_t bufsz) const
     log_ip.toStr(buf, bufsz);
 }
 
+SBuf
+AccessLogEntry::getLogMethod() const
+{
+    SBuf method;
+    if (icp.opcode)
+        method.append(icp_opcode_str[icp.opcode]);
+    else if (htcp.opcode)
+        method.append(htcp.opcode);
+    else
+        method = http.method.image();
+    return method;
+}
+
 AccessLogEntry::~AccessLogEntry()
 {
     safe_free(headers.request);
@@ -64,6 +77,8 @@ AccessLogEntry::~AccessLogEntry()
 
     safe_free(headers.adapted_request);
     HTTPMSGUNLOCK(adapted_request);
+
+    safe_free(lastAclName);
 
     HTTPMSGUNLOCK(reply);
     HTTPMSGUNLOCK(request);

@@ -144,7 +144,8 @@ Ip::Intercept::NetfilterInterception(const Comm::ConnectionPointer &newConn, int
                     &lookup,
                     &len) != 0) {
         if (!silent) {
-            debugs(89, DBG_IMPORTANT, "ERROR: NF getsockopt(ORIGINAL_DST) failed on " << newConn << ": " << xstrerror());
+            int xerrno = errno;
+            debugs(89, DBG_IMPORTANT, "ERROR: NF getsockopt(ORIGINAL_DST) failed on " << newConn << ": " << xstrerr(xerrno));
             lastReported_ = squid_curtime;
         }
         debugs(89, 9, "address: " << newConn);
@@ -159,7 +160,7 @@ Ip::Intercept::NetfilterInterception(const Comm::ConnectionPointer &newConn, int
 }
 
 bool
-Ip::Intercept::TproxyTransparent(const Comm::ConnectionPointer &newConn, int silent)
+Ip::Intercept::TproxyTransparent(const Comm::ConnectionPointer &newConn, int)
 {
 #if (LINUX_NETFILTER && defined(IP_TRANSPARENT)) || \
     (PF_TRANSPARENT && defined(SO_BINDANY)) || \
@@ -177,7 +178,7 @@ Ip::Intercept::TproxyTransparent(const Comm::ConnectionPointer &newConn, int sil
 }
 
 bool
-Ip::Intercept::IpfwInterception(const Comm::ConnectionPointer &newConn, int silent)
+Ip::Intercept::IpfwInterception(const Comm::ConnectionPointer &newConn, int)
 {
 #if IPFW_TRANSPARENT
     /* The getsockname() call performed already provided the TCP packet details.
@@ -244,7 +245,8 @@ Ip::Intercept::IpfInterception(const Comm::ConnectionPointer &newConn, int silen
 
     if (natfd < 0) {
         if (!silent) {
-            debugs(89, DBG_IMPORTANT, "IPF (IPFilter) NAT open failed: " << xstrerror());
+            int xerrno = errno;
+            debugs(89, DBG_IMPORTANT, "IPF (IPFilter) NAT open failed: " << xstrerr(xerrno));
             lastReported_ = squid_curtime;
             return false;
         }
@@ -277,9 +279,10 @@ Ip::Intercept::IpfInterception(const Comm::ConnectionPointer &newConn, int silen
 
 #endif
     if (x < 0) {
-        if (errno != ESRCH) {
+        int xerrno = errno;
+        if (xerrno != ESRCH) {
             if (!silent) {
-                debugs(89, DBG_IMPORTANT, "IPF (IPFilter) NAT lookup failed: ioctl(SIOCGNATL) (v=" << IPFILTER_VERSION << "): " << xstrerror());
+                debugs(89, DBG_IMPORTANT, "IPF (IPFilter) NAT lookup failed: ioctl(SIOCGNATL) (v=" << IPFILTER_VERSION << "): " << xstrerr(xerrno));
                 lastReported_ = squid_curtime;
             }
 
@@ -332,7 +335,8 @@ Ip::Intercept::PfInterception(const Comm::ConnectionPointer &newConn, int silent
 
     if (pffd < 0) {
         if (!silent) {
-            debugs(89, DBG_IMPORTANT, HERE << "PF open failed: " << xstrerror());
+            int xerrno = errno;
+            debugs(89, DBG_IMPORTANT, MYNAME << "PF open failed: " << xstrerr(xerrno));
             lastReported_ = squid_curtime;
         }
         return false;
@@ -357,9 +361,10 @@ Ip::Intercept::PfInterception(const Comm::ConnectionPointer &newConn, int silent
     nl.direction = PF_OUT;
 
     if (ioctl(pffd, DIOCNATLOOK, &nl)) {
-        if (errno != ENOENT) {
+        int xerrno = errno;
+        if (xerrno != ENOENT) {
             if (!silent) {
-                debugs(89, DBG_IMPORTANT, HERE << "PF lookup failed: ioctl(DIOCNATLOOK)");
+                debugs(89, DBG_IMPORTANT, HERE << "PF lookup failed: ioctl(DIOCNATLOOK): " << xstrerr(xerrno));
                 lastReported_ = squid_curtime;
             }
             close(pffd);

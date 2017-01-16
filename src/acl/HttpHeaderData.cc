@@ -13,11 +13,12 @@
 #include "acl/Checklist.h"
 #include "acl/HttpHeaderData.h"
 #include "acl/RegexData.h"
-#include "cache_cf.h"
+#include "base/RegexPattern.h"
 #include "ConfigParser.h"
 #include "Debug.h"
 #include "HttpHeaderTools.h"
-#include "SBuf.h"
+#include "sbuf/SBuf.h"
+#include "sbuf/StringConvert.h"
 
 /* Construct an ACLHTTPHeaderData that uses an ACLRegex rule with the value of the
  * selected header from a given request.
@@ -25,7 +26,7 @@
  * TODO: This can be generalised by making the type of the regex_rule into a
  * template parameter - so that we can use different rules types in future.
  */
-ACLHTTPHeaderData::ACLHTTPHeaderData() : hdrId(HDR_BAD_HDR), regex_rule(new ACLRegexData)
+ACLHTTPHeaderData::ACLHTTPHeaderData() : hdrId(Http::HdrType::BAD_HDR), regex_rule(new ACLRegexData)
 {}
 
 ACLHTTPHeaderData::~ACLHTTPHeaderData()
@@ -42,16 +43,16 @@ ACLHTTPHeaderData::match(HttpHeader* hdr)
     debugs(28, 3, "aclHeaderData::match: checking '" << hdrName << "'");
 
     String value;
-    if (hdrId != HDR_BAD_HDR) {
+    if (hdrId != Http::HdrType::BAD_HDR) {
         if (!hdr->has(hdrId))
             return false;
         value = hdr->getStrOrList(hdrId);
     } else {
-        if (!hdr->getByNameIfPresent(hdrName.termedBuf(), value))
+        if (!hdr->getByNameIfPresent(hdrName, value))
             return false;
     }
 
-    SBuf cvalue(value);
+    auto cvalue = StringToSBuf(value);
     return regex_rule->match(cvalue.c_str());
 }
 
@@ -73,17 +74,17 @@ ACLHTTPHeaderData::dump() const
 void
 ACLHTTPHeaderData::parse()
 {
-    char* t = strtokFile();
+    char* t = ConfigParser::strtokFile();
     assert (t != NULL);
     hdrName = t;
-    hdrId = httpHeaderIdByNameDef(hdrName.rawBuf(), hdrName.size());
+    hdrId = Http::HeaderLookupTable.lookup(hdrName).id;
     regex_rule->parse();
 }
 
 bool
 ACLHTTPHeaderData::empty() const
 {
-    return (hdrId == HDR_BAD_HDR && hdrName.size()==0) || regex_rule->empty();
+    return (hdrId == Http::HdrType::BAD_HDR && hdrName.isEmpty()) || regex_rule->empty();
 }
 
 ACLData<HttpHeader*> *

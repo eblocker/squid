@@ -10,9 +10,11 @@
 #include "acl/FilledChecklist.h"
 #include "globals.h"
 #include "helper.h"
+#include "security/CertError.h"
 #include "ssl/cert_validate_message.h"
 #include "ssl/ErrorDetail.h"
 #include "ssl/support.h"
+#include "util.h"
 
 void
 Ssl::CertValidationMsg::composeRequest(CertValidationRequest const &vcert)
@@ -47,7 +49,7 @@ Ssl::CertValidationMsg::composeRequest(CertValidationRequest const &vcert)
 
     if (vcert.errors) {
         int i = 0;
-        for (const Ssl::CertErrors *err = vcert.errors; err; err = err->next, ++i) {
+        for (const Security::CertErrors *err = vcert.errors; err; err = err->next, ++i) {
             body +="\n";
             body = body + param_error_name + xitoa(i) + "=" + GetErrorName(err->element.code) + "\n";
             int errorCertPos = -1;
@@ -94,7 +96,7 @@ Ssl::CertValidationMsg::parseResponse(CertValidationResponse &resp, STACK_OF(X50
                 strncmp(param, param_cert.c_str(), param_cert.length()) == 0) {
             CertItem ci;
             ci.name.assign(param, param_len);
-            X509_Pointer x509;
+            Security::CertPointer x509;
             readCertFromMemory(x509, value);
             ci.setCert(x509.get());
             certs.push_back(ci);
@@ -144,6 +146,10 @@ Ssl::CertValidationMsg::parseResponse(CertValidationResponse &resp, STACK_OF(X50
                 //if certId is not correct sk_X509_value returns NULL
                 currentItem.setCert(sk_X509_value(peerCerts, certId));
             }
+        } else if (param_len > param_error_depth.length() &&
+                   strncmp(param, param_error_depth.c_str(), param_error_depth.length()) == 0 &&
+                   std::all_of(v.begin(), v.end(), isdigit)) {
+            currentItem.error_depth = atoi(v.c_str());
         } else {
             debugs(83, DBG_IMPORTANT, "WARNING: cert validator response parse error: Unknown parameter name " << std::string(param, param_len).c_str());
             return false;
@@ -194,6 +200,7 @@ Ssl::CertValidationResponse::RecvdError::RecvdError(const RecvdError &old)
     id = old.id;
     error_no = old.error_no;
     error_reason = old.error_reason;
+    error_depth = old.error_depth;
     setCert(old.cert.get());
 }
 
@@ -202,6 +209,7 @@ Ssl::CertValidationResponse::RecvdError & Ssl::CertValidationResponse::RecvdErro
     id = old.id;
     error_no = old.error_no;
     error_reason = old.error_reason;
+    error_depth = old.error_depth;
     setCert(old.cert.get());
     return *this;
 }
@@ -237,6 +245,7 @@ const std::string Ssl::CertValidationMsg::param_cert("cert_");
 const std::string Ssl::CertValidationMsg::param_error_name("error_name_");
 const std::string Ssl::CertValidationMsg::param_error_reason("error_reason_");
 const std::string Ssl::CertValidationMsg::param_error_cert("error_cert_");
+const std::string Ssl::CertValidationMsg::param_error_depth("error_depth_");
 const std::string Ssl::CertValidationMsg::param_proto_version("proto_version");
 const std::string Ssl::CertValidationMsg::param_cipher("cipher");
 

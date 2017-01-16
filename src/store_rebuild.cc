@@ -16,11 +16,13 @@
 #include "SquidTime.h"
 #include "StatCounters.h"
 #include "Store.h"
+#include "store/Disk.h"
 #include "store_digest.h"
 #include "store_key_md5.h"
 #include "store_rebuild.h"
 #include "StoreSearch.h"
-#include "SwapDir.h"
+// for tvSubDsec() which should be in SquidTime.h
+#include "util.h"
 
 #include <cerrno>
 
@@ -46,7 +48,7 @@ storeCleanupDoubleCheck(StoreEntry * e)
 }
 
 static void
-storeCleanup(void *datanotused)
+storeCleanup(void *)
 {
     static int store_errors = 0;
     static StoreSearchPointer currentSearch;
@@ -54,7 +56,7 @@ storeCleanup(void *datanotused)
     static int seen = 0;
 
     if (currentSearch == NULL || currentSearch->isDone())
-        currentSearch = Store::Root().search(NULL, NULL);
+        currentSearch = Store::Root().search();
 
     size_t statCount = 500;
 

@@ -11,10 +11,10 @@
 #include "squid.h"
 #include "anyp/PortCfg.h"
 #include "comm/Connection.h"
-#include "disk.h"
 #include "event.h"
 #include "fd.h"
 #include "fde.h"
+#include "fs_io.h"
 #include "globals.h"
 #include "ICP.h"
 #include "ipcache.h"
@@ -25,7 +25,7 @@
 static IPH send_announce;
 
 void
-start_announce(void *datanotused)
+start_announce(void *)
 {
     if (0 == Config.onoff.announce)
         return;
@@ -39,7 +39,7 @@ start_announce(void *datanotused)
 }
 
 static void
-send_announce(const ipcache_addrs *ia, const DnsLookupDetails &, void *junk)
+send_announce(const ipcache_addrs *ia, const Dns::LookupDetails &, void *)
 {
     LOCAL_ARRAY(char, tbuf, 256);
     LOCAL_ARRAY(char, sndbuf, BUFSIZ);
@@ -87,7 +87,8 @@ send_announce(const ipcache_addrs *ia, const DnsLookupDetails &, void *junk)
             sndbuf[l] = '\0';
             file_close(fd);
         } else {
-            debugs(50, DBG_IMPORTANT, "send_announce: " << file << ": " << xstrerror());
+            int xerrno = errno;
+            debugs(50, DBG_IMPORTANT, "send_announce: " << file << ": " << xstrerr(xerrno));
         }
     }
 
@@ -95,7 +96,9 @@ send_announce(const ipcache_addrs *ia, const DnsLookupDetails &, void *junk)
     S.port(port);
     assert(Comm::IsConnOpen(icpOutgoingConn));
 
-    if (comm_udp_sendto(icpOutgoingConn->fd, S, sndbuf, strlen(sndbuf) + 1) < 0)
-        debugs(27, DBG_IMPORTANT, "ERROR: Failed to announce to " << S << " from " << icpOutgoingConn->local << ": " << xstrerror());
+    if (comm_udp_sendto(icpOutgoingConn->fd, S, sndbuf, strlen(sndbuf) + 1) < 0) {
+        int xerrno = errno;
+        debugs(27, DBG_IMPORTANT, "ERROR: Failed to announce to " << S << " from " << icpOutgoingConn->local << ": " << xstrerr(xerrno));
+    }
 }
 

@@ -32,6 +32,9 @@
 #include "StatCounters.h"
 #include "stmem.h"
 #include "Store.h"
+#include "store/Controller.h"
+#include "store/Disk.h"
+#include "store/Disks.h"
 #include "store_digest.h"
 #include "store_key_md5.h"
 #include "store_log.h"
@@ -41,11 +44,15 @@
 #include "StoreMeta.h"
 #include "StrList.h"
 #include "swap_log_op.h"
-#include "SwapDir.h"
 #include "tools.h"
 #if USE_DELAY_POOLS
 #include "DelayPools.h"
 #endif
+
+/** StoreEntry uses explicit new/delete operators, which set pool chunk size to 2MB
+ * XXX: convert to MEMPROXY_CLASS() API
+ */
+#include "mem/Pool.h"
 
 #include <climits>
 #include <stack>
@@ -104,49 +111,19 @@ static EVH storeLateRelease;
 static std::stack<StoreEntry*> LateReleaseStack;
 MemAllocator *StoreEntry::pool = NULL;
 
-StorePointer Store::CurrentRoot = NULL;
-
-void
-Store::Root(Store * aRoot)
-{
-    CurrentRoot = aRoot;
-}
-
-void
-Store::Root(StorePointer aRoot)
-{
-    Root(aRoot.getRaw());
-}
-
 void
 Store::Stats(StoreEntry * output)
 {
-    assert (output);
+    assert(output);
     Root().stat(*output);
 }
 
-void
-Store::create()
-{}
-
-void
-Store::diskFull()
-{}
-
-void
-Store::sync()
-{}
-
-void
-Store::unlink (StoreEntry &anEntry)
-{
-    fatal("Store::unlink on invalid Store\n");
-}
-
+// XXX: new/delete operators need to be replaced with MEMPROXY_CLASS
+// definitions but doing so exposes bug 4370, and maybe 4354 and 4355
 void *
 StoreEntry::operator new (size_t bytecount)
 {
-    assert (bytecount == sizeof (StoreEntry));
+    assert(bytecount == sizeof (StoreEntry));
 
     if (!pool) {
         pool = memPoolCreate ("StoreEntry", bytecount);
@@ -165,7 +142,6 @@ void
 StoreEntry::makePublic(const KeyScope scope)
 {
     /* This object can be cached for a long time */
-
     if (!EBIT_TEST(flags, RELEASE_REQUEST))
         setPublicKey(scope);
 }
@@ -272,13 +248,13 @@ StoreEntry::bytesWanted (Range<size_t> const aRange, bool ignoreDelayPools) cons
 }
 
 bool
-StoreEntry::checkDeferRead(int fd) const
+StoreEntry::checkDeferRead(int) const
 {
     return (bytesWanted(Range<size_t>(0,INT_MAX)) == 0);
 }
 
 void
-StoreEntry::setNoDelay (bool const newValue)
+StoreEntry::setNoDelay(bool const newValue)
 {
     if (mem_obj)
         mem_obj->setNoDelay(newValue);
@@ -425,10 +401,8 @@ destroyStoreEntry(void *data)
         return;
 
     // Store::Root() is FATALly missing during shutdown
-    if (e->swap_filen >= 0 && !shutting_down) {
-        SwapDir &sd = dynamic_cast<SwapDir&>(*e->store());
-        sd.disconnect(*e);
-    }
+    if (e->swap_filen >= 0 && !shutting_down)
+        e->disk().disconnect(*e);
 
     e->destroyMemObject();
 
@@ -487,7 +461,6 @@ void
 StoreEntry::touch()
 {
     lastref = squid_curtime;
-    Store::Root().reference(*this);
 }
 
 void
@@ -625,8 +598,6 @@ getKeyCounter(void)
 void
 StoreEntry::setPrivateKey()
 {
-    const cache_key *newkey;
-
     if (key && EBIT_TEST(flags, KEY_PRIVATE))
         return;                 /* is already private */
 
@@ -640,12 +611,9 @@ StoreEntry::setPrivateKey()
         hashDelete();
     }
 
-    if (mem_obj && mem_obj->hasUris()) {
+    if (mem_obj && mem_obj->hasUris())
         mem_obj->id = getKeyCounter();
-        newkey = storeKeyPrivate(mem_obj->storeId(), mem_obj->method, mem_obj->id);
-    } else {
-        newkey = storeKeyPrivate("JUNK", Http::METHOD_NONE, getKeyCounter());
-    }
+    const cache_key *newkey = storeKeyPrivate();
 
     assert(hash_lookup(store_table, newkey) == NULL);
     EBIT_SET(flags, KEY_PRIVATE);
@@ -722,7 +690,9 @@ StoreEntry::forcePublicKey(const cache_key *newkey)
 
 /// Calculates correct public key for feeding forcePublicKey().
 /// Assumes adjustVary() has been called for this entry already.
-const cache_key *StoreEntry::calcPublicKey(const KeyScope keyScope) {
+const cache_key *
+StoreEntry::calcPublicKey(const KeyScope keyScope)
+{
     assert(mem_obj);
     return mem_obj->request ?  storeKeyPublicByRequest(mem_obj->request, keyScope) :
            storeKeyPublic(mem_obj->storeId(), mem_obj->method, keyScope);
@@ -731,7 +701,9 @@ const cache_key *StoreEntry::calcPublicKey(const KeyScope keyScope) {
 /// Updates mem_obj->request->vary_headers to reflect the current Vary.
 /// The vary_headers field is used to calculate the Vary marker key.
 /// Releases the old Vary marker with an outdated key (if any).
-void StoreEntry::adjustVary() {
+void
+StoreEntry::adjustVary()
+{
     assert(mem_obj);
 
     if (!mem_obj->request)
@@ -766,20 +738,20 @@ void StoreEntry::adjustVary() {
         /* We are allowed to do this typecast */
         HttpReply *rep = new HttpReply;
         rep->setHeaders(Http::scOkay, "Internal marker object", "x-squid-internal/vary", -1, -1, squid_curtime + 100000);
-        vary = mem_obj->getReply()->header.getList(HDR_VARY);
+        vary = mem_obj->getReply()->header.getList(Http::HdrType::VARY);
 
         if (vary.size()) {
             /* Again, we own this structure layout */
-            rep->header.putStr(HDR_VARY, vary.termedBuf());
+            rep->header.putStr(Http::HdrType::VARY, vary.termedBuf());
             vary.clean();
         }
 
 #if X_ACCELERATOR_VARY
-        vary = mem_obj->getReply()->header.getList(HDR_X_ACCELERATOR_VARY);
+        vary = mem_obj->getReply()->header.getList(Http::HdrType::HDR_X_ACCELERATOR_VARY);
 
         if (vary.size() > 0) {
             /* Again, we own this structure layout */
-            rep->header.putStr(HDR_X_ACCELERATOR_VARY, vary.termedBuf());
+            rep->header.putStr(Http::HdrType::HDR_X_ACCELERATOR_VARY, vary.termedBuf());
             vary.clean();
         }
 
@@ -886,23 +858,61 @@ StoreEntry::append(char const *buf, int len)
 }
 
 void
+StoreEntry::vappendf(const char *fmt, va_list vargs)
+{
+    LOCAL_ARRAY(char, buf, 4096);
+    *buf = 0;
+    int x;
+
+#ifdef VA_COPY
+    va_args ap;
+    /* Fix of bug 753r. The value of vargs is undefined
+     * after vsnprintf() returns. Make a copy of vargs
+     * incase we loop around and call vsnprintf() again.
+     */
+    VA_COPY(ap,vargs);
+    errno = 0;
+    if ((x = vsnprintf(buf, sizeof(buf), fmt, ap)) < 0) {
+        fatal(xstrerr(errno));
+        return;
+    }
+    va_end(ap);
+#else /* VA_COPY */
+    errno = 0;
+    if ((x = vsnprintf(buf, sizeof(buf), fmt, vargs)) < 0) {
+        fatal(xstrerr(errno));
+        return;
+    }
+#endif /*VA_COPY*/
+
+    if (x < static_cast<int>(sizeof(buf))) {
+        append(buf, x);
+        return;
+    }
+
+    // okay, do it the slow way.
+    char *buf2 = new char[x+1];
+    int y = vsnprintf(buf2, x+1, fmt, vargs);
+    assert(y >= 0 && y == x);
+    append(buf2, y);
+    delete[] buf2;
+}
+
+// deprecated. use StoreEntry::appendf() instead.
+void
 storeAppendPrintf(StoreEntry * e, const char *fmt,...)
 {
     va_list args;
     va_start(args, fmt);
-
-    storeAppendVPrintf(e, fmt, args);
+    e->vappendf(fmt, args);
     va_end(args);
 }
 
-/* used be storeAppendPrintf and Packer */
+// deprecated. use StoreEntry::appendf() instead.
 void
 storeAppendVPrintf(StoreEntry * e, const char *fmt, va_list vargs)
 {
-    LOCAL_ARRAY(char, buf, 4096);
-    buf[0] = '\0';
-    vsnprintf(buf, 4096, fmt, vargs);
-    e->append(buf, strlen(buf));
+    e->vappendf(fmt, vargs);
 }
 
 struct _store_check_cachable_hist {
@@ -1221,7 +1231,7 @@ storeGetMemSpace(int size)
  * it becomes active will self register
  */
 void
-Store::Maintain(void *notused)
+Store::Maintain(void *)
 {
     Store::Root().maintain();
 
@@ -1233,34 +1243,6 @@ Store::Maintain(void *notused)
 /* The maximum objects to scan for maintain storage space */
 #define MAINTAIN_MAX_SCAN       1024
 #define MAINTAIN_MAX_REMOVE     64
-
-/*
- * This routine is to be called by main loop in main.c.
- * It removes expired objects on only one bucket for each time called.
- *
- * This should get called 1/s from main().
- */
-void
-StoreController::maintain()
-{
-    static time_t last_warn_time = 0;
-
-    PROF_start(storeMaintainSwapSpace);
-    swapDir->maintain();
-
-    /* this should be emitted by the oversize dir, not globally */
-
-    if (Store::Root().currentSize() > Store::Root().maxSize()) {
-        if (squid_curtime - last_warn_time > 10) {
-            debugs(20, DBG_CRITICAL, "WARNING: Disk space over limit: "
-                   << Store::Root().currentSize() / 1024.0 << " KB > "
-                   << (Store::Root().maxSize() >> 10) << " KB");
-            last_warn_time = squid_curtime;
-        }
-    }
-
-    PROF_stop(storeMaintainSwapSpace);
-}
 
 /* release an object from a cache */
 void
@@ -1279,46 +1261,38 @@ StoreEntry::release()
         return;
     }
 
-    Store::Root().memoryUnlink(*this);
+    if (Store::Controller::store_dirs_rebuilding && swap_filen > -1) {
+        /* TODO: Teach disk stores to handle releases during rebuild instead. */
 
-    if (StoreController::store_dirs_rebuilding && swap_filen > -1) {
+        Store::Root().memoryUnlink(*this);
+
         setPrivateKey();
 
-        if (swap_filen > -1) {
-            // lock the entry until rebuilding is done
-            lock("storeLateRelease");
-            setReleaseFlag();
-            LateReleaseStack.push(this);
-        } else {
-            destroyStoreEntry(static_cast<hash_link *>(this));
-            // "this" is no longer valid
-        }
-
-        PROF_stop(storeRelease);
+        // lock the entry until rebuilding is done
+        lock("storeLateRelease");
+        setReleaseFlag();
+        LateReleaseStack.push(this);
         return;
     }
 
     storeLog(STORE_LOG_RELEASE, this);
-
-    if (swap_filen > -1) {
+    if (swap_filen > -1 && !EBIT_TEST(flags, KEY_PRIVATE)) {
         // log before unlink() below clears swap_filen
-        if (!EBIT_TEST(flags, KEY_PRIVATE))
-            storeDirSwapLog(this, SWAP_LOG_DEL);
-
-        unlink();
+        storeDirSwapLog(this, SWAP_LOG_DEL);
     }
 
+    Store::Root().unlink(*this);
     destroyStoreEntry(static_cast<hash_link *>(this));
     PROF_stop(storeRelease);
 }
 
 static void
-storeLateRelease(void *unused)
+storeLateRelease(void *)
 {
     StoreEntry *e;
     static int n = 0;
 
-    if (StoreController::store_dirs_rebuilding) {
+    if (Store::Controller::store_dirs_rebuilding) {
         eventAdd("storeLateRelease", storeLateRelease, NULL, 1.0, 1);
         return;
     }
@@ -1425,40 +1399,10 @@ storeInit(void)
     storeRegisterWithCacheManager();
 }
 
-/// computes maximum size of a cachable object
-/// larger objects are rejected by all (disk and memory) cache stores
-static int64_t
-storeCalcMaxObjSize()
-{
-    int64_t ms = 0; // nothing can be cached without at least one store consent
-
-    // global maximum is at least the disk store maximum
-    for (int i = 0; i < Config.cacheSwap.n_configured; ++i) {
-        assert (Config.cacheSwap.swapDirs[i].getRaw());
-        const int64_t storeMax = dynamic_cast<SwapDir *>(Config.cacheSwap.swapDirs[i].getRaw())->maxObjectSize();
-        if (ms < storeMax)
-            ms = storeMax;
-    }
-
-    // global maximum is at least the memory store maximum
-    // TODO: move this into a memory cache class when we have one
-    const int64_t memMax = static_cast<int64_t>(min(Config.Store.maxInMemObjSize, Config.memMaxSize));
-    if (ms < memMax)
-        ms = memMax;
-
-    return ms;
-}
-
 void
 storeConfigure(void)
 {
-    store_swap_high = (long) (((float) Store::Root().maxSize() *
-                               (float) Config.Swap.highWaterMark) / (float) 100);
-    store_swap_low = (long) (((float) Store::Root().maxSize() *
-                              (float) Config.Swap.lowWaterMark) / (float) 100);
-    store_pages_max = Config.memMaxSize / sizeof(mem_node);
-
-    store_maxobjsize = storeCalcMaxObjSize();
+    Store::Root().updateLimits();
 }
 
 bool
@@ -1520,14 +1464,10 @@ StoreEntry::negativeCache()
 void
 storeFreeMemory(void)
 {
-    Store::Root(NULL);
+    Store::FreeMemory();
 #if USE_CACHE_DIGESTS
-
-    if (store_digest)
-        cacheDigestDestroy(store_digest);
-
+    delete store_digest;
 #endif
-
     store_digest = NULL;
 }
 
@@ -1585,7 +1525,7 @@ StoreEntry::timestampsSet()
 {
     const HttpReply *reply = getReply();
     time_t served_date = reply->date;
-    int age = reply->header.getInt(HDR_AGE);
+    int age = reply->header.getInt(Http::HdrType::AGE);
     /* Compute the timestamp, mimicking RFC2616 section 13.2.3. */
     /* make sure that 0 <= served_date <= squid_curtime */
 
@@ -1751,14 +1691,21 @@ StoreEntry::createMemObject(const char *aUrl, const char *aLogUrl, const HttpReq
     mem_obj->setUris(aUrl, aLogUrl, aMethod);
 }
 
-/* this just sets DELAY_SENDING */
+/** disable sending content to the clients.
+ *
+ * This just sets DELAY_SENDING.
+ */
 void
 StoreEntry::buffer()
 {
     EBIT_SET(flags, DELAY_SENDING);
 }
 
-/* this just clears DELAY_SENDING and Invokes the handlers */
+/** flush any buffered content.
+ *
+ * This just clears DELAY_SENDING and Invokes the handlers
+ * to begin sending anything that may be buffered.
+ */
 void
 StoreEntry::flush()
 {
@@ -1919,12 +1866,9 @@ StoreEntry::replaceHttpReply(HttpReply *rep, bool andStartWriting)
 void
 StoreEntry::startWriting()
 {
-    Packer p;
-
-    /* TODO: when we store headers serparately remove the header portion */
+    /* TODO: when we store headers separately remove the header portion */
     /* TODO: mark the length of the headers ? */
     /* We ONLY want the headers */
-    packerToStoreInit(&p, this);
 
     assert (isEmpty());
     assert(mem_obj);
@@ -1932,13 +1876,13 @@ StoreEntry::startWriting()
     const HttpReply *rep = getReply();
     assert(rep);
 
-    rep->packHeadersInto(&p);
+    buffer();
+    rep->packHeadersInto(this);
     mem_obj->markEndOfReplyHeaders();
     EBIT_CLR(flags, ENTRY_FWD_HDR_WAIT);
 
-    rep->body.packInto(&p);
-
-    packerClean(&p);
+    rep->body.packInto(this);
+    flush();
 }
 
 char const *
@@ -1973,7 +1917,7 @@ StoreEntry::transientsAbandonmentCheck()
 }
 
 void
-StoreEntry::memOutDecision(const bool willCacheInRam)
+StoreEntry::memOutDecision(const bool)
 {
     transientsAbandonmentCheck();
 }
@@ -2050,7 +1994,7 @@ bool
 StoreEntry::hasEtag(ETag &etag) const
 {
     if (const HttpReply *reply = getReply()) {
-        etag = reply->header.getETag(HDR_ETAG);
+        etag = reply->header.getETag(Http::HdrType::ETAG);
         if (etag.str)
             return true;
     }
@@ -2060,14 +2004,14 @@ StoreEntry::hasEtag(ETag &etag) const
 bool
 StoreEntry::hasIfMatchEtag(const HttpRequest &request) const
 {
-    const String reqETags = request.header.getList(HDR_IF_MATCH);
+    const String reqETags = request.header.getList(Http::HdrType::IF_MATCH);
     return hasOneOfEtags(reqETags, false);
 }
 
 bool
 StoreEntry::hasIfNoneMatchEtag(const HttpRequest &request) const
 {
-    const String reqETags = request.header.getList(HDR_IF_NONE_MATCH);
+    const String reqETags = request.header.getList(Http::HdrType::IF_NONE_MATCH);
     // weak comparison is allowed only for HEAD or full-body GET requests
     const bool allowWeakMatch = !request.flags.isRanged &&
                                 (request.method == Http::METHOD_GET || request.method == Http::METHOD_HEAD);
@@ -2078,7 +2022,7 @@ StoreEntry::hasIfNoneMatchEtag(const HttpRequest &request) const
 bool
 StoreEntry::hasOneOfEtags(const String &reqETags, const bool allowWeakMatch) const
 {
-    const ETag repETag = getReply()->header.getETag(HDR_ETAG);
+    const ETag repETag = getReply()->header.getETag(Http::HdrType::ETAG);
     if (!repETag.str)
         return strListIsMember(&reqETags, "*", ',');
 
@@ -2102,20 +2046,13 @@ StoreEntry::hasOneOfEtags(const String &reqETags, const bool allowWeakMatch) con
     return matched;
 }
 
-SwapDir::Pointer
-StoreEntry::store() const
+Store::Disk &
+StoreEntry::disk() const
 {
     assert(0 <= swap_dirn && swap_dirn < Config.cacheSwap.n_configured);
-    return INDEXSD(swap_dirn);
-}
-
-void
-StoreEntry::unlink()
-{
-    store()->unlink(*this); // implies disconnect()
-    swap_filen = -1;
-    swap_dirn = -1;
-    swap_status = SWAPOUT_NONE;
+    const RefCount<Store::Disk> &sd = INDEXSD(swap_dirn);
+    assert(sd);
+    return *sd;
 }
 
 /*

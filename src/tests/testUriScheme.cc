@@ -11,7 +11,6 @@
 #include <cppunit/TestAssert.h>
 
 #include "anyp/UriScheme.h"
-#include "Mem.h"
 #include "SquidString.h"
 #include "tests/testUriScheme.h"
 
@@ -113,9 +112,9 @@ testUriScheme::testConstructprotocol_t()
 void
 testUriScheme::testC_str()
 {
-    String lhs("wais");
+    SBuf lhs("wais");
     AnyP::UriScheme wais(AnyP::PROTO_WAIS);
-    String rhs(wais.c_str());
+    SBuf rhs(wais.image());
     CPPUNIT_ASSERT_EQUAL(lhs, rhs);
 }
 

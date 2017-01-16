@@ -12,7 +12,7 @@
 
 #include "client_side.h"
 #include "FwdState.h"
-#include "globals.h"
+#include "http/Stream.h"
 #include "ssl/ServerBump.h"
 #include "Store.h"
 #include "StoreClient.h"
@@ -24,16 +24,19 @@ Ssl::ServerBump::ServerBump(HttpRequest *fakeRequest, StoreEntry *e, Ssl::BumpMo
     request(fakeRequest),
     step(bumpStep1)
 {
-    debugs(33, 4, HERE << "will peek at " << request->GetHost() << ':' << request->port);
+    debugs(33, 4, "will peek at " << request->url.authority(true));
     act.step1 = md;
     act.step2 = act.step3 = Ssl::bumpNone;
 
-    const char *uri = urlCanonical(request.getRaw());
     if (e) {
         entry = e;
         entry->lock("Ssl::ServerBump");
-    } else
+    } else {
+        // XXX: Performance regression. c_str() reallocates
+        SBuf uriBuf(request->effectiveRequestUri());
+        const char *uri = uriBuf.c_str();
         entry = storeCreateEntry(uri, uri, request->flags, request->method);
+    }
     // We do not need to be a client because the error contents will be used
     // later, but an entry without any client will trim all its contents away.
     sc = storeClientListAdd(entry, this);
@@ -50,21 +53,21 @@ Ssl::ServerBump::~ServerBump()
 }
 
 void
-Ssl::ServerBump::attachServerSSL(SSL *ssl)
+Ssl::ServerBump::attachServerSession(const Security::SessionPointer &s)
 {
-    if (serverSSL.get())
+    if (serverSession)
         return;
 
-    serverSSL.resetAndLock(ssl);
+    serverSession = s;
 }
 
-const Ssl::CertErrors *
+const Security::CertErrors *
 Ssl::ServerBump::sslErrors() const
 {
-    if (!serverSSL.get())
+    if (!serverSession)
         return NULL;
 
-    const Ssl::CertErrors *errs = static_cast<const Ssl::CertErrors*>(SSL_get_ex_data(serverSSL.get(), ssl_ex_index_ssl_errors));
+    const Security::CertErrors *errs = static_cast<const Security::CertErrors*>(SSL_get_ex_data(serverSession.get(), ssl_ex_index_ssl_errors));
     return errs;
 }
 

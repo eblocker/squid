@@ -13,14 +13,14 @@
 #include "globals.h"
 #include "HttpHeader.h"
 #include "HttpReply.h"
-#include "Mem.h"
 #include "MemObject.h"
 #include "RequestFlags.h"
 #include "SquidConfig.h"
 #include "Store.h"
+#include "store/Disk.h"
+#include "store/Disks.h"
 #include "StoreFileSystem.h"
 #include "StoreSearch.h"
-#include "SwapDir.h"
 #include "testRock.h"
 #include "testStoreSupport.h"
 #include "unitTestMain.h"
@@ -57,12 +57,15 @@ testRock::setUp()
     if (0 > system ("rm -rf " TESTDIR))
         throw std::runtime_error("Failed to clean test work directory");
 
+    Config.memShared.defaultTo(false);
+    Config.shmLocking.defaultTo(false);
+
     // use current directory for shared segments (on path-based OSes)
     Ipc::Mem::Segment::BasePath = getcwd(cwd,MAXPATHLEN);
     if (Ipc::Mem::Segment::BasePath == NULL)
         Ipc::Mem::Segment::BasePath = ".";
 
-    Store::Root(new StoreController);
+    Store::Init();
 
     store = new Rock::SwapDir();
 
@@ -95,7 +98,7 @@ testRock::tearDown()
 {
     CPPUNIT_NS::TestFixture::tearDown();
 
-    Store::Root(NULL);
+    Store::FreeMemory();
 
     store = NULL;
 
@@ -200,14 +203,7 @@ testRock::addEntry(const int i)
     StoreEntry *const pe = createEntry(i);
 
     pe->buffer();
-    /* TODO: remove this when the metadata is separated */
-    {
-        Packer p;
-        packerToStoreInit(&p, pe);
-        pe->getReply()->packHeadersInto(&p);
-        packerClean(&p);
-    }
-
+    pe->getReply()->packHeadersInto(pe);
     pe->flush();
     pe->timestampsSet();
     pe->complete();

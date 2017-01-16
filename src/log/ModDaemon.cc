@@ -11,6 +11,7 @@
 #include "squid.h"
 #include "cbdata.h"
 #include "comm/Loops.h"
+#include "fatal.h"
 #include "fde.h"
 #include "globals.h"
 #include "log/Config.h"
@@ -87,7 +88,7 @@ logfileFreeBuffer(Logfile * lf, logfile_buffer_t * b)
 }
 
 static void
-logfileHandleWrite(int fd, void *data)
+logfileHandleWrite(int, void *data)
 {
     Logfile *lf = static_cast<Logfile *>(data);
     l_daemon_t *ll = static_cast<l_daemon_t *>(lf->data);
@@ -105,15 +106,16 @@ logfileHandleWrite(int fd, void *data)
     ll->flush_pending = 0;
 
     int ret = FD_WRITE_METHOD(ll->wfd, b->buf + b->written_len, b->len - b->written_len);
+    int xerrno = errno;
     debugs(50, 3, lf->path << ": write returned " << ret);
     if (ret < 0) {
-        if (ignoreErrno(errno)) {
+        if (ignoreErrno(xerrno)) {
             /* something temporary */
             Comm::SetSelect(ll->wfd, COMM_SELECT_WRITE, logfileHandleWrite, lf, 0);
             ll->flush_pending = 1;
             return;
         }
-        debugs(50, DBG_IMPORTANT,"logfileHandleWrite: " << lf->path << ": error writing (" << xstrerror() << ")");
+        debugs(50, DBG_IMPORTANT,"logfileHandleWrite: " << lf->path << ": error writing (" << xstrerr(xerrno) << ")");
         /* XXX should handle this better */
         fatal("I don't handle this error well!");
     }
@@ -206,7 +208,7 @@ logfileFlushEvent(void *data)
 /* External code */
 
 int
-logfile_mod_daemon_open(Logfile * lf, const char *path, size_t bufsz, int fatal_flag)
+logfile_mod_daemon_open(Logfile * lf, const char *path, size_t, int)
 {
     const char *args[5];
     char *tmpbuf;
@@ -268,7 +270,7 @@ logfile_mod_daemon_close(Logfile * lf)
 }
 
 static void
-logfile_mod_daemon_rotate(Logfile * lf)
+logfile_mod_daemon_rotate(Logfile * lf, const int16_t)
 {
     char tb[3];
     debugs(50, DBG_IMPORTANT, "logfileRotate: " << lf->path);

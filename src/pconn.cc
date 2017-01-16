@@ -31,13 +31,19 @@ CBDATA_CLASS_INIT(IdleConnList);
 
 /* ========== IdleConnList ============================================ */
 
-IdleConnList::IdleConnList(const char *key, PconnPool *thePool) :
+IdleConnList::IdleConnList(const char *aKey, PconnPool *thePool) :
     capacity_(PCONN_FDS_SZ),
     size_(0),
     parent_(thePool)
 {
-    hash.key = xstrdup(key);
+    //Initialize hash_link members
+    key = xstrdup(aKey);
+    next = NULL;
+
     theList_ = new Comm::ConnectionPointer[capacity_];
+
+    registerRunner();
+
 // TODO: re-attach to MemPools. WAS: theList = (?? *)pconn_fds_pool->alloc();
 }
 
@@ -53,7 +59,7 @@ IdleConnList::~IdleConnList()
 
     delete[] theList_;
 
-    xfree(hash.key);
+    xfree(key);
 }
 
 /** Search the list. Matches by FD socket number.
@@ -94,7 +100,7 @@ IdleConnList::removeAt(int index)
     if (parent_) {
         parent_->noteConnectionRemoved();
         if (size_ == 0) {
-            debugs(48, 3, HERE << "deleting " << hashKeyStr(&hash));
+            debugs(48, 3, "deleting " << hashKeyStr(this));
             delete this;
         }
     }
@@ -145,7 +151,7 @@ IdleConnList::closeN(size_t n)
     }
 
     if (parent_ && size_ == 0) {
-        debugs(48, 3, HERE << "deleting " << hashKeyStr(&hash));
+        debugs(48, 3, "deleting " << hashKeyStr(this));
         delete this;
     }
 }
@@ -182,7 +188,7 @@ IdleConnList::push(const Comm::ConnectionPointer &conn)
     comm_read(conn, fakeReadBuf_, sizeof(fakeReadBuf_), readCall);
     AsyncCall::Pointer timeoutCall = commCbCall(5,4, "IdleConnList::Timeout",
                                      CommTimeoutCbPtrFun(IdleConnList::Timeout, this));
-    commSetConnTimeout(conn, Config.Timeout.serverIdlePconn, timeoutCall);
+    commSetConnTimeout(conn, conn->timeLeft(Config.Timeout.serverIdlePconn), timeoutCall);
 }
 
 /// Determine whether an entry in the idle list is available for use.
@@ -236,13 +242,13 @@ IdleConnList::pop()
  * quite a bit of CPU. Just keep it in mind.
  */
 Comm::ConnectionPointer
-IdleConnList::findUseable(const Comm::ConnectionPointer &key)
+IdleConnList::findUseable(const Comm::ConnectionPointer &aKey)
 {
     assert(size_);
 
     // small optimization: do the constant bool tests only once.
-    const bool keyCheckAddr = !key->local.isAnyAddr();
-    const bool keyCheckPort = key->local.port() > 0;
+    const bool keyCheckAddr = !aKey->local.isAnyAddr();
+    const bool keyCheckPort = aKey->local.port() > 0;
 
     for (int i=size_-1; i>=0; --i) {
 
@@ -250,11 +256,11 @@ IdleConnList::findUseable(const Comm::ConnectionPointer &key)
             continue;
 
         // local end port is required, but dont match.
-        if (keyCheckPort && key->local.port() != theList_[i]->local.port())
+        if (keyCheckPort && aKey->local.port() != theList_[i]->local.port())
             continue;
 
         // local address is required, but does not match.
-        if (keyCheckAddr && key->local.matchIPAddr(theList_[i]->local) != 0)
+        if (keyCheckAddr && aKey->local.matchIPAddr(theList_[i]->local) != 0)
             continue;
 
         // our connection timeout handler is scheduled to run already. unsafe for now.
@@ -289,7 +295,7 @@ IdleConnList::findAndClose(const Comm::ConnectionPointer &conn)
 }
 
 void
-IdleConnList::Read(const Comm::ConnectionPointer &conn, char *buf, size_t len, Comm::Flag flag, int xerrno, void *data)
+IdleConnList::Read(const Comm::ConnectionPointer &conn, char *, size_t len, Comm::Flag flag, int, void *data)
 {
     debugs(48, 3, HERE << len << " bytes from " << conn);
 
@@ -311,6 +317,12 @@ IdleConnList::Timeout(const CommTimeoutCbParams &io)
     IdleConnList *list = static_cast<IdleConnList *>(io.data);
     /* may delete list/data */
     list->findAndClose(io.conn);
+}
+
+void
+IdleConnList::endingShutdown()
+{
+    closeN(size_);
 }
 
 /* ========== PconnPool PRIVATE FUNCTIONS ============================================ */
@@ -380,7 +392,7 @@ PconnPool::PconnPool(const char *aDescr, const CbcPointer<PeerPoolMgr> &aMgr):
 static void
 DeleteIdleConnList(void *hashItem)
 {
-    delete reinterpret_cast<IdleConnList*>(hashItem);
+    delete static_cast<IdleConnList*>(hashItem);
 }
 
 PconnPool::~PconnPool()
@@ -410,10 +422,10 @@ PconnPool::push(const Comm::ConnectionPointer &conn, const char *domain)
 
     if (list == NULL) {
         list = new IdleConnList(aKey, this);
-        debugs(48, 3, HERE << "new IdleConnList for {" << hashKeyStr(&list->hash) << "}" );
-        hash_join(table, &list->hash);
+        debugs(48, 3, "new IdleConnList for {" << hashKeyStr(list) << "}" );
+        hash_join(table, list);
     } else {
-        debugs(48, 3, HERE << "found IdleConnList for {" << hashKeyStr(&list->hash) << "}" );
+        debugs(48, 3, "found IdleConnList for {" << hashKeyStr(list) << "}" );
     }
 
     list->push(conn);
@@ -441,7 +453,7 @@ PconnPool::pop(const Comm::ConnectionPointer &dest, const char *domain, bool kee
         notifyManager("pop failure");
         return Comm::ConnectionPointer();
     } else {
-        debugs(48, 3, HERE << "found " << hashKeyStr(&list->hash) <<
+        debugs(48, 3, "found " << hashKeyStr(list) <<
                (keepOpen ? " to use" : " to kill"));
     }
 
@@ -479,7 +491,7 @@ PconnPool::closeN(int n)
         }
 
         // may delete current
-        reinterpret_cast<IdleConnList*>(current)->closeN(1);
+        static_cast<IdleConnList*>(current)->closeN(1);
     }
 }
 
@@ -488,7 +500,7 @@ PconnPool::unlinkList(IdleConnList *list)
 {
     theCount -= list->count();
     assert(theCount >= 0);
-    hash_remove_link(table, &list->hash);
+    hash_remove_link(table, list);
 }
 
 void

@@ -9,7 +9,7 @@
 #include "squid.h"
 #include "HttpReply.h"
 #include "HttpRequest.h"
-#include "SBuf.h"
+#include "sbuf/SBuf.h"
 
 #define STUB_API "http.cc"
 #include "tests/STUB.h"

@@ -11,7 +11,7 @@
 #include "squid.h"
 #include "acl/Checklist.h"
 #include "acl/StringData.h"
-#include "cache_cf.h"
+#include "ConfigParser.h"
 #include "Debug.h"
 
 ACLStringData::ACLStringData(ACLStringData const &old) : stringValues(old.stringValues)
@@ -25,18 +25,24 @@ ACLStringData::insert(const char *value)
 }
 
 bool
-ACLStringData::match(char const *toFind)
+ACLStringData::match(const SBuf &tf)
 {
-    if (stringValues.empty() || !toFind)
+    if (stringValues.empty() || tf.isEmpty())
         return 0;
 
-    SBuf tf(toFind);
     debugs(28, 3, "aclMatchStringList: checking '" << tf << "'");
 
     bool found = (stringValues.find(tf) != stringValues.end());
     debugs(28, 3, "aclMatchStringList: '" << tf << "' " << (found ? "found" : "NOT found"));
 
     return found;
+}
+
+// XXX: performance regression due to SBuf(char*) data-copies.
+bool
+ACLStringData::match(char const *toFind)
+{
+    return match(SBuf(toFind));
 }
 
 SBufList
@@ -50,8 +56,7 @@ ACLStringData::dump() const
 void
 ACLStringData::parse()
 {
-    char *t;
-    while ((t = strtokFile()))
+    while (const char *t = ConfigParser::strtokFile())
         stringValues.insert(SBuf(t));
 }
 

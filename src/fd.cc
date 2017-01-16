@@ -11,6 +11,7 @@
 #include "squid.h"
 #include "comm/Loops.h"
 #include "Debug.h"
+#include "fatal.h"
 #include "fd.h"
 #include "fde.h"
 #include "globals.h"
@@ -96,7 +97,7 @@ fd_close(int fd)
     F->flags.open = false;
     fdUpdateBiggest(fd, 0);
     --Number_FD;
-    *F = fde();
+    F->clear();
 }
 
 #if _SQUID_WINDOWS_
@@ -163,7 +164,7 @@ default_write_method(int fd, const char *buf, int len)
 }
 
 int
-msghdr_read_method(int fd, char *buf, int len)
+msghdr_read_method(int fd, char *buf, int)
 {
     PROF_start(read);
     const int i = recvmsg(fd, reinterpret_cast<msghdr*>(buf), MSG_DONTWAIT);

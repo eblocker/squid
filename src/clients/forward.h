@@ -9,6 +9,8 @@
 #ifndef SQUID_CLIENTS_FORWARD_H
 #define SQUID_CLIENTS_FORWARD_H
 
+#include "sbuf/forward.h"
+
 class FwdState;
 class HttpRequest;
 
@@ -35,7 +37,7 @@ AsyncJobPointer StartRelay(FwdState *const fwdState);
  *
  * \todo Should be a URL class API call.
  */
-const char *UrlWith2f(HttpRequest *);
+const SBuf &UrlWith2f(HttpRequest *);
 
 } // namespace Ftp
 

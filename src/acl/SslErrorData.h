@@ -8,33 +8,28 @@
 
 #ifndef SQUID_ACLSSL_ERRORDATA_H
 #define SQUID_ACLSSL_ERRORDATA_H
+
 #include "acl/Acl.h"
 #include "acl/Data.h"
-#include "CbDataList.h"
-#include "ssl/ErrorDetail.h"
-#include "ssl/support.h"
-#include <vector>
+#include "security/forward.h"
 
-class ACLSslErrorData : public ACLData<const Ssl::CertErrors *>
+class ACLSslErrorData : public ACLData<const Security::CertErrors *>
 {
-
-public:
     MEMPROXY_CLASS(ACLSslErrorData);
 
-    ACLSslErrorData();
+public:
+    ACLSslErrorData() = default;
     ACLSslErrorData(ACLSslErrorData const &);
     ACLSslErrorData &operator= (ACLSslErrorData const &);
-    virtual ~ACLSslErrorData();
-    bool match(const Ssl::CertErrors *);
+    virtual ~ACLSslErrorData() {}
+    bool match(const Security::CertErrors *);
     virtual SBufList dump() const;
     void parse();
-    bool empty() const;
+    bool empty() const { return values.empty(); }
     virtual  ACLSslErrorData *clone() const;
 
-    Ssl::Errors *values;
+    Security::Errors values;
 };
-
-MEMPROXY_CLASS_INLINE(ACLSslErrorData);
 
 #endif /* SQUID_ACLSSL_ERRORDATA_H */
 

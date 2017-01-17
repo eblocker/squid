@@ -14,7 +14,7 @@
 # Should-Stop:       $named
 # Default-Start:     2 3 4 5
 # Default-Stop:      0 1 6
-# Short-Description: Squid HTTP Proxy version 3.x
+# Short-Description: Squid HTTP Proxy version 4.x
 ### END INIT INFO
 
 NAME=squid

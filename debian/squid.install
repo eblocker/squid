@@ -4,6 +4,7 @@ etc/logrotate.d
 etc/resolvconf
 etc/init.d/squid
 etc/ufw
+lib/systemd/system
 usr/lib/squid
 usr/sbin/squid
 usr/share/man/man8/basic_db_auth.8

@@ -46,9 +46,6 @@ Replaces: squid3
 Description: Full featured Web Proxy cache (HTTP proxy)
  Squid is a high-performance proxy caching server for web clients, supporting
  FTP, gopher, ICY and HTTP data objects.
- .
- Squid version 3 is a major rewrite of Squid in C++ and introduces a number of
- new features including ICAP and ESI support.
 
 Package: squid-common
 Architecture: all
@@ -59,9 +56,6 @@ Replaces: squid3-common
 Description: Full featured Web Proxy cache (HTTP proxy) - common files
  Squid is a high-performance proxy caching server for web clients, supporting
  FTP, gopher, ICY and HTTP data objects.
- .
- Squid version 3 is a major rewrite of Squid in C++ and introduces a number of
- new features including ICAP and ESI support.
  .
  This package contains common files (MIB and icons)
 
@@ -74,9 +68,6 @@ Replaces: squid3-client
 Description: Full featured Web Proxy cache (HTTP proxy) - control utility
  Squid is a high-performance proxy caching server for web clients, supporting
  FTP, gopher, ICY and HTTP data objects.
- .
- Squid version 3 is a major rewrite of Squid in C++ and introduces a number of
- new features including ICAP and ESI support.
  .
  This package contains a small utility that can be used to get URLs from the 
  command line.
@@ -91,9 +82,6 @@ Description: Full featured Web Proxy cache (HTTP proxy) - control CGI
  Squid is a high-performance proxy caching server for web clients, supporting
  FTP, gopher, ICY and HTTP data objects.
  .
- Squid version 3 is a major rewrite of Squid in C++ and introduces a number of
- new features including ICAP and ESI support.
- .
  This package contains a CGI program that can be used to query and administrate 
  a `squid' proxy cache through a web browser.
  
@@ -103,9 +91,6 @@ Depends: ${shlibs:Depends}, ${misc:Depends}
 Description: Full featured Web Proxy cache (HTTP proxy) - control utility
  Squid is a high-performance proxy caching server for web clients, supporting
  FTP, gopher, ICY and HTTP data objects.
- .
- Squid version 3 is a major rewrite of Squid in C++ and introduces a number of
- new features including ICAP and ESI support.
  .
  This package contains a small utility that can be used to manage the disk cache
  from the command line.

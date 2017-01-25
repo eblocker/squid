@@ -8,7 +8,11 @@ squid3 (3.5.23-2) UNRELEASED; urgency=medium
   * debian/control
     - Relax dependency between squid and squid-common packages (Closes: #399489)
 
-  -- Amos Jeffries <amosjeffries@squid-cache.org>  Mon, 19 Dec 2016 17:10:17 +1300
+  [ Robie Basak <robie.basak@canonical.com> ]
+  * debian/control
+    - Add missing pre-depends on adduser
+
+  -- Amos Jeffries <amosjeffries@squid-cache.org>  Thu, 26 Jan 2017 00:52:17 +1300
 
 squid3 (3.5.23-1) unstable; urgency=high
 

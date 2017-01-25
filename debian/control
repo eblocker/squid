@@ -68,6 +68,7 @@ Description: Full featured Web Proxy cache (HTTP proxy) - common files
 Package: squidclient
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
+Recommends: ssl-cert
 Provides: squid3-client
 Conflicts: squid3-client
 Replaces: squid3-client

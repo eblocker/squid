@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2017 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -57,7 +57,7 @@ DelaySpec::parse()
 
     // parse the first digits into restore_bps
     const char *p = NULL;
-    if (!StringToInt(token, restore_bps, &p, 10) && *p != '/') {
+    if (!StringToInt(token, restore_bps, &p, 10) || *p != '/') {
         debugs(77, DBG_CRITICAL, "ERROR: invalid delay rate '" << token << "'. Expecting restore/max or 'none'.");
         self_destruct();
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2017 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -152,7 +152,7 @@ void
 Rock::HeaderUpdater::noteDoneReading(int errflag)
 {
     debugs(47, 5, errflag << " writer=" << writer);
-    if (const bool weInitiatedThisClosure = !reader) {
+    if (!reader) {
         Must(!errflag); // we only initiate successful closures
         Must(writer); // otherwise we would be done() and would not be called
     } else {

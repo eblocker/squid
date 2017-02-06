@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2017 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -1321,7 +1321,8 @@ parseHttpRequest(ConnStateData *csd, const Http1::RequestParserPointer &hp)
             auto result = csd->abortRequestParsing(
                               tooBig ? "error:request-too-large" : "error:invalid-request");
             // assume that remaining leftovers belong to this bad request
-            csd->consumeInput(csd->inBuf.length());
+            if (!csd->inBuf.isEmpty())
+                csd->consumeInput(csd->inBuf.length());
             return result;
         }
     }
@@ -1684,10 +1685,10 @@ clientProcessRequest(ConnStateData *conn, const Http1::RequestParserPointer &hp,
 
     request->flags.internal = http->flags.internal;
     setLogUri (http, urlCanonicalClean(request.getRaw()));
-    request->client_addr = conn->clientConnection->remote; // XXX: remove reuest->client_addr member.
+    request->client_addr = conn->clientConnection->remote; // XXX: remove request->client_addr member.
 #if FOLLOW_X_FORWARDED_FOR
     // indirect client gets stored here because it is an HTTP header result (from X-Forwarded-For:)
-    // not a details about teh TCP connection itself
+    // not details about the TCP connection itself
     request->indirect_client_addr = conn->clientConnection->remote;
 #endif /* FOLLOW_X_FORWARDED_FOR */
     request->my_addr = conn->clientConnection->local;
@@ -3074,7 +3075,7 @@ ConnStateData::getSslContextDone(Security::ContextPointer &ctx, bool isNew)
 
     auto ssl = fd_table[clientConnection->fd].ssl.get();
     BIO *b = SSL_get_rbio(ssl);
-    Ssl::ClientBio *bio = static_cast<Ssl::ClientBio *>(b->ptr);
+    Ssl::ClientBio *bio = static_cast<Ssl::ClientBio *>(BIO_get_data(b));
     bio->setReadBufData(inBuf);
     inBuf.clear();
     clientNegotiateSSL(clientConnection->fd, this);
@@ -3267,7 +3268,7 @@ ConnStateData::startPeekAndSplice()
 
     auto ssl = fd_table[clientConnection->fd].ssl.get();
     BIO *b = SSL_get_rbio(ssl);
-    Ssl::ClientBio *bio = static_cast<Ssl::ClientBio *>(b->ptr);
+    Ssl::ClientBio *bio = static_cast<Ssl::ClientBio *>(BIO_get_data(b));
     bio->setReadBufData(inBuf);
     bio->hold(true);
 
@@ -3298,7 +3299,7 @@ ConnStateData::doPeekAndSpliceStep()
     auto ssl = fd_table[clientConnection->fd].ssl.get();
     BIO *b = SSL_get_rbio(ssl);
     assert(b);
-    Ssl::ClientBio *bio = static_cast<Ssl::ClientBio *>(b->ptr);
+    Ssl::ClientBio *bio = static_cast<Ssl::ClientBio *>(BIO_get_data(b));
 
     debugs(33, 5, "PeekAndSplice mode, proceed with client negotiation. Currrent state:" << SSL_state_string_long(ssl));
     bio->hold(false);

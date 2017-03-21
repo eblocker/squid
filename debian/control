@@ -2,6 +2,7 @@ Source: squid3
 Section: web
 Priority: optional
 Maintainer: Luigi Gangitano <luigi@debian.org>
+Uploaders: Santiago Garcia Mantinan <manty@debian.org>
 Homepage: http://www.squid-cache.org
 Standards-Version: 3.9.8
 Vcs-Git: git://anonscm.debian.org/pkg-squid/pkg-squid3.git/

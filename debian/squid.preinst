@@ -31,10 +31,11 @@ fi
 # the squid.conf file, which was not tracked as a conffile.
 # Use '< 2.8' version to catch backports and security versions.
 #
-# Except when a squid3 package was used, since we do want the
+# Except, when a squid3 package was used we do want the
 # debconf questions to appear as the packages get merged.
 #
-if dpkg --compare-versions "$2" lt '2.8' && test -d /etc/squid3; then
+if dpkg --compare-versions "$2" lt '2.8' && test -d /etc/squid3 -a -f /etc/squid/squid.conf; then
+	echo "Preserving old /etc/squid/squid.conf"
 	mv /etc/squid/squid.conf /etc/squid/squid.conf.pre3.5_upgrade
 fi
 

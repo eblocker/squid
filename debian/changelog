@@ -1,4 +1,4 @@
-squid3 (4.0.18-1) UNRELEASED; urgency=medium
+squid3 (4.0.19-1) UNRELEASED; urgency=medium
 
   [ Amos Jeffries <amosjeffries@squid-cache.org> ]
   * New Upstream Release
@@ -19,7 +19,7 @@ squid3 (4.0.18-1) UNRELEASED; urgency=medium
   * debian/{watch,squid.rc}
     - update for new major version
 
- -- Amos Jeffries <amosjeffries@squid-cache.org>  Fri, 10 Feb 2017 04:30:00 +1300
+ -- Amos Jeffries <amosjeffries@squid-cache.org>  Sat, 08 Apr 2017 20:41:00 +1300
 
 squid3 (3.5.23-3) unstable; urgency=medium
 

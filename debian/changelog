@@ -21,7 +21,21 @@ squid3 (4.0.18-1) UNRELEASED; urgency=medium
 
  -- Amos Jeffries <amosjeffries@squid-cache.org>  Fri, 10 Feb 2017 04:30:00 +1300
 
-squid3 (3.5.23-2) UNRELEASED; urgency=medium
+squid3 (3.5.23-3) unstable; urgency=medium
+
+  [ Amos Jeffries <amosjeffries@squid-cache.org> ]
+  * debian/squid.preinst
+    - Fix upgrade sequence from jesse squid3 package (Closes: #858556)
+
+  [ Santiago Garcia Mantinan <manty@debian.org> ]
+  * debian/squid.{preinst,postinst,postrm}
+    - Fix problems with empty squid3 dir and squid 2.7 installed
+      (use the right logic with better checks).
+    - Avoid install abortion by stopping squid3 only when it runs.
+
+ -- Santiago Garcia Mantinan <manty@debian.org>  Sat, 08 Apr 2017 02:52:28 +0200
+
+squid3 (3.5.23-2) unstable; urgency=medium
 
   [ Santiago Garcia Mantinan <manty@debian.org> ]
   * debian/squid.{preinst,postinst,postrm}
@@ -30,8 +44,14 @@ squid3 (3.5.23-2) UNRELEASED; urgency=medium
   [ Amos Jeffries <amosjeffries@squid-cache.org> ]
   * debian/control
     - Relax dependency between squid and squid-common packages (Closes: #399489)
+    - Add squidclient Recommends on ssl-cert
 
- -- Amos Jeffries <amosjeffries@squid-cache.org>  Mon, 19 Dec 2016 17:10:17 +1300
+  [ Robie Basak <robie.basak@canonical.com> ]
+  * debian/control
+    - Add missing pre-depends on adduser
+    - Add Vcs-Browser URL
+
+ -- Santiago Garcia Mantinan <manty@debian.org>  Sun, 19 Mar 2017 23:23:57 +0100
 
 squid3 (3.5.23-1) unstable; urgency=high
 

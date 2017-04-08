@@ -2,9 +2,11 @@ Source: squid3
 Section: web
 Priority: optional
 Maintainer: Luigi Gangitano <luigi@debian.org>
+Uploaders: Santiago Garcia Mantinan <manty@debian.org>
 Homepage: http://www.squid-cache.org
 Standards-Version: 3.9.8
 Vcs-Git: git://anonscm.debian.org/pkg-squid/pkg-squid3.git/
+Vcs-Browser: https://anonscm.debian.org/git/pkg-squid/pkg-squid3.git/
 Build-Depends: autotools-dev, libltdl-dev, pkg-config
 	, g++ (>= 4.9) | clang (>= 3.7)
 	, gcc (>= 4.9) | clang (>= 3.7)
@@ -38,7 +40,8 @@ Description: Transitional package
 
 Package: squid
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, netbase, adduser, logrotate (>= 3.5.4-1), squid-common (>= ${source:Version}), lsb-base, libdbi-perl
+Pre-Depends: adduser
+Depends: ${shlibs:Depends}, ${misc:Depends}, netbase, logrotate (>= 3.5.4-1), squid-common (>= ${source:Version}), lsb-base, libdbi-perl
 Suggests: squidclient, squid-cgi, squid-purge, resolvconf (>= 0.40), smbclient, ufw, winbindd
 Recommends: libcap2-bin [linux-any]
 Conflicts: squid3 (<< ${binary:Version})
@@ -62,6 +65,7 @@ Description: Full featured Web Proxy cache (HTTP proxy) - common files
 Package: squidclient
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
+Recommends: ssl-cert
 Provides: squid3-client
 Conflicts: squid3-client
 Replaces: squid3-client

@@ -860,13 +860,9 @@ HttpStateData::proceedAfter1xx()
 /**
  * returns true if the peer can support connection pinning
 */
-bool HttpStateData::peerSupportsConnectionPinning() const
+bool
+HttpStateData::peerSupportsConnectionPinning() const
 {
-    const HttpReply *rep = entry->mem_obj->getReply();
-    const HttpHeader *hdr = &rep->header;
-    bool rc;
-    String header;
-
     if (!_peer)
         return true;
 
@@ -875,6 +871,8 @@ bool HttpStateData::peerSupportsConnectionPinning() const
      */
     if (!_peer->connection_auth)
         return false;
+
+    const HttpReply *rep = entry->mem_obj->getReply();
 
     /*The peer supports connection pinning and the http reply status
       is not unauthorized, so the related connection can be pinned
@@ -908,14 +906,10 @@ bool HttpStateData::peerSupportsConnectionPinning() const
       reply and has in its list the "Session-Based-Authentication"
       which means that the peer supports connection pinning.
      */
-    if (!hdr->has(Http::HdrType::PROXY_SUPPORT))
-        return false;
+    if (rep->header.hasListMember(Http::HdrType::PROXY_SUPPORT, "Session-Based-Authentication", ','))
+        return true;
 
-    header = hdr->getStrOrList(Http::HdrType::PROXY_SUPPORT);
-    /* XXX This ought to be done in a case-insensitive manner */
-    rc = (strstr(header.termedBuf(), "Session-Based-Authentication") != NULL);
-
-    return rc;
+    return false;
 }
 
 // Called when we parsed (and possibly adapted) the headers but
@@ -1134,7 +1128,6 @@ HttpStateData::persistentConnStatus() const
     return statusIfComplete();
 }
 
-#if USE_DELAY_POOLS
 static void
 readDelayed(void *context, CommRead const &)
 {
@@ -1142,7 +1135,6 @@ readDelayed(void *context, CommRead const &)
     state->flags.do_next_read = true;
     state->maybeReadVirginBody();
 }
-#endif
 
 void
 HttpStateData::readReply(const CommIoCbParams &io)
@@ -1177,23 +1169,13 @@ HttpStateData::readReply(const CommIoCbParams &io)
     CommIoCbParams rd(this); // will be expanded with ReadNow results
     rd.conn = io.conn;
     rd.size = entry->bytesWanted(Range<size_t>(0, inBuf.spaceSize()));
-#if USE_DELAY_POOLS
-    if (rd.size < 1) {
+
+    if (rd.size <= 0) {
         assert(entry->mem_obj);
-
-        /* read ahead limit */
-        /* Perhaps these two calls should both live in MemObject */
         AsyncCall::Pointer nilCall;
-        if (!entry->mem_obj->readAheadPolicyCanRead()) {
-            entry->mem_obj->delayRead(DeferredRead(readDelayed, this, CommRead(io.conn, NULL, 0, nilCall)));
-            return;
-        }
-
-        /* delay id limit */
-        entry->mem_obj->mostBytesAllowed().delayRead(DeferredRead(readDelayed, this, CommRead(io.conn, NULL, 0, nilCall)));
+        entry->mem_obj->delayRead(DeferredRead(readDelayed, this, CommRead(io.conn, NULL, 0, nilCall)));
         return;
     }
-#endif
 
     switch (Comm::ReadNow(rd, inBuf)) {
     case Comm::INPROGRESS:
@@ -1813,17 +1795,7 @@ HttpStateData::httpBuildRequestHeader(HttpRequest * request,
         request->flags.isRanged = false;
     }
 
-    /* append Via */
-    if (Config.onoff.via) {
-        String strVia;
-        strVia = hdr_in->getList(Http::HdrType::VIA);
-        snprintf(bbuf, BBUF_SZ, "%d.%d %s",
-                 request->http_ver.major,
-                 request->http_ver.minor, ThisCache);
-        strListAdd(&strVia, bbuf, ',');
-        hdr_out->putStr(Http::HdrType::VIA, strVia.termedBuf());
-        strVia.clean();
-    }
+    hdr_out->addVia(request->http_ver, hdr_in);
 
     if (request->flags.accelerated) {
         /* Append Surrogate-Capabilities */

@@ -10,6 +10,10 @@ squid3 (3.5.23-3) unstable; urgency=medium
       (use the right logic with better checks).
     - Avoid install abortion by stopping squid3 only when it runs.
 
+  [ Eric Veiras Galisson <bugs@sietch-tabr.com> ]
+  * debian/squid.rc
+    - Fix returncode is wrong with conf file with errors (Closes: #857137)
+
  -- Santiago Garcia Mantinan <manty@debian.org>  Sat, 08 Apr 2017 02:52:28 +0200
 
 squid3 (3.5.23-2) unstable; urgency=medium

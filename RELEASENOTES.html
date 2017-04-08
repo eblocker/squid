@@ -2,10 +2,10 @@
 <HTML>
 <HEAD>
  <META NAME="GENERATOR" CONTENT="LinuxDoc-Tools 0.9.72">
- <TITLE>Squid 4.0.18 release notes</TITLE>
+ <TITLE>Squid 4.0.19 release notes</TITLE>
 </HEAD>
 <BODY>
-<H1>Squid 4.0.18 release notes</H1>
+<H1>Squid 4.0.19 release notes</H1>
 
 <H2>Squid Developers</H2>
 <HR>
@@ -31,6 +31,7 @@ for Applied Network Research and members of the Web Caching community.</EM>
 <LI><A NAME="toc2.5">2.5</A> <A HREF="#ss2.5">Secure ICAP</A>
 <LI><A NAME="toc2.6">2.6</A> <A HREF="#ss2.6">Improved SMP support</A>
 <LI><A NAME="toc2.7">2.7</A> <A HREF="#ss2.7">Improved process management</A>
+<LI><A NAME="toc2.8">2.8</A> <A HREF="#ss2.8">Initial GnuTLS support</A>
 </UL>
 <P>
 <H2><A NAME="toc3">3.</A> <A HREF="#s3">Changes to squid.conf since Squid-3.5</A></H2>
@@ -61,7 +62,7 @@ for Applied Network Research and members of the Web Caching community.</EM>
 <HR>
 <H2><A NAME="s1">1.</A> <A HREF="#toc1">Notice</A></H2>
 
-<P>The Squid Team are pleased to announce the release of Squid-4.0.18 for testing.</P>
+<P>The Squid Team are pleased to announce the release of Squid-4.0.19 for testing.</P>
 <P>This new release is available for download from 
 <A HREF="http://www.squid-cache.org/Versions/v4/">http://www.squid-cache.org/Versions/v4/</A> or the
 <A HREF="http://www.squid-cache.org/Download/http-mirrors.html">mirrors</A>.</P>
@@ -83,6 +84,11 @@ As a result older C++03 -only and most C++0x compilers will no longer build succ
 GCC 4.9+ and Clang 3.5+ are known to have working C++11 support and are usable.
 GCC-4.8 will also build for now despite lack of full C++11 support, but some future features may not be available.</P>
 
+<P>This release does not support LibreSSL.
+Due to a bug in the way LibreSSL uses the OpenSSL version macro some changes
+necessary to support OpenSSL 1.1 prevent building with LibreSSL.</P>
+
+
 <H2><A NAME="ss1.2">1.2</A> <A HREF="#toc1.2">Changes since earlier releases of Squid-4</A>
 </H2>
 
@@ -103,6 +109,7 @@ GCC-4.8 will also build for now despite lack of full C++11 support, but some fut
 <LI>Secure ICAP</LI>
 <LI>Improved SMP support</LI>
 <LI>Improved process management</LI>
+<LI>Initial GnuTLS support</LI>
 </UL>
 </P>
 <P>Most user-facing changes are reflected in squid.conf (see below).</P>
@@ -238,6 +245,23 @@ for the worker(s) to finish before exiting. Unlike the old <EM>-N</EM> option
 <EM>--foreground</EM> is particularly useful for use with <EM>-z</EM> (disk
 cache structures creation), as it allows the caller to wait until Squid has
 finished.</P>
+
+
+<H2><A NAME="ss2.8">2.8</A> <A HREF="#toc2.8">Initial GnuTLS support</A>
+</H2>
+
+<P>If all you need is a proxy that connects over TLS/SSL to a <EM>cache_peer</EM>
+or accepts <EM>https://</EM> URLs over clear-text and performs the necessary
+upstream TLS connections. Then you now have the choice to build Squid with
+GnuTLS instead of OpenSSL.</P>
+
+<P><EM>squid.conf</EM> directives and configuration options which have undergone
+name changes from 'ssl' to 'tls' prefix in Squid-4 have GnuTLS support, unless
+explicitly stated otherwise.</P>
+
+<P>Advanced configuration with specific selection of ciphers and similar settings
+should still work, but needs the GnuTLS <EM>Priority Strings</EM> instead of
+the OpenSSL options when using GnuTLS.</P>
 
 
 <H2><A NAME="s3">3.</A> <A HREF="#toc3">Changes to squid.conf since Squid-3.5</A></H2>

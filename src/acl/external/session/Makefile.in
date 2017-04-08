@@ -170,9 +170,7 @@ ext_session_acl_OBJECTS = $(am_ext_session_acl_OBJECTS)
 @ENABLE_XPROF_STATS_TRUE@am__DEPENDENCIES_1 = $(top_builddir)/lib/profiler/libprofiler.la
 am__DEPENDENCIES_2 = $(top_builddir)/compat/libcompatsquid.la \
 	$(am__DEPENDENCIES_1)
-am__DEPENDENCIES_3 =
-ext_session_acl_DEPENDENCIES = $(am__DEPENDENCIES_2) \
-	$(am__DEPENDENCIES_3)
+ext_session_acl_DEPENDENCIES = $(am__DEPENDENCIES_2)
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
 am__v_lt_0 = --silent
@@ -533,7 +531,6 @@ LIBPTHREADS = @LIBPTHREADS@
 LIBS = @LIBS@
 LIBSASL = @LIBSASL@
 LIBTOOL = @LIBTOOL@
-LIB_DB = @LIB_DB@
 LIB_KRB5_CFLAGS = @LIB_KRB5_CFLAGS@
 LIB_KRB5_LIBS = @LIB_KRB5_LIBS@
 LINUXDOC = @LINUXDOC@
@@ -707,7 +704,7 @@ ext_session_acl_SOURCES = \
 
 ext_session_acl_LDADD = \
 	$(COMPAT_LIB) \
-	$(LIB_DB)
+	-ldb
 
 EXTRA_DIST = ext_session_acl.8 required.m4
 all: all-am

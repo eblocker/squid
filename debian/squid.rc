@@ -142,7 +142,7 @@ fi
 
 case "$1" in
     start)
-	res=`$DAEMON -k parse -f $CONFIG 2>&1 | grep -o "FATAL .*"`
+	res=`$DAEMON -k parse -f $CONFIG 2>&1 | grep -o "FATAL: .*"`
 	if test -n "$res";
 	then
 		log_failure_msg "$res"
@@ -165,7 +165,7 @@ case "$1" in
 	fi
 	;;
     reload|force-reload)
-	res=`$DAEMON -k parse -f $CONFIG 2>&1 | grep -o "FATAL .*"`
+	res=`$DAEMON -k parse -f $CONFIG 2>&1 | grep -o "FATAL: .*"`
 	if test -n "$res";
 	then
 		log_failure_msg "$res"
@@ -178,7 +178,7 @@ case "$1" in
 	fi
 	;;
     restart)
-	res=`$DAEMON -k parse -f $CONFIG 2>&1 | grep -o "FATAL .*"`
+	res=`$DAEMON -k parse -f $CONFIG 2>&1 | grep -o "FATAL: .*"`
 	if test -n "$res";
 	then
 		log_failure_msg "$res"

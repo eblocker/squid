@@ -8,7 +8,7 @@ squid3 (4.0.19-1~exp2) UNRELEASED; urgency=medium
 
   * debian/{rules,squid.install}
     - update rules to build NTLM LanMan helper
-    - install squid.service file for systemd
+    - install squid.service file for systemd (Closes: #855268)
 
   * debian/control
     - minor maintenance improvements

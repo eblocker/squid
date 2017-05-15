@@ -1,3 +1,11 @@
+squid3 (3.5.23-4) UNRELEASED; urgency=medium
+
+  [ Andreas Beckmann <anbe@debian.org> ]
+  * debian/squid.postinst
+    - Fix another upgrade edge case from 2.7 default install (Closes: #801564)
+
+ -- Amos Jeffries <amosjeffries@squid-cache.org>  Mon, 15 May 2017 22:39:00 +1300
+
 squid3 (3.5.23-3) unstable; urgency=medium
 
   [ Amos Jeffries <amosjeffries@squid-cache.org> ]

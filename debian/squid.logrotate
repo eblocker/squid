@@ -10,7 +10,7 @@
 	nocreate
 	sharedscripts
 	prerotate
-		test ! -x /usr/sbin/sarg-reports || /usr/sbin/sarg-reports
+		test ! -x /usr/sbin/sarg-reports || /usr/sbin/sarg-reports daily
 	endscript
 	postrotate
 		test ! -e /var/run/squid.pid || test ! -x /usr/sbin/squid || /usr/sbin/squid -k rotate

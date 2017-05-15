@@ -4,7 +4,11 @@ squid3 (3.5.23-4) UNRELEASED; urgency=medium
   * debian/squid.postinst
     - Fix another upgrade edge case from 2.7 default install (Closes: #801564)
 
- -- Amos Jeffries <amosjeffries@squid-cache.org>  Mon, 15 May 2017 22:39:00 +1300
+  [ Amos Jeffries <amosjeffries@squid-cache.org> ]
+  * debian/squid.logrotate
+    - Add missing piece of fix for sarg daily reports (LP: #1414754)
+
+ -- Amos Jeffries <amosjeffries@squid-cache.org>  Mon, 15 May 2017 22:52:00 +1300
 
 squid3 (3.5.23-3) unstable; urgency=medium
 

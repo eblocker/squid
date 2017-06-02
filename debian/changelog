@@ -1,3 +1,9 @@
+squid3 (3.5.23-5) UNRELEASED; urgency=medium
+
+  * Reload squid so that it uses modified config, not default one.
+
+ -- Santiago Garcia Mantinan <manty@debian.org>  Sat, 03 Jun 2017 00:36:55 +0200
+
 squid3 (3.5.23-4) unstable; urgency=medium
 
   [ Andreas Beckmann <anbe@debian.org> ]

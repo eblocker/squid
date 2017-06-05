@@ -2727,8 +2727,6 @@ httpsEstablish(ConnStateData *connState, const Security::ContextPointer &ctx)
 
 /**
  * A callback function to use with the ACLFilledChecklist callback.
- * In the case of ACCESS_ALLOWED answer initializes a bumped SSL connection,
- * else reverts the connection to tunnel mode.
  */
 static void
 httpsSslBumpAccessCheckDone(allow_t answer, void *data)
@@ -2739,15 +2737,19 @@ httpsSslBumpAccessCheckDone(allow_t answer, void *data)
     if (!connState->isOpen())
         return;
 
-    // Require both a match and a positive bump mode to work around exceptional
-    // cases where ACL code may return ACCESS_ALLOWED with zero answer.kind.
-    if (answer == ACCESS_ALLOWED && answer.kind != Ssl::bumpNone) {
-        debugs(33, 2, "sslBump needed for " << connState->clientConnection << " method " << answer.kind);
+    if (answer == ACCESS_ALLOWED) {
+        debugs(33, 2, "sslBump action " << Ssl::bumpMode(answer.kind) << "needed for " << connState->clientConnection);
         connState->sslBumpMode = static_cast<Ssl::BumpMode>(answer.kind);
     } else {
-        debugs(33, 2, HERE << "sslBump not needed for " << connState->clientConnection);
-        connState->sslBumpMode = Ssl::bumpNone;
+        debugs(33, 3, "sslBump not needed for " << connState->clientConnection);
+        connState->sslBumpMode = Ssl::bumpSplice;
     }
+
+    if (connState->sslBumpMode == Ssl::bumpTerminate) {
+        connState->clientConnection->close();
+        return;
+    }
+
     if (!connState->fakeAConnectRequest("ssl-bump", connState->inBuf))
         connState->clientConnection->close();
 }
@@ -3145,8 +3147,9 @@ ConnStateData::parseTlsHandshake()
 
     parsingTlsHandshake = false;
 
-    if (mayTunnelUnsupportedProto())
-        preservedClientData = inBuf;
+    // client data may be needed for splicing and for
+    // tunneling unsupportedProtocol after an error
+    preservedClientData = inBuf;
 
     // Even if the parser failed, each TLS detail should either be set
     // correctly or still be "unknown"; copying unknown detail is a no-op.
@@ -3167,7 +3170,8 @@ ConnStateData::parseTlsHandshake()
         Must(context && context->http);
         HttpRequest::Pointer request = context->http->request;
         debugs(83, 5, "Got something other than TLS Client Hello. Cannot SslBump.");
-        sslBumpMode = Ssl::bumpNone;
+        sslBumpMode = Ssl::bumpSplice;
+        context->http->al->ssl.bumpMode = Ssl::bumpSplice;
         if (!clientTunnelOnError(this, context, request, HttpRequestMethod(), ERR_PROTOCOL_UNKNOWN))
             clientConnection->close();
         return;
@@ -3203,6 +3207,9 @@ void httpsSslBumpStep2AccessCheckDone(allow_t answer, void *data)
 
     connState->serverBump()->act.step2 = bumpAction;
     connState->sslBumpMode = bumpAction;
+    Http::StreamPointer context = connState->pipeline.front();
+    if (ClientHttpRequest *http = (context ? context->http : nullptr))
+        http->al->ssl.bumpMode = bumpAction;
 
     if (bumpAction == Ssl::bumpTerminate) {
         connState->clientConnection->close();
@@ -3228,9 +3235,23 @@ ConnStateData::splice()
     transferProtocol = Http::ProtocolVersion();
     assert(!pipeline.empty());
     Http::StreamPointer context = pipeline.front();
+    Must(context);
+    Must(context->http);
     ClientHttpRequest *http = context->http;
-    tunnelStart(http);
-    return true;
+    HttpRequest::Pointer request = http->request;
+    context->finished();
+    if (transparent()) {
+        // For transparent connections, make a new fake CONNECT request, now
+        // with SNI as target. doCallout() checks, adaptations may need that.
+        return fakeAConnectRequest("splice", preservedClientData);
+    } else {
+        // For non transparent connections  make a new tunneled CONNECT, which
+        // also sets the HttpRequest::flags::forceTunnel flag to avoid
+        // respond with "Connection Established" to the client.
+        // This fake CONNECT request required to allow use of SNI in
+        // doCallout() checks and adaptations.
+        return initiateTunneledRequest(request, Http::METHOD_CONNECT, "splice", preservedClientData);
+    }
 }
 
 void
@@ -3338,7 +3359,8 @@ ConnStateData::initiateTunneledRequest(HttpRequest::Pointer const &cause, Http::
 
     if (pinning.serverConnection != nullptr) {
         static char ip[MAX_IPSTRLEN];
-        connectHost.assign(pinning.serverConnection->remote.toStr(ip, sizeof(ip)));
+        pinning.serverConnection->remote.toHostStr(ip, sizeof(ip));
+        connectHost.assign(ip);
         connectPort = pinning.serverConnection->remote.port();
     } else if (cause && cause->method == Http::METHOD_CONNECT) {
         // We are inside a (not fully established) CONNECT request
@@ -3375,7 +3397,8 @@ ConnStateData::fakeAConnectRequest(const char *reason, const SBuf &payload)
 #endif
     {
         static char ip[MAX_IPSTRLEN];
-        connectHost.assign(clientConnection->local.toStr(ip, sizeof(ip)));
+        clientConnection->local.toHostStr(ip, sizeof(ip));
+        connectHost.assign(ip);
     }
 
     ClientHttpRequest *http = buildFakeRequest(Http::METHOD_CONNECT, connectHost, connectPort, payload);

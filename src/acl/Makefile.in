@@ -173,8 +173,9 @@ am__libacls_la_SOURCES_DIST = IntRange.cc IntRange.h RegexData.cc \
 	ConnectionsEncrypted.h DestinationAsn.h DestinationDomain.cc \
 	DestinationDomain.h DestinationIp.cc DestinationIp.h \
 	DomainData.cc DomainData.h ExtUser.cc ExtUser.h \
-	HierCodeData.cc HierCodeData.h HierCode.cc HierCode.h \
-	HttpHeaderData.cc HttpHeaderData.h HttpRepHeader.cc \
+	HasComponent.cc HasComponent.h HasComponentData.cc \
+	HasComponentData.h HierCodeData.cc HierCodeData.h HierCode.cc \
+	HierCode.h HttpHeaderData.cc HttpHeaderData.h HttpRepHeader.cc \
 	HttpRepHeader.h HttpReqHeader.cc HttpReqHeader.h HttpStatus.cc \
 	HttpStatus.h Ip.cc Ip.h LocalIp.cc LocalIp.h LocalPort.cc \
 	LocalPort.h MaxConnection.cc MaxConnection.h Method.cc \
@@ -208,12 +209,12 @@ am__objects_5 = Arp.lo Eui64.lo
 am_libacls_la_OBJECTS = IntRange.lo RegexData.lo StringData.lo Time.lo \
 	TimeData.lo AllOf.lo AnyOf.lo Asn.lo Browser.lo \
 	ConnectionsEncrypted.lo DestinationDomain.lo DestinationIp.lo \
-	DomainData.lo ExtUser.lo HierCodeData.lo HierCode.lo \
-	HttpHeaderData.lo HttpRepHeader.lo HttpReqHeader.lo \
-	HttpStatus.lo Ip.lo LocalIp.lo LocalPort.lo MaxConnection.lo \
-	Method.lo MethodData.lo MyPortName.lo Note.lo NoteData.lo \
-	PeerName.lo Protocol.lo ProtocolData.lo Random.lo Referer.lo \
-	ReplyMimeType.lo RequestMimeType.lo SourceDomain.lo \
+	DomainData.lo ExtUser.lo HasComponent.lo HasComponentData.lo \
+	HierCodeData.lo HierCode.lo HttpHeaderData.lo HttpRepHeader.lo \
+	HttpReqHeader.lo HttpStatus.lo Ip.lo LocalIp.lo LocalPort.lo \
+	MaxConnection.lo Method.lo MethodData.lo MyPortName.lo Note.lo \
+	NoteData.lo PeerName.lo Protocol.lo ProtocolData.lo Random.lo \
+	Referer.lo ReplyMimeType.lo RequestMimeType.lo SourceDomain.lo \
 	SourceIp.lo SquidError.lo SquidErrorData.lo Tag.lo Url.lo \
 	UrlLogin.lo UrlPath.lo UrlPort.lo UserData.lo Gadgets.lo \
 	AclSizeLimit.lo $(am__objects_2) $(am__objects_4) \
@@ -848,8 +849,9 @@ libacls_la_SOURCES = IntRange.cc IntRange.h RegexData.cc RegexData.h \
 	ConnectionsEncrypted.h DestinationAsn.h DestinationDomain.cc \
 	DestinationDomain.h DestinationIp.cc DestinationIp.h \
 	DomainData.cc DomainData.h ExtUser.cc ExtUser.h \
-	HierCodeData.cc HierCodeData.h HierCode.cc HierCode.h \
-	HttpHeaderData.cc HttpHeaderData.h HttpRepHeader.cc \
+	HasComponent.cc HasComponent.h HasComponentData.cc \
+	HasComponentData.h HierCodeData.cc HierCodeData.h HierCode.cc \
+	HierCode.h HttpHeaderData.cc HttpHeaderData.h HttpRepHeader.cc \
 	HttpRepHeader.h HttpReqHeader.cc HttpReqHeader.h HttpStatus.cc \
 	HttpStatus.h Ip.cc Ip.h LocalIp.cc LocalIp.h LocalPort.cc \
 	LocalPort.h MaxConnection.cc MaxConnection.h Method.cc \
@@ -986,6 +988,8 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ExtUser.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/FilledChecklist.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Gadgets.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/HasComponent.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/HasComponentData.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/HierCode.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/HierCodeData.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/HttpHeaderData.Plo@am__quote@

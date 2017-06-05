@@ -164,7 +164,7 @@ CONFIG_CLEAN_VPATH_FILES =
 LTLIBRARIES = $(noinst_LTLIBRARIES)
 libbase_la_LIBADD =
 am_libbase_la_OBJECTS = AsyncCall.lo AsyncJob.lo AsyncCallQueue.lo \
-	CharacterSet.lo RegexPattern.lo RunnersRegistry.lo \
+	CharacterSet.lo File.lo RegexPattern.lo RunnersRegistry.lo \
 	TextException.lo
 libbase_la_OBJECTS = $(am_libbase_la_OBJECTS)
 AM_V_lt = $(am__v_lt_@AM_V@)
@@ -729,6 +729,8 @@ libbase_la_SOURCES = \
 	CharacterSet.h \
 	CharacterSet.cc \
 	EnumIterator.h \
+	File.h \
+	File.cc \
 	HardFun.h \
 	InstanceId.h \
 	Lock.h \
@@ -813,6 +815,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/AsyncCallQueue.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/AsyncJob.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/CharacterSet.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/File.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/RegexPattern.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/RunnersRegistry.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/TextException.Plo@am__quote@

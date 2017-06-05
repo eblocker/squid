@@ -193,7 +193,7 @@ ClientHttpRequest::onlyIfCached()const
 {
     assert(request);
     return request->cache_control &&
-           request->cache_control->onlyIfCached();
+           request->cache_control->hasOnlyIfCached();
 }
 
 /**
@@ -1415,17 +1415,29 @@ ClientRequestContext::sslBumpAccessCheck()
         return false;
     }
 
+    const Ssl::BumpMode bumpMode = http->getConn()->sslBumpMode;
     if (http->request->flags.forceTunnel) {
         debugs(85, 5, "not needed; already decided to tunnel " << http->getConn());
+        if (bumpMode != Ssl::bumpEnd)
+            http->al->ssl.bumpMode = bumpMode; // inherited from bumped connection
         return false;
     }
 
     // If SSL connection tunneling or bumping decision has been made, obey it.
-    const Ssl::BumpMode bumpMode = http->getConn()->sslBumpMode;
     if (bumpMode != Ssl::bumpEnd) {
         debugs(85, 5, HERE << "SslBump already decided (" << bumpMode <<
                "), " << "ignoring ssl_bump for " << http->getConn());
-        if (!http->getConn()->serverBump())
+
+        // We need the following "if" for transparently bumped TLS connection,
+        // because in this case we are running ssl_bump access list before
+        // the doCallouts runs. It can be removed after the bug #4340 fixed.
+        // We do not want to proceed to bumping steps:
+        //  - if the TLS connection with the client is already established
+        //    because we are accepting normal HTTP requests on TLS port,
+        //    or because of the client-first bumping mode
+        //  - When the bumping is already started
+        if (!http->getConn()->switchedToHttps() &&
+                !http->getConn()->serverBump())
             http->sslBumpNeed(bumpMode); // for processRequest() to bump if needed and not already bumped
         http->al->ssl.bumpMode = bumpMode; // inherited from bumped connection
         return false;
@@ -1487,9 +1499,18 @@ ClientRequestContext::sslBumpAccessCheckDone(const allow_t &answer)
         return;
 
     const Ssl::BumpMode bumpMode = answer == ACCESS_ALLOWED ?
-                                   static_cast<Ssl::BumpMode>(answer.kind) : Ssl::bumpNone;
+                                   static_cast<Ssl::BumpMode>(answer.kind) : Ssl::bumpSplice;
     http->sslBumpNeed(bumpMode); // for processRequest() to bump if needed
     http->al->ssl.bumpMode = bumpMode; // for logging
+
+    if (bumpMode == Ssl::bumpTerminate) {
+        const Comm::ConnectionPointer clientConn = http->getConn() ? http->getConn()->clientConnection : nullptr;
+        if (Comm::IsConnOpen(clientConn)) {
+            debugs(85, 3, "closing after Ssl::bumpTerminate ");
+            clientConn->close();
+        }
+        return;
+    }
 
     http->doCallouts();
 }

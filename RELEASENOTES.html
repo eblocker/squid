@@ -2,10 +2,10 @@
 <HTML>
 <HEAD>
  <META NAME="GENERATOR" CONTENT="LinuxDoc-Tools 0.9.72">
- <TITLE>Squid 4.0.19 release notes</TITLE>
+ <TITLE>Squid 4.0.20 release notes</TITLE>
 </HEAD>
 <BODY>
-<H1>Squid 4.0.19 release notes</H1>
+<H1>Squid 4.0.20 release notes</H1>
 
 <H2>Squid Developers</H2>
 <HR>
@@ -62,7 +62,7 @@ for Applied Network Research and members of the Web Caching community.</EM>
 <HR>
 <H2><A NAME="s1">1.</A> <A HREF="#toc1">Notice</A></H2>
 
-<P>The Squid Team are pleased to announce the release of Squid-4.0.19 for testing.</P>
+<P>The Squid Team are pleased to announce the release of Squid-4.0.20 for testing.</P>
 <P>This new release is available for download from 
 <A HREF="http://www.squid-cache.org/Versions/v4/">http://www.squid-cache.org/Versions/v4/</A> or the
 <A HREF="http://www.squid-cache.org/Download/http-mirrors.html">mirrors</A>.</P>
@@ -340,6 +340,8 @@ logged with URI <EM>error:transaction-end-before-headers</EM>.</P>
 <P>New <EM>connections_encrypted</EM> type for matching transactions
 where all HTTP messages were received over TLS transport connections,
 including messages received from ICAP servers.</P>
+<P>New <EM>has</EM> type for matching whether or not Squid is able to provide
+certain sets of transaction state. For example HTTP reply headers.</P>
 
 <DT><B>auth_param</B><DD>
 <P>New parameter <EM>queue-size=</EM> to set the maximum number

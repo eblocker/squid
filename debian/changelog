@@ -31,9 +31,15 @@ squid3 (4.0.19-1~exp2) UNRELEASED; urgency=medium
     - debian/tests/test-squid.py: the actual tests
     (Closes: #710014, #859072)
 
- -- Amos Jeffries <amosjeffries@squid-cache.org>  Tue, 02 Map 2017 13:02:00 +1200
+ -- Amos Jeffries <amosjeffries@squid-cache.org>  Mon, 05 Jun 2017 16:16:00 +1200
 
-squid3 (3.5.23-4) UNRELEASED; urgency=medium
+squid3 (3.5.23-5) unstable; urgency=medium
+
+  * Reload squid so that it uses modified config, not default one.
+
+ -- Santiago Garcia Mantinan <manty@debian.org>  Sat, 03 Jun 2017 00:36:55 +0200
+
+squid3 (3.5.23-4) unstable; urgency=medium
 
   [ Andreas Beckmann <anbe@debian.org> ]
   * debian/squid.postinst
@@ -43,7 +49,7 @@ squid3 (3.5.23-4) UNRELEASED; urgency=medium
   * debian/squid.logrotate
     - Add missing piece of fix for sarg daily reports (LP: #1414754)
 
- -- Amos Jeffries <amosjeffries@squid-cache.org>  Mon, 15 May 2017 22:52:00 +1300
+ -- Santiago Garcia Mantinan <manty@debian.org>  Fri, 02 Jun 2017 00:19:55 +0200
 
 squid3 (3.5.23-3) unstable; urgency=medium
 

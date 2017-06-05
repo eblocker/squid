@@ -2,6 +2,7 @@ squid3 (4.0.20-1~exp2) UNRELEASED; urgency=medium
 
   [ Amos Jeffries <amosjeffries@squid-cache.org> ]
   * New Upstream Release
+    - Adds GnuTLS support for https:// URLs (Closes: #180886)
 
   * debian/patches/
     - refresh patches for new version

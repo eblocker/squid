@@ -10,7 +10,7 @@ Vcs-Browser: https://anonscm.debian.org/git/pkg-squid/pkg-squid3.git/
 Build-Depends: autotools-dev, libltdl-dev, pkg-config
 	, g++ (>= 4.9) | clang (>= 3.7)
 	, gcc (>= 4.9) | clang (>= 3.7)
-	, cdbs, debhelper (>=10), dpkg-dev (>= 1.16.1~), lsb-release
+	, cdbs, debhelper (>=10), dpkg-dev (>= 1.17.11~), lsb-release
 	, libcppunit-dev
 	, libcap2-dev [linux-any]
 	, libdb-dev
@@ -24,7 +24,6 @@ Build-Depends: autotools-dev, libltdl-dev, pkg-config
 	, libsasl2-dev
 	, libxml2-dev
 	, nettle-dev
-XS-Testsuite: autopkgtest
 
 Package: squid3
 Architecture: all

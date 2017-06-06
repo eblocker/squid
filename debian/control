@@ -68,7 +68,7 @@ Recommends: ssl-cert
 Provides: squid3-client
 Conflicts: squid3-client
 Replaces: squid3-client
-Description: Full featured Web Proxy cache (HTTP proxy) - control utility
+Description: Full featured Web Proxy cache (HTTP proxy) - HTTP(S) message utility
  Squid is a high-performance proxy caching server for web clients, supporting
  FTP, gopher, ICY and HTTP data objects.
  .
@@ -87,11 +87,11 @@ Description: Full featured Web Proxy cache (HTTP proxy) - control CGI
  .
  This package contains a CGI program that can be used to query and administrate 
  a `squid' proxy cache through a web browser.
- 
+
 Package: squid-purge
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
-Description: Full featured Web Proxy cache (HTTP proxy) - control utility
+Description: Full featured Web Proxy cache (HTTP proxy) - cache management utility
  Squid is a high-performance proxy caching server for web clients, supporting
  FTP, gopher, ICY and HTTP data objects.
  .

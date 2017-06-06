@@ -85,7 +85,7 @@ install/squid::
 	install -m 750 -o proxy -g proxy -d debian/squid/var/spool/squid
 	install -m 755 -g root -d $(INSTALLDIR)/usr/share/man/man1
 	mv $(INSTALLDIR)/usr/bin/purge $(INSTALLDIR)/usr/bin/squid-purge
-	install -m 644 -g root debian/squid-purge.8  $(INSTALLDIR)/usr/share/man/man8
+	mv $(INSTALLDIR)/usr/share/man/man1/purge.1 $(INSTALLDIR)/usr/share/man/man1/squid-purge.1
 
 clean::
 	# nothing to do

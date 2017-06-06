@@ -64,6 +64,7 @@ endif
 DEB_MAKE_CLEAN_TARGET = distclean
 
 install/squid::
+	cat debian/copyright.Debian CREDITS > debian/copyright
 	install -m 755 -g root -d $(INSTALLDIR)/usr/lib/cgi-bin
 	mv $(INSTALLDIR)/etc/squid/squid.conf.documented $(INSTALLDIR)/etc/squid/squid.conf
 	mv $(INSTALLDIR)/usr/lib/squid/cachemgr.cgi $(INSTALLDIR)/usr/lib/cgi-bin/cachemgr.cgi
@@ -88,4 +89,4 @@ install/squid::
 	mv $(INSTALLDIR)/usr/share/man/man1/purge.1 $(INSTALLDIR)/usr/share/man/man1/squid-purge.1
 
 clean::
-	# nothing to do
+	rm -f copyright

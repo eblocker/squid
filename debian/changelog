@@ -1,4 +1,4 @@
-squid3 (4.0.20-1~exp3) UNRELEASED; urgency=medium
+squid3 (4.0.20-1~exp4) UNRELEASED; urgency=medium
 
   [ Amos Jeffries <amosjeffries@squid-cache.org> ]
   * New Upstream Release
@@ -21,6 +21,9 @@ squid3 (4.0.20-1~exp3) UNRELEASED; urgency=medium
   * debian/{watch,squid.rc}
     - update for new major version
 
+  * debian/copyright
+    - auto generate from upstream CREDITS file
+
   [ Christian Ehrhardt <christian.ehrhardt@canonical.com> ]
   * Leverage squid qa regression testing code from
     https://code.launchpad.net/qa-regression-testing as an dep8 test.
@@ -33,7 +36,7 @@ squid3 (4.0.20-1~exp3) UNRELEASED; urgency=medium
     - debian/tests/test-squid.py: the actual tests
     (Closes: #710014, #859072)
 
- -- Amos Jeffries <amosjeffries@squid-cache.org>  Wed, 07 Jun 2017 00:36:00 +1200
+ -- Amos Jeffries <amosjeffries@squid-cache.org>  Wed, 07 Jun 2017 01:32:00 +1200
 
 squid3 (3.5.23-5) unstable; urgency=medium
 

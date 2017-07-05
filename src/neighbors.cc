@@ -168,7 +168,7 @@ peerAllowedToUse(const CachePeer * p, HttpRequest * request)
 
     ACLFilledChecklist checklist(p->access, request, NULL);
 
-    return (checklist.fastCheck() == ACCESS_ALLOWED);
+    return checklist.fastCheck().allowed();
 }
 
 /* Return TRUE if it is okay to send an ICP request to this CachePeer.   */
@@ -1382,7 +1382,8 @@ peerCountMcastPeersStart(void *data)
     p->in_addr.toUrl(url+7, MAX_URL -8 );
     strcat(url, "/");
     fake = storeCreateEntry(url, url, RequestFlags(), Http::METHOD_GET);
-    HttpRequest *req = HttpRequest::CreateFromUrl(url);
+    const MasterXaction::Pointer mx = new MasterXaction(XactionInitiator::initPeerMcast);
+    HttpRequest *req = HttpRequest::FromUrl(url, mx);
     psstate = new ps_state;
     psstate->request = req;
     HTTPMSGLOCK(psstate->request);

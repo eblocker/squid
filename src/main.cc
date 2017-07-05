@@ -10,8 +10,9 @@
 
 #include "squid.h"
 #include "AccessLogEntry.h"
-#include "acl/Acl.h"
+//#include "acl/Acl.h"
 #include "acl/Asn.h"
+#include "acl/forward.h"
 #include "anyp/UriScheme.h"
 #include "AuthReg.h"
 #include "base/RunnersRegistry.h"
@@ -387,9 +388,9 @@ usage(void)
             "       -C        Do not catch fatal signals.\n"
             "       -D        OBSOLETE. Scheduled for removal.\n"
             "       -F        Don't serve any requests until store is rebuilt.\n"
-            "       -N        No daemon mode.\n"
+            "       -N        Master process runs in foreground and is a worker. No kids.\n"
             "       --foreground\n"
-            "                 Parent process does not exit until its children have finished.\n"
+            "                 Master process runs in foreground and creates worker kids.\n"
 #if USE_WIN32_SERVICE
             "       -O options\n"
             "                 Set Windows Service Command line options in Registry.\n"
@@ -1339,6 +1340,39 @@ mainInitialize(void)
     configured_once = 1;
 }
 
+/// describes active (i.e., thrown but not yet handled) exception
+static std::ostream &
+CurrentException(std::ostream &os)
+{
+    if (std::current_exception()) {
+        try {
+            throw; // re-throw to recognize the exception type
+        }
+        catch (const std::exception &ex) {
+            os << ex.what();
+        }
+        catch (...) {
+            os << "[unknown exception type]";
+        }
+    } else {
+        os << "[no active exception]";
+    }
+    return os;
+}
+
+static void
+OnTerminate()
+{
+    // ignore recursive calls to avoid termination loops
+    static bool terminating = false;
+    if (terminating)
+        return;
+    terminating = true;
+
+    debugs(1, DBG_CRITICAL, "FATAL: Dying from an exception handling failure; exception: " << CurrentException);
+    abort();
+}
+
 /// unsafe main routine -- may throw
 int SquidMain(int argc, char **argv);
 /// unsafe main routine wrapper to catch exceptions
@@ -1372,12 +1406,15 @@ main(int argc, char **argv)
 static int
 SquidMainSafe(int argc, char **argv)
 {
+    (void)std::set_terminate(&OnTerminate);
+    // XXX: This top-level catch works great for startup, but, during runtime,
+    // it erases valuable stack info. TODO: Let stack-preserving OnTerminate()
+    // handle FATAL runtime errors by splitting main code into protected
+    // startup, unprotected runtime, and protected termination sections!
     try {
         return SquidMain(argc, argv);
-    } catch (const std::exception &e) {
-        debugs(1, DBG_CRITICAL, "FATAL: " << e.what());
     } catch (...) {
-        debugs(1, DBG_CRITICAL, "FATAL: dying from an unhandled exception.");
+        debugs(1, DBG_CRITICAL, "FATAL: " << CurrentException);
     }
     return -1; // TODO: return EXIT_FAILURE instead
 }
@@ -1521,6 +1558,7 @@ SquidMain(int argc, char **argv)
 
         /* we may want the parsing process to set this up in the future */
         Store::Init();
+        Acl::Init();
         Auth::Init();      /* required for config parsing. NOP if !USE_AUTH */
         Ip::ProbeTransport(); // determine IPv4 or IPv6 capabilities before parsing.
 
@@ -1762,12 +1800,29 @@ masterSignaled()
     return (DebugSignal > 0 || RotateSignal > 0 || ReconfigureSignal > 0 || ShutdownSignal > 0);
 }
 
+#if !_SQUID_WINDOWS_
+/// makes the caller a daemon process running in the background
+static void
+GoIntoBackground()
+{
+    pid_t pid;
+    if ((pid = fork()) < 0) {
+        int xerrno = errno;
+        syslog(LOG_ALERT, "fork failed: %s", xstrerr(xerrno));
+        // continue anyway, mimicking --foreground mode (XXX?)
+    } else if (pid > 0) {
+        // parent
+        exit(EXIT_SUCCESS);
+    }
+    // child, running as a background daemon (or a failed-to-fork parent)
+}
+#endif /* !_SQUID_WINDOWS_ */
+
 static void
 watch_child(char *argv[])
 {
 #if !_SQUID_WINDOWS_
     char *prog;
-    PidStatus status_f, status;
     pid_t pid;
 #ifdef TIOCNOTTY
 
@@ -1780,21 +1835,12 @@ watch_child(char *argv[])
 
     openlog(APP_SHORTNAME, LOG_PID | LOG_NDELAY | LOG_CONS, LOG_LOCAL4);
 
-    if ((pid = fork()) < 0) {
-        int xerrno = errno;
-        syslog(LOG_ALERT, "fork failed: %s", xstrerr(xerrno));
-    } else if (pid > 0) {
-        // parent
-        if (opt_foreground) {
-            if (WaitForAnyPid(status_f, 0) < 0) {
-                int xerrno = errno;
-                syslog(LOG_ALERT, "WaitForAnyPid failed: %s", xstrerr(xerrno));
-            }
-        }
+    if (!opt_foreground)
+        GoIntoBackground();
 
-        exit(0);
-    }
-
+    // TODO: Fails with --foreground if the calling process is process group
+    //       leader, which is always (?) the case. Should probably moved to
+    //       GoIntoBackground and executed only after successfully forking
     if (setsid() < 0) {
         int xerrno = errno;
         syslog(LOG_ALERT, "setsid failed: %s", xstrerr(xerrno));
@@ -1904,6 +1950,7 @@ watch_child(char *argv[])
         int waitFlag = 0;
         if (masterSignaled())
             waitFlag = WNOHANG;
+        PidStatus status;
         pid = WaitForAnyPid(status, waitFlag);
 
         // check for a stopped kid

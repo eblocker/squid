@@ -320,7 +320,7 @@ ClientHttpRequest::~ClientHttpRequest()
 int
 clientBeginRequest(const HttpRequestMethod& method, char const *url, CSCB * streamcallback,
                    CSD * streamdetach, ClientStreamData streamdata, HttpHeader const *header,
-                   char *tailbuf, size_t taillen)
+                   char *tailbuf, size_t taillen, const MasterXaction::Pointer &mx)
 {
     size_t url_sz;
     ClientHttpRequest *http = new ClientHttpRequest(NULL);
@@ -346,15 +346,15 @@ clientBeginRequest(const HttpRequestMethod& method, char const *url, CSCB * stre
     http->uri = (char *)xcalloc(url_sz, 1);
     strcpy(http->uri, url);
 
-    if ((request = HttpRequest::CreateFromUrl(http->uri, method)) == NULL) {
+    if ((request = HttpRequest::FromUrl(http->uri, mx, method)) == NULL) {
         debugs(85, 5, "Invalid URL: " << http->uri);
         return -1;
     }
 
     /*
-     * now update the headers in request with our supplied headers. urlParse
-     * should return a blank header set, but we use Update to be sure of
-     * correctness.
+     * now update the headers in request with our supplied headers.
+     * HttpRequest::FromUrl() should return a blank header set, but
+     * we use Update to be sure of correctness.
      */
     if (header)
         request->header.update(header);
@@ -367,8 +367,6 @@ clientBeginRequest(const HttpRequestMethod& method, char const *url, CSCB * stre
      * build new header list *? TODO
      */
     request->flags.accelerated = http->flags.accel;
-
-    request->flags.internalClient = true;
 
     /* this is an internally created
      * request, not subject to acceleration
@@ -451,13 +449,7 @@ clientFollowXForwardedForCheck(allow_t answer, void *data)
     ClientHttpRequest *http = calloutContext->http;
     HttpRequest *request = http->request;
 
-    /*
-     * answer should be be ACCESS_ALLOWED or ACCESS_DENIED if we are
-     * called as a result of ACL checks, or -1 if we are called when
-     * there's nothing left to do.
-     */
-    if (answer == ACCESS_ALLOWED &&
-            request->x_forwarded_for_iterator.size () != 0) {
+    if (answer.allowed() && request->x_forwarded_for_iterator.size() != 0) {
 
         /*
          * Remove the last comma-delimited element from the
@@ -499,8 +491,7 @@ clientFollowXForwardedForCheck(allow_t answer, void *data)
             calloutContext->acl_checklist->nonBlockingCheck(clientFollowXForwardedForCheck, data);
             return;
         }
-    } /*if (answer == ACCESS_ALLOWED &&
-        request->x_forwarded_for_iterator.size () != 0)*/
+    }
 
     /* clean up, and pass control to clientAccessCheck */
     if (Config.onoff.log_uses_indirect_client) {
@@ -515,7 +506,7 @@ clientFollowXForwardedForCheck(allow_t answer, void *data)
     request->x_forwarded_for_iterator.clean();
     request->flags.done_follow_x_forwarded_for = true;
 
-    if (answer != ACCESS_ALLOWED && answer != ACCESS_DENIED) {
+    if (!answer.someRuleMatched()) {
         debugs(28, DBG_CRITICAL, "ERROR: Processing X-Forwarded-For. Stopping at IP address: " << request->indirect_client_addr );
     }
 
@@ -771,7 +762,7 @@ ClientRequestContext::clientAccessCheckDone(const allow_t &answer)
         proxy_auth_msg = http->request->auth_user_request->denyMessage("<null>");
 #endif
 
-    if (answer != ACCESS_ALLOWED) {
+    if (!answer.allowed()) {
         // auth has a grace period where credentials can be expired but okay not to challenge.
 
         /* Send an auth challenge or error */
@@ -882,7 +873,7 @@ clientRedirectAccessCheckDone(allow_t answer, void *data)
     ClientHttpRequest *http = context->http;
     context->acl_checklist = NULL;
 
-    if (answer == ACCESS_ALLOWED)
+    if (answer.allowed())
         redirectStart(http, clientRedirectDoneWrapper, context);
     else {
         Helper::Reply const nilReply(Helper::Error);
@@ -913,7 +904,7 @@ clientStoreIdAccessCheckDone(allow_t answer, void *data)
     ClientHttpRequest *http = context->http;
     context->acl_checklist = NULL;
 
-    if (answer == ACCESS_ALLOWED)
+    if (answer.allowed())
         storeIdStart(http, clientStoreIdDoneWrapper, context);
     else {
         debugs(85, 3, "access denied expected ERR reply handling: " << answer);
@@ -1273,10 +1264,10 @@ ClientRequestContext::clientRedirectDone(const Helper::Reply &reply)
 
             // prevent broken helpers causing too much damage. If old URL == new URL skip the re-write.
             if (urlNote != NULL && strcmp(urlNote, http->uri)) {
-                // XXX: validate the URL properly *without* generating a whole new request object right here.
-                // XXX: the clone() should be done only AFTER we know the new URL is valid.
-                HttpRequest *new_request = old_request->clone();
-                if (urlParse(old_request->method, const_cast<char*>(urlNote), new_request)) {
+                URL tmpUrl;
+                if (tmpUrl.parse(old_request->method, const_cast<char*>(urlNote))) {
+                    HttpRequest *new_request = old_request->clone();
+                    new_request->url = tmpUrl;
                     debugs(61, 2, "URL-rewriter diverts URL from " << old_request->effectiveRequestUri() << " to " << new_request->effectiveRequestUri());
 
                     // update the new request to flag the re-writing was done on it
@@ -1298,7 +1289,6 @@ ClientRequestContext::clientRedirectDone(const Helper::Reply &reply)
                 } else {
                     debugs(85, DBG_CRITICAL, "ERROR: URL-rewrite produces invalid request: " <<
                            old_request->method << " " << urlNote << " " << old_request->http_ver);
-                    delete new_request;
                 }
             }
         }
@@ -1399,7 +1389,7 @@ void
 ClientRequestContext::checkNoCacheDone(const allow_t &answer)
 {
     acl_checklist = NULL;
-    if (answer == ACCESS_DENIED) {
+    if (answer.denied()) {
         http->request->flags.noCache = true; // dont read reply from cache
         http->request->flags.cachable = false; // dont store reply into cache
     }
@@ -1498,7 +1488,7 @@ ClientRequestContext::sslBumpAccessCheckDone(const allow_t &answer)
     if (!httpStateIsValid())
         return;
 
-    const Ssl::BumpMode bumpMode = answer == ACCESS_ALLOWED ?
+    const Ssl::BumpMode bumpMode = answer.allowed() ?
                                    static_cast<Ssl::BumpMode>(answer.kind) : Ssl::bumpSplice;
     http->sslBumpNeed(bumpMode); // for processRequest() to bump if needed
     http->al->ssl.bumpMode = bumpMode; // for logging

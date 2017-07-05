@@ -1,4 +1,4 @@
-squid3 (4.0.20-1~exp4) UNRELEASED; urgency=medium
+squid3 (4.0.21-1~exp1) UNRELEASED; urgency=medium
 
   [ Amos Jeffries <amosjeffries@squid-cache.org> ]
   * New Upstream Release
@@ -36,7 +36,7 @@ squid3 (4.0.20-1~exp4) UNRELEASED; urgency=medium
     - debian/tests/test-squid.py: the actual tests
     (Closes: #710014, #859072)
 
- -- Amos Jeffries <amosjeffries@squid-cache.org>  Wed, 07 Jun 2017 01:32:00 +1200
+ -- Amos Jeffries <amosjeffries@squid-cache.org>  Wed, 05 Jul 2017 19:44:00 +1200
 
 squid3 (3.5.23-5) unstable; urgency=medium
 

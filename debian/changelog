@@ -1,4 +1,4 @@
-squid3 (4.0.21-1~exp2) UNRELEASED; urgency=medium
+squid3 (4.0.21-1~exp3) UNRELEASED; urgency=medium
 
   [ Amos Jeffries <amosjeffries@squid-cache.org> ]
   * New Upstream Release
@@ -10,7 +10,7 @@ squid3 (4.0.21-1~exp2) UNRELEASED; urgency=medium
 
   * debian/{rules,squid.install}
     - update rules to build NTLM LanMan helper
-    - install squid.service file for systemd (Closes: #855268)
+    - install squid.service file for systemd (Closes: #855268, #871602)
 
   * debian/control
     - minor maintenance improvements
@@ -37,7 +37,7 @@ squid3 (4.0.21-1~exp2) UNRELEASED; urgency=medium
     - debian/tests/test-squid.py: the actual tests
     (Closes: #710014, #859072)
 
- -- Amos Jeffries <amosjeffries@squid-cache.org>  Sat, 05 Aug 2017 17:24:00 +1200
+ -- Amos Jeffries <amosjeffries@squid-cache.org>  Fri, 11 Aug 2017 18:08:00 +1200
 
 squid3 (3.5.23-5) unstable; urgency=medium
 

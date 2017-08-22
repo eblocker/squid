@@ -1,4 +1,4 @@
-squid3 (4.0.21-1~exp3) UNRELEASED; urgency=medium
+squid3 (4.0.21-1~exp4) UNRELEASED; urgency=medium
 
   [ Amos Jeffries <amosjeffries@squid-cache.org> ]
   * New Upstream Release
@@ -13,6 +13,8 @@ squid3 (4.0.21-1~exp3) UNRELEASED; urgency=medium
     - install squid.service file for systemd (Closes: #855268, #871602)
 
   * debian/control
+    - Bumped Standards-Version to 4.0.1
+    - updates Priority field for squid3 package to optional
     - minor maintenance improvements
     - mention compiler dependency for backport builds
     - remove squid-dbg in favour of automatic *-dbgsym packages
@@ -37,7 +39,7 @@ squid3 (4.0.21-1~exp3) UNRELEASED; urgency=medium
     - debian/tests/test-squid.py: the actual tests
     (Closes: #710014, #859072)
 
- -- Amos Jeffries <amosjeffries@squid-cache.org>  Fri, 11 Aug 2017 18:08:00 +1200
+ -- Amos Jeffries <amosjeffries@squid-cache.org>  Tue, 22 Aug 2017 12:35:00 +1200
 
 squid3 (3.5.23-5) unstable; urgency=medium
 

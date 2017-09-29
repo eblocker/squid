@@ -4,7 +4,7 @@ Priority: optional
 Maintainer: Luigi Gangitano <luigi@debian.org>
 Uploaders: Santiago Garcia Mantinan <manty@debian.org>
 Homepage: http://www.squid-cache.org
-Standards-Version: 4.0.0
+Standards-Version: 4.1.0
 Vcs-Git: git://anonscm.debian.org/pkg-squid/pkg-squid3.git/
 Vcs-Browser: https://anonscm.debian.org/git/pkg-squid/pkg-squid3.git/
 Build-Depends: autotools-dev, ed, libltdl-dev, pkg-config

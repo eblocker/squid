@@ -1,4 +1,4 @@
-squid3 (4.0.21-1~exp4) UNRELEASED; urgency=high
+squid3 (4.0.21-1~exp5) UNRELEASED; urgency=high
 
   [ Amos Jeffries <amosjeffries@squid-cache.org> ]
   * New Upstream Release (Closes: #853668)
@@ -20,6 +20,7 @@ squid3 (4.0.21-1~exp4) UNRELEASED; urgency=high
     - remove squid-dbg in favour of automatic *-dbgsym packages
     - remove version 3.x specific text from long descriptions
     - add 'ed' package dependency for buster
+    - remove unnecessary autotools-dev build-dependency
 
   * debian/{watch,squid.rc}
     - update for new major version
@@ -39,7 +40,7 @@ squid3 (4.0.21-1~exp4) UNRELEASED; urgency=high
     - debian/tests/test-squid.py: the actual tests
     (Closes: #710014, #859072)
 
- -- Amos Jeffries <amosjeffries@squid-cache.org>  Fri, 29 Sep 2017 18:13:00 +1300
+ -- Amos Jeffries <amosjeffries@squid-cache.org>  Fri, 29 Sep 2017 18:38:00 +1300
 
 squid3 (3.5.23-5) unstable; urgency=medium
 

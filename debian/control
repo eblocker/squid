@@ -7,7 +7,7 @@ Homepage: http://www.squid-cache.org
 Standards-Version: 4.1.0
 Vcs-Git: git://anonscm.debian.org/pkg-squid/pkg-squid3.git/
 Vcs-Browser: https://anonscm.debian.org/git/pkg-squid/pkg-squid3.git/
-Build-Depends: autotools-dev, ed, libltdl-dev, pkg-config
+Build-Depends: ed, libltdl-dev, pkg-config
 	, g++ (>= 4.9) | clang (>= 3.7)
 	, gcc (>= 4.9) | clang (>= 3.7)
 	, cdbs, debhelper (>=10), dpkg-dev (>= 1.17.11~), lsb-release

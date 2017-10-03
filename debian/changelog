@@ -1,4 +1,4 @@
-squid3 (4.0.21-1~exp5) UNRELEASED; urgency=high
+squid (4.0.21-1~exp5) UNRELEASED; urgency=high
 
   [ Amos Jeffries <amosjeffries@squid-cache.org> ]
   * New Upstream Release (Closes: #853668)

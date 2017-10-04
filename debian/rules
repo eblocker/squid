@@ -73,9 +73,9 @@ install/squid::
 	install -m 755 -g root -d $(INSTALLDIR)/etc/resolvconf
 	install -m 755 -g root -d $(INSTALLDIR)/etc/resolvconf/update-libc.d
 	install -m 755 -g root -d $(INSTALLDIR)/etc/ufw/applications.d
-	install -m 644 -g root -d $(INSTALLDIR)/lib/systemd/system
+	install -m 755 -g root -d $(INSTALLDIR)/lib/systemd/system
 	install -m 755 -g root debian/squid.rc $(INSTALLDIR)/etc/init.d/squid
-	install -m 755 -g root tools/systemd/squid.service $(INSTALLDIR)/lib/systemd/system/squid.service
+	install -m 644 -g root tools/systemd/squid.service $(INSTALLDIR)/lib/systemd/system/squid.service
 	install -m 755 -g root debian/squid.resolvconf $(INSTALLDIR)/etc/resolvconf/update-libc.d/squid
 	install -m 644 -g root debian/squid.logrotate $(INSTALLDIR)/etc/logrotate.d/squid
 	install -m 644 -g root debian/squid.ufw.profile $(INSTALLDIR)/etc/ufw/applications.d/squid

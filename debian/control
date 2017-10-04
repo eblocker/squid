@@ -28,7 +28,7 @@ Build-Depends: ed, libltdl-dev, pkg-config
 Package: squid3
 Architecture: all
 Section: oldlibs
-Priority: optional
+Priority: extra
 Pre-Depends: squid (>= ${source:Version})
 Depends: ${shlibs:Depends}, ${misc:Depends}, lsb-base
 Description: Transitional package

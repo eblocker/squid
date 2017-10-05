@@ -92,4 +92,5 @@ install/squid::
 	mv $(INSTALLDIR)/usr/bin/purge $(INSTALLDIR)/usr/bin/squid-purge
 	mv $(INSTALLDIR)/usr/share/man/man1/purge.1 $(INSTALLDIR)/usr/share/man/man1/squid-purge.1
 
-clean:: debian/copyright
+clean::
+	rm -f debian/copyright

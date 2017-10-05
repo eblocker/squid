@@ -4,7 +4,7 @@ Priority: optional
 Maintainer: Luigi Gangitano <luigi@debian.org>
 Uploaders: Santiago Garcia Mantinan <manty@debian.org>
 Homepage: http://www.squid-cache.org
-Standards-Version: 4.1.0
+Standards-Version: 4.1.1
 Vcs-Git: git://anonscm.debian.org/pkg-squid/pkg-squid.git/
 Vcs-Browser: https://anonscm.debian.org/git/pkg-squid/pkg-squid.git/
 Build-Depends: ed, libltdl-dev, pkg-config
@@ -28,7 +28,7 @@ Build-Depends: ed, libltdl-dev, pkg-config
 Package: squid3
 Architecture: all
 Section: oldlibs
-Priority: extra
+Priority: optional
 Pre-Depends: squid (>= ${source:Version})
 Depends: ${shlibs:Depends}, ${misc:Depends}, lsb-base
 Description: Transitional package

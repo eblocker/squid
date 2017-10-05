@@ -12,7 +12,7 @@ INSTALLDIR := $(CURDIR)/debian/tmp
 datadir=/usr/share/squid
 
 DEB_DH_INSTALL_SOURCEDIR := $(INSTALLDIR)
-DEB_INSTALL_DOCS_squid-common := CONTRIBUTORS CREDITS QUICKSTART RELEASENOTES.html \
+DEB_INSTALL_DOCS_squid-common := debian/copyright CONTRIBUTORS CREDITS QUICKSTART RELEASENOTES.html \
 						SPONSORS 
 
 DEB_CONFIGURE_EXTRA_FLAGS := BUILDCXXFLAGS="$(CXXFLAGS) $(CPPFLAGS) $(LDFLAGS)" \
@@ -63,8 +63,12 @@ endif
 
 DEB_MAKE_CLEAN_TARGET = distclean
 
+debian/copyright: debian/copyright.Debian CREDITS
+	cat $^ > $@
+
+pre-build:: debian/copyright
+
 install/squid::
-	cat debian/copyright.Debian CREDITS > debian/copyright
 	install -m 755 -g root -d $(INSTALLDIR)/usr/lib/cgi-bin
 	mv $(INSTALLDIR)/etc/squid/squid.conf.documented $(INSTALLDIR)/etc/squid/squid.conf
 	mv $(INSTALLDIR)/usr/lib/squid/cachemgr.cgi $(INSTALLDIR)/usr/lib/cgi-bin/cachemgr.cgi
@@ -88,5 +92,4 @@ install/squid::
 	mv $(INSTALLDIR)/usr/bin/purge $(INSTALLDIR)/usr/bin/squid-purge
 	mv $(INSTALLDIR)/usr/share/man/man1/purge.1 $(INSTALLDIR)/usr/share/man/man1/squid-purge.1
 
-clean::
-	rm -f copyright
+clean:: debian/copyright

@@ -1,4 +1,4 @@
-squid (4.0.21-1~exp5) UNRELEASED; urgency=high
+squid (4.0.21-1~exp5) experimental; urgency=medium
 
   [ Amos Jeffries <amosjeffries@squid-cache.org> ]
   * New Upstream Release (Closes: #853668)
@@ -40,7 +40,12 @@ squid (4.0.21-1~exp5) UNRELEASED; urgency=high
     - debian/tests/test-squid.py: the actual tests
     (Closes: #710014, #859072)
 
- -- Amos Jeffries <amosjeffries@squid-cache.org>  Fri, 29 Sep 2017 18:38:00 +1300
+  [ Santiago Garcia Mantinan <manty@debian.org> ]
+  * Change source package name to squid.
+  * Clean up lintian a bit.
+  * Get it ready for an upload to experimental.
+
+ -- Santiago Garcia Mantinan <manty@debian.org>  Wed, 04 Oct 2017 23:19:36 +0200
 
 squid3 (3.5.23-5) unstable; urgency=medium
 

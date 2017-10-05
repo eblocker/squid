@@ -64,7 +64,7 @@ endif
 DEB_MAKE_CLEAN_TARGET = distclean
 
 debian/copyright: debian/copyright.Debian CREDITS
-	cat $^ > $@
+	cat $^ | sed -e "s/59 Temple Place.* Suite 330/51 Franklin St, Fifth Floor/" -e "s/MA  \?02111[^, ]*/MA 02110-1301/" > $@
 
 pre-build:: debian/copyright
 

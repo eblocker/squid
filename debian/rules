@@ -64,9 +64,7 @@ endif
 DEB_MAKE_CLEAN_TARGET = distclean
 
 debian/copyright: debian/copyright.Debian CREDITS
-	cat $^ | sed -e "s/59 Temple Place.* Suite 330/51 Franklin St, Fifth Floor/" -e "s/MA  \?02111[^, ]*/MA 02110-1301/" > $@
-
-pre-build:: debian/copyright
+	cat $^ | sed -e "s/59 Temple Place.* Suite 330/51 Franklin St, Fifth Floor/" -e "s/MA  \?02111[^, ]*/MA 02110-1301/" -e "s/675 Mass Ave/51 Franklin St, Fifth Floor/" -e "s/Cambridge, MA 02139/Boston, MA 02110-1301/" > $@
 
 install/squid::
 	install -m 755 -g root -d $(INSTALLDIR)/usr/lib/cgi-bin
@@ -91,6 +89,3 @@ install/squid::
 	install -m 755 -g root -d $(INSTALLDIR)/usr/share/man/man1
 	mv $(INSTALLDIR)/usr/bin/purge $(INSTALLDIR)/usr/bin/squid-purge
 	mv $(INSTALLDIR)/usr/share/man/man1/purge.1 $(INSTALLDIR)/usr/share/man/man1/squid-purge.1
-
-clean::
-	rm -f debian/copyright

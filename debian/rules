@@ -7,15 +7,17 @@ include /usr/share/dpkg/buildflags.mk
 
 include /usr/share/cdbs/1/rules/debhelper.mk
 include /usr/share/cdbs/1/class/autotools.mk
- 
+
 INSTALLDIR := $(CURDIR)/debian/tmp
 datadir=/usr/share/squid
 
 DEB_DH_INSTALL_SOURCEDIR := $(INSTALLDIR)
-DEB_INSTALL_DOCS_squid-common := debian/copyright CONTRIBUTORS CREDITS QUICKSTART RELEASENOTES.html \
-						SPONSORS 
+DEB_INSTALL_DOCS_squid-common := debian/copyright CONTRIBUTORS CREDITS QUICKSTART RELEASENOTES.html SPONSORS
+
+BUILDINFO := $(shell lsb_release -si 2>/dev/null)
 
 DEB_CONFIGURE_EXTRA_FLAGS := BUILDCXXFLAGS="$(CXXFLAGS) $(CPPFLAGS) $(LDFLAGS)" \
+		--enable-build-info="$(BUILDINFO) $(DEB_HOST_ARCH_OS)" \
 		--datadir=/usr/share/squid \
 		--sysconfdir=/etc/squid \
 		--libexecdir=/usr/lib/squid \
@@ -47,12 +49,6 @@ DEB_CONFIGURE_EXTRA_FLAGS := BUILDCXXFLAGS="$(CXXFLAGS) $(CPPFLAGS) $(LDFLAGS)" 
 		--with-filedescriptors=65536 \
 		--with-large-files \
 		--with-default-user=proxy
-
-BUILDINFO := $(shell lsb_release -si 2>/dev/null)
-
-DEB_HOST_ARCH_OS := $(shell dpkg-architecture -qDEB_HOST_ARCH_OS 2>/dev/null)
-
-DEB_CONFIGURE_EXTRA_FLAGS += --enable-build-info="$(BUILDINFO) $(DEB_HOST_ARCH_OS)"
 
 ifeq ($(DEB_HOST_ARCH_OS), kfreebsd)
 		DEB_CONFIGURE_EXTRA_FLAGS += --enable-kqueue

@@ -36,6 +36,8 @@ DEB_CONFIGURE_EXTRA_FLAGS := BUILDCXXFLAGS="$(CXXFLAGS) $(CPPFLAGS) $(LDFLAGS)" 
 		--enable-auth-negotiate="kerberos,wrapper" \
 		--enable-auth-ntlm="fake,SMB_LM" \
 		--enable-external-acl-helpers="file_userip,kerberos_ldap_group,LDAP_group,session,SQL_session,time_quota,unix_group,wbinfo_group" \
+		--enable-security-cert-validators="fake" \
+		--enable-storeid-rewrite-helpers="file" \
 		--enable-url-rewrite-helpers="fake" \
 		--enable-eui \
 		--enable-esi \

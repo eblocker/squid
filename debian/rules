@@ -67,6 +67,7 @@ debian/copyright: debian/copyright.Debian CREDITS
 install/squid::
 	install -m 755 -g root -d $(INSTALLDIR)/usr/lib/cgi-bin
 	mv $(INSTALLDIR)/etc/squid/squid.conf.documented $(INSTALLDIR)/etc/squid/squid.conf
+	install -m 755 -g root -d $(INSTALLDIR)/etc/squid/conf.d/
 	mv $(INSTALLDIR)/usr/lib/squid/cachemgr.cgi $(INSTALLDIR)/usr/lib/cgi-bin/cachemgr.cgi
 	install -m 755 -g root -d $(INSTALLDIR)/etc/init.d
 	install -m 755 -g root -d $(INSTALLDIR)/etc/logrotate.d

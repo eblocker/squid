@@ -9,11 +9,13 @@ squid (4.0.22-1~exp6) UNRELEASED; urgency=medium
   * debian/rules
     - clean up a bit for lintian
     - explicitly list TLS certificate validator and Store-ID helpers built
+    - add /etc/squid/conf.d/ directory for local settings separate from
+      the default configuration.
 
   * debian/squid.install
     - add missing man(8) page for security_fake_certverify helper
 
- -- Amos Jeffries <amosjeffries@squid-cache.org>  Mon, 11 Dec 2017 16:49:00 +1300
+ -- Amos Jeffries <amosjeffries@squid-cache.org>  Tue, 12 Dec 2017 04:46:00 +1300
 
 squid (4.0.21-1~exp5) experimental; urgency=medium
 

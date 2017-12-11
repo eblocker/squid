@@ -1,13 +1,15 @@
-squid (4.0.21-1~exp6) UNRELEASED; urgency=medium
+squid (4.0.22-1~exp6) UNRELEASED; urgency=medium
 
   [ Amos Jeffries <amosjeffries@squid-cache.org> ]
+  * New Upstream Release
+
   * debian/control
     - Bumped Standards-Version to 4.1.2, no change needed
 
   * debian/rules
     - clean up a bit for lintian
 
- -- Amos Jeffries <amosjeffries@squid-cache.org>  Fri, 01 Dec 2017 20:26:00 +1300
+ -- Amos Jeffries <amosjeffries@squid-cache.org>  Mon, 11 Dec 2017 16:32:00 +1300
 
 squid (4.0.21-1~exp5) experimental; urgency=medium
 

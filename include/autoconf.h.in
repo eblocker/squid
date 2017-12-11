@@ -510,6 +510,9 @@
 /* "Define to 1 if the X509_CRL_up_ref() OpenSSL API function exists" */
 #undef HAVE_LIBCRYPTO_X509_CRL_UP_REF
 
+/* "Define to 1 if the X509_get0_signature() OpenSSL API function exists" */
+#undef HAVE_LIBCRYPTO_X509_GET0_SIGNATURE
+
 /* "Define to 1 if the X509_STORE_CTX_get0_cert() OpenSSL API function exists"
    */
 #undef HAVE_LIBCRYPTO_X509_STORE_CTX_GET0_CERT
@@ -1382,6 +1385,9 @@
 /* "Define to 1 if the SSL_CTX_sess_set_get_cb() callback accepts a const ID
    argument" */
 #undef SQUID_USE_CONST_SSL_SESSION_CBID
+
+/* "Define if X509_get0_signature() accepts const parameters" */
+#undef SQUID_USE_CONST_X509_GET0_SIGNATURE_ARGS
 
 /* "Define to 1 if hello message can be overwritten in SSL struct" */
 #undef SQUID_USE_OPENSSL_HELLO_OVERWRITE_HACK

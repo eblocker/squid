@@ -132,9 +132,9 @@ static void
 netdbHashInsert(netdbEntry * n, Ip::Address &addr)
 {
     networkFromInaddr(addr).toStr(n->network, MAX_IPSTRLEN);
-    n->hash.key = n->network;
+    n->key = n->network;
     assert(hash_lookup(addr_table, n->network) == NULL);
-    hash_join(addr_table, &n->hash);
+    hash_join(addr_table, n);
 }
 
 static void
@@ -154,7 +154,7 @@ net_db_name::net_db_name(const char *hostname, netdbEntry *e) :
     next(e ? e->hosts : nullptr),
     net_db_entry(e)
 {
-    hash.key = xstrdup(hostname);
+    key = xstrdup(hostname);
     if (e) {
         e->hosts = this;
         ++ e->link_count;
@@ -166,7 +166,7 @@ netdbHostInsert(netdbEntry * n, const char *hostname)
 {
     net_db_name *x = new net_db_name(hostname, n);
     assert(hash_lookup(host_table, hostname) == NULL);
-    hash_join(host_table, &x->hash);
+    hash_join(host_table, x);
 }
 
 static void
@@ -525,7 +525,7 @@ netdbSaveState(void *foo)
                       (int) n->last_use_time);
 
         for (x = n->hosts; x; x = x->next)
-            logfilePrintf(lf, " %s", hashKeyStr(&x->hash));
+            logfilePrintf(lf, " %s", hashKeyStr(x));
 
         logfilePrintf(lf, "\n");
 
@@ -1023,7 +1023,7 @@ netdbDump(StoreEntry * sentry)
                           n->hops);
 
         for (x = n->hosts; x; x = x->next)
-            storeAppendPrintf(sentry, " %s", hashKeyStr(&x->hash));
+            storeAppendPrintf(sentry, " %s", hashKeyStr(x));
 
         storeAppendPrintf(sentry, "\n");
 
@@ -1284,13 +1284,12 @@ netdbExchangeStart(void *data)
     CachePeer *p = (CachePeer *)data;
     static const SBuf netDB("netdb");
     char *uri = internalRemoteUri(p->host, p->http_port, "/squid-internal-dynamic/", netDB);
-    debugs(38, 3, "netdbExchangeStart: Requesting '" << uri << "'");
-    assert(NULL != uri);
+    debugs(38, 3, "Requesting '" << uri << "'");
     const MasterXaction::Pointer mx = new MasterXaction(XactionInitiator::initIcmp);
     HttpRequest *req = HttpRequest::FromUrl(uri, mx);
 
-    if (req == NULL) {
-        debugs(38, DBG_IMPORTANT, "netdbExchangeStart: Bad URI " << uri);
+    if (!req) {
+        debugs(38, DBG_IMPORTANT, MYNAME << ": Bad URI " << uri);
         return;
     }
 

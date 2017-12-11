@@ -2837,8 +2837,10 @@ ConnStateData::sslCrtdHandleReply(const Helper::Reply &reply)
                     Security::ContextPointer ctx(Security::GetFrom(fd_table[clientConnection->fd].ssl));
                     Ssl::configureUnconfiguredSslContext(ctx, signAlgorithm, *port);
                 } else {
-                    Security::ContextPointer ctx(Ssl::generateSslContextUsingPkeyAndCertFromMemory(reply_message.getBody().c_str(), *port));
-                    getSslContextDone(ctx, true);
+                    Security::ContextPointer ctx(Ssl::GenerateSslContextUsingPkeyAndCertFromMemory(reply_message.getBody().c_str(), port->secure, (signAlgorithm == Ssl::algSignTrusted)));
+                    if (ctx && !sslBumpCertKey.isEmpty())
+                        storeTlsContextToCache(sslBumpCertKey, ctx);
+                    getSslContextDone(ctx);
                 }
                 return;
             }
@@ -2852,9 +2854,8 @@ void ConnStateData::buildSslCertGenerationParams(Ssl::CertificateProperties &cer
 {
     certProperties.commonName =  sslCommonName_.isEmpty() ? sslConnectHostOrIp.termedBuf() : sslCommonName_.c_str();
 
-    const bool triedToConnect = sslServerBump && sslServerBump->entry;
-    const bool connectedOK = triedToConnect && sslServerBump->entry->isEmpty();
-    if (connectedOK) {
+    const bool connectedOk = sslServerBump && sslServerBump->connectedOk();
+    if (connectedOk) {
         if (X509 *mimicCert = sslServerBump->serverCert.get())
             certProperties.mimicCert.resetAndLock(mimicCert);
 
@@ -2910,19 +2911,47 @@ void ConnStateData::buildSslCertGenerationParams(Ssl::CertificateProperties &cer
     assert(certProperties.signAlgorithm != Ssl::algSignEnd);
 
     if (certProperties.signAlgorithm == Ssl::algSignUntrusted) {
-        assert(port->untrustedSigningCert.get());
-        certProperties.signWithX509.resetAndLock(port->untrustedSigningCert.get());
-        certProperties.signWithPkey.resetAndLock(port->untrustedSignPkey.get());
+        assert(port->secure.untrustedSigningCert);
+        certProperties.signWithX509.resetAndLock(port->secure.untrustedSigningCert.get());
+        certProperties.signWithPkey.resetAndLock(port->secure.untrustedSignPkey.get());
     } else {
-        assert(port->signingCert.get());
-        certProperties.signWithX509.resetAndLock(port->signingCert.get());
+        assert(port->secure.signingCert.get());
+        certProperties.signWithX509.resetAndLock(port->secure.signingCert.get());
 
-        if (port->signPkey.get())
-            certProperties.signWithPkey.resetAndLock(port->signPkey.get());
+        if (port->secure.signPkey)
+            certProperties.signWithPkey.resetAndLock(port->secure.signPkey.get());
     }
     signAlgorithm = certProperties.signAlgorithm;
 
     certProperties.signHash = Ssl::DefaultSignHash;
+}
+
+Security::ContextPointer
+ConnStateData::getTlsContextFromCache(const SBuf &cacheKey, const Ssl::CertificateProperties &certProperties)
+{
+    debugs(33, 5, "Finding SSL certificate for " << cacheKey << " in cache");
+    Ssl::LocalContextStorage * ssl_ctx_cache = Ssl::TheGlobalContextStorage.getLocalStorage(port->s);
+    if (Security::ContextPointer *ctx = ssl_ctx_cache ? ssl_ctx_cache->get(cacheKey) : nullptr) {
+        if (Ssl::verifySslCertificate(*ctx, certProperties)) {
+            debugs(33, 5, "Cached SSL certificate for " << certProperties.commonName << " is valid");
+            return *ctx;
+        } else {
+            debugs(33, 5, "Cached SSL certificate for " << certProperties.commonName << " is out of date. Delete this certificate from cache");
+            if (ssl_ctx_cache)
+                ssl_ctx_cache->del(cacheKey);
+        }
+    }
+    return Security::ContextPointer(nullptr);
+}
+
+void
+ConnStateData::storeTlsContextToCache(const SBuf &cacheKey, Security::ContextPointer &ctx)
+{
+    Ssl::LocalContextStorage *ssl_ctx_cache = Ssl::TheGlobalContextStorage.getLocalStorage(port->s);
+    if (!ssl_ctx_cache || !ssl_ctx_cache->add(cacheKey, new Security::ContextPointer(ctx))) {
+        // If it is not in storage delete after using. Else storage deleted it.
+        fd_table[clientConnection->fd].dynamicTlsContext = ctx;
+    }
 }
 
 void
@@ -2937,30 +2966,20 @@ ConnStateData::getSslContextStart()
     }
     /* careful: finished() above frees request, host, etc. */
 
-    if (port->generateHostCertificates) {
+    if (port->secure.generateHostCertificates) {
         Ssl::CertificateProperties certProperties;
         buildSslCertGenerationParams(certProperties);
-        sslBumpCertKey = certProperties.dbKey().c_str();
-        assert(sslBumpCertKey.size() > 0 && sslBumpCertKey[0] != '\0');
 
         // Disable caching for bumpPeekAndSplice mode
         if (!(sslServerBump && (sslServerBump->act.step1 == Ssl::bumpPeek || sslServerBump->act.step1 == Ssl::bumpStare))) {
-            debugs(33, 5, "Finding SSL certificate for " << sslBumpCertKey << " in cache");
-            Ssl::LocalContextStorage * ssl_ctx_cache = Ssl::TheGlobalContextStorage.getLocalStorage(port->s);
-            Security::ContextPointer *cachedCtx = ssl_ctx_cache ? ssl_ctx_cache->get(sslBumpCertKey.termedBuf()) : nullptr;
-            if (cachedCtx) {
-                debugs(33, 5, "SSL certificate for " << sslBumpCertKey << " found in cache");
-                if (Ssl::verifySslCertificate(*cachedCtx, certProperties)) {
-                    debugs(33, 5, "Cached SSL certificate for " << sslBumpCertKey << " is valid");
-                    getSslContextDone(*cachedCtx);
-                    return;
-                } else {
-                    debugs(33, 5, "Cached SSL certificate for " << sslBumpCertKey << " is out of date. Delete this certificate from cache");
-                    if (ssl_ctx_cache)
-                        ssl_ctx_cache->del(sslBumpCertKey.termedBuf());
-                }
-            } else {
-                debugs(33, 5, "SSL certificate for " << sslBumpCertKey << " haven't found in cache");
+            sslBumpCertKey.clear();
+            Ssl::InRamCertificateDbKey(certProperties, sslBumpCertKey);
+            assert(!sslBumpCertKey.isEmpty());
+
+            Security::ContextPointer ctx(getTlsContextFromCache(sslBumpCertKey, certProperties));
+            if (ctx) {
+                getSslContextDone(ctx);
+                return;
             }
         }
 
@@ -2992,8 +3011,10 @@ ConnStateData::getSslContextStart()
             Security::ContextPointer ctx(Security::GetFrom(fd_table[clientConnection->fd].ssl));
             Ssl::configureUnconfiguredSslContext(ctx, certProperties.signAlgorithm, *port);
         } else {
-            Security::ContextPointer dynCtx(Ssl::generateSslContext(certProperties, *port));
-            getSslContextDone(dynCtx, true);
+            Security::ContextPointer dynCtx(Ssl::GenerateSslContext(certProperties, port->secure, (signAlgorithm == Ssl::algSignTrusted)));
+            if (dynCtx && !sslBumpCertKey.isEmpty())
+                storeTlsContextToCache(sslBumpCertKey, dynCtx);
+            getSslContextDone(dynCtx);
         }
         return;
     }
@@ -3003,28 +3024,10 @@ ConnStateData::getSslContextStart()
 }
 
 void
-ConnStateData::getSslContextDone(Security::ContextPointer &ctx, bool isNew)
+ConnStateData::getSslContextDone(Security::ContextPointer &ctx)
 {
-    // Try to add generated ssl context to storage.
-    if (port->generateHostCertificates && isNew) {
-
-        if (ctx && (signAlgorithm == Ssl::algSignTrusted)) {
-            Ssl::chainCertificatesToSSLContext(ctx, *port);
-        } else if (signAlgorithm == Ssl::algSignTrusted) {
-            debugs(33, DBG_IMPORTANT, "WARNING: can not add signing certificate to SSL context chain because SSL context chain is invalid!");
-        }
-        //else it is self-signed or untrusted do not attrach any certificate
-
-        Ssl::LocalContextStorage *ssl_ctx_cache = Ssl::TheGlobalContextStorage.getLocalStorage(port->s);
-        assert(sslBumpCertKey.size() > 0 && sslBumpCertKey[0] != '\0');
-        if (ctx) {
-            if (!ssl_ctx_cache || !ssl_ctx_cache->add(sslBumpCertKey.termedBuf(), new Security::ContextPointer(ctx))) {
-                // If it is not in storage delete after using. Else storage deleted it.
-                fd_table[clientConnection->fd].dynamicTlsContext = ctx;
-            }
-        } else {
-            debugs(33, 2, HERE << "Failed to generate SSL cert for " << sslConnectHostOrIp);
-        }
+    if (port->secure.generateHostCertificates && !ctx) {
+        debugs(33, 2, "Failed to generate TLS cotnext for " << sslConnectHostOrIp);
     }
 
     // If generated ssl context = NULL, try to use static ssl context.
@@ -3255,7 +3258,7 @@ ConnStateData::startPeekAndSplice()
     }
 
     // will call httpsPeeked() with certificate and connection, eventually
-    Security::ContextPointer unConfiguredCTX(Ssl::createSSLContext(port->signingCert, port->signPkey, *port));
+    Security::ContextPointer unConfiguredCTX(Ssl::createSSLContext(port->secure.signingCert, port->secure.signPkey, port->secure));
     fd_table[clientConnection->fd].dynamicTlsContext = unConfiguredCTX;
 
     if (!httpsCreate(clientConnection, unConfiguredCTX))
@@ -3487,7 +3490,7 @@ clientHttpConnectionsOpen(void)
                 debugs(33, DBG_IMPORTANT, "WARNING: No ssl_bump configured. Disabling ssl-bump on " << scheme << "_port " << s->s);
                 s->flags.tunnelSslBumping = false;
             }
-            if (!s->secure.staticContext && !s->generateHostCertificates) {
+            if (!s->secure.staticContext && !s->secure.generateHostCertificates) {
                 debugs(1, DBG_IMPORTANT, "Will not bump SSL at " << scheme << "_port " << s->s << " due to TLS initialization failure.");
                 s->flags.tunnelSslBumping = false;
                 if (s->transport.protocol == AnyP::PROTO_HTTP)
@@ -3495,8 +3498,7 @@ clientHttpConnectionsOpen(void)
             }
             if (s->flags.tunnelSslBumping) {
                 // Create ssl_ctx cache for this port.
-                auto sz = s->dynamicCertMemCacheSize == std::numeric_limits<size_t>::max() ? 4194304 : s->dynamicCertMemCacheSize;
-                Ssl::TheGlobalContextStorage.addLocalStorage(s->s, sz);
+                Ssl::TheGlobalContextStorage.addLocalStorage(s->s, s->secure.dynamicCertMemCacheSize);
             }
         }
 

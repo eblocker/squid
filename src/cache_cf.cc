@@ -169,9 +169,6 @@ static void defaults_postscriptum(void);
 static int parse_line(char *);
 static void parse_obsolete(const char *);
 static void parseBytesLine(size_t * bptr, const char *units);
-#if USE_OPENSSL
-static void parseBytesOptionValue(size_t * bptr, const char *units, char const * value);
-#endif
 static void parseBytesLineSigned(ssize_t * bptr, const char *units);
 static size_t parseBytesUnits(const char *unit);
 static void free_all(void);
@@ -915,14 +912,12 @@ configDoConfigure(void)
         }
     }
 
-#if USE_OPENSSL
     for (AnyP::PortCfgPointer s = HttpPortList; s != NULL; s = s->next) {
         if (!s->secure.encryptTransport)
             continue;
         debugs(3, DBG_IMPORTANT, "Initializing " << AnyP::UriScheme(s->transport.protocol) << "_port " << s->s << " TLS context");
-        s->configureSslServerContext();
+        s->secure.createSigningContexts(*s);
     }
-#endif
 
     // prevent infinite fetch loops in the request parser
     // due to buffer full but not enough data recived to finish parse
@@ -1257,7 +1252,8 @@ parseBytesLineSigned(ssize_t * bptr, const char *units)
  * Similar to the parseBytesLine function but parses the string value instead of
  * the current token value.
  */
-static void parseBytesOptionValue(size_t * bptr, const char *units, char const * value)
+void
+parseBytesOptionValue(size_t * bptr, const char *units, char const * value)
 {
     int u;
     if ((u = parseBytesUnits(units)) == 0) {
@@ -3653,8 +3649,7 @@ parse_port_option(AnyP::PortCfgPointer &s, char *token)
     } else if (strncmp(token, "cipher=", 7) == 0) {
         s->secure.parse(token);
     } else if (strncmp(token, "clientca=", 9) == 0) {
-        safe_free(s->clientca);
-        s->clientca = xstrdup(token + 9);
+        s->secure.parse(token);
     } else if (strncmp(token, "cafile=", 7) == 0) {
         debugs(3, DBG_PARSE_NOTE(1), "UPGRADE WARNING: '" << token << "' is deprecated " <<
                "in " << cfg_directive << ". Use 'tls-cafile=' instead.");
@@ -3671,17 +3666,13 @@ parse_port_option(AnyP::PortCfgPointer &s, char *token)
         // NP: deprecation warnings output by secure.parse() when relevant
         s->secure.parse(token+3);
     } else if (strncmp(token, "sslcontext=", 11) == 0) {
-        safe_free(s->sslContextSessionId);
-        s->sslContextSessionId = xstrdup(token + 11);
-    } else if (strcmp(token, "generate-host-certificates") == 0) {
-        s->generateHostCertificates = true;
-    } else if (strcmp(token, "generate-host-certificates=on") == 0) {
-        s->generateHostCertificates = true;
-    } else if (strcmp(token, "generate-host-certificates=off") == 0) {
-        s->generateHostCertificates = false;
-    } else if (strncmp(token, "dynamic_cert_mem_cache_size=", 28) == 0) {
-        parseBytesOptionValue(&s->dynamicCertMemCacheSize, B_BYTES_STR, token + 28);
+        // NP: deprecation warnings output by secure.parse() when relevant
+        s->secure.parse(token+3);
+    } else if (strncmp(token, "generate-host-certificates", 26) == 0) {
+        s->secure.parse(token);
 #endif
+    } else if (strncmp(token, "dynamic_cert_mem_cache_size=", 28) == 0) {
+        s->secure.parse(token);
     } else if (strncmp(token, "tls-", 4) == 0) {
         s->secure.parse(token+4);
     } else if (strcmp(token, "ftp-track-dirs") == 0) {
@@ -3736,12 +3727,7 @@ parsePortCfg(AnyP::PortCfgPointer *head, const char *optionName)
         parse_port_option(s, token);
     }
 
-#if USE_OPENSSL
-    // if clientca has been defined but not cafile, then use it to verify
-    // but if cafile has been defined, only use that to verify
-    if (s->clientca && !s->secure.caFiles.size())
-        s->secure.caFiles.emplace_back(SBuf(s->clientca));
-#endif
+    s->secure.syncCaFiles();
 
     if (s->transport.protocol == AnyP::PROTO_HTTPS) {
         s->secure.encryptTransport = true;
@@ -3880,17 +3866,6 @@ dump_generic_port(StoreEntry * e, const char *n, const AnyP::PortCfgPointer &s)
 #endif
 
     s->secure.dumpCfg(e, "tls-");
-
-#if USE_OPENSSL
-    if (s->sslContextSessionId)
-        storeAppendPrintf(e, " sslcontext=%s", s->sslContextSessionId);
-
-    if (!s->generateHostCertificates)
-        storeAppendPrintf(e, " generate-host-certificates=off");
-
-    if (s->dynamicCertMemCacheSize != 4*1024*1024) // 4MB default
-        storeAppendPrintf(e, "dynamic_cert_mem_cache_size=%" PRIuSIZE "%s\n", s->dynamicCertMemCacheSize, B_BYTES_STR);
-#endif
 }
 
 static void

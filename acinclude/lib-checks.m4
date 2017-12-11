@@ -72,6 +72,7 @@ AC_DEFUN([SQUID_CHECK_LIBCRYPTO_API],[
   AH_TEMPLATE(HAVE_LIBCRYPTO_X509_UP_REF, "Define to 1 if the X509_up_ref() OpenSSL API function exists")
   AH_TEMPLATE(HAVE_LIBCRYPTO_X509_CRL_UP_REF, "Define to 1 if the X509_CRL_up_ref() OpenSSL API function exists")
   AH_TEMPLATE(HAVE_LIBCRYPTO_DH_UP_REF, "Define to 1 if the DH_up_ref() OpenSSL API function exists")
+  AH_TEMPLATE(HAVE_LIBCRYPTO_X509_GET0_SIGNATURE, "Define to 1 if the X509_get0_signature() OpenSSL API function exists")
   SQUID_STATE_SAVE(check_openssl_libcrypto_api)
   LIBS="$LIBS $SSLLIB"
   AC_CHECK_LIB(crypto, EVP_PKEY_get0_RSA, AC_DEFINE(HAVE_LIBCRYPTO_EVP_PKEY_GET0_RSA, 1))
@@ -85,6 +86,7 @@ AC_DEFUN([SQUID_CHECK_LIBCRYPTO_API],[
   AC_CHECK_LIB(crypto, X509_up_ref, AC_DEFINE(HAVE_LIBCRYPTO_X509_UP_REF, 1))
   AC_CHECK_LIB(crypto, X509_CRL_up_ref, AC_DEFINE(HAVE_LIBCRYPTO_X509_CRL_UP_REF, 1))
   AC_CHECK_LIB(crypto, DH_up_ref, AC_DEFINE(HAVE_LIBCRYPTO_DH_UP_REF, 1))
+  AC_CHECK_LIB(crypto, X509_get0_signature, AC_DEFINE(HAVE_LIBCRYPTO_X509_GET0_SIGNATURE, 1))
   SQUID_STATE_ROLLBACK(check_openssl_libcrypto_api)
 ])
 
@@ -255,6 +257,31 @@ return 0;
    AC_MSG_RESULT([no])
   ])
   SQUID_STATE_ROLLBACK(check_const_SSL_CTX_sess_set_get_cb)
+])
+
+dnl Checks whether the X509_get0_signature() has const arguments
+AC_DEFUN([SQUID_CHECK_OPENSSL_CONST_X509_GET0_SIGNATURE_ARGS],[
+  AH_TEMPLATE(SQUID_USE_CONST_X509_GET0_SIGNATURE_ARGS, "Define if X509_get0_signature() accepts const parameters")
+  SQUID_STATE_SAVE(check_const_X509_get0_signature_args)
+  AC_MSG_CHECKING("whether X509_get0_signature() accepts const parameters")
+  AC_COMPILE_IFELSE([AC_LANG_PROGRAM([
+#include <openssl/ssl.h>
+    ],[
+#if HAVE_LIBCRYPTO_X509_GET0_SIGNATURE
+        const ASN1_BIT_STRING *sig = nullptr;
+        const X509_ALGOR *sig_alg;
+        X509_get0_signature(&sig, &sig_alg, nullptr);
+#else
+#error Missing X509_get0_signature()
+#endif
+    ])
+  ],[
+   AC_DEFINE(SQUID_USE_CONST_X509_GET0_SIGNATURE_ARGS, 1)
+   AC_MSG_RESULT([yes])
+  ],[
+   AC_MSG_RESULT([no])
+  ])
+  SQUID_STATE_ROLLBACK(check_const_X509_get0_signature_args)
 ])
 
 dnl Try to handle TXT_DB related  problems:

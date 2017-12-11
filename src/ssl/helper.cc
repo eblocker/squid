@@ -90,7 +90,7 @@ void Ssl::Helper::Init()
     // TODO: generate host certificates for SNI enabled accel ports
     bool found = false;
     for (AnyP::PortCfgPointer s = HttpPortList; !found && s != NULL; s = s->next)
-        found = s->flags.tunnelSslBumping && s->generateHostCertificates;
+        found = s->flags.tunnelSslBumping && s->secure.generateHostCertificates;
     if (!found)
         return;
 
@@ -254,7 +254,7 @@ class submitData
     CBDATA_CLASS(submitData);
 
 public:
-    std::string query;
+    SBuf query;
     AsyncCall::Pointer callback;
     Security::SessionPointer ssl;
 };
@@ -264,11 +264,11 @@ static void
 sslCrtvdHandleReplyWrapper(void *data, const ::Helper::Reply &reply)
 {
     Ssl::CertValidationMsg replyMsg(Ssl::CrtdMessage::REPLY);
-    Ssl::CertValidationResponse::Pointer validationResponse = new Ssl::CertValidationResponse;
     std::string error;
 
     submitData *crtdvdData = static_cast<submitData *>(data);
-    STACK_OF(X509) *peerCerts = SSL_get_peer_cert_chain(crtdvdData->ssl.get());
+    assert(crtdvdData->ssl.get());
+    Ssl::CertValidationResponse::Pointer validationResponse = new Ssl::CertValidationResponse(crtdvdData->ssl);
     if (reply.result == ::Helper::BrokenHelper) {
         debugs(83, DBG_IMPORTANT, "\"ssl_crtvd\" helper error response: " << reply.other().content());
         validationResponse->resultCode = ::Helper::BrokenHelper;
@@ -276,7 +276,7 @@ sslCrtvdHandleReplyWrapper(void *data, const ::Helper::Reply &reply)
         debugs(83, DBG_IMPORTANT, "\"ssl_crtvd\" helper returned NULL response");
         validationResponse->resultCode = ::Helper::BrokenHelper;
     } else if (replyMsg.parse(reply.other().content(), reply.other().contentSize()) != Ssl::CrtdMessage::OK ||
-               !replyMsg.parseResponse(*validationResponse, peerCerts, error) ) {
+               !replyMsg.parseResponse(*validationResponse, error) ) {
         debugs(83, DBG_IMPORTANT, "WARNING: Reply from ssl_crtvd for " << " is incorrect");
         debugs(83, DBG_IMPORTANT, "Certificate cannot be validated. ssl_crtvd response: " << replyMsg.getBody());
         validationResponse->resultCode = ::Helper::BrokenHelper;
@@ -291,7 +291,7 @@ sslCrtvdHandleReplyWrapper(void *data, const ::Helper::Reply &reply)
     if (Ssl::CertValidationHelper::HelperCache &&
             (validationResponse->resultCode == ::Helper::Okay || validationResponse->resultCode == ::Helper::Error)) {
         Ssl::CertValidationResponse::Pointer *item = new Ssl::CertValidationResponse::Pointer(validationResponse);
-        if (!Ssl::CertValidationHelper::HelperCache->add(crtdvdData->query.c_str(), item))
+        if (!Ssl::CertValidationHelper::HelperCache->add(crtdvdData->query, item))
             delete item;
     }
 
@@ -308,14 +308,14 @@ void Ssl::CertValidationHelper::sslSubmit(Ssl::CertValidationRequest const &requ
     debugs(83, 5, "SSL crtvd request: " << message.compose().c_str());
 
     submitData *crtdvdData = new submitData;
-    crtdvdData->query = message.compose();
-    crtdvdData->query += '\n';
+    crtdvdData->query.assign(message.compose().c_str());
+    crtdvdData->query.append('\n');
     crtdvdData->callback = callback;
     crtdvdData->ssl = request.ssl;
     Ssl::CertValidationResponse::Pointer const*validationResponse;
 
     if (CertValidationHelper::HelperCache &&
-            (validationResponse = CertValidationHelper::HelperCache->get(crtdvdData->query.c_str()))) {
+            (validationResponse = CertValidationHelper::HelperCache->get(crtdvdData->query))) {
 
         CertValidationHelper::CbDialer *dialer = dynamic_cast<CertValidationHelper::CbDialer*>(callback->getDialer());
         Must(dialer);
@@ -326,7 +326,7 @@ void Ssl::CertValidationHelper::sslSubmit(Ssl::CertValidationRequest const &requ
     }
 
     if (!ssl_crt_validator->trySubmit(crtdvdData->query.c_str(), sslCrtvdHandleReplyWrapper, crtdvdData)) {
-        Ssl::CertValidationResponse::Pointer resp = new Ssl::CertValidationResponse;;
+        Ssl::CertValidationResponse::Pointer resp = new Ssl::CertValidationResponse(crtdvdData->ssl);
         resp->resultCode = ::Helper::BrokenHelper;
         Ssl::CertValidationHelper::CbDialer *dialer = dynamic_cast<Ssl::CertValidationHelper::CbDialer*>(callback->getDialer());
         Must(dialer);

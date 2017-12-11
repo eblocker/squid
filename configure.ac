@@ -5,7 +5,7 @@
 ## Please see the COPYING and CONTRIBUTORS files for details.
 ##
 
-AC_INIT([Squid Web Proxy],[4.0.21],[http://bugs.squid-cache.org/],[squid])
+AC_INIT([Squid Web Proxy],[4.0.22],[http://bugs.squid-cache.org/],[squid])
 AC_PREREQ(2.61)
 AC_CONFIG_HEADERS([include/autoconf.h])
 AC_CONFIG_AUX_DIR(cfgaux)
@@ -1367,6 +1367,7 @@ if test "x$with_openssl" = "xyes"; then
     SQUID_CHECK_OPENSSL_CONST_SSL_METHOD
     SQUID_CHECK_OPENSSL_CONST_CRYPTO_EX_DATA
     SQUID_CHECK_OPENSSL_CONST_SSL_SESSION_CB_ARG
+    SQUID_CHECK_OPENSSL_CONST_X509_GET0_SIGNATURE_ARGS
     SQUID_CHECK_OPENSSL_TXTDB
     SQUID_CHECK_OPENSSL_HELLO_OVERWRITE_HACK
   fi
@@ -2755,8 +2756,8 @@ AS_IF([test "x$with_cppunit" != "xno"],[
     AS_UNSET(squid_cv_cppunit_version)
 
     SQUID_STATE_SAVE(squid_cppunit_state)
-    AS_VAR_APPEND(CXXFLAGS,[$LIBCPPUNIT_CFLAGS])
-    AS_VAR_APPEND(LIBS,[$LIBCPPUNIT_LIBS])
+    CXXFLAGS="${CXXFLAGS} ${LIBCPPUNIT_CFLAGS}"
+    LIBS="${LIBS} ${LIBCPPUNIT_LIBS}"
     AC_CHECK_HEADERS(cppunit/extensions/HelperMacros.h)
     SQUID_STATE_ROLLBACK(squid_cppunit_state)
   ],[

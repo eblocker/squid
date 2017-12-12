@@ -1,4 +1,5 @@
 etc/squid/squid.conf
+etc/squid/conf.d
 etc/squid/errorpage.css
 etc/logrotate.d
 etc/resolvconf

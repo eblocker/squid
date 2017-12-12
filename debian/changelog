@@ -1,4 +1,4 @@
-squid (4.0.22-1~exp6) UNRELEASED; urgency=medium
+squid (4.0.22-1~exp7) UNRELEASED; urgency=medium
 
   [ Amos Jeffries <amosjeffries@squid-cache.org> ]
   * New Upstream Release
@@ -14,6 +14,8 @@ squid (4.0.22-1~exp6) UNRELEASED; urgency=medium
 
   * debian/squid.install
     - add missing man(8) page for security_fake_certverify helper
+
+  * Add configuration file for Debian settings
 
  -- Amos Jeffries <amosjeffries@squid-cache.org>  Tue, 12 Dec 2017 04:46:00 +1300
 

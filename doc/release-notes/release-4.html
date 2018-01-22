@@ -2,10 +2,10 @@
 <HTML>
 <HEAD>
  <META NAME="GENERATOR" CONTENT="LinuxDoc-Tools 0.9.72">
- <TITLE>Squid 4.0.22 release notes</TITLE>
+ <TITLE>Squid 4.0.23 release notes</TITLE>
 </HEAD>
 <BODY>
-<H1>Squid 4.0.22 release notes</H1>
+<H1>Squid 4.0.23 release notes</H1>
 
 <H2>Squid Developers</H2>
 <HR>
@@ -32,6 +32,7 @@ for Applied Network Research and members of the Web Caching community.</EM>
 <LI><A NAME="toc2.6">2.6</A> <A HREF="#ss2.6">Improved SMP support</A>
 <LI><A NAME="toc2.7">2.7</A> <A HREF="#ss2.7">Improved process management</A>
 <LI><A NAME="toc2.8">2.8</A> <A HREF="#ss2.8">Initial GnuTLS support</A>
+<LI><A NAME="toc2.9">2.9</A> <A HREF="#ss2.9">ESI Custom Parser removal</A>
 </UL>
 <P>
 <H2><A NAME="toc3">3.</A> <A HREF="#s3">Changes to squid.conf since Squid-3.5</A></H2>
@@ -62,7 +63,7 @@ for Applied Network Research and members of the Web Caching community.</EM>
 <HR>
 <H2><A NAME="s1">1.</A> <A HREF="#toc1">Notice</A></H2>
 
-<P>The Squid Team are pleased to announce the release of Squid-4.0.22 for testing.</P>
+<P>The Squid Team are pleased to announce the release of Squid-4.0.23 for testing.</P>
 <P>This new release is available for download from 
 <A HREF="http://www.squid-cache.org/Versions/v4/">http://www.squid-cache.org/Versions/v4/</A> or the
 <A HREF="http://www.squid-cache.org/Download/http-mirrors.html">mirrors</A>.</P>
@@ -110,6 +111,7 @@ necessary to support OpenSSL 1.1 prevent building with LibreSSL.</P>
 <LI>Improved SMP support</LI>
 <LI>Improved process management</LI>
 <LI>Initial GnuTLS support</LI>
+<LI>ESI Custom Parser removal</LI>
 </UL>
 </P>
 <P>Most user-facing changes are reflected in squid.conf (see below).</P>
@@ -263,6 +265,14 @@ should still work, but needs the GnuTLS <EM>Priority Strings</EM> instead of
 the OpenSSL options when using GnuTLS.</P>
 
 
+<H2><A NAME="ss2.9">2.9</A> <A HREF="#toc2.9">ESI Custom Parser removal</A>
+</H2>
+
+<P>The Squid custom ESI (Edge Side Includes) parser has been removed in favour
+of better supported and maintained third-party libraries. At least one of libxml2
+or libexpat is now mandatory to build support for the ESI response processor.</P>
+
+
 <H2><A NAME="s3">3.</A> <A HREF="#toc3">Changes to squid.conf since Squid-3.5</A></H2>
 
 <P>There have been changes to Squid's configuration file since Squid-3.5.</P>
@@ -287,6 +297,10 @@ the OpenSSL options when using GnuTLS.</P>
 <DT><B>collapsed_forwarding_shared_entries_limit</B><DD>
 <P>New directive to limit the size of a table used for sharing information
 about collapsible entries among SMP workers.</P>
+
+<DT><B>hopeless_kid_revival_delay</B><DD>
+<P>New directive to set a cool-down delay reviving a child process if
+the process is encountering frequent deaths.</P>
 
 <DT><B>on_unsupported_protocol</B><DD>
 <P>New directive to set the action performed when encountering strange
@@ -336,6 +350,8 @@ logged with URI <EM>error:transaction-end-before-headers</EM>.</P>
 
 <DT><B>acl</B><DD>
 <P>New <EM>-m</EM> flag for <EM>note</EM> ACL to match substrings.</P>
+<P>New <EM>clientside_mark</EM> type for matching Netfilter CONNMARK on
+the client TCP connection.</P>
 <P>New <EM>connections_encrypted</EM> type for matching transactions
 where all HTTP messages were received over TLS transport connections,
 including messages received from ICAP servers.</P>
@@ -367,6 +383,10 @@ have been removed.</P>
 <P>Manual squid.conf update may be required on upgrade.</P>
 <P>Replaced option <EM>sslcafile=</EM> with <EM>tls-cafile=</EM>
 which takes multiple entries.</P>
+
+<DT><B>esi_parser</B><DD>
+<P>Removed <EM>custom</EM> parser option.</P>
+<P>Changed default to auto-detect available parsers instead of <EM>custom</EM>.</P>
 
 <DT><B>external_acl_type</B><DD>
 <P>New parameter <EM>queue-size=</EM> to set the maximum number
@@ -437,6 +457,11 @@ the maximum TLS version supported by the TLS server.</P>
 negotiated cipher of the client connection.</P>
 <P>New code <EM>%ssl::&lt;negotiated_cipher</EM> to display the
 negotiated cipher of the last server or peer connection.</P>
+<P>Fixed <EM>%&lt;Hs</EM>, <EM>%&lt;pt</EM> and <EM>%&lt;tt</EM>
+codes for received CONNECT errors.</P>
+<P>Improved <EM>%&lt;bs</EM> logging on forwarding retries.</P>
+<P>Improved <EM>%&lt;Hs</EM>, <EM>%&lt;pt</EM>, <EM>%&lt;tt</EM>,
+<EM>%&lt;bs</EM> logging on SslBump errors.</P>
 
 <DT><B>pid_filename</B><DD>
 <P>Default value now based on squid -n command line parameter.</P>
@@ -582,6 +607,10 @@ It needs to be explicitly listed to be built.</P>
 actually auto-detect them without configuring the module
 list manually.</P>
 
+<DT><B>--enable-esi</B><DD>
+<P>Custom ESI parser has been removed.
+Libxml2 or libexpat is now required to enable ESI processing.</P>
+
 </DL>
 </P>
 <H2><A NAME="removedoptions"></A> <A NAME="ss4.3">4.3</A> <A HREF="#toc4.3">Removed options</A>
@@ -656,7 +685,7 @@ Please prefer the default auto-detection though.</P>
 
 <H2><A NAME="s6">6.</A> <A HREF="#toc6">Copyright</A></H2>
 
-<P>Copyright (C) 1996-2017 The Squid Software Foundation and contributors</P>
+<P>Copyright (C) 1996-2018 The Squid Software Foundation and contributors</P>
 <P>Squid software is distributed under GPLv2+ license and includes
 contributions from numerous individuals and organizations.
 Please see the COPYING and CONTRIBUTORS files for details.</P>

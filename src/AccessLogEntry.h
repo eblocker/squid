@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2017 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2018 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -53,6 +53,12 @@ public:
     /// Knows about several alternate locations of the IP
     /// including indirect forwarded-for IP if configured to log that
     void getLogClientIp(char *buf, size_t bufsz) const;
+
+    /// Fetch the client IDENT string, or nil if none is available.
+    const char *getClientIdent() const;
+
+    /// Fetch the external ACL provided 'user=' string, or nil if none is available.
+    const char *getExtUser() const;
 
     /// Fetch the transaction method string (ICP opcode, HTCP opcode or HTTP method)
     SBuf getLogMethod() const;

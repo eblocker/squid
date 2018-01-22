@@ -163,9 +163,9 @@ CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
 LTLIBRARIES = $(noinst_LTLIBRARIES)
 libbase_la_LIBADD =
-am_libbase_la_OBJECTS = AsyncCall.lo AsyncJob.lo AsyncCallQueue.lo \
-	CharacterSet.lo File.lo RegexPattern.lo RunnersRegistry.lo \
-	TextException.lo
+am_libbase_la_OBJECTS = AsyncCall.lo AsyncCallQueue.lo AsyncJob.lo \
+	CharacterSet.lo File.lo Here.lo RegexPattern.lo \
+	RunnersRegistry.lo TextException.lo
 libbase_la_OBJECTS = $(am_libbase_la_OBJECTS)
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
@@ -717,21 +717,23 @@ noinst_LTLIBRARIES = libbase.la
 libbase_la_SOURCES = \
 	AsyncCall.cc \
 	AsyncCall.h \
-	AsyncCbdataCalls.h \
-	AsyncJob.h \
-	AsyncJob.cc \
-	AsyncJobCalls.h \
 	AsyncCallQueue.cc \
 	AsyncCallQueue.h \
+	AsyncCbdataCalls.h \
+	AsyncJob.cc \
+	AsyncJob.h \
+	AsyncJobCalls.h \
 	ByteCounter.h \
 	CbcPointer.h \
 	CbDataList.h \
-	CharacterSet.h \
 	CharacterSet.cc \
+	CharacterSet.h \
 	EnumIterator.h \
-	File.h \
 	File.cc \
+	File.h \
 	HardFun.h \
+	Here.cc \
+	Here.h \
 	InstanceId.h \
 	Lock.h \
 	LookupTable.h \
@@ -816,6 +818,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/AsyncJob.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/CharacterSet.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/File.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Here.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/RegexPattern.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/RunnersRegistry.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/TextException.Plo@am__quote@

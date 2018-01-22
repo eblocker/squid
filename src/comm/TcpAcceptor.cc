@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2017 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2018 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -301,6 +301,8 @@ Comm::TcpAcceptor::acceptOne()
         mustStop("Listener socket closed");
         return;
     }
+
+    newConnDetails->nfmark = Ip::Qos::getNfmarkFromConnection(newConnDetails, Ip::Qos::dirAccepted);
 
     debugs(5, 5, HERE << "Listener: " << conn <<
            " accepted new connection " << newConnDetails <<

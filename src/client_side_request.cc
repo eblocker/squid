@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2017 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2018 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -499,9 +499,9 @@ clientFollowXForwardedForCheck(allow_t answer, void *data)
         * Ensure that the access log shows the indirect client
         * instead of the direct client.
         */
-        ConnStateData *conn = http->getConn();
-        conn->log_addr = request->indirect_client_addr;
-        http->al->cache.caddr = conn->log_addr;
+        http->al->cache.caddr = request->indirect_client_addr;
+        if (ConnStateData *conn = http->getConn())
+            conn->log_addr = request->indirect_client_addr;
     }
     request->x_forwarded_for_iterator.clean();
     request->flags.done_follow_x_forwarded_for = true;

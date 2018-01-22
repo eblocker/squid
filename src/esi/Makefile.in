@@ -172,15 +172,14 @@ CONFIG_CLEAN_VPATH_FILES =
 LTLIBRARIES = $(noinst_LTLIBRARIES)
 libesi_la_LIBADD =
 am__libesi_la_SOURCES_DIST = Assign.cc Assign.h Attempt.h Context.cc \
-	Context.h CustomParser.cc CustomParser.h ExpatParser.cc \
-	ExpatParser.h Libxml2Parser.cc Libxml2Parser.h Element.h \
-	ElementList.h Esi.cc Esi.h Except.h Expression.cc Expression.h \
-	Include.cc Include.h Literal.h Module.cc Module.h Parser.cc \
-	Parser.h Segment.cc Segment.h Sequence.cc Sequence.h Var.h \
-	VarState.cc VarState.h
+	Context.h ExpatParser.cc ExpatParser.h Libxml2Parser.cc \
+	Libxml2Parser.h Element.h ElementList.h Esi.cc Esi.h Except.h \
+	Expression.cc Expression.h Include.cc Include.h Literal.h \
+	Module.cc Module.h Parser.cc Parser.h Segment.cc Segment.h \
+	Sequence.cc Sequence.h Var.h VarState.cc VarState.h
 @ENABLE_LIBEXPAT_TRUE@am__objects_1 = ExpatParser.lo
 @ENABLE_LIBXML2_TRUE@am__objects_2 = Libxml2Parser.lo
-am__objects_3 = CustomParser.lo $(am__objects_1) $(am__objects_2)
+am__objects_3 = $(am__objects_1) $(am__objects_2)
 am_libesi_la_OBJECTS = Assign.lo Context.lo $(am__objects_3) Esi.lo \
 	Expression.lo Include.lo Module.lo Parser.lo Segment.lo \
 	Sequence.lo VarState.lo
@@ -732,8 +731,7 @@ AM_CPPFLAGS = -I$(top_srcdir) -I$(top_srcdir)/include \
 COMPAT_LIB = $(top_builddir)/compat/libcompatsquid.la $(LIBPROFILER)
 subst_perlshell = sed -e 's,[@]PERL[@],$(PERL),g' <$(srcdir)/$@.pl.in >$@ || ($(RM) -f $@ ; exit 1)
 noinst_LTLIBRARIES = libesi.la
-ESI_PARSER_SOURCES = CustomParser.cc CustomParser.h $(am__append_2) \
-	$(am__append_3)
+ESI_PARSER_SOURCES = $(am__append_2) $(am__append_3)
 libesi_la_SOURCES = \
 	Assign.cc \
 	Assign.h \
@@ -829,7 +827,6 @@ distclean-compile:
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Assign.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Context.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/CustomParser.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Esi.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ExpatParser.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Expression.Plo@am__quote@

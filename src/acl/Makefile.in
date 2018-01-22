@@ -170,17 +170,17 @@ am__libacls_la_SOURCES_DIST = IntRange.cc IntRange.h RegexData.cc \
 	RegexData.h StringData.cc StringData.h Time.cc Time.h \
 	TimeData.cc TimeData.h AllOf.cc AllOf.h AnyOf.cc AnyOf.h \
 	Asn.cc Asn.h ConnectionsEncrypted.cc ConnectionsEncrypted.h \
-	DestinationAsn.h DestinationDomain.cc DestinationDomain.h \
-	DestinationIp.cc DestinationIp.h DomainData.cc DomainData.h \
-	ExtUser.cc ExtUser.h HasComponent.cc HasComponent.h \
-	HasComponentData.cc HasComponentData.h HierCodeData.cc \
-	HierCodeData.h HierCode.cc HierCode.h HttpHeaderData.cc \
-	HttpHeaderData.h HttpRepHeader.cc HttpRepHeader.h \
-	HttpReqHeader.cc HttpReqHeader.h HttpStatus.cc HttpStatus.h \
-	Ip.cc Ip.h LocalIp.cc LocalIp.h LocalPort.cc LocalPort.h \
-	MaxConnection.cc MaxConnection.h Method.cc MethodData.cc \
-	MethodData.h Method.h MyPortName.cc MyPortName.h Note.h \
-	Note.cc NoteData.h NoteData.cc PeerName.cc PeerName.h \
+	ConnMark.cc ConnMark.h DestinationAsn.h DestinationDomain.cc \
+	DestinationDomain.h DestinationIp.cc DestinationIp.h \
+	DomainData.cc DomainData.h ExtUser.cc ExtUser.h \
+	HasComponent.cc HasComponent.h HasComponentData.cc \
+	HasComponentData.h HierCodeData.cc HierCodeData.h HierCode.cc \
+	HierCode.h HttpHeaderData.cc HttpHeaderData.h HttpRepHeader.cc \
+	HttpRepHeader.h HttpReqHeader.cc HttpReqHeader.h HttpStatus.cc \
+	HttpStatus.h Ip.cc Ip.h LocalIp.cc LocalIp.h LocalPort.cc \
+	LocalPort.h MaxConnection.cc MaxConnection.h Method.cc \
+	MethodData.cc MethodData.h Method.h MyPortName.cc MyPortName.h \
+	Note.h Note.cc NoteData.h NoteData.cc PeerName.cc PeerName.h \
 	Protocol.cc ProtocolData.cc ProtocolData.h Protocol.h \
 	Random.cc Random.h ReplyHeaderStrategy.h ReplyMimeType.h \
 	RequestHeaderStrategy.h RequestMimeType.h SourceAsn.h \
@@ -207,9 +207,9 @@ am__objects_5 = Arp.lo Eui64.lo
 @ENABLE_EUI_TRUE@am__objects_6 = $(am__objects_5)
 am_libacls_la_OBJECTS = IntRange.lo RegexData.lo StringData.lo Time.lo \
 	TimeData.lo AllOf.lo AnyOf.lo Asn.lo ConnectionsEncrypted.lo \
-	DestinationDomain.lo DestinationIp.lo DomainData.lo ExtUser.lo \
-	HasComponent.lo HasComponentData.lo HierCodeData.lo \
-	HierCode.lo HttpHeaderData.lo HttpRepHeader.lo \
+	ConnMark.lo DestinationDomain.lo DestinationIp.lo \
+	DomainData.lo ExtUser.lo HasComponent.lo HasComponentData.lo \
+	HierCodeData.lo HierCode.lo HttpHeaderData.lo HttpRepHeader.lo \
 	HttpReqHeader.lo HttpStatus.lo Ip.lo LocalIp.lo LocalPort.lo \
 	MaxConnection.lo Method.lo MethodData.lo MyPortName.lo Note.lo \
 	NoteData.lo PeerName.lo Protocol.lo ProtocolData.lo Random.lo \
@@ -846,18 +846,18 @@ libstate_la_SOURCES = \
 libacls_la_SOURCES = IntRange.cc IntRange.h RegexData.cc RegexData.h \
 	StringData.cc StringData.h Time.cc Time.h TimeData.cc \
 	TimeData.h AllOf.cc AllOf.h AnyOf.cc AnyOf.h Asn.cc Asn.h \
-	ConnectionsEncrypted.cc ConnectionsEncrypted.h \
-	DestinationAsn.h DestinationDomain.cc DestinationDomain.h \
-	DestinationIp.cc DestinationIp.h DomainData.cc DomainData.h \
-	ExtUser.cc ExtUser.h HasComponent.cc HasComponent.h \
-	HasComponentData.cc HasComponentData.h HierCodeData.cc \
-	HierCodeData.h HierCode.cc HierCode.h HttpHeaderData.cc \
-	HttpHeaderData.h HttpRepHeader.cc HttpRepHeader.h \
-	HttpReqHeader.cc HttpReqHeader.h HttpStatus.cc HttpStatus.h \
-	Ip.cc Ip.h LocalIp.cc LocalIp.h LocalPort.cc LocalPort.h \
-	MaxConnection.cc MaxConnection.h Method.cc MethodData.cc \
-	MethodData.h Method.h MyPortName.cc MyPortName.h Note.h \
-	Note.cc NoteData.h NoteData.cc PeerName.cc PeerName.h \
+	ConnectionsEncrypted.cc ConnectionsEncrypted.h ConnMark.cc \
+	ConnMark.h DestinationAsn.h DestinationDomain.cc \
+	DestinationDomain.h DestinationIp.cc DestinationIp.h \
+	DomainData.cc DomainData.h ExtUser.cc ExtUser.h \
+	HasComponent.cc HasComponent.h HasComponentData.cc \
+	HasComponentData.h HierCodeData.cc HierCodeData.h HierCode.cc \
+	HierCode.h HttpHeaderData.cc HttpHeaderData.h HttpRepHeader.cc \
+	HttpRepHeader.h HttpReqHeader.cc HttpReqHeader.h HttpStatus.cc \
+	HttpStatus.h Ip.cc Ip.h LocalIp.cc LocalIp.h LocalPort.cc \
+	LocalPort.h MaxConnection.cc MaxConnection.h Method.cc \
+	MethodData.cc MethodData.h Method.h MyPortName.cc MyPortName.h \
+	Note.h Note.cc NoteData.h NoteData.cc PeerName.cc PeerName.h \
 	Protocol.cc ProtocolData.cc ProtocolData.h Protocol.h \
 	Random.cc Random.h ReplyHeaderStrategy.h ReplyMimeType.h \
 	RequestHeaderStrategy.h RequestMimeType.h SourceAsn.h \
@@ -979,6 +979,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Certificate.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/CertificateData.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Checklist.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ConnMark.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ConnectionsEncrypted.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/DestinationDomain.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/DestinationIp.Plo@am__quote@

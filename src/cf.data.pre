@@ -1,4 +1,4 @@
-## Copyright (C) 1996-2017 The Squid Software Foundation and contributors
+## Copyright (C) 1996-2018 The Squid Software Foundation and contributors
 ##
 ## Squid software is distributed under GPLv2+ license and includes
 ## contributions from numerous individuals and organizations.
@@ -471,6 +471,26 @@ DOC_START
 
 	Locking memory may require a large enough RLIMIT_MEMLOCK OS limit,
 	CAP_IPC_LOCK capability, or equivalent.
+DOC_END
+
+NAME: hopeless_kid_revival_delay
+COMMENT: time-units
+TYPE: time_t
+LOC: Config.hopelessKidRevivalDelay
+DEFAULT: 1 hour
+DOC_START
+	Normally, when a kid process dies, Squid immediately restarts the
+	kid. A kid experiencing frequent deaths is marked as "hopeless" for
+	the duration specified by this directive. Hopeless kids are not
+	automatically restarted.
+
+	Currently, zero values are not supported because they result in
+	misconfigured SMP Squid instances running forever, endlessly
+	restarting each dying kid. To effectively disable hopeless kids
+	revival, set the delay to a huge value (e.g., 1 year).
+
+	Reconfiguration also clears all hopeless kids designations, allowing
+	for manual revival of hopeless kids.
 DOC_END
 
 COMMENT_START
@@ -1038,6 +1058,23 @@ DOC_START
 	  #
 	  # NOTE 2: IPv6 protocol does not contain ARP. MAC/EUI is either
 	  # encoded directly in the IPv6 address or not available.
+
+	acl aclname clientside_mark mark[/mask] ...
+	  # matches CONNMARK of an accepted connection [fast]
+	  #
+	  # mark and mask are unsigned integers (hex, octal, or decimal).
+	  # If multiple marks are given, then the ACL matches if at least
+	  # one mark matches.
+	  #
+	  # Uses netfilter-conntrack library.
+	  # Requires building Squid with --enable-linux-netfilter.
+	  #
+	  # The client, various intermediaries, and Squid itself may set
+	  # CONNMARK at various times. The last CONNMARK set wins. This ACL
+	  # checks the mark present on an accepted connection or set by
+	  # Squid afterwards, depending on the ACL check timing. This ACL
+	  # effectively ignores any mark set by other agents after Squid has
+	  # accepted the connection.
 
 	acl aclname srcdomain   .foo.com ...
 	  # reverse lookup, from client IP [slow]
@@ -4431,7 +4468,7 @@ DOC_START
 				not available. Consider encoding the logged
 				value because Subject often has spaces.
 
-		ssl::>cert_issuer
+		ssl::<cert_issuer
 				The Issuer field of the received server
 				TLS certificate or a dash ('-') if this is
 				not available. Consider encoding the logged
@@ -6869,14 +6906,16 @@ DOC_END
 
 NAME: esi_parser
 IFDEF: USE_SQUID_ESI
-COMMENT: libxml2|expat|custom
+COMMENT: libxml2|expat
 TYPE: string
 LOC: ESIParser::Type
-DEFAULT: custom
+DEFAULT: auto
+DEFAULT_DOC: Selects libxml2 if available at ./configure time or libexpat otherwise.
 DOC_START
-	ESI markup is not strictly XML compatible. The custom ESI parser
-	will give higher performance, but cannot handle non ASCII character
-	encodings.
+	Selects the XML parsing library to use when interpreting responses with
+	Edge Side Includes.
+
+	To disable ESI handling completely, ./configure Squid with --disable-esi.
 DOC_END
 
 COMMENT_START

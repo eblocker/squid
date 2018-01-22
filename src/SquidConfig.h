@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2017 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2018 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -91,6 +91,7 @@ public:
     time_t positiveDnsTtl;
     time_t shutdownLifetime;
     time_t backgroundPingRate;
+    time_t hopelessKidRevivalDelay; ///< hopeless_kid_revival_delay
 
     struct {
         time_t read;

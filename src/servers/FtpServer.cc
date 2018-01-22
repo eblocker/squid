@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2017 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2018 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -1126,10 +1126,12 @@ Ftp::Server::writeErrorReply(const HttpReply *reply, const int scode)
     }
 #endif
 
-    Must(reply);
-    const char *reason = reply->header.has(Http::HdrType::FTP_REASON) ?
-                         reply->header.getStr(Http::HdrType::FTP_REASON):
-                         reply->sline.reason();
+    const char *reason = "Lost Error";
+    if (reply) {
+        reason = reply->header.has(Http::HdrType::FTP_REASON) ?
+                 reply->header.getStr(Http::HdrType::FTP_REASON):
+                 reply->sline.reason();
+    }
 
     mb.appendf("%i %s\r\n", scode, reason); // error terminating line
 

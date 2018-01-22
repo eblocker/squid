@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2017 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2018 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -365,8 +365,9 @@ BroadcastSignalIfAny(int& sig)
     if (sig > 0) {
         if (IamMasterProcess()) {
             for (int i = TheKids.count() - 1; i >= 0; --i) {
-                Kid& kid = TheKids.get(i);
-                kill(kid.getPid(), sig);
+                const auto &kid = TheKids.get(i);
+                if (kid.running())
+                    kill(kid.getPid(), sig);
             }
         }
         sig = -1;
@@ -1109,6 +1110,10 @@ restoreCapabilities(bool keep)
         cap_list[ncaps] = CAP_NET_BIND_SERVICE;
         ++ncaps;
         if (Ip::Interceptor.TransparentActive() ||
+#if USE_LIBNETFILTERCONNTRACK
+                // netfilter_conntrack requires CAP_NET_ADMIN to get client's CONNMARK
+                Ip::Interceptor.InterceptActive() ||
+#endif
                 Ip::Qos::TheConfig.isHitNfmarkActive() ||
                 Ip::Qos::TheConfig.isAclNfmarkActive() ||
                 Ip::Qos::TheConfig.isAclTosActive()) {

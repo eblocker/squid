@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2017 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2018 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -22,8 +22,11 @@ ESIParser::NewParser(ESIParserClient *aClient)
     if (Parser == NULL) {
         Parser = Parsers;
 
-        while (Parser != NULL && strcasecmp(Parser->name, Type) != 0)
-            Parser = Parser->next;
+        // if type name matters, use it
+        if (strcasecmp(Type, "auto") != 0) {
+            while (Parser && strcasecmp(Parser->name, Type) != 0)
+                Parser = Parser->next;
+        }
 
         if (Parser == NULL)
             fatal ("Unknown ESI Parser type");

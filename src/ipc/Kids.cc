@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2017 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2018 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -80,6 +80,35 @@ bool Kids::allHopeless() const
             return false;
     }
     return true;
+}
+
+void
+Kids::forgetAllFailures()
+{
+    for (auto &kid: storage)
+        kid.forgetFailures();
+}
+
+time_t
+Kids::forgetOldFailures()
+{
+    time_t nextCheckDelay = 0;
+    for (auto &kid: storage) {
+        if (!kid.hopeless())
+            continue;
+
+        const auto deathDuration = kid.deathDuration(); // protect from time changes
+        if (Config.hopelessKidRevivalDelay <= deathDuration) {
+            kid.forgetFailures(); // this kid will be revived now
+            continue;
+        }
+
+        const auto remainingDeathTime = Config.hopelessKidRevivalDelay - deathDuration;
+        assert(remainingDeathTime > 0);
+        if (remainingDeathTime < nextCheckDelay || !nextCheckDelay)
+            nextCheckDelay = remainingDeathTime;
+    }
+    return nextCheckDelay; // still zero if there were no still-hopeless kids
 }
 
 /// whether all kids called exited happy

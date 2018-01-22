@@ -163,8 +163,8 @@ CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
 LTLIBRARIES = $(noinst_LTLIBRARIES)
 libsbuf_la_LIBADD =
-am_libsbuf_la_OBJECTS = Algorithms.lo DetailedStats.lo Exceptions.lo \
-	List.lo MemBlob.lo SBuf.lo Stats.lo
+am_libsbuf_la_OBJECTS = Algorithms.lo DetailedStats.lo List.lo \
+	MemBlob.lo SBuf.lo Stats.lo
 libsbuf_la_OBJECTS = $(am_libsbuf_la_OBJECTS)
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
@@ -718,14 +718,11 @@ libsbuf_la_SOURCES = \
 	Algorithms.h \
 	DetailedStats.cc \
 	DetailedStats.h \
-	Exceptions.cc \
-	Exceptions.h \
 	forward.h \
 	List.cc \
 	List.h \
 	MemBlob.cc \
 	MemBlob.h \
-	OutOfBoundsException.h \
 	SBuf.cc \
 	SBuf.h \
 	Stats.cc \
@@ -798,7 +795,6 @@ distclean-compile:
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Algorithms.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/DetailedStats.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Exceptions.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/List.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/MemBlob.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/SBuf.Plo@am__quote@

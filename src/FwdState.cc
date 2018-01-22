@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2017 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2018 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -812,9 +812,9 @@ void
 FwdState::syncHierNote(const Comm::ConnectionPointer &server, const char *host)
 {
     if (request)
-        request->hier.note(server, host);
+        request->hier.resetPeerNotes(server, host);
     if (al)
-        al->hier.note(server, host);
+        al->hier.resetPeerNotes(server, host);
 }
 
 /**
@@ -956,8 +956,8 @@ FwdState::dispatch()
     if (Ip::Qos::TheConfig.isHitNfmarkActive()) {
         if (Comm::IsConnOpen(clientConn) && Comm::IsConnOpen(serverConnection())) {
             fde * clientFde = &fd_table[clientConn->fd]; // XXX: move the fd_table access into Ip::Qos
-            /* Get the netfilter mark for the connection */
-            Ip::Qos::getNfmarkFromServer(serverConnection(), clientFde);
+            /* Get the netfilter CONNMARK */
+            clientFde->nfmarkFromServer = Ip::Qos::getNfmarkFromConnection(serverConnection(), Ip::Qos::dirOpened);
         }
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2017 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2018 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -414,9 +414,6 @@ ClientHttpRequest::logRequest()
 
     if (request)
         prepareLogWithRequestDetails(request, al);
-
-    if (getConn() != NULL && getConn()->clientConnection != NULL && getConn()->clientConnection->rfc931[0])
-        al->cache.rfc931 = getConn()->clientConnection->rfc931;
 
 #if USE_OPENSSL && 0
 
@@ -1539,9 +1536,7 @@ bool ConnStateData::serveDelayedError(Http::Stream *context)
                 clientReplyContext *repContext = dynamic_cast<clientReplyContext *>(node->data.getRaw());
                 assert (repContext);
 
-                // Fill the server IP and hostname for error page generation.
-                HttpRequest::Pointer const & peekerRequest = sslServerBump->request;
-                request->hier.note(peekerRequest->hier.tcpServer, request->url.host());
+                request->hier = sslServerBump->request->hier;
 
                 // Create an error object and fill it
                 ErrorState *err = new ErrorState(ERR_SECURE_CONNECT_FAIL, Http::scServiceUnavailable, request);

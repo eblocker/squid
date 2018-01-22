@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2017 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2018 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -63,6 +63,30 @@ AccessLogEntry::getLogMethod() const
     else
         method = http.method.image();
     return method;
+}
+
+const char *
+AccessLogEntry::getClientIdent() const
+{
+    if (tcpClient)
+        return tcpClient->rfc931;
+
+    if (cache.rfc931 && *cache.rfc931)
+        return cache.rfc931;
+
+    return nullptr;
+}
+
+const char *
+AccessLogEntry::getExtUser() const
+{
+    if (request && request->extacl_user.size())
+        return request->extacl_user.termedBuf();
+
+    if (cache.extuser && *cache.extuser)
+        return cache.extuser;
+
+    return nullptr;
 }
 
 AccessLogEntry::~AccessLogEntry()

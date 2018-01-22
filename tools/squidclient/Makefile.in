@@ -176,6 +176,7 @@ am__DEPENDENCIES_2 = $(top_builddir)/compat/libcompatsquid.la \
 	$(am__DEPENDENCIES_1)
 am__DEPENDENCIES_3 =
 squidclient_DEPENDENCIES = $(top_builddir)/src/ip/libip.la \
+	$(top_builddir)/src/base/libbase.la \
 	$(top_builddir)/lib/libmiscencoding.la \
 	$(top_builddir)/lib/libmiscutil.la $(am__DEPENDENCIES_2) \
 	$(am__DEPENDENCIES_3) $(am__DEPENDENCIES_3) \
@@ -774,6 +775,7 @@ man_MANS = squidclient.1
 DISTCLEANFILES = 
 LDADD = \
 	$(top_builddir)/src/ip/libip.la \
+	$(top_builddir)/src/base/libbase.la \
 	$(top_builddir)/lib/libmiscencoding.la \
 	$(top_builddir)/lib/libmiscutil.la \
 	$(COMPAT_LIB) \

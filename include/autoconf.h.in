@@ -710,8 +710,8 @@
 /* Define to 1 if you have the <netinet/tcp.h> header file. */
 #undef HAVE_NETINET_TCP_H
 
-/* set to 1 if Nettle 3.0 API will link */
-#undef HAVE_NETTLE30_BASE64
+/* set to 1 if Nettle 3.4 API will link */
+#undef HAVE_NETTLE34_BASE64
 
 /* Define to 1 if you have the <nettle/base64.h> header file. */
 #undef HAVE_NETTLE_BASE64_H
@@ -1524,7 +1524,7 @@
 /* Solaris Kerberos support is available */
 #undef USE_SOLARIS_KRB5
 
-/* Compile the ESI processor and Surrogate header support */
+/* Compile the ESI processor */
 #undef USE_SQUID_ESI
 
 /* Define this to include code which lets you use ethernet addresses. This

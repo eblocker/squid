@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2017 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2018 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -1299,7 +1299,7 @@ HttpHeader::getAuth(Http::HdrType id, const char *auth_scheme) const
     struct base64_decode_ctx ctx;
     base64_decode_init(&ctx);
     size_t decodedLen = 0;
-    if (!base64_decode_update(&ctx, &decodedLen, reinterpret_cast<uint8_t*>(decodedAuthToken), strlen(field), reinterpret_cast<const uint8_t*>(field)) ||
+    if (!base64_decode_update(&ctx, &decodedLen, reinterpret_cast<uint8_t*>(decodedAuthToken), strlen(field), field) ||
             !base64_decode_final(&ctx)) {
         return NULL;
     }

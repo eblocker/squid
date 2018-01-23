@@ -68,7 +68,7 @@ install/squid::
 	install -m 755 -g root -d $(INSTALLDIR)/usr/lib/cgi-bin
 	mv $(INSTALLDIR)/etc/squid/squid.conf.documented $(INSTALLDIR)/etc/squid/squid.conf
 	install -m 755 -g root -d $(INSTALLDIR)/etc/squid/conf.d
-	install -m 755 -g root debian/debian.conf $(INSTALLDIR)/etc/squid/conf.d/debian.conf
+	install -m 644 -g root debian/debian.conf $(INSTALLDIR)/etc/squid/conf.d/debian.conf
 	mv $(INSTALLDIR)/usr/lib/squid/cachemgr.cgi $(INSTALLDIR)/usr/lib/cgi-bin/cachemgr.cgi
 	install -m 755 -g root -d $(INSTALLDIR)/etc/init.d
 	install -m 755 -g root -d $(INSTALLDIR)/etc/logrotate.d

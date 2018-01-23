@@ -1,4 +1,4 @@
-squid (4.0.22-1~exp7) UNRELEASED; urgency=medium
+squid (4.0.23-1~exp8) UNRELEASED; urgency=medium
 
   [ Amos Jeffries <amosjeffries@squid-cache.org> ]
   * New Upstream Release
@@ -17,7 +17,7 @@ squid (4.0.22-1~exp7) UNRELEASED; urgency=medium
 
   * Add configuration file for Debian settings
 
- -- Amos Jeffries <amosjeffries@squid-cache.org>  Tue, 12 Dec 2017 04:46:00 +1300
+ -- Amos Jeffries <amosjeffries@squid-cache.org>  Tue, 23 Jan 2018 15:55:00 +1300
 
 squid (4.0.21-1~exp5) experimental; urgency=medium
 

@@ -42,7 +42,7 @@ Architecture: any
 Pre-Depends: adduser
 Depends: ${shlibs:Depends}, ${misc:Depends}, netbase, logrotate (>= 3.5.4-1), squid-common (>= ${source:Version}), lsb-base, libdbi-perl
 Suggests: squidclient, squid-cgi, squid-purge, resolvconf (>= 0.40), smbclient, ufw, winbindd
-Recommends: libcap2-bin [linux-any]
+Recommends: libcap2-bin [linux-any], ca-certificates
 Conflicts: squid3 (<< ${binary:Version})
 Replaces: squid3
 Description: Full featured Web Proxy cache (HTTP proxy)
@@ -64,7 +64,7 @@ Description: Full featured Web Proxy cache (HTTP proxy) - common files
 Package: squidclient
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
-Recommends: ssl-cert
+Recommends: ssl-cert, ca-certificates
 Provides: squid3-client
 Conflicts: squid3-client
 Replaces: squid3-client

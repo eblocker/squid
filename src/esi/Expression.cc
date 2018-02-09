@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2017 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -743,7 +743,7 @@ getsymbol(const char *s, char const **endptr)
             /* Special case for zero length strings */
 
             if (t - s - 1)
-                rv.value.string = xstrndup(s + 1, t - s - 1);
+                rv.value.string = xstrndup(s + 1, t - (s + 1) + 1);
             else
                 rv.value.string = static_cast<char *>(xcalloc(1,1));
 

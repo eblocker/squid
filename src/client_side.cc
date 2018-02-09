@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2017 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -836,6 +836,7 @@ ConnStateData::swanSong()
     assert(areAllContextsForThisConnection());
     freeAllContexts();
 
+    // XXX: Closing pinned conn is too harsh: The Client may want to continue!
     unpinConnection(true);
 
     if (Comm::IsConnOpen(clientConnection))
@@ -1559,6 +1560,13 @@ ClientSocketContext::keepaliveNextRequest()
 
     debugs(33, 3, HERE << "ConnnStateData(" << conn->clientConnection << "), Context(" << clientConnection << ")");
     connIsFinished();
+    conn->kick();
+}
+
+void
+ConnStateData::kick()
+{
+    ConnStateData * conn = this; // XXX: Remove this diff minimization hack
 
     if (conn->pinning.pinned && !Comm::IsConnOpen(conn->pinning.serverConnection)) {
         debugs(33, 2, HERE << conn->clientConnection << " Connection was pinned but server side gone. Terminating client connection");
@@ -2753,10 +2761,10 @@ clientProcessRequest(ConnStateData *conn, HttpParser *hp, ClientSocketContext *c
 
     request->flags.internal = http->flags.internal;
     setLogUri (http, urlCanonicalClean(request.getRaw()));
-    request->client_addr = conn->clientConnection->remote; // XXX: remove reuest->client_addr member.
+    request->client_addr = conn->clientConnection->remote; // XXX: remove request->client_addr member.
 #if FOLLOW_X_FORWARDED_FOR
     // indirect client gets stored here because it is an HTTP header result (from X-Forwarded-For:)
-    // not a details about teh TCP connection itself
+    // not details about the TCP connection itself
     request->indirect_client_addr = conn->clientConnection->remote;
 #endif /* FOLLOW_X_FORWARDED_FOR */
     request->my_addr = conn->clientConnection->local;
@@ -3239,6 +3247,13 @@ ConnStateData::clientParseRequests()
         /* Don't try to parse if the buffer is empty */
         if (in.buf.isEmpty())
             break;
+
+        // Prohibit concurrent requests when using a pinned to-server connection
+        // because our Client classes do not support request pipelining.
+        if (pinning.pinned && !pinning.readHandler) {
+            debugs(33, 3, clientConnection << " waits for busy " << pinning.serverConnection);
+            break;
+        }
 
         /* Limit the number of concurrent requests */
         if (concurrentRequestQueueFilled())
@@ -4376,7 +4391,12 @@ void httpsSslBumpStep2AccessCheckDone(allow_t answer, void *data)
         fd_table[connState->clientConnection->fd].read_method = &default_read_method;
         fd_table[connState->clientConnection->fd].write_method = &default_write_method;
 
+        ClientSocketContext::Pointer context = connState->getCurrentContext();
+        Must(context != NULL);
         if (connState->transparent()) {
+            // If we are going to fake the second CONNECT, clear the first one.
+            context->connIsFinished();
+
             // fake a CONNECT request to force connState to tunnel
             // XXX: copy from MemBuf reallocates, not a regression since old code did too
             SBuf temp;
@@ -4385,9 +4405,8 @@ void httpsSslBumpStep2AccessCheckDone(allow_t answer, void *data)
         } else {
             // in.buf still has the "CONNECT ..." request data, reset it to SSL hello message
             connState->in.buf.append(rbuf.content(), rbuf.contentSize());
-            ClientSocketContext::Pointer context = connState->getCurrentContext();
             ClientHttpRequest *http = context->http;
-            tunnelStart(http, &http->out.size, &http->al->http.code, http->al);
+            tunnelStart(http);
         }
     }
 }
@@ -4430,21 +4449,18 @@ ConnStateData::doPeekAndSpliceStep()
 }
 
 void
-ConnStateData::httpsPeeked(Comm::ConnectionPointer serverConnection)
+ConnStateData::httpsPeeked(PinnedIdleContext pic)
 {
     Must(sslServerBump != NULL);
+    Must(sslServerBump->request == pic.request);
+    Must(currentobject == NULL || currentobject->http == NULL || currentobject->http->request == pic.request.getRaw());
 
-    if (Comm::IsConnOpen(serverConnection)) {
-        pinConnection(serverConnection, NULL, NULL, false);
+    if (Comm::IsConnOpen(pic.connection)) {
+        notePinnedConnectionBecameIdle(pic);
 
         debugs(33, 5, HERE << "bumped HTTPS server: " << sslConnectHostOrIp);
-    } else {
+    } else
         debugs(33, 5, HERE << "Error while bumping: " << sslConnectHostOrIp);
-
-        //  copy error detail from bump-server-first request to CONNECT request
-        if (currentobject != NULL && currentobject->http != NULL && currentobject->http->request)
-            currentobject->http->request->detailError(sslServerBump->request->errType, sslServerBump->request->errDetail);
-    }
 
     getSslContextStart();
 }
@@ -4948,19 +4964,35 @@ ConnStateData::clientPinnedConnectionClosed(const CommCloseCbParams &io)
 }
 
 void
-ConnStateData::pinConnection(const Comm::ConnectionPointer &pinServer, HttpRequest *request, CachePeer *aPeer, bool auth, bool monitor)
+ConnStateData::pinBusyConnection(const Comm::ConnectionPointer &pinServer, const HttpRequest::Pointer &request)
 {
-    if (!Comm::IsConnOpen(pinning.serverConnection) ||
-            pinning.serverConnection->fd != pinServer->fd)
-        pinNewConnection(pinServer, request, aPeer, auth);
-
-    if (monitor)
-        startPinnedConnectionMonitoring();
+    pinConnection(pinServer, request);
 }
 
 void
-ConnStateData::pinNewConnection(const Comm::ConnectionPointer &pinServer, HttpRequest *request, CachePeer *aPeer, bool auth)
+ConnStateData::notePinnedConnectionBecameIdle(PinnedIdleContext pic)
 {
+    Must(pic.connection != NULL);
+    Must(pic.request != NULL);
+    pinConnection(pic.connection, pic.request);
+
+    // monitor pinned server connection for remote-end closures.
+    startPinnedConnectionMonitoring();
+
+    if (!currentobject)
+        kick(); // in case clientParseRequests() was blocked by a busy pic.connection
+}
+
+/// Forward future client requests using the given server connection.
+void
+ConnStateData::pinConnection(const Comm::ConnectionPointer &pinServer, const HttpRequest::Pointer &request)
+{
+    if (Comm::IsConnOpen(pinning.serverConnection) &&
+            pinning.serverConnection->fd == pinServer->fd) {
+        debugs(33, 3, "already pinned" << pinServer);
+        return;
+    }
+
     unpinConnection(true); // closes pinned connection, if any, and resets fields
 
     pinning.serverConnection = pinServer;
@@ -4969,23 +5001,21 @@ ConnStateData::pinNewConnection(const Comm::ConnectionPointer &pinServer, HttpRe
 
     Must(pinning.serverConnection != NULL);
 
-    // when pinning an SSL bumped connection, the request may be NULL
     const char *pinnedHost = "[unknown]";
-    if (request) {
+    if (request != NULL) {
         pinning.host = xstrdup(request->GetHost());
         pinning.port = request->port;
         pinnedHost = pinning.host;
+        pinning.auth = request->flags.connectionAuth;
     } else {
         pinning.port = pinServer->remote.port();
     }
     pinning.pinned = true;
-    if (aPeer)
-        pinning.peer = cbdataReference(aPeer);
-    pinning.auth = auth;
+    pinning.peer = cbdataReference(pinServer->getPeer());
     char stmp[MAX_IPSTRLEN];
     char desc[FD_DESC_SZ];
     snprintf(desc, FD_DESC_SZ, "%s pinned connection for %s (%d)",
-             (auth || !aPeer) ? pinnedHost : aPeer->name,
+             (pinning.auth || !pinning.peer) ? pinnedHost : pinning.peer->name,
              clientConnection->remote.toUrl(stmp,MAX_IPSTRLEN),
              clientConnection->fd);
     fd_note(pinning.serverConnection->fd, desc);
@@ -5158,5 +5188,11 @@ ConnStateData::unpinConnection(const bool andClose)
 
     /* NOTE: pinning.pinned should be kept. This combined with fd == -1 at the end of a request indicates that the host
      * connection has gone away */
+}
+
+std::ostream &
+operator <<(std::ostream &os, const ConnStateData::PinnedIdleContext &pic)
+{
+    return os << pic.connection << ", request=" << pic.request;
 }
 

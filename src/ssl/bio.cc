@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2017 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -175,6 +175,16 @@ Ssl::Bio::prepReadBuf()
         rbuf.init(4096, 65536);
 }
 
+Ssl::ClientBio::ClientBio(const int anFd):
+    Bio(anFd),
+    holdRead_(false),
+    holdWrite_(false),
+    helloState(atHelloNone),
+    abortReason(nullptr)
+{
+    renegotiations.configure(10*1000);
+}
+
 bool
 Ssl::ClientBio::isClientHello(int state)
 {
@@ -194,11 +204,32 @@ void
 Ssl::ClientBio::stateChanged(const SSL *ssl, int where, int ret)
 {
     Ssl::Bio::stateChanged(ssl, where, ret);
+    // detect client-initiated renegotiations DoS (CVE-2011-1473)
+    if (where & SSL_CB_HANDSHAKE_START) {
+        const int reneg = renegotiations.count(1);
+
+        if (abortReason)
+            return; // already decided and informed the admin
+
+        if (reneg > RenegotiationsLimit) {
+            abortReason = "renegotiate requests flood";
+            debugs(83, DBG_IMPORTANT, "Terminating TLS connection [from " << fd_table[fd_].ipaddr << "] due to " << abortReason << ". This connection received " <<
+                   reneg << " renegotiate requests in the last " <<
+                   RenegotiationsWindow << " seconds (and " <<
+                   renegotiations.remembered() << " requests total).");
+        }
+    }
 }
 
 int
 Ssl::ClientBio::write(const char *buf, int size, BIO *table)
 {
+    if (abortReason) {
+        debugs(83, 3, "BIO on FD " << fd_ << " is aborted");
+        BIO_clear_retry_flags(table);
+        return -1;
+    }
+
     if (holdWrite_) {
         BIO_set_retry_write(table);
         return 0;
@@ -222,6 +253,12 @@ const char *objToString(unsigned char const *bytes, int len)
 int
 Ssl::ClientBio::read(char *buf, int size, BIO *table)
 {
+    if (abortReason) {
+        debugs(83, 3, "BIO on FD " << fd_ << " is aborted");
+        BIO_clear_retry_flags(table);
+        return -1;
+    }
+
     if (helloState < atHelloReceived) {
         int bytes = readAndBuffer(buf, size, table, "TLS client Hello");
         if (bytes <= 0)
@@ -303,6 +340,9 @@ static bool
 adjustSSL(SSL *ssl, Ssl::Bio::sslFeatures &features)
 {
 #if SQUID_USE_OPENSSL_HELLO_OVERWRITE_HACK
+    if (!features.initialized_)
+        return false;
+
     if (!ssl->s3) {
         debugs(83, 5, "No SSLv3 data found!");
         return false;
@@ -435,33 +475,38 @@ Ssl::ServerBio::write(const char *buf, int size, BIO *table)
     }
 
     if (!helloBuild && (bumpMode_ == Ssl::bumpPeek || bumpMode_ == Ssl::bumpStare)) {
-        if (
-            buf[1] >= 3  //it is an SSL Version3 message
-            && buf[0] == 0x16 // and it is a Handshake/Hello message
-        ) {
+        // buf contains OpenSSL-generated ClientHello. We assume it has a
+        // complete ClientHello and nothing else, but cannot fully verify
+        // that quickly. We only verify that buf starts with a v3+ record
+        // containing ClientHello.
+        Must(size >= 2); // enough for version and content_type checks below
+        Must(buf[1] >= 3); // record's version.major; determines buf[0] meaning
+        Must(buf[0] == 22); // TLSPlaintext.content_type == handshake in v3+
 
-            //Hello message is the first message we write to server
-            assert(helloMsg.isEmpty());
+        //Hello message is the first message we write to server
+        assert(helloMsg.isEmpty());
 
-            SSL *ssl = fd_table[fd_].ssl;
-            if (clientFeatures.initialized_ && ssl) {
-                if (bumpMode_ == Ssl::bumpPeek) {
-                    if (adjustSSL(ssl, clientFeatures))
-                        allowBump = true;
+        if (SSL *ssl = fd_table[fd_].ssl) {
+            if (bumpMode_ == Ssl::bumpPeek) {
+                // we should not be here if we failed to parse the client-sent ClientHello
+                Must(clientFeatures.initialized_);
+                if (adjustSSL(ssl, clientFeatures))
+                    allowBump = true;
+                allowSplice = true;
+                // Replace OpenSSL-generated ClientHello with client-sent one.
+                helloMsg.append(clientFeatures.helloMessage);
+                debugs(83, 7,  "SSL HELLO message for FD " << fd_ << ": Random number is adjusted for peek mode");
+            } else { /*Ssl::bumpStare*/
+                allowBump = true;
+                if (clientFeatures.initialized_ && adjustSSL(ssl, clientFeatures)) {
                     allowSplice = true;
                     helloMsg.append(clientFeatures.helloMessage);
-                    debugs(83, 7,  "SSL HELLO message for FD " << fd_ << ": Random number is adjusted for peek mode");
-                } else { /*Ssl::bumpStare*/
-                    allowBump = true;
-                    if (adjustSSL(ssl, clientFeatures)) {
-                        allowSplice = true;
-                        helloMsg.append(clientFeatures.helloMessage);
-                        debugs(83, 7,  "SSL HELLO message for FD " << fd_ << ": Random number is adjusted for stare mode");
-                    }
+                    debugs(83, 7,  "SSL HELLO message for FD " << fd_ << ": Random number is adjusted for stare mode");
                 }
             }
         }
-        // If we do not build any hello message, copy the current
+
+        // if we did not use the client-sent ClientHello, then use the OpenSSL-generated one
         if (helloMsg.isEmpty())
             helloMsg.append(buf, size);
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2017 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -561,6 +561,7 @@ ClientRequestContext::hostHeaderVerifyFailed(const char *A, const char *B)
     debugs(85, DBG_IMPORTANT, "SECURITY ALERT: on URL: " << urlCanonical(http->request));
 
     // IP address validation for Host: failed. reject the connection.
+    http->getConn()->quitAfterError(http->request);
     clientStreamNode *node = (clientStreamNode *)http->client_stream.tail->prev->data;
     clientReplyContext *repContext = dynamic_cast<clientReplyContext *>(node->data.getRaw());
     assert (repContext);
@@ -1407,7 +1408,10 @@ void
 ClientRequestContext::checkNoCacheDone(const allow_t &answer)
 {
     acl_checklist = NULL;
-    http->request->flags.cachable = (answer == ACCESS_ALLOWED);
+    if (answer == ACCESS_DENIED) {
+        http->request->flags.noCache = true; // dont read reply from cache
+        http->request->flags.cachable = false; // dont store reply into cache
+    }
     http->doCallouts();
 }
 
@@ -1420,7 +1424,17 @@ ClientRequestContext::sslBumpAccessCheck()
     if (bumpMode != Ssl::bumpEnd) {
         debugs(85, 5, HERE << "SslBump already decided (" << bumpMode <<
                "), " << "ignoring ssl_bump for " << http->getConn());
-        if (!http->getConn()->serverBump())
+
+        // We need the following "if" for transparently bumped TLS connection,
+        // because in this case we are running ssl_bump access list before
+        // the doCallouts runs. It can be removed after the bug #4340 fixed.
+        // We do not want to proceed to bumping steps:
+        //  - if the TLS connection with the client is already established
+        //    because we are accepting normal HTTP requests on TLS port,
+        //    or because of the client-first bumping mode
+        //  - When the bumping is already started
+        if (!http->getConn()->switchedToHttps() &&
+                !http->getConn()->serverBump())
             http->sslBumpNeed(bumpMode); // for processRequest() to bump if needed and not already bumped
         http->al->ssl.bumpMode = bumpMode; // inherited from bumped connection
         return false;
@@ -1444,6 +1458,13 @@ ClientRequestContext::sslBumpAccessCheck()
     if (error && error->httpStatus == Http::scProxyAuthenticationRequired) {
         http->al->ssl.bumpMode = Ssl::bumpEnd; // SslBump does not apply; log -
         debugs(85, 5, HERE << "no SslBump during proxy authentication");
+        return false;
+    }
+
+    if (error) {
+        debugs(85, 5, "SslBump applies. Force bump action on error " << err_type_str[(error->type >= ERR_NONE && error->type < ERR_MAX) ? error->type : ERR_NONE]);
+        http->sslBumpNeed(Ssl::bumpBump);
+        http->al->ssl.bumpMode = Ssl::bumpBump;
         return false;
     }
 
@@ -1501,7 +1522,7 @@ ClientHttpRequest::processRequest()
         }
 #endif
         getConn()->stopReading(); // tunnels read for themselves
-        tunnelStart(this, &out.size, &al->http.code, al);
+        tunnelStart(this);
         return;
     }
 
@@ -1778,8 +1799,9 @@ ClientHttpRequest::doCallouts()
     }
 
 #if USE_OPENSSL
-    // We need to check for SslBump even if the calloutContext->error is set
-    // because bumping may require delaying the error until after CONNECT.
+    // Even with calloutContext->error, we call sslBumpAccessCheck() to decide
+    // whether SslBump applies to this transaction. If it applies, we will
+    // attempt to bump the client to serve the error.
     if (!calloutContext->sslBumpCheckDone) {
         calloutContext->sslBumpCheckDone = true;
         if (calloutContext->sslBumpAccessCheck())
@@ -2075,6 +2097,22 @@ ClientHttpRequest::handleAdaptationFailure(int errDetail, bool bypassable)
         doCallouts();
     }
     //else if(calloutContext == NULL) is it possible?
+}
+
+void
+ClientHttpRequest::callException(const std::exception &ex)
+{
+    const Comm::ConnectionPointer clientConn = getConn() ? getConn()->clientConnection : NULL;
+    if (Comm::IsConnOpen(clientConn)) {
+        debugs(85, 3, "closing after exception: " << ex.what());
+        clientConn->close(); // initiate orderly top-to-bottom cleanup
+        return;
+    }
+
+    debugs(85, DBG_IMPORTANT, "ClientHttpRequest exception without connection. Ignoring " << ex.what());
+    // XXX: Normally, we mustStop() but we cannot do that here because it is
+    // likely to leave Http::Stream and ConnStateData with a dangling http
+    // pointer. See r13480 or XXX in Http::Stream class description.
 }
 
 #endif

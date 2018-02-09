@@ -29,7 +29,7 @@ Eg:
 Rewrite rules are matched in the same order as they appear in the rules file.
 So for best performance, sort it in order of frequency of occurrence.
 
-This program will automatically detect the existence of a concurrecy channel-ID and adjust appropriately.
+This program will automatically detect the existence of a concurrency channel-ID and adjust appropriately.
 It may be used with any value 0 or above for the store_id_children concurrency= parameter.
 
 =head1 OPTIONS
@@ -44,7 +44,7 @@ Based on prior work by I<Eliezer Croitoru <eliezer@ngtech.co.il>>
 
 =head1 COPYRIGHT
 
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2017 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.

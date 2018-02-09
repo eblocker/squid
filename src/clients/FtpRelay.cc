@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2017 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -210,9 +210,10 @@ Ftp::Relay::serverComplete()
                 mgr->unpinConnection(false);
                 ctrl.close();
             } else {
-                mgr->pinConnection(ctrl.conn, fwd->request,
-                                   ctrl.conn->getPeer(),
-                                   fwd->request->flags.connectionAuth);
+                CallJobHere1(9, 4, mgr,
+                             ConnStateData,
+                             notePinnedConnectionBecameIdle,
+                             ConnStateData::PinnedIdleContext(ctrl.conn, fwd->request));
                 ctrl.forget();
             }
         }

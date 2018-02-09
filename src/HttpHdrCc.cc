@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2017 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -262,8 +262,8 @@ HttpHdrCc::packInto(Packer * p) const
             case CC_PUBLIC:
                 break;
             case CC_PRIVATE:
-                if (Private().size())
-                    packerPrintf(p, "=\"" SQUIDSTRINGPH "\"", SQUIDSTRINGPRINT(Private()));
+                if (private_.size())
+                    packerPrintf(p, "=\"" SQUIDSTRINGPH "\"", SQUIDSTRINGPRINT(private_));
                 break;
 
             case CC_NO_CACHE:

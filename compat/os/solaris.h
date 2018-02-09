@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2017 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -56,13 +56,6 @@ SQUIDCEXTERN int getpagesize(void);
 #if !defined(_XPG4_2) && !(defined(__EXTENSIONS__) || \
 (!defined(_POSIX_C_SOURCE) && !defined(_XOPEN_SOURCE)))
 SQUIDCEXTERN int gethostname(char *, int);
-#endif
-
-/*
- * SunPro CC handles extern inline as inline, PLUS extern symbols.
- */
-#if !defined(_SQUID_EXTERNNEW_) && defined(__SUNPRO_CC)
-#define _SQUID_EXTERNNEW_ extern
 #endif
 
 /*

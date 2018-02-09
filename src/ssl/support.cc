@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2017 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -737,6 +737,7 @@ ssl_initialize(void)
 
 #if HAVE_OPENSSL_ENGINE_H
     if (Config.SSL.ssl_engine) {
+        ENGINE_load_builtin_engines();
         ENGINE *e;
         if (!(e = ENGINE_by_id(Config.SSL.ssl_engine)))
             fatalf("Unable to find SSL engine '%s'\n", Config.SSL.ssl_engine);
@@ -848,18 +849,6 @@ Ssl::readDHParams(const char *dhfile)
     return dh;
 }
 
-#if defined(SSL3_FLAGS_NO_RENEGOTIATE_CIPHERS)
-static void
-ssl_info_cb(const SSL *ssl, int where, int ret)
-{
-    (void)ret;
-    if ((where & SSL_CB_HANDSHAKE_DONE) != 0) {
-        // disable renegotiation (CVE-2009-3555)
-        ssl->s3->flags |= SSL3_FLAGS_NO_RENEGOTIATE_CIPHERS;
-    }
-}
-#endif
-
 static bool
 configureSslEECDH(SSL_CTX *sslContext, const char *curve)
 {
@@ -888,10 +877,6 @@ configureSslContext(SSL_CTX *sslContext, AnyP::PortCfg &port)
 {
     int ssl_error;
     SSL_CTX_set_options(sslContext, port.sslOptions);
-
-#if defined(SSL3_FLAGS_NO_RENEGOTIATE_CIPHERS)
-    SSL_CTX_set_info_callback(sslContext, ssl_info_cb);
-#endif
 
     if (port.sslContextSessionId)
         SSL_CTX_set_session_id_context(sslContext, (const unsigned char *)port.sslContextSessionId, strlen(port.sslContextSessionId));
@@ -1260,10 +1245,6 @@ sslCreateClientContext(const char *certfile, const char *keyfile, int version, c
     }
 
     SSL_CTX_set_options(sslContext, Ssl::parse_options(options));
-
-#if defined(SSL3_FLAGS_NO_RENEGOTIATE_CIPHERS)
-    SSL_CTX_set_info_callback(sslContext, ssl_info_cb);
-#endif
 
     if (cipher) {
         debugs(83, 5, "Using chiper suite " << cipher << ".");

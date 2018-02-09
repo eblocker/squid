@@ -16,6 +16,8 @@ DEB_INSTALL_DOCS_squid-common := CONTRIBUTORS CREDITS QUICKSTART RELEASENOTES.ht
 						SPONSORS 
 
 DEB_CONFIGURE_EXTRA_FLAGS := BUILDCXXFLAGS="$(CXXFLAGS) $(CPPFLAGS) $(LDFLAGS)" \
+		CXX="g++-6" \
+		CC="gcc-6" \
 		--datadir=/usr/share/squid \
 		--sysconfdir=/etc/squid \
 		--libexecdir=/usr/lib/squid \

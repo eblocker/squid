@@ -1,10 +1,13 @@
-squid3 (3.5.23-6) unstable; urgency=high
+squid3 (3.5.23-6) UNRELEASED; urgency=high
+
+  * debian/{control,rules}
+    - Add temporary dependency on gcc-6 and g++-6 to workaround FTBFS in unstable
 
   * debian/patches/
     - Fix security issue SQUID-2018:1 (CVE-2016-1000024)
     - Fix security issue SQUID-2018:2 (CVE-2016-1000027)
 
- -- Amos Jeffries <amosjeffries@squid-cache.org>  Mon, 29 Jan 2018 16:58:00 +1300
+ -- Amos Jeffries <amosjeffries@squid-cache.org>  Sat, 10 Feb 2018 00:25:00 +1300
 
 squid3 (3.5.23-5) unstable; urgency=medium
 

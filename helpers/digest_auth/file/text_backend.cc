@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2017 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -29,7 +29,7 @@
  * the file format.  However storing such a triple does little to
  * improve security: If compromised the username:realm:HA1 combination
  * is "plaintext equivalent" - for the purposes of digest authentication
- * they allow the user access. Password syncronisation is not tackled
+ * they allow the user access. Password synchronization is not tackled
  * by digest - just preventing on the wire compromise.
  *
  * Copyright (c) 2003  Robert Collins  <robertc@squid-cache.org>

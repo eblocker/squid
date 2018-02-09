@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2017 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -440,7 +440,7 @@ munge_menu_line(MemBuf &out, const char *buf, cachemgr_request * req)
         return;
     }
 
-    buf_copy = x = xstrndup(buf, bufLen);
+    buf_copy = x = xstrndup(buf, bufLen+1);
 
     a = xstrtok(&x, '\t');
 

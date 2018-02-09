@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2017 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -1297,6 +1297,11 @@ Format::Format::assemble(MemBuf &mb, const AccessLogEntry::Pointer &al, int logS
 
         if (out && *out) {
             if (quote || fmt->quote != LOG_QUOTE_NONE) {
+                // Do not write to the tmp buffer because it may contain the to-be-quoted value.
+                static char quotedOut[2 * sizeof(tmp)];
+                assert(sizeof(quotedOut) > 0);
+                quotedOut[0] = '\0';
+
                 char *newout = NULL;
                 int newfree = 0;
 
@@ -1312,7 +1317,7 @@ Format::Format::assemble(MemBuf &mb, const AccessLogEntry::Pointer &al, int logS
                         newout = (char *)xmalloc(out_len);
                         newfree = 1;
                     } else
-                        newout = tmp;
+                        newout = quotedOut;
                     log_quoted_string(out, newout);
                 }
                 break;

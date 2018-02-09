@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2017 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -72,8 +72,8 @@ clientReplyContext::~clientReplyContext()
     HTTPMSGUNLOCK(reply);
 }
 
-clientReplyContext::clientReplyContext(ClientHttpRequest *clientContext) : http (cbdataReference(clientContext)), old_entry (NULL), old_sc(NULL), deleting(false),
-    collapsedRevalidation(crNone)
+clientReplyContext::clientReplyContext(ClientHttpRequest *clientContext) : http (cbdataReference(clientContext)), old_entry (NULL),
+    old_sc(NULL), old_lastmod(-1), deleting(false), collapsedRevalidation(crNone)
 {}
 
 /** Create an error in the store awaiting the client side to read it.
@@ -185,6 +185,8 @@ clientReplyContext::saveState()
     debugs(88, 3, "clientReplyContext::saveState: saving store context");
     old_entry = http->storeEntry();
     old_sc = sc;
+    old_lastmod = http->request->lastmod;
+    old_etag = http->request->etag;
     old_reqsize = reqsize;
     tempBuffer.offset = reqofs;
     /* Prevent accessing the now saved entries */
@@ -204,9 +206,13 @@ clientReplyContext::restoreState()
     sc = old_sc;
     reqsize = old_reqsize;
     reqofs = tempBuffer.offset;
+    http->request->lastmod = old_lastmod;
+    http->request->etag = old_etag;
     /* Prevent accessed the old saved entries */
     old_entry = NULL;
     old_sc = NULL;
+    old_lastmod = -1;
+    old_etag.clean();
     old_reqsize = 0;
     tempBuffer.offset = 0;
 }
@@ -396,8 +402,8 @@ clientReplyContext::handleIMSReply(StoreIOBuffer result)
     if (result.flags.error && !EBIT_TEST(http->storeEntry()->flags, ENTRY_ABORTED))
         return;
 
-    if (collapsedRevalidation == crSlave && EBIT_TEST(http->storeEntry()->flags, KEY_PRIVATE)) {
-        debugs(88, 3, "CF slave hit private " << *http->storeEntry() << ". MISS");
+    if (collapsedRevalidation == crSlave && !http->storeEntry()->mayStartHitting()) {
+        debugs(88, 3, "CF slave hit private non-shareable " << *http->storeEntry() << ". MISS");
         // restore context to meet processMiss() expectations
         restoreState();
         http->logType = LOG_TCP_MISS;
@@ -530,7 +536,7 @@ clientReplyContext::cacheHit(StoreIOBuffer result)
     // The previously identified hit suddenly became unsharable!
     // This is common for collapsed forwarding slaves but might also
     // happen to regular hits because we are called asynchronously.
-    if (EBIT_TEST(e->flags, KEY_PRIVATE)) {
+    if (!e->mayStartHitting()) {
         debugs(88, 3, "unsharable " << *e << ". MISS");
         http->logType = LOG_TCP_MISS;
         processMiss();
@@ -1179,7 +1185,7 @@ clientReplyContext::storeNotOKTransferDone() const
     if (curReply->content_length < 0)
         return 0;
 
-    int64_t expectedLength = curReply->content_length + http->out.headers_sz;
+    uint64_t expectedLength = curReply->content_length + http->out.headers_sz;
 
     if (http->out.size < expectedLength)
         return 0;

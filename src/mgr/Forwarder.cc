@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2017 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -100,17 +100,6 @@ Mgr::Forwarder::noteCommClosed(const CommCloseCbParams& params)
     debugs(16, 5, HERE);
     conn = NULL; // needed?
     mustStop("commClosed");
-}
-
-/// called when Coordinator starts processing the request
-void
-Mgr::Forwarder::handleRemoteAck()
-{
-    Ipc::Forwarder::handleRemoteAck();
-
-    Must(entry != NULL);
-    EBIT_CLR(entry->flags, ENTRY_FWD_HDR_WAIT);
-    entry->complete();
 }
 
 /// send error page

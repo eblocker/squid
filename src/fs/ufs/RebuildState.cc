@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2017 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -444,7 +444,7 @@ Fs::Ufs::RebuildState::getNextFile(sfileno * filn_p, int *size)
         }
 
         if (0 == in_dir) {  /* we need to read in a new directory */
-            snprintf(fullpath, MAXPATHLEN, "%s/%02X/%02X",
+            snprintf(fullpath, sizeof(fullpath), "%s/%02X/%02X",
                      sd->path,
                      curlvl1, curlvl2);
 
@@ -489,7 +489,7 @@ Fs::Ufs::RebuildState::getNextFile(sfileno * filn_p, int *size)
                 continue;
             }
 
-            snprintf(fullfilename, MAXPATHLEN, "%s/%s",
+            snprintf(fullfilename, sizeof(fullfilename), "%s/%s",
                      fullpath, entry->d_name);
             debugs(47, 3, HERE << "Opening " << fullfilename);
             fd = file_open(fullfilename, O_RDONLY | O_BINARY);

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2017 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -54,9 +54,7 @@ public:
 
     C & operator * () const {return *const_cast<C *>(p_); }
 
-    C const * getRaw() const {return p_; }
-
-    C * getRaw() {return const_cast<C *>(p_); }
+    C * getRaw() const { return const_cast<C *>(p_); }
 
     bool operator == (const RefCount& p) const {
         return p.p_ == p_;

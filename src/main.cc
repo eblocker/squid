@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2017 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -425,11 +425,11 @@ mainParseOptions(int argc, char *argv[])
             /** \par k
              * Run the administrative action given following the option */
 
-            /** \li When its an unknown option display the usage help. */
-            if ((int) strlen(optarg) < 1)
+            /** \li When it is missing or an unknown option display the usage help. */
+            if (!optarg || strlen(optarg) < 1)
                 usage();
 
-            if (!strncmp(optarg, "reconfigure", strlen(optarg)))
+            else if (!strncmp(optarg, "reconfigure", strlen(optarg)))
                 /** \li On reconfigure send SIGHUP. */
                 opt_send_signal = SIGHUP;
             else if (!strncmp(optarg, "rotate", strlen(optarg)))
@@ -563,6 +563,10 @@ mainParseOptions(int argc, char *argv[])
             printf("Service Name: " SQUIDSBUFPH "\n", SQUIDSBUFPRINT(service_name));
             if (strlen(SQUID_BUILD_INFO))
                 printf("%s\n",SQUID_BUILD_INFO);
+#if USE_OPENSSL
+            printf("\nThis binary uses %s. ", SSLeay_version(SSLEAY_VERSION));
+            printf("For legal restrictions on distribution see https://www.openssl.org/source/license.html\n\n");
+#endif
             printf( "configure options: %s\n", SQUID_CONFIGURE_OPTIONS);
 
 #if USE_WIN32_SERVICE

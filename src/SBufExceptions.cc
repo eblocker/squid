@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2017 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -25,9 +25,7 @@ OutOfBoundsException::OutOfBoundsException(const SBuf &throwingBuf,
         explanatoryText.appendf(" in file %s", aFileName);
     explanatoryText.appendf(" while accessing position %d in a SBuf long %d",
                             pos, throwingBuf.length());
-    // we can safely alias c_str as both are local to the object
-    //  and will not further manipulated.
-    message = xstrndup(explanatoryText.c_str(),explanatoryText.length());
+    message = xstrdup(explanatoryText.c_str());
 }
 
 OutOfBoundsException::~OutOfBoundsException() throw()

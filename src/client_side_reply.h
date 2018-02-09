@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2017 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -130,7 +130,11 @@ private:
     void sendNotModifiedOrPreconditionFailedError();
 
     StoreEntry *old_entry;
-    store_client *old_sc;   /* ... for entry to be validated */
+    /* ... for entry to be validated */
+    store_client *old_sc;
+    time_t old_lastmod;
+    String old_etag;
+
     bool deleting;
 
     typedef enum {

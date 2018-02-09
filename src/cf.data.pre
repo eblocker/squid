@@ -1,4 +1,4 @@
-## Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+## Copyright (C) 1996-2017 The Squid Software Foundation and contributors
 ##
 ## Squid software is distributed under GPLv2+ license and includes
 ## contributions from numerous individuals and organizations.
@@ -2669,8 +2669,11 @@ DOC_START
 		This is the default action.
 
 	    bump
-		Establish a secure connection with the server and, using a
-		mimicked server certificate, with the client.
+		When used on step SslBump1, establishes a secure connection
+		with the client first, then connect to the server.
+		When used on step SslBump2 or SslBump3, establishes a secure
+		connection with the server and, using a mimicked server
+		certificate, with the client.
 
 	    peek
 		Receive client (step SslBump1) or server (step SslBump2)
@@ -5401,7 +5404,9 @@ DOC_START
 	will be considered fresh.
 
 	'Max' is an upper limit on how long objects without an explicit
-	expiry time will be considered fresh.
+	expiry time will be considered fresh. The value is also used
+	to form Cache-Control: max-age header for a request sent from
+	Squid to origin/parent.
 
 	options: override-expire
 		 override-lastmod

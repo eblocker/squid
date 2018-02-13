@@ -19,6 +19,9 @@ squid3 (3.5.27-1) UNRELEASED; urgency=high
     - Include dpkg-architecture Makefile instead of invoking the binary at
       build time
 
+  * debian/squid.postinst
+    - Remove recursive chown calls
+
  -- Amos Jeffries <amosjeffries@squid-cache.org>  Sat, 10 Feb 2018 00:37:00 +1300
 
 squid3 (3.5.23-5) unstable; urgency=medium

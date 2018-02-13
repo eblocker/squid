@@ -1,5 +1,6 @@
 squid3 (3.5.27-1) UNRELEASED; urgency=high
 
+  [ Amos Jeffries <amosjeffries@squid-cache.org> ]
   * New Upstream Release
 
   * debian/{control,rules}
@@ -8,6 +9,11 @@ squid3 (3.5.27-1) UNRELEASED; urgency=high
   * debian/patches/
     - Fix security issue SQUID-2018:1 (CVE-2016-1000024) (Closes: #888719)
     - Fix security issue SQUID-2018:2 (CVE-2016-1000027) (Closes: #888720)
+
+  [ Luigi Gangitano <luigi@debian.org> ]
+  * debian/control
+    - Changed priority to optional for squid3 and squid-dbg
+    - Removed unneeded Build-Dep on autotools-dev
 
  -- Amos Jeffries <amosjeffries@squid-cache.org>  Sat, 10 Feb 2018 00:37:00 +1300
 

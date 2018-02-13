@@ -7,6 +7,7 @@ include /usr/share/dpkg/buildflags.mk
 
 include /usr/share/cdbs/1/rules/debhelper.mk
 include /usr/share/cdbs/1/class/autotools.mk
+include /usr/share/dpkg/architecture.mk
  
 INSTALLDIR := $(CURDIR)/debian/tmp
 datadir=/usr/share/squid
@@ -51,8 +52,6 @@ DEB_CONFIGURE_EXTRA_FLAGS := BUILDCXXFLAGS="$(CXXFLAGS) $(CPPFLAGS) $(LDFLAGS)" 
 		--with-default-user=proxy
 
 BUILDINFO := $(shell lsb_release -si 2>/dev/null)
-
-DEB_HOST_ARCH_OS := $(shell dpkg-architecture -qDEB_HOST_ARCH_OS 2>/dev/null)
 
 DEB_CONFIGURE_EXTRA_FLAGS += --enable-build-info="$(BUILDINFO) $(DEB_HOST_ARCH_OS)"
 

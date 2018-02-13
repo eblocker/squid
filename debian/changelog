@@ -1,10 +1,11 @@
-squid3 (3.5.27-1) UNRELEASED; urgency=high
+squid3 (3.5.27-1) unstable; urgency=high
 
   [ Amos Jeffries <amosjeffries@squid-cache.org> ]
   * New Upstream Release
 
   * debian/{control,rules}
-    - Add temporary dependency on gcc-6 and g++-6 to workaround FTBFS in unstable
+    - Add temporary dependency on gcc-6 and g++-6 to workaround FTBFS in
+      unstable
 
   * debian/patches/
     - Fix security issue SQUID-2018:1 (CVE-2016-1000024) (Closes: #888719)
@@ -22,7 +23,7 @@ squid3 (3.5.27-1) UNRELEASED; urgency=high
   * debian/squid.postinst
     - Remove recursive chown calls
 
- -- Amos Jeffries <amosjeffries@squid-cache.org>  Sat, 10 Feb 2018 00:37:00 +1300
+ -- Luigi Gangitano <luigi@debian.org>  Tue, 13 Feb 2018 15:31:24 +0100
 
 squid3 (3.5.23-5) unstable; urgency=medium
 

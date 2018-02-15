@@ -1,10 +1,13 @@
-squid (4.0.23-1~exp9) experimental; urgency=low
+squid (4.0.23-1~exp10) experimental; urgency=low
 
   * debian/control
     - Add Recommends for ca-certificates to squid and squidclient to ensure
       system Trusted CA certificates are installed.
 
- -- Amos Jeffries <amosjeffries@squid-cache.org> Tue, 06 Feb 2018 03:26 +1300
+  * debuian/{rules,install,squid.service}
+    - Convert to debhelper for systemd init script installation (Closes: #889541)
+
+ -- Amos Jeffries <amosjeffries@squid-cache.org> Fri, 16 Feb 2018 07:31 +1300
 
 squid (4.0.23-1~exp8) experimental; urgency=medium
 

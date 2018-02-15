@@ -79,6 +79,33 @@ squid (4.0.21-1~exp5) experimental; urgency=medium
 
  -- Santiago Garcia Mantinan <manty@debian.org>  Wed, 04 Oct 2017 23:19:36 +0200
 
+squid3 (3.5.27-1) unstable; urgency=high
+
+  [ Amos Jeffries <amosjeffries@squid-cache.org> ]
+  * New Upstream Release
+
+  * debian/{control,rules}
+    - Add temporary dependency on gcc-6 and g++-6 to workaround FTBFS in
+      unstable
+
+  * debian/patches/
+    - Fix security issue SQUID-2018:1 (CVE-2018-1000024) (Closes: #888719)
+    - Fix security issue SQUID-2018:2 (CVE-2018-1000027) (Closes: #888720)
+
+  [ Luigi Gangitano <luigi@debian.org> ]
+  * debian/control
+    - Changed priority to optional for squid3 and squid-dbg
+    - Removed unneeded Build-Dep on autotools-dev
+
+  * debian/rules
+    - Include dpkg-architecture Makefile instead of invoking the binary at
+      build time
+
+  * debian/squid.postinst
+    - Remove recursive chown calls
+
+ -- Luigi Gangitano <luigi@debian.org>  Tue, 13 Feb 2018 15:31:24 +0100
+
 squid3 (3.5.23-5) unstable; urgency=medium
 
   * Reload squid so that it uses modified config, not default one.

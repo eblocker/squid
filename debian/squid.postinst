@@ -91,13 +91,13 @@ case "$1" in
 
 		if [ "$(stat -c %U $cache_dir)" != "$usr" ] ||
 		   [ "$(stat -c %G $cache_dir)" != "$grp" ] ; then
-			chown $usr:$grp $cache_dir -R
+			chown $usr:$grp $cache_dir
 		fi
 
 		if [ "$(stat -c %U $log_dir)" != "$usr" ] ||
 		   [ "$(stat -c %G $log_dir)" != "$grp" ] ; then
 			if [ "$(dpkg-statoverride --list $log_dir)" = "" ] ; then
-		  		chown -R $usr:$grp $log_dir
+		  		chown $usr:$grp $log_dir
 			fi
 		fi
 

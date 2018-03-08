@@ -5,7 +5,7 @@
 ## Please see the COPYING and CONTRIBUTORS files for details.
 ##
 
-AC_INIT([Squid Web Proxy],[4.0.23],[http://bugs.squid-cache.org/],[squid])
+AC_INIT([Squid Web Proxy],[4.0.24],[http://bugs.squid-cache.org/],[squid])
 AC_PREREQ(2.61)
 AC_CONFIG_HEADERS([include/autoconf.h])
 AC_CONFIG_AUX_DIR(cfgaux)
@@ -1268,15 +1268,15 @@ if test "x$with_gnutls" != "xno"; then
   LIBS="$LIBS $LIBGNUTLS_PATH"
 
   # auto-detect using pkg-config
-  PKG_CHECK_MODULES([LIBGNUTLS],[gnutls >= 3.1.5],[
+  PKG_CHECK_MODULES([LIBGNUTLS],[gnutls >= 3.4.0],[
     CPPFLAGS="$CPPFLAGS $LIBGNUTLS_CFLAGS"
     ],[
     ## find the package without pkg-config
     ## check that the library is actually new enough.
-    ## by testing for a 3.1.5+ function which we use
-    AC_CHECK_LIB(gnutls,gnutls_certificate_verify_peers3,[LIBGNUTLS_LIBS="-lgnutls"])
+    ## by testing for a 3.4.0+ function which we use
+    AC_CHECK_LIB(gnutls,gnutls_pcert_export_x509,[LIBGNUTLS_LIBS="-lgnutls"])
   ])
-  AC_CHECK_HEADERS(gnutls/gnutls.h gnutls/x509.h)
+  AC_CHECK_HEADERS(gnutls/gnutls.h gnutls/x509.h gnutls/abstract.h)
 
   SQUID_STATE_ROLLBACK(squid_gnutls_state) #de-pollute LIBS
 
@@ -3526,8 +3526,6 @@ AC_CHECK_TYPE(struct sockaddr_un,AC_DEFINE(HAVE_SOCKADDR_UN,1,[The system provid
 ])
 
 SQUID_CHECK_FUNC_STRNSTR
-SQUID_CHECK_FUNC_VACOPY
-SQUID_CHECK_FUNC___VACOPY
 
 dnl IP-Filter support requires ipf header files. These aren't
 dnl installed by default, so we need to check for them

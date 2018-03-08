@@ -164,7 +164,7 @@ CONFIG_CLEAN_VPATH_FILES =
 LTLIBRARIES = $(noinst_LTLIBRARIES)
 libsecurity_la_LIBADD =
 am_libsecurity_la_OBJECTS = BlindPeerConnector.lo EncryptorAnswer.lo \
-	Handshake.lo NegotiationHistory.lo PeerConnector.lo \
+	Handshake.lo KeyData.lo NegotiationHistory.lo PeerConnector.lo \
 	PeerOptions.lo ServerOptions.lo Session.lo
 libsecurity_la_OBJECTS = $(am_libsecurity_la_OBJECTS)
 AM_V_lt = $(am__v_lt_@AM_V@)
@@ -766,6 +766,7 @@ libsecurity_la_SOURCES = \
 	Handshake.cc \
 	Handshake.h \
 	forward.h \
+	KeyData.cc \
 	KeyData.h \
 	LockingPointer.h \
 	NegotiationHistory.cc \
@@ -846,6 +847,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/BlindPeerConnector.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/EncryptorAnswer.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Handshake.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/KeyData.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/NegotiationHistory.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/PeerConnector.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/PeerOptions.Plo@am__quote@

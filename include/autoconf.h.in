@@ -320,6 +320,9 @@
 /* Define to 1 if you have the <gnumalloc.h> header file. */
 #undef HAVE_GNUMALLOC_H
 
+/* Define to 1 if you have the <gnutls/abstract.h> header file. */
+#undef HAVE_GNUTLS_ABSTRACT_H
+
 /* Define to 1 if you have the <gnutls/gnutls.h> header file. */
 #undef HAVE_GNUTLS_GNUTLS_H
 
@@ -1170,9 +1173,6 @@
 /* Define to 1 if you have the <varargs.h> header file. */
 #undef HAVE_VARARGS_H
 
-/* The system implements a functional va_copy() */
-#undef HAVE_VA_COPY
-
 /* Define to 1 if you have the `vfork' function. */
 #undef HAVE_VFORK
 
@@ -1223,9 +1223,6 @@
 
 /* Define to 1 if you have the `__res_init' function. */
 #undef HAVE___RES_INIT
-
-/* Some systems have __va_copy instead of va_copy */
-#undef HAVE___VA_COPY
 
 /* Enable ICAP client features in Squid */
 #undef ICAP_CLIENT

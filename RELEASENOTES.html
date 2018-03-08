@@ -2,10 +2,10 @@
 <HTML>
 <HEAD>
  <META NAME="GENERATOR" CONTENT="LinuxDoc-Tools 0.9.72">
- <TITLE>Squid 4.0.23 release notes</TITLE>
+ <TITLE>Squid 4.0.24 release notes</TITLE>
 </HEAD>
 <BODY>
-<H1>Squid 4.0.23 release notes</H1>
+<H1>Squid 4.0.24 release notes</H1>
 
 <H2>Squid Developers</H2>
 <HR>
@@ -63,7 +63,7 @@ for Applied Network Research and members of the Web Caching community.</EM>
 <HR>
 <H2><A NAME="s1">1.</A> <A HREF="#toc1">Notice</A></H2>
 
-<P>The Squid Team are pleased to announce the release of Squid-4.0.23 for testing.</P>
+<P>The Squid Team are pleased to announce the release of Squid-4.0.24 for testing.</P>
 <P>This new release is available for download from 
 <A HREF="http://www.squid-cache.org/Versions/v4/">http://www.squid-cache.org/Versions/v4/</A> or the
 <A HREF="http://www.squid-cache.org/Download/http-mirrors.html">mirrors</A>.</P>
@@ -251,10 +251,13 @@ finished.</P>
 <H2><A NAME="ss2.8">2.8</A> <A HREF="#toc2.8">Initial GnuTLS support</A>
 </H2>
 
-<P>If all you need is a proxy that connects over TLS/SSL to a <EM>cache_peer</EM>
-or accepts <EM>https://</EM> URLs over clear-text and performs the necessary
-upstream TLS connections. Then you now have the choice to build Squid with
-GnuTLS instead of OpenSSL.</P>
+<P>Squid can now be built to use GnuTLS in place of OpenSSL for the core
+features of receiving TLS connections from clients and making TLS
+connections to servers. The GnuTLS support is still very much experimental
+and should be tested before use.</P>
+
+<P>SSL-Bump and certificate generation features are not yet supported by
+GnuTLS builds. Nor are many other less commonly used Squid TLS/SSL features.</P>
 
 <P><EM>squid.conf</EM> directives and configuration options which have undergone
 name changes from 'ssl' to 'tls' prefix in Squid-4 have GnuTLS support, unless
@@ -298,6 +301,10 @@ or libexpat is now mandatory to build support for the ESI response processor.</P
 <P>New directive to limit the size of a table used for sharing information
 about collapsible entries among SMP workers.</P>
 
+<DT><B>force_request_body_continuation</B><DD>
+<P>New directive to control Squid behaviour on the client connection when
+receiving an HTTP request with an Expect:100-continue header.</P>
+
 <DT><B>hopeless_kid_revival_delay</B><DD>
 <P>New directive to set a cool-down delay reviving a child process if
 the process is encountering frequent deaths.</P>
@@ -305,6 +312,9 @@ the process is encountering frequent deaths.</P>
 <DT><B>on_unsupported_protocol</B><DD>
 <P>New directive to set the action performed when encountering strange
 protocol requests at the beginning of an accepted TCP connection.</P>
+
+<DT><B>pconn_lifetime</B><DD>
+<P>New directive to limit the lifetime of persistent connections.</P>
 
 <DT><B>reply_header_add</B><DD>
 <P>New directive to add header fields to outgoing HTTP responses to
@@ -347,6 +357,9 @@ request.</P>
 <P>Unused connections received in <EM>http_port</EM> or <EM>https_port</EM>
 or transactions terminated before reading[parsing] request headers
 logged with URI <EM>error:transaction-end-before-headers</EM>.</P>
+<P>New option <EM>rotate=</EM> to control the number of log file rotations
+to make when <EM>-k rotate</EM> command is received. Default is to
+obey the <EM>logfile_rotate</EM> directive.</P>
 
 <DT><B>acl</B><DD>
 <P>New <EM>-m</EM> flag for <EM>note</EM> ACL to match substrings.</P>
@@ -383,6 +396,14 @@ have been removed.</P>
 <P>Manual squid.conf update may be required on upgrade.</P>
 <P>Replaced option <EM>sslcafile=</EM> with <EM>tls-cafile=</EM>
 which takes multiple entries.</P>
+
+<DT><B>deny_info</B><DD>
+<P>New format macro <EM>%O</EM> to expand the <EM>message=</EM> value supplied
+by external ACL helpers.</P>
+
+<DT><B>ecap_service</B><DD>
+<P>New <EM>connection-encryption=</EM> option to determine ICAP service
+effect on <EM>connections_encrypted</EM> ACL.</P>
 
 <DT><B>esi_parser</B><DD>
 <P>Removed <EM>custom</EM> parser option.</P>
@@ -422,6 +443,8 @@ configuration or disabling have been removed.</P>
 <DT><B>icap_service</B><DD>
 <P>New scheme <EM>icaps://</EM> to enable TLS/SSL connections to Secure ICAP
 servers on port 11344.</P>
+<P>New <EM>connection-encryption=</EM> option to determine ICAP service
+effect on <EM>connections_encrypted</EM> ACL.</P>
 <P>New <EM>tls-cert=</EM> option to set TLS client certificate to use.</P>
 <P>New <EM>tls-key=</EM> option to set TLS private key matching the client
 certificate used.</P>
@@ -432,6 +455,8 @@ on server connections.</P>
 <P>New <EM>tls-cipher=</EM> option to set a list of ciphers permitted.</P>
 <P>New <EM>tls-cafile=</EM> option to set a file with additional CA
 certificate(s) to verify the server certificate.</P>
+<P>New <EM>tls-capath=</EM> option to set a directory with additional CA
+certificate(s) to verify the server certificate.</P>
 <P>New <EM>tls-crlfile=</EM> option to set a file with a CRL to verify the
 server certificate.</P>
 <P>New <EM>tls-default-ca</EM> option to use the system Trusted CAs to
@@ -439,8 +464,13 @@ verify the server certificate.</P>
 <P>New <EM>tls-domain=</EM> option to verify the server certificate domain.</P>
 
 <DT><B>logformat</B><DD>
-<P>New code <EM>%ssl::&lt;cert_errors</EM> to display server
+<P>New quoting modifier to produce <EM>\-escaped</EM> output.</P>
+<P>New code <EM>%ssl::&lt;cert_errors</EM> to display server X.509
 certificate errors.</P>
+<P>New code <EM>%ssl::&lt;cert_issuer</EM> to display Issuer field of
+the received server X.509 certificate.</P>
+<P>New code <EM>%ssl::&lt;cert_subject</EM> to display Subject field of
+the received server X.509 certificate.</P>
 <P>New code <EM>%ssl::&gt;negotiated_version</EM> to display
 negotiated TLS version of the client connection.</P>
 <P>New code <EM>%ssl::&lt;negotiated_version</EM> to display
@@ -465,13 +495,15 @@ codes for received CONNECT errors.</P>
 
 <DT><B>pid_filename</B><DD>
 <P>Default value now based on squid -n command line parameter.</P>
+<P>This directive is no longer mandatory to edit for
+multi-instance/tenant Squid installations.</P>
 
 <DT><B>refresh_pattern</B><DD>
 <P>Removed option <EM>ignore-auth</EM>. Its commonly desired behaviour
 is performed by default with correct HTTP/1.1 revalidation.</P>
-<P>Removed <EM>ignore-must-revalidate</EM>. Other more HTTP compliant
-directives (cache, store_miss) can be used to prevent objects from
-caching.</P>
+<P>Removed option <EM>ignore-must-revalidate</EM>. Other more HTTP compliant
+directives (<EM>cache</EM>, <EM>store_miss</EM>) can be used to prevent
+objects from caching.</P>
 
 <DT><B>sslcrtd_children</B><DD>
 <P>New parameter <EM>queue-size=</EM> to set the maximum number

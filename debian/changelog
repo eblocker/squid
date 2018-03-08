@@ -1,4 +1,4 @@
-squid (4.0.24-1~exp11) UNRELEASED; urgency=medium
+squid (4.0.24-1~exp11) experimental; urgency=medium
 
   * New Upstream Release (Closes: #641944)
     - Adds GnuTLS support for https_port (Closes: #811014)
@@ -11,7 +11,7 @@ squid (4.0.24-1~exp11) UNRELEASED; urgency=medium
     - Convert to debhelper for systemd init script installation
       (Closes: #889541)
 
- -- Amos Jeffries <amosjeffries@squid-cache.org> Thu, 08 Mar 2018 14:46 +1300
+ -- Luigi Gangitano <luigi@debian.org>  Thu, 08 Mar 2018 16:20:24 +0100
 
 squid (4.0.23-1~exp8) experimental; urgency=medium
 

@@ -14,7 +14,7 @@ squid (4.0.24-1~exp12) UNRELEASED; urgency=medium
   * debian/NEWS.debian
     - Document surprises caused by systemd use (Closes: #896125)
 
- -- Amos Jeffries <amosjeffries@squid-cache.org> Thu, 08 Mar 2018 14:46:00 +1300
+ -- Amos Jeffries <amosjeffries@squid-cache.org>  Thu, 08 Mar 2018 14:46:00 +1300
 
 squid (4.0.23-1~exp8) experimental; urgency=medium
 

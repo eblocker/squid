@@ -116,11 +116,10 @@ case "$1" in
 			echo "Setcap is not installed, falling back to setuid" >&2
 			chmod u+s $PINGER
 		fi
-		#
-		#	Update links if needed and start squid.
-		#
-		update-rc.d squid defaults 30 >/dev/null
 
+		#
+		# Ensure that any obsolete squid3 that may be running is stopped.
+		#
 		if [ -f /var/run/squid3.pid ] && kill -0 "$(cat /var/run/squid3.pid)" 2>/dev/null && dpkg --compare-versions "$2" lt '3.5'; then
 			invoke-rc.d squid3 stop
 			invoke-rc.d squid restart

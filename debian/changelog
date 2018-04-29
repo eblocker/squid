@@ -1,4 +1,4 @@
-squid (4.0.24-1~exp11) experimental; urgency=medium
+squid (4.0.24-1~exp15) experimental; urgency=medium
 
   * New Upstream Release (Closes: #641944)
     - Adds GnuTLS support for https_port (Closes: #811014)
@@ -6,12 +6,20 @@ squid (4.0.24-1~exp11) experimental; urgency=medium
   * debian/control
     - Add Recommends for ca-certificates to squid and squidclient to ensure
       system Trusted CA certificates are installed.
+    - Update Vcs-* headers for Salsa migration
+    - Bumped Standards-Version to 4.1.4
 
-  * debuian/{rules,install,squid.service}
+  * debian/{rules,install,squid.service}
     - Convert to debhelper for systemd init script installation
       (Closes: #889541)
 
- -- Luigi Gangitano <luigi@debian.org>  Thu, 08 Mar 2018 16:20:24 +0100
+  * debian/squid.{postinst,postrm}
+    - Remove update-rc.d commands now done by debhelper
+
+  * debian/NEWS.debian
+    - Document surprises caused by systemd use (Closes: #896125)
+
+ -- Luigi Gangitano <luigi@debian.org>  Sun, 29 Apr 2018 18:20:24 +0200
 
 squid (4.0.23-1~exp8) experimental; urgency=medium
 

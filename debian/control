@@ -24,6 +24,7 @@ Build-Depends: ed, libltdl-dev, pkg-config
 	, libsasl2-dev
 	, libxml2-dev
 	, nettle-dev
+	, libgnutls28-dev
 
 Package: squid3
 Architecture: all

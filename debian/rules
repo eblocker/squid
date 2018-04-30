@@ -50,7 +50,8 @@ DEB_CONFIGURE_EXTRA_FLAGS := BUILDCXXFLAGS="$(CXXFLAGS) $(CPPFLAGS) $(LDFLAGS)" 
 		--with-pidfile=/var/run/squid.pid \
 		--with-filedescriptors=65536 \
 		--with-large-files \
-		--with-default-user=proxy
+		--with-default-user=proxy \
+		--with-gnutls
 
 ifeq ($(DEB_HOST_ARCH_OS), kfreebsd)
 		DEB_CONFIGURE_EXTRA_FLAGS += --enable-kqueue

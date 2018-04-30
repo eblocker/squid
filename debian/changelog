@@ -1,3 +1,10 @@
+squid (4.0.24-1~exp16) experimental; urgency=medium
+
+  * debian/{control,rules}
+    - Build with TLS support from gnutls (Closes: #641944, #811014)
+
+ -- Luigi Gangitano <luigi@debian.org>  Mon, 30 Apr 2018 15:37:15 +0200
+
 squid (4.0.24-1~exp15) experimental; urgency=medium
 
   * New Upstream Release (Closes: #641944)

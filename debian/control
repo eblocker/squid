@@ -72,7 +72,7 @@ Description: Full featured Web Proxy cache (HTTP proxy) - HTTP(S) message utilit
  Squid is a high-performance proxy caching server for web clients, supporting
  FTP, gopher, ICY and HTTP data objects.
  .
- This package contains a small utility that can be used to get URLs from the 
+ This package contains a small utility that can be used to get URLs from the
  command line.
 
 Package: squid-cgi
@@ -85,7 +85,7 @@ Description: Full featured Web Proxy cache (HTTP proxy) - control CGI
  Squid is a high-performance proxy caching server for web clients, supporting
  FTP, gopher, ICY and HTTP data objects.
  .
- This package contains a CGI program that can be used to query and administrate 
+ This package contains a CGI program that can be used to query and administrate
  a `squid' proxy cache through a web browser.
 
 Package: squid-purge

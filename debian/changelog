@@ -400,8 +400,8 @@ squid3 (3.4.8-6) unstable; urgency=medium
     - Added upstream patch fixing excessive CPU usage (Closes: #776461)
 
   * debian/patches/32-squid-3.4-13210.patch
-    - Added upstream patch fixing excessive CPU and memory usage in 
-      NTLM and Negotiate authentication helpers (Closes: #776463) 
+    - Added upstream patch fixing excessive CPU and memory usage in
+      NTLM and Negotiate authentication helpers (Closes: #776463)
 
   * debian/patches/33-squid-3.4-13211.patch
     - Added upstream patch fixing a possible replay vulnerability on Digest
@@ -411,7 +411,7 @@ squid3 (3.4.8-6) unstable; urgency=medium
     - Added upstream patch fixing incorrect security permissions for
       TOS/DiffServ packet marking (Closes: #776468)
 
-  * debian/patches/35-squid-3.4-13203.patch 
+  * debian/patches/35-squid-3.4-13203.patch
     - Added upstream patch fixing squidclient unable to connect to host with
       both IPv4 and IPv6 addresses (Closes: #742425)
 
@@ -429,7 +429,7 @@ squid3 (3.4.8-4) unstable; urgency=medium
 
   [ Luigi Gangitano <luigi@debian.org> ]
   * debian/squid3.preinst
-    - Revert changes on abort-upgrade 
+    - Revert changes on abort-upgrade
 
  -- Luigi Gangitano <luigi@debian.org>  Fri, 05 Dec 2014 10:44:02 +0100
 
@@ -489,7 +489,7 @@ squid3 (3.4.8-2) unstable; urgency=medium
  -- Luigi Gangitano <luigi@debian.org>  Wed, 29 Oct 2014 15:50:51 +0100
 
 squid3 (3.4.8-1) unstable; urgency=high
- 
+
   * Urgency high due to security fixes
 
   [ Amos Jeffries <amosjeffries@squid-cache.org> ]
@@ -611,7 +611,7 @@ squid3 (3.3.3-2) unstable; urgency=low
     - Added SETUID bit to pinger program
 
   * debian/watch
-    - Fixed pattern to match all the released versions of 3.3 
+    - Fixed pattern to match all the released versions of 3.3
 
  -- Luigi Gangitano <luigi@debian.org>  Tue, 23 Apr 2013 15:38:39 +0200
 
@@ -946,7 +946,7 @@ squid3 (3.1.0.15-1) experimental; urgency=low
 
   * debian/control
     - Remove duplicated informations that can be inherited from source stanza
-    - Added autotools-dev build-dependency to enable cdbs fix for ancient 
+    - Added autotools-dev build-dependency to enable cdbs fix for ancient
       helper files
 
  -- Luigi Gangitano <luigi@debian.org>  Thu, 14 Jan 2010 22:44:13 +0100
@@ -987,7 +987,7 @@ squid3 (3.1.0.13-2) experimental; urgency=low
     - Removed man page integrated upstream
 
   * debian/squid3.rc
-    - Removed obsolete -D option 
+    - Removed obsolete -D option
 
   * debian/patches/01-cf.data.debian
     - Added ::1 to localhost definition in ACLs
@@ -1224,7 +1224,7 @@ squid3 (3.0.STABLE5-1) UNRELEASED; urgency=low
  -- Luigi Gangitano <luigi@debian.org>  Sat, 03 May 2008 18:39:36 +0200
 
 squid3 (3.0.STABLE4-1) unstable; urgency=low
-  
+
   * New upstream release
 
  -- Luigi Gangitano <luigi@debian.org>  Thu, 03 Apr 2008 01:34:07 +0200
@@ -1393,7 +1393,7 @@ squid3 (3.0.PRE5-3) unstable; urgency=low
 squid3 (3.0.PRE5-2) unstable; urgency=low
 
   * debian/rules
-    - Added architecture specific configure options to fix 
+    - Added architecture specific configure options to fix
       FTBFS on GNU/KFreeBSD (Closes: #397829)
 
   * debian/control
@@ -1409,7 +1409,7 @@ squid3 (3.0.PRE5-1) unstable; urgency=low
       + 03-upstream-md5-byteswap
 
   * debian/patches/04-m68k-ftbfs.dpathc
-    - Added patch to fix FTBFS on m68k due to missing parenthesis 
+    - Added patch to fix FTBFS on m68k due to missing parenthesis
       (Closes: #394220)
 
   * debian/control
@@ -1462,10 +1462,10 @@ squid3 (3.0.PRE4-1) unstable; urgency=low
   * debian/rules
     - Revorked to build packages that can be installed side-by-side with
       the squid 2.x packages.
-  
+
   * debian/control
     - Added dependency on dpatch
-  
+
  -- Luigi Gangitano <luigi@debian.org>  Mon,  3 Jul 2006 16:47:43 +0200
 
 

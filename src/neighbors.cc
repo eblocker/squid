@@ -136,7 +136,6 @@ neighborType(const CachePeer * p, const URL &url)
 bool
 peerAllowedToUse(const CachePeer * p, HttpRequest * request)
 {
-
     assert(request != NULL);
 
     if (neighborType(p, request->url) == PEER_SIBLING) {
@@ -167,7 +166,8 @@ peerAllowedToUse(const CachePeer * p, HttpRequest * request)
         return true;
 
     ACLFilledChecklist checklist(p->access, request, NULL);
-
+//    checklist.al = ps->al;
+    checklist.syncAle(request, nullptr);
     return checklist.fastCheck().allowed();
 }
 
@@ -984,7 +984,7 @@ neighborsUdpAck(const cache_key * key, icp_common_t * header, const Ip::Address 
 
     debugs(15, 6, "neighborsUdpAck: opcode " << opcode << " '" << storeKeyText(key) << "'");
 
-    if ((entry = Store::Root().findCallback(key)))
+    if ((entry = Store::Root().findCallbackXXX(key)))
         mem = entry->mem_obj;
 
     if ((p = whichPeer(from)))
@@ -1278,7 +1278,7 @@ void
 peerConnectSucceded(CachePeer * p)
 {
     if (!p->tcp_up) {
-        debugs(15, 2, "TCP connection to " << p->host << "/" << p->http_port << " succeded");
+        debugs(15, 2, "TCP connection to " << p->host << "/" << p->http_port << " succeeded");
         p->tcp_up = p->connect_fail_limit; // NP: so peerAlive(p) works properly.
         peerAlive(p);
         if (!p->n_addresses)
@@ -1692,7 +1692,7 @@ dump_peers(StoreEntry * sentry, CachePeer * peers)
 void
 neighborsHtcpReply(const cache_key * key, HtcpReplyData * htcp, const Ip::Address &from)
 {
-    StoreEntry *e = Store::Root().findCallback(key);
+    StoreEntry *e = Store::Root().findCallbackXXX(key);
     MemObject *mem = NULL;
     CachePeer *p;
     peer_t ntype = PEER_NONE;

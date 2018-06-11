@@ -801,7 +801,9 @@ HttpStateData::handle1xx(HttpReply *reply)
     // check whether the 1xx response forwarding is allowed by squid.conf
     if (Config.accessList.reply) {
         ACLFilledChecklist ch(Config.accessList.reply, originalRequest(), NULL);
+        ch.al = fwd->al;
         ch.reply = reply;
+        ch.syncAle(originalRequest(), nullptr);
         HTTPMSGLOCK(ch.reply);
         if (!ch.fastCheck().allowed()) { // TODO: support slow lookups?
             debugs(11, 3, HERE << "ignoring denied 1xx");
@@ -1542,7 +1544,7 @@ HttpStateData::maybeMakeSpaceAvailable(bool doGrow)
 
     if (limitBuffer < 0 || inBuf.length() >= (SBuf::size_type)limitBuffer) {
         // when buffer is at or over limit already
-        debugs(11, 7, "wont read up to " << limitBuffer << ". buffer has (" << inBuf.length() << "/" << inBuf.spaceSize() << ") from " << serverConnection);
+        debugs(11, 7, "will not read up to " << limitBuffer << ". buffer has (" << inBuf.length() << "/" << inBuf.spaceSize() << ") from " << serverConnection);
         debugs(11, DBG_DATA, "buffer has {" << inBuf << "}");
         // Process next response from buffer
         processReply();
@@ -1553,17 +1555,17 @@ HttpStateData::maybeMakeSpaceAvailable(bool doGrow)
     const size_t read_size = calcBufferSpaceToReserve(inBuf.spaceSize(), (limitBuffer - inBuf.length()));
 
     if (!read_size) {
-        debugs(11, 7, "wont read up to " << read_size << " into buffer (" << inBuf.length() << "/" << inBuf.spaceSize() << ") from " << serverConnection);
+        debugs(11, 7, "will not read up to " << read_size << " into buffer (" << inBuf.length() << "/" << inBuf.spaceSize() << ") from " << serverConnection);
         return false;
     }
 
-    // just report whether we could grow or not, dont actually do it
+    // just report whether we could grow or not, do not actually do it
     if (doGrow)
         return (read_size >= 2);
 
     // we may need to grow the buffer
     inBuf.reserveSpace(read_size);
-    debugs(11, 8, (!flags.do_next_read ? "wont" : "may") <<
+    debugs(11, 8, (!flags.do_next_read ? "will not" : "may") <<
            " read up to " << read_size << " bytes info buf(" << inBuf.length() << "/" << inBuf.spaceSize() <<
            ") from " << serverConnection);
 
@@ -2334,6 +2336,8 @@ HttpStateData::finishingBrokenPost()
     }
 
     ACLFilledChecklist ch(Config.accessList.brokenPosts, originalRequest(), NULL);
+    ch.al = fwd->al;
+    ch.syncAle(originalRequest(), nullptr);
     if (!ch.fastCheck().allowed()) {
         debugs(11, 5, HERE << "didn't match brokenPosts");
         return false;

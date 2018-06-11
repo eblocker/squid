@@ -2,10 +2,10 @@
 <HTML>
 <HEAD>
  <META NAME="GENERATOR" CONTENT="LinuxDoc-Tools 0.9.72">
- <TITLE>Squid 4.0.24 release notes</TITLE>
+ <TITLE>Squid 4.0.25 release notes</TITLE>
 </HEAD>
 <BODY>
-<H1>Squid 4.0.24 release notes</H1>
+<H1>Squid 4.0.25 release notes</H1>
 
 <H2>Squid Developers</H2>
 <HR>
@@ -63,7 +63,7 @@ for Applied Network Research and members of the Web Caching community.</EM>
 <HR>
 <H2><A NAME="s1">1.</A> <A HREF="#toc1">Notice</A></H2>
 
-<P>The Squid Team are pleased to announce the release of Squid-4.0.24 for testing.</P>
+<P>The Squid Team are pleased to announce the release of Squid-4.0.25 for testing.</P>
 <P>This new release is available for download from 
 <A HREF="http://www.squid-cache.org/Versions/v4/">http://www.squid-cache.org/Versions/v4/</A> or the
 <A HREF="http://www.squid-cache.org/Download/http-mirrors.html">mirrors</A>.</P>
@@ -246,6 +246,10 @@ Unlike the old <EM>-N</EM> option,
 <EM>--foreground</EM> is particularly useful for use with <EM>-z</EM> (disk
 cache structures creation), as it allows the caller to wait until Squid has
 finished.</P>
+
+<P>The squid binary now accepts a <EM>--kid</EM> command line option which
+informs the process which role it is to take on. This aids with debugging
+SMP issues with specific process types and resolves some SMP forking issues.</P>
 
 
 <H2><A NAME="ss2.8">2.8</A> <A HREF="#toc2.8">Initial GnuTLS support</A>
@@ -462,6 +466,10 @@ server certificate.</P>
 <P>New <EM>tls-default-ca</EM> option to use the system Trusted CAs to
 verify the server certificate.</P>
 <P>New <EM>tls-domain=</EM> option to verify the server certificate domain.</P>
+
+<DT><B>logfile_daemon</B><DD>
+<P>Now only requires that helper binary exists when daemon: log module
+is actually being used.</P>
 
 <DT><B>logformat</B><DD>
 <P>New quoting modifier to produce <EM>\-escaped</EM> output.</P>

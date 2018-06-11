@@ -245,38 +245,39 @@ am__squid_SOURCES_DIST = AclRegs.cc AuthReg.cc AccessLogEntry.cc \
 	client_side_request.cc client_side_request.h ClientInfo.h \
 	BodyPipe.cc BodyPipe.h ClientRequestContext.h clientStream.cc \
 	clientStream.h clientStreamForward.h CollapsedForwarding.cc \
-	CollapsedForwarding.h CompletionDispatcher.cc \
-	CompletionDispatcher.h CommRead.h ConfigOption.cc \
-	ConfigParser.cc ConfigParser.h CpuAffinity.cc CpuAffinity.h \
-	CpuAffinityMap.cc CpuAffinityMap.h CpuAffinitySet.cc \
-	CpuAffinitySet.h debug.cc Debug.h defines.h CommonPool.h \
-	CompositePoolNode.h delay_pools.cc DelayId.cc DelayId.h \
-	DelayIdComposite.h DelayBucket.cc DelayBucket.h DelayConfig.cc \
-	DelayConfig.h DelayPool.cc DelayPool.h DelayPools.h \
-	DelaySpec.cc DelaySpec.h DelayTagged.cc DelayTagged.h \
-	DelayUser.cc DelayUser.h DelayVector.cc DelayVector.h \
-	NullDelayId.h ClientDelayConfig.cc ClientDelayConfig.h fs_io.h \
-	fs_io.cc dlink.h dlink.cc dns_internal.cc Downloader.cc \
-	Downloader.h enums.h err_type.h err_detail_type.h errorpage.cc \
-	errorpage.h ETag.cc ETag.h event.cc event.h EventLoop.h \
-	EventLoop.cc external_acl.cc ExternalACL.h ExternalACLEntry.cc \
-	ExternalACLEntry.h FadingCounter.h FadingCounter.cc fatal.h \
-	fatal.cc fd.h fd.cc fde.cc fde.h FileMap.h filemap.cc \
-	fqdncache.h fqdncache.cc FwdState.cc FwdState.h Generic.h \
-	globals.h gopher.h gopher.cc helper.cc helper.h hier_code.h \
-	HierarchyLogEntry.h htcp.cc htcp.h http.cc http.h \
-	HttpHeaderFieldStat.h HttpHdrCc.h HttpHdrCc.cc HttpHdrCc.cci \
-	HttpHdrRange.cc HttpHdrSc.cc HttpHdrSc.h HttpHdrScTarget.cc \
-	HttpHdrScTarget.h HttpHdrContRange.cc HttpHdrContRange.h \
-	HttpHeaderStat.h HttpHeader.h HttpHeader.cc HttpHeaderMask.h \
-	HttpHeaderRange.h HttpHeaderFieldInfo.h HttpHeaderTools.h \
-	HttpHeaderTools.cc HttpBody.h HttpBody.cc HttpControlMsg.cc \
-	HttpControlMsg.h HttpMsg.cc HttpMsg.h HttpReply.cc HttpReply.h \
-	RequestFlags.h RequestFlags.cc HttpRequest.cc HttpRequest.h \
-	ICP.h icp_opcode.h icp_v2.cc icp_v3.cc Instance.h Instance.cc \
-	int.h int.cc internal.h internal.cc SquidIpc.h ipc.cc \
-	ipc_win32.cc ipcache.cc ipcache.h LeakFinder.cc LogTags.cc \
-	LogTags.h lookup_t.h main.cc MasterXaction.cc MasterXaction.h \
+	CollapsedForwarding.h CommandLine.cc CommandLine.h \
+	CompletionDispatcher.cc CompletionDispatcher.h CommRead.h \
+	ConfigOption.cc ConfigParser.cc ConfigParser.h CpuAffinity.cc \
+	CpuAffinity.h CpuAffinityMap.cc CpuAffinityMap.h \
+	CpuAffinitySet.cc CpuAffinitySet.h debug.cc Debug.h defines.h \
+	CommonPool.h CompositePoolNode.h delay_pools.cc DelayId.cc \
+	DelayId.h DelayIdComposite.h DelayBucket.cc DelayBucket.h \
+	DelayConfig.cc DelayConfig.h DelayPool.cc DelayPool.h \
+	DelayPools.h DelaySpec.cc DelaySpec.h DelayTagged.cc \
+	DelayTagged.h DelayUser.cc DelayUser.h DelayVector.cc \
+	DelayVector.h NullDelayId.h ClientDelayConfig.cc \
+	ClientDelayConfig.h fs_io.h fs_io.cc dlink.h dlink.cc \
+	dns_internal.cc Downloader.cc Downloader.h enums.h err_type.h \
+	err_detail_type.h errorpage.cc errorpage.h ETag.cc ETag.h \
+	event.cc event.h EventLoop.h EventLoop.cc external_acl.cc \
+	ExternalACL.h ExternalACLEntry.cc ExternalACLEntry.h \
+	FadingCounter.h FadingCounter.cc fatal.h fatal.cc fd.h fd.cc \
+	fde.cc fde.h FileMap.h filemap.cc fqdncache.h fqdncache.cc \
+	FwdState.cc FwdState.h Generic.h globals.h gopher.h gopher.cc \
+	helper.cc helper.h hier_code.h HierarchyLogEntry.h htcp.cc \
+	htcp.h http.cc http.h HttpHeaderFieldStat.h HttpHdrCc.h \
+	HttpHdrCc.cc HttpHdrCc.cci HttpHdrRange.cc HttpHdrSc.cc \
+	HttpHdrSc.h HttpHdrScTarget.cc HttpHdrScTarget.h \
+	HttpHdrContRange.cc HttpHdrContRange.h HttpHeaderStat.h \
+	HttpHeader.h HttpHeader.cc HttpHeaderMask.h HttpHeaderRange.h \
+	HttpHeaderFieldInfo.h HttpHeaderTools.h HttpHeaderTools.cc \
+	HttpBody.h HttpBody.cc HttpControlMsg.cc HttpControlMsg.h \
+	HttpMsg.cc HttpMsg.h HttpReply.cc HttpReply.h RequestFlags.h \
+	RequestFlags.cc HttpRequest.cc HttpRequest.h ICP.h \
+	icp_opcode.h icp_v2.cc icp_v3.cc Instance.h Instance.cc int.h \
+	int.cc internal.h internal.cc SquidIpc.h ipc.cc ipc_win32.cc \
+	ipcache.cc ipcache.h LeakFinder.cc LogTags.cc LogTags.h \
+	lookup_t.h main.cc MasterXaction.cc MasterXaction.h \
 	mem_node.cc mem_node.h MemBuf.cc MemObject.cc MemObject.h \
 	MessageSizes.h mime.h mime.cc mime_header.h mime_header.cc \
 	multicast.h multicast.cc neighbors.h neighbors.cc Notes.h \
@@ -341,13 +342,14 @@ am_squid_OBJECTS = $(am__objects_1) AccessLogEntry.$(OBJEXT) \
 	cbdata.$(OBJEXT) client_db.$(OBJEXT) client_side.$(OBJEXT) \
 	client_side_reply.$(OBJEXT) client_side_request.$(OBJEXT) \
 	BodyPipe.$(OBJEXT) clientStream.$(OBJEXT) \
-	CollapsedForwarding.$(OBJEXT) CompletionDispatcher.$(OBJEXT) \
-	ConfigOption.$(OBJEXT) ConfigParser.$(OBJEXT) \
-	CpuAffinity.$(OBJEXT) CpuAffinityMap.$(OBJEXT) \
-	CpuAffinitySet.$(OBJEXT) debug.$(OBJEXT) $(am__objects_3) \
-	fs_io.$(OBJEXT) dlink.$(OBJEXT) $(am__objects_4) \
-	Downloader.$(OBJEXT) errorpage.$(OBJEXT) ETag.$(OBJEXT) \
-	event.$(OBJEXT) EventLoop.$(OBJEXT) external_acl.$(OBJEXT) \
+	CollapsedForwarding.$(OBJEXT) CommandLine.$(OBJEXT) \
+	CompletionDispatcher.$(OBJEXT) ConfigOption.$(OBJEXT) \
+	ConfigParser.$(OBJEXT) CpuAffinity.$(OBJEXT) \
+	CpuAffinityMap.$(OBJEXT) CpuAffinitySet.$(OBJEXT) \
+	debug.$(OBJEXT) $(am__objects_3) fs_io.$(OBJEXT) \
+	dlink.$(OBJEXT) $(am__objects_4) Downloader.$(OBJEXT) \
+	errorpage.$(OBJEXT) ETag.$(OBJEXT) event.$(OBJEXT) \
+	EventLoop.$(OBJEXT) external_acl.$(OBJEXT) \
 	ExternalACLEntry.$(OBJEXT) FadingCounter.$(OBJEXT) \
 	fatal.$(OBJEXT) fd.$(OBJEXT) fde.$(OBJEXT) filemap.$(OBJEXT) \
 	fqdncache.$(OBJEXT) FwdState.$(OBJEXT) gopher.$(OBJEXT) \
@@ -2498,7 +2500,7 @@ DEFAULT_LOG_DIR = @DEFAULT_LOG_DIR@
 DEFAULT_PID_FILE = @DEFAULT_PID_FILE@
 DEFAULT_SWAP_DIR = @DEFAULT_SWAP_DIR@
 
-# Make location configure settings available to the code
+# Make ./configure location settings above available to the code
 DEFS = @DEFS@ -DDEFAULT_CONFIG_FILE=\"$(DEFAULT_CONFIG_FILE)\" \
 	-DDEFAULT_SQUID_DATA_DIR=\"$(datadir)\" \
 	-DDEFAULT_SQUID_CONFIG_DIR=\"$(sysconfdir)\"
@@ -2852,11 +2854,11 @@ squid_SOURCES = $(ACL_REGISTRATION_SOURCES) AccessLogEntry.cc \
 	client_side_request.h ClientInfo.h BodyPipe.cc BodyPipe.h \
 	ClientInfo.h ClientRequestContext.h clientStream.cc \
 	clientStream.h clientStreamForward.h CollapsedForwarding.cc \
-	CollapsedForwarding.h CompletionDispatcher.cc \
-	CompletionDispatcher.h CommRead.h ConfigOption.cc \
-	ConfigParser.cc ConfigParser.h CpuAffinity.cc CpuAffinity.h \
-	CpuAffinityMap.cc CpuAffinityMap.h CpuAffinitySet.cc \
-	CpuAffinitySet.h debug.cc Debug.h defines.h \
+	CollapsedForwarding.h CommandLine.cc CommandLine.h \
+	CompletionDispatcher.cc CompletionDispatcher.h CommRead.h \
+	ConfigOption.cc ConfigParser.cc ConfigParser.h CpuAffinity.cc \
+	CpuAffinity.h CpuAffinityMap.cc CpuAffinityMap.h \
+	CpuAffinitySet.cc CpuAffinitySet.h debug.cc Debug.h defines.h \
 	$(DELAY_POOL_SOURCE) fs_io.h fs_io.cc dlink.h dlink.cc \
 	$(DNSSOURCE) Downloader.cc Downloader.h enums.h err_type.h \
 	err_detail_type.h errorpage.cc errorpage.h ETag.cc ETag.h \
@@ -6547,6 +6549,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ClientDelayConfig.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/CollapsedForwarding.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/CommCalls.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/CommandLine.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/CompletionDispatcher.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ConfigOption.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ConfigParser.Po@am__quote@

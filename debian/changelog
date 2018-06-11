@@ -1,3 +1,9 @@
+squid (4.0.25-1~exp17) UNRELEASED; urgency=medium
+
+  * New Upstream Release (Closes: #896120)
+
+ -- Amos Jeffries <amosjeffries@squid-cache.org>  Tue, 12 Jun 2018 05:44:00 +1300
+
 squid (4.0.24-1~exp16) experimental; urgency=medium
 
   * debian/{control,rules}

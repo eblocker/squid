@@ -1,0 +1,3407 @@
+Upstream patch from PR 172 resolves build issues with GCC-8
+
+diff --git a/src/CacheManager.h b/src/CacheManager.h
+index 9d2c5ce1..e0906479 100644
+--- a/src/CacheManager.h
++++ b/src/CacheManager.h
+@@ -58,9 +58,6 @@ protected:
+     void registerProfile(const Mgr::ActionProfilePointer &profile);
+ 
+     Menu menu_;
+-
+-private:
+-    static CacheManager* instance;
+ };
+ 
+ #endif /* SQUID_CACHEMANAGER_H */
+diff --git a/src/HttpRequest.cc b/src/HttpRequest.cc
+index 7f8b1d10..1946ae48 100644
+--- a/src/HttpRequest.cc
++++ b/src/HttpRequest.cc
+@@ -80,7 +80,7 @@ HttpRequest::init()
+ #if USE_AUTH
+     auth_user_request = NULL;
+ #endif
+-    memset(&flags, '\0', sizeof(flags));
++    flags = RequestFlags();
+     range = NULL;
+     ims = -1;
+     imslen = 0;
+diff --git a/src/MemObject.cc b/src/MemObject.cc
+index 204699a1..6974cfc8 100644
+--- a/src/MemObject.cc
++++ b/src/MemObject.cc
+@@ -96,30 +96,18 @@ MemObject::setUris(char const *aStoreId, char const *aLogUri, const HttpRequestM
+ #endif
+ }
+ 
+-MemObject::MemObject() :
+-    inmem_lo(0),
+-    nclients(0),
+-    request(nullptr),
+-    ping_reply_callback(nullptr),
+-    ircb_data(nullptr),
+-    id(0),
+-    object_sz(-1),
+-    swap_hdr_sz(0),
+-#if URL_CHECKSUM_DEBUG
+-    chksum(0),
+-#endif
+-    vary_headers(nullptr)
++MemObject::MemObject()
+ {
+-    debugs(20, 3, "new MemObject " << this);
++    debugs(20, 3, "MemObject constructed, this=" << this);
++    ping_reply_callback = nullptr;
+     memset(&start_ping, 0, sizeof(start_ping));
+-    memset(&abort, 0, sizeof(abort));
+     _reply = new HttpReply;
+     HTTPMSGLOCK(_reply);
+ }
+ 
+ MemObject::~MemObject()
+ {
+-    debugs(20, 3, "del MemObject " << this);
++    debugs(20, 3, "MemObject destructed, this=" << this);
+     const Ctx ctx = ctx_enter(hasUris() ? urlXXX() : "[unknown_ctx]");
+ 
+ #if URL_CHECKSUM_DEBUG
+diff --git a/src/MemObject.h b/src/MemObject.h
+index 508fb4e9..53c15029 100644
+--- a/src/MemObject.h
++++ b/src/MemObject.h
+@@ -103,26 +103,24 @@ public:
+ 
+     HttpRequestMethod method;
+     mem_hdr data_hdr;
+-    int64_t inmem_lo;
++    int64_t inmem_lo = 0;
+     dlink_list clients;
+ 
+     size_t clientCount() const {return nclients;}
+ 
+     bool clientIsFirst(void *sc) const {return (clients.head && sc == clients.head->data);}
+ 
+-    int nclients;
++    int nclients = 0;
+ 
+     class SwapOut
+     {
+     public:
+-        SwapOut() : queue_offset(0), decision(swNeedsCheck) {}
+-
+-        int64_t queue_offset; ///< number of bytes sent to SwapDir for writing
++        int64_t queue_offset = 0; ///< number of bytes sent to SwapDir for writing
+         StoreIOState::Pointer sio;
+ 
+         /// Decision states for StoreEntry::swapoutPossible() and related code.
+         typedef enum { swNeedsCheck = 0, swImpossible = -1, swPossible = +1, swStarted } Decision;
+-        Decision decision; ///< current decision state
++        Decision decision = swNeedsCheck; ///< current decision state
+     };
+ 
+     SwapOut swapout;
+@@ -138,10 +136,8 @@ public:
+     class XitTable
+     {
+     public:
+-        XitTable(): index(-1), io(ioUndecided) {}
+-
+-        int32_t index; ///< entry position inside the in-transit table
+-        Io io; ///< current I/O state
++        int32_t index = -1; ///< entry position inside the in-transit table
++        Io io = ioUndecided; ///< current I/O state
+     };
+     XitTable xitTable; ///< current [shared] memory caching state for the entry
+ 
+@@ -149,34 +145,32 @@ public:
+     class MemCache
+     {
+     public:
+-        MemCache(): index(-1), offset(0), io(ioUndecided) {}
++        int32_t index = -1; ///< entry position inside the memory cache
++        int64_t offset = 0; ///< bytes written/read to/from the memory cache so far
+ 
+-        int32_t index; ///< entry position inside the memory cache
+-        int64_t offset; ///< bytes written/read to/from the memory cache so far
+-
+-        Io io; ///< current I/O state
++        Io io = ioUndecided; ///< current I/O state
+     };
+     MemCache memCache; ///< current [shared] memory caching state for the entry
+ 
+     /* Read only - this reply must be preserved by store clients */
+     /* The original reply. possibly with updated metadata. */
+-    HttpRequest *request;
++    HttpRequest *request = nullptr;
+ 
+     struct timeval start_ping;
+     IRCB *ping_reply_callback;
+-    void *ircb_data;
++    void *ircb_data = nullptr;
+ 
+-    struct {
++    struct abort_ {
++        abort_() { callback = nullptr; }
+         STABH *callback;
+-        void *data;
++        void *data = nullptr;
+     } abort;
+     RemovalPolicyNode repl;
+-    int id;
+-    int64_t object_sz;
+-    size_t swap_hdr_sz;
++    int id = 0;
++    int64_t object_sz = -1;
++    size_t swap_hdr_sz = 0;
+ #if URL_CHECKSUM_DEBUG
+-
+-    unsigned int chksum;
++    unsigned int chksum = 0;
+ #endif
+ 
+     SBuf vary_headers;
+@@ -185,7 +179,7 @@ public:
+     void kickReads();
+ 
+ private:
+-    HttpReply *_reply;
++    HttpReply *_reply = nullptr;
+ 
+     mutable String storeId_; ///< StoreId for our entry (usually request URI)
+     mutable String logUri_;  ///< URI used for logging (usually request URI)
+diff --git a/src/PeerDigest.h b/src/PeerDigest.h
+index 442e9054..17a36601 100644
+--- a/src/PeerDigest.h
++++ b/src/PeerDigest.h
+@@ -76,35 +76,38 @@ class PeerDigest
+     CBDATA_CLASS(PeerDigest);
+ 
+ public:
+-    CachePeer *peer;          /**< pointer back to peer structure, argh */
+-    CacheDigest *cd;            /**< actual digest structure */
++    PeerDigest(CachePeer *);
++    ~PeerDigest();
++
++    CachePeer *peer = nullptr;          /**< pointer back to peer structure, argh */
++    CacheDigest *cd = nullptr;            /**< actual digest structure */
+     String host;                /**< copy of peer->host */
+-    const char *req_result;     /**< text status of the last request */
++    const char *req_result = nullptr;     /**< text status of the last request */
+ 
+     struct {
+-        bool needed;          /**< there were requests for this digest */
+-        bool usable;          /**< can be used for lookups */
+-        bool requested;       /**< in process of receiving [fresh] digest */
++        bool needed = false;          /**< there were requests for this digest */
++        bool usable = false;          /**< can be used for lookups */
++        bool requested = false;       /**< in process of receiving [fresh] digest */
+     } flags;
+ 
+     struct {
+         /* all times are absolute unless augmented with _delay */
+-        time_t initialized; /* creation */
+-        time_t needed;      /* first lookup/use by a peer */
+-        time_t next_check;  /* next scheduled check/refresh event */
+-        time_t retry_delay; /* delay before re-checking _invalid_ digest */
+-        time_t requested;   /* requested a fresh copy of a digest */
+-        time_t req_delay;   /* last request response time */
+-        time_t received;    /* received the current copy of a digest */
+-        time_t disabled;    /* disabled for good */
++        time_t initialized = 0; /* creation */
++        time_t needed = 0;      /* first lookup/use by a peer */
++        time_t next_check = 0;  /* next scheduled check/refresh event */
++        time_t retry_delay = 0; /* delay before re-checking _invalid_ digest */
++        time_t requested = 0;   /* requested a fresh copy of a digest */
++        time_t req_delay = 0;   /* last request response time */
++        time_t received = 0;    /* received the current copy of a digest */
++        time_t disabled = 0;    /* disabled for good */
+     } times;
+ 
+     struct {
+         CacheDigestGuessStats guess;
+-        int used_count;
++        int used_count = 0;
+ 
+         struct {
+-            int msgs;
++            int msgs = 0;
+             ByteCounter kbytes;
+         } sent, recv;
+     } stats;
+@@ -112,7 +115,7 @@ public:
+ 
+ extern const Version CacheDigestVer;
+ 
+-PeerDigest *peerDigestCreate(CachePeer * p);
++void peerDigestCreate(CachePeer * p);
+ void peerDigestNeeded(PeerDigest * pd);
+ void peerDigestNotePeerGone(PeerDigest * pd);
+ void peerDigestStatsReport(const PeerDigest * pd, StoreEntry * e);
+diff --git a/src/SquidConfig.h b/src/SquidConfig.h
+index 1832d4cd..3bbc0a5a 100644
+--- a/src/SquidConfig.h
++++ b/src/SquidConfig.h
+@@ -24,6 +24,7 @@
+ #include "ssl/support.h"
+ #endif
+ #include "store/forward.h"
++#include "store/Disk.h"
+ 
+ #if USE_OPENSSL
+ class sslproxy_cert_sign;
+@@ -50,11 +51,14 @@ class PortCfg;
+ namespace Store {
+ class DiskConfig {
+ public:
+-    RefCount<SwapDir> *swapDirs;
+-    int n_allocated;
+-    int n_configured;
++    DiskConfig() { assert(swapDirs == nullptr); }
++    ~DiskConfig() { delete[] swapDirs; }
++
++    RefCount<SwapDir> *swapDirs = nullptr;
++    int n_allocated = 0;
++    int n_configured = 0;
+     /// number of disk processes required to support all cache_dirs
+-    int n_strands;
++    int n_strands = 0;
+ };
+ #define INDEXSD(i) (Config.cacheSwap.swapDirs[i].getRaw())
+ }
+diff --git a/src/StatCounters.h b/src/StatCounters.h
+index e5578352..85bd86d6 100644
+--- a/src/StatCounters.h
++++ b/src/StatCounters.h
+@@ -17,29 +17,31 @@
+ class CacheDigestGuessStats
+ {
+ public:
+-    int trueHits;
+-    int falseHits;
+-    int trueMisses;
+-    int falseMisses;
+-    int closeHits;     /// \todo: temporary remove it later
++    int trueHits = 0;
++    int falseHits = 0;
++    int trueMisses = 0;
++    int falseMisses = 0;
++    int closeHits = 0;     /// \todo: temporary remove it later
+ };
+ #endif
+ 
+ /** General collection of process-wide statistics.
+  *
+- * \note if you add a field to StatCounters,
+- * you MUST sync statCountersInitSpecial, statCountersClean, and statCountersCopy
++ * \note if you add a field to StatCounters which requires any non-trivial
++ *  initialization or copy you MUST sync statCountersInitSpecial()
+  */
+ class StatCounters
+ {
+ public:
++    StatCounters() : timestamp(current_time) {}
++
+     struct {
+-        int clients;
+-        int requests;
+-        int hits;
+-        int mem_hits;
+-        int disk_hits;
+-        int errors;
++        int clients = 0;
++        int requests = 0;
++        int hits = 0;
++        int mem_hits = 0;
++        int disk_hits = 0;
++        int errors = 0;
+         ByteCounter kbytes_in;
+         ByteCounter kbytes_out;
+         ByteCounter hit_kbytes_out;
+@@ -53,24 +55,24 @@ public:
+     struct {
+ 
+         struct {
+-            int requests;
+-            int errors;
++            int requests = 0;
++            int errors = 0;
+             ByteCounter kbytes_in;
+             ByteCounter kbytes_out;
+         } all , http, ftp, other;
+     } server;
+ 
+     struct {
+-        int pkts_sent;
+-        int queries_sent;
+-        int replies_sent;
+-        int pkts_recv;
+-        int queries_recv;
+-        int replies_recv;
+-        int hits_sent;
+-        int hits_recv;
+-        int replies_queued;
+-        int replies_dropped;
++        int pkts_sent = 0;
++        int queries_sent = 0;
++        int replies_sent = 0;
++        int pkts_recv = 0;
++        int queries_recv = 0;
++        int replies_recv = 0;
++        int hits_sent = 0;
++        int hits_recv = 0;
++        int replies_queued = 0;
++        int replies_dropped = 0;
+         ByteCounter kbytes_sent;
+         ByteCounter q_kbytes_sent;
+         ByteCounter r_kbytes_sent;
+@@ -79,17 +81,17 @@ public:
+         ByteCounter r_kbytes_recv;
+         StatHist querySvcTime;
+         StatHist replySvcTime;
+-        int query_timeouts;
+-        int times_used;
++        int query_timeouts = 0;
++        int times_used = 0;
+     } icp;
+ 
+     struct {
+-        int pkts_sent;
+-        int pkts_recv;
++        int pkts_sent = 0;
++        int pkts_recv = 0;
+     } htcp;
+ 
+     struct {
+-        int requests;
++        int requests = 0;
+     } unlink;
+ 
+     struct {
+@@ -97,28 +99,26 @@ public:
+     } dns;
+ 
+     struct {
+-        int times_used;
++        int times_used = 0;
+         ByteCounter kbytes_sent;
+         ByteCounter kbytes_recv;
+         ByteCounter memory;
+-        int msgs_sent;
+-        int msgs_recv;
++        int msgs_sent = 0;
++        int msgs_recv = 0;
+ #if USE_CACHE_DIGESTS
+-
+         CacheDigestGuessStats guess;
+ #endif
+-
+         StatHist on_xition_count;
+     } cd;
+ 
+     struct {
+-        int times_used;
++        int times_used = 0;
+     } netdb;
+-    int page_faults;
+-    unsigned long int select_loops;
+-    int select_fds;
+-    double select_time;
+-    double cputime;
++    int page_faults = 0;
++    unsigned long int select_loops = 0;
++    int select_fds = 0;
++    double select_time = 0.0;
++    double cputime = 0.0;
+ 
+     struct timeval timestamp;
+     StatHist comm_udp_incoming;
+@@ -128,36 +128,34 @@ public:
+ 
+     struct {
+         struct {
+-            int opens;
+-            int closes;
+-            int reads;
+-            int writes;
+-            int seeks;
+-            int unlinks;
++            int opens = 0;
++            int closes = 0;
++            int reads = 0;
++            int writes = 0;
++            int seeks = 0;
++            int unlinks = 0;
+         } disk;
+ 
+         struct {
+-            int accepts;
+-            int sockets;
+-            int connects;
+-            int binds;
+-            int closes;
+-            int reads;
+-            int writes;
+-            int recvfroms;
+-            int sendtos;
++            int accepts = 0;
++            int sockets = 0;
++            int connects = 0;
++            int binds = 0;
++            int closes = 0;
++            int reads = 0;
++            int writes = 0;
++            int recvfroms = 0;
++            int sendtos = 0;
+         } sock;
+-        int selects;
++        int selects = 0;
+     } syscalls;
+-    int aborted_requests;
++    int aborted_requests = 0;
+ 
+     struct {
+-        int files_cleaned;
+-        int outs;
+-        int ins;
++        int files_cleaned = 0;
++        int outs = 0;
++        int ins = 0;
+     } swap;
+-
+-private:
+ };
+ 
+ extern StatCounters statCounter;
+diff --git a/src/StatHist.h b/src/StatHist.h
+index ef371b53..63bed853 100644
+--- a/src/StatHist.h
++++ b/src/StatHist.h
+@@ -34,21 +34,17 @@ public:
+      * \todo specialize the class in a small hierarchy so that all
+      *       relevant initializations are done at build-time
+      */
+-    StatHist();
+-    StatHist(const StatHist&); //not needed
+-    ~StatHist() { clear(); };
++    StatHist() = default;
++    StatHist(const StatHist &);
++    ~StatHist() {
++        xfree(bins); // can handle case of bins being nullptr
++        capacity_ = 0;  // mark as destructed, may be needed for troubleshooting
++    }
+ 
+     typedef uint64_t bins_type;
+ 
+     StatHist &operator=(const StatHist &);
+ 
+-    /** clear the contents of the histograms
+-     *
+-     * \todo remove: this function has been replaced in its purpose
+-     *       by the destructor
+-     */
+-    void clear();
+-
+     /** Calculate the percentile for value pctile for the difference between
+      *  this and the supplied histogram.
+      */
+@@ -102,19 +98,19 @@ protected:
+     unsigned int findBin(double v);
+ 
+     /// the histogram counters
+-    bins_type *bins;
+-    unsigned int capacity_;
++    bins_type *bins = nullptr;
++    unsigned int capacity_ = 0;
+ 
+     /// minimum value to be stored, corresponding to the first bin
+-    double min_;
++    double min_ = 0.0;
+ 
+     /// value of the maximum counter in the histogram
+-    double max_;
++    double max_ = 0.0;
+ 
+     /// scaling factor when looking for a bin
+-    double scale_;
+-    hbase_f *val_in;        /* e.g., log() for log-based histogram */
+-    hbase_f *val_out;       /* e.g., exp() for log based histogram */
++    double scale_ = 1.0;
++    hbase_f *val_in = nullptr;        /* e.g., log() for log-based histogram */
++    hbase_f *val_out = nullptr;       /* e.g., exp() for log based histogram */
+ };
+ 
+ double statHistDeltaMedian(const StatHist & A, const StatHist & B);
+@@ -137,24 +133,10 @@ StatHist::operator =(const StatHist & src)
+     scale_=src.scale_;
+     val_in=src.val_in;
+     val_out=src.val_out;
+-    if (bins != NULL)
++    if (bins)
+         memcpy(bins,src.bins,capacity_*sizeof(*bins));
+     return *this;
+ }
+ 
+-inline
+-StatHist::StatHist() :
+-    bins(NULL), capacity_(0), min_(0), max_(0),
+-    scale_(1.0), val_in(NULL), val_out(NULL)
+-{}
+-
+-inline void
+-StatHist::clear()
+-{
+-    xfree(bins); // can handle case of bins being NULL
+-    bins=NULL;
+-    capacity_=0; // mark as destructed, may be needed for troubleshooting
+-}
+-
+ #endif /* STATHIST_H_ */
+ 
+diff --git a/src/acl/BoolOps.cc b/src/acl/BoolOps.cc
+index 294b0961..6a7e0d35 100644
+--- a/src/acl/BoolOps.cc
++++ b/src/acl/BoolOps.cc
+@@ -17,9 +17,10 @@
+ Acl::NotNode::NotNode(ACL *acl)
+ {
+     assert(acl);
++    Must(strlen(acl->name) <= sizeof(name)-2);
+     name[0] = '!';
+     name[1] = '\0';
+-    strncat(&name[1], acl->name, sizeof(name)-1-1);
++    xstrncpy(&name[1], acl->name, sizeof(name)-1); // -1 for '!'
+     add(acl);
+ }
+ 
+diff --git a/src/anyp/TrafficMode.h b/src/anyp/TrafficMode.h
+index c1bb4002..2e471c48 100644
+--- a/src/anyp/TrafficMode.h
++++ b/src/anyp/TrafficMode.h
+@@ -21,17 +21,13 @@ namespace AnyP
+ class TrafficMode
+ {
+ public:
+-    TrafficMode() : accelSurrogate(false), proxySurrogate(false), natIntercept(false), tproxyIntercept(false), tunnelSslBumping(false) {}
+-    TrafficMode(const TrafficMode &rhs) { operator =(rhs); }
+-    TrafficMode &operator =(const TrafficMode &rhs) { memcpy(this, &rhs, sizeof(TrafficMode)); return *this; }
+-
+     /** marks HTTP accelerator (reverse/surrogate proxy) traffic
+      *
+      * Indicating the following are required:
+      *  - URL translation from relative to absolute form
+      *  - restriction to origin peer relay recommended
+      */
+-    bool accelSurrogate;
++    bool accelSurrogate = false;
+ 
+     /** marks ports receiving PROXY protocol traffic
+      *
+@@ -41,7 +37,7 @@ public:
+      *  - indirect client IP trust verification is mandatory
+      *  - TLS is not supported
+      */
+-    bool proxySurrogate;
++    bool proxySurrogate = false;
+ 
+     /** marks NAT intercepted traffic
+      *
+@@ -52,7 +48,7 @@ public:
+      *  - destination pinning is recommended
+      *  - authentication prohibited
+      */
+-    bool natIntercept;
++    bool natIntercept = false;
+ 
+     /** marks TPROXY intercepted traffic
+      *
+@@ -64,7 +60,7 @@ public:
+      *  - destination pinning is recommended
+      *  - authentication prohibited
+      */
+-    bool tproxyIntercept;
++    bool tproxyIntercept = false;
+ 
+     /** marks intercept and decryption of CONNECT (tunnel) SSL traffic
+      *
+@@ -75,7 +71,7 @@ public:
+      *  - encrypted outbound server connections
+      *  - peer relay prohibited. TODO: re-encrypt and re-wrap with CONNECT
+      */
+-    bool tunnelSslBumping;
++    bool tunnelSslBumping = false;
+ 
+     /** true if the traffic is in any way intercepted
+      *
+diff --git a/src/cache_cf.cc b/src/cache_cf.cc
+index 006a42d3..7beb77f0 100644
+--- a/src/cache_cf.cc
++++ b/src/cache_cf.cc
+@@ -2298,15 +2298,8 @@ parse_peer(CachePeer ** head)
+         p->connect_fail_limit = 10;
+ 
+ #if USE_CACHE_DIGESTS
+-
+-    if (!p->options.no_digest) {
+-        /* XXX This looks odd.. who has the original pointer
+-         * then?
+-         */
+-        PeerDigest *pd = peerDigestCreate(p);
+-        p->digest = cbdataReference(pd);
+-    }
+-
++    if (!p->options.no_digest)
++        peerDigestCreate(p);
+ #endif
+ 
+     p->index =  ++Config.npeers;
+diff --git a/src/client_side_reply.cc b/src/client_side_reply.cc
+index b2f0ebd0..efe47194 100644
+--- a/src/client_side_reply.cc
++++ b/src/client_side_reply.cc
+@@ -1444,13 +1444,8 @@ clientReplyContext::buildReplyHeader()
+              */
+             /* TODO: if maxage or s-maxage is present, don't do this */
+ 
+-            if (squid_curtime - http->storeEntry()->timestamp >= 86400) {
+-                char tbuf[512];
+-                snprintf (tbuf, sizeof(tbuf), "%s %s %s",
+-                          "113", ThisCache,
+-                          "This cache hit is still fresh and more than 1 day old");
+-                hdr->putStr(Http::HdrType::WARNING, tbuf);
+-            }
++            if (squid_curtime - http->storeEntry()->timestamp >= 86400)
++                hdr->putWarning(113, "This cache hit is still fresh and more than 1 day old");
+         }
+     }
+ 
+diff --git a/src/clients/FtpGateway.cc b/src/clients/FtpGateway.cc
+index d0bfb801..bdd2854d 100644
+--- a/src/clients/FtpGateway.cc
++++ b/src/clients/FtpGateway.cc
+@@ -10,6 +10,7 @@
+ 
+ #include "squid.h"
+ #include "acl/FilledChecklist.h"
++#include "base/PackableStream.h"
+ #include "clients/forward.h"
+ #include "clients/FtpClient.h"
+ #include "comm.h"
+@@ -132,7 +133,7 @@ public:
+     void unhack();
+     void readStor();
+     void parseListing();
+-    MemBuf *htmlifyListEntry(const char *line);
++    bool htmlifyListEntry(const char *line, PackableStream &);
+     void completedListing(void);
+ 
+     /// create a data channel acceptor and start listening.
+@@ -764,53 +765,37 @@ found:
+     return p;
+ }
+ 
+-MemBuf *
+-Ftp::Gateway::htmlifyListEntry(const char *line)
++bool
++Ftp::Gateway::htmlifyListEntry(const char *line, PackableStream &html)
+ {
+-    char icon[2048];
+-    char href[2048 + 40];
+-    char text[ 2048];
+-    char size[ 2048];
+-    char chdir[ 2048 + 40];
+-    char view[ 2048 + 40];
+-    char download[ 2048 + 40];
+-    char link[ 2048 + 40];
+-    MemBuf *html;
+-    char prefix[2048];
+-    ftpListParts *parts;
+-    *icon = *href = *text = *size = *chdir = *view = *download = *link = '\0';
+-
+-    debugs(9, 7, HERE << " line ={" << line << "}");
++    debugs(9, 7, "line={" << line << "}");
+ 
+     if (strlen(line) > 1024) {
+-        html = new MemBuf();
+-        html->init();
+-        html->appendf("<tr><td colspan=\"5\">%s</td></tr>\n", line);
+-        return html;
++        html << "<tr><td colspan=\"5\">" << line << "</td></tr>\n";
++        return true;
+     }
+ 
+-    if (flags.dir_slash && dirpath && typecode != 'D')
+-        snprintf(prefix, 2048, "%s/", rfc1738_escape_part(dirpath));
+-    else
+-        prefix[0] = '\0';
+-
+-    if ((parts = ftpListParseParts(line, flags)) == NULL) {
+-        const char *p;
++    SBuf prefix;
++    if (flags.dir_slash && dirpath && typecode != 'D') {
++        prefix.append(rfc1738_escape_part(dirpath));
++        prefix.append("/", 1);
++    }
+ 
+-        html = new MemBuf();
+-        html->init();
+-        html->appendf("<tr class=\"entry\"><td colspan=\"5\">%s</td></tr>\n", line);
++    ftpListParts *parts = ftpListParseParts(line, flags);
++    if (!parts) {
++        html << "<tr class=\"entry\"><td colspan=\"5\">" << line << "</td></tr>\n";
+ 
++        const char *p;
+         for (p = line; *p && xisspace(*p); ++p);
+         if (*p && !xisspace(*p))
+             flags.listformat_unknown = 1;
+ 
+-        return html;
++        return true;
+     }
+ 
+     if (!strcmp(parts->name, ".") || !strcmp(parts->name, "..")) {
+         ftpListPartsFree(&parts);
+-        return NULL;
++        return false;
+     }
+ 
+     parts->size += 1023;
+@@ -818,87 +803,82 @@ Ftp::Gateway::htmlifyListEntry(const char *line)
+     parts->showname = xstrdup(parts->name);
+ 
+     /* {icon} {text} . . . {date}{size}{chdir}{view}{download}{link}\n  */
+-    xstrncpy(href, rfc1738_escape_part(parts->name), 2048);
++    SBuf href(prefix);
++    href.append(rfc1738_escape_part(parts->name));
+ 
+-    xstrncpy(text, parts->showname, 2048);
++    SBuf text(parts->showname);
+ 
++    SBuf icon, size, chdir, link;
+     switch (parts->type) {
+ 
+     case 'd':
+-        snprintf(icon, 2048, "<img border=\"0\" src=\"%s\" alt=\"%-6s\">",
+-                 mimeGetIconURL("internal-dir"),
+-                 "[DIR]");
+-        strcat(href, "/");  /* margin is allocated above */
++        icon.appendf("<img border=\"0\" src=\"%s\" alt=\"%-6s\">",
++                     mimeGetIconURL("internal-dir"),
++                     "[DIR]");
++        href.append("/", 1);  /* margin is allocated above */
+         break;
+ 
+     case 'l':
+-        snprintf(icon, 2048, "<img border=\"0\" src=\"%s\" alt=\"%-6s\">",
+-                 mimeGetIconURL("internal-link"),
+-                 "[LINK]");
++        icon.appendf("<img border=\"0\" src=\"%s\" alt=\"%-6s\">",
++                     mimeGetIconURL("internal-link"),
++                     "[LINK]");
+         /* sometimes there is an 'l' flag, but no "->" link */
+ 
+         if (parts->link) {
+-            char *link2 = xstrdup(html_quote(rfc1738_escape(parts->link)));
+-            snprintf(link, 2048, " -&gt; <a href=\"%s%s\">%s</a>",
+-                     *link2 != '/' ? prefix : "", link2,
+-                     html_quote(parts->link));
+-            safe_free(link2);
++            SBuf link2(html_quote(rfc1738_escape(parts->link)));
++            link.appendf(" -&gt; <a href=\"%s" SQUIDSBUFPH "\">%s</a>",
++                         link2[0] != '/' ? prefix.c_str() : "", SQUIDSBUFPRINT(link2),
++                         html_quote(parts->link));
+         }
+ 
+         break;
+ 
+     case '\0':
+-        snprintf(icon, 2048, "<img border=\"0\" src=\"%s\" alt=\"%-6s\">",
+-                 mimeGetIconURL(parts->name),
+-                 "[UNKNOWN]");
+-        snprintf(chdir, 2048, "<a href=\"%s/;type=d\"><img border=\"0\" src=\"%s\" "
+-                 "alt=\"[DIR]\"></a>",
+-                 rfc1738_escape_part(parts->name),
+-                 mimeGetIconURL("internal-dir"));
++        icon.appendf("<img border=\"0\" src=\"%s\" alt=\"%-6s\">",
++                     mimeGetIconURL(parts->name),
++                     "[UNKNOWN]");
++        chdir.appendf("<a href=\"%s/;type=d\"><img border=\"0\" src=\"%s\" "
++                      "alt=\"[DIR]\"></a>",
++                      rfc1738_escape_part(parts->name),
++                      mimeGetIconURL("internal-dir"));
+         break;
+ 
+     case '-':
+ 
+     default:
+-        snprintf(icon, 2048, "<img border=\"0\" src=\"%s\" alt=\"%-6s\">",
+-                 mimeGetIconURL(parts->name),
+-                 "[FILE]");
+-        snprintf(size, 2048, " %6" PRId64 "k", parts->size);
++        icon.appendf("<img border=\"0\" src=\"%s\" alt=\"%-6s\">",
++                     mimeGetIconURL(parts->name),
++                     "[FILE]");
++        size.appendf(" %6" PRId64 "k", parts->size);
+         break;
+     }
+ 
++    SBuf view, download;
+     if (parts->type != 'd') {
+         if (mimeGetViewOption(parts->name)) {
+-            snprintf(view, 2048, "<a href=\"%s%s;type=a\"><img border=\"0\" src=\"%s\" "
+-                     "alt=\"[VIEW]\"></a>",
+-                     prefix, href, mimeGetIconURL("internal-view"));
++            view.appendf("<a href=\"" SQUIDSBUFPH ";type=a\"><img border=\"0\" src=\"%s\" "
++                         "alt=\"[VIEW]\"></a>",
++                         SQUIDSBUFPRINT(href), mimeGetIconURL("internal-view"));
+         }
+ 
+         if (mimeGetDownloadOption(parts->name)) {
+-            snprintf(download, 2048, "<a href=\"%s%s;type=i\"><img border=\"0\" src=\"%s\" "
+-                     "alt=\"[DOWNLOAD]\"></a>",
+-                     prefix, href, mimeGetIconURL("internal-download"));
++            download.appendf("<a href=\"" SQUIDSBUFPH ";type=i\"><img border=\"0\" src=\"%s\" "
++                             "alt=\"[DOWNLOAD]\"></a>",
++                             SQUIDSBUFPRINT(href), mimeGetIconURL("internal-download"));
+         }
+     }
+ 
+     /* construct the table row from parts. */
+-    html = new MemBuf();
+-    html->init();
+-    html->appendf("<tr class=\"entry\">"
+-                  "<td class=\"icon\"><a href=\"%s%s\">%s</a></td>"
+-                  "<td class=\"filename\"><a href=\"%s%s\">%s</a></td>"
+-                  "<td class=\"date\">%s</td>"
+-                  "<td class=\"size\">%s</td>"
+-                  "<td class=\"actions\">%s%s%s%s</td>"
+-                  "</tr>\n",
+-                  prefix, href, icon,
+-                  prefix, href, html_quote(text),
+-                  parts->date,
+-                  size,
+-                  chdir, view, download, link);
++    html << "<tr class=\"entry\">"
++            "<td class=\"icon\"><a href=\"" << href << "\">" << icon << "</a></td>"
++            "<td class=\"filename\"><a href=\"" << href << "\">" << html_quote(text.c_str()) << "</a></td>"
++            "<td class=\"date\">" << parts->date << "</td>"
++            "<td class=\"size\">" << size << "</td>"
++            "<td class=\"actions\">" << chdir << view << download << link << "</td>"
++            "</tr>\n";
+ 
+     ftpListPartsFree(&parts);
+-    return html;
++    return true;
+ }
+ 
+ void
+@@ -909,7 +889,6 @@ Ftp::Gateway::parseListing()
+     char *end;
+     char *line;
+     char *s;
+-    MemBuf *t;
+     size_t linelen;
+     size_t usable;
+     size_t len = data.readBuf->contentSize();
+@@ -969,12 +948,14 @@ Ftp::Gateway::parseListing()
+         if (!strncmp(line, "total", 5))
+             continue;
+ 
+-        t = htmlifyListEntry(line);
++        MemBuf htmlPage;
++        htmlPage.init();
++        PackableStream html(htmlPage);
+ 
+-        if ( t != NULL) {
+-            debugs(9, 7, HERE << "listing append: t = {" << t->contentSize() << ", '" << t->content() << "'}");
+-            listing.append(t->content(), t->contentSize());
+-            delete t;
++        if (htmlifyListEntry(line, html)) {
++            html.flush();
++            debugs(9, 7, "listing append: t = {" << htmlPage.contentSize() << ", '" << htmlPage.content() << "'}");
++            listing.append(htmlPage.content(), htmlPage.contentSize());
+         }
+     }
+ 
+diff --git a/src/debug.cc b/src/debug.cc
+index 82ae6156..34bcf3fd 100644
+--- a/src/debug.cc
++++ b/src/debug.cc
+@@ -572,23 +572,27 @@ debugLogTime(void)
+     time_t t = getCurrentTime();
+ 
+     struct tm *tm;
+-    static char buf[128];
++    static char buf[128]; // arbitrary size, big enough for the below timestamp strings.
+     static time_t last_t = 0;
+ 
+     if (Debug::Level() > 1) {
+-        char buf2[128];
++        // 4 bytes smaller than buf to ensure .NNN catenation by snprintf()
++        // is safe and works even if strftime() fills its buffer.
++        char buf2[sizeof(buf)-4];
+         tm = localtime(&t);
+-        strftime(buf2, 127, "%Y/%m/%d %H:%M:%S", tm);
+-        buf2[127] = '\0';
+-        snprintf(buf, 127, "%s.%03d", buf2, (int) current_time.tv_usec / 1000);
++        strftime(buf2, sizeof(buf2), "%Y/%m/%d %H:%M:%S", tm);
++        buf2[sizeof(buf2)-1] = '\0';
++        const int sz = snprintf(buf, sizeof(buf), "%s.%03d", buf2, static_cast<int>(current_time.tv_usec / 1000));
++        assert(0 < sz && sz < static_cast<int>(sizeof(buf)));
+         last_t = t;
+     } else if (t != last_t) {
+         tm = localtime(&t);
+-        strftime(buf, 127, "%Y/%m/%d %H:%M:%S", tm);
++        const int sz = strftime(buf, sizeof(buf), "%Y/%m/%d %H:%M:%S", tm);
++        assert(0 < sz && sz <= static_cast<int>(sizeof(buf)));
+         last_t = t;
+     }
+ 
+-    buf[127] = '\0';
++    buf[sizeof(buf)-1] = '\0';
+     return buf;
+ }
+ 
+diff --git a/src/dlink.h b/src/dlink.h
+index e242064d..c8e34fe7 100644
+--- a/src/dlink.h
++++ b/src/dlink.h
+@@ -15,20 +15,16 @@ class dlink_node
+ {
+     MEMPROXY_CLASS(dlink_node);
+ public:
+-    dlink_node() : data(nullptr), prev(nullptr), next(nullptr) {}
+-
+-    void *data;
+-    dlink_node *prev;
+-    dlink_node *next;
++    void *data = nullptr;
++    dlink_node *prev = nullptr;
++    dlink_node *next = nullptr;
+ };
+ 
+ class dlink_list
+ {
+ public:
+-    dlink_list() : head(NULL), tail(NULL) {}
+-
+-    dlink_node *head;
+-    dlink_node *tail;
++    dlink_node *head = nullptr;
++    dlink_node *tail = nullptr;
+ };
+ 
+ extern dlink_list ClientActiveRequests;
+diff --git a/src/dns_internal.cc b/src/dns_internal.cc
+index 9ed20fdd..124c03c1 100644
+--- a/src/dns_internal.cc
++++ b/src/dns_internal.cc
+@@ -96,8 +96,6 @@ static const char *Rcodes[] = {
+     "Bad OPT Version or TSIG Signature Failure"
+ };
+ 
+-typedef struct _ns ns;
+-
+ typedef struct _sp sp;
+ 
+ class idns_query
+@@ -125,7 +123,6 @@ public:
+         ancount(0),
+         error(NULL)
+     {
+-        memset(&hash, 0, sizeof(hash));
+         memset(&query, 0, sizeof(query));
+         *buf = 0;
+         *name = 0;
+@@ -185,29 +182,31 @@ class nsvc
+     CBDATA_CLASS(nsvc);
+ 
+ public:
+-    explicit nsvc(int nsv) : ns(nsv), msglen(0), read_msglen(0), msg(new MemBuf()), queue(new MemBuf()), busy(true) {}
++    explicit nsvc(size_t nsv) : ns(nsv), msg(new MemBuf()), queue(new MemBuf()) {}
+     ~nsvc();
+ 
+-    int ns;
++    size_t ns = 0;
+     Comm::ConnectionPointer conn;
+-    unsigned short msglen;
+-    int read_msglen;
+-    MemBuf *msg;
+-    MemBuf *queue;
+-    bool busy;
++    unsigned short msglen = 0;
++    int read_msglen = 0;
++    MemBuf *msg = nullptr;
++    MemBuf *queue = nullptr;
++    bool busy = true;
+ };
+ 
+ CBDATA_CLASS_INIT(nsvc);
+ 
+-struct _ns {
++class ns
++{
++public:
+     Ip::Address S;
+-    int nqueries;
+-    int nreplies;
++    int nqueries = 0;
++    int nreplies = 0;
+ #if WHEN_EDNS_RESPONSES_ARE_PARSED
+-    int last_seen_edns;
++    int last_seen_edns = 0;
+ #endif
+-    bool mDNSResolver;
+-    nsvc *vc;
++    bool mDNSResolver = false;
++    nsvc *vc = nullptr;
+ };
+ 
+ namespace Dns
+@@ -231,10 +230,8 @@ struct _sp {
+     int queries;
+ };
+ 
+-static ns *nameservers = NULL;
++static std::vector<ns> nameservers;
+ static sp *searchpath = NULL;
+-static int nns = 0;
+-static int nns_alloc = 0;
+ static int nns_mdns_count = 0;
+ static int npc = 0;
+ static int npc_alloc = 0;
+@@ -275,7 +272,6 @@ static OBJH idnsStats;
+ static void idnsAddNameserver(const char *buf);
+ static void idnsAddMDNSNameservers();
+ static void idnsAddPathComponent(const char *buf);
+-static void idnsFreeNameservers(void);
+ static void idnsFreeSearchpath(void);
+ static bool idnsParseNameservers(void);
+ static bool idnsParseResolvConf(void);
+@@ -326,14 +322,14 @@ idnsAddMDNSNameservers()
+     // mDNS resolver addresses are explicit multicast group IPs
+     if (Ip::EnableIpv6) {
+         idnsAddNameserver("FF02::FB");
+-        nameservers[nns-1].S.port(5353);
+-        nameservers[nns-1].mDNSResolver = true;
++        nameservers.back().S.port(5353);
++        nameservers.back().mDNSResolver = true;
+         ++nns_mdns_count;
+     }
+ 
+     idnsAddNameserver("224.0.0.251");
+-    nameservers[nns-1].S.port(5353);
+-    nameservers[nns-1].mDNSResolver = true;
++    nameservers.back().S.port(5353);
++    nameservers.back().mDNSResolver = true;
+ 
+     ++nns_mdns_count;
+ }
+@@ -359,33 +355,14 @@ idnsAddNameserver(const char *buf)
+         return;
+     }
+ 
+-    if (nns == nns_alloc) {
+-        int oldalloc = nns_alloc;
+-        ns *oldptr = nameservers;
+-
+-        if (nns_alloc == 0)
+-            nns_alloc = 2;
+-        else
+-            nns_alloc <<= 1;
+-
+-        nameservers = (ns *)xcalloc(nns_alloc, sizeof(*nameservers));
+-
+-        if (oldptr && oldalloc)
+-            memcpy(nameservers, oldptr, oldalloc * sizeof(*nameservers));
+-
+-        if (oldptr)
+-            safe_free(oldptr);
+-    }
+-
+-    assert(nns < nns_alloc);
++    nameservers.emplace_back(ns());
+     A.port(NS_DEFAULTPORT);
+-    nameservers[nns].S = A;
++    nameservers.back().S = A;
+ #if WHEN_EDNS_RESPONSES_ARE_PARSED
+-    nameservers[nns].last_seen_edns = RFC1035_DEFAULT_PACKET_SZ;
++    nameservers.back().last_seen_edns = RFC1035_DEFAULT_PACKET_SZ;
+     // TODO generate a test packet to probe this NS from EDNS size and ability.
+ #endif
+-    debugs(78, 3, "idnsAddNameserver: Added nameserver #" << nns << " (" << A << ")");
+-    ++nns;
++    debugs(78, 3, "Added nameserver #" << nameservers.size()-1 << " (" << A << ")");
+ }
+ 
+ static void
+@@ -417,13 +394,6 @@ idnsAddPathComponent(const char *buf)
+     ++npc;
+ }
+ 
+-static void
+-idnsFreeNameservers(void)
+-{
+-    safe_free(nameservers);
+-    nns = nns_alloc = 0;
+-}
+-
+ static void
+ idnsFreeSearchpath(void)
+ {
+@@ -778,12 +748,12 @@ idnsStats(StoreEntry * sentry)
+     storeAppendPrintf(sentry, "IP ADDRESS                                     # QUERIES # REPLIES Type\n");
+     storeAppendPrintf(sentry, "---------------------------------------------- --------- --------- --------\n");
+ 
+-    for (i = 0; i < nns; ++i) {
++    for (const auto &server : nameservers) {
+         storeAppendPrintf(sentry, "%-45s %9d %9d %s\n",  /* Let's take the maximum: (15 IPv4/45 IPv6) */
+-                          nameservers[i].S.toStr(buf,MAX_IPSTRLEN),
+-                          nameservers[i].nqueries,
+-                          nameservers[i].nreplies,
+-                          nameservers[i].mDNSResolver?"multicast":"recurse");
++                          server.S.toStr(buf,MAX_IPSTRLEN),
++                          server.nqueries,
++                          server.nreplies,
++                          server.mDNSResolver?"multicast":"recurse");
+     }
+ 
+     storeAppendPrintf(sentry, "\nRcode Matrix:\n");
+@@ -893,7 +863,7 @@ idnsInitVCConnected(const Comm::ConnectionPointer &conn, Comm::Flag status, int,
+ 
+     if (status != Comm::OK || !conn) {
+         char buf[MAX_IPSTRLEN] = "";
+-        if (vc->ns < nns)
++        if (vc->ns < nameservers.size())
+             nameservers[vc->ns].S.toStr(buf,MAX_IPSTRLEN);
+         debugs(78, DBG_IMPORTANT, HERE << "Failed to connect to nameserver " << buf << " using TCP.");
+         return;
+@@ -920,15 +890,15 @@ nsvc::~nsvc()
+ {
+     delete queue;
+     delete msg;
+-    if (ns < nns) // XXX: idnsShutdownAndFreeState may have freed nameservers[]
++    if (ns < nameservers.size()) // XXX: idnsShutdownAndFreeState may have freed nameservers[]
+         nameservers[ns].vc = NULL;
+ }
+ 
+ static void
+-idnsInitVC(int nsv)
++idnsInitVC(size_t nsv)
+ {
++    assert(nsv < nameservers.size());
+     nsvc *vc = new nsvc(nsv);
+-    assert(nsv < nns);
+     assert(vc->conn == NULL); // MUST be NULL from the construction process!
+     nameservers[nsv].vc = vc;
+ 
+@@ -950,9 +920,9 @@ idnsInitVC(int nsv)
+ }
+ 
+ static void
+-idnsSendQueryVC(idns_query * q, int nsn)
++idnsSendQueryVC(idns_query * q, size_t nsn)
+ {
+-    assert(nsn < nns);
++    assert(nsn < nameservers.size());
+     if (nameservers[nsn].vc == NULL)
+         idnsInitVC(nsn);
+ 
+@@ -991,7 +961,7 @@ idnsSendQuery(idns_query * q)
+         return;
+     }
+ 
+-    if (nns <= 0) {
++    if (nameservers.empty()) {
+         debugs(78, DBG_IMPORTANT, "WARNING: idnsSendQuery: Can't send query, no DNS nameservers known!");
+         return;
+     }
+@@ -1001,14 +971,15 @@ idnsSendQuery(idns_query * q)
+     assert(q->lru.prev == NULL);
+ 
+     int x = -1, y = -1;
+-    int nsn;
++    size_t nsn;
++    const auto nsCount = nameservers.size();
+ 
+     do {
+         // only use mDNS resolvers for mDNS compatible queries
+         if (!q->permit_mdns)
+-            nsn = nns_mdns_count + q->nsends % (nns-nns_mdns_count);
++            nsn = nns_mdns_count + q->nsends % (nsCount - nns_mdns_count);
+         else
+-            nsn = q->nsends % nns;
++            nsn = q->nsends % nsCount;
+ 
+         if (q->need_vc) {
+             idnsSendQueryVC(q, nsn);
+@@ -1030,7 +1001,7 @@ idnsSendQuery(idns_query * q)
+         if (x < 0 && nameservers[nsn].S.isIPv4())
+             debugs(50, DBG_IMPORTANT, MYNAME << "FD " << DnsSocketA << ": sendto: " << xstrerr(xerrno));
+ 
+-    } while ( (x<0 && y<0) && q->nsends % nns != 0);
++    } while ( (x<0 && y<0) && q->nsends % nsCount != 0);
+ 
+     if (y > 0) {
+         fd_bytes(DnsSocketB, y, FD_WRITE);
+@@ -1049,9 +1020,7 @@ idnsSendQuery(idns_query * q)
+ static int
+ idnsFromKnownNameserver(Ip::Address const &from)
+ {
+-    int i;
+-
+-    for (i = 0; i < nns; ++i) {
++    for (int i = 0; static_cast<size_t>(i) < nameservers.size(); ++i) {
+         if (nameservers[i].S != from)
+             continue;
+ 
+@@ -1232,8 +1201,8 @@ idnsGrokReply(const char *buf, size_t sz, int /*from_ns*/)
+             // the altered NS was limiting the whole group.
+             max_shared_edns = q->edns_seen;
+             // may be limited by one of the others still
+-            for (int i = 0; i < nns; ++i)
+-                max_shared_edns = min(max_shared_edns, nameservers[i].last_seen_edns);
++            for (const auto &server : nameservers)
++                max_shared_edns = min(max_shared_edns, server.last_seen_edns);
+         } else {
+             nameservers[from_ns].last_seen_edns = q->edns_seen;
+             // maybe reduce the global limit downwards to accomodate this NS
+@@ -1435,10 +1404,11 @@ idnsCheckQueue(void *)
+     idns_query *q;
+     event_queued = 0;
+ 
+-    if (0 == nns)
++    if (nameservers.empty())
+         /* name servers went away; reconfiguring or shutting down */
+         return;
+ 
++    const auto nsCount = nameservers.size();
+     for (n = lru_list.tail; n; n = p) {
+ 
+         p = n->prev;
+@@ -1449,7 +1419,7 @@ idnsCheckQueue(void *)
+             break;
+ 
+         /* Query timer still running? */
+-        if ((time_msec_t)tvSubMsec(q->sent_t, current_time) < (Config.Timeout.idns_retransmit * 1 << ((q->nsends - 1) / nns))) {
++        if ((time_msec_t)tvSubMsec(q->sent_t, current_time) < (Config.Timeout.idns_retransmit * 1 << ((q->nsends - 1) / nsCount))) {
+             dlinkDelete(&q->lru, &lru_list);
+             q->queue_t = current_time;
+             dlinkAdd(q, &q->lru, &lru_list);
+@@ -1504,7 +1474,7 @@ idnsReadVC(const Comm::ConnectionPointer &conn, char *buf, size_t len, Comm::Fla
+         return;
+     }
+ 
+-    assert(vc->ns < nns);
++    assert(vc->ns < nameservers.size());
+     debugs(78, 3, HERE << conn << ": received " << vc->msg->contentSize() << " bytes via TCP from " << nameservers[vc->ns].S << ".");
+ 
+     idnsGrokReply(vc->msg->buf, vc->msg->contentSize(), vc->ns);
+@@ -1623,7 +1593,7 @@ Dns::Init(void)
+         }
+     }
+ 
+-    assert(0 == nns);
++    assert(nameservers.empty());
+     idnsAddMDNSNameservers();
+     bool nsFound = idnsParseNameservers();
+ 
+@@ -1683,15 +1653,15 @@ idnsShutdownAndFreeState(const char *reason)
+         DnsSocketB = -1;
+     }
+ 
+-    for (int i = 0; i < nns; ++i) {
+-        if (nsvc *vc = nameservers[i].vc) {
++    for (const auto &server : nameservers) {
++        if (const auto vc = server.vc) {
+             if (Comm::IsConnOpen(vc->conn))
+                 vc->conn->close();
+         }
+     }
+ 
+     // XXX: vcs are not closed/freed yet and may try to access nameservers[]
+-    idnsFreeNameservers();
++    nameservers.clear();
+     idnsFreeSearchpath();
+ }
+ 
+@@ -1784,7 +1754,7 @@ idnsALookup(const char *name, IDNSCB * callback, void *data)
+     q->query_id = idnsQueryID();
+ 
+     int nd = 0;
+-    for (unsigned int i = 0; i < nameLength; ++i)
++    for (size_t i = 0; i < nameLength; ++i)
+         if (name[i] == '.')
+             ++nd;
+ 
+@@ -1871,7 +1841,7 @@ idnsPTRLookup(const Ip::Address &addr, IDNSCB * callback, void *data)
+ variable_list *
+ snmp_netDnsFn(variable_list * Var, snint * ErrP)
+ {
+-    int i, n = 0;
++    int n = 0;
+     variable_list *Answer = NULL;
+     MemBuf tmp;
+     debugs(49, 5, "snmp_netDnsFn: Processing request: " << snmpDebugOid(Var->name, Var->name_length, tmp));
+@@ -1881,8 +1851,8 @@ snmp_netDnsFn(variable_list * Var, snint * ErrP)
+ 
+     case DNS_REQ:
+ 
+-        for (i = 0; i < nns; ++i)
+-            n += nameservers[i].nqueries;
++        for (const auto &server : nameservers)
++            n += server.nqueries;
+ 
+         Answer = snmp_var_new_integer(Var->name, Var->name_length,
+                                       n,
+@@ -1891,8 +1861,8 @@ snmp_netDnsFn(variable_list * Var, snint * ErrP)
+         break;
+ 
+     case DNS_REP:
+-        for (i = 0; i < nns; ++i)
+-            n += nameservers[i].nreplies;
++        for (const auto &server : nameservers)
++            n += server.nreplies;
+ 
+         Answer = snmp_var_new_integer(Var->name, Var->name_length,
+                                       n,
+@@ -1902,7 +1872,7 @@ snmp_netDnsFn(variable_list * Var, snint * ErrP)
+ 
+     case DNS_SERVERS:
+         Answer = snmp_var_new_integer(Var->name, Var->name_length,
+-                                      nns,
++                                      nameservers.size(),
+                                       SMI_COUNTER32);
+ 
+         break;
+diff --git a/src/esi/Element.h b/src/esi/Element.h
+index 60fb7348..9859f93a 100644
+--- a/src/esi/Element.h
++++ b/src/esi/Element.h
+@@ -13,6 +13,8 @@
+ #include "Debug.h"
+ #include "esi/Segment.h"
+ 
++#include <vector>
++
+ typedef enum {
+     ESI_PROCESS_COMPLETE = 0,
+     ESI_PROCESS_PENDING_WONTFAIL = 1,
+@@ -83,5 +85,21 @@ public:
+     virtual void finish() = 0;
+ };
+ 
++/// ESI protocol types and operators
++namespace Esi {
++
++/// an ordered set of ESI elements
++typedef std::vector<ESIElement::Pointer> Elements;
++
++} // namespace Esi
++
++/// Call finish() and set to nil the given element. Element may already be nil.
++/// When element is part of a set, use pos to indicate position/ID
++/// for debugging.
++extern void FinishAnElement(ESIElement::Pointer &, int pos = -1);
++
++// for all elements call finish() and set Pointer to nil
++extern void FinishAllElements(Esi::Elements &);
++
+ #endif /* SQUID_ESIELEMENT_H */
+ 
+diff --git a/src/esi/ElementList.h b/src/esi/ElementList.h
+deleted file mode 100644
+index 278e7a64..00000000
+--- a/src/esi/ElementList.h
++++ /dev/null
+@@ -1,41 +0,0 @@
+-/*
+- * Copyright (C) 1996-2018 The Squid Software Foundation and contributors
+- *
+- * Squid software is distributed under GPLv2+ license and includes
+- * contributions from numerous individuals and organizations.
+- * Please see the COPYING and CONTRIBUTORS files for details.
+- */
+-
+-/* DEBUG: section 86    ESI processing */
+-
+-#ifndef SQUID_ELEMENTLIST_H
+-#define SQUID_ELEMENTLIST_H
+-
+-#include "esi/Element.h"
+-
+-class ElementList
+-{
+-
+-public:
+-    ElementList();
+-    ~ElementList();
+-
+-    ESIElement::Pointer &operator[](int);
+-    ESIElement::Pointer const &operator[](int)const;
+-    ESIElement::Pointer * elements; /* unprocessed or rendered nodes */
+-    void pop_front (size_t const);
+-    void push_back(ESIElement::Pointer &);
+-    size_t size() const;
+-    void setNULL (int start, int end);
+-
+-    int allocedcount;
+-    size_t allocedsize;
+-    int elementcount;
+-
+-private:
+-    ElementList(ElementList const &);
+-    ElementList &operator=(ElementList const&);
+-};
+-
+-#endif /* SQUID_ELEMENTLIST_H */
+-
+diff --git a/src/esi/Esi.cc b/src/esi/Esi.cc
+index 136b2528..36b51c2a 100644
+--- a/src/esi/Esi.cc
++++ b/src/esi/Esi.cc
+@@ -176,7 +176,7 @@ public:
+     Pointer makeUsable(esiTreeParentPtr, ESIVarState &) const;
+     void NULLUnChosen();
+ 
+-    ElementList elements;
++    Esi::Elements elements;
+     int chosenelement;
+     ESIElement::Pointer otherwise;
+     void finish();
+@@ -1884,6 +1884,7 @@ esiTry::finish()
+ esiChoose::~esiChoose()
+ {
+     debugs(86, 5, "esiChoose::~esiChoose " << this);
++    FinishAllElements(elements); // finish if not already done
+ }
+ 
+ esiChoose::esiChoose(esiTreeParentPtr aParent) :
+@@ -1963,35 +1964,38 @@ esiChoose::selectElement()
+     }
+ }
+ 
++// TODO: make ESIElement destructor call finish() instead so it is
++//       a) only called when an element ref-count is 0, and
++//       b) caller can elements.clear() instead of doing this
+ void
+-esiChoose::finish()
++FinishAnElement(ESIElement::Pointer &element, int pos)
+ {
+-    elements.setNULL(0, elements.size());
+-
+-    if (otherwise.getRaw())
+-        otherwise->finish();
+-
+-    otherwise = NULL;
++    if (element)
++        element->finish();
+ 
+-    parent = NULL;
++    debugs(86, 5, "setting index " << pos << ", pointer " << (void*)element.getRaw() << " to nil");
++    element = nullptr;
+ }
+ 
+ void
+-ElementList::setNULL (int start, int end)
++FinishAllElements(Esi::Elements &elements)
+ {
+-    assert (start >= 0 && start <= elementcount);
+-    assert (end >= 0 && end <= elementcount);
++    int pos = 0;
++    for (auto &element : elements)
++        FinishAnElement(element, pos++);
++}
++
+ 
+-    for (int loopPosition = start; loopPosition < end; ++loopPosition) {
+-        if (elements[loopPosition].getRaw())
+-            elements[loopPosition]->finish();
++void
++esiChoose::finish()
++{
++    FinishAllElements(elements);
+ 
+-        debugs(86, 5, "esiSequence::NULLElements: Setting index " <<
+-               loopPosition << ", pointer " <<
+-               elements[loopPosition].getRaw() << " to NULL");
++    if (otherwise.getRaw())
++        otherwise->finish();
+ 
+-        elements[loopPosition] = NULL;
+-    }
++    otherwise = nullptr;
++    parent = nullptr;
+ }
+ 
+ void
+@@ -2003,11 +2007,14 @@ esiChoose::NULLUnChosen()
+ 
+         otherwise = NULL;
+ 
+-        elements.setNULL (0, chosenelement);
++        int pos = 0;
++        for (auto &element : elements) {
++            if (pos != chosenelement)
++                FinishAnElement(element, pos++);
++        }
+ 
+-        elements.setNULL (chosenelement + 1, elements.size());
+     } else if (otherwise.getRaw()) {
+-        elements.setNULL (0, elements.size());
++        FinishAllElements(elements);
+     }
+ }
+ 
+@@ -2059,7 +2066,7 @@ void
+ esiChoose::fail(ESIElement * source, char const *anError)
+ {
+     checkValidSource (source);
+-    elements.setNULL (0, elements.size());
++    FinishAllElements(elements);
+ 
+     if (otherwise.getRaw())
+         otherwise->finish();
+@@ -2138,59 +2145,6 @@ esiChoose::makeUsable(esiTreeParentPtr newParent, ESIVarState &newVarState) cons
+     return result;
+ }
+ 
+-/* ElementList */
+-ElementList::ElementList () : elements(NULL), allocedcount(0), allocedsize(0), elementcount (0)
+-{}
+-
+-ElementList::~ElementList()
+-{
+-    debugs(86, 5, "ElementList::~ElementList " << this);
+-    setNULL(0, elementcount);
+-
+-    if (elements)
+-        memFreeBuf (allocedsize, elements);
+-}
+-
+-ESIElement::Pointer &
+-ElementList::operator [] (int index)
+-{
+-    return elements[index];
+-}
+-
+-ESIElement::Pointer const &
+-ElementList::operator [] (int index) const
+-{
+-    return elements[index];
+-}
+-
+-void
+-ElementList::pop_front (size_t const count)
+-{
+-    if (!count)
+-        return;
+-
+-    memmove(elements, &elements[count], (elementcount - count)  * sizeof (ESIElement::Pointer));
+-
+-    elementcount -= count;
+-}
+-
+-void
+-ElementList::push_back(ESIElement::Pointer &newElement)
+-{
+-    elements = (ESIElement::Pointer *)memReallocBuf (elements, ++elementcount * sizeof (ESIElement::Pointer),
+-               &allocedsize);
+-    assert (elements);
+-    allocedcount = elementcount;
+-    memset(&elements[elementcount - 1], '\0', sizeof (ESIElement::Pointer));
+-    elements[elementcount - 1] = newElement;
+-}
+-
+-size_t
+-ElementList::size() const
+-{
+-    return elementcount;
+-}
+-
+ /* esiWhen */
+ esiWhen::esiWhen(esiTreeParentPtr aParent, int attrcount, const char **attr,ESIVarState *aVar) :
+     esiSequence(aParent),
+diff --git a/src/esi/Makefile.am b/src/esi/Makefile.am
+index 49c237f4..99d31761 100644
+--- a/src/esi/Makefile.am
++++ b/src/esi/Makefile.am
+@@ -32,7 +32,6 @@ libesi_la_SOURCES = \
+ 	Context.h \
+ 	$(ESI_PARSER_SOURCES) \
+ 	Element.h \
+-	ElementList.h \
+ 	Esi.cc \
+ 	Esi.h \
+ 	Except.h \
+diff --git a/src/esi/Makefile.in b/src/esi/Makefile.in
+index 75de069f..56628bf9 100644
+--- a/src/esi/Makefile.in
++++ b/src/esi/Makefile.in
+@@ -173,10 +173,10 @@ LTLIBRARIES = $(noinst_LTLIBRARIES)
+ libesi_la_LIBADD =
+ am__libesi_la_SOURCES_DIST = Assign.cc Assign.h Attempt.h Context.cc \
+ 	Context.h ExpatParser.cc ExpatParser.h Libxml2Parser.cc \
+-	Libxml2Parser.h Element.h ElementList.h Esi.cc Esi.h Except.h \
+-	Expression.cc Expression.h Include.cc Include.h Literal.h \
+-	Module.cc Module.h Parser.cc Parser.h Segment.cc Segment.h \
+-	Sequence.cc Sequence.h Var.h VarState.cc VarState.h
++	Libxml2Parser.h Element.h Esi.cc Esi.h Except.h Expression.cc \
++	Expression.h Include.cc Include.h Literal.h Module.cc Module.h \
++	Parser.cc Parser.h Segment.cc Segment.h Sequence.cc Sequence.h \
++	Var.h VarState.cc VarState.h
+ @ENABLE_LIBEXPAT_TRUE@am__objects_1 = ExpatParser.lo
+ @ENABLE_LIBXML2_TRUE@am__objects_2 = Libxml2Parser.lo
+ am__objects_3 = $(am__objects_1) $(am__objects_2)
+@@ -744,7 +744,6 @@ libesi_la_SOURCES = \
+ 	Context.h \
+ 	$(ESI_PARSER_SOURCES) \
+ 	Element.h \
+-	ElementList.h \
+ 	Esi.cc \
+ 	Esi.h \
+ 	Except.h \
+diff --git a/src/esi/Sequence.cc b/src/esi/Sequence.cc
+index deb7295e..5e129197 100644
+--- a/src/esi/Sequence.cc
++++ b/src/esi/Sequence.cc
+@@ -27,6 +27,7 @@ class esiExcept;
+ esiSequence::~esiSequence ()
+ {
+     debugs(86, 5, "esiSequence::~esiSequence " << this);
++    FinishAllElements(elements); // finish if not already done
+ }
+ 
+ esiSequence::esiSequence(esiTreeParentPtr aParent, bool incrementalFlag) :
+@@ -88,12 +89,13 @@ esiSequence::render(ESISegment::Pointer output)
+ 
+     for (size_t i = 0; i < processedcount; ++i) {
+         elements[i]->render(output);
+-        elements.setNULL(i,i+1);
++        FinishAnElement(elements[i], i);
+         /* FIXME: pass a ESISegment ** ? */
+         output = output->tail();
+     }
+ 
+-    elements.pop_front (processedcount);
++    // prune completed elements
++    elements.erase(elements.begin(), elements.begin() + processedcount);
+     processedcount = 0;
+     assert (output->next == NULL);
+ }
+@@ -102,7 +104,7 @@ void
+ esiSequence::finish()
+ {
+     debugs(86, 5, "esiSequence::finish: " << this << " is finished");
+-    elements.setNULL(0, elements.size());
++    FinishAllElements(elements);
+     parent = NULL;
+ }
+ 
+@@ -126,7 +128,7 @@ esiSequence::provideData (ESISegment::Pointer data, ESIElement *source)
+     assert (index >= 0);
+ 
+     /* remove the current node */
+-    elements.setNULL(index, index+1);
++    FinishAnElement(elements[index], index);
+ 
+     /* create a literal */
+     esiLiteral *temp = new esiLiteral (data);
+@@ -267,7 +269,7 @@ esiSequence::process (int inheritedVarsFlag)
+             return processingResult;
+ 
+         if (processingResult == ESI_PROCESS_FAILED) {
+-            elements.setNULL (0, elements.size());
++            FinishAllElements(elements);
+             failed = true;
+             parent = NULL;
+             processing = false;
+@@ -313,7 +315,7 @@ esiSequence::fail (ESIElement *source, char const *anError)
+ 
+     debugs(86, 5, "esiSequence::fail: " << this << " has failed.");
+     parent->fail (this, anError);
+-    elements.setNULL(0, elements.size());
++    FinishAllElements(elements);
+     parent = NULL;
+ }
+ 
+diff --git a/src/esi/Sequence.h b/src/esi/Sequence.h
+index 81120bed..10c1257a 100644
+--- a/src/esi/Sequence.h
++++ b/src/esi/Sequence.h
+@@ -12,7 +12,6 @@
+ #define SQUID_ESISEQUENCE_H
+ 
+ #include "esi/Element.h"
+-#include "esi/ElementList.h"
+ #include "mem/forward.h"
+ 
+ /* esiSequence */
+@@ -37,7 +36,7 @@ public:
+     void makeUsableElements(esiSequence const &old, ESIVarState &);
+     Pointer makeUsable(esiTreeParentPtr, ESIVarState &) const;
+ 
+-    ElementList elements; /* unprocessed or rendered nodes */
++    Esi::Elements elements; /* unprocessed or rendered nodes */
+     size_t processedcount;
+ 
+     struct {
+diff --git a/src/eui/Eui64.h b/src/eui/Eui64.h
+index 7f59747b..1ce7c800 100644
+--- a/src/eui/Eui64.h
++++ b/src/eui/Eui64.h
+@@ -36,11 +36,9 @@ class Eui64
+ 
+ public:
+     Eui64() { clear(); }
+-    Eui64(const Eui64 &t) { memcpy(this, &t, sizeof(Eui64)); }
+-    Eui64& operator= (const Eui64 &t) {memcpy(this, &t, sizeof(Eui64)); return *this;}
++
+     bool operator== (const Eui64 &t) const { return (memcmp(eui,t.eui,SZ_EUI64_BUF) == 0); }
+     bool operator< (const Eui64 &t) const { return (memcmp(eui,t.eui,SZ_EUI64_BUF) < 0); }
+-    ~Eui64() {}
+ 
+     const unsigned char *get(void);
+ 
+diff --git a/src/fqdncache.cc b/src/fqdncache.cc
+index b750dbad..7b66dcda 100644
+--- a/src/fqdncache.cc
++++ b/src/fqdncache.cc
+@@ -708,8 +708,7 @@ fqdncache_init(void)
+     debugs(35, 3, "Initializing FQDN Cache...");
+ 
+     memset(&FqdncacheStats, '\0', sizeof(FqdncacheStats));
+-
+-    memset(&lru_list, '\0', sizeof(lru_list));
++    lru_list = dlink_list();
+ 
+     fqdncache_high = (long) (((float) Config.fqdncache.size *
+                               (float) FQDN_HIGH_WATER) / (float) 100);
+diff --git a/src/fs/rock/RockRebuild.cc b/src/fs/rock/RockRebuild.cc
+index 25fe4e71..4bb062ed 100644
+--- a/src/fs/rock/RockRebuild.cc
++++ b/src/fs/rock/RockRebuild.cc
+@@ -213,7 +213,6 @@ Rock::Rebuild::Rebuild(SwapDir *dir): AsyncJob("Rock::Rebuild"),
+     validationPos(0)
+ {
+     assert(sd);
+-    memset(&counts, 0, sizeof(counts));
+     dbSize = sd->diskOffsetLimit(); // we do not care about the trailer waste
+     dbSlotSize = sd->slotSize;
+     dbEntryLimit = sd->entryLimitActual();
+diff --git a/src/fs/ufs/UFSSwapDir.cc b/src/fs/ufs/UFSSwapDir.cc
+index 4d70377c..1b63d2f3 100644
+--- a/src/fs/ufs/UFSSwapDir.cc
++++ b/src/fs/ufs/UFSSwapDir.cc
+@@ -45,27 +45,23 @@ class UFSCleanLog : public SwapDir::CleanLog
+ {
+ 
+ public:
+-    UFSCleanLog(SwapDir *);
+-    /** Get the next entry that is a candidate for clean log writing
+-     */
++    UFSCleanLog(SwapDir *aSwapDir) : sd(aSwapDir) {}
++
++    /// Get the next entry that is a candidate for clean log writing
+     virtual const StoreEntry *nextEntry();
+-    /** "write" an entry to the clean log file.
+-     */
++
++    /// "write" an entry to the clean log file.
+     virtual void write(StoreEntry const &);
+-    char *cur;
+-    char *newLog;
+-    char *cln;
+-    char *outbuf;
+-    off_t outbuf_offset;
+-    int fd;
+-    RemovalPolicyWalker *walker;
+-    SwapDir *sd;
+-};
+ 
+-UFSCleanLog::UFSCleanLog(SwapDir *aSwapDir) :
+-    cur(NULL), newLog(NULL), cln(NULL), outbuf(NULL),
+-    outbuf_offset(0), fd(-1),walker(NULL), sd(aSwapDir)
+-{}
++    SBuf cur;
++    SBuf newLog;
++    SBuf cln;
++    char *outbuf = nullptr;
++    off_t outbuf_offset = 0;
++    int fd = -1;
++    RemovalPolicyWalker *walker = nullptr;
++    SwapDir *sd = nullptr;
++};
+ 
+ const StoreEntry *
+ UFSCleanLog::nextEntry()
+@@ -106,7 +102,7 @@ UFSCleanLog::write(StoreEntry const &e)
+             debugs(50, DBG_CRITICAL, MYNAME << "Current swap logfile not replaced.");
+             file_close(fd);
+             fd = -1;
+-            unlink(newLog);
++            unlink(newLog.c_str());
+             sd->cleanLog = NULL;
+             delete this;
+             return;
+@@ -686,39 +682,41 @@ Fs::Ufs::UFSSwapDir::createSwapSubDirs()
+     }
+ }
+ 
+-char *
++SBuf
+ Fs::Ufs::UFSSwapDir::logFile(char const *ext) const
+ {
+-    LOCAL_ARRAY(char, lpath, MAXPATHLEN);
+-    LOCAL_ARRAY(char, pathtmp, MAXPATHLEN);
+-    LOCAL_ARRAY(char, digit, 32);
+-    char *pathtmp2;
++    SBuf lpath;
+ 
+     if (Config.Log.swap) {
+-        xstrncpy(pathtmp, path, MAXPATHLEN - 64);
+-        pathtmp2 = pathtmp;
++        static char pathtmp[MAXPATHLEN];
++        char *pathtmp2 = xstrncpy(pathtmp, path, MAXPATHLEN - 64);
+ 
+-        while ((pathtmp2 = strchr(pathtmp2, '/')) != NULL)
++        // replace all '/' with '.'
++        while ((pathtmp2 = strchr(pathtmp2, '/')))
+             *pathtmp2 = '.';
+ 
+-        while (strlen(pathtmp) && pathtmp[strlen(pathtmp) - 1] == '.')
+-            pathtmp[strlen(pathtmp) - 1] = '\0';
++        // remove any trailing '.' characters
++        int pos = strlen(pathtmp);
++        while (pos && pathtmp[pos-1] == '.')
++            pathtmp[--pos] = '\0';
+ 
++        // remove any prefix '.' characters
+         for (pathtmp2 = pathtmp; *pathtmp2 == '.'; ++pathtmp2);
+-        snprintf(lpath, MAXPATHLEN - 64, Config.Log.swap, pathtmp2);
+-
+-        if (strncmp(lpath, Config.Log.swap, MAXPATHLEN - 64) == 0) {
+-            strcat(lpath, ".");
+-            snprintf(digit, 32, "%02d", index);
+-            strncat(lpath, digit, 3);
++        // replace a '%s' (if any) in the config string
++        // with the resulting pathtmp2 string
++        lpath.appendf(Config.Log.swap, pathtmp2);
++
++        // is pathtmp2 was NOT injected, append numeric file extension
++        if (lpath.cmp(Config.Log.swap) == 0) {
++            lpath.append(".", 1);
++            lpath.appendf("%02d", index);
+         }
+     } else {
+-        xstrncpy(lpath, path, MAXPATHLEN - 64);
+-        strcat(lpath, "/swap.state");
++        lpath.append(path);
++        lpath.append("/swap.state", 11);
+     }
+ 
+-    if (ext)
+-        strncat(lpath, ext, 16);
++    lpath.append(ext); // may be nil, that is okay.
+ 
+     return lpath;
+ }
+@@ -735,9 +733,8 @@ Fs::Ufs::UFSSwapDir::openLog()
+         return;
+     }
+ 
+-    char *logPath;
+-    logPath = logFile();
+-    swaplog_fd = file_open(logPath, O_WRONLY | O_CREAT | O_BINARY);
++    SBuf logPath(logFile());
++    swaplog_fd = file_open(logPath.c_str(), O_WRONLY | O_CREAT | O_BINARY);
+ 
+     if (swaplog_fd < 0) {
+         int xerrno = errno;
+@@ -832,25 +829,23 @@ Fs::Ufs::UFSSwapDir::closeTmpSwapLog()
+     assert(rebuilding_);
+     rebuilding_ = false;
+ 
+-    char *swaplog_path = xstrdup(logFile(NULL)); // where the swaplog should be
+-    char *tmp_path = xstrdup(logFile(".new")); // the temporary file we have generated
+-    int fd;
++    SBuf swaplog_path(logFile()); // where the swaplog should be
++    SBuf tmp_path(logFile(".new"));
++
+     file_close(swaplog_fd);
+ 
+-    if (xrename(tmp_path, swaplog_path) < 0) {
+-        fatalf("Failed to rename log file %s to %s", tmp_path, swaplog_path);
++    if (!FileRename(tmp_path, swaplog_path)) {
++        fatalf("Failed to rename log file " SQUIDSBUFPH " to " SQUIDSBUFPH, SQUIDSBUFPRINT(tmp_path), SQUIDSBUFPRINT(swaplog_path));
+     }
+ 
+-    fd = file_open(swaplog_path, O_WRONLY | O_CREAT | O_BINARY);
++    int fd = file_open(swaplog_path.c_str(), O_WRONLY | O_CREAT | O_BINARY);
+ 
+     if (fd < 0) {
+         int xerrno = errno;
+         debugs(50, DBG_IMPORTANT, "ERROR: " << swaplog_path << ": " << xstrerr(xerrno));
+-        fatalf("Failed to open swap log %s", swaplog_path);
++        fatalf("Failed to open swap log " SQUIDSBUFPH, SQUIDSBUFPRINT(swaplog_path));
+     }
+ 
+-    xfree(swaplog_path);
+-    xfree(tmp_path);
+     swaplog_fd = fd;
+     debugs(47, 3, "Cache Dir #" << index << " log opened on FD " << fd);
+ }
+@@ -860,21 +855,16 @@ Fs::Ufs::UFSSwapDir::openTmpSwapLog(int *clean_flag, int *zero_flag)
+ {
+     assert(!rebuilding_);
+ 
+-    char *swaplog_path = xstrdup(logFile(NULL));
+-    char *clean_path = xstrdup(logFile(".last-clean"));
+-    char *new_path = xstrdup(logFile(".new"));
++    SBuf swaplog_path(logFile());
++    SBuf clean_path(logFile(".last-clean"));
++    SBuf new_path(logFile(".new"));
+ 
+     struct stat log_sb;
+ 
+     struct stat clean_sb;
+-    FILE *fp;
+-    int fd;
+ 
+-    if (::stat(swaplog_path, &log_sb) < 0) {
++    if (::stat(swaplog_path.c_str(), &log_sb) < 0) {
+         debugs(47, DBG_IMPORTANT, "Cache Dir #" << index << ": No log file");
+-        safe_free(swaplog_path);
+-        safe_free(clean_path);
+-        safe_free(new_path);
+         return NULL;
+     }
+ 
+@@ -885,12 +875,11 @@ Fs::Ufs::UFSSwapDir::openTmpSwapLog(int *clean_flag, int *zero_flag)
+         file_close(swaplog_fd);
+ 
+     /* open a write-only FD for the new log */
+-    fd = file_open(new_path, O_WRONLY | O_CREAT | O_TRUNC | O_BINARY);
+-
++    int fd = file_open(new_path.c_str(), O_WRONLY | O_CREAT | O_TRUNC | O_BINARY);
+     if (fd < 0) {
+         int xerrno = errno;
+         debugs(50, DBG_IMPORTANT, "ERROR: while opening swap log" << new_path << ": " << xstrerr(xerrno));
+-        fatalf("Failed to open swap log %s", new_path);
++        fatalf("Failed to open swap log " SQUIDSBUFPH, SQUIDSBUFPRINT(new_path));
+     }
+ 
+     swaplog_fd = fd;
+@@ -909,30 +898,23 @@ Fs::Ufs::UFSSwapDir::openTmpSwapLog(int *clean_flag, int *zero_flag)
+     }
+ 
+     /* open a read-only stream of the old log */
+-    fp = fopen(swaplog_path, "rb");
+-
++    FILE *fp = fopen(swaplog_path.c_str(), "rb");
+     if (!fp) {
+         int xerrno = errno;
+         debugs(50, DBG_CRITICAL, "ERROR: while opening " << swaplog_path << ": " << xstrerr(xerrno));
+-        fatalf("Failed to open swap log for reading %s", swaplog_path);
++        fatalf("Failed to open swap log for reading " SQUIDSBUFPH, SQUIDSBUFPRINT(swaplog_path));
+     }
+ 
+     memset(&clean_sb, '\0', sizeof(struct stat));
+ 
+-    if (::stat(clean_path, &clean_sb) < 0)
++    if (::stat(clean_path.c_str(), &clean_sb) < 0)
+         *clean_flag = 0;
+     else if (clean_sb.st_mtime < log_sb.st_mtime)
+         *clean_flag = 0;
+     else
+         *clean_flag = 1;
+ 
+-    safeunlink(clean_path, 1);
+-
+-    safe_free(swaplog_path);
+-
+-    safe_free(clean_path);
+-
+-    safe_free(new_path);
++    safeunlink(clean_path.c_str(), 1);
+ 
+     return fp;
+ }
+@@ -953,17 +935,17 @@ Fs::Ufs::UFSSwapDir::writeCleanStart()
+ #endif
+ 
+     cleanLog = NULL;
+-    state->newLog = xstrdup(logFile(".clean"));
+-    state->fd = file_open(state->newLog, O_WRONLY | O_CREAT | O_TRUNC | O_BINARY);
++    state->cur = logFile();
++    state->newLog = logFile(".clean");
++    state->fd = file_open(state->newLog.c_str(), O_WRONLY | O_CREAT | O_TRUNC | O_BINARY);
+ 
+     if (state->fd < 0) {
+-        xfree(state->newLog);
+         delete state;
+         return -1;
+     }
+ 
+-    state->cur = xstrdup(logFile(NULL));
+-    state->cln = xstrdup(logFile(".last-clean"));
++    state->cln = state->cur;
++    state->cln.append(".last-clean");
+     state->outbuf = (char *)xcalloc(CLEAN_BUF_SZ, 1);
+     state->outbuf_offset = 0;
+     /*copy the header */
+@@ -973,11 +955,11 @@ Fs::Ufs::UFSSwapDir::writeCleanStart()
+     state->outbuf_offset += header.record_size;
+ 
+     state->walker = repl->WalkInit(repl);
+-    ::unlink(state->cln);
++    ::unlink(state->cln.c_str());
+     debugs(47, 3, HERE << "opened " << state->newLog << ", FD " << state->fd);
+ #if HAVE_FCHMOD
+ 
+-    if (::stat(state->cur, &sb) == 0)
++    if (::stat(state->cur.c_str(), &sb) == 0)
+         fchmod(state->fd, sb.st_mode);
+ 
+ #endif
+@@ -1006,7 +988,7 @@ Fs::Ufs::UFSSwapDir::writeCleanDone()
+         debugs(50, DBG_CRITICAL, MYNAME << "Current swap logfile not replaced.");
+         file_close(state->fd);
+         state->fd = -1;
+-        ::unlink(state->newLog);
++        ::unlink(state->newLog.c_str());
+     }
+ 
+     safe_free(state->outbuf);
+@@ -1025,7 +1007,8 @@ Fs::Ufs::UFSSwapDir::writeCleanDone()
+         state->fd = -1;
+ #endif
+ 
+-        xrename(state->newLog, state->cur);
++        FileRename(state->newLog, state->cur);
++        // TODO handle rename errors
+     }
+ 
+     /* touch a timestamp file if we're not still validating */
+@@ -1034,15 +1017,9 @@ Fs::Ufs::UFSSwapDir::writeCleanDone()
+     else if (fd < 0)
+         (void) 0;
+     else
+-        file_close(file_open(state->cln, O_WRONLY | O_CREAT | O_TRUNC | O_BINARY));
++        file_close(file_open(state->cln.c_str(), O_WRONLY | O_CREAT | O_TRUNC | O_BINARY));
+ 
+     /* close */
+-    safe_free(state->cur);
+-
+-    safe_free(state->newLog);
+-
+-    safe_free(state->cln);
+-
+     if (state->fd >= 0)
+         file_close(state->fd);
+ 
+@@ -1330,10 +1307,6 @@ int
+ Fs::Ufs::UFSSwapDir::DirClean(int swap_index)
+ {
+     DIR *dir_pointer = NULL;
+-
+-    LOCAL_ARRAY(char, p1, MAXPATHLEN + 1);
+-    LOCAL_ARRAY(char, p2, MAXPATHLEN + 1);
+-
+     int files[20];
+     int swapfileno;
+     int fn;         /* same as swapfileno, but with dirn bits set */
+@@ -1350,21 +1323,22 @@ Fs::Ufs::UFSSwapDir::DirClean(int swap_index)
+     D1 = (swap_index / N0) % N1;
+     N2 = SD->l2;
+     D2 = ((swap_index / N0) / N1) % N2;
+-    snprintf(p1, MAXPATHLEN, "%s/%02X/%02X",
+-             SD->path, D1, D2);
++
++    SBuf p1;
++    p1.appendf("%s/%02X/%02X", SD->path, D1, D2);
+     debugs(36, 3, HERE << "Cleaning directory " << p1);
+-    dir_pointer = opendir(p1);
++    dir_pointer = opendir(p1.c_str());
+ 
+     if (!dir_pointer) {
+         int xerrno = errno;
+         if (xerrno == ENOENT) {
+             debugs(36, DBG_CRITICAL, MYNAME << "WARNING: Creating " << p1);
+-            if (mkdir(p1, 0777) == 0)
++            if (mkdir(p1.c_str(), 0777) == 0)
+                 return 0;
+         }
+ 
+         debugs(50, DBG_CRITICAL, MYNAME << p1 << ": " << xstrerr(xerrno));
+-        safeunlink(p1, 1);
++        safeunlink(p1.c_str(), 1);
+         return 0;
+     }
+ 
+@@ -1396,8 +1370,9 @@ Fs::Ufs::UFSSwapDir::DirClean(int swap_index)
+ 
+     for (n = 0; n < k; ++n) {
+         debugs(36, 3, HERE << "Cleaning file "<< std::setfill('0') << std::hex << std::uppercase << std::setw(8) << files[n]);
+-        snprintf(p2, MAXPATHLEN + 1, "%s/%08X", p1, files[n]);
+-        safeunlink(p2, 0);
++        SBuf p2(p1);
++        p2.appendf("/%08X", files[n]);
++        safeunlink(p2.c_str(), 0);
+         ++statCounter.swap.files_cleaned;
+     }
+ 
+diff --git a/src/fs/ufs/UFSSwapDir.h b/src/fs/ufs/UFSSwapDir.h
+index f129c447..164cf402 100644
+--- a/src/fs/ufs/UFSSwapDir.h
++++ b/src/fs/ufs/UFSSwapDir.h
+@@ -140,7 +140,7 @@ private:
+     int createDirectory(const char *path, int);
+     void createSwapSubDirs();
+     void dumpEntry(StoreEntry &) const;
+-    char *logFile(char const *ext = NULL)const;
++    SBuf logFile(char const *ext = nullptr) const;
+     void changeIO(DiskIOModule *);
+     bool optionIOParse(char const *option, const char *value, int reconfiguring);
+     void optionIODump(StoreEntry * e) const;
+diff --git a/src/fs_io.cc b/src/fs_io.cc
+index 96226c1f..899f2f2b 100644
+--- a/src/fs_io.cc
++++ b/src/fs_io.cc
+@@ -504,26 +504,27 @@ safeunlink(const char *s, int quiet)
+     }
+ }
+ 
+-/*
+- * Same as rename(2) but complains if something goes wrong;
+- * the caller is responsible for handing and explaining the
+- * consequences of errors.
+- */
+-int
+-xrename(const char *from, const char *to)
++bool
++FileRename(const SBuf &from, const SBuf &to)
+ {
+-    debugs(21, 2, "xrename: renaming " << from << " to " << to);
++    debugs(21, 2, "renaming " << from << " to " << to);
++
++    // non-const copy for c_str()
++    SBuf from2(from);
++    // ensure c_str() lifetimes even if `to` and `from` share memory
++    SBuf to2(to.rawContent(), to.length());
++
+ #if _SQUID_OS2_ || _SQUID_WINDOWS_
+-    remove(to);
++    remove(to2.c_str());
+ #endif
+ 
+-    if (0 == rename(from, to))
+-        return 0;
++    if (rename(from2.c_str(), to2.c_str()) == 0)
++        return true;
+ 
+     int xerrno = errno;
+-    debugs(21, errno == ENOENT ? 2 : 1, "xrename: Cannot rename " << from << " to " << to << ": " << xstrerr(xerrno));
++    debugs(21, (errno == ENOENT ? 2 : DBG_IMPORTANT), "Cannot rename " << from << " to " << to << ": " << xstrerr(xerrno));
+ 
+-    return -1;
++    return false;
+ }
+ 
+ int
+diff --git a/src/fs_io.h b/src/fs_io.h
+index bc051a6b..0abddb71 100644
+--- a/src/fs_io.h
++++ b/src/fs_io.h
+@@ -12,6 +12,7 @@
+ #define SQUID_FS_IO_H_
+ 
+ #include "mem/forward.h"
++#include "sbuf/forward.h"
+ #include "typedefs.h" //DRCB, DWCB
+ 
+ class MemBuf;
+@@ -47,7 +48,16 @@ void file_write(int, off_t, void const *, int len, DWCB *, void *, FREE *);
+ void file_write_mbuf(int fd, off_t, MemBuf mb, DWCB * handler, void *handler_data);
+ void file_read(int, char *, int, off_t, DRCB *, void *);
+ void safeunlink(const char *path, int quiet);
+-int xrename(const char *from, const char *to);
++
++/*
++ * Wrapper for rename(2) which complains if something goes wrong;
++ * the caller is responsible for handing and explaining the
++ * consequences of errors.
++ *
++ * \retval true successful rename
++ * \retval false an error occured
++ */
++bool FileRename(const SBuf &from, const SBuf &to);
+ 
+ int fsBlockSize(const char *path, int *blksize);
+ int fsStats(const char *, int *, int *, int *, int *);
+diff --git a/src/htcp.cc b/src/htcp.cc
+index 3f16aec6..5358fae6 100644
+--- a/src/htcp.cc
++++ b/src/htcp.cc
+@@ -152,18 +152,18 @@ private:
+     htcpDataHeader *dhdr = nullptr;
+ };
+ 
+-class htcpDetail {
++class htcpDetail
++{
+     MEMPROXY_CLASS(htcpDetail);
+ public:
+-    htcpDetail() : resp_hdrs(nullptr), respHdrsSz(0), entity_hdrs(nullptr), entityHdrsSz(0), cache_hdrs(nullptr), cacheHdrsSz(0) {}
+-    char *resp_hdrs;
+-    size_t respHdrsSz;
++    char *resp_hdrs = nullptr;
++    size_t respHdrsSz = 0;
+ 
+-    char *entity_hdrs;
+-    size_t entityHdrsSz;
++    char *entity_hdrs = nullptr;
++    size_t entityHdrsSz = 0;
+ 
+-    char *cache_hdrs;
+-    size_t cacheHdrsSz;
++    char *cache_hdrs = nullptr;
++    size_t cacheHdrsSz = 0;
+ };
+ 
+ class htcpStuff
+@@ -173,18 +173,14 @@ public:
+         op(o),
+         rr(r),
+         f1(f),
+-        response(0),
+-        reason(0),
+         msg_id(id)
+-    {
+-        memset(&D, 0, sizeof(D));
+-    }
++    {}
+ 
+-    int op;
+-    int rr;
+-    int f1;
+-    int response;
+-    int reason;
++    int op = 0;
++    int rr = 0;
++    int f1 = 0;
++    int response = 0;
++    int reason = 0;
+     uint32_t msg_id;
+     htcpSpecifier S;
+     htcpDetail D;
+@@ -1439,7 +1435,6 @@ htcpQuery(StoreEntry * e, HttpRequest * req, CachePeer * p)
+         return 0;
+ 
+     old_squid_format = p->options.htcp_oldsquid;
+-    memset(&flags, '\0', sizeof(flags));
+     snprintf(vbuf, sizeof(vbuf), "%d/%d",
+              req->http_ver.major, req->http_ver.minor);
+ 
+@@ -1489,7 +1484,6 @@ htcpClear(StoreEntry * e, const char *uri, HttpRequest * req, const HttpRequestM
+         return;
+ 
+     old_squid_format = p->options.htcp_oldsquid;
+-    memset(&flags, '\0', sizeof(flags));
+     snprintf(vbuf, sizeof(vbuf), "%d/%d",
+              req->http_ver.major, req->http_ver.minor);
+ 
+diff --git a/src/icmp/Icmp.h b/src/icmp/Icmp.h
+index 4ef77de0..cb33f9c0 100644
+--- a/src/icmp/Icmp.h
++++ b/src/icmp/Icmp.h
+@@ -22,20 +22,23 @@
+ #if USE_ICMP
+ 
+ /* This is a line-data format struct. DO NOT alter. */
+-struct pingerEchoData {
++struct pingerEchoData
++{
++    pingerEchoData() { memset(&payload, 0, sizeof(payload)); }
+     Ip::Address to;
+-    unsigned char opcode;
+-    int psize;
++    unsigned char opcode = '\0';
++    int psize = 0;
+     char payload[PINGER_PAYLOAD_SZ];
+ };
+ 
+ /* This is a line-data format struct. DO NOT alter. */
+ struct pingerReplyData {
++    pingerReplyData() { memset(&payload, 0, sizeof(payload)); }
+     Ip::Address from;
+-    unsigned char opcode;
+-    int rtt;
+-    int hops;
+-    int psize;
++    unsigned char opcode = '\0';
++    int rtt = 0;
++    int hops = 0;
++    int psize = 0;
+     char payload[PINGER_PAYLOAD_SZ];
+ };
+ 
+@@ -65,7 +68,7 @@ class Icmp
+ {
+ public:
+     Icmp();
+-    virtual ~Icmp() {};
++    virtual ~Icmp() {}
+ 
+     /// Start pinger helper and initiate control channel
+     virtual int Open() =0;
+diff --git a/src/icmp/IcmpPinger.cc b/src/icmp/IcmpPinger.cc
+index 0be1798f..1a0347db 100644
+--- a/src/icmp/IcmpPinger.cc
++++ b/src/icmp/IcmpPinger.cc
+@@ -166,7 +166,7 @@ IcmpPinger::Recv(void)
+     int n;
+     int guess_size;
+ 
+-    memset(&pecho, '\0', sizeof(pecho));
++    pecho = pingerEchoData();
+     n = recv(socket_from_squid, &pecho, sizeof(pecho), 0);
+ 
+     if (n < 0) {
+diff --git a/src/icmp/IcmpSquid.cc b/src/icmp/IcmpSquid.cc
+index ec31a733..a4544706 100644
+--- a/src/icmp/IcmpSquid.cc
++++ b/src/icmp/IcmpSquid.cc
+@@ -125,7 +125,6 @@ IcmpSquid::Recv()
+     static Ip::Address F;
+ 
+     Comm::SetSelect(icmp_sock, COMM_SELECT_READ, icmpSquidRecv, NULL, 0);
+-    memset(&preply, '\0', sizeof(pingerReplyData));
+     n = comm_udp_recv(icmp_sock,
+                       (char *) &preply,
+                       sizeof(pingerReplyData),
+diff --git a/src/icmp/net_db.cc b/src/icmp/net_db.cc
+index 2ef593cf..3b7dd909 100644
+--- a/src/icmp/net_db.cc
++++ b/src/icmp/net_db.cc
+@@ -591,7 +591,7 @@ netdbReloadState(void)
+         char *q;
+         assert(s - buf < l);
+         *s = '\0';
+-        memset(&N, '\0', sizeof(netdbEntry));
++        N = netdbEntry();
+         q = strtok(t, w_space);
+         t = s + 1;
+ 
+diff --git a/src/ident/Ident.cc b/src/ident/Ident.cc
+index aa514ba2..fbfd5d95 100644
+--- a/src/ident/Ident.cc
++++ b/src/ident/Ident.cc
+@@ -239,11 +239,13 @@ Ident::Start(const Comm::ConnectionPointer &conn, IDCB * callback, void *data)
+     IdentStateData *state;
+     char key1[IDENT_KEY_SZ];
+     char key2[IDENT_KEY_SZ];
+-    char key[IDENT_KEY_SZ];
++    char key[IDENT_KEY_SZ*2+2]; // key1 + ',' + key2 + terminator
+ 
+     conn->local.toUrl(key1, IDENT_KEY_SZ);
+     conn->remote.toUrl(key2, IDENT_KEY_SZ);
+-    snprintf(key, IDENT_KEY_SZ, "%s,%s", key1, key2);
++    const auto res = snprintf(key, sizeof(key), "%s,%s", key1, key2);
++    assert(res > 0);
++    assert(static_cast<std::make_unsigned<decltype(res)>::type>(res) < sizeof(key));
+ 
+     if (!ident_hash) {
+         Init();
+diff --git a/src/ipc/StoreMap.cc b/src/ipc/StoreMap.cc
+index 66400105..ba1d4dfe 100644
+--- a/src/ipc/StoreMap.cc
++++ b/src/ipc/StoreMap.cc
+@@ -756,8 +756,6 @@ Ipc::StoreMap::sliceAt(const SliceId sliceId) const
+ 
+ Ipc::StoreMapAnchor::StoreMapAnchor(): start(0), splicingPoint(-1)
+ {
+-    memset(&key, 0, sizeof(key));
+-    memset(&basics, 0, sizeof(basics));
+     // keep in sync with rewind()
+ }
+ 
+@@ -815,7 +813,7 @@ Ipc::StoreMapAnchor::rewind()
+     start = 0;
+     splicingPoint = -1;
+     memset(&key, 0, sizeof(key));
+-    memset(&basics, 0, sizeof(basics));
++    basics.clear();
+     waitingToBeFreed = false;
+     writerHalted = false;
+     // but keep the lock
+diff --git a/src/ipc/StoreMap.h b/src/ipc/StoreMap.h
+index ce3e9b2c..5d44379b 100644
+--- a/src/ipc/StoreMap.h
++++ b/src/ipc/StoreMap.h
+@@ -82,17 +82,26 @@ public:
+     // fields marked with [app] can be modified when appending-while-reading
+     // fields marked with [update] can be modified when updating-while-reading
+ 
+-    uint64_t key[2]; ///< StoreEntry key
++    uint64_t key[2] = {0, 0}; ///< StoreEntry key
+ 
+     // STORE_META_STD TLV field from StoreEntry
+     struct Basics {
+-        time_t timestamp;
+-        time_t lastref;
+-        time_t expires;
+-        time_t lastmod;
++        void clear() {
++            timestamp = 0;
++            lastref = 0;
++            expires = 0;
++            lastmod = 0;
++            swap_file_sz.store(0);
++            refcount = 0;
++            flags = 0;
++        }
++        time_t timestamp = 0;
++        time_t lastref = 0;
++        time_t expires = 0;
++        time_t lastmod = 0;
+         std::atomic<uint64_t> swap_file_sz; // [app]
+-        uint16_t refcount;
+-        uint16_t flags;
++        uint16_t refcount = 0;
++        uint16_t flags = 0;
+     } basics;
+ 
+     /// where the chain of StoreEntry slices begins [app]
+diff --git a/src/ipc/TypedMsgHdr.cc b/src/ipc/TypedMsgHdr.cc
+index f89a8da9..68bc2eed 100644
+--- a/src/ipc/TypedMsgHdr.cc
++++ b/src/ipc/TypedMsgHdr.cc
+@@ -18,25 +18,42 @@
+ 
+ Ipc::TypedMsgHdr::TypedMsgHdr()
+ {
+-    memset(this, 0, sizeof(*this));
++    clear();
+     sync();
+ }
+ 
+ Ipc::TypedMsgHdr::TypedMsgHdr(const TypedMsgHdr &tmh)
+ {
+-    memcpy(this, &tmh, sizeof(*this));
+-    sync();
++    clear();
++    operator =(tmh);
+ }
+ 
+ Ipc::TypedMsgHdr &Ipc::TypedMsgHdr::operator =(const TypedMsgHdr &tmh)
+ {
+     if (this != &tmh) { // skip assignment to self
+-        memcpy(this, &tmh, sizeof(*this));
++        memcpy(static_cast<msghdr*>(this), static_cast<const msghdr*>(&tmh), sizeof(msghdr));
++        // struct name is handled in sync()
++        // struct ios[] is handled in sync()
++        data = tmh.data;
++        ctrl = tmh.ctrl;
++        offset = tmh.offset;
+         sync();
+     }
+     return *this;
+ }
+ 
++void
++Ipc::TypedMsgHdr::clear()
++{
++    // may be called from the constructor, with object fields uninitialized
++    memset(static_cast<msghdr*>(this), 0, sizeof(msghdr));
++    memset(&name, 0, sizeof(name));
++    memset(&ios, 0, sizeof(ios));
++    data = DataBuffer();
++    ctrl = CtrlBuffer();
++    offset = 0;
++}
++
+ // update msghdr and ios pointers based on msghdr counters
+ void Ipc::TypedMsgHdr::sync()
+ {
+@@ -223,7 +240,9 @@ Ipc::TypedMsgHdr::getFd() const
+ void
+ Ipc::TypedMsgHdr::prepForReading()
+ {
+-    memset(this, 0, sizeof(*this));
++    clear();
++    // no sync() like other clear() calls because the
++    // alloc*() below "sync()" the parts they allocate.
+     allocName();
+     allocData();
+     allocControl();
+diff --git a/src/ipc/TypedMsgHdr.h b/src/ipc/TypedMsgHdr.h
+index 995262e1..40df5f22 100644
+--- a/src/ipc/TypedMsgHdr.h
++++ b/src/ipc/TypedMsgHdr.h
+@@ -74,6 +74,7 @@ public:
+     size_t size() const { return sizeof(*this); } ///< not true message size
+ 
+ private:
++    void clear();
+     void sync();
+     void allocData();
+     void allocName();
+@@ -89,18 +90,22 @@ private:
+     struct iovec ios[1]; ///< same as .msg_iov[]
+ 
+     struct DataBuffer {
+-        int type_; ///< Message kind, uses MessageType values
+-        size_t size; ///< actual raw data size (for sanity checks)
++        DataBuffer() { memset(raw, 0, sizeof(raw)); }
++
++        int type_ = 0; ///< Message kind, uses MessageType values
++        size_t size = 0; ///< actual raw data size (for sanity checks)
+         char raw[maxSize]; ///< buffer with type-specific data
+     } data; ///< same as .msg_iov[0].iov_base
+ 
+     struct CtrlBuffer {
++        CtrlBuffer() { memset(raw, 0, sizeof(raw)); }
++
+         /// control buffer space for one fd
+         char raw[SQUID_CMSG_SPACE(sizeof(int))];
+     } ctrl; ///< same as .msg_control
+ 
+     /// data offset for the next get/put*() to start with
+-    mutable unsigned int offset;
++    mutable unsigned int offset = 0;
+ };
+ 
+ } // namespace Ipc
+diff --git a/src/ipcache.cc b/src/ipcache.cc
+index b82fba24..95afb5eb 100644
+--- a/src/ipcache.cc
++++ b/src/ipcache.cc
+@@ -575,8 +575,8 @@ ipcache_init(void)
+     int n;
+     debugs(14, DBG_IMPORTANT, "Initializing IP Cache...");
+     memset(&IpcacheStats, '\0', sizeof(IpcacheStats));
+-    memset(&lru_list, '\0', sizeof(lru_list));
+-    memset(&static_addrs, '\0', sizeof(ipcache_addrs));
++    lru_list = dlink_list();
++    static_addrs = ipcache_addrs();
+ 
+     static_addrs.in_addrs = static_cast<Ip::Address *>(xcalloc(1, sizeof(Ip::Address)));
+     static_addrs.in_addrs->setEmpty(); // properly setup the Ip::Address!
+diff --git a/src/log/ModStdio.cc b/src/log/ModStdio.cc
+index 32a0af70..5e613ca4 100644
+--- a/src/log/ModStdio.cc
++++ b/src/log/ModStdio.cc
+@@ -106,8 +106,6 @@ logfile_mod_stdio_rotate(Logfile * lf, const int16_t nRotate)
+     struct stat sb;
+ #endif
+ 
+-    char from[MAXPATHLEN];
+-    char to[MAXPATHLEN];
+     l_stdio_t *ll = (l_stdio_t *) lf->data;
+     const char *realpath = lf->path+6; // skip 'stdio:' prefix.
+     assert(realpath);
+@@ -122,12 +120,17 @@ logfile_mod_stdio_rotate(Logfile * lf, const int16_t nRotate)
+ 
+     debugs(0, DBG_IMPORTANT, "Rotate log file " << lf->path);
+ 
++    SBuf basePath(realpath);
++
+     /* Rotate numbers 0 through N up one */
+     for (int16_t i = nRotate; i > 1;) {
+         --i;
+-        snprintf(from, MAXPATHLEN, "%s.%d", realpath, i - 1);
+-        snprintf(to, MAXPATHLEN, "%s.%d", realpath, i);
+-        xrename(from, to);
++        SBuf from(basePath);
++        from.appendf(".%d", i-1);
++        SBuf to(basePath);
++        to.appendf(".%d", i);
++        FileRename(from, to);
++        // TODO handle rename errors
+     }
+ 
+     /* Rotate the current log to .0 */
+@@ -136,8 +139,10 @@ logfile_mod_stdio_rotate(Logfile * lf, const int16_t nRotate)
+     file_close(ll->fd);     /* always close */
+ 
+     if (nRotate > 0) {
+-        snprintf(to, MAXPATHLEN, "%s.%d", realpath, 0);
+-        xrename(realpath, to);
++        SBuf to(basePath);
++        to.appendf(".0");
++        FileRename(basePath, to);
++        // TODO handle rename errors
+     }
+     /* Reopen the log.  It may have been renamed "manually" */
+     ll->fd = file_open(realpath, O_WRONLY | O_CREAT | O_TEXT);
+diff --git a/src/neighbors.cc b/src/neighbors.cc
+index b943a24d..ce8feeb3 100644
+--- a/src/neighbors.cc
++++ b/src/neighbors.cc
+@@ -1151,14 +1151,6 @@ neighborUp(const CachePeer * p)
+     return 1;
+ }
+ 
+-void
+-peerNoteDigestGone(CachePeer * p)
+-{
+-#if USE_CACHE_DIGESTS
+-    cbdataReferenceDone(p->digest);
+-#endif
+-}
+-
+ /// \returns the effective connect timeout for this peer
+ time_t
+ peerConnectTimeout(const CachePeer *peer)
+diff --git a/src/peer_digest.cc b/src/peer_digest.cc
+index 29aee823..36a8705e 100644
+--- a/src/peer_digest.cc
++++ b/src/peer_digest.cc
+@@ -66,23 +66,20 @@ static const time_t GlobDigestReqMinGap = 1 * 60;   /* seconds */
+ 
+ static time_t pd_last_req_time = 0; /* last call to Check */
+ 
+-/* initialize peer digest */
+-static void
+-peerDigestInit(PeerDigest * pd, CachePeer * p)
++PeerDigest::PeerDigest(CachePeer * p)
+ {
+-    assert(pd && p);
++    assert(p);
+ 
+-    memset(pd, 0, sizeof(*pd));
+     /*
+      * DPW 2007-04-12
+      * Lock on to the peer here.  The corresponding cbdataReferenceDone()
+      * is in peerDigestDestroy().
+      */
+-    pd->peer = cbdataReference(p);
++    peer = cbdataReference(p);
+     /* if peer disappears, we will know it's name */
+-    pd->host = p->host;
++    host = p->host;
+ 
+-    pd->times.initialized = squid_curtime;
++    times.initialized = squid_curtime;
+ }
+ 
+ CBDATA_CLASS_INIT(PeerDigest);
+@@ -129,17 +126,22 @@ DigestFetchState::~DigestFetchState()
+ }
+ 
+ /* allocate new peer digest, call Init, and lock everything */
+-PeerDigest *
++void
+ peerDigestCreate(CachePeer * p)
+ {
+-    PeerDigest *pd;
+     assert(p);
+ 
+-    pd = new PeerDigest;
+-    peerDigestInit(pd, p);
++    PeerDigest *pd = new PeerDigest(p);
++
++    // TODO: make CachePeer member a CbcPointer
++    p->digest = cbdataReference(pd);
+ 
+-    /* XXX This does not look right, and the same thing again in the caller */
+-    return cbdataReference(pd);
++    // lock a reference to pd again to prevent the PeerDigest
++    // disappearing during peerDigestDestroy() when
++    // cbdataReferenceValidDone is called.
++    // TODO test if it can be moved into peerDigestDestroy() or
++    //      if things can break earlier (eg CachePeer death).
++    (void)cbdataReference(pd);
+ }
+ 
+ /* call Clean and free/unlock everything */
+@@ -152,19 +154,24 @@ peerDigestDestroy(PeerDigest * pd)
+ 
+     /*
+      * DPW 2007-04-12
+-     * We locked the peer in peerDigestInit(), this is
+-     * where we unlock it.  If the peer is still valid,
+-     * tell it that the digest is gone.
++     * We locked the peer in PeerDigest constructor, this is
++     * where we unlock it.
+      */
+-    if (cbdataReferenceValidDone(peerTmp, &p))
+-        peerNoteDigestGone((CachePeer *)p);
+-
+-    delete pd->cd;
+-    pd->host.clean();
++    if (cbdataReferenceValidDone(peerTmp, &p)) {
++        // we locked the p->digest in peerDigestCreate()
++        // this is where we unlock that
++        cbdataReferenceDone(static_cast<CachePeer *>(p)->digest);
++    }
+ 
+     delete pd;
+ }
+ 
++PeerDigest::~PeerDigest()
++{
++    delete cd;
++    // req_result pointer is not owned by us
++}
++
+ /* called by peer to indicate that somebody actually needs this digest */
+ void
+ peerDigestNeeded(PeerDigest * pd)
+diff --git a/src/snmp/Pdu.cc b/src/snmp/Pdu.cc
+index c77811a7..d71f121d 100644
+--- a/src/snmp/Pdu.cc
++++ b/src/snmp/Pdu.cc
+@@ -45,7 +45,8 @@ Snmp::Pdu::operator = (const Pdu& pdu)
+ void
+ Snmp::Pdu::init()
+ {
+-    memset(this, 0, sizeof(*this));
++    memset(static_cast<snmp_pdu *>(this), 0, sizeof(snmp_pdu));
++    aggrCount = 0;
+     errstat = SNMP_DEFAULT_ERRSTAT;
+     errindex = SNMP_DEFAULT_ERRINDEX;
+ }
+diff --git a/src/snmp/Pdu.h b/src/snmp/Pdu.h
+index 24378462..a38ee8c7 100644
+--- a/src/snmp/Pdu.h
++++ b/src/snmp/Pdu.h
+@@ -43,7 +43,7 @@ public:
+ private:
+     void init(); ///< initialize members
+     void assign(const Pdu& pdu); ///< perform full assignment
+-    unsigned int aggrCount;  ///< The number of other Pdus merged into
++    unsigned int aggrCount = 0;  ///< The number of other Pdus merged into
+ };
+ 
+ } // namespace Snmp
+diff --git a/src/snmp/Session.cc b/src/snmp/Session.cc
+index 23438ec9..2690989b 100644
+--- a/src/snmp/Session.cc
++++ b/src/snmp/Session.cc
+@@ -14,59 +14,44 @@
+ #include "snmp/Session.h"
+ #include "tools.h"
+ 
+-Snmp::Session::Session()
+-{
+-    clear();
+-}
+ 
+-Snmp::Session::Session(const Session& session)
++Snmp::Session::Session()
+ {
+-    assign(session);
++    memset(static_cast<snmp_session *>(this), 0, sizeof(snmp_session));
+ }
+ 
+-Snmp::Session::~Session()
++Snmp::Session::Session(const Snmp::Session& session) : Session()
+ {
+-    free();
++    operator =(session);
+ }
+ 
+ Snmp::Session&
+ Snmp::Session::operator = (const Session& session)
+ {
+-    free();
+-    assign(session);
+-    return *this;
+-}
++    if (&session == this)
++        return *this;
+ 
+-void
+-Snmp::Session::clear()
+-{
+-    memset(this, 0, sizeof(*this));
++    reset();
++    memcpy(static_cast<snmp_session *>(this), &session, sizeof(snmp_session));
++    // memcpy did a shallow copy, make sure we have our own allocations
++    if (session.community) {
++        community = (u_char*)xstrdup((char*)session.community);
++    }
++    if (session.peername) {
++        peername = xstrdup(session.peername);
++    }
++    return *this;
+ }
+ 
+ void
+-Snmp::Session::free()
++Snmp::Session::reset()
+ {
+     if (community_len > 0) {
+         Must(community != NULL);
+         xfree(community);
+     }
+-    if (peername != NULL)
+-        xfree(peername);
+-    clear();
+-}
+-
+-void
+-Snmp::Session::assign(const Session& session)
+-{
+-    memcpy(this, &session, sizeof(*this));
+-    if (session.community != NULL) {
+-        community = (u_char*)xstrdup((char*)session.community);
+-        Must(community != NULL);
+-    }
+-    if (session.peername != NULL) {
+-        peername = xstrdup(session.peername);
+-        Must(peername != NULL);
+-    }
++    xfree(peername);
++    memset(static_cast<snmp_session *>(this), 0, sizeof(snmp_session));
+ }
+ 
+ void
+@@ -91,7 +76,7 @@ Snmp::Session::pack(Ipc::TypedMsgHdr& msg) const
+ void
+ Snmp::Session::unpack(const Ipc::TypedMsgHdr& msg)
+ {
+-    free();
++    reset();
+     msg.getPod(Version);
+     community_len = msg.getInt();
+     if (community_len > 0) {
+diff --git a/src/snmp/Session.h b/src/snmp/Session.h
+index 647934aa..9a42234f 100644
+--- a/src/snmp/Session.h
++++ b/src/snmp/Session.h
+@@ -25,15 +25,13 @@ public:
+     Session();
+     Session(const Session& session);
+     Session& operator = (const Session& session);
+-    ~Session();
++    ~Session() { reset(); }
+ 
+     void pack(Ipc::TypedMsgHdr& msg) const; ///< prepare for sendmsg()
+     void unpack(const Ipc::TypedMsgHdr& msg); ///< restore struct from the message
+-    void clear(); ///< clear internal members
+ 
+ private:
+-    void free();  ///< free internal members
+-    void assign(const Session& session); ///< perform full assignment
++    void reset(); ///< free internal members
+ };
+ 
+ } // namespace Snmp
+diff --git a/src/snmp/Var.cc b/src/snmp/Var.cc
+index 509bbfcb..b5e82b17 100644
+--- a/src/snmp/Var.cc
++++ b/src/snmp/Var.cc
+@@ -44,7 +44,7 @@ Snmp::Var::operator = (const Var& var)
+ void
+ Snmp::Var::init()
+ {
+-    memset(this, 0, sizeof(*this));
++    memset(static_cast<variable_list *>(this), 0, sizeof(variable_list));
+ }
+ 
+ Snmp::Var&
+@@ -156,10 +156,8 @@ Snmp::Var::assign(const Var& var)
+ void
+ Snmp::Var::clearName()
+ {
+-    if (name != NULL) {
+-        xfree(name);
+-        name = NULL;
+-    }
++    xfree(name);
++    name = nullptr;
+     name_length = 0;
+ }
+ 
+@@ -183,10 +181,8 @@ Snmp::Var::setName(const Range<const oid*>& aName)
+ void
+ Snmp::Var::clearValue()
+ {
+-    if (val.string != NULL) {
+-        xfree(val.string);
+-        val.string = NULL;
+-    }
++    xfree(val.string);
++    val.string = nullptr;
+     val_len = 0;
+     type = 0;
+ }
+diff --git a/src/ssl/PeekingPeerConnector.cc b/src/ssl/PeekingPeerConnector.cc
+index a79a2fff..e448c2dc 100644
+--- a/src/ssl/PeekingPeerConnector.cc
++++ b/src/ssl/PeekingPeerConnector.cc
+@@ -283,11 +283,11 @@ Ssl::PeekingPeerConnector::noteNegotiationError(const int result, const int ssl_
+     //
+     if (srvBio->bumpMode() == Ssl::bumpPeek && (resumingSession = srvBio->resumingSession())) {
+         // we currently splice all resumed sessions unconditionally
+-        if (const bool spliceResumed = true) {
+-            bypassCertValidator();
+-            checkForPeekAndSpliceMatched(Ssl::bumpSplice);
+-            return;
+-        } // else fall through to find a matching ssl_bump action (with limited info)
++        // if (const bool spliceResumed = true) {
++        bypassCertValidator();
++        checkForPeekAndSpliceMatched(Ssl::bumpSplice);
++        return;
++        // } // else fall through to find a matching ssl_bump action (with limited info)
+     }
+ 
+     // If we are in peek-and-splice mode and still we did not write to
+diff --git a/src/stat.cc b/src/stat.cc
+index d4e91b5f..e8b71536 100644
+--- a/src/stat.cc
++++ b/src/stat.cc
+@@ -84,10 +84,6 @@ static void statAvgDump(StoreEntry *, int minutes, int hours);
+ #if STAT_GRAPHS
+ static void statGraphDump(StoreEntry *);
+ #endif
+-static void statCountersInit(StatCounters *);
+-static void statCountersInitSpecial(StatCounters *);
+-static void statCountersClean(StatCounters *);
+-static void statCountersCopy(StatCounters * dest, const StatCounters * orig);
+ static double statPctileSvc(double, int, int);
+ static void statStoreEntry(MemBuf * mb, StoreEntry * e);
+ static double statCPUUsage(int minutes);
+@@ -1219,6 +1215,45 @@ statRegisterWithCacheManager(void)
+ #endif
+ }
+ 
++/* add special cases here as they arrive */
++static void
++statCountersInitSpecial(StatCounters * C)
++{
++    /*
++     * HTTP svc_time hist is kept in milli-seconds; max of 3 hours.
++     */
++    C->client_http.allSvcTime.logInit(300, 0.0, 3600000.0 * 3.0);
++    C->client_http.missSvcTime.logInit(300, 0.0, 3600000.0 * 3.0);
++    C->client_http.nearMissSvcTime.logInit(300, 0.0, 3600000.0 * 3.0);
++    C->client_http.nearHitSvcTime.logInit(300, 0.0, 3600000.0 * 3.0);
++    C->client_http.hitSvcTime.logInit(300, 0.0, 3600000.0 * 3.0);
++    /*
++     * ICP svc_time hist is kept in micro-seconds; max of 1 minute.
++     */
++    C->icp.querySvcTime.logInit(300, 0.0, 1000000.0 * 60.0);
++    C->icp.replySvcTime.logInit(300, 0.0, 1000000.0 * 60.0);
++    /*
++     * DNS svc_time hist is kept in milli-seconds; max of 10 minutes.
++     */
++    C->dns.svcTime.logInit(300, 0.0, 60000.0 * 10.0);
++    /*
++     * Cache Digest Stuff
++     */
++    C->cd.on_xition_count.enumInit(CacheDigestHashFuncCount);
++    C->comm_udp_incoming.enumInit(INCOMING_UDP_MAX);
++    C->comm_dns_incoming.enumInit(INCOMING_DNS_MAX);
++    C->comm_tcp_incoming.enumInit(INCOMING_TCP_MAX);
++    C->select_fds_hist.enumInit(256);   /* was SQUID_MAXFD, but it is way too much. It is OK to crop this statistics */
++}
++
++static void
++statCountersInit(StatCounters * C)
++{
++    assert(C);
++    *C = StatCounters();
++    statCountersInitSpecial(C);
++}
++
+ void
+ statInit(void)
+ {
+@@ -1245,30 +1280,24 @@ statInit(void)
+ static void
+ statAvgTick(void *)
+ {
+-    StatCounters *t = &CountHist[0];
+-    StatCounters *p = &CountHist[1];
+-    StatCounters *c = &statCounter;
+-
+     struct rusage rusage;
+     eventAdd("statAvgTick", statAvgTick, NULL, (double) COUNT_INTERVAL, 1);
+     squid_getrusage(&rusage);
+-    c->page_faults = rusage_pagefaults(&rusage);
+-    c->cputime = rusage_cputime(&rusage);
+-    c->timestamp = current_time;
+-    /* even if NCountHist is small, we already Init()ed the tail */
+-    statCountersClean(CountHist + N_COUNT_HIST - 1);
+-    memmove(p, t, (N_COUNT_HIST - 1) * sizeof(StatCounters));
+-    statCountersCopy(t, c);
++    statCounter.page_faults = rusage_pagefaults(&rusage);
++    statCounter.cputime = rusage_cputime(&rusage);
++    statCounter.timestamp = current_time;
++    // shift all elements right and prepend statCounter
++    for(int i = N_COUNT_HIST-1; i > 0; --i)
++        CountHist[i] = CountHist[i-1];
++    CountHist[0] = statCounter;
+     ++NCountHist;
+ 
+     if ((NCountHist % COUNT_INTERVAL) == 0) {
+         /* we have an hours worth of readings.  store previous hour */
+-        StatCounters *t2 = &CountHourHist[0];
+-        StatCounters *p2 = &CountHourHist[1];
+-        StatCounters *c2 = &CountHist[N_COUNT_HIST - 1];
+-        statCountersClean(CountHourHist + N_COUNT_HOUR_HIST - 1);
+-        memmove(p2, t2, (N_COUNT_HOUR_HIST - 1) * sizeof(StatCounters));
+-        statCountersCopy(t2, c2);
++        // shift all elements right and prepend final CountHist element
++        for(int i = N_COUNT_HOUR_HIST-1; i > 0; --i)
++            CountHourHist[i] = CountHourHist[i-1];
++        CountHourHist[0] = CountHist[N_COUNT_HIST - 1];
+         ++NCountHourHist;
+     }
+ 
+@@ -1302,93 +1331,6 @@ statAvgTick(void *)
+     }
+ }
+ 
+-static void
+-statCountersInit(StatCounters * C)
+-{
+-    assert(C);
+-    memset(C, 0, sizeof(*C));
+-    C->timestamp = current_time;
+-    statCountersInitSpecial(C);
+-}
+-
+-/* add special cases here as they arrive */
+-static void
+-statCountersInitSpecial(StatCounters * C)
+-{
+-    /*
+-     * HTTP svc_time hist is kept in milli-seconds; max of 3 hours.
+-     */
+-    C->client_http.allSvcTime.logInit(300, 0.0, 3600000.0 * 3.0);
+-    C->client_http.missSvcTime.logInit(300, 0.0, 3600000.0 * 3.0);
+-    C->client_http.nearMissSvcTime.logInit(300, 0.0, 3600000.0 * 3.0);
+-    C->client_http.nearHitSvcTime.logInit(300, 0.0, 3600000.0 * 3.0);
+-    C->client_http.hitSvcTime.logInit(300, 0.0, 3600000.0 * 3.0);
+-    /*
+-     * ICP svc_time hist is kept in micro-seconds; max of 1 minute.
+-     */
+-    C->icp.querySvcTime.logInit(300, 0.0, 1000000.0 * 60.0);
+-    C->icp.replySvcTime.logInit(300, 0.0, 1000000.0 * 60.0);
+-    /*
+-     * DNS svc_time hist is kept in milli-seconds; max of 10 minutes.
+-     */
+-    C->dns.svcTime.logInit(300, 0.0, 60000.0 * 10.0);
+-    /*
+-     * Cache Digest Stuff
+-     */
+-    C->cd.on_xition_count.enumInit(CacheDigestHashFuncCount);
+-    C->comm_udp_incoming.enumInit(INCOMING_UDP_MAX);
+-    C->comm_dns_incoming.enumInit(INCOMING_DNS_MAX);
+-    C->comm_tcp_incoming.enumInit(INCOMING_TCP_MAX);
+-    C->select_fds_hist.enumInit(256);   /* was SQUID_MAXFD, but it is way too much. It is OK to crop this statistics */
+-}
+-
+-/* add special cases here as they arrive */
+-static void
+-statCountersClean(StatCounters * C)
+-{
+-    assert(C);
+-    C->client_http.allSvcTime.clear();
+-    C->client_http.missSvcTime.clear();
+-    C->client_http.nearMissSvcTime.clear();
+-    C->client_http.nearHitSvcTime.clear();
+-    C->client_http.hitSvcTime.clear();
+-    C->icp.querySvcTime.clear();
+-    C->icp.replySvcTime.clear();
+-    C->dns.svcTime.clear();
+-    C->cd.on_xition_count.clear();
+-    C->comm_udp_incoming.clear();
+-    C->comm_dns_incoming.clear();
+-    C->comm_tcp_incoming.clear();
+-    C->select_fds_hist.clear();
+-}
+-
+-/* add special cases here as they arrive */
+-static void
+-statCountersCopy(StatCounters * dest, const StatCounters * orig)
+-{
+-    assert(dest && orig);
+-    /* this should take care of all the fields, but "special" ones */
+-    memcpy(dest, orig, sizeof(*dest));
+-    /* prepare space where to copy special entries */
+-    statCountersInitSpecial(dest);
+-    /* now handle special cases */
+-    /* note: we assert that histogram capacities do not change */
+-    dest->client_http.allSvcTime=orig->client_http.allSvcTime;
+-    dest->client_http.missSvcTime=orig->client_http.missSvcTime;
+-    dest->client_http.nearMissSvcTime=orig->client_http.nearMissSvcTime;
+-    dest->client_http.nearHitSvcTime=orig->client_http.nearHitSvcTime;
+-
+-    dest->client_http.hitSvcTime=orig->client_http.hitSvcTime;
+-    dest->icp.querySvcTime=orig->icp.querySvcTime;
+-    dest->icp.replySvcTime=orig->icp.replySvcTime;
+-    dest->dns.svcTime=orig->dns.svcTime;
+-    dest->cd.on_xition_count=orig->cd.on_xition_count;
+-    dest->comm_udp_incoming=orig->comm_udp_incoming;
+-    dest->comm_dns_incoming=orig->comm_dns_incoming;
+-    dest->comm_tcp_incoming=orig->comm_tcp_incoming;
+-    dest->select_fds_hist=orig->select_fds_hist;
+-}
+-
+ static void
+ statCountersHistograms(StoreEntry * sentry)
+ {
+@@ -1624,13 +1566,12 @@ DumpCountersStats(Mgr::CountersActionData& stats, StoreEntry* sentry)
+ void
+ statFreeMemory(void)
+ {
+-    int i;
++    // TODO: replace with delete[]
++    for (int i = 0; i < N_COUNT_HIST; ++i)
++        CountHist[i] = StatCounters();
+ 
+-    for (i = 0; i < N_COUNT_HIST; ++i)
+-        statCountersClean(&CountHist[i]);
+-
+-    for (i = 0; i < N_COUNT_HOUR_HIST; ++i)
+-        statCountersClean(&CountHourHist[i]);
++    for (int i = 0; i < N_COUNT_HOUR_HIST; ++i)
++        CountHourHist[i] = StatCounters();
+ }
+ 
+ static void
+diff --git a/src/store/Disks.cc b/src/store/Disks.cc
+index b543d844..dd97b3b4 100644
+--- a/src/store/Disks.cc
++++ b/src/store/Disks.cc
+@@ -680,16 +680,18 @@ storeDirWriteCleanLogs(int reopen)
+ void
+ allocate_new_swapdir(Store::DiskConfig *swap)
+ {
+-    if (swap->swapDirs == NULL) {
++    if (!swap->swapDirs) {
+         swap->n_allocated = 4;
+-        swap->swapDirs = static_cast<SwapDir::Pointer *>(xcalloc(swap->n_allocated, sizeof(SwapDir::Pointer)));
++        swap->swapDirs = new SwapDir::Pointer[swap->n_allocated];
+     }
+ 
+     if (swap->n_allocated == swap->n_configured) {
+         swap->n_allocated <<= 1;
+-        SwapDir::Pointer *const tmp = static_cast<SwapDir::Pointer *>(xcalloc(swap->n_allocated, sizeof(SwapDir::Pointer)));
+-        memcpy(tmp, swap->swapDirs, swap->n_configured * sizeof(SwapDir *));
+-        xfree(swap->swapDirs);
++        const auto tmp = new SwapDir::Pointer[swap->n_allocated];
++        for (int i = 0; i < swap->n_configured; ++i) {
++            tmp[i] = swap->swapDirs[i];
++        }
++        delete[] swap->swapDirs;
+         swap->swapDirs = tmp;
+     }
+ }
+@@ -697,23 +699,21 @@ allocate_new_swapdir(Store::DiskConfig *swap)
+ void
+ free_cachedir(Store::DiskConfig *swap)
+ {
+-    int i;
+     /* DON'T FREE THESE FOR RECONFIGURE */
+ 
+     if (reconfiguring)
+         return;
+ 
+-    for (i = 0; i < swap->n_configured; ++i) {
+-        /* TODO XXX this lets the swapdir free resources asynchronously
+-        * swap->swapDirs[i]->deactivate();
+-        * but there may be such a means already.
+-        * RBC 20041225
+-        */
+-        swap->swapDirs[i] = NULL;
+-    }
++    /* TODO XXX this lets the swapdir free resources asynchronously
++     * swap->swapDirs[i]->deactivate();
++     * but there may be such a means already.
++     * RBC 20041225
++     */
+ 
+-    safe_free(swap->swapDirs);
+-    swap->swapDirs = NULL;
++    // only free's the array memory itself
++    // the SwapDir objects may remain (ref-counted)
++    delete[] swap->swapDirs;
++    swap->swapDirs = nullptr;
+     swap->n_allocated = 0;
+     swap->n_configured = 0;
+ }
+diff --git a/src/store_digest.cc b/src/store_digest.cc
+index 4ed85215..3b5a31a9 100644
+--- a/src/store_digest.cc
++++ b/src/store_digest.cc
+@@ -43,25 +43,26 @@
+ 
+ class StoreDigestState
+ {
+-
+ public:
+     StoreDigestCBlock cblock;
+-    int rebuild_lock;       /* bucket number */
+-    StoreEntry * rewrite_lock;  /* points to store entry with the digest */
++    int rebuild_lock = 0;                 ///< bucket number
++    StoreEntry * rewrite_lock = nullptr;  ///< points to store entry with the digest
+     StoreSearchPointer theSearch;
+-    int rewrite_offset;
+-    int rebuild_count;
+-    int rewrite_count;
++    int rewrite_offset = 0;
++    int rebuild_count = 0;
++    int rewrite_count = 0;
+ };
+ 
+-typedef struct {
+-    int del_count;      /* #store entries deleted from store_digest */
+-    int del_lost_count;     /* #store entries not found in store_digest on delete */
+-    int add_count;      /* #store entries accepted to store_digest */
+-    int add_coll_count;     /* #accepted entries that collided with existing ones */
+-    int rej_count;      /* #store entries not accepted to store_digest */
+-    int rej_coll_count;     /* #not accepted entries that collided with existing ones */
+-} StoreDigestStats;
++class StoreDigestStats
++{
++public:
++    int del_count = 0;          /* #store entries deleted from store_digest */
++    int del_lost_count = 0;     /* #store entries not found in store_digest on delete */
++    int add_count = 0;          /* #store entries accepted to store_digest */
++    int add_coll_count = 0;     /* #accepted entries that collided with existing ones */
++    int rej_count = 0;          /* #store entries not accepted to store_digest */
++    int rej_coll_count = 0;     /* #not accepted entries that collided with existing ones */
++};
+ 
+ /* local vars */
+ static StoreDigestState sd_state;
+@@ -139,7 +140,7 @@ storeDigestInit(void)
+            (int) Config.digest.rebuild_period << "/" <<
+            (int) Config.digest.rewrite_period << " sec");
+ 
+-    memset(&sd_state, 0, sizeof(sd_state));
++    sd_state = StoreDigestState();
+ #else
+     store_digest = NULL;
+     debugs(71, 3, "Local cache digest is 'off'");
+@@ -355,7 +356,7 @@ storeDigestRebuildResume(void)
+     if (!storeDigestResize())
+         store_digest->clear();     /* not clean()! */
+ 
+-    memset(&sd_stats, 0, sizeof(sd_stats));
++    sd_stats = StoreDigestStats();
+ 
+     eventAdd("storeDigestRebuildStep", storeDigestRebuildStep, NULL, 0.0, 1);
+ }
+diff --git a/src/store_rebuild.cc b/src/store_rebuild.cc
+index d6d0bf94..f4ffadbc 100644
+--- a/src/store_rebuild.cc
++++ b/src/store_rebuild.cc
+@@ -172,7 +172,7 @@ storeRebuildComplete(StoreRebuildData *dc)
+ void
+ storeRebuildStart(void)
+ {
+-    memset(&counts, '\0', sizeof(counts));
++    counts = StoreRebuildData(); // reset counters
+     rebuild_start = current_time;
+     /*
+      * Note: store_dirs_rebuilding is initialized to 1.
+diff --git a/src/store_rebuild.h b/src/store_rebuild.h
+index de3056ed..483874f4 100644
+--- a/src/store_rebuild.h
++++ b/src/store_rebuild.h
+@@ -16,22 +16,16 @@
+ class StoreRebuildData
+ {
+ public:
+-    StoreRebuildData() :
+-        objcount(0), expcount(0), scancount(0), clashcount(0),
+-        dupcount(0), cancelcount(0), invalid(0), badflags(0),
+-        bad_log_op(0), zero_object_sz(0)
+-    {}
+-
+-    int objcount;       /* # objects successfully reloaded */
+-    int expcount;       /* # objects expired */
+-    int scancount;      /* # entries scanned or read from state file */
+-    int clashcount;     /* # swapfile clashes avoided */
+-    int dupcount;       /* # duplicates purged */
+-    int cancelcount;        /* # SWAP_LOG_DEL objects purged */
+-    int invalid;        /* # bad lines */
+-    int badflags;       /* # bad e->flags */
+-    int bad_log_op;
+-    int zero_object_sz;
++    int objcount = 0;       /* # objects successfully reloaded */
++    int expcount = 0;       /* # objects expired */
++    int scancount = 0;      /* # entries scanned or read from state file */
++    int clashcount = 0;     /* # swapfile clashes avoided */
++    int dupcount = 0;       /* # duplicates purged */
++    int cancelcount = 0;    /* # SWAP_LOG_DEL objects purged */
++    int invalid = 0;        /* # bad lines */
++    int badflags = 0;       /* # bad e->flags */
++    int bad_log_op = 0;
++    int zero_object_sz = 0;
+ };
+ 
+ void storeRebuildStart(void);
+diff --git a/src/tests/stub_MemObject.cc b/src/tests/stub_MemObject.cc
+index f33c334c..d0d6de37 100644
+--- a/src/tests/stub_MemObject.cc
++++ b/src/tests/stub_MemObject.cc
+@@ -29,20 +29,9 @@ MemObject::endOffset() const
+ void MemObject::trimSwappable() STUB
+ void MemObject::trimUnSwappable() STUB
+ int64_t MemObject::policyLowestOffsetToKeep(bool swap) const STUB_RETVAL(-1)
+-MemObject::MemObject() :
+-    inmem_lo(0),
+-    nclients(0),
+-    request(NULL),
+-    ping_reply_callback(NULL),
+-    ircb_data(NULL),
+-    id(0),
+-    object_sz(-1),
+-    swap_hdr_sz(0),
+-    _reply(NULL)
+-{
+-    memset(&clients, 0, sizeof(clients));
++MemObject::MemObject() {
++    ping_reply_callback = nullptr;
+     memset(&start_ping, 0, sizeof(start_ping));
+-    memset(&abort, 0, sizeof(abort));
+ } // NOP instead of elided due to Store
+ 
+ HttpReply const * MemObject::getReply() const
+diff --git a/src/tests/stub_cache_manager.cc b/src/tests/stub_cache_manager.cc
+index a544a05a..4dacfd32 100644
+--- a/src/tests/stub_cache_manager.cc
++++ b/src/tests/stub_cache_manager.cc
+@@ -20,7 +20,7 @@ void CacheManager::Start(const Comm::ConnectionPointer &conn, HttpRequest * requ
+     std::cerr << HERE << "\n";
+     STUB
+ }
+-CacheManager* CacheManager::instance=0;
++static CacheManager* instance = nullptr;
+ CacheManager* CacheManager::GetInstance() STUB_RETVAL(instance)
+ void Mgr::RegisterAction(char const*, char const*, OBJH, int, int) {}
+ void Mgr::RegisterAction(char const *, char const *, Mgr::ClassActionCreationHandler *, int, int) {}
+diff --git a/src/tools.cc b/src/tools.cc
+index b7a0194b..954f58ce 100644
+--- a/src/tools.cc
++++ b/src/tools.cc
+@@ -319,7 +319,7 @@ death(int sig)
+ #endif /* _SQUID_SOLARIS_and HAVE_LIBOPCOM_STACK */
+ #if HAVE_BACKTRACE_SYMBOLS_FD
+     {
+-        static void *(callarray[8192]);
++        static void *callarray[8192];
+         int n;
+         n = backtrace(callarray, 8192);
+         backtrace_symbols_fd(callarray, n, fileno(debug_log));
+diff --git a/src/tunnel.cc b/src/tunnel.cc
+index 3197547a..4b4cf446 100644
+--- a/src/tunnel.cc
++++ b/src/tunnel.cc
+@@ -1158,7 +1158,6 @@ tunnelRelayConnectRequest(const Comm::ConnectionPointer &srv, void *data)
+     HttpHeader hdr_out(hoRequest);
+     Http::StateFlags flags;
+     debugs(26, 3, HERE << srv << ", tunnelState=" << tunnelState);
+-    memset(&flags, '\0', sizeof(flags));
+     flags.proxying = tunnelState->request->flags.proxying;
+     MemBuf mb;
+     mb.init();

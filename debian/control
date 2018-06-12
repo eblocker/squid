@@ -30,7 +30,7 @@ Architecture: all
 Section: oldlibs
 Priority: optional
 Pre-Depends: squid (>= ${source:Version})
-Depends: ${shlibs:Depends}, ${misc:Depends}, lsb-base
+Depends: ${misc:Depends}, lsb-base
 Description: Transitional package
  Squid is a high-performance proxy caching server for web clients, supporting
  FTP, gopher, ICY and HTTP data objects.

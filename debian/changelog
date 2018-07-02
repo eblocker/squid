@@ -1,15 +1,14 @@
-squid (4.0.25-1~exp20) UNRELEASED; urgency=medium
+squid (4.1-1) UNRELEASED; urgency=high
 
   * New Upstream Release (Closes: #896120)
 
   * debian/patches/
-    - Add upstream patch to fix Hurd FTBFS issue
     - Add upstream patch to fix GCC-8 FTBFS issues
 
   * debian/control
     - Remove shlibs:Depends from transitional squid3 package
 
- -- Amos Jeffries <amosjeffries@squid-cache.org>  Wed, 13 Jun 2018 02:15:00 +1300
+ -- Amos Jeffries <amosjeffries@squid-cache.org>  Mon, 02 Jul 2018 17:30:00 +1300
 
 squid (4.0.24-1~exp16) experimental; urgency=medium
 

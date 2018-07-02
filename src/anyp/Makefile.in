@@ -163,7 +163,7 @@ CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
 LTLIBRARIES = $(noinst_LTLIBRARIES)
 libanyp_la_LIBADD =
-am_libanyp_la_OBJECTS = PortCfg.lo ProtocolType.lo UriScheme.lo
+am_libanyp_la_OBJECTS = PortCfg.lo ProtocolType.lo Uri.lo UriScheme.lo
 libanyp_la_OBJECTS = $(am_libanyp_la_OBJECTS)
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
@@ -724,6 +724,8 @@ libanyp_la_SOURCES = \
 	ProtocolType.h \
 	ProtocolVersion.h \
 	TrafficMode.h \
+	Uri.cc \
+	Uri.h \
 	UriScheme.cc \
 	UriScheme.h
 
@@ -793,6 +795,7 @@ distclean-compile:
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/PortCfg.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ProtocolType.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Uri.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/UriScheme.Plo@am__quote@
 
 .cc.o:

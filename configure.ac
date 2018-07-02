@@ -5,7 +5,7 @@
 ## Please see the COPYING and CONTRIBUTORS files for details.
 ##
 
-AC_INIT([Squid Web Proxy],[4.0.25],[http://bugs.squid-cache.org/],[squid])
+AC_INIT([Squid Web Proxy],[4.1],[http://bugs.squid-cache.org/],[squid])
 AC_PREREQ(2.61)
 AC_CONFIG_HEADERS([include/autoconf.h])
 AC_CONFIG_AUX_DIR(cfgaux)
@@ -2333,7 +2333,7 @@ case "$with_netfilter_conntrack" in
     ;;
   *)
     if test ! -d "$withval" ; then
-      AC_MSG_ERROR([--without-netfilter-conntrack path does not point to a directory])
+      AC_MSG_ERROR([--with-netfilter-conntrack path does not point to a directory])
     fi
     squid_opt_netfilterconntrackpath=$withval
     LDFLAGS="-L$squid_opt_netfilterconntrackpath/lib $LDFLAGS"
@@ -3025,6 +3025,13 @@ AC_CHECK_TYPE(mtyp_t,AC_DEFINE(HAVE_MTYP_T,1,
    [mtyp_t is defined by the system headers]),,[#include <sys/types.h>
 #include <sys/ipc.h>
 #include <sys/msg.h>])
+
+AC_CHECK_TYPE(cpu_set_t,
+   AC_DEFINE(HAVE_CPU_SET_T,1,[cpu_set_t is defined by the system headers]),,[
+#if HAVE_SCHED_H
+#include <sched.h>
+#endif
+])
 
 # check for compiler support of %zu printf macro
 AH_TEMPLATE(PRIuSIZE,[Compiler supports %zu printf macro])

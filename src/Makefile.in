@@ -308,10 +308,10 @@ am__squid_SOURCES_DIST = AclRegs.cc AuthReg.cc AccessLogEntry.cc \
 	StoreStats.h StoreSwapLogData.cc StoreSwapLogData.h \
 	swap_log_op.h Transients.cc Transients.h MemStore.cc \
 	MemStore.h time.cc TimeOrTag.h tools.h tools.cc tunnel.cc \
-	typedefs.h unlinkd.h unlinkd.cc url.cc URL.h urn.h urn.cc \
-	wccp.h wccp.cc wccp2.h wccp2.cc whois.h whois.cc wordlist.h \
-	wordlist.cc XactionInitiator.h XactionInitiator.cc win32.cc \
-	WinSvc.cc LoadableModule.h LoadableModule.cc LoadableModules.h \
+	typedefs.h unlinkd.h unlinkd.cc urn.h urn.cc wccp.h wccp.cc \
+	wccp2.h wccp2.cc whois.h whois.cc wordlist.h wordlist.cc \
+	XactionInitiator.h XactionInitiator.cc win32.cc WinSvc.cc \
+	LoadableModule.h LoadableModule.cc LoadableModules.h \
 	LoadableModules.cc
 am__objects_1 = AclRegs.$(OBJEXT) AuthReg.$(OBJEXT)
 am__objects_2 = delay_pools.$(OBJEXT) DelayId.$(OBJEXT) \
@@ -384,7 +384,7 @@ am_squid_OBJECTS = $(am__objects_1) AccessLogEntry.$(OBJEXT) \
 	$(am__objects_11) StoreStats.$(OBJEXT) \
 	StoreSwapLogData.$(OBJEXT) Transients.$(OBJEXT) \
 	MemStore.$(OBJEXT) time.$(OBJEXT) tools.$(OBJEXT) \
-	tunnel.$(OBJEXT) $(am__objects_12) url.$(OBJEXT) urn.$(OBJEXT) \
+	tunnel.$(OBJEXT) $(am__objects_12) urn.$(OBJEXT) \
 	wccp.$(OBJEXT) wccp2.$(OBJEXT) whois.$(OBJEXT) \
 	wordlist.$(OBJEXT) XactionInitiator.$(OBJEXT) \
 	$(am__objects_13) $(am__objects_14) $(am__objects_16)
@@ -480,7 +480,8 @@ am_tests_testACLMaxUserIP_OBJECTS = cbdata.$(OBJEXT) \
 	tests/stub_store_swapout.$(OBJEXT) tests/stub_tools.$(OBJEXT) \
 	tests/stub_cache_manager.$(OBJEXT) tests/stub_UdsOp.$(OBJEXT) \
 	tests/testACLMaxUserIP.$(OBJEXT) tests/stub_time.$(OBJEXT) \
-	url.$(OBJEXT) MemBuf.$(OBJEXT) wordlist.$(OBJEXT)
+	tests/stub_libanyp.$(OBJEXT) MemBuf.$(OBJEXT) \
+	wordlist.$(OBJEXT)
 am__objects_18 = test_tools.$(OBJEXT) globals.$(OBJEXT)
 nodist_tests_testACLMaxUserIP_OBJECTS = $(am__objects_18)
 tests_testACLMaxUserIP_OBJECTS = $(am_tests_testACLMaxUserIP_OBJECTS) \
@@ -569,8 +570,8 @@ am__tests_testCacheManager_SOURCES_DIST = AccessLogEntry.cc debug.cc \
 	StoreIOState.cc tests/stub_StoreMeta.cc StoreMetaUnpacker.cc \
 	StoreSwapLogData.cc tools.h tools.cc Transients.cc \
 	tests/stub_tunnel.cc tests/stub_SwapDir.cc MemStore.cc \
-	unlinkd.h unlinkd.cc url.cc urn.h urn.cc wccp2.h \
-	tests/stub_wccp2.cc whois.h tests/stub_whois.cc \
+	unlinkd.h unlinkd.cc tests/stub_libanyp.cc urn.h urn.cc \
+	wccp2.h tests/stub_wccp2.cc whois.h tests/stub_whois.cc \
 	FadingCounter.cc win32.cc wordlist.h wordlist.cc
 am_tests_testCacheManager_OBJECTS = AccessLogEntry.$(OBJEXT) \
 	debug.$(OBJEXT) RequestFlags.$(OBJEXT) HttpRequest.$(OBJEXT) \
@@ -626,7 +627,7 @@ am_tests_testCacheManager_OBJECTS = AccessLogEntry.$(OBJEXT) \
 	StoreSwapLogData.$(OBJEXT) tools.$(OBJEXT) \
 	Transients.$(OBJEXT) tests/stub_tunnel.$(OBJEXT) \
 	tests/stub_SwapDir.$(OBJEXT) MemStore.$(OBJEXT) \
-	$(am__objects_12) url.$(OBJEXT) urn.$(OBJEXT) \
+	$(am__objects_12) tests/stub_libanyp.$(OBJEXT) urn.$(OBJEXT) \
 	tests/stub_wccp2.$(OBJEXT) tests/stub_whois.$(OBJEXT) \
 	FadingCounter.$(OBJEXT) $(am__objects_13) wordlist.$(OBJEXT)
 nodist_tests_testCacheManager_OBJECTS = $(am__objects_17)
@@ -733,8 +734,8 @@ am__tests_testDiskIO_SOURCES_DIST = AccessLogEntry.cc AccessLogEntry.h \
 	tests/stub_store_rebuild.cc tests/stub_UdsOp.cc \
 	tests/testDiskIO.cc tests/testDiskIO.h \
 	tests/testStoreSupport.cc tests/testStoreSupport.h \
-	tests/stub_time.cc unlinkd.h unlinkd.cc url.cc win32.cc \
-	wordlist.h wordlist.cc tools.h tests/stub_tools.cc
+	tests/stub_time.cc unlinkd.h unlinkd.cc tests/stub_libanyp.cc \
+	win32.cc wordlist.h wordlist.cc tools.h tests/stub_tools.cc
 am_tests_testDiskIO_OBJECTS = AccessLogEntry.$(OBJEXT) \
 	tests/stub_CacheDigest.$(OBJEXT) cbdata.$(OBJEXT) \
 	tests/stub_CollapsedForwarding.$(OBJEXT) \
@@ -780,9 +781,9 @@ am_tests_testDiskIO_OBJECTS = AccessLogEntry.$(OBJEXT) \
 	tests/stub_store_stats.$(OBJEXT) \
 	tests/stub_store_rebuild.$(OBJEXT) tests/stub_UdsOp.$(OBJEXT) \
 	tests/testDiskIO.$(OBJEXT) tests/testStoreSupport.$(OBJEXT) \
-	tests/stub_time.$(OBJEXT) $(am__objects_12) url.$(OBJEXT) \
-	$(am__objects_13) wordlist.$(OBJEXT) \
-	tests/stub_tools.$(OBJEXT)
+	tests/stub_time.$(OBJEXT) $(am__objects_12) \
+	tests/stub_libanyp.$(OBJEXT) $(am__objects_13) \
+	wordlist.$(OBJEXT) tests/stub_tools.$(OBJEXT)
 nodist_tests_testDiskIO_OBJECTS = $(am__objects_18) \
 	SquidMath.$(OBJEXT) swap_log_op.$(OBJEXT)
 tests_testDiskIO_OBJECTS = $(am_tests_testDiskIO_OBJECTS) \
@@ -873,9 +874,9 @@ am__tests_testEvent_SOURCES_DIST = AccessLogEntry.cc BodyPipe.cc \
 	tests/stub_libauth.cc tests/stub_libdiskio.cc \
 	tests/stub_libeui.cc tests/stub_store_stats.cc time.cc tools.h \
 	tools.cc Transients.cc tests/stub_tunnel.cc MemStore.cc \
-	unlinkd.h unlinkd.cc url.cc urn.h urn.cc wccp2.h \
-	tests/stub_wccp2.cc whois.h tests/stub_whois.cc win32.cc \
-	wordlist.h wordlist.cc
+	unlinkd.h unlinkd.cc tests/stub_libanyp.cc urn.h urn.cc \
+	wccp2.h tests/stub_wccp2.cc whois.h tests/stub_whois.cc \
+	win32.cc wordlist.h wordlist.cc
 am_tests_testEvent_OBJECTS = AccessLogEntry.$(OBJEXT) \
 	BodyPipe.$(OBJEXT) tests/stub_CacheDigest.$(OBJEXT) \
 	cache_cf.$(OBJEXT) CachePeer.$(OBJEXT) cache_manager.$(OBJEXT) \
@@ -930,7 +931,7 @@ am_tests_testEvent_OBJECTS = AccessLogEntry.$(OBJEXT) \
 	tests/stub_store_stats.$(OBJEXT) time.$(OBJEXT) \
 	tools.$(OBJEXT) Transients.$(OBJEXT) \
 	tests/stub_tunnel.$(OBJEXT) MemStore.$(OBJEXT) \
-	$(am__objects_12) url.$(OBJEXT) urn.$(OBJEXT) \
+	$(am__objects_12) tests/stub_libanyp.$(OBJEXT) urn.$(OBJEXT) \
 	tests/stub_wccp2.$(OBJEXT) tests/stub_whois.$(OBJEXT) \
 	$(am__objects_13) wordlist.$(OBJEXT)
 nodist_tests_testEvent_OBJECTS = $(am__objects_17)
@@ -1012,8 +1013,9 @@ am__tests_testEventLoop_SOURCES_DIST = AccessLogEntry.cc BodyPipe.cc \
 	tests/stub_libeui.cc tests/stub_libsecurity.cc \
 	tests/stub_store_stats.cc time.cc tools.h tools.cc \
 	Transients.cc tests/stub_tunnel.cc MemStore.cc unlinkd.h \
-	unlinkd.cc url.cc urn.h urn.cc wccp2.h tests/stub_wccp2.cc \
-	whois.h tests/stub_whois.cc win32.cc wordlist.h wordlist.cc
+	unlinkd.cc tests/stub_libanyp.cc urn.h urn.cc wccp2.h \
+	tests/stub_wccp2.cc whois.h tests/stub_whois.cc win32.cc \
+	wordlist.h wordlist.cc
 am_tests_testEventLoop_OBJECTS = AccessLogEntry.$(OBJEXT) \
 	BodyPipe.$(OBJEXT) tests/stub_CacheDigest.$(OBJEXT) \
 	cache_manager.$(OBJEXT) cache_cf.$(OBJEXT) CachePeer.$(OBJEXT) \
@@ -1068,7 +1070,7 @@ am_tests_testEventLoop_OBJECTS = AccessLogEntry.$(OBJEXT) \
 	tests/stub_store_stats.$(OBJEXT) time.$(OBJEXT) \
 	tools.$(OBJEXT) Transients.$(OBJEXT) \
 	tests/stub_tunnel.$(OBJEXT) MemStore.$(OBJEXT) \
-	$(am__objects_12) url.$(OBJEXT) urn.$(OBJEXT) \
+	$(am__objects_12) tests/stub_libanyp.$(OBJEXT) urn.$(OBJEXT) \
 	tests/stub_wccp2.$(OBJEXT) tests/stub_whois.$(OBJEXT) \
 	$(am__objects_13) wordlist.$(OBJEXT)
 nodist_tests_testEventLoop_OBJECTS = $(am__objects_17)
@@ -1106,7 +1108,7 @@ am_tests_testHttp1Parser_OBJECTS = MemBuf.$(OBJEXT) \
 	tests/stub_stmem.$(OBJEXT) tests/stub_store.$(OBJEXT) \
 	tests/stub_store_stats.$(OBJEXT) tests/stub_tools.$(OBJEXT) \
 	tests/testHttp1Parser.$(OBJEXT) tests/stub_time.$(OBJEXT) \
-	wordlist.$(OBJEXT)
+	tests/stub_libanyp.$(OBJEXT) wordlist.$(OBJEXT)
 nodist_tests_testHttp1Parser_OBJECTS = $(am__objects_18)
 tests_testHttp1Parser_OBJECTS = $(am_tests_testHttp1Parser_OBJECTS) \
 	$(nodist_tests_testHttp1Parser_OBJECTS)
@@ -1143,7 +1145,8 @@ am_tests_testHttpReply_OBJECTS = cbdata.$(OBJEXT) \
 	tests/stub_StatHist.$(OBJEXT) tests/stub_store.$(OBJEXT) \
 	tests/stub_store_stats.$(OBJEXT) tests/stub_tools.$(OBJEXT) \
 	tests/stub_HttpRequest.$(OBJEXT) tests/testHttpReply.$(OBJEXT) \
-	tests/stub_time.$(OBJEXT) url.$(OBJEXT) wordlist.$(OBJEXT)
+	tests/stub_time.$(OBJEXT) tests/stub_libanyp.$(OBJEXT) \
+	wordlist.$(OBJEXT)
 nodist_tests_testHttpReply_OBJECTS = $(am__objects_18)
 tests_testHttpReply_OBJECTS = $(am_tests_testHttpReply_OBJECTS) \
 	$(nodist_tests_testHttpReply_OBJECTS)
@@ -1216,7 +1219,7 @@ am__tests_testHttpRequest_SOURCES_DIST = AccessLogEntry.cc \
 	StoreIOState.cc tests/stub_StoreMeta.cc StoreMetaUnpacker.cc \
 	StoreSwapLogData.cc StrList.h StrList.cc event.cc tools.h \
 	tools.cc Transients.cc tests/stub_tunnel.cc \
-	tests/stub_SwapDir.cc MemStore.cc url.cc urn.h urn.cc wccp2.h \
+	tests/stub_SwapDir.cc MemStore.cc urn.h urn.cc wccp2.h \
 	tests/stub_wccp2.cc whois.h tests/stub_whois.cc \
 	FadingCounter.cc win32.cc wordlist.h wordlist.cc
 am_tests_testHttpRequest_OBJECTS = AccessLogEntry.$(OBJEXT) \
@@ -1275,9 +1278,9 @@ am_tests_testHttpRequest_OBJECTS = AccessLogEntry.$(OBJEXT) \
 	StoreSwapLogData.$(OBJEXT) StrList.$(OBJEXT) event.$(OBJEXT) \
 	tools.$(OBJEXT) Transients.$(OBJEXT) \
 	tests/stub_tunnel.$(OBJEXT) tests/stub_SwapDir.$(OBJEXT) \
-	MemStore.$(OBJEXT) url.$(OBJEXT) urn.$(OBJEXT) \
-	tests/stub_wccp2.$(OBJEXT) tests/stub_whois.$(OBJEXT) \
-	FadingCounter.$(OBJEXT) $(am__objects_13) wordlist.$(OBJEXT)
+	MemStore.$(OBJEXT) urn.$(OBJEXT) tests/stub_wccp2.$(OBJEXT) \
+	tests/stub_whois.$(OBJEXT) FadingCounter.$(OBJEXT) \
+	$(am__objects_13) wordlist.$(OBJEXT)
 nodist_tests_testHttpRequest_OBJECTS = $(am__objects_17)
 tests_testHttpRequest_OBJECTS = $(am_tests_testHttpRequest_OBJECTS) \
 	$(nodist_tests_testHttpRequest_OBJECTS)
@@ -1391,14 +1394,14 @@ am__tests_testRock_SOURCES_DIST = AccessLogEntry.cc AccessLogEntry.h \
 	tests/stub_neighbors.cc tests/stub_Port.cc tests/stub_pconn.cc \
 	tests/stub_store_client.cc store_rebuild.h \
 	tests/stub_store_rebuild.cc tests/stub_store_stats.cc tools.h \
-	tests/stub_tools.cc time.cc url.cc wordlist.h wordlist.cc \
-	CommonPool.h CompositePoolNode.h delay_pools.cc DelayId.cc \
-	DelayId.h DelayIdComposite.h DelayBucket.cc DelayBucket.h \
-	DelayConfig.cc DelayConfig.h DelayPool.cc DelayPool.h \
-	DelayPools.h DelaySpec.cc DelaySpec.h DelayTagged.cc \
-	DelayTagged.h DelayUser.cc DelayUser.h DelayVector.cc \
-	DelayVector.h NullDelayId.h ClientDelayConfig.cc \
-	ClientDelayConfig.h unlinkd.h unlinkd.cc
+	tests/stub_tools.cc time.cc tests/stub_libanyp.cc wordlist.h \
+	wordlist.cc CommonPool.h CompositePoolNode.h delay_pools.cc \
+	DelayId.cc DelayId.h DelayIdComposite.h DelayBucket.cc \
+	DelayBucket.h DelayConfig.cc DelayConfig.h DelayPool.cc \
+	DelayPool.h DelayPools.h DelaySpec.cc DelaySpec.h \
+	DelayTagged.cc DelayTagged.h DelayUser.cc DelayUser.h \
+	DelayVector.cc DelayVector.h NullDelayId.h \
+	ClientDelayConfig.cc ClientDelayConfig.h unlinkd.h unlinkd.cc
 am_tests_testRock_OBJECTS = AccessLogEntry.$(OBJEXT) cbdata.$(OBJEXT) \
 	CollapsedForwarding.$(OBJEXT) tests/stub_CacheDigest.$(OBJEXT) \
 	ConfigOption.$(OBJEXT) ConfigParser.$(OBJEXT) fs_io.$(OBJEXT) \
@@ -1439,7 +1442,7 @@ am_tests_testRock_OBJECTS = AccessLogEntry.$(OBJEXT) cbdata.$(OBJEXT) \
 	tests/stub_pconn.$(OBJEXT) tests/stub_store_client.$(OBJEXT) \
 	tests/stub_store_rebuild.$(OBJEXT) \
 	tests/stub_store_stats.$(OBJEXT) tests/stub_tools.$(OBJEXT) \
-	time.$(OBJEXT) url.$(OBJEXT) wordlist.$(OBJEXT) \
+	time.$(OBJEXT) tests/stub_libanyp.$(OBJEXT) wordlist.$(OBJEXT) \
 	$(am__objects_3) $(am__objects_12)
 nodist_tests_testRock_OBJECTS = swap_log_op.$(OBJEXT) \
 	SquidMath.$(OBJEXT) $(am__objects_18)
@@ -1547,7 +1550,7 @@ am__tests_testStore_SOURCES_DIST = CacheDigest.h \
 	tests/testStoreHashIndex.cc tests/testStoreHashIndex.h \
 	tests/testStoreSupport.cc tests/testStoreSupport.h \
 	tests/TestSwapDir.cc tests/TestSwapDir.h tests/stub_time.cc \
-	url.cc wordlist.h wordlist.cc
+	tests/stub_libanyp.cc wordlist.h wordlist.cc
 am_tests_testStore_OBJECTS = tests/stub_CacheDigest.$(OBJEXT) \
 	cbdata.$(OBJEXT) tests/stub_CollapsedForwarding.$(OBJEXT) \
 	ConfigOption.$(OBJEXT) ConfigParser.$(OBJEXT) $(am__objects_3) \
@@ -1593,7 +1596,8 @@ am_tests_testStore_OBJECTS = tests/stub_CacheDigest.$(OBJEXT) \
 	tests/testStoreController.$(OBJEXT) \
 	tests/testStoreHashIndex.$(OBJEXT) \
 	tests/testStoreSupport.$(OBJEXT) tests/TestSwapDir.$(OBJEXT) \
-	tests/stub_time.$(OBJEXT) url.$(OBJEXT) wordlist.$(OBJEXT)
+	tests/stub_time.$(OBJEXT) tests/stub_libanyp.$(OBJEXT) \
+	wordlist.$(OBJEXT)
 nodist_tests_testStore_OBJECTS = $(am__objects_18) SquidMath.$(OBJEXT) \
 	swap_log_op.$(OBJEXT)
 tests_testStore_OBJECTS = $(am_tests_testStore_OBJECTS) \
@@ -1706,9 +1710,9 @@ am__tests_testURL_SOURCES_DIST = AccessLogEntry.cc BodyPipe.cc \
 	tests/stub_store_stats.cc tests/testURL.cc tests/testURL.h \
 	tests/testUriScheme.cc tests/testUriScheme.h \
 	tests/stub_time.cc tests/stub_EventLoop.cc tools.h tools.cc \
-	tests/stub_tunnel.cc url.cc urn.h urn.cc wccp2.h \
-	tests/stub_wccp2.cc whois.h tests/stub_whois.cc \
-	FadingCounter.cc win32.cc wordlist.h wordlist.cc
+	tests/stub_tunnel.cc urn.h urn.cc wccp2.h tests/stub_wccp2.cc \
+	whois.h tests/stub_whois.cc FadingCounter.cc win32.cc \
+	wordlist.h wordlist.cc
 am_tests_testURL_OBJECTS = AccessLogEntry.$(OBJEXT) BodyPipe.$(OBJEXT) \
 	cache_cf.$(OBJEXT) tests/stub_cache_manager.$(OBJEXT) \
 	tests/stub_CacheDigest.$(OBJEXT) CachePeer.$(OBJEXT) \
@@ -1762,7 +1766,7 @@ am_tests_testURL_OBJECTS = AccessLogEntry.$(OBJEXT) BodyPipe.$(OBJEXT) \
 	tests/stub_store_stats.$(OBJEXT) tests/testURL.$(OBJEXT) \
 	tests/testUriScheme.$(OBJEXT) tests/stub_time.$(OBJEXT) \
 	tests/stub_EventLoop.$(OBJEXT) tools.$(OBJEXT) \
-	tests/stub_tunnel.$(OBJEXT) url.$(OBJEXT) urn.$(OBJEXT) \
+	tests/stub_tunnel.$(OBJEXT) urn.$(OBJEXT) \
 	tests/stub_wccp2.$(OBJEXT) tests/stub_whois.$(OBJEXT) \
 	FadingCounter.$(OBJEXT) $(am__objects_13) wordlist.$(OBJEXT)
 nodist_tests_testURL_OBJECTS = $(am__objects_17)
@@ -1829,10 +1833,11 @@ am__tests_testUfs_SOURCES_DIST = AccessLogEntry.cc AccessLogEntry.h \
 	HttpHeaderTools.cc HttpHeader.h HttpHeader.cc ClientInfo.h \
 	MemBuf.cc HttpHdrContRange.cc HttpHeaderFieldStat.h \
 	HttpHdrCc.h HttpHdrCc.cc HttpHdrCc.cci HttpHdrSc.cc \
-	HttpHdrScTarget.cc url.cc StatCounters.h StatCounters.cc \
-	StatHist.h StatHist.cc StrList.h StrList.cc HttpHdrRange.cc \
-	ETag.cc tests/stub_errorpage.cc tests/stub_HttpRequest.cc \
-	log/access_log.h tests/stub_access_log.cc refresh.h refresh.cc \
+	HttpHdrScTarget.cc tests/stub_libanyp.cc StatCounters.h \
+	StatCounters.cc StatHist.h StatHist.cc StrList.h StrList.cc \
+	HttpHdrRange.cc ETag.cc tests/stub_errorpage.cc \
+	tests/stub_HttpRequest.cc log/access_log.h \
+	tests/stub_access_log.cc refresh.h refresh.cc \
 	tests/stub_store_client.cc tools.h tests/stub_tools.cc \
 	tests/testStoreSupport.cc tests/testStoreSupport.h time.cc \
 	wordlist.h wordlist.cc
@@ -1874,9 +1879,10 @@ am_tests_testUfs_OBJECTS = AccessLogEntry.$(OBJEXT) \
 	HttpHeaderTools.$(OBJEXT) HttpHeader.$(OBJEXT) \
 	MemBuf.$(OBJEXT) HttpHdrContRange.$(OBJEXT) \
 	HttpHdrCc.$(OBJEXT) HttpHdrSc.$(OBJEXT) \
-	HttpHdrScTarget.$(OBJEXT) url.$(OBJEXT) StatCounters.$(OBJEXT) \
-	StatHist.$(OBJEXT) StrList.$(OBJEXT) HttpHdrRange.$(OBJEXT) \
-	ETag.$(OBJEXT) tests/stub_errorpage.$(OBJEXT) \
+	HttpHdrScTarget.$(OBJEXT) tests/stub_libanyp.$(OBJEXT) \
+	StatCounters.$(OBJEXT) StatHist.$(OBJEXT) StrList.$(OBJEXT) \
+	HttpHdrRange.$(OBJEXT) ETag.$(OBJEXT) \
+	tests/stub_errorpage.$(OBJEXT) \
 	tests/stub_HttpRequest.$(OBJEXT) \
 	tests/stub_access_log.$(OBJEXT) refresh.$(OBJEXT) \
 	tests/stub_store_client.$(OBJEXT) tests/stub_tools.$(OBJEXT) \
@@ -1957,9 +1963,9 @@ am__tests_test_http_range_SOURCES_DIST = AccessLogEntry.cc BodyPipe.cc \
 	tests/stub_libsecurity.cc tests/stub_main_cc.cc \
 	tests/stub_MemStore.cc tests/stub_store_stats.cc \
 	tests/stub_EventLoop.cc time.cc tools.h tools.cc \
-	tests/stub_tunnel.cc unlinkd.h unlinkd.cc url.cc urn.h urn.cc \
-	wccp2.h tests/stub_wccp2.cc whois.h tests/stub_whois.cc \
-	win32.cc wordlist.h wordlist.cc
+	tests/stub_tunnel.cc unlinkd.h unlinkd.cc \
+	tests/stub_libanyp.cc urn.h urn.cc wccp2.h tests/stub_wccp2.cc \
+	whois.h tests/stub_whois.cc win32.cc wordlist.h wordlist.cc
 am_tests_test_http_range_OBJECTS = AccessLogEntry.$(OBJEXT) \
 	BodyPipe.$(OBJEXT) cache_cf.$(OBJEXT) CachePeer.$(OBJEXT) \
 	cache_manager.$(OBJEXT) tests/stub_CacheDigest.$(OBJEXT) \
@@ -2012,10 +2018,10 @@ am_tests_test_http_range_OBJECTS = AccessLogEntry.$(OBJEXT) \
 	tests/stub_libsecurity.$(OBJEXT) tests/stub_main_cc.$(OBJEXT) \
 	tests/stub_MemStore.$(OBJEXT) tests/stub_store_stats.$(OBJEXT) \
 	tests/stub_EventLoop.$(OBJEXT) time.$(OBJEXT) tools.$(OBJEXT) \
-	tests/stub_tunnel.$(OBJEXT) $(am__objects_12) url.$(OBJEXT) \
-	urn.$(OBJEXT) tests/stub_wccp2.$(OBJEXT) \
-	tests/stub_whois.$(OBJEXT) $(am__objects_13) \
-	wordlist.$(OBJEXT)
+	tests/stub_tunnel.$(OBJEXT) $(am__objects_12) \
+	tests/stub_libanyp.$(OBJEXT) urn.$(OBJEXT) \
+	tests/stub_wccp2.$(OBJEXT) tests/stub_whois.$(OBJEXT) \
+	$(am__objects_13) wordlist.$(OBJEXT)
 nodist_tests_test_http_range_OBJECTS = $(am__objects_17)
 tests_test_http_range_OBJECTS = $(am_tests_test_http_range_OBJECTS) \
 	$(nodist_tests_test_http_range_OBJECTS)
@@ -2906,9 +2912,9 @@ squid_SOURCES = $(ACL_REGISTRATION_SOURCES) AccessLogEntry.cc \
 	StoreSearch.h StoreStats.cc StoreStats.h StoreSwapLogData.cc \
 	StoreSwapLogData.h swap_log_op.h Transients.cc Transients.h \
 	MemStore.cc MemStore.h time.cc TimeOrTag.h tools.h tools.cc \
-	tunnel.cc typedefs.h $(UNLINKDSOURCE) url.cc URL.h urn.h \
-	urn.cc wccp.h wccp.cc wccp2.h wccp2.cc whois.h whois.cc \
-	wordlist.h wordlist.cc XactionInitiator.h XactionInitiator.cc \
+	tunnel.cc typedefs.h $(UNLINKDSOURCE) urn.h urn.cc wccp.h \
+	wccp.cc wccp2.h wccp2.cc whois.h whois.cc wordlist.h \
+	wordlist.cc XactionInitiator.h XactionInitiator.cc \
 	$(WIN32_SOURCE) $(WINSVC_SOURCE) $(am__append_9)
 EXTRA_squid_SOURCES = \
 	$(all_AUTHMODULES) \
@@ -3103,6 +3109,7 @@ STUB_SOURCE = tests/STUB.h \
 	tests/stub_ipc.cc \
 	tests/stub_ipc_Forwarder.cc \
 	tests/stub_ipc_TypedMsgHdr.cc \
+	tests/stub_libanyp.cc \
 	tests/stub_libauth_acls.cc \
 	tests/stub_libauth.cc \
 	tests/stub_libcomm.cc \
@@ -3262,7 +3269,7 @@ tests_testHttpReply_SOURCES = \
 	tests/testHttpReply.cc \
 	tests/testHttpReply.h \
 	tests/stub_time.cc \
-	url.cc \
+	tests/stub_libanyp.cc \
 	wordlist.h \
 	wordlist.cc
 
@@ -3387,8 +3394,7 @@ tests_testACLMaxUserIP_SOURCES = \
 	tests/testACLMaxUserIP.cc \
 	tests/testACLMaxUserIP.h \
 	tests/stub_time.cc \
-	url.cc \
-	URL.h \
+	tests/stub_libanyp.cc \
 	MemBuf.cc \
 	wordlist.h \
 	wordlist.cc
@@ -3642,7 +3648,7 @@ tests_testCacheManager_SOURCES = \
 	tests/stub_SwapDir.cc \
 	MemStore.cc \
 	$(UNLINKDSOURCE) \
-	url.cc \
+	tests/stub_libanyp.cc \
 	urn.h \
 	urn.cc \
 	wccp2.h \
@@ -3828,7 +3834,7 @@ tests_testDiskIO_SOURCES = \
 	tests/testStoreSupport.h \
 	tests/stub_time.cc \
 	$(UNLINKDSOURCE) \
-	url.cc \
+	tests/stub_libanyp.cc \
 	$(WIN32_SOURCE) \
 	wordlist.h \
 	wordlist.cc \
@@ -4083,7 +4089,7 @@ tests_testEvent_SOURCES = \
 	tests/stub_tunnel.cc \
 	MemStore.cc \
 	$(UNLINKDSOURCE) \
-	url.cc \
+	tests/stub_libanyp.cc \
 	urn.h \
 	urn.cc \
 	wccp2.h \
@@ -4320,7 +4326,7 @@ tests_testEventLoop_SOURCES = \
 	tests/stub_tunnel.cc \
 	MemStore.cc \
 	$(UNLINKDSOURCE) \
-	url.cc \
+	tests/stub_libanyp.cc \
 	urn.h \
 	urn.cc \
 	wccp2.h \
@@ -4553,7 +4559,7 @@ tests_test_http_range_SOURCES = \
 	tools.cc \
 	tests/stub_tunnel.cc \
 	$(UNLINKDSOURCE) \
-	url.cc \
+	tests/stub_libanyp.cc \
 	urn.h \
 	urn.cc \
 	wccp2.h \
@@ -4661,6 +4667,7 @@ tests_testHttp1Parser_SOURCES = \
 	tests/testHttp1Parser.cc \
 	tests/testHttp1Parser.h \
 	tests/stub_time.cc \
+	tests/stub_libanyp.cc \
 	wordlist.h \
 	wordlist.cc
 
@@ -4860,7 +4867,6 @@ tests_testHttpRequest_SOURCES = \
 	tests/stub_tunnel.cc \
 	tests/stub_SwapDir.cc \
 	MemStore.cc \
-	url.cc \
 	urn.h \
 	urn.cc \
 	wccp2.h \
@@ -5103,7 +5109,7 @@ tests_testStore_SOURCES = \
 	tests/TestSwapDir.cc \
 	tests/TestSwapDir.h \
 	tests/stub_time.cc \
-	url.cc \
+	tests/stub_libanyp.cc \
 	wordlist.h \
 	wordlist.cc
 
@@ -5301,7 +5307,7 @@ tests_testUfs_SOURCES = \
 	HttpHdrCc.cci \
 	HttpHdrSc.cc \
 	HttpHdrScTarget.cc \
-	url.cc \
+	tests/stub_libanyp.cc \
 	StatCounters.h \
 	StatCounters.cc \
 	StatHist.h \
@@ -5503,7 +5509,7 @@ tests_testRock_SOURCES = \
 	tools.h \
 	tests/stub_tools.cc \
 	time.cc \
-	url.cc \
+	tests/stub_libanyp.cc \
 	wordlist.h \
 	wordlist.cc \
 	$(DELAY_POOL_SOURCE) \
@@ -5731,7 +5737,6 @@ tests_testURL_SOURCES = \
 	tools.h \
 	tools.cc \
 	tests/stub_tunnel.cc \
-	url.cc \
 	urn.h \
 	urn.cc \
 	wccp2.h \
@@ -6275,6 +6280,8 @@ tests/testACLMaxUserIP.$(OBJEXT): tests/$(am__dirstamp) \
 	tests/$(DEPDIR)/$(am__dirstamp)
 tests/stub_time.$(OBJEXT): tests/$(am__dirstamp) \
 	tests/$(DEPDIR)/$(am__dirstamp)
+tests/stub_libanyp.$(OBJEXT): tests/$(am__dirstamp) \
+	tests/$(DEPDIR)/$(am__dirstamp)
 
 tests/testACLMaxUserIP$(EXEEXT): $(tests_testACLMaxUserIP_OBJECTS) $(tests_testACLMaxUserIP_DEPENDENCIES) $(EXTRA_tests_testACLMaxUserIP_DEPENDENCIES) tests/$(am__dirstamp)
 	@rm -f tests/testACLMaxUserIP$(EXEEXT)
@@ -6701,7 +6708,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ufsdump.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/unlinkd.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/unlinkd_daemon.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/url.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/urn.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/wccp.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/wccp2.Po@am__quote@
@@ -6753,6 +6759,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@tests/$(DEPDIR)/stub_ipc_Forwarder.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@tests/$(DEPDIR)/stub_ipc_TypedMsgHdr.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@tests/$(DEPDIR)/stub_ipcache.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@tests/$(DEPDIR)/stub_libanyp.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@tests/$(DEPDIR)/stub_libauth.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@tests/$(DEPDIR)/stub_libauth_acls.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@tests/$(DEPDIR)/stub_libcomm.Po@am__quote@

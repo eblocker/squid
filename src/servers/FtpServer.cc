@@ -339,7 +339,7 @@ Ftp::Server::resetLogin(const char *reason)
 void
 Ftp::Server::calcUri(const SBuf *file)
 {
-    // TODO: fill a class URL instead of string
+    // TODO: fill a class AnyP::Uri instead of string
     uri = "ftp://";
     uri.append(host);
     if (port->ftp_track_dirs && master->workingDir.length()) {
@@ -1545,6 +1545,8 @@ Ftp::Server::handleUploadRequest(String &, String &)
         ClientHttpRequest *http = pipeline.front()->http;
         HttpRequest *request = http->request;
         ACLFilledChecklist bodyContinuationCheck(Config.accessList.forceRequestBodyContinuation, request, NULL);
+        bodyContinuationCheck.al = http->al;
+        bodyContinuationCheck.syncAle(request, http->log_uri);
         if (bodyContinuationCheck.fastCheck().allowed()) {
             request->forcedBodyContinuation = true;
             if (checkDataConnPost()) {

@@ -1,4 +1,4 @@
-squid (4.1-1) UNRELEASED; urgency=high
+squid (4.1-1) unstable; urgency=high
 
   * New Upstream Release (Closes: #896120)
 
@@ -8,7 +8,7 @@ squid (4.1-1) UNRELEASED; urgency=high
   * debian/control
     - Remove shlibs:Depends from transitional squid3 package
 
- -- Amos Jeffries <amosjeffries@squid-cache.org>  Mon, 02 Jul 2018 17:30:00 +1300
+ -- Luigi Gangitano <luigi@debian.org>  Tue, 03 Jul 2018 18:37:15 +0200
 
 squid (4.0.24-1~exp16) experimental; urgency=medium
 

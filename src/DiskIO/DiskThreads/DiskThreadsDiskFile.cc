@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2017 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2018 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -9,12 +9,12 @@
 /* DEBUG: section 79    Disk IO Routines */
 
 #include "squid.h"
-#include "disk.h"
 #include "DiskIO/IORequestor.h"
 #include "DiskIO/ReadRequest.h"
 #include "DiskIO/WriteRequest.h"
 #include "DiskThreadsDiskFile.h"
 #include "fd.h"
+#include "fs_io.h"
 #include "Generic.h"
 #include "globals.h"
 #include "StatCounters.h"
@@ -26,8 +26,7 @@
 
 CBDATA_CLASS_INIT(DiskThreadsDiskFile);
 
-DiskThreadsDiskFile::DiskThreadsDiskFile(char const *aPath, DiskThreadsIOStrategy *anIO):fd(-1), errorOccured (false), IO(anIO),
-    inProgressIOs (0)
+DiskThreadsDiskFile::DiskThreadsDiskFile(char const *aPath)
 {
     assert(aPath);
     debugs(79, 3, "UFSFile::UFSFile: " << aPath);
@@ -135,7 +134,7 @@ DiskThreadsDiskFile::OpenDone(int fd, void *cbdata, const char *buf, int aio_ret
 }
 
 void
-DiskThreadsDiskFile::openDone(int unused, const char *unused2, int anFD, int errflag)
+DiskThreadsDiskFile::openDone(int, const char *, int anFD, int errflag)
 {
     debugs(79, 3, "DiskThreadsDiskFile::openDone: FD " << anFD << ", errflag " << errflag);
     --Opening_FD;
@@ -143,8 +142,7 @@ DiskThreadsDiskFile::openDone(int unused, const char *unused2, int anFD, int err
     fd = anFD;
 
     if (errflag || fd < 0) {
-        errno = errflag;
-        debugs(79, DBG_CRITICAL, "DiskThreadsDiskFile::openDone: " << xstrerror());
+        debugs(79, DBG_CRITICAL, MYNAME << xstrerr(errflag));
         debugs(79, DBG_IMPORTANT, "\t" << path_);
         errorOccured = true;
     } else {

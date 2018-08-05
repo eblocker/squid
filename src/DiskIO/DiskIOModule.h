@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2017 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2018 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -21,12 +21,10 @@ class DiskIOModule
 {
 
 public:
+    /** Poke all compiled modules for self-setup */
     static void SetupAllModules();
     static void ModuleAdd(DiskIOModule &);
     static void FreeAllModules();
-
-    /** Poke all compiled modules for self-setup */
-    static void PokeAllModules();
 
     static DiskIOModule *Find(char const *type);
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2017 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2018 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -10,11 +10,9 @@
 #include "DiskIO/DiskIOModule.h"
 #include "HttpHeader.h"
 #include "HttpReply.h"
-#include "Mem.h"
 #include "MemObject.h"
 #include "Store.h"
 #include "StoreFileSystem.h"
-#include "SwapDir.h"
 #include "testDiskIO.h"
 #include "testStoreSupport.h"
 #include "unitTestMain.h"

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2017 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2018 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -14,12 +14,11 @@
 #include "ip/Address.h"
 #include "splay.h"
 
-/// \ingroup ACLAPI
 class acl_ip_data
 {
+    MEMPROXY_CLASS(acl_ip_data);
 
 public:
-    MEMPROXY_CLASS(acl_ip_data);
     static acl_ip_data *FactoryParse(char const *);
     static int NetworkCompare(acl_ip_data * const & a, acl_ip_data * const &b);
 
@@ -42,19 +41,13 @@ private:
     static bool DecodeMask(const char *asc, Ip::Address &mask, int string_format_type);
 };
 
-MEMPROXY_CLASS_INLINE(acl_ip_data);
-
-/// \ingroup ACLAPI
 class ACLIP : public ACL
 {
-
 public:
     void *operator new(size_t);
     void operator delete(void *);
 
     ACLIP() : data(NULL) {}
-    explicit ACLIP(const ACLFlag flgs[]) : ACL(flgs), data(NULL) {}
-
     ~ACLIP();
 
     typedef Splay<acl_ip_data *> IPSplay;
@@ -68,7 +61,7 @@ public:
 
 protected:
 
-    int match(Ip::Address &);
+    int match(const Ip::Address &);
     IPSplay *data;
 
 };

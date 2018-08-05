@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2017 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2018 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -23,6 +23,9 @@
 #if USE_OPENSSL
 #include "ssl/ErrorDetail.h"
 #endif
+
+/// error page callback
+typedef void ERCB(int fd, void *, size_t);
 
 /**
  \defgroup ErrorPageAPI Error Pages API
@@ -69,10 +72,14 @@
 class HttpReply;
 class HttpRequest;
 class MemBuf;
+class StoreEntry;
+class wordlist;
 
 /// \ingroup ErrorPageAPI
 class ErrorState
 {
+    CBDATA_CLASS(ErrorState);
+
 public:
     ErrorState(err_type type, Http::StatusCode, HttpRequest * request);
     ErrorState(); // not implemented.
@@ -166,8 +173,6 @@ public:
     /// type-specific detail about the transaction error;
     /// overwrites xerrno; overwritten by detail, if any.
     int detailCode;
-private:
-    CBDATA_CLASS2(ErrorState);
 };
 
 /**

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2017 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2018 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -11,7 +11,6 @@
 #include "squid.h"
 #include "acl/FilledChecklist.h"
 #include "acl/HttpStatus.h"
-#include "cache_cf.h"
 #include "Debug.h"
 #include "HttpReply.h"
 
@@ -120,14 +119,9 @@ ACLHTTPStatus::parse()
 void
 aclParseHTTPStatusList(Splay<acl_httpstatus_data *> **curlist)
 {
-    char *t = NULL;
-    acl_httpstatus_data *q = NULL;
-
-    while ((t = strtokFile())) {
-        if ((q = aclParseHTTPStatusData(t)) == NULL)
-            continue;
-
-        (*curlist)->insert(q, acl_httpstatus_data::compare);
+    while (char *t = ConfigParser::strtokFile()) {
+        if (acl_httpstatus_data *q = aclParseHTTPStatusData(t))
+            (*curlist)->insert(q, acl_httpstatus_data::compare);
     }
 }
 

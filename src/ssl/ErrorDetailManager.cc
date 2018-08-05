@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2017 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2018 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -43,7 +43,7 @@ private:
 
 /******************/
 bool
-Ssl::ErrorDetailsList::getRecord(Ssl::ssl_error_t value, ErrorDetailEntry &entry)
+Ssl::ErrorDetailsList::getRecord(Security::ErrorCode value, ErrorDetailEntry &entry)
 {
     const ErrorDetails::const_iterator it = theList.find(value);
     if (it != theList.end()) {
@@ -57,7 +57,7 @@ Ssl::ErrorDetailsList::getRecord(Ssl::ssl_error_t value, ErrorDetailEntry &entry
 }
 
 const char *
-Ssl::ErrorDetailsList::getErrorDescr(Ssl::ssl_error_t value)
+Ssl::ErrorDetailsList::getErrorDescr(Security::ErrorCode value)
 {
     const ErrorDetails::const_iterator it = theList.find(value);
     if (it != theList.end()) {
@@ -68,7 +68,7 @@ Ssl::ErrorDetailsList::getErrorDescr(Ssl::ssl_error_t value)
 }
 
 const char *
-Ssl::ErrorDetailsList::getErrorDetail(Ssl::ssl_error_t value)
+Ssl::ErrorDetailsList::getErrorDetail(Security::ErrorCode value)
 {
     const ErrorDetails::const_iterator it = theList.find(value);
     if (it != theList.end()) {
@@ -123,11 +123,11 @@ void Ssl::ErrorDetailsManager::cacheDetails(ErrorDetailsList::Pointer &errorDeta
 }
 
 bool
-Ssl::ErrorDetailsManager::getErrorDetail(Ssl::ssl_error_t value, const HttpRequest::Pointer &request, ErrorDetailEntry &entry)
+Ssl::ErrorDetailsManager::getErrorDetail(Security::ErrorCode value, const HttpRequest::Pointer &request, ErrorDetailEntry &entry)
 {
 #if USE_ERR_LOCALES
     String hdr;
-    if (request != NULL && request->header.getList(HDR_ACCEPT_LANGUAGE, &hdr)) {
+    if (request != NULL && request->header.getList(Http::HdrType::ACCEPT_LANGUAGE, &hdr)) {
         ErrorDetailsList::Pointer errDetails = NULL;
         //Try to retrieve from cache
         size_t pos = 0;
@@ -164,13 +164,13 @@ Ssl::ErrorDetailsManager::getErrorDetail(Ssl::ssl_error_t value, const HttpReque
 }
 
 const char *
-Ssl::ErrorDetailsManager::getDefaultErrorDescr(Ssl::ssl_error_t value)
+Ssl::ErrorDetailsManager::getDefaultErrorDescr(Security::ErrorCode value)
 {
     return theDefaultErrorDetails->getErrorDescr(value);
 }
 
 const char *
-Ssl::ErrorDetailsManager::getDefaultErrorDetail(Ssl::ssl_error_t value)
+Ssl::ErrorDetailsManager::getDefaultErrorDetail(Security::ErrorCode value)
 {
     return theDefaultErrorDetails->getErrorDetail(value);
 }
@@ -212,7 +212,7 @@ Ssl::ErrorDetailFile::parse(const char *buffer, int len, bool eof)
 
         if ( s != e) {
             DetailEntryParser parser;
-            if (!parser.parse(s, e)) {
+            if (!parser.parse(s, e - s)) {
                 debugs(83, DBG_IMPORTANT, HERE <<
                        "WARNING! parse error on:" << s);
                 return false;
@@ -225,7 +225,7 @@ Ssl::ErrorDetailFile::parse(const char *buffer, int len, bool eof)
                 return false;
             }
 
-            Ssl::ssl_error_t ssl_error = Ssl::GetErrorCode(errorName.termedBuf());
+            Security::ErrorCode ssl_error = Ssl::GetErrorCode(errorName.termedBuf());
             if (ssl_error != SSL_ERROR_NONE) {
 
                 if (theDetails->getErrorDetail(ssl_error)) {

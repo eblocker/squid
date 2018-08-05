@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2017 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2018 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -9,23 +9,24 @@
 #ifndef SQUID_SSL_GADGETS_H
 #define SQUID_SSL_GADGETS_H
 
-#include "base/TidyPointer.h"
+#include "base/HardFun.h"
+#include "security/forward.h"
 #include "ssl/crtd_message.h"
 
-#if HAVE_OPENSSL_SSL_H
-#include <openssl/ssl.h>
-#endif
 #if HAVE_OPENSSL_TXT_DB_H
 #include <openssl/txt_db.h>
+#endif
+#if HAVE_OPENSSL_X509V3_H
+#include <openssl/x509v3.h>
 #endif
 #include <string>
 
 namespace Ssl
 {
 /**
- \defgroup SslCrtdSslAPI ssl_crtd SSL api.
+ \defgroup SslCrtdSslAPI SSL certificate generator API
  These functions must not depend on Squid runtime code such as debug()
- because they are used by ssl_crtd.
+ because they are used by security_file_certgen helper.
  */
 
 #if SQUID_USE_CONST_SSL_METHOD
@@ -39,90 +40,35 @@ typedef SSL_METHOD * ContextMethod;
 #endif
 
 /**
-   \ingroup SslCrtdSslAPI
-  * Add SSL locking (a.k.a. reference counting) to TidyPointer
-  */
-template <typename T, void (*DeAllocator)(T *t), int lock>
-class LockingPointer: public TidyPointer<T, DeAllocator>
-{
-public:
-    typedef TidyPointer<T, DeAllocator> Parent;
-
-    LockingPointer(T *t = NULL): Parent(t) {
-    }
-
-    void resetAndLock(T *t) {
-        if (t != this->get()) {
-            this->reset(t);
-            if (t)
-                CRYPTO_add(&t->references, 1, lock);
-        }
-    }
-};
-
-// Macro to be used to define the C++ equivalent function of an extern "C"
-// function. The C++ function suffixed with the _cpp extension
-#define CtoCpp1(function, argument) \
-        extern "C++" inline void function ## _cpp(argument a) { \
-            function(a); \
-        }
-
-// Macro to be used to define the C++ wrapper function of a sk_*_pop_free
-// openssl family functions. The C++ function suffixed with the _free_wrapper
-// extension
-#define sk_free_wrapper(sk_object, argument, freefunction) \
-        extern "C++" inline void sk_object ## _free_wrapper(argument a) { \
-            sk_object ## _pop_free(a, freefunction); \
-        }
-
-/**
- \ingroup SslCrtdSslAPI
- * TidyPointer typedefs for  common SSL objects
+ * std::unique_ptr typedefs for common SSL objects
  */
-CtoCpp1(X509_free, X509 *)
-typedef LockingPointer<X509, X509_free_cpp, CRYPTO_LOCK_X509> X509_Pointer;
+sk_dtor_wrapper(sk_X509, STACK_OF(X509) *, X509_free);
+typedef std::unique_ptr<STACK_OF(X509), sk_X509_free_wrapper> X509_STACK_Pointer;
 
-sk_free_wrapper(sk_X509, STACK_OF(X509) *, X509_free)
-typedef TidyPointer<STACK_OF(X509), sk_X509_free_wrapper> X509_STACK_Pointer;
+typedef std::unique_ptr<BIGNUM, HardFun<void, BIGNUM*, &BN_free>> BIGNUM_Pointer;
 
-CtoCpp1(EVP_PKEY_free, EVP_PKEY *)
-typedef LockingPointer<EVP_PKEY, EVP_PKEY_free_cpp, CRYPTO_LOCK_EVP_PKEY> EVP_PKEY_Pointer;
+typedef std::unique_ptr<BIO, HardFun<void, BIO*, &BIO_vfree>> BIO_Pointer;
 
-CtoCpp1(BN_free, BIGNUM *)
-typedef TidyPointer<BIGNUM, BN_free_cpp> BIGNUM_Pointer;
+typedef std::unique_ptr<ASN1_INTEGER, HardFun<void, ASN1_INTEGER*, &ASN1_INTEGER_free>> ASN1_INT_Pointer;
 
-CtoCpp1(BIO_free, BIO *)
-typedef TidyPointer<BIO, BIO_free_cpp> BIO_Pointer;
+typedef std::unique_ptr<ASN1_OCTET_STRING, HardFun<void, ASN1_OCTET_STRING*, &ASN1_OCTET_STRING_free>> ASN1_OCTET_STRING_Pointer;
 
-CtoCpp1(ASN1_INTEGER_free, ASN1_INTEGER *)
-typedef TidyPointer<ASN1_INTEGER, ASN1_INTEGER_free_cpp> ASN1_INT_Pointer;
+typedef std::unique_ptr<TXT_DB, HardFun<void, TXT_DB*, &TXT_DB_free>> TXT_DB_Pointer;
 
-CtoCpp1(TXT_DB_free, TXT_DB *)
-typedef TidyPointer<TXT_DB, TXT_DB_free_cpp> TXT_DB_Pointer;
+typedef std::unique_ptr<X509_NAME, HardFun<void, X509_NAME*, &X509_NAME_free>> X509_NAME_Pointer;
 
-CtoCpp1(X509_NAME_free, X509_NAME *)
-typedef TidyPointer<X509_NAME, X509_NAME_free_cpp> X509_NAME_Pointer;
+typedef std::unique_ptr<RSA, HardFun<void, RSA*, &RSA_free>> RSA_Pointer;
 
-CtoCpp1(RSA_free, RSA *)
-typedef TidyPointer<RSA, RSA_free_cpp> RSA_Pointer;
+typedef std::unique_ptr<X509_REQ, HardFun<void, X509_REQ*, &X509_REQ_free>> X509_REQ_Pointer;
 
-CtoCpp1(X509_REQ_free, X509_REQ *)
-typedef TidyPointer<X509_REQ, X509_REQ_free_cpp> X509_REQ_Pointer;
+typedef std::unique_ptr<AUTHORITY_KEYID, HardFun<void, AUTHORITY_KEYID*, &AUTHORITY_KEYID_free>> AUTHORITY_KEYID_Pointer;
 
-CtoCpp1(SSL_CTX_free, SSL_CTX *)
-typedef TidyPointer<SSL_CTX, SSL_CTX_free_cpp> SSL_CTX_Pointer;
+sk_dtor_wrapper(sk_GENERAL_NAME, STACK_OF(GENERAL_NAME) *, GENERAL_NAME_free);
+typedef std::unique_ptr<STACK_OF(GENERAL_NAME), sk_GENERAL_NAME_free_wrapper> GENERAL_NAME_STACK_Pointer;
 
-CtoCpp1(SSL_free, SSL *)
-typedef LockingPointer<SSL, SSL_free_cpp, CRYPTO_LOCK_SSL> SSL_Pointer;
+typedef std::unique_ptr<GENERAL_NAME, HardFun<void, GENERAL_NAME*, &GENERAL_NAME_free>> GENERAL_NAME_Pointer;
 
-CtoCpp1(DH_free, DH *);
-typedef TidyPointer<DH, DH_free_cpp> DH_Pointer;
-
-sk_free_wrapper(sk_X509_CRL, STACK_OF(X509_CRL) *, X509_CRL_free)
-typedef TidyPointer<STACK_OF(X509_CRL), sk_X509_CRL_free_wrapper> X509_CRL_STACK_Pointer;
-
-sk_free_wrapper(sk_X509_NAME, STACK_OF(X509_NAME) *, X509_NAME_free)
-typedef TidyPointer<STACK_OF(X509_NAME), sk_X509_NAME_free_wrapper> X509_NAME_STACK_Pointer;
+typedef std::unique_ptr<X509_EXTENSION, HardFun<void, X509_EXTENSION*, &X509_EXTENSION_free>> X509_EXTENSION_Pointer;
 
 /**
  \ingroup SslCrtdSslAPI
@@ -134,31 +80,68 @@ EVP_PKEY * createSslPrivateKey();
  \ingroup SslCrtdSslAPI
  * Write private key and SSL certificate to memory.
  */
-bool writeCertAndPrivateKeyToMemory(X509_Pointer const & cert, EVP_PKEY_Pointer const & pkey, std::string & bufferToWrite);
+bool writeCertAndPrivateKeyToMemory(Security::CertPointer const & cert, Security::PrivateKeyPointer const & pkey, std::string & bufferToWrite);
 
 /**
  \ingroup SslCrtdSslAPI
  * Append SSL certificate to bufferToWrite.
  */
-bool appendCertToMemory(X509_Pointer const & cert, std::string & bufferToWrite);
-
-/**
- \ingroup SslCrtdSslAPI
- * Write private key and SSL certificate to file.
- */
-bool writeCertAndPrivateKeyToFile(X509_Pointer const & cert, EVP_PKEY_Pointer const & pkey, char const * filename);
+bool appendCertToMemory(Security::CertPointer const & cert, std::string & bufferToWrite);
 
 /**
  \ingroup SslCrtdSslAPI
  * Write private key and SSL certificate to memory.
  */
-bool readCertAndPrivateKeyFromMemory(X509_Pointer & cert, EVP_PKEY_Pointer & pkey, char const * bufferToRead);
+bool readCertAndPrivateKeyFromMemory(Security::CertPointer & cert, Security::PrivateKeyPointer & pkey, char const * bufferToRead);
 
 /**
  \ingroup SslCrtdSslAPI
  * Read SSL certificate from memory.
  */
-bool readCertFromMemory(X509_Pointer & cert, char const * bufferToRead);
+bool readCertFromMemory(Security::CertPointer & cert, char const * bufferToRead);
+
+/**
+ \ingroup SslCrtdSslAPI
+ * Read private key from file.
+ */
+void ReadPrivateKeyFromFile(char const * keyFilename, Security::PrivateKeyPointer &pkey, pem_password_cb *passwd_callback);
+
+/**
+ \ingroup SslCrtdSslAPI
+ * Initialize the bio with the file 'filename' openned for reading
+ */
+bool OpenCertsFileForReading(BIO_Pointer &bio, const char *filename);
+
+/**
+ \ingroup SslCrtdSslAPI
+ * Read a certificate from bio
+ */
+bool ReadX509Certificate(BIO_Pointer &bio, Security::CertPointer & cert);
+
+/**
+ \ingroup SslCrtdSslAPI
+ * Read a private key from bio
+ */
+bool ReadPrivateKey(BIO_Pointer &bio, Security::PrivateKeyPointer &pkey, pem_password_cb *passwd_callback);
+
+/**
+ \ingroup SslCrtdSslAPI
+ * Initialize the bio with the file 'filename' openned for writting
+ */
+
+bool OpenCertsFileForWriting(BIO_Pointer &bio, const char *filename);
+
+/**
+ \ingroup SslCrtdSslAPI
+ * Write certificate to BIO.
+ */
+bool WriteX509Certificate(BIO_Pointer &bio, const Security::CertPointer & cert);
+
+/**
+ \ingroup SslCrtdSslAPI
+ * Write private key to BIO.
+ */
+bool WritePrivateKey(BIO_Pointer &bio, const Security::PrivateKeyPointer &pkey);
 
 /**
   \ingroup SslCrtdSslAPI
@@ -230,22 +213,23 @@ class CertificateProperties
 {
 public:
     CertificateProperties();
-    X509_Pointer mimicCert; ///< Certificate to mimic
-    X509_Pointer signWithX509; ///< Certificate to sign the generated request
-    EVP_PKEY_Pointer signWithPkey; ///< The key of the signing certificate
+    Security::CertPointer mimicCert; ///< Certificate to mimic
+    Security::CertPointer signWithX509; ///< Certificate to sign the generated request
+    Security::PrivateKeyPointer signWithPkey; ///< The key of the signing certificate
     bool setValidAfter; ///< Do not mimic "Not Valid After" field
     bool setValidBefore; ///< Do not mimic "Not Valid Before" field
     bool setCommonName; ///< Replace the CN field of the mimicing subject with the given
     std::string commonName; ///< A CN to use for the generated certificate
     CertSignAlgorithm signAlgorithm; ///< The signing algorithm to use
     const EVP_MD *signHash; ///< The signing hash to use
-    /// Returns certificate database primary key. New fake certificates
-    /// purge old fake certificates with the same key.
-    std::string & dbKey() const;
 private:
     CertificateProperties(CertificateProperties &);
     CertificateProperties &operator =(CertificateProperties const &);
 };
+
+/// \ingroup SslCrtdSslAPI
+/// \returns certificate database key
+std::string & OnDiskCertificateDbKey(const CertificateProperties &);
 
 /**
  \ingroup SslCrtdSslAPI
@@ -254,21 +238,7 @@ private:
  * Return generated certificate and private key in resultX509 and resultPkey
  * variables.
  */
-bool generateSslCertificate(X509_Pointer & cert, EVP_PKEY_Pointer & pkey, CertificateProperties const &properties);
-
-/**
- \ingroup SslCrtdSslAPI
- * Read private key from file. Make sure that this is not encrypted file.
- */
-EVP_PKEY * readSslPrivateKey(char const * keyFilename, pem_password_cb *passwd_callback = NULL);
-
-/**
- \ingroup SslCrtdSslAPI
- *  Read certificate and private key from files.
- * \param certFilename name of file with certificate.
- * \param keyFilename name of file with private key.
- */
-void readCertAndPrivateKeyFromFiles(X509_Pointer & cert, EVP_PKEY_Pointer & pkey, char const * certFilename, char const * keyFilename);
+bool generateSslCertificate(Security::CertPointer & cert, Security::PrivateKeyPointer & pkey, CertificateProperties const &properties);
 
 /**
  \ingroup SslCrtdSslAPI
@@ -298,6 +268,14 @@ const char *CommonHostName(X509 *x509);
    * Uses static memory to temporary store the extracted name.
 */
 const char *getOrganization(X509 *x509);
+
+/// \ingroup ServerProtocolSSLAPI
+/// \return whether both certificates exist and are the same (e.g., have identical ASN.1 images)
+bool CertificatesCmp(const Security::CertPointer &cert1, const Security::CertPointer &cert2);
+
+/// wrapper for OpenSSL X509_get0_signature() which takes care of
+/// portability issues with older OpenSSL versions
+const ASN1_BIT_STRING *X509_get_signature(const Security::CertPointer &);
 
 } // namespace Ssl
 #endif // SQUID_SSL_GADGETS_H

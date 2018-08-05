@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2017 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2018 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -9,32 +9,7 @@
 #include "squid.h"
 #include "dlink.h"
 
-/* dlink are Mem-pooled */
-#include "MemPool.h"
-
 dlink_list ClientActiveRequests;
-
-MemAllocator *dlink_node_pool = NULL;
-
-dlink_node *
-dlinkNodeNew()
-{
-    if (dlink_node_pool == NULL)
-        dlink_node_pool = memPoolCreate("Dlink list nodes", sizeof(dlink_node));
-
-    /* where should we call delete dlink_node_pool;dlink_node_pool = NULL; */
-    return (dlink_node *)dlink_node_pool->alloc();
-}
-
-/** The node needs to be unlinked FIRST */
-void
-dlinkNodeDelete(dlink_node * m)
-{
-    if (m == NULL)
-        return;
-
-    dlink_node_pool->freeOne(m);
-}
 
 void
 dlinkAdd(void *data, dlink_node * m, dlink_list * list)

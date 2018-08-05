@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2017 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2018 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -7,11 +7,12 @@
  */
 
 #include "squid.h"
+#include "sbuf/DetailedStats.h"
 
 #define STUB_API "SBuf.cc"
 #include "tests/STUB.h"
 
-#include "SBuf.h"
+#include "sbuf/SBuf.h"
 
 InstanceIdDefinitions(SBuf, "SBuf");
 
@@ -19,14 +20,13 @@ SBufStats SBuf::stats;
 const SBuf::size_type SBuf::npos;
 const SBuf::size_type SBuf::maxSize;
 
-SBufStats::SBufStats() {}
 std::ostream& SBufStats::dump(std::ostream &os) const STUB_RETVAL(os)
 SBufStats& SBufStats::operator +=(const SBufStats&) STUB_RETVAL(*this)
 
 SBuf::SBuf() {}
 SBuf::SBuf(const SBuf &S) {}
 SBuf::SBuf(const char *S, size_type n) {}
-SBuf::SBuf(const String &S) {}
+SBuf::SBuf(const char *S) {}
 SBuf::SBuf(const std::string &s) {}
 SBuf::~SBuf() {}
 SBuf& SBuf::assign(const SBuf &S) STUB_RETVAL(*this)
@@ -49,8 +49,8 @@ SBuf SBuf::consume(size_type n) STUB_RETVAL(*this)
 const SBufStats& SBuf::GetStats() STUB_RETVAL(SBuf::stats)
 SBuf::size_type SBuf::copy(char *dest, size_type n) const STUB_RETVAL(0)
 const char* SBuf::rawContent() const STUB_RETVAL(NULL)
-char *SBuf::rawSpace(size_type minSize) STUB_RETVAL(NULL)
-void SBuf::forceSize(size_type newSize) STUB
+char *SBuf::rawAppendStart(size_type) STUB_RETVAL(NULL)
+void SBuf::rawAppendFinish(const char *, size_type) STUB
 const char* SBuf::c_str() STUB_RETVAL("")
 void SBuf::reserveCapacity(size_type minCapacity) STUB
 SBuf::size_type SBuf::reserve(const SBufReservationRequirements &) STUB_RETVAL(0)
@@ -63,8 +63,6 @@ SBuf::size_type SBuf::rfind(char c, size_type endPos) const STUB_RETVAL(SBuf::np
 SBuf::size_type SBuf::rfind(const SBuf &str, size_type endPos) const STUB_RETVAL(SBuf::npos)
 SBuf::size_type SBuf::findFirstOf(const CharacterSet &set, size_type startPos) const STUB_RETVAL(SBuf::npos)
 SBuf::size_type SBuf::findFirstNotOf(const CharacterSet &set, size_type startPos) const STUB_RETVAL(SBuf::npos)
-int SBuf::scanf(const char *format, ...) STUB_RETVAL(-1)
 void SBuf::toLower() STUB
 void SBuf::toUpper() STUB
-String SBuf::toString() const STUB_RETVAL(String(""))
 

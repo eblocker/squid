@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2017 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2018 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -192,7 +192,7 @@ ACLChecklist::~ACLChecklist()
 {
     assert (!asyncInProgress());
 
-    cbdataReferenceDone(accessList);
+    changeAcl(nullptr);
 
     debugs(28, 4, "ACLChecklist::~ACLChecklist: destroyed " << this);
 }
@@ -314,9 +314,7 @@ ACLChecklist::fastCheck(const Acl::Tree * list)
 
     // Concurrent checks are not supported, but sequential checks are, and they
     // may use a mixture of fastCheck(void) and fastCheck(list) calls.
-    const Acl::Tree * const savedList = accessList;
-
-    accessList = cbdataReference(list);
+    const Acl::Tree * const savedList = changeAcl(list);
 
     // assume DENY/ALLOW on mis/matches due to action-free accessList
     // matchAndFinish() takes care of the ALLOW case
@@ -325,8 +323,7 @@ ACLChecklist::fastCheck(const Acl::Tree * list)
     if (!finished())
         markFinished(ACCESS_DENIED, "ACLs failed to match");
 
-    cbdataReferenceDone(accessList);
-    accessList = savedList;
+    changeAcl(savedList);
     occupied_ = false;
     PROF_stop(aclCheckFast);
     return currentAnswer();

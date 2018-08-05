@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2017 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2018 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -29,12 +29,13 @@
 #include "esi/Expression.h"
 #include "esi/Segment.h"
 #include "esi/VarState.h"
+#include "fatal.h"
+#include "http/Stream.h"
 #include "HttpHdrSc.h"
 #include "HttpHdrScTarget.h"
 #include "HttpReply.h"
 #include "HttpRequest.h"
 #include "ip/Address.h"
-#include "Mem.h"
 #include "MemBuf.h"
 #include "profiler/Profiler.h"
 #include "SquidConfig.h"
@@ -81,10 +82,11 @@ typedef ESIContext::esiKick_t esiKick_t;
 
 /* some core operators */
 
-/* esiComment */
-
-struct esiComment : public ESIElement {
+class esiComment : public ESIElement
+{
     MEMPROXY_CLASS(esiComment);
+
+public:
     ~esiComment();
     esiComment();
     Pointer makeCacheable() const;
@@ -93,8 +95,6 @@ struct esiComment : public ESIElement {
     void render(ESISegment::Pointer);
     void finish();
 };
-
-MEMPROXY_CLASS_INLINE(esiComment);
 
 #include "esi/Literal.h"
 
@@ -106,28 +106,24 @@ MEMPROXY_CLASS_INLINE(esiComment);
 
 class esiRemove : public ESIElement
 {
+    MEMPROXY_CLASS(esiRemove);
 
 public:
-    void *operator new (size_t byteCount);
-    void operator delete (void *address);
+    esiRemove() : ESIElement() {}
+    virtual ~esiRemove() {}
 
-    esiRemove();
-    void render(ESISegment::Pointer);
-    bool addElement (ESIElement::Pointer);
-    Pointer makeCacheable() const;
-    Pointer makeUsable(esiTreeParentPtr, ESIVarState &) const;
-    void finish();
+    virtual void render(ESISegment::Pointer);
+    virtual bool addElement (ESIElement::Pointer);
+    virtual Pointer makeCacheable() const;
+    virtual Pointer makeUsable(esiTreeParentPtr, ESIVarState &) const;
+    virtual void finish() {}
 };
 
-CBDATA_TYPE (esiRemove);
-static FREE esiRemoveFree;
-static ESIElement * esiRemoveNew(void);
-
-/* esiTry */
-
-struct esiTry : public ESIElement {
+class esiTry : public ESIElement
+{
     MEMPROXY_CLASS(esiTry);
 
+public:
     esiTry(esiTreeParentPtr aParent);
     ~esiTry();
 
@@ -158,15 +154,13 @@ private:
     esiProcessResult_t bestAttemptRV() const;
 };
 
-MEMPROXY_CLASS_INLINE(esiTry);
-
 #include "esi/Var.h"
 
-/* esiChoose */
-
-struct esiChoose : public ESIElement {
+class esiChoose : public ESIElement
+{
     MEMPROXY_CLASS(esiChoose);
 
+public:
     esiChoose(esiTreeParentPtr);
     ~esiChoose();
 
@@ -182,7 +176,7 @@ struct esiChoose : public ESIElement {
     Pointer makeUsable(esiTreeParentPtr, ESIVarState &) const;
     void NULLUnChosen();
 
-    ElementList elements;
+    Esi::Elements elements;
     int chosenelement;
     ESIElement::Pointer otherwise;
     void finish();
@@ -194,12 +188,11 @@ private:
     void selectElement();
 };
 
-MEMPROXY_CLASS_INLINE(esiChoose);
-
-/* esiWhen */
-
-struct esiWhen : public esiSequence {
+class esiWhen : public esiSequence
+{
     MEMPROXY_CLASS(esiWhen);
+
+public:
     esiWhen(esiTreeParentPtr aParent, int attributes, const char **attr, ESIVarState *);
     ~esiWhen();
     Pointer makeCacheable() const;
@@ -217,13 +210,7 @@ private:
     void evaluate();
 };
 
-MEMPROXY_CLASS_INLINE(esiWhen);
-
-/* esiOtherwise */
-
 struct esiOtherwise : public esiSequence {
-    //    void *operator new (size_t byteCount);
-    //    void operator delete (void *address);
     esiOtherwise(esiTreeParentPtr aParent) : esiSequence (aParent) {}
 };
 
@@ -321,7 +308,7 @@ ESIContext::kick ()
         /* we've been detached from - we can't do anything more */
         return ESI_KICK_FAILED;
 
-    /* Something has occured. Process any remaining nodes */
+    /* Something has occurred. Process any remaining nodes */
     if (!flags.finished)
         /* Process some of our data */
         switch (process ()) {
@@ -573,8 +560,8 @@ ESIContext::send ()
 
 #endif
 
-    if (!(rep != NULL || (outbound.getRaw() &&
-                          outbound->len && (outbound_offset <= outbound->len)))) {
+    if (!(rep || (outbound.getRaw() &&
+                  outbound->len && (outbound_offset <= outbound->len)))) {
         debugs(86, 5, "ESIContext::send: Nothing to send.");
         return 0;
     }
@@ -618,10 +605,10 @@ ESIContext::send ()
     flags.clientwantsdata = 0;
     debugs(86, 5, "ESIContext::send: this=" << this << " Client no longer wants data ");
     /* Deal with re-entrancy */
-    HttpReply::Pointer temprep = rep;
+    HttpReplyPointer temprep = rep;
     rep = NULL; /* freed downstream */
 
-    if (temprep != NULL && varState)
+    if (temprep && varState)
         varState->buildVary(temprep.getRaw());
 
     {
@@ -853,10 +840,10 @@ ESIContextNew (HttpReply *rep, clientStreamNode *thisNode, ClientHttpRequest *ht
         /* remove specific headers for ESI to prevent
          * downstream cache confusion */
         HttpHeader *hdr = &rep->header;
-        hdr->delById(HDR_ACCEPT_RANGES);
-        hdr->delById(HDR_ETAG);
-        hdr->delById(HDR_CONTENT_LENGTH);
-        hdr->delById(HDR_CONTENT_MD5);
+        hdr->delById(Http::HdrType::ACCEPT_RANGES);
+        hdr->delById(Http::HdrType::ETAG);
+        hdr->delById(Http::HdrType::CONTENT_LENGTH);
+        hdr->delById(Http::HdrType::CONTENT_MD5);
         rv->tree = new esiSequence (rv, true);
         rv->thisNode = thisNode;
         rv->http = http;
@@ -1035,7 +1022,7 @@ ESIContext::start(const char *el, const char **attr, size_t attrCount)
 
     case ESIElement::ESI_ELEMENT_REMOVE:
         /* Put on the stack to allow skipping of 'invalid' markup */
-        element = esiRemoveNew ();
+        element = new esiRemove();
         break;
 
     case ESIElement::ESI_ELEMENT_TRY:
@@ -1259,7 +1246,7 @@ ESIContext::parse()
         ++parserState.stackdepth;
     }
 
-    if (rep != NULL && !parserState.inited())
+    if (rep && !parserState.inited())
         parserState.init(this);
 
     /* we have data */
@@ -1398,7 +1385,7 @@ ESIContext::freeResources ()
 {
     debugs(86, 5, HERE << "Freeing for this=" << this);
 
-    rep = NULL; // refcounted
+    rep = nullptr; // refcounted
 
     finishChildren ();
 
@@ -1503,11 +1490,10 @@ esiLiteral::~esiLiteral()
     cbdataReferenceDone (varState);
 }
 
-esiLiteral::esiLiteral(ESISegment::Pointer aSegment)
+esiLiteral::esiLiteral(ESISegment::Pointer aSegment) :
+    buffer(aSegment),
+    varState(nullptr)
 {
-    buffer = aSegment;
-    /* we've been handed a complete, processed string */
-    varState = NULL;
     /* Nothing to do */
     flags.donevars = 1;
 }
@@ -1599,42 +1585,6 @@ esiLiteral::makeUsable(esiTreeParentPtr , ESIVarState &newVarState) const
 
 /* esiRemove */
 void
-esiRemoveFree (void *data)
-{
-    esiRemove *thisNode = (esiRemove *)data;
-    debugs(86, 5, "esiRemoveFree " << thisNode);
-}
-
-void *
-esiRemove::operator new(size_t byteCount)
-{
-    assert (byteCount == sizeof (esiRemove));
-    void *rv;
-    CBDATA_INIT_TYPE_FREECB(esiRemove, esiRemoveFree);
-    rv = (void *)cbdataAlloc (esiRemove);
-    return rv;
-}
-
-void
-esiRemove::operator delete (void *address)
-{
-    cbdataFree (address);
-}
-
-ESIElement *
-esiRemoveNew ()
-{
-    return new esiRemove;
-}
-
-esiRemove::esiRemove()
-{}
-
-void
-esiRemove::finish()
-{}
-
-void
 esiRemove::render(ESISegment::Pointer output)
 {
     /* Removes do nothing dude */
@@ -1716,7 +1666,7 @@ esiTry::addElement(ESIElement::Pointer element)
 
     if (dynamic_cast<esiAttempt*>(element.getRaw())) {
         if (attempt.getRaw()) {
-            debugs(86, DBG_IMPORTANT, "esiTryAdd: Failed for " << this << " - try allready has an attempt node (section 3.4)");
+            debugs(86, DBG_IMPORTANT, "esiTryAdd: Failed for " << this << " - try already has an attempt node (section 3.4)");
             return false;
         }
 
@@ -1930,70 +1880,17 @@ esiTry::finish()
     except = NULL;
 }
 
-/* esiAttempt */
-#if 0
-void *
-esiAttempt::operator new(size_t byteCount)
-{
-    assert (byteCount == sizeof (esiAttempt));
-
-}
-
-void
-esiAttempt::operator delete (void *address)
-{
-    cbdataFree (address);
-}
-
-#endif
-
-/* esiExcept */
-#if 0
-void *
-esiExcept::operator new(size_t byteCount)
-{
-    assert (byteCount == sizeof (esiExcept));
-    void *rv;
-    CBDATA_INIT_TYPE_FREECB(esiExcept, esiSequence::Free);
-    rv = (void *)cbdataAlloc (esiExcept);
-    return rv;
-}
-
-void
-esiExcept::operator delete (void *address)
-{
-    cbdataFree (address);
-}
-
-#endif
-
-/* ESIVar */
-#if 0
-void *
-esiVar::operator new(size_t byteCount)
-{
-    assert (byteCount == sizeof (esiVar));
-    void *rv;
-    CBDATA_INIT_TYPE_FREECB(esiVar, esiSequence::Free);
-    rv = (void *)cbdataAlloc (esiVar);
-    return rv;
-}
-
-void
-esiVar::operator delete (void *address)
-{
-    cbdataFree (address);
-}
-
-#endif
-
 /* esiChoose */
 esiChoose::~esiChoose()
 {
     debugs(86, 5, "esiChoose::~esiChoose " << this);
+    FinishAllElements(elements); // finish if not already done
 }
 
-esiChoose::esiChoose(esiTreeParentPtr aParent) : elements (), chosenelement (-1),parent (aParent)
+esiChoose::esiChoose(esiTreeParentPtr aParent) :
+    elements(),
+    chosenelement(-1),
+    parent(aParent)
 {}
 
 void
@@ -2067,35 +1964,37 @@ esiChoose::selectElement()
     }
 }
 
+// TODO: make ESIElement destructor call finish() instead so it is
+//       a) only called when an element ref-count is 0, and
+//       b) caller can elements.clear() instead of doing this
+void
+FinishAnElement(ESIElement::Pointer &element, int pos)
+{
+    if (element)
+        element->finish();
+
+    debugs(86, 5, "setting index " << pos << ", pointer " << (void*)element.getRaw() << " to nil");
+    element = nullptr;
+}
+
+void
+FinishAllElements(Esi::Elements &elements)
+{
+    int pos = 0;
+    for (auto &element : elements)
+        FinishAnElement(element, pos++);
+}
+
 void
 esiChoose::finish()
 {
-    elements.setNULL(0, elements.size());
+    FinishAllElements(elements);
 
     if (otherwise.getRaw())
         otherwise->finish();
 
-    otherwise = NULL;
-
-    parent = NULL;
-}
-
-void
-ElementList::setNULL (int start, int end)
-{
-    assert (start >= 0 && start <= elementcount);
-    assert (end >= 0 && end <= elementcount);
-
-    for (int loopPosition = start; loopPosition < end; ++loopPosition) {
-        if (elements[loopPosition].getRaw())
-            elements[loopPosition]->finish();
-
-        debugs(86, 5, "esiSequence::NULLElements: Setting index " <<
-               loopPosition << ", pointer " <<
-               elements[loopPosition].getRaw() << " to NULL");
-
-        elements[loopPosition] = NULL;
-    }
+    otherwise = nullptr;
+    parent = nullptr;
 }
 
 void
@@ -2107,11 +2006,14 @@ esiChoose::NULLUnChosen()
 
         otherwise = NULL;
 
-        elements.setNULL (0, chosenelement);
+        int pos = 0;
+        for (auto &element : elements) {
+            if (pos != chosenelement)
+                FinishAnElement(element, pos++);
+        }
 
-        elements.setNULL (chosenelement + 1, elements.size());
     } else if (otherwise.getRaw()) {
-        elements.setNULL (0, elements.size());
+        FinishAllElements(elements);
     }
 }
 
@@ -2163,7 +2065,7 @@ void
 esiChoose::fail(ESIElement * source, char const *anError)
 {
     checkValidSource (source);
-    elements.setNULL (0, elements.size());
+    FinishAllElements(elements);
 
     if (otherwise.getRaw())
         otherwise->finish();
@@ -2240,59 +2142,6 @@ esiChoose::makeUsable(esiTreeParentPtr newParent, ESIVarState &newVarState) cons
         resultC->otherwise = otherwise->makeUsable(resultC, newVarState);
 
     return result;
-}
-
-/* ElementList */
-ElementList::ElementList () : elements(NULL), allocedcount(0), allocedsize(0), elementcount (0)
-{}
-
-ElementList::~ElementList()
-{
-    debugs(86, 5, "ElementList::~ElementList " << this);
-    setNULL(0, elementcount);
-
-    if (elements)
-        memFreeBuf (allocedsize, elements);
-}
-
-ESIElement::Pointer &
-ElementList::operator [] (int index)
-{
-    return elements[index];
-}
-
-ESIElement::Pointer const &
-ElementList::operator [] (int index) const
-{
-    return elements[index];
-}
-
-void
-ElementList::pop_front (size_t const count)
-{
-    if (!count)
-        return;
-
-    memmove(elements, &elements[count], (elementcount - count)  * sizeof (ESIElement::Pointer));
-
-    elementcount -= count;
-}
-
-void
-ElementList::push_back(ESIElement::Pointer &newElement)
-{
-    elements = (ESIElement::Pointer *)memReallocBuf (elements, ++elementcount * sizeof (ESIElement::Pointer),
-               &allocedsize);
-    assert (elements);
-    allocedcount = elementcount;
-    memset(&elements[elementcount - 1], '\0', sizeof (ESIElement::Pointer));
-    elements[elementcount - 1] = newElement;
-}
-
-size_t
-ElementList::size() const
-{
-    return elementcount;
 }
 
 /* esiWhen */
@@ -2382,26 +2231,6 @@ esiWhen::makeUsable(esiTreeParentPtr newParent, ESIVarState &newVarState) const
     resultW->evaluate();
     return result;
 }
-
-/* esiOtherwise */
-#if 0
-void *
-esiOtherwise::operator new(size_t byteCount)
-{
-    assert (byteCount == sizeof (esiOtherwise));
-    void *rv;
-    CBDATA_INIT_TYPE_FREECB(esiOtherwise, esiSequence::Free);
-    rv = (void *)cbdataAlloc (esiOtherwise);
-    return rv;
-}
-
-void
-esiOtherwise::operator delete (void *address)
-{
-    cbdataFree (address);
-}
-
-#endif
 
 /* TODO: implement surrogate targeting and control processing */
 int

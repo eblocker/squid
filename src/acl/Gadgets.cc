@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2017 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2018 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -19,7 +19,6 @@
 #include "squid.h"
 #include "acl/Acl.h"
 #include "acl/AclDenyInfoList.h"
-#include "acl/AclNameList.h"
 #include "acl/Checklist.h"
 #include "acl/Gadgets.h"
 #include "acl/Strategised.h"
@@ -28,7 +27,6 @@
 #include "errorpage.h"
 #include "globals.h"
 #include "HttpRequest.h"
-#include "Mem.h"
 
 #include <set>
 #include <algorithm>
@@ -106,9 +104,8 @@ void
 aclParseDenyInfoLine(AclDenyInfoList ** head)
 {
     char *t = NULL;
-    AclDenyInfoList *A = NULL;
-    AclDenyInfoList *B = NULL;
-    AclDenyInfoList **T = NULL;
+    AclDenyInfoList *B;
+    AclDenyInfoList **T;
     AclNameList *L = NULL;
     AclNameList **Tail = NULL;
 
@@ -120,16 +117,13 @@ aclParseDenyInfoLine(AclDenyInfoList ** head)
         return;
     }
 
-    A = (AclDenyInfoList *)memAllocate(MEM_ACL_DENY_INFO_LIST);
-    A->err_page_id = errorReservePageId(t);
-    A->err_page_name = xstrdup(t);
-    A->next = (AclDenyInfoList *) NULL;
+    AclDenyInfoList *A = new AclDenyInfoList(t);
+
     /* next expect a list of ACL names */
     Tail = &A->acl_list;
 
     while ((t = ConfigParser::NextToken())) {
-        L = (AclNameList *)memAllocate(MEM_ACL_NAME_LIST);
-        xstrncpy(L->name, t, ACL_NAME_SZ-1);
+        L = new AclNameList(t);
         *Tail = L;
         Tail = &L->next;
     }
@@ -137,7 +131,7 @@ aclParseDenyInfoLine(AclDenyInfoList ** head)
     if (A->acl_list == NULL) {
         debugs(28, DBG_CRITICAL, "aclParseDenyInfoLine: " << cfg_filename << " line " << config_lineno << ": " << config_input_line);
         debugs(28, DBG_CRITICAL, "aclParseDenyInfoLine: deny_info line contains no ACL's, skipping");
-        memFree(A, MEM_ACL_DENY_INFO_LIST);
+        delete A;
         return;
     }
 
@@ -173,7 +167,7 @@ aclParseAccessLine(const char *directive, ConfigParser &, acl_access **treep)
     const int ruleId = ((treep && *treep) ? (*treep)->childrenCount() : 0) + 1;
     MemBuf ctxBuf;
     ctxBuf.init();
-    ctxBuf.Printf("%s#%d", directive, ruleId);
+    ctxBuf.appendf("%s#%d", directive, ruleId);
     ctxBuf.terminate();
 
     Acl::AndNode *rule = new Acl::AndNode;
@@ -209,7 +203,7 @@ aclParseAclList(ConfigParser &, Acl::Tree **treep, const char *label)
 
     MemBuf ctxLine;
     ctxLine.init();
-    ctxLine.Printf("(%s %s line)", cfg_directive, label);
+    ctxLine.appendf("(%s %s line)", cfg_directive, label);
     ctxLine.terminate();
 
     Acl::AndNode *rule = new Acl::AndNode;
@@ -218,7 +212,7 @@ aclParseAclList(ConfigParser &, Acl::Tree **treep, const char *label)
 
     MemBuf ctxTree;
     ctxTree.init();
-    ctxTree.Printf("%s %s", cfg_directive, label);
+    ctxTree.appendf("%s %s", cfg_directive, label);
     ctxTree.terminate();
 
     // We want a cbdata-protected Tree (despite giving it only one child node).
@@ -316,8 +310,7 @@ aclDestroyDenyInfoList(AclDenyInfoList ** list)
         }
 
         a_next = a->next;
-        xfree(a->err_page_name);
-        memFree(a, MEM_ACL_DENY_INFO_LIST);
+        delete a;
     }
 
     *list = NULL;

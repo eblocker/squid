@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2017 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2018 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -10,6 +10,24 @@
 
 #include "squid.h"
 #include "DiskIOModule.h"
+#if HAVE_DISKIO_MODULE_AIO
+#include "DiskIO/AIO/AIODiskIOModule.h"
+#endif
+#if HAVE_DISKIO_MODULE_BLOCKING
+#include "DiskIO/Blocking/BlockingDiskIOModule.h"
+#endif
+#if HAVE_DISKIO_MODULE_DISKDAEMON
+#include "DiskIO/DiskDaemon/DiskDaemonDiskIOModule.h"
+#endif
+#if HAVE_DISKIO_MODULE_DISKTHREADS
+#include "DiskIO/DiskThreads/DiskThreadsDiskIOModule.h"
+#endif
+#if HAVE_DISKIO_MODULE_IPCIO
+#include "DiskIO/IpcIo/IpcIoDiskIOModule.h"
+#endif
+#if HAVE_DISKIO_MODULE_MMAPPED
+#include "DiskIO/Mmapped/MmappedDiskIOModule.h"
+#endif
 
 std::vector<DiskIOModule*> *DiskIOModule::_Modules = NULL;
 
@@ -19,14 +37,31 @@ DiskIOModule::DiskIOModule()
 {
     /** We cannot call ModuleAdd(*this)
      * here as the virtual methods are not yet available.
-     * We leave that to PokeAllModules() later.
+     * We leave that to SetupAllModules() later.
      */
 }
 
 void
 DiskIOModule::SetupAllModules()
 {
-    DiskIOModule::PokeAllModules();
+#if HAVE_DISKIO_MODULE_AIO
+    AIODiskIOModule::GetInstance();
+#endif
+#if HAVE_DISKIO_MODULE_BLOCKING
+    BlockingDiskIOModule::GetInstance();
+#endif
+#if HAVE_DISKIO_MODULE_DISKDAEMON
+    DiskDaemonDiskIOModule::GetInstance();
+#endif
+#if HAVE_DISKIO_MODULE_DISKTHREADS
+    DiskThreadsDiskIOModule::GetInstance();
+#endif
+#if HAVE_DISKIO_MODULE_IPCIO
+    IpcIoDiskIOModule::GetInstance();
+#endif
+#if HAVE_DISKIO_MODULE_MMAPPED
+    MmappedDiskIOModule::GetInstance();
+#endif
 
     for (iterator i = GetModules().begin(); i != GetModules().end(); ++i)
         /* Call the FS to set up capabilities and initialize the FS driver */

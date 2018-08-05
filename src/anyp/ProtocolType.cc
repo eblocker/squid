@@ -23,6 +23,9 @@ const char * ProtocolType_str[] = {
 	"URN",
 	"WHOIS",
 	"ICY",
+	"TLS",
+	"SSL",
+	"AUTHORITY_FORM",
 	"UNKNOWN",
 	"MAX"
 };

@@ -1,4 +1,4 @@
-## Copyright (C) 1996-2017 The Squid Software Foundation and contributors
+## Copyright (C) 1996-2018 The Squid Software Foundation and contributors
 ##
 ## Squid software is distributed under GPLv2+ license and includes
 ## contributions from numerous individuals and organizations.
@@ -16,8 +16,6 @@ SQUID_OPTIONS   = squid.options
 EXTRA_DIST = \
 	squid.options \
 	config.site \
-	rredir.c \
-	rredir.pl \
 	user-agents.pl \
 	url-normalizer.pl \
 	nextstep/Makefile \

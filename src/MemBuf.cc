@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2017 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2018 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -72,18 +72,9 @@
  */
 
 #include "squid.h"
-#include "Mem.h"
+#include "mem/forward.h"
 #include "MemBuf.h"
 #include "profiler/Profiler.h"
-
-#ifdef VA_COPY
-#undef VA_COPY
-#endif
-#if defined HAVE_VA_COPY
-#define VA_COPY va_copy
-#elif defined HAVE___VA_COPY
-#define VA_COPY __va_copy
-#endif
 
 /* local constants */
 
@@ -154,7 +145,7 @@ MemBuf::reset()
  * Unfortunate hack to test if the buffer has been Init()ialized
  */
 int
-MemBuf::isNull()
+MemBuf::isNull() const
 {
     if (!buf && !max_capacity && !capacity && !size)
         return 1;       /* is null (not initialized) */
@@ -222,7 +213,7 @@ void MemBuf::truncate(mb_size_t tailSize)
  * calls memcpy, appends exactly size bytes,
  * extends buffer or creates buffer if needed.
  */
-void MemBuf::append(const char *newContent, mb_size_t sz)
+void MemBuf::append(const char *newContent, int sz)
 {
     assert(sz >= 0);
     assert(buf || (0==capacity && 0==size));
@@ -262,26 +253,12 @@ void MemBuf::terminate()
     *space() = '\0';
 }
 
-/* calls memBufVPrintf */
-void
-MemBuf::Printf(const char *fmt,...)
-{
-    va_list args;
-    va_start(args, fmt);
-    vPrintf(fmt, args);
-    va_end(args);
-}
-
 /**
- * vPrintf for other printf()'s to use; calls vsnprintf, extends buf if needed
+ * vappendf for other printf()'s to use; calls vsnprintf, extends buf if needed
  */
 void
-MemBuf::vPrintf(const char *fmt, va_list vargs)
+MemBuf::vappendf(const char *fmt, va_list vargs)
 {
-#ifdef VA_COPY
-    va_list ap;
-#endif
-
     int sz = 0;
     assert(fmt);
     assert(buf);
@@ -292,18 +269,15 @@ MemBuf::vPrintf(const char *fmt, va_list vargs)
         mb_size_t free_space = capacity - size;
         /* put as much as we can */
 
-#ifdef VA_COPY
         /* Fix of bug 753r. The value of vargs is undefined
          * after vsnprintf() returns. Make a copy of vargs
          * incase we loop around and call vsnprintf() again.
          */
-        VA_COPY(ap,vargs);
+        va_list ap;
+        va_copy(ap,vargs);
         sz = vsnprintf(buf + size, free_space, fmt, ap);
         va_end(ap);
-#else /* VA_COPY */
 
-        sz = vsnprintf(buf + size, free_space, fmt, vargs);
-#endif /*VA_COPY*/
         /* check for possible overflow */
         /* snprintf on Linuz returns -1 on overflows */
         /* snprintf on FreeBSD returns at least free_space on overflows */
@@ -397,10 +371,6 @@ void
 memBufReport(MemBuf * mb)
 {
     assert(mb);
-    mb->Printf("memBufReport is not yet implemented @?@\n");
+    mb->appendf("memBufReport is not yet implemented @?@\n");
 }
-
-#if !_USE_INLINE_
-#include "MemBuf.cci"
-#endif
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2017 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2018 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -17,9 +17,10 @@ namespace Fs
 namespace Ufs
 {
 
-/// \ingroup UFS
 class StoreSearchUFS : public StoreSearch
 {
+    CBDATA_CLASS(StoreSearchUFS);
+
 public:
     StoreSearchUFS(RefCount<UFSSwapDir> sd);
     virtual ~StoreSearchUFS();
@@ -45,7 +46,6 @@ public:
     RemovalPolicyWalker *walker;
 
 private:
-    CBDATA_CLASS2(StoreSearchUFS);
     /// \bug (callback) should be hidden behind a proper human readable name
     void (callback)(void *cbdata);
     void *cbdata;

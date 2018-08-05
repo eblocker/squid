@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2017 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2018 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -10,15 +10,14 @@
 
 #include "squid.h"
 
-/* MS Visual Studio Projects are monolithic, so we need the following
- * #if to exclude the ESI code from compile process when not needed.
- */
-#if (USE_SQUID_ESI == 1)
+#if USE_SQUID_ESI
 
 #include "client_side.h"
 #include "client_side_request.h"
 #include "esi/Include.h"
 #include "esi/VarState.h"
+#include "fatal.h"
+#include "http/Stream.h"
 #include "HttpReply.h"
 #include "log/access_log.h"
 
@@ -279,7 +278,7 @@ ESIInclude::ESIInclude(ESIInclude const &old) :
 void
 ESIInclude::prepareRequestHeaders(HttpHeader &tempheaders, ESIVarState *vars)
 {
-    tempheaders.update (&vars->header());
+    tempheaders.update(&vars->header());
     tempheaders.removeHopByHopEntries();
 }
 
@@ -300,8 +299,8 @@ ESIInclude::Start (ESIStreamContext::Pointer stream, char const *url, ESIVarStat
     char const *tempUrl = vars->extractChar ();
 
     debugs(86, 5, "ESIIncludeStart: Starting subrequest with url '" << tempUrl << "'");
-
-    if (clientBeginRequest(Http::METHOD_GET, tempUrl, esiBufferRecipient, esiBufferDetach, stream.getRaw(), &tempheaders, stream->localbuffer->buf, HTTP_REQBUF_SZ)) {
+    const MasterXaction::Pointer mx = new MasterXaction(XactionInitiator::initEsi);
+    if (clientBeginRequest(Http::METHOD_GET, tempUrl, esiBufferRecipient, esiBufferDetach, stream.getRaw(), &tempheaders, stream->localbuffer->buf, HTTP_REQBUF_SZ, mx)) {
         debugs(86, DBG_CRITICAL, "starting new ESI subrequest failed");
     }
 
@@ -559,5 +558,5 @@ ESIInclude::subRequestDone (ESIStreamContext::Pointer stream, bool success)
     }
 }
 
-#endif /* USE_SQUID_ESI == 1 */
+#endif /* USE_SQUID_ESI */
 

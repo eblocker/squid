@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2017 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2018 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -7,8 +7,8 @@
  */
 
 #include "squid.h"
-#include "AIODiskIOModule.h"
-#include "AIODiskIOStrategy.h"
+#include "DiskIO/AIO/AIODiskIOModule.h"
+#include "DiskIO/AIO/AIODiskIOStrategy.h"
 #include "Store.h"
 
 AIODiskIOModule::AIODiskIOModule()

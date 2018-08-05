@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2017 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2018 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -20,7 +20,7 @@
 #include "SquidTime.h"
 #include "Store.h"
 #include "tools.h"
-#include "URL.h"
+#include "util.h"
 #include "wordlist.h"
 
 /* called when we "miss" on an internal object;
@@ -31,12 +31,16 @@ void
 internalStart(const Comm::ConnectionPointer &clientConn, HttpRequest * request, StoreEntry * entry)
 {
     ErrorState *err;
-    const char *upath = request->urlpath.termedBuf();
-    debugs(76, 3, HERE << clientConn << " requesting '" << upath << "'");
+    const SBuf upath = request->url.path();
+    debugs(76, 3, clientConn << " requesting '" << upath << "'");
 
-    if (0 == strcmp(upath, "/squid-internal-dynamic/netdb")) {
+    static const SBuf netdbUri("/squid-internal-dynamic/netdb");
+    static const SBuf storeDigestUri("/squid-internal-periodic/store_digest");
+    static const SBuf mgrPfx("/squid-internal-mgr/");
+
+    if (upath == netdbUri) {
         netdbBinaryExchange(entry);
-    } else if (0 == strcmp(upath, "/squid-internal-periodic/store_digest")) {
+    } else if (upath == storeDigestUri) {
 #if USE_CACHE_DIGESTS
         const char *msgbuf = "This cache is currently building its digest.\n";
 #else
@@ -49,8 +53,8 @@ internalStart(const Comm::ConnectionPointer &clientConn, HttpRequest * request, 
         entry->replaceHttpReply(reply);
         entry->append(msgbuf, strlen(msgbuf));
         entry->complete();
-    } else if (0 == strncmp(upath, "/squid-internal-mgr/", 20)) {
-        debugs(17, 2, "calling CacheManager due to URL-path /squid-internal-mgr/");
+    } else if (upath.startsWith(mgrPfx)) {
+        debugs(17, 2, "calling CacheManager due to URL-path " << mgrPfx);
         CacheManager::GetInstance()->Start(clientConn, request, entry);
     } else {
         debugObj(76, 1, "internalStart: unknown request:\n",
@@ -60,26 +64,28 @@ internalStart(const Comm::ConnectionPointer &clientConn, HttpRequest * request, 
     }
 }
 
-int
-internalCheck(const char *urlpath)
+bool
+internalCheck(const SBuf &urlPath)
 {
-    return (0 == strncmp(urlpath, "/squid-internal-", 16));
+    static const SBuf InternalPfx("/squid-internal-");
+    return urlPath.startsWith(InternalPfx);
 }
 
-int
-internalStaticCheck(const char *urlpath)
+bool
+internalStaticCheck(const SBuf &urlPath)
 {
-    return (0 == strncmp(urlpath, "/squid-internal-static", 22));
+    static const SBuf InternalStaticPfx("/squid-internal-static");
+    return urlPath.startsWith(InternalStaticPfx);
 }
 
 /*
  * makes internal url with a given host and port (remote internal url)
  */
 char *
-internalRemoteUri(const char *host, unsigned short port, const char *dir, const char *name)
+internalRemoteUri(const char *host, unsigned short port, const char *dir, const SBuf &name)
 {
     static char lc_host[SQUIDHOSTNAMELEN];
-    assert(host && name);
+    assert(host && !name.isEmpty());
     /* convert host name to lower case */
     xstrncpy(lc_host, host, SQUIDHOSTNAMELEN);
     Tolower(lc_host);
@@ -100,21 +106,21 @@ internalRemoteUri(const char *host, unsigned short port, const char *dir, const 
         strncat(lc_host, Config.appendDomain, SQUIDHOSTNAMELEN -
                 strlen(lc_host) - 1);
 
-    /* build uri in mb */
+    /* build URI */
+    AnyP::Uri tmp(AnyP::PROTO_HTTP);
+    tmp.host(lc_host);
+    if (port)
+        tmp.port(port);
+
     static MemBuf mb;
 
     mb.reset();
-
-    mb.Printf("http://%s", lc_host);
-
-    /* append port if not default */
-    if (port && port != urlDefaultPort(AnyP::PROTO_HTTP))
-        mb.Printf(":%d", port);
+    mb.appendf("http://" SQUIDSBUFPH, SQUIDSBUFPRINT(tmp.authority()));
 
     if (dir)
-        mb.Printf("%s", dir);
+        mb.append(dir, strlen(dir));
 
-    mb.Printf("%s", name);
+    mb.append(name.rawContent(), name.length());
 
     /* return a pointer to a local static buffer */
     return mb.buf;
@@ -124,7 +130,7 @@ internalRemoteUri(const char *host, unsigned short port, const char *dir, const 
  * makes internal url with local host and port
  */
 char *
-internalLocalUri(const char *dir, const char *name)
+internalLocalUri(const char *dir, const SBuf &name)
 {
     return internalRemoteUri(getMyHostname(),
                              getMyPort(), dir, name);

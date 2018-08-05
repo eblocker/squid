@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2017 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2018 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -13,6 +13,7 @@
 #include "client_side.h"
 #include "ConfigParser.h"
 #include "globals.h"
+#include "http/Stream.h"
 #include "HttpReply.h"
 #include "HttpRequest.h"
 #include "SquidConfig.h"
@@ -41,15 +42,17 @@ Note::match(HttpRequest *request, HttpReply *reply, const AccessLogEntry::Pointe
 
     typedef Values::iterator VLI;
     ACLFilledChecklist ch(NULL, request, NULL);
+    ch.al = al;
     ch.reply = reply;
+    ch.syncAle(request, nullptr);
     if (reply)
         HTTPMSGLOCK(ch.reply);
 
     for (VLI i = values.begin(); i != values.end(); ++i ) {
-        const int ret= ch.fastCheck((*i)->aclList);
+        const auto ret= ch.fastCheck((*i)->aclList);
         debugs(93, 5, HERE << "Check for header name: " << key << ": " << (*i)->value
                <<", HttpRequest: " << request << " HttpReply: " << reply << " matched: " << ret);
-        if (ret == ACCESS_ALLOWED) {
+        if (ret.allowed()) {
             if (al != NULL && (*i)->valueFormat != NULL) {
                 static MemBuf mb;
                 mb.reset();

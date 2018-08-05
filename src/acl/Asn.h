@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2017 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2018 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -9,10 +9,8 @@
 #ifndef SQUID_ACLASN_H
 #define SQUID_ACLASN_H
 
-#include "acl/Checklist.h"
 #include "acl/Data.h"
-#include "acl/Strategised.h"
-#include "CbDataList.h"
+#include "base/CbDataList.h"
 #include "ip/Address.h"
 
 int asnMatchIp(CbDataList<int> *, Ip::Address &);
@@ -26,10 +24,10 @@ void asnFreeMemory(void);
 /// \ingroup ACLAPI
 class ACLASN : public ACLData<Ip::Address>
 {
-
-public:
     MEMPROXY_CLASS(ACLASN);
 
+public:
+    ACLASN() : data(nullptr) {}
     virtual ~ACLASN();
 
     virtual bool match(Ip::Address);
@@ -40,14 +38,8 @@ public:
     virtual void prepareForUse();
 
 private:
-    static ACL::Prototype SourceRegistryProtoype;
-    static ACLStrategised<Ip::Address> SourceRegistryEntry_;
-    static ACL::Prototype DestinationRegistryProtoype;
-    static ACLStrategised<Ip::Address> DestinationRegistryEntry_;
     CbDataList<int> *data;
 };
-
-MEMPROXY_CLASS_INLINE(ACLASN);
 
 #endif /* SQUID_ACLASN_H */
 

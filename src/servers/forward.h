@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2017 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2018 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -17,6 +17,11 @@ class ConnStateData;
 
 namespace Http
 {
+
+namespace One
+{
+class Server;
+} // namespace One
 
 /// create a new HTTP connection handler; never returns NULL
 ConnStateData *NewServer(MasterXactionPointer &xact);

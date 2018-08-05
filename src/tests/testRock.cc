@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2017 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2018 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -13,14 +13,14 @@
 #include "globals.h"
 #include "HttpHeader.h"
 #include "HttpReply.h"
-#include "Mem.h"
 #include "MemObject.h"
 #include "RequestFlags.h"
 #include "SquidConfig.h"
 #include "Store.h"
+#include "store/Disk.h"
+#include "store/Disks.h"
 #include "StoreFileSystem.h"
 #include "StoreSearch.h"
-#include "SwapDir.h"
 #include "testRock.h"
 #include "testStoreSupport.h"
 #include "unitTestMain.h"
@@ -57,12 +57,15 @@ testRock::setUp()
     if (0 > system ("rm -rf " TESTDIR))
         throw std::runtime_error("Failed to clean test work directory");
 
+    Config.memShared.defaultTo(false);
+    Config.shmLocking.defaultTo(false);
+
     // use current directory for shared segments (on path-based OSes)
     Ipc::Mem::Segment::BasePath = getcwd(cwd,MAXPATHLEN);
     if (Ipc::Mem::Segment::BasePath == NULL)
         Ipc::Mem::Segment::BasePath = ".";
 
-    Store::Root(new StoreController);
+    Store::Init();
 
     store = new Rock::SwapDir();
 
@@ -95,7 +98,7 @@ testRock::tearDown()
 {
     CPPUNIT_NS::TestFixture::tearDown();
 
-    Store::Root(NULL);
+    Store::FreeMemory();
 
     store = NULL;
 
@@ -200,14 +203,7 @@ testRock::addEntry(const int i)
     StoreEntry *const pe = createEntry(i);
 
     pe->buffer();
-    /* TODO: remove this when the metadata is separated */
-    {
-        Packer p;
-        packerToStoreInit(&p, pe);
-        pe->getReply()->packHeadersInto(&p);
-        packerClean(&p);
-    }
-
+    pe->getReply()->packHeadersUsingSlowPacker(*pe);
     pe->flush();
     pe->timestampsSet();
     pe->complete();
@@ -263,16 +259,28 @@ testRock::testRockSwapOut()
 
     // try to swap out entry to a used unlocked slot
     {
-        StoreEntry *const pe = addEntry(4);
+        // without marking the old entry as deleted
+        StoreEntry *const pe = addEntry(3);
 
-        CPPUNIT_ASSERT_EQUAL(SWAPOUT_WRITING, pe->swap_status);
-        CPPUNIT_ASSERT_EQUAL(0, pe->swap_dirn);
-        CPPUNIT_ASSERT(pe->swap_filen >= 0);
+        CPPUNIT_ASSERT_EQUAL(SWAPOUT_NONE, pe->swap_status);
+        CPPUNIT_ASSERT_EQUAL(-1, pe->swap_dirn);
+        CPPUNIT_ASSERT_EQUAL(-1, pe->swap_filen);
+        pe->unlock("testRock::testRockSwapOut e#3");
+
+        // after marking the old entry as deleted
+        StoreEntry *const pe2 = getEntry(4);
+        CPPUNIT_ASSERT(pe2 != nullptr);
+        pe2->release();
+
+        StoreEntry *const pe3 = addEntry(4);
+        CPPUNIT_ASSERT_EQUAL(SWAPOUT_WRITING, pe3->swap_status);
+        CPPUNIT_ASSERT_EQUAL(0, pe3->swap_dirn);
+        CPPUNIT_ASSERT(pe3->swap_filen >= 0);
 
         StockEventLoop loop;
         loop.run();
 
-        CPPUNIT_ASSERT_EQUAL(SWAPOUT_DONE, pe->swap_status);
+        CPPUNIT_ASSERT_EQUAL(SWAPOUT_DONE, pe3->swap_status);
 
         pe->unlock("testRock::testRockSwapOut e#4");
     }

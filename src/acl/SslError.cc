@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2017 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2018 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -7,21 +7,13 @@
  */
 
 #include "squid.h"
-#include "acl/Checklist.h"
+#include "acl/FilledChecklist.h"
 #include "acl/SslError.h"
 #include "acl/SslErrorData.h"
 
 int
-ACLSslErrorStrategy::match (ACLData<MatchType> * &data, ACLFilledChecklist *checklist, ACLFlags &)
+ACLSslErrorStrategy::match (ACLData<MatchType> * &data, ACLFilledChecklist *checklist)
 {
     return data->match (checklist->sslErrors);
 }
-
-ACLSslErrorStrategy *
-ACLSslErrorStrategy::Instance()
-{
-    return &Instance_;
-}
-
-ACLSslErrorStrategy ACLSslErrorStrategy::Instance_;
 

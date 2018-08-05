@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2017 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2018 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -45,7 +45,7 @@ public:
     bool wants(const ServiceFilter &filter) const;
 
     // the methods below can only be called on an up() service
-    virtual bool wantsUrl(const String &urlPath) const = 0;
+    virtual bool wantsUrl(const SBuf &urlPath) const = 0;
 
     // called by transactions to report service failure
     virtual void noteFailure() = 0;

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2017 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2018 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -138,6 +138,21 @@ Adaptation::ServiceConfig::parse()
         else if (strcmp(name, "on-overload") == 0) {
             grokked = grokOnOverload(onOverload, value);
             onOverloadSet = true;
+        } else if (strcmp(name, "connection-encryption") == 0) {
+            bool encrypt = false;
+            grokked = grokBool(encrypt, name, value);
+            connectionEncryption.configure(encrypt);
+        } else if (strncmp(name, "ssl", 3) == 0 || strncmp(name, "tls-", 4) == 0) {
+#if !USE_OPENSSL
+            debugs(3, DBG_PARSE_NOTE(DBG_IMPORTANT), "WARNING: adaptation option '" << name << "' requires --with-openssl. ICAP service option ignored.");
+#else
+            // name prefix is "ssl" or "tls-"
+            std::string tmp = name + (name[0] == 's' ? 3 : 4);
+            tmp += "=";
+            tmp += value;
+            secure.parse(tmp.c_str());
+            grokked = true;
+#endif
         } else
             grokked = grokExtension(name, value);
 
@@ -148,6 +163,11 @@ Adaptation::ServiceConfig::parse()
     // set default on-overload value if needed
     if (!onOverloadSet)
         onOverload = bypass ? srvBypass : srvWait;
+
+    // disable the TLS NPN extension if encrypted.
+    // Squid advertises "http/1.1", which is wrong for ICAPS.
+    if (secure.encryptTransport)
+        secure.parse("no-npn");
 
     // is the service URI set?
     if (!grokkedUri) {
@@ -169,7 +189,7 @@ bool
 Adaptation::ServiceConfig::grokUri(const char *value)
 {
     // TODO: find core code that parses URLs and extracts various parts
-    // AYJ: most of this is duplicate of urlParse() in src/url.cc
+    // AYJ: most of this is duplicate of AnyP::Uri::parse()
 
     if (!value || !*value) {
         debugs(3, DBG_CRITICAL, HERE << cfg_filename << ':' << config_lineno << ": " <<
@@ -225,6 +245,10 @@ Adaptation::ServiceConfig::grokUri(const char *value)
     }
 
     host.limitInit(s, len);
+#if USE_OPENSSL
+    if (secure.sslDomain.isEmpty())
+        secure.sslDomain.assign(host.rawBuf(), host.size());
+#endif
     s = e;
 
     port = -1;

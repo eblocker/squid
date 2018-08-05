@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2017 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2018 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -14,7 +14,6 @@
 
 #include "acl/Arp.h"
 #include "acl/FilledChecklist.h"
-#include "cache_cf.h"
 #include "Debug.h"
 #include "eui/Eui48.h"
 #include "globals.h"
@@ -102,7 +101,7 @@ aclParseArpData(const char *t)
 void
 ACLARP::parse()
 {
-    while (const char *t = strtokFile()) {
+    while (const char *t = ConfigParser::strtokFile()) {
         if (Eui::Eui48 *q = aclParseArpData(t)) {
             aclArpData.insert(*q);
             delete q;
@@ -130,7 +129,7 @@ SBufList
 ACLARP::dump() const
 {
     SBufList sl;
-    for (AclArpData_t::iterator i = aclArpData.begin(); i != aclArpData.end(); ++i) {
+    for (auto i = aclArpData.begin(); i != aclArpData.end(); ++i) {
         char buf[48];
         i->encode(buf,48);
         sl.push_back(SBuf(buf));

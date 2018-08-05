@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2017 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2018 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -217,16 +217,27 @@ typedef enum {
     LFT_SSL_CLIENT_SNI,
     LFT_SSL_SERVER_CERT_SUBJECT,
     LFT_SSL_SERVER_CERT_ISSUER,
+    LFT_SSL_SERVER_CERT_ERRORS,
+    LFT_TLS_CLIENT_NEGOTIATED_VERSION,
+    LFT_TLS_SERVER_NEGOTIATED_VERSION,
+    LFT_TLS_CLIENT_NEGOTIATED_CIPHER,
+    LFT_TLS_SERVER_NEGOTIATED_CIPHER,
+    LFT_TLS_CLIENT_RECEIVED_HELLO_VERSION,
+    LFT_TLS_SERVER_RECEIVED_HELLO_VERSION,
+    LFT_TLS_CLIENT_SUPPORTED_VERSION,
+    LFT_TLS_SERVER_SUPPORTED_VERSION,
 #endif
 
     LFT_NOTE,
     LFT_PERCENT,            /* special string cases for escaped chars */
 
     // TODO assign better bytecode names and Token strings for these
+#if USE_OPENSSL
     LFT_EXT_ACL_USER_CERT_RAW,
     LFT_EXT_ACL_USER_CERTCHAIN_RAW,
     LFT_EXT_ACL_USER_CERT,
     LFT_EXT_ACL_USER_CA_CERT,
+#endif
     LFT_EXT_ACL_CLIENT_EUI48,
     LFT_EXT_ACL_CLIENT_EUI64,
     LFT_EXT_ACL_NAME,
@@ -240,6 +251,7 @@ enum Quoting {
     LOG_QUOTE_QUOTES,
     LOG_QUOTE_MIMEBLOB,
     LOG_QUOTE_URL,
+    LOG_QUOTE_SHELL,
     LOG_QUOTE_RAW
 };
 

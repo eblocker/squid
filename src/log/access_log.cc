@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2017 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2018 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -74,24 +74,17 @@ void
 accessLogLogTo(CustomLog* log, AccessLogEntry::Pointer &al, ACLChecklist * checklist)
 {
 
-    if (al->url == NULL)
-        al->url = dash_str;
+    if (al->url.isEmpty())
+        al->url = Format::Dash;
 
     if (!al->http.content_type || *al->http.content_type == '\0')
         al->http.content_type = dash_str;
-
-    if (al->icp.opcode)
-        al->_private.method_str = icp_opcode_str[al->icp.opcode];
-    else if (al->htcp.opcode)
-        al->_private.method_str = al->htcp.opcode;
-    else
-        al->_private.method_str = NULL;
 
     if (al->hier.host[0] == '\0')
         xstrncpy(al->hier.host, dash_str, SQUIDHOSTNAMELEN);
 
     for (; log; log = log->next) {
-        if (log->aclList && checklist && checklist->fastCheck(log->aclList) != ACCESS_ALLOWED)
+        if (log->aclList && checklist && !checklist->fastCheck(log->aclList).allowed())
             continue;
 
         // The special-case "none" type has no logfile object set
@@ -165,8 +158,8 @@ accessLogLog(AccessLogEntry::Pointer &al, ACLChecklist * checklist)
     else {
         unsigned int ibuf[365];
         size_t isize;
-        xstrncpy((char *) ibuf, al->url, 364 * sizeof(int));
-        isize = ((strlen(al->url) + 8) / 8) * 2;
+        xstrncpy((char *) ibuf, al->url.c_str(), 364 * sizeof(int));
+        isize = ((al->url.length() + 8) / 8) * 2;
 
         if (isize > 364)
             isize = 364;
@@ -193,13 +186,14 @@ accessLogRotate(void)
 
     for (log = Config.Log.accesslogs; log; log = log->next) {
         if (log->logfile) {
-            logfileRotate(log->logfile);
+            int16_t rc = (log->rotateCount >= 0 ? log->rotateCount : Config.Log.rotateNumber);
+            logfileRotate(log->logfile, rc);
         }
     }
 
 #if HEADERS_LOG
 
-    logfileRotate(headerslog);
+    logfileRotate(headerslog, Config.Log.rotateNumber);
 
 #endif
 }
@@ -231,10 +225,8 @@ HierarchyLogEntry::HierarchyLogEntry() :
     n_choices(0),
     n_ichoices(0),
     peer_reply_status(Http::scNone),
-    peer_response_time(-1),
     tcpServer(NULL),
-    bodyBytesRead(-1),
-    totalResponseTime_(-1)
+    bodyBytesRead(-1)
 {
     memset(host, '\0', SQUIDHOSTNAMELEN);
     memset(cd_host, '\0', SQUIDHOSTNAMELEN);
@@ -245,16 +237,20 @@ HierarchyLogEntry::HierarchyLogEntry() :
     store_complete_stop.tv_sec =0;
     store_complete_stop.tv_usec =0;
 
-    peer_http_request_sent.tv_sec = 0;
-    peer_http_request_sent.tv_usec = 0;
+    clearPeerNotes();
+
+    totalResponseTime_.tv_sec = -1;
+    totalResponseTime_.tv_usec = 0;
 
     firstConnStart_.tv_sec = 0;
     firstConnStart_.tv_usec = 0;
 }
 
 void
-HierarchyLogEntry::note(const Comm::ConnectionPointer &server, const char *requestedHost)
+HierarchyLogEntry::resetPeerNotes(const Comm::ConnectionPointer &server, const char *requestedHost)
 {
+    clearPeerNotes();
+
     tcpServer = server;
     if (tcpServer == NULL) {
         code = HIER_NONE;
@@ -271,6 +267,31 @@ HierarchyLogEntry::note(const Comm::ConnectionPointer &server, const char *reque
     }
 }
 
+/// forget previous notePeerRead() and notePeerWrite() calls (if any)
+void
+HierarchyLogEntry::clearPeerNotes()
+{
+    peer_last_read_.tv_sec = 0;
+    peer_last_read_.tv_usec = 0;
+
+    peer_last_write_.tv_sec = 0;
+    peer_last_write_.tv_usec = 0;
+
+    bodyBytesRead = -1;
+}
+
+void
+HierarchyLogEntry::notePeerRead()
+{
+    peer_last_read_ = current_time;
+}
+
+void
+HierarchyLogEntry::notePeerWrite()
+{
+    peer_last_write_ = current_time;
+}
+
 void
 HierarchyLogEntry::startPeerClock()
 {
@@ -283,24 +304,53 @@ HierarchyLogEntry::stopPeerClock(const bool force)
 {
     debugs(46, 5, "First connection started: " << firstConnStart_.tv_sec << "." <<
            std::setfill('0') << std::setw(6) << firstConnStart_.tv_usec <<
-           ", current total response time value: " << totalResponseTime_ <<
+           ", current total response time value: " << (totalResponseTime_.tv_sec * 1000 +  totalResponseTime_.tv_usec/1000) <<
            (force ? ", force fixing" : ""));
-    if (!force && totalResponseTime_ >= 0)
+    if (!force && totalResponseTime_.tv_sec != -1)
         return;
 
-    totalResponseTime_ = firstConnStart_.tv_sec ? tvSubMsec(firstConnStart_, current_time) : -1;
+    if (firstConnStart_.tv_sec)
+        tvSub(totalResponseTime_, firstConnStart_, current_time);
 }
 
-int64_t
-HierarchyLogEntry::totalResponseTime()
+bool
+HierarchyLogEntry::peerResponseTime(struct timeval &responseTime)
+{
+    // no I/O whatsoever
+    if (peer_last_write_.tv_sec <= 0 && peer_last_read_.tv_sec <= 0)
+        return false;
+
+    // accommodate read without (completed) write
+    const auto last_write = peer_last_write_.tv_sec > 0 ?
+                            peer_last_write_ : peer_last_read_;
+
+    // accommodate write without (completed) read
+    const auto last_read = peer_last_read_.tv_sec > 0 ?
+                           peer_last_read_ : peer_last_write_;
+
+    tvSub(responseTime, last_write, last_read);
+    // The peer response time (%<pt) stopwatch is currently defined to start
+    // when we wrote the entire request. Thus, if we wrote something after the
+    // last read, report zero peer response time.
+    if (responseTime.tv_sec < 0) {
+        responseTime.tv_sec = 0;
+        responseTime.tv_usec = 0;
+    }
+
+    return true;
+}
+
+bool
+HierarchyLogEntry::totalResponseTime(struct timeval &responseTime)
 {
     // This should not really happen, but there may be rare code
     // paths that lead to FwdState discarded (or transaction logged)
     // without (or before) a stopPeerClock() call.
-    if (firstConnStart_.tv_sec && totalResponseTime_ < 0)
+    if (firstConnStart_.tv_sec && totalResponseTime_.tv_sec == -1)
         stopPeerClock(false);
 
-    return totalResponseTime_;
+    responseTime = totalResponseTime_;
+    return responseTime.tv_sec >= 0 && responseTime.tv_usec >= 0;
 }
 
 static void

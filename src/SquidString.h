@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2017 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2018 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -10,6 +10,9 @@
 
 #ifndef SQUID_STRING_H
 #define SQUID_STRING_H
+
+#include "base/TextException.h"
+#include "Debug.h"
 
 #include <ostream>
 
@@ -41,6 +44,11 @@ public:
      \param pos Position of character to retrieve.
      */
     _SQUID_INLINE_ char operator [](unsigned int pos) const;
+
+    /// The absolute size limit on data held in a String.
+    /// Since Strings can be nil-terminated implicitly it is best to ensure
+    /// the useful content length is strictly less than this limit.
+    static size_type SizeMaxXXX() { return SizeMax_; }
 
     _SQUID_INLINE_ size_type size() const;
     /// variant of size() suited to be used for printf-alikes.

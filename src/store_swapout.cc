@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2017 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2018 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -10,6 +10,7 @@
 
 #include "squid.h"
 #include "cbdata.h"
+#include "CollapsedForwarding.h"
 #include "globals.h"
 #include "Store.h"
 #include "StoreClient.h"
@@ -18,9 +19,10 @@
 #include "MemObject.h"
 #include "SquidConfig.h"
 #include "StatCounters.h"
+#include "store/Disk.h"
+#include "store/Disks.h"
 #include "store_log.h"
 #include "swap_log_op.h"
-#include "SwapDir.h"
 
 static void storeSwapOutStart(StoreEntry * e);
 static StoreIOState::STIOCB storeSwapOutFileClosed;
@@ -45,7 +47,6 @@ storeSwapOutStart(StoreEntry * e)
     debugs(20, 5, "storeSwapOutStart: Begin SwapOut '" << e->url() << "' to dirno " <<
            e->swap_dirn << ", fileno " << std::hex << std::setw(8) << std::setfill('0') <<
            std::uppercase << e->swap_filen);
-    e->swap_status = SWAPOUT_WRITING;
     e->swapOutDecision(MemObject::SwapOut::swStarted);
     /* If we start swapping out objects with OutOfBand Metadata,
      * then this code needs changing
@@ -64,6 +65,7 @@ storeSwapOutStart(StoreEntry * e)
     sio = storeCreate(e, storeSwapOutFileNotify, storeSwapOutFileClosed, c);
 
     if (sio == NULL) {
+        assert(!e->hasDisk());
         e->swap_status = SWAPOUT_NONE;
         e->swapOutDecision(MemObject::SwapOut::swImpossible);
         delete c;
@@ -78,14 +80,13 @@ storeSwapOutStart(StoreEntry * e)
 
     e->lock("storeSwapOutStart");
     /* Pick up the file number if it was assigned immediately */
-    e->swap_filen = mem->swapout.sio->swap_filen;
-
-    e->swap_dirn = mem->swapout.sio->swap_dirn;
+    e->attachToDisk(mem->swapout.sio->swap_dirn, mem->swapout.sio->swap_filen, SWAPOUT_WRITING);
 
     /* write out the swap metadata */
     storeIOWrite(mem->swapout.sio, buf, mem->swap_hdr_sz, 0, xfree_cppwrapper);
 }
 
+/// XXX: unused, see a related StoreIOState::file_callback
 static void
 storeSwapOutFileNotify(void *data, int errflag, StoreIOState::Pointer self)
 {
@@ -93,11 +94,11 @@ storeSwapOutFileNotify(void *data, int errflag, StoreIOState::Pointer self)
     static_cast<generic_cbdata *>(data)->unwrap(&e);
 
     MemObject *mem = e->mem_obj;
-    assert(e->swap_status == SWAPOUT_WRITING);
+    assert(e->swappingOut());
     assert(mem);
     assert(mem->swapout.sio == self);
     assert(errflag == 0);
-    assert(e->swap_filen < 0); // if this fails, call SwapDir::disconnect(e)
+    assert(!e->hasDisk()); // if this fails, call SwapDir::disconnect(e)
     e->swap_filen = mem->swapout.sio->swap_filen;
     e->swap_dirn = mem->swapout.sio->swap_dirn;
 }
@@ -145,7 +146,7 @@ doPages(StoreEntry *anEntry)
                             -1,
                             memNodeWriteComplete);
 
-        if (!ok || anEntry->swap_status != SWAPOUT_WRITING)
+        if (!ok || !anEntry->swappingOut())
             return false;
 
         int64_t swapout_size = mem->endOffset() - mem->swapout.queue_offset;
@@ -209,7 +210,7 @@ StoreEntry::swapOut()
     }
 
 #endif
-    if (swap_status == SWAPOUT_WRITING)
+    if (swappingOut())
         assert(mem_obj->inmem_lo <=  mem_obj->objectBytesOnDisk() );
 
     // buffered bytes we have not swapped out yet
@@ -241,7 +242,7 @@ StoreEntry::swapOut()
     }
 
     /* Ok, we have stuff to swap out.  Is there a swapout.sio open? */
-    if (swap_status == SWAPOUT_NONE) {
+    if (!hasDisk()) {
         assert(mem_obj->swapout.sio == NULL);
         assert(mem_obj->inmem_lo == 0);
         storeSwapOutStart(this); // sets SwapOut::swImpossible on failures
@@ -287,7 +288,7 @@ storeSwapOutFileClosed(void *data, int errflag, StoreIOState::Pointer self)
 
     MemObject *mem = e->mem_obj;
     assert(mem->swapout.sio == self);
-    assert(e->swap_status == SWAPOUT_WRITING);
+    assert(e->swappingOut());
 
     // if object_size is still unknown, the entry was probably aborted
     if (errflag || e->objectLen() < 0) {
@@ -299,16 +300,12 @@ storeSwapOutFileClosed(void *data, int errflag, StoreIOState::Pointer self)
             /* FIXME: this should be handle by the link from store IO to
              * Store, rather than being a top level API call.
              */
-            e->store()->diskFull();
+            e->disk().diskFull();
             storeConfigure();
         }
 
-        if (e->swap_filen >= 0)
-            e->unlink();
-
-        assert(e->swap_status == SWAPOUT_NONE);
-
-        e->releaseRequest();
+        e->disk().finalizeSwapoutFailure(*e);
+        e->releaseRequest(); // TODO: Keep the memory entry (if any)
     } else {
         /* swapping complete */
         debugs(20, 3, "storeSwapOutFileClosed: SwapOut complete: '" << e->url() << "' to " <<
@@ -319,7 +316,7 @@ storeSwapOutFileClosed(void *data, int errflag, StoreIOState::Pointer self)
 
         e->swap_file_sz = e->objectLen() + mem->swap_hdr_sz;
         e->swap_status = SWAPOUT_DONE;
-        e->store()->swappedOut(*e);
+        e->disk().finalizeSwapoutSuccess(*e);
 
         // XXX: For some Stores, it is pointless to re-check cachability here
         // and it leads to double counts in store_check_cachable_hist. We need
@@ -333,6 +330,7 @@ storeSwapOutFileClosed(void *data, int errflag, StoreIOState::Pointer self)
         ++statCounter.swap.outs;
     }
 
+    Store::Root().transientsCompleteWriting(*e);
     debugs(20, 3, "storeSwapOutFileClosed: " << __FILE__ << ":" << __LINE__);
     mem->swapout.sio = NULL;
     e->unlock("storeSwapOutFileClosed");
@@ -357,16 +355,23 @@ StoreEntry::mayStartSwapOut()
         return false;
     }
 
-    // if we swapped out already, do not start over
-    if (swap_status == SWAPOUT_DONE) {
+    // if we are swapping out or swapped out already, do not start over
+    if (hasDisk() || Store::Root().hasReadableDiskEntry(*this)) {
         debugs(20, 3, "already did");
         swapOutDecision(MemObject::SwapOut::swImpossible);
         return false;
     }
 
-    // if we stared swapping out already, do not start over
+    // if we have just stared swapping out (attachToDisk() has not been
+    // called), do not start over
     if (decision == MemObject::SwapOut::swStarted) {
         debugs(20, 3, "already started");
+        swapOutDecision(MemObject::SwapOut::swImpossible);
+        return false;
+    }
+
+    if (Store::Root().markedForDeletionAndAbandoned(*this)) {
+        debugs(20, 3, "marked for deletion and abandoned");
         swapOutDecision(MemObject::SwapOut::swImpossible);
         return false;
     }
@@ -426,20 +431,11 @@ StoreEntry::mayStartSwapOut()
 
         // prevent final default swPossible answer for yet unknown length
         if (expectedEnd < 0 && store_status != STORE_OK) {
-            const int64_t maxKnownSize = mem_obj->availableForSwapOut();
-            debugs(20, 7, HERE << "maxKnownSize= " << maxKnownSize);
-            /*
-             * NOTE: the store_maxobjsize here is the global maximum
-             * size of object cacheable in any of Squid cache stores
-             * both disk and memory stores.
-             *
-             * However, I am worried that this
-             * deferance may consume a lot of memory in some cases.
-             * Should we add an option to limit this memory consumption?
-             */
-            debugs(20, 5,  HERE << "Deferring swapout start for " <<
-                   (store_maxobjsize - maxKnownSize) << " bytes");
-            return true; // may still fit, but no final decision yet
+            const int64_t more = Store::Root().accumulateMore(*this);
+            if (more > 0) {
+                debugs(20, 5, "got " << currentEnd << "; defer decision for " << more << " more bytes");
+                return true; // may still fit, but no final decision yet
+            }
         }
     }
 

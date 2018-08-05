@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2017 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2018 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -17,16 +17,25 @@
 #include "PingData.h"
 #include "rfc2181.h"
 
+/// Maintains peer selection details and peer I/O stats.
+/// Here, "peer" is an origin server or CachePeer.
 class HierarchyLogEntry
 {
 
 public:
     HierarchyLogEntry();
-    ~HierarchyLogEntry() { tcpServer = NULL; };
 
-    /// Record details from a new server connection.
-    /// call this whenever the destination server changes.
-    void note(const Comm::ConnectionPointer &server, const char *requestedHost);
+    /// Start recording new origin server or cache peer connection details.
+    /// Call this when trying to connect to a peer.
+    void resetPeerNotes(const Comm::ConnectionPointer &server, const char *requestedHost);
+
+    /// Account for a TCP peer read. Maintains peer response time stats (%<pt).
+    /// Call this after each successful peer socket read(2).
+    void notePeerRead();
+
+    /// Account for a TCP peer write. Maintains peer response time stats (%<pt).
+    /// Call this after each peer socket write(2), including failed ones.
+    void notePeerWrite();
 
     /// Start recording total time spent communicating with peers
     void startPeerClock();
@@ -36,8 +45,13 @@ public:
      */
     void stopPeerClock(const bool force);
 
-    /// Return the total time spent communicating with peers
-    int64_t totalResponseTime();
+    /// Estimates response generation and sending delay at the last peer.
+    /// \returns whether the estimate (stored in `responseTime`) is available.
+    bool peerResponseTime(struct timeval &responseTime);
+
+    /// Estimates the total time spent communicating with peers.
+    /// \returns whether the estimate (stored in `responseTime`) is available.
+    bool totalResponseTime(struct timeval &responseTime);
 
 public:
     hier_code code;
@@ -53,14 +67,16 @@ public:
     struct timeval store_complete_stop;
 
     Http::StatusCode peer_reply_status; ///< last HTTP status code received
-    timeval peer_http_request_sent; ///< last peer finished writing req
-    int64_t peer_response_time; ///< last peer response delay
     Comm::ConnectionPointer tcpServer; ///< TCP/IP level details of the last peer/server connection
     int64_t bodyBytesRead;  ///< number of body bytes received from the next hop or -1
 
 private:
+    void clearPeerNotes();
+
     timeval firstConnStart_; ///< first connection use among all peers
-    int64_t totalResponseTime_; ///< cumulative for all peers
+    struct timeval peer_last_read_; ///< time of the last read from the last peer
+    struct timeval peer_last_write_; ///< time of the last write to the last peer
+    struct timeval totalResponseTime_; ///< cumulative for all peers
 };
 
 #endif /* SQUID_HTTPHIERARCHYLOGENTRY_H */

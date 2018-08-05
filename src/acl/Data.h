@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2017 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2018 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -9,9 +9,10 @@
 #ifndef SQUID_ACLDATA_H
 #define SQUID_ACLDATA_H
 
-#include "SBufList.h"
+#include "acl/Options.h"
+#include "sbuf/List.h"
 
-/// \ingroup ACLAPI
+/// Configured ACL parameter(s) (e.g., domain names in dstdomain ACL).
 template <class M>
 class ACLData
 {
@@ -19,6 +20,9 @@ class ACLData
 public:
 
     virtual ~ACLData() {}
+
+    /// \returns the flags supported by these ACL parameters (e.g., "-i")
+    virtual const Acl::ParameterFlags &supportedFlags() const { return Acl::NoFlags(); }
 
     virtual bool match(M) =0;
     virtual SBufList dump() const =0;

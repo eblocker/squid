@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2017 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2018 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -44,7 +44,7 @@ ReadersId(String id)
 
 InstanceIdDefinitions(Ipc::QueueReader, "ipcQR");
 
-Ipc::QueueReader::QueueReader(): popBlocked(1), popSignal(0),
+Ipc::QueueReader::QueueReader(): popBlocked(true), popSignal(false),
     rateLimit(0), balance(0)
 {
     debugs(54, 7, HERE << "constructed " << id);
@@ -137,7 +137,7 @@ Ipc::BaseMultiQueue::BaseMultiQueue(const int aLocalProcessId):
 }
 
 void
-Ipc::BaseMultiQueue::clearReaderSignal(const int remoteProcessId)
+Ipc::BaseMultiQueue::clearReaderSignal(const int /*remoteProcessId*/)
 {
     QueueReader &reader = localReader();
     debugs(54, 7, "reader: " << reader.id);

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2017 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2018 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -18,7 +18,7 @@ void
 strListAdd(String * str, const char *item, char del)
 {
     assert(str && item);
-    const String::size_type itemSize = strlen(item);
+    const auto itemSize = strlen(item);
     if (str->size()) {
         char buf[3];
         buf[0] = del;

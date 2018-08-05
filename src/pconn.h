@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2017 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2018 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -10,6 +10,9 @@
 #define SQUID_PCONN_H
 
 #include "base/CbcPointer.h"
+#include "base/RunnersRegistry.h"
+#include "mgr/forward.h"
+
 #include <set>
 
 /**
@@ -22,9 +25,7 @@
 class PconnPool;
 class PeerPoolMgr;
 
-/* for CBDATA_CLASS2() macros */
 #include "cbdata.h"
-/* for hash_link */
 #include "hash.h"
 /* for IOCB */
 #include "comm.h"
@@ -35,8 +36,10 @@ class PeerPoolMgr;
 /** \ingroup PConnAPI
  * A list of connections currently open to a particular destination end-point.
  */
-class IdleConnList
+class IdleConnList: public hash_link, private IndependentRunner
 {
+    CBDATA_CLASS(IdleConnList);
+
 public:
     IdleConnList(const char *key, PconnPool *parent);
     ~IdleConnList();
@@ -60,6 +63,8 @@ public:
     int count() const { return size_; }
     void closeN(size_t count);
 
+    // IndependentRunner API
+    virtual void endingShutdown();
 private:
     bool isAvailable(int i) const;
     bool removeAt(int index);
@@ -67,9 +72,6 @@ private:
     void findAndClose(const Comm::ConnectionPointer &conn);
     static IOCB Read;
     static CTCB Timeout;
-
-public:
-    hash_link hash;             /** must be first */
 
 private:
     /** List of connections we are holding.
@@ -92,8 +94,6 @@ private:
     PconnPool *parent_;
 
     char fakeReadBuf_[4096]; // TODO: kill magic number.
-
-    CBDATA_CLASS2(IdleConnList);
 };
 
 #include "ip/forward.h"

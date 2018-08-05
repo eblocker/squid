@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2017 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2018 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -12,10 +12,10 @@
 #include "BlockingFile.h"
 #include "Debug.h"
 #include "defines.h"
-#include "disk.h"
 #include "DiskIO/IORequestor.h"
 #include "DiskIO/ReadRequest.h"
 #include "DiskIO/WriteRequest.h"
+#include "fs_io.h"
 #include "globals.h"
 
 #include <cerrno>
@@ -36,7 +36,7 @@ BlockingFile::~BlockingFile()
 }
 
 void
-BlockingFile::open(int flags, mode_t mode, RefCount<IORequestor> callback)
+BlockingFile::open(int flags, mode_t, RefCount<IORequestor> callback)
 {
     /* Simulate async calls */
     fd = file_open(path_ , flags);

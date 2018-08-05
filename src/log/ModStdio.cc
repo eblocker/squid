@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2017 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2018 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -9,9 +9,10 @@
 /* DEBUG: section 50    Log file handling */
 
 #include "squid.h"
-#include "disk.h"
+#include "fatal.h"
 #include "fd.h"
 #include "fde.h"
+#include "fs_io.h"
 #include "globals.h"
 #include "log/File.h"
 #include "log/ModStdio.h"
@@ -36,6 +37,7 @@ logfileWriteWrapper(Logfile * lf, const void *buf, size_t len)
     l_stdio_t *ll = (l_stdio_t *) lf->data;
     size_t s;
     s = FD_WRITE_METHOD(ll->fd, (char const *) buf, len);
+    int xerrno = errno;
     fd_bytes(ll->fd, s, FD_WRITE);
 
     if (s == len)
@@ -44,7 +46,7 @@ logfileWriteWrapper(Logfile * lf, const void *buf, size_t len)
     if (!lf->flags.fatal)
         return;
 
-    fatalf("logfileWrite: %s: %s\n", lf->path, xstrerror());
+    fatalf("logfileWrite: %s: %s\n", lf->path, xstrerr(xerrno));
 }
 
 static void
@@ -76,7 +78,7 @@ logfile_mod_stdio_writeline(Logfile * lf, const char *buf, size_t len)
 }
 
 static void
-logfile_mod_stdio_linestart(Logfile * lf)
+logfile_mod_stdio_linestart(Logfile *)
 {
 }
 
@@ -97,16 +99,13 @@ logfile_mod_stdio_flush(Logfile * lf)
 }
 
 static void
-logfile_mod_stdio_rotate(Logfile * lf)
+logfile_mod_stdio_rotate(Logfile * lf, const int16_t nRotate)
 {
 #ifdef S_ISREG
 
     struct stat sb;
 #endif
 
-    int i;
-    char from[MAXPATHLEN];
-    char to[MAXPATHLEN];
     l_stdio_t *ll = (l_stdio_t *) lf->data;
     const char *realpath = lf->path+6; // skip 'stdio:' prefix.
     assert(realpath);
@@ -121,12 +120,17 @@ logfile_mod_stdio_rotate(Logfile * lf)
 
     debugs(0, DBG_IMPORTANT, "Rotate log file " << lf->path);
 
+    SBuf basePath(realpath);
+
     /* Rotate numbers 0 through N up one */
-    for (i = Config.Log.rotateNumber; i > 1;) {
+    for (int16_t i = nRotate; i > 1;) {
         --i;
-        snprintf(from, MAXPATHLEN, "%s.%d", realpath, i - 1);
-        snprintf(to, MAXPATHLEN, "%s.%d", realpath, i);
-        xrename(from, to);
+        SBuf from(basePath);
+        from.appendf(".%d", i-1);
+        SBuf to(basePath);
+        to.appendf(".%d", i);
+        FileRename(from, to);
+        // TODO handle rename errors
     }
 
     /* Rotate the current log to .0 */
@@ -134,16 +138,19 @@ logfile_mod_stdio_rotate(Logfile * lf)
 
     file_close(ll->fd);     /* always close */
 
-    if (Config.Log.rotateNumber > 0) {
-        snprintf(to, MAXPATHLEN, "%s.%d", realpath, 0);
-        xrename(realpath, to);
+    if (nRotate > 0) {
+        SBuf to(basePath);
+        to.appendf(".0");
+        FileRename(basePath, to);
+        // TODO handle rename errors
     }
     /* Reopen the log.  It may have been renamed "manually" */
     ll->fd = file_open(realpath, O_WRONLY | O_CREAT | O_TEXT);
 
     if (DISK_ERROR == ll->fd && lf->flags.fatal) {
-        debugs(50, DBG_CRITICAL, "ERROR: logfileRotate: " << lf->path << ": " << xstrerror());
-        fatalf("Cannot open %s: %s", lf->path, xstrerror());
+        int xerrno = errno;
+        debugs(50, DBG_CRITICAL, MYNAME << "ERROR: " << lf->path << ": " << xstrerr(xerrno));
+        fatalf("Cannot open %s: %s", lf->path, xstrerr(xerrno));
     }
 }
 
@@ -182,19 +189,20 @@ logfile_mod_stdio_open(Logfile * lf, const char *path, size_t bufsz, int fatal_f
     ll->fd = file_open(path, O_WRONLY | O_CREAT | O_TEXT);
 
     if (DISK_ERROR == ll->fd) {
-        if (ENOENT == errno && fatal_flag) {
+        int xerrno = errno;
+        if (ENOENT == xerrno && fatal_flag) {
             fatalf("Cannot open '%s' because\n"
                    "\tthe parent directory does not exist.\n"
                    "\tPlease create the directory.\n", path);
-        } else if (EACCES == errno && fatal_flag) {
+        } else if (EACCES == xerrno && fatal_flag) {
             fatalf("Cannot open '%s' for writing.\n"
                    "\tThe parent directory must be writeable by the\n"
                    "\tuser '%s', which is the cache_effective_user\n"
                    "\tset in squid.conf.", path, Config.effectiveUser);
-        } else if (EISDIR == errno && fatal_flag) {
+        } else if (EISDIR == xerrno && fatal_flag) {
             fatalf("Cannot open '%s' because it is a directory, not a file.\n", path);
         } else {
-            debugs(50, DBG_IMPORTANT, "ERROR: logfileOpen " << lf->path << ": " << xstrerror());
+            debugs(50, DBG_IMPORTANT, MYNAME << "ERROR: " << lf->path << ": " << xstrerr(xerrno));
             return 0;
         }
     }

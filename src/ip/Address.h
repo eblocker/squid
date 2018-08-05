@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2017 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2018 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -10,6 +10,8 @@
 
 #ifndef _SQUID_SRC_IP_ADDRESS_H
 #define _SQUID_SRC_IP_ADDRESS_H
+
+#include "ip/forward.h"
 
 #include <iosfwd>
 #include <ostream>
@@ -32,10 +34,6 @@
 namespace Ip
 {
 
-/// Length of buffer that needs to be allocated to old a null-terminated IP-string
-// Yuck. But there are still structures that need it to be an 'integer constant'.
-#define MAX_IPSTRLEN  75
-
 /**
  * Holds and manipulates IPv4, IPv6, and Socket Addresses.
  */
@@ -46,7 +44,6 @@ public:
     /** @name Constructors and Destructor */
     /*@{*/
     Address() { setEmpty(); }
-    Address(const Ip::Address &);
     Address(const struct in_addr &);
     Address(const struct sockaddr_in &);
     Address(const struct in6_addr &);
@@ -59,7 +56,6 @@ public:
 
     /** @name Assignment Operators */
     /*@{*/
-    Address& operator =(const Address &s);
     Address& operator =(struct sockaddr_in const &s);
     Address& operator =(struct sockaddr_storage const &s);
     Address& operator =(struct in_addr const &s);
@@ -141,7 +137,7 @@ public:
     /*@}*/
 
     /** Retrieve the Port if stored.
-     \retval 0 Port is unset or an error occured.
+     \retval 0 Port is unset or an error occurred.
      \retval n Port associated with this address in host native -endian.
      */
     unsigned short port() const;
@@ -149,7 +145,7 @@ public:
     /** Set the Port value for an address.
      *  Replaces any previously existing Port value.
      \param port Port being assigned in host native -endian.
-     \retval 0 Port is unset or an error occured.
+     \retval 0 Port is unset or an error occurred.
      \retval n Port associated with this address in host native -endian.
      */
     unsigned short port(unsigned short port);

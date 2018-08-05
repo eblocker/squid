@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2017 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2018 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -22,7 +22,10 @@ Helper::ChildConfig::ChildConfig():
     n_idle(1),
     concurrency(0),
     n_running(0),
-    n_active(0)
+    n_active(0),
+    queue_size(0),
+    onPersistentOverload(actDie),
+    defaultQueueSize(true)
 {}
 
 Helper::ChildConfig::ChildConfig(const unsigned int m):
@@ -31,7 +34,10 @@ Helper::ChildConfig::ChildConfig(const unsigned int m):
     n_idle(1),
     concurrency(0),
     n_running(0),
-    n_active(0)
+    n_active(0),
+    queue_size(2 * m),
+    onPersistentOverload(actDie),
+    defaultQueueSize(true)
 {}
 
 Helper::ChildConfig &
@@ -43,6 +49,9 @@ Helper::ChildConfig::updateLimits(const Helper::ChildConfig &rhs)
     n_startup = rhs.n_startup;
     n_idle = rhs.n_idle;
     concurrency = rhs.concurrency;
+    queue_size = rhs.queue_size;
+    onPersistentOverload = rhs.onPersistentOverload;
+    defaultQueueSize = rhs.defaultQueueSize;
     return *this;
 }
 
@@ -55,7 +64,7 @@ Helper::ChildConfig::needNew() const
     /* keep a minimum of n_idle helpers free... */
     if ( (n_active + n_idle) < n_max) return n_idle;
 
-    /* dont ever start more than n_max processes. */
+    /* do not ever start more than n_max processes. */
     return (n_max - n_active);
 }
 
@@ -82,11 +91,24 @@ Helper::ChildConfig::parseConfig()
         } else if (strncmp(token, "idle=", 5) == 0) {
             n_idle = xatoui(token + 5);
             if (n_idle < 1) {
-                debugs(0, DBG_CRITICAL, "WARNING OVERIDE: Using idle=0 for helpers causes request failures. Overiding to use idle=1 instead.");
+                debugs(0, DBG_CRITICAL, "WARNING OVERRIDE: Using idle=0 for helpers causes request failures. Overriding to use idle=1 instead.");
                 n_idle = 1;
             }
         } else if (strncmp(token, "concurrency=", 12) == 0) {
             concurrency = xatoui(token + 12);
+        } else if (strncmp(token, "queue-size=", 11) == 0) {
+            queue_size = xatoui(token + 11);
+            defaultQueueSize = false;
+        } else if (strncmp(token, "on-persistent-overload=", 23) == 0) {
+            const SBuf action(token + 23);
+            if (action.cmp("ERR") == 0)
+                onPersistentOverload = actErr;
+            else if (action.cmp("die") == 0)
+                onPersistentOverload = actDie;
+            else {
+                debugs(0, DBG_CRITICAL, "ERROR: Unsupported on-persistent-overloaded action: " << action);
+                self_destruct();
+            }
         } else {
             debugs(0, DBG_PARSE_NOTE(DBG_IMPORTANT), "ERROR: Undefined option: " << token << ".");
             self_destruct();
@@ -96,13 +118,16 @@ Helper::ChildConfig::parseConfig()
     /* simple sanity. */
 
     if (n_startup > n_max) {
-        debugs(0, DBG_CRITICAL, "WARNING OVERIDE: Capping startup=" << n_startup << " to the defined maximum (" << n_max <<")");
+        debugs(0, DBG_CRITICAL, "WARNING OVERRIDE: Capping startup=" << n_startup << " to the defined maximum (" << n_max <<")");
         n_startup = n_max;
     }
 
     if (n_idle > n_max) {
-        debugs(0, DBG_CRITICAL, "WARNING OVERIDE: Capping idle=" << n_idle << " to the defined maximum (" << n_max <<")");
+        debugs(0, DBG_CRITICAL, "WARNING OVERRIDE: Capping idle=" << n_idle << " to the defined maximum (" << n_max <<")");
         n_idle = n_max;
     }
+
+    if (defaultQueueSize)
+        queue_size = 2 * n_max;
 }
 

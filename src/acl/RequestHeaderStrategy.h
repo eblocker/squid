@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2017 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2018 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -14,31 +14,18 @@
 #include "acl/Strategy.h"
 #include "HttpRequest.h"
 
-template <http_hdr_type header>
-
+template <Http::HdrType header>
 class ACLRequestHeaderStrategy : public ACLStrategy<char const *>
 {
 
 public:
-    virtual int match (ACLData<char const *> * &, ACLFilledChecklist *, ACLFlags &);
+    virtual int match (ACLData<char const *> * &, ACLFilledChecklist *);
     virtual bool requiresRequest() const {return true;}
-
-    static ACLRequestHeaderStrategy *Instance();
-    /* Not implemented to prevent copies of the instance. */
-    /* Not private to prevent brain dead g+++ warnings about
-     * private constructors with no friends */
-    ACLRequestHeaderStrategy(ACLRequestHeaderStrategy const &);
-
-private:
-    static ACLRequestHeaderStrategy *Instance_;
-    ACLRequestHeaderStrategy() {}
-
-    ACLRequestHeaderStrategy&operator=(ACLRequestHeaderStrategy const &);
 };
 
-template <http_hdr_type header>
+template <Http::HdrType header>
 int
-ACLRequestHeaderStrategy<header>::match (ACLData<char const *> * &data, ACLFilledChecklist *checklist, ACLFlags &)
+ACLRequestHeaderStrategy<header>::match (ACLData<char const *> * &data, ACLFilledChecklist *checklist)
 {
     char const *theHeader = checklist->request->header.getStr(header);
 
@@ -47,19 +34,6 @@ ACLRequestHeaderStrategy<header>::match (ACLData<char const *> * &data, ACLFille
 
     return data->match(theHeader);
 }
-
-template <http_hdr_type header>
-ACLRequestHeaderStrategy<header> *
-ACLRequestHeaderStrategy<header>::Instance()
-{
-    if (!Instance_)
-        Instance_ = new ACLRequestHeaderStrategy<header>;
-
-    return Instance_;
-}
-
-template <http_hdr_type header>
-ACLRequestHeaderStrategy<header> * ACLRequestHeaderStrategy<header>::Instance_ = NULL;
 
 #endif /* SQUID_REQUESTHEADERSTRATEGY_H */
 

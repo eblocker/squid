@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2017 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2018 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -125,7 +125,7 @@ Comm::SetSelect(int fd, unsigned int type, PF * handler, void *client_data, time
 {
     fde *F = &fd_table[fd];
     assert(fd >= 0);
-    assert(F->flags.open);
+    assert(F->flags.open || (!handler && !client_data && !timeout));
     debugs(5, 5, HERE << "FD " << fd << ", type=" << type <<
            ", handler=" << handler << ", client_data=" << client_data <<
            ", timeout=" << timeout);
@@ -142,11 +142,6 @@ Comm::SetSelect(int fd, unsigned int type, PF * handler, void *client_data, time
 
     if (timeout)
         F->timeout = squid_curtime + timeout;
-}
-
-void
-Comm::ResetSelect(int fd)
-{
 }
 
 static int
@@ -412,18 +407,19 @@ Comm::DoSelect(int msec)
             PROF_start(comm_poll_normal);
             ++ statCounter.syscalls.selects;
             num = poll(pfds, nfds, msec);
+            int xerrno = errno;
             ++ statCounter.select_loops;
             PROF_stop(comm_poll_normal);
 
             if (num >= 0 || npending > 0)
                 break;
 
-            if (ignoreErrno(errno))
+            if (ignoreErrno(xerrno))
                 continue;
 
-            debugs(5, DBG_CRITICAL, "comm_poll: poll failure: " << xstrerror());
+            debugs(5, DBG_CRITICAL, MYNAME << "poll failure: " << xstrerr(xerrno));
 
-            assert(errno != EINVAL);
+            assert(xerrno != EINVAL);
 
             return Comm::COMM_ERROR;
 

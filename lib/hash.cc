@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2017 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2018 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -343,12 +343,15 @@ main(void)
     }
     printf("done creating hash table: %d\n", hid);
 
+    std::mt19937 mt;
+    xuniform_int_distribution<> dist(0,16);
+
     while (fgets(buf, BUFSIZ, stdin)) {
         buf[strlen(buf) - 1] = '\0';
         printf("Inserting '%s' for item %p to hash table: %d\n",
                buf, buf, hid);
         hash_insert(hid, xstrdup(buf), (void *) 0x12345678);
-        if (random() % 17 == 0)
+        if (dist(mt) == 0)
             strcpy(todelete, buf);
     }
 

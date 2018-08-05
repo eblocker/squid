@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2017 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2018 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -135,6 +135,7 @@ Adaptation::AccessCheck::checkCandidates()
             if ((acl_checklist->reply = filter.reply))
                 HTTPMSGLOCK(acl_checklist->reply);
             acl_checklist->al = filter.al;
+            acl_checklist->syncAle(filter.request, nullptr);
             acl_checklist->nonBlockingCheck(AccessCheckCallbackWrapper, this);
             return;
         }
@@ -174,7 +175,7 @@ Adaptation::AccessCheck::noteAnswer(allow_t answer)
     Must(!candidates.empty()); // the candidate we were checking must be there
     debugs(93,5, HERE << topCandidate() << " answer=" << answer);
 
-    if (answer == ACCESS_ALLOWED) { // the rule matched
+    if (answer.allowed()) { // the rule matched
         ServiceGroupPointer g = topGroup();
         if (g != NULL) { // the corresponding group found
             callBack(g);

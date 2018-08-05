@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2017 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2018 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -21,8 +21,8 @@
 #include "ip/Address.h"
 #include "md5.h"
 #include "Parsing.h"
+#include "SquidConfig.h"
 #include "Store.h"
-#include "SwapDir.h"
 
 #if HAVE_NETDB_H
 #include <netdb.h>
@@ -276,7 +276,8 @@ struct wccp2_router_id_element_t {
     uint32_t received_id;
 };
 
-static struct wccp2_router_id_element_t wccp2_router_id_element;
+// unused (for now)
+// static struct wccp2_router_id_element_t wccp2_router_id_element;
 
 /** \interface WCCPv2_Protocol
  * Sect 5.6.9 Capabilities Info Component
@@ -807,7 +808,7 @@ wccp2Init(void)
         wccp2_cache_view_header.cache_view_type = htons(WCCP2_WC_VIEW_INFO);
 
         wccp2_cache_view_header.cache_view_length = htons(sizeof(wccp2_cache_view_header) - 4 +
-                sizeof(wccp2_cache_view_info) + (wccp2_numrouters * sizeof(wccp2_router_id_element)));
+                sizeof(wccp2_cache_view_info) + (wccp2_numrouters * sizeof(wccp2_router_id_element_t)));
 
         wccp2_cache_view_header.cache_view_version = htonl(1);
 
@@ -979,8 +980,10 @@ wccp2ConnectionOpen(void)
 #if defined(IP_MTU_DISCOVER) && defined(IP_PMTUDISC_DONT)
     {
         int i = IP_PMTUDISC_DONT;
-        if (setsockopt(theWccp2Connection, SOL_IP, IP_MTU_DISCOVER, &i, sizeof i) < 0)
-            debugs(80, 2, "WARNING: Path MTU discovery could not be disabled on FD " << theWccp2Connection << ": " << xstrerror());
+        if (setsockopt(theWccp2Connection, SOL_IP, IP_MTU_DISCOVER, &i, sizeof i) < 0) {
+            int xerrno = errno;
+            debugs(80, 2, "WARNING: Path MTU discovery could not be disabled on FD " << theWccp2Connection << ": " << xstrerr(xerrno));
+        }
     }
 
 #endif
@@ -1107,9 +1110,8 @@ wccp2ConnectionClose(void)
  * Accept the UDP packet
  */
 static void
-wccp2HandleUdp(int sock, void *not_used)
+wccp2HandleUdp(int sock, void *)
 {
-
     struct wccp2_service_list_t *service_list_ptr;
 
     struct wccp2_router_list_t *router_list_ptr;
@@ -1514,9 +1516,8 @@ wccp2HandleUdp(int sock, void *not_used)
 }
 
 static void
-wccp2HereIam(void *voidnotused)
+wccp2HereIam(void *)
 {
-
     struct wccp2_service_list_t *service_list_ptr;
 
     struct wccp2_router_list_t *router_list_ptr;
@@ -1586,9 +1587,10 @@ wccp2HereIam(void *voidnotused)
                                 &service_list_ptr->wccp_packet,
                                 service_list_ptr->wccp_packet_size);
             } else {
-                errno = 0;
-                if (send(theWccp2Connection, &service_list_ptr->wccp_packet, service_list_ptr->wccp_packet_size, 0) < static_cast<int>(service_list_ptr->wccp_packet_size))
-                    debugs(80, 2, "ERROR: failed to send WCCPv2 HERE_I_AM packet to " << router << " : " << xstrerror());
+                if (send(theWccp2Connection, &service_list_ptr->wccp_packet, service_list_ptr->wccp_packet_size, 0) < static_cast<int>(service_list_ptr->wccp_packet_size)) {
+                    int xerrno = errno;
+                    debugs(80, 2, "ERROR: failed to send WCCPv2 HERE_I_AM packet to " << router << " : " << xstrerr(xerrno));
+                }
             }
         }
 
@@ -1599,9 +1601,8 @@ wccp2HereIam(void *voidnotused)
 }
 
 static void
-wccp2AssignBuckets(void *voidnotused)
+wccp2AssignBuckets(void *)
 {
-
     struct wccp2_service_list_t *service_list_ptr;
 
     struct wccp2_router_list_t *router_list_ptr;
@@ -1742,7 +1743,8 @@ wccp2AssignBuckets(void *voidnotused)
 
         assignment_key = (struct assignment_key_t *) &wccp_packet[offset];
 
-        assignment_key->master_number = htonl(++service_list_ptr->change_num);
+        ++service_list_ptr->change_num;
+        assignment_key->master_number = htonl(service_list_ptr->change_num);
 
         offset += sizeof(struct assignment_key_t);
 
@@ -1971,9 +1973,10 @@ wccp2AssignBuckets(void *voidnotused)
                                     &wccp_packet,
                                     offset);
                 } else {
-                    errno = 0;
-                    if (send(theWccp2Connection, &wccp_packet, offset, 0) < static_cast<int>(offset))
-                        debugs(80, 2, "ERROR: failed to send WCCPv2 HERE_I_AM packet to " << tmp_rtr << " : " << xstrerror());
+                    if (send(theWccp2Connection, &wccp_packet, offset, 0) < static_cast<int>(offset)) {
+                        int xerrno = errno;
+                        debugs(80, 2, "ERROR: failed to send WCCPv2 HERE_I_AM packet to " << tmp_rtr << " : " << xstrerr(xerrno));
+                    }
                 }
             }
             safe_free(weight);
@@ -2031,7 +2034,7 @@ dump_wccp2_method(StoreEntry * e, const char *label, int v)
 }
 
 void
-free_wccp2_method(int *v)
+free_wccp2_method(int *)
 { }
 
 /**
@@ -2078,8 +2081,8 @@ dump_wccp2_amethod(StoreEntry * e, const char *label, int v)
 }
 
 void
-free_wccp2_amethod(int *v)
-{ }
+free_wccp2_amethod(int *)
+{}
 
 /*
  * Format:
@@ -2087,7 +2090,7 @@ free_wccp2_amethod(int *v)
  * wccp2_service {standard|dynamic} {id} (password=password)
  */
 void
-parse_wccp2_service(void *v)
+parse_wccp2_service(void *)
 {
     char *t;
     int service = 0;
@@ -2138,9 +2141,8 @@ parse_wccp2_service(void *v)
 }
 
 void
-dump_wccp2_service(StoreEntry * e, const char *label, void *v)
+dump_wccp2_service(StoreEntry * e, const char *label, void *)
 {
-
     struct wccp2_service_list_t *srv;
     srv = wccp2_service_list_head;
 
@@ -2161,11 +2163,11 @@ dump_wccp2_service(StoreEntry * e, const char *label, void *v)
 }
 
 void
-free_wccp2_service(void *v)
+free_wccp2_service(void *)
 {}
 
 int
-check_null_wccp2_service(void *v)
+check_null_wccp2_service(void *)
 {
     return !wccp2_service_list_head;
 }
@@ -2265,7 +2267,7 @@ parse_wccp2_service_ports(char *options, int portlist[])
 }
 
 void
-parse_wccp2_service_info(void *v)
+parse_wccp2_service_info(void *)
 {
     char *t, *end;
     int service_id = 0;
@@ -2344,10 +2346,8 @@ parse_wccp2_service_info(void *v)
 }
 
 void
-dump_wccp2_service_info(StoreEntry * e, const char *label, void *v)
+dump_wccp2_service_info(StoreEntry * e, const char *label, void *)
 {
-    char comma;
-
     struct wccp2_service_list_t *srv;
     int flags;
     srv = wccp2_service_list_head;
@@ -2373,102 +2373,102 @@ dump_wccp2_service_info(StoreEntry * e, const char *label, void *v)
         /* flags */
         flags = ntohl(srv->info.service_flags);
 
+        bool comma = false;
         if (flags != 0) {
-            comma = 0;
             storeAppendPrintf(e, " flags=");
 
             if (flags & WCCP2_SERVICE_SRC_IP_HASH) {
-                storeAppendPrintf(e, "%ssrc_ip_hash", comma ? "," : "");
-                comma = 1;
+                storeAppendPrintf(e, "src_ip_hash");
+                comma = true;
             }
 
             if (flags & WCCP2_SERVICE_DST_IP_HASH) {
                 storeAppendPrintf(e, "%sdst_ip_hash", comma ? "," : "");
-                comma = 1;
+                comma = true;
             }
 
             if (flags & WCCP2_SERVICE_SRC_PORT_HASH) {
                 storeAppendPrintf(e, "%ssource_port_hash", comma ? "," : "");
-                comma = 1;
+                comma = true;
             }
 
             if (flags & WCCP2_SERVICE_DST_PORT_HASH) {
                 storeAppendPrintf(e, "%sdst_port_hash", comma ? "," : "");
-                comma = 1;
+                comma = true;
             }
 
             if (flags & WCCP2_SERVICE_PORTS_DEFINED) {
                 storeAppendPrintf(e, "%sports_defined", comma ? "," : "");
-                comma = 1;
+                comma = true;
             }
 
             if (flags & WCCP2_SERVICE_PORTS_SOURCE) {
                 storeAppendPrintf(e, "%sports_source", comma ? "," : "");
-                comma = 1;
+                comma = true;
             }
 
             if (flags & WCCP2_SERVICE_SRC_IP_ALT_HASH) {
                 storeAppendPrintf(e, "%ssrc_ip_alt_hash", comma ? "," : "");
-                comma = 1;
+                comma = true;
             }
 
             if (flags & WCCP2_SERVICE_DST_IP_ALT_HASH) {
                 storeAppendPrintf(e, "%ssrc_ip_alt_hash", comma ? "," : "");
-                comma = 1;
+                comma = true;
             }
 
             if (flags & WCCP2_SERVICE_SRC_PORT_ALT_HASH) {
                 storeAppendPrintf(e, "%ssrc_port_alt_hash", comma ? "," : "");
-                comma = 1;
+                comma = true;
             }
 
             if (flags & WCCP2_SERVICE_DST_PORT_ALT_HASH) {
                 storeAppendPrintf(e, "%sdst_port_alt_hash", comma ? "," : "");
-                comma = 1;
+                //comma = true; // uncomment if more options added
             }
         }
 
         /* ports */
-        comma = 0;
+        comma = false;
 
         if (srv->info.port0 != 0) {
-            storeAppendPrintf(e, "%s%d", comma ? "," : " ports=", ntohs(srv->info.port0));
-            comma = 1;
+            storeAppendPrintf(e, " ports=%d", ntohs(srv->info.port0));
+            comma = true;
         }
 
         if (srv->info.port1 != 0) {
             storeAppendPrintf(e, "%s%d", comma ? "," : "ports=", ntohs(srv->info.port1));
-            comma = 1;
+            comma = true;
         }
 
         if (srv->info.port2 != 0) {
             storeAppendPrintf(e, "%s%d", comma ? "," : "ports=", ntohs(srv->info.port2));
-            comma = 1;
+            comma = true;
         }
 
         if (srv->info.port3 != 0) {
             storeAppendPrintf(e, "%s%d", comma ? "," : "ports=", ntohs(srv->info.port3));
-            comma = 1;
+            comma = true;
         }
 
         if (srv->info.port4 != 0) {
             storeAppendPrintf(e, "%s%d", comma ? "," : "ports=", ntohs(srv->info.port4));
-            comma = 1;
+            comma = true;
         }
 
         if (srv->info.port5 != 0) {
             storeAppendPrintf(e, "%s%d", comma ? "," : "ports=", ntohs(srv->info.port5));
-            comma = 1;
+            comma = true;
         }
 
         if (srv->info.port6 != 0) {
             storeAppendPrintf(e, "%s%d", comma ? "," : "ports=", ntohs(srv->info.port6));
-            comma = 1;
+            comma = true;
         }
 
         if (srv->info.port7 != 0) {
             storeAppendPrintf(e, "%s%d", comma ? "," : "ports=", ntohs(srv->info.port7));
-            comma = 1;
+            // comma = true; // uncomment if more options are added
         }
 
         /* protocol */
@@ -2516,7 +2516,7 @@ wccp2SortCacheList(struct wccp2_cache_list_t *head)
 }
 
 void
-free_wccp2_service_info(void *v)
+free_wccp2_service_info(void *)
 {}
 
 #endif /* USE_WCCPv2 */

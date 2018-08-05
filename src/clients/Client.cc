@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2017 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2018 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -25,7 +25,6 @@
 #include "StatCounters.h"
 #include "Store.h"
 #include "tools.h"
-#include "URL.h"
 
 #if USE_ADAPTATION
 #include "adaptation/AccessCheck.h"
@@ -49,7 +48,7 @@ Client::Client(FwdState *theFwdState): AsyncJob("Client"),
     startedAdaptation(false),
 #endif
     receivedWholeRequestBody(false),
-    doneWithFwd(NULL),
+    doneWithFwd(nullptr),
     theVirginReply(NULL),
     theFinalReply(NULL)
 {
@@ -364,7 +363,7 @@ Client::sentRequestBody(const CommIoCbParams &io)
 
     if (io.size > 0) {
         fd_bytes(io.fd, io.size, FD_WRITE);
-        kb_incr(&(statCounter.server.all.kbytes_out), io.size);
+        statCounter.server.all.kbytes_out += io.size;
         // kids should increment their counters
     }
 
@@ -375,6 +374,9 @@ Client::sentRequestBody(const CommIoCbParams &io)
         debugs(9,3, HERE << "detected while-we-were-sending abort");
         return; // do nothing;
     }
+
+    // both successful and failed writes affect response times
+    request->hier.notePeerWrite();
 
     if (io.flag) {
         debugs(11, DBG_IMPORTANT, "sentRequestBody error: FD " << io.fd << ": " << xstrerr(io.xerrno));
@@ -464,7 +466,7 @@ sameUrlHosts(const char *url1, const char *url2)
 
 // purges entries that match the value of a given HTTP [response] header
 static void
-purgeEntriesByHeader(HttpRequest *req, const char *reqUrl, HttpMsg *rep, http_hdr_type hdr)
+purgeEntriesByHeader(HttpRequest *req, const char *reqUrl, HttpMsg *rep, Http::HdrType hdr)
 {
     const char *hdrUrl, *absUrl;
 
@@ -508,11 +510,12 @@ Client::maybePurgeOthers()
         return;
 
     // XXX: should we use originalRequest() here?
-    const char *reqUrl = urlCanonical(request);
-    debugs(88, 5, "maybe purging due to " << request->method << ' ' << reqUrl);
+    SBuf tmp(request->effectiveRequestUri());
+    const char *reqUrl = tmp.c_str();
+    debugs(88, 5, "maybe purging due to " << request->method << ' ' << tmp);
     purgeEntriesByUrl(request, reqUrl);
-    purgeEntriesByHeader(request, reqUrl, theFinalReply, HDR_LOCATION);
-    purgeEntriesByHeader(request, reqUrl, theFinalReply, HDR_CONTENT_LOCATION);
+    purgeEntriesByHeader(request, reqUrl, theFinalReply, Http::HdrType::LOCATION);
+    purgeEntriesByHeader(request, reqUrl, theFinalReply, Http::HdrType::CONTENT_LOCATION);
 }
 
 /// called when we have final (possibly adapted) reply headers; kids extend
@@ -523,9 +526,8 @@ Client::haveParsedReplyHeaders()
     maybePurgeOthers();
 
     // adaptation may overwrite old offset computed using the virgin response
-    const bool partial = theFinalReply->content_range &&
-                         theFinalReply->sline.status() == Http::scPartialContent;
-    currentOffset = partial ? theFinalReply->content_range->spec.offset : 0;
+    const bool partial = theFinalReply->contentRange();
+    currentOffset = partial ? theFinalReply->contentRange()->spec.offset : 0;
 }
 
 /// whether to prevent caching of an otherwise cachable response
@@ -538,7 +540,7 @@ Client::blockCaching()
         ACLFilledChecklist ch(acl, originalRequest(), NULL);
         ch.reply = const_cast<HttpReply*>(entry->getReply()); // ACLFilledChecklist API bug
         HTTPMSGLOCK(ch.reply);
-        if (ch.fastCheck() != ACCESS_ALLOWED) { // when in doubt, block
+        if (!ch.fastCheck().allowed()) { // when in doubt, block
             debugs(20, 3, "store_miss prohibits caching");
             return true;
         }
@@ -815,7 +817,7 @@ void Client::handleAdaptedBodyProducerAborted()
     if (abortOnBadEntry("entry went bad while waiting for the now-aborted adapted body"))
         return;
 
-    Must(adaptedBodySource != NULL);
+    Must(adaptedBodySource != nullptr);
     if (!adaptedBodySource->exhausted()) {
         debugs(11,5, "waiting to consume the remainder of the aborted adapted body");
         return; // resumeBodyStorage() should eventually consume the rest
@@ -1013,8 +1015,43 @@ Client::storeReplyBody(const char *data, ssize_t len)
     currentOffset += len;
 }
 
-size_t Client::replyBodySpace(const MemBuf &readBuf,
-                              const size_t minSpace) const
+size_t
+Client::calcBufferSpaceToReserve(size_t space, const size_t wantSpace) const
+{
+    if (space < wantSpace) {
+        const size_t maxSpace = SBuf::maxSize; // absolute best
+        space = min(wantSpace, maxSpace); // do not promise more than asked
+    }
+
+#if USE_ADAPTATION
+    if (responseBodyBuffer) {
+        return 0;   // Stop reading if already overflowed waiting for ICAP to catch up
+    }
+
+    if (virginBodyDestination != NULL) {
+        /*
+         * BodyPipe buffer has a finite size limit.  We
+         * should not read more data from the network than will fit
+         * into the pipe buffer or we _lose_ what did not fit if
+         * the response ends sooner that BodyPipe frees up space:
+         * There is no code to keep pumping data into the pipe once
+         * response ends and serverComplete() is called.
+         */
+        const size_t adaptor_space = virginBodyDestination->buf().potentialSpaceSize();
+
+        debugs(11,9, "Client may read up to min(" <<
+               adaptor_space << ", " << space << ") bytes");
+
+        if (adaptor_space < space)
+            space = adaptor_space;
+    }
+#endif
+
+    return space;
+}
+
+size_t
+Client::replyBodySpace(const MemBuf &readBuf, const size_t minSpace) const
 {
     size_t space = readBuf.spaceSize(); // available space w/o heroic measures
     if (space < minSpace) {

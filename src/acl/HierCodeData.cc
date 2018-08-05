@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2017 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2018 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -9,7 +9,8 @@
 #include "squid.h"
 #include "acl/Checklist.h"
 #include "acl/HierCodeData.h"
-#include "cache_cf.h"
+#include "ConfigParser.h"
+#include "fatal.h"
 #include "hier_code.h"
 
 ACLHierCodeData::ACLHierCodeData()
@@ -50,7 +51,7 @@ ACLHierCodeData::parse()
 {
     char *t = NULL;
 
-    while ((t = strtokFile())) {
+    while ((t = ConfigParser::strtokFile())) {
         for (hier_code iter = HIER_NONE; iter <= HIER_MAX; ++iter) {
             if (iter == HIER_MAX) {
                 fatalf("ERROR: No such hier_code '%s'",t);

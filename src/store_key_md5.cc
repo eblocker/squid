@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2017 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2018 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -11,9 +11,7 @@
 #include "squid.h"
 #include "HttpRequest.h"
 #include "md5.h"
-#include "Mem.h"
 #include "store_key_md5.h"
-#include "URL.h"
 
 static cache_key null_key[SQUID_MD5_DIGEST_LENGTH];
 
@@ -81,18 +79,18 @@ storeKeyHashHash(const void *key, unsigned int n)
 }
 
 const cache_key *
-storeKeyPrivate(const char *url, const HttpRequestMethod& method, int id)
+storeKeyPrivate()
 {
-    static cache_key digest[SQUID_MD5_DIGEST_LENGTH];
-    SquidMD5_CTX M;
-    assert(id > 0);
-    debugs(20, 3, "storeKeyPrivate: " << method << " " << url);
-    SquidMD5Init(&M);
-    SquidMD5Update(&M, (unsigned char *) &id, sizeof(id));
-    SquidMD5Update(&M, (unsigned char *) &method, sizeof(method));
-    SquidMD5Update(&M, (unsigned char *) url, strlen(url));
-    SquidMD5Final(digest, &M);
-    return digest;
+    // only the count field is required
+    // others just simplify searching for keys in a multi-process cache.log
+    static struct {
+        uint64_t count;
+        pid_t pid;
+        int32_t kid;
+    } key = { 0, getpid(), KidIdentifier };
+    assert(sizeof(key) == SQUID_MD5_DIGEST_LENGTH);
+    ++key.count;
+    return reinterpret_cast<cache_key*>(&key);
 }
 
 const cache_key *
@@ -121,12 +119,11 @@ storeKeyPublicByRequestMethod(HttpRequest * request, const HttpRequestMethod& me
 {
     static cache_key digest[SQUID_MD5_DIGEST_LENGTH];
     unsigned char m = (unsigned char) method.id();
-    const char *url = request->storeId(); /* storeId returns the right storeID\canonical URL for the md5 calc */
+    const SBuf url = request->storeId(); /* returns the right storeID\URL for the MD5 calc */
     SquidMD5_CTX M;
     SquidMD5Init(&M);
     SquidMD5Update(&M, &m, sizeof(m));
-    SquidMD5Update(&M, (unsigned char *) url, strlen(url));
-
+    SquidMD5Update(&M, (unsigned char *) url.rawContent(), url.length());
     if (keyScope)
         SquidMD5Update(&M, &keyScope, sizeof(keyScope));
 

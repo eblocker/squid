@@ -2,32 +2,62 @@ The following organizations have supported the Squid Project by providing
 their resources or funding various Squid development activities:
 
 
+Augur TBBS Pty Limited
+
+	Augur TBBS has funded development work towards HTTP/2 support in
+	Squid-4.
+
+Bloomberg L.P.
+
+	Bloomberg L.P. has funded development work towards stabilizing
+	Squid-4.
+
 LaunchPad - http://launchpad.net/
 
-	Provide Bazaar mirroring services and host the Squid-3 developer
+	Provide Bazaar mirroring services and host the Squid-3+ developer
 	project code.
-
-Messagenet - http://messagenet.it/
-
-	Messagenet donated hardware and bandwidth for the wiki server
-	and most continuous integration testing.
 
 RackSpace - http://www.rackspace.com/
 
 	RackSpace donated a number of virtual machines from their cloud
 	infrastructure to support and extend the continuous integration
-	testing infrastructure.
+	testing infrastructure, and since late 2014 to host many of the
+	Squid Project services.
+
+RM Education - http://www.rm.com/
+
+	RM Education has sponsored Squid performance optimizations and
+	stability improvements.
+
+Squid Software Foundation - http://foundation.squid-cache.org/
+
+	The Foundation governs and facilitates Squid project activities,
+	providing the infrastructure and support framework for Squid
+	developers and users.
 
 The Measurement Factory - http://www.measurement-factory.com/
 
-	Measurement Factory has constributed significant resources
-	toward Squid-3 development and server maintenance.
+	Measurement Factory has contributed significant resources
+	toward Squid-3+ development and server maintenance.
 
 Treehouse Networks, NZ - http://treenet.co.nz/
 
 	Treehouse Networks has contributed significant resources
-	toward Squid-3 development and maintenance for their customer
+	toward Squid-3+ development and maintenance for their customer
 	gateways and CDN.
+
+
+Messagenet - http://messagenet.it/
+
+	Messagenet donated hardware and bandwidth for the wiki server
+	and most continuous integration testing until late 2014 when
+	it was converted to a Squid Project core mirror server.
+
+
+anonymoX GmbH - http://anonymox.net/
+
+	anonymoX contributed sponsorship and resources towards resolving
+	and testing bug fixes in high performance Squid-3.4 proxies.
 
 
 iCelero - http://icelero.com/
@@ -54,7 +84,8 @@ iiNet Ltd - http://www.iinet.net.au/
 
 Palisade Systems - http://www.palisadesys.com/
 
-	Palisade Systems funded SSL Bump feature development in Squid3.
+	Palisade Systems funded initial SSL Bump feature development
+	in Squid-3.2.
 
 
 Barefruit - http://www.barefruit.com/
@@ -64,7 +95,7 @@ Barefruit - http://www.barefruit.com/
 
 BBC (UK) and Siemens IT Solutions and Services (UK)
 
-	Provided developement and testing resources for Solaris /dev/poll
+	Provided development and testing resources for Solaris /dev/poll
 	support in Squid-3.1.
 
 webwasher AG - http://www.webwasher.com/
@@ -105,7 +136,7 @@ Picture IQ - http://www.pictureiq.com/
 Yahoo! Inc. - http://www.yahoo.com/
 
 	Yahoo! Inc. supported the development of improved refresh
-	logics. Many thanks to Yahoo! Inc. for supporting the development
+	logic. Many thanks to Yahoo! Inc. for supporting the development
 	of these features.
 
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2017 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2018 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -32,7 +32,7 @@ Log::Format::SquidNative(const AccessLogEntry::Pointer &al, Logfile * logfile)
 #endif
 
     if (!user)
-        user = ::Format::QuoteUrlEncodeUsername(al->cache.extuser);
+        user = ::Format::QuoteUrlEncodeUsername(al->getExtUser());
 
 #if USE_OPENSSL
     if (!user)
@@ -40,7 +40,7 @@ Log::Format::SquidNative(const AccessLogEntry::Pointer &al, Logfile * logfile)
 #endif
 
     if (!user)
-        user = ::Format::QuoteUrlEncodeUsername(al->cache.rfc931);
+        user = ::Format::QuoteUrlEncodeUsername(al->getClientIdent());
 
     if (user && !*user)
         safe_free(user);
@@ -48,23 +48,18 @@ Log::Format::SquidNative(const AccessLogEntry::Pointer &al, Logfile * logfile)
     char clientip[MAX_IPSTRLEN];
     al->getLogClientIp(clientip, MAX_IPSTRLEN);
 
-    static SBuf method;
-    if (al->_private.method_str)
-        method.assign(al->_private.method_str);
-    else
-        method = al->http.method.image();
+    const SBuf method(al->getLogMethod());
 
-    logfilePrintf(logfile, "%9ld.%03d %6d %s %s%s/%03d %" PRId64 " " SQUIDSBUFPH " %s %s %s%s/%s %s%s",
+    logfilePrintf(logfile, "%9ld.%03d %6ld %s %s/%03d %" PRId64 " " SQUIDSBUFPH " " SQUIDSBUFPH " %s %s%s/%s %s%s",
                   (long int) current_time.tv_sec,
                   (int) current_time.tv_usec / 1000,
-                  al->cache.msec,
+                  tvToMsec(al->cache.trTime),
                   clientip,
-                  LogTags_str[al->cache.code],
-                  al->http.statusSfx(),
+                  al->cache.code.c_str(),
                   al->http.code,
                   al->http.clientReplySz.messageTotal(),
                   SQUIDSBUFPRINT(method),
-                  al->url,
+                  SQUIDSBUFPRINT(al->url),
                   user ? user : dash_str,
                   al->hier.ping.timedout ? "TIMEOUT_" : "",
                   hier_code_str[al->hier.code],

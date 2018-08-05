@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2017 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2018 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -9,7 +9,7 @@
 #ifndef SQUID_AIODISKIOMODULE_H
 #define SQUID_AIODISKIOMODULE_H
 
-#if USE_DISKIO_AIO
+#if HAVE_DISKIO_MODULE_AIO
 
 #include "DiskIO/DiskIOModule.h"
 
@@ -28,6 +28,6 @@ private:
     static AIODiskIOModule Instance;
 };
 
-#endif /* USE_DISKIO_AIO */
+#endif /* HAVE_DISKIO_MODULE_AIO */
 #endif /* SQUID_AIODISKIOMODULE_H */
 

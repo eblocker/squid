@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2017 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2018 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -38,7 +38,7 @@ public:
     virtual bool probed() const;
     virtual bool up() const;
     virtual Adaptation::Initiate *makeXactLauncher(HttpMsg *virginHeader, HttpRequest *virginCause, AccessLogEntry::Pointer &alp);
-    virtual bool wantsUrl(const String &urlPath) const;
+    virtual bool wantsUrl(const SBuf &urlPath) const;
     virtual void noteFailure();
     virtual const char *status() const;
     virtual void detach();

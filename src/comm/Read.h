@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2017 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2018 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -12,8 +12,7 @@
 #include "base/AsyncCall.h"
 #include "comm/forward.h"
 #include "CommCalls.h"
-
-class SBuf;
+#include "sbuf/forward.h"
 
 namespace Comm
 {
@@ -32,12 +31,15 @@ bool MonitorsRead(int fd);
 /**
  * Perform a read(2) on a connection immediately.
  *
+ * If params.size is non-zero will limit size of the read to either
+ * the buffer free space or params.size, whichever is smallest.
+ *
  * The returned flag is also placed in params.flag.
  *
  * \retval Comm::OK          data has been read and placed in buf, amount in params.size
- * \retval Comm::COMM_ERROR  an error occured, the code is placed in params.xerrno
- * \retval Comm::INPROGRESS  unable to read at this time, or a minor error occured
- * \retval Comm::ENDFILE     0-byte read has occured.
+ * \retval Comm::COMM_ERROR  an error occurred, the code is placed in params.xerrno
+ * \retval Comm::INPROGRESS  unable to read at this time, or a minor error occurred
+ * \retval Comm::ENDFILE     0-byte read has occurred.
  *                           Usually indicates the remote end has disconnected.
  */
 Comm::Flag ReadNow(CommIoCbParams &params, SBuf &buf);

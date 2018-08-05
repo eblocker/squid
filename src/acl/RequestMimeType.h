@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2017 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2018 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -9,28 +9,17 @@
 #ifndef SQUID_ACLREQUESTMIMETYPE_H
 #define SQUID_ACLREQUESTMIMETYPE_H
 
-#include "acl/Acl.h"
-#include "acl/Strategised.h"
-
-class ACLRequestMIMEType
-{
-
-private:
-    static ACL::Prototype RegistryProtoype;
-    static ACLStrategised<char const *> RegistryEntry_;
-};
+#include "acl/Data.h"
+#include "acl/FilledChecklist.h"
+#include "acl/RequestHeaderStrategy.h"
 
 /* partial specialisation */
 
-#include "acl/Checklist.h"
-#include "acl/Data.h"
-#include "acl/RequestHeaderStrategy.h"
-
 template <>
 inline int
-ACLRequestHeaderStrategy<HDR_CONTENT_TYPE>::match (ACLData<char const *> * &data, ACLFilledChecklist *checklist, ACLFlags &)
+ACLRequestHeaderStrategy<Http::HdrType::CONTENT_TYPE>::match (ACLData<char const *> * &data, ACLFilledChecklist *checklist)
 {
-    char const *theHeader = checklist->request->header.getStr(HDR_CONTENT_TYPE);
+    char const *theHeader = checklist->request->header.getStr(Http::HdrType::CONTENT_TYPE);
 
     if (NULL == theHeader)
         theHeader = "";

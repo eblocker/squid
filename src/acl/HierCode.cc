@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2017 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2018 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -10,6 +10,7 @@
 #include "acl/Checklist.h"
 #include "acl/HierCode.h"
 #include "acl/HierCodeData.h"
+#include "acl/Strategised.h"
 #include "HttpRequest.h"
 
 /* explicit template instantiation required for some systems */
@@ -17,16 +18,8 @@
 template class ACLStrategised<hier_code>;
 
 int
-ACLHierCodeStrategy::match (ACLData<MatchType> * &data, ACLFilledChecklist *checklist, ACLFlags &)
+ACLHierCodeStrategy::match (ACLData<MatchType> * &data, ACLFilledChecklist *checklist)
 {
     return data->match (checklist->request->hier.code);
 }
-
-ACLHierCodeStrategy *
-ACLHierCodeStrategy::Instance()
-{
-    return &Instance_;
-}
-
-ACLHierCodeStrategy ACLHierCodeStrategy::Instance_;
 

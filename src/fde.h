@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2017 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2018 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -12,14 +12,25 @@
 #include "comm.h"
 #include "defines.h"
 #include "ip/Address.h"
-
-#if HAVE_OPENSSL_SSL_H
-#include <openssl/ssl.h>
-#endif
+#include "ip/forward.h"
+#include "security/forward.h"
+#include "typedefs.h" //DRCB, DWCB
 
 #if USE_DELAY_POOLS
 class ClientInfo;
 #endif
+
+/**
+ * READ_HANDLER functions return < 0 if, and only if, they fail with an error.
+ * On error, they must pass back an error code in 'errno'.
+ */
+typedef int READ_HANDLER(int, char *, int);
+
+/**
+ * WRITE_HANDLER functions return < 0 if, and only if, they fail with an error.
+ * On error, they must pass back an error code in 'errno'.
+ */
+typedef int WRITE_HANDLER(int, const char *, int);
 
 class dwrite_q;
 class _fde_disk
@@ -106,13 +117,10 @@ public:
     void *lifetime_data;
     AsyncCall::Pointer closeHandler;
     AsyncCall::Pointer halfClosedReader; /// read handler for half-closed fds
-    CommWriteStateData *wstate;         /* State data for comm_write */
     READ_HANDLER *read_method;
     WRITE_HANDLER *write_method;
-#if USE_OPENSSL
-    SSL *ssl;
-    SSL_CTX *dynamicSslContext; ///< cached and then freed when fd is closed
-#endif
+    Security::SessionPointer ssl;
+    Security::ContextPointer dynamicTlsContext; ///< cached and then freed when fd is closed
 #if _SQUID_WINDOWS_
     struct {
         long handle;
@@ -129,7 +137,6 @@ public:
                                             connection, whereas nfmarkToServer is the value to set on packets
                                             *leaving* Squid.   */
 
-private:
     /** Clear the fde class back to NULL equivalent. */
     inline void clear() {
         type = 0;
@@ -158,13 +165,10 @@ private:
         lifetime_data = NULL;
         closeHandler = NULL;
         halfClosedReader = NULL;
-        wstate = NULL;
         read_method = NULL;
         write_method = NULL;
-#if USE_OPENSSL
-        ssl = NULL;
-        dynamicSslContext = NULL;
-#endif
+        ssl.reset();
+        dynamicTlsContext.reset();
 #if _SQUID_WINDOWS_
         win32.handle = (long)NULL;
 #endif

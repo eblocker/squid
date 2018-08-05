@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2017 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2018 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -22,10 +22,11 @@ public:
 
     UnaryCbdataDialer(Handler *aHandler, Argument1 *aArg) :
         arg1(aArg),
-        handler(aHandler) {}
+        handler(aHandler)
+    {}
 
-    virtual bool canDial(AsyncCall &call) { return arg1.valid(); }
-    void dial(AsyncCall &call) { handler(arg1.get()); }
+    virtual bool canDial(AsyncCall &) { return arg1.valid(); }
+    void dial(AsyncCall &) { handler(arg1.get()); }
     virtual void print(std::ostream &os) const {  os << '(' << arg1 << ')'; }
 
 public:

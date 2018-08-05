@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2017 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2018 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -9,15 +9,16 @@
 #ifndef SQUID_HTTPREQUEST_H
 #define SQUID_HTTPREQUEST_H
 
+#include "anyp/Uri.h"
 #include "base/CbcPointer.h"
-#include "Debug.h"
+#include "dns/forward.h"
 #include "err_type.h"
 #include "HierarchyLogEntry.h"
+#include "http/RequestMethod.h"
 #include "HttpMsg.h"
-#include "HttpRequestMethod.h"
+#include "MasterXaction.h"
 #include "Notes.h"
 #include "RequestFlags.h"
-#include "URL.h"
 
 #if USE_AUTH
 #include "auth/UserRequest.h"
@@ -34,26 +35,28 @@
 #endif
 
 class ConnStateData;
+class Downloader;
+class AccessLogEntry;
+typedef RefCount<AccessLogEntry> AccessLogEntryPointer;
 
 /*  Http Request */
-void httpRequestPack(void *obj, Packer *p);
+void httpRequestPack(void *obj, Packable *p);
 
 class HttpHdrRange;
-class DnsLookupDetails;
 
 class HttpRequest: public HttpMsg
 {
+    MEMPROXY_CLASS(HttpRequest);
 
 public:
     typedef RefCount<HttpRequest> Pointer;
 
-    MEMPROXY_CLASS(HttpRequest);
-    HttpRequest();
-    HttpRequest(const HttpRequestMethod& aMethod, AnyP::ProtocolType aProtocol, const char *aUrlpath);
+    HttpRequest(const MasterXaction::Pointer &);
+    HttpRequest(const HttpRequestMethod& aMethod, AnyP::ProtocolType aProtocol, const char *schemeImage, const char *aUrlpath, const MasterXaction::Pointer &);
     ~HttpRequest();
     virtual void reset();
 
-    void initHTTP(const HttpRequestMethod& aMethod, AnyP::ProtocolType aProtocol, const char *aUrlpath);
+    void initHTTP(const HttpRequestMethod& aMethod, AnyP::ProtocolType aProtocol, const char *schemeImage, const char *aUrlpath);
 
     virtual HttpRequest *clone() const;
 
@@ -67,25 +70,9 @@ public:
     /// whether the client is likely to be able to handle a 1xx reply
     bool canHandle1xx() const;
 
-    /* Now that we care what host contains it is better off being protected. */
-    /* HACK: These two methods are only inline to get around Makefile dependancies */
-    /*      caused by HttpRequest being used in places it really shouldn't.        */
-    /*      ideally they would be methods of URL instead. */
-    inline void SetHost(const char *src) {
-        host_addr.setEmpty();
-        host_addr = src;
-        if (host_addr.isAnyAddr()) {
-            xstrncpy(host, src, SQUIDHOSTNAMELEN);
-            host_is_numeric = 0;
-        } else {
-            host_addr.toHostStr(host, SQUIDHOSTNAMELEN);
-            debugs(23, 3, "HttpRequest::SetHost() given IP: " << host_addr);
-            host_is_numeric = 1;
-        }
-        safe_free(canonical); // force its re-build
-    };
-    inline const char* GetHost(void) const { return host; };
-    inline int GetHostIsNumeric(void) const { return host_is_numeric; };
+    /// \returns a pointer to a local static buffer containing request URI
+    /// that honors strip_query_terms and %-encodes unsafe URI characters
+    char *canonicalCleanUrl() const;
 
 #if USE_ADAPTATION
     /// Returns possibly nil history, creating it if adapt. logging is enabled
@@ -100,12 +87,15 @@ public:
     Adaptation::Icap::History::Pointer icapHistory() const;
 #endif
 
-    void recordLookup(const DnsLookupDetails &detail);
+    void recordLookup(const Dns::LookupDetails &detail);
 
     /// sets error detail if no earlier detail was available
     void detailError(err_type aType, int aDetail);
     /// clear error details, useful for retries/repeats
     void clearError();
+
+    /// associates the request with a from-client connection manager
+    void manager(const CbcPointer<ConnStateData> &aMgr, const AccessLogEntryPointer &al);
 
 protected:
     void clean();
@@ -114,16 +104,9 @@ protected:
 
 public:
     HttpRequestMethod method;
-
-    // TODO expand to include all URI parts
-    URL url; ///< the request URI (scheme only)
-
-    char login[MAX_LOGIN_SZ];
+    AnyP::Uri url; ///< the request URI
 
 private:
-    char host[SQUIDHOSTNAMELEN];
-    int host_is_numeric;
-
 #if USE_ADAPTATION
     mutable Adaptation::History::Pointer adaptHistory_; ///< per-HTTP transaction info
 #endif
@@ -132,15 +115,12 @@ private:
 #endif
 
 public:
-    Ip::Address host_addr;
 #if USE_AUTH
     Auth::UserRequest::Pointer auth_user_request;
 #endif
-    unsigned short port;
 
-    String urlpath;
-
-    char *canonical;
+    /// RFC 7230 section 5.5 - Effective Request URI
+    const SBuf &effectiveRequestUri() const;
 
     /**
      * If defined, store_id_program mapped the request URL to this ID.
@@ -205,38 +185,36 @@ public:
     /// A strong etag of the cached entry. Used for refreshing that entry.
     String etag;
 
+    /// whether we have responded with HTTP 100 or FTP 150 already
+    bool forcedBodyContinuation;
+
 public:
     bool multipartRangeRequest() const;
 
     bool parseFirstLine(const char *start, const char *end);
 
-    int parseHeader(const char *parse_start, int len);
-
     virtual bool expectingBody(const HttpRequestMethod& unused, int64_t&) const;
 
     bool bodyNibbled() const; // the request has a [partially] consumed body
 
-    int prefixLen();
+    int prefixLen() const;
 
     void swapOut(StoreEntry * e);
 
-    void pack(Packer * p);
+    void pack(Packable * p) const;
 
-    static void httpRequestPack(void *obj, Packer *p);
+    static void httpRequestPack(void *obj, Packable *p);
 
-    static HttpRequest * CreateFromUrlAndMethod(char * url, const HttpRequestMethod& method);
-
-    static HttpRequest * CreateFromUrl(char * url);
+    static HttpRequest * FromUrl(const char * url, const MasterXaction::Pointer &, const HttpRequestMethod &method = Http::METHOD_GET);
 
     ConnStateData *pinnedConnection();
 
     /**
      * Returns the current StoreID for the request as a nul-terminated char*.
      * Always returns the current id for the request
-     * (either the request canonical url or modified ID by the helper).
-     * Does not return NULL.
+     * (either the effective request URI or modified ID by the helper).
      */
-    const char *storeId();
+    const SBuf storeId();
 
     /**
      * The client connection manager, if known;
@@ -245,26 +223,28 @@ public:
      */
     CbcPointer<ConnStateData> clientConnectionManager;
 
+    /// The Downloader object which initiated the HTTP request if any
+    CbcPointer<Downloader> downloader;
+
+    /// the master transaction this request belongs to. Never nil.
+    MasterXaction::Pointer masterXaction;
+
     /// forgets about the cached Range header (for a reason)
     void ignoreRange(const char *reason);
     int64_t getRangeOffsetLimit(); /* the result of this function gets cached in rangeOffsetLimit */
 
 private:
-    const char *packableURI(bool full_uri) const;
-
     mutable int64_t rangeOffsetLimit;  /* caches the result of getRangeOffsetLimit */
 
 protected:
-    virtual void packFirstLineInto(Packer * p, bool full_uri) const;
+    virtual void packFirstLineInto(Packable * p, bool full_uri) const;
 
-    virtual bool sanityCheckStartLine(MemBuf *buf, const size_t hdr_len, Http::StatusCode *error);
+    virtual bool sanityCheckStartLine(const char *buf, const size_t hdr_len, Http::StatusCode *error);
 
     virtual void hdrCacheInit();
 
     virtual bool inheritProperties(const HttpMsg *aMsg);
 };
-
-MEMPROXY_CLASS_INLINE(HttpRequest);
 
 #endif /* SQUID_HTTPREQUEST_H */
 

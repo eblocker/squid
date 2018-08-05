@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2017 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2018 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -17,6 +17,7 @@
 #include "comm/Connection.h"
 #include "comm/Loops.h"
 #include "comm/UdpOpenDialer.h"
+#include "fatal.h"
 #include "ip/Address.h"
 #include "ip/tools.h"
 #include "snmp/Forwarder.h"
@@ -299,7 +300,7 @@ snmpOpenPorts(void)
 }
 
 static void
-snmpPortOpened(const Comm::ConnectionPointer &conn, int errNo)
+snmpPortOpened(const Comm::ConnectionPointer &conn, int)
 {
     if (!Comm::IsConnOpen(conn))
         fatalf("Cannot open SNMP %s Port",(conn->fd == snmpIncomingConn->fd?"receiving":"sending"));
@@ -339,7 +340,7 @@ snmpClosePorts(void)
  * Accept the UDP packet
  */
 void
-snmpHandleUdp(int sock, void *not_used)
+snmpHandleUdp(int sock, void *)
 {
     static char buf[SNMP_REQUEST_SIZE];
     Ip::Address from;
@@ -367,7 +368,8 @@ snmpHandleUdp(int sock, void *not_used)
         xfree(snmp_rq->outbuf);
         xfree(snmp_rq);
     } else {
-        debugs(49, DBG_IMPORTANT, "snmpHandleUdp: FD " << sock << " recvfrom: " << xstrerror());
+        int xerrno = errno;
+        debugs(49, DBG_IMPORTANT, "snmpHandleUdp: FD " << sock << " recvfrom: " << xstrerr(xerrno));
     }
 }
 
@@ -381,7 +383,6 @@ snmpDecodePacket(SnmpRequest * rq)
     u_char *Community;
     u_char *buf = rq->buf;
     int len = rq->len;
-    allow_t allow = ACCESS_DENIED;
 
     if (!Config.accessList.snmp) {
         debugs(49, DBG_IMPORTANT, "WARNING: snmp_access not configured. agent query DENIED from : " << rq->from);
@@ -400,9 +401,8 @@ snmpDecodePacket(SnmpRequest * rq)
         ACLFilledChecklist checklist(Config.accessList.snmp, NULL, NULL);
         checklist.src_addr = rq->from;
         checklist.snmp_community = (char *) Community;
-        allow = checklist.fastCheck();
 
-        if (allow == ACCESS_ALLOWED && (snmp_coexist_V2toV1(PDU))) {
+        if (checklist.fastCheck().allowed() && (snmp_coexist_V2toV1(PDU))) {
             rq->community = Community;
             rq->PDU = PDU;
             debugs(49, 5, "snmpAgentParse: reqid=[" << PDU->reqid << "]");
@@ -1128,51 +1128,9 @@ oid2addr(oid * id, Ip::Address &addr, u_int size)
         addr = i6addr;
 }
 
-/* SNMP checklists */
-#include "acl/Strategised.h"
-#include "acl/Strategy.h"
-#include "acl/StringData.h"
-
-class ACLSNMPCommunityStrategy : public ACLStrategy<char const *>
-{
-
-public:
-    virtual int match (ACLData<MatchType> * &, ACLFilledChecklist *, ACLFlags &);
-    static ACLSNMPCommunityStrategy *Instance();
-    /* Not implemented to prevent copies of the instance. */
-    /* Not private to prevent brain dead g++ warnings about
-     * private constructors with no friends */
-    ACLSNMPCommunityStrategy(ACLSNMPCommunityStrategy const &);
-
-private:
-    static ACLSNMPCommunityStrategy Instance_;
-    ACLSNMPCommunityStrategy() {}
-
-    ACLSNMPCommunityStrategy&operator=(ACLSNMPCommunityStrategy const &);
-};
-
-class ACLSNMPCommunity
-{
-
-private:
-    static ACL::Prototype RegistryProtoype;
-    static ACLStrategised<char const *> RegistryEntry_;
-};
-
-ACL::Prototype ACLSNMPCommunity::RegistryProtoype(&ACLSNMPCommunity::RegistryEntry_, "snmp_community");
-ACLStrategised<char const *> ACLSNMPCommunity::RegistryEntry_(new ACLStringData, ACLSNMPCommunityStrategy::Instance(), "snmp_community");
-
 int
-ACLSNMPCommunityStrategy::match (ACLData<MatchType> * &data, ACLFilledChecklist *checklist, ACLFlags &)
+ACLSNMPCommunityStrategy::match (ACLData<MatchType> * &data, ACLFilledChecklist *checklist)
 {
     return data->match (checklist->snmp_community);
 }
-
-ACLSNMPCommunityStrategy *
-ACLSNMPCommunityStrategy::Instance()
-{
-    return &Instance_;
-}
-
-ACLSNMPCommunityStrategy ACLSNMPCommunityStrategy::Instance_;
 

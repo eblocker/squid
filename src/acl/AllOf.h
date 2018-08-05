@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2017 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2018 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -19,9 +19,9 @@ namespace Acl
 /// acl all-of lines are always ORed together.
 class AllOf: public Acl::InnerNode
 {
-public:
     MEMPROXY_CLASS(AllOf);
 
+public:
     /* ACL API */
     virtual char const *typeString() const;
     virtual ACL *clone() const;
@@ -31,11 +31,7 @@ public:
 private:
     /* Acl::InnerNode API */
     virtual int doMatch(ACLChecklist *checklist, Nodes::const_iterator start) const;
-
-    static Prototype RegistryProtoype;
-    static AllOf RegistryEntry_;
 };
-MEMPROXY_CLASS_INLINE(Acl::AllOf);
 
 } // namespace Acl
 

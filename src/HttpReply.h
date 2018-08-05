@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2017 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2018 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -24,11 +24,11 @@ class HttpHdrSc;
 
 class HttpReply: public HttpMsg
 {
+    MEMPROXY_CLASS(HttpReply);
 
 public:
     typedef RefCount<HttpReply> Pointer;
 
-    MEMPROXY_CLASS(HttpReply);
     HttpReply();
     ~HttpReply();
 
@@ -39,7 +39,7 @@ public:
      \retval false and sets *error to zero when needs more data
      \retval false and sets *error to a positive Http::StatusCode on error
      */
-    virtual bool sanityCheckStartLine(MemBuf *buf, const size_t hdr_len, Http::StatusCode *error);
+    virtual bool sanityCheckStartLine(const char *buf, const size_t hdr_len, Http::StatusCode *error);
 
     /** \par public, readable; never update these or their .hdr equivalents directly */
     time_t date;
@@ -52,7 +52,8 @@ public:
 
     HttpHdrSc *surrogate_control;
 
-    HttpHdrContRange *content_range;
+    /// \returns parsed Content-Range for a 206 response and nil for others
+    const HttpHdrContRange *contentRange() const;
 
     short int keep_alive;
 
@@ -79,7 +80,7 @@ public:
                     const char *reason, const char *ctype, int64_t clen, time_t lmt, time_t expires);
 
     /** \return a ready to use mem buffer with a packed reply */
-    MemBuf *pack();
+    MemBuf *pack() const;
 
     /** construct a 304 reply and return it */
     HttpReply *make304() const;
@@ -100,7 +101,11 @@ public:
 
     int validatorsMatch (HttpReply const *other) const;
 
-    void packHeadersInto(Packer * p) const;
+    /// adds status line and header to the given Packable
+    /// assumes that `p` can quickly process small additions
+    void packHeadersUsingFastPacker(Packable &p) const;
+    /// same as packHeadersUsingFastPacker() but assumes that `p` cannot quickly process small additions
+    void packHeadersUsingSlowPacker(Packable &p) const;
 
     /** Clone this reply.
      *  Could be done as a copy-contructor but we do not want to accidently copy a HttpReply..
@@ -124,11 +129,11 @@ private:
 
     void hdrCacheClean();
 
-    void packInto(Packer * p);
+    void packInto(MemBuf &) const;
 
     /* ez-routines */
     /** \return construct 304 reply and pack it into a MemBuf */
-    MemBuf *packed304Reply();
+    MemBuf *packed304Reply() const;
 
     /* header manipulation */
     time_t hdrExpirationTime();
@@ -142,13 +147,13 @@ private:
 
     mutable int64_t bodySizeMax; /**< cached result of calcMaxBodySize */
 
+    HttpHdrContRange *content_range; ///< parsed Content-Range; nil for non-206 responses!
+
 protected:
-    virtual void packFirstLineInto(Packer * p, bool) const { sline.packInto(p); }
+    virtual void packFirstLineInto(Packable * p, bool) const { sline.packInto(p); }
 
     virtual bool parseFirstLine(const char *start, const char *end);
 };
-
-MEMPROXY_CLASS_INLINE(HttpReply);
 
 #endif /* SQUID_HTTPREPLY_H */
 

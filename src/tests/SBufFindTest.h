@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2017 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2018 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -9,7 +9,7 @@
 #ifndef SQUID_SRC_TEST_SBUFFINDTEST_H
 #define SQUID_SRC_TEST_SBUFFINDTEST_H
 
-#include "SBuf.h"
+#include "sbuf/SBuf.h"
 
 #include <set>
 #include <string>
@@ -26,7 +26,6 @@ public:
     /* test configuration parameters; can be optionally set before run() */
     int caseLimit; ///< approximate caseCount limit
     int errorLimit; ///< errorCount limit
-    unsigned int randomSeed; ///< pseudo-random sequence choice
     /// whether to report only one failed test case per "category"
     bool hushSimilar;
     /// approximate maximum generated hay string length

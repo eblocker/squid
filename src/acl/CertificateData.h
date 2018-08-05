@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2017 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2018 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -20,10 +20,9 @@
 /// \ingroup ACLAPI
 class ACLCertificateData : public ACLData<X509 *>
 {
-
-public:
     MEMPROXY_CLASS(ACLCertificateData);
 
+public:
     ACLCertificateData(Ssl::GETX509ATTRIBUTE *, const char *attributes, bool optionalAttr = false);
     ACLCertificateData(ACLCertificateData const &);
     ACLCertificateData &operator= (ACLCertificateData const &);
@@ -50,8 +49,6 @@ private:
     /// The callback used to retrieve the data from X509 cert
     Ssl::GETX509ATTRIBUTE *sslAttributeCall;
 };
-
-MEMPROXY_CLASS_INLINE(ACLCertificateData);
 
 #endif /* SQUID_ACLCERTIFICATEDATA_H */
 

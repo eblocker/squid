@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2017 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2018 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -43,8 +43,10 @@ DelaySpec::parse()
 {
     // get the token.
     char *token = ConfigParser::NextToken();
-    if (token == NULL)
+    if (!token) {
         self_destruct();
+        return;
+    }
 
     // no-limit value
     if (strcmp(token, "none") == 0 || token[0] == '-') {

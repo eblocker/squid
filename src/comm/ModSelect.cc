@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2017 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2018 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -124,7 +124,7 @@ Comm::SetSelect(int fd, unsigned int type, PF * handler, void *client_data, time
 {
     fde *F = &fd_table[fd];
     assert(fd >= 0);
-    assert(F->flags.open);
+    assert(F->flags.open || (!handler && !client_data && !timeout));
     debugs(5, 5, HERE << "FD " << fd << ", type=" << type <<
            ", handler=" << handler << ", client_data=" << client_data <<
            ", timeout=" << timeout);
@@ -143,11 +143,6 @@ Comm::SetSelect(int fd, unsigned int type, PF * handler, void *client_data, time
 
     if (timeout)
         F->timeout = squid_curtime + timeout;
-}
-
-void
-Comm::ResetSelect(int fd)
-{
 }
 
 static int
@@ -434,15 +429,16 @@ Comm::DoSelect(int msec)
             poll_time.tv_usec = (msec % 1000) * 1000;
             ++ statCounter.syscalls.selects;
             num = select(maxfd, &readfds, &writefds, NULL, &poll_time);
+            int xerrno = errno;
             ++ statCounter.select_loops;
 
             if (num >= 0 || pending > 0)
                 break;
 
-            if (ignoreErrno(errno))
+            if (ignoreErrno(xerrno))
                 break;
 
-            debugs(5, DBG_CRITICAL, "comm_select: select failure: " << xstrerror());
+            debugs(5, DBG_CRITICAL, MYNAME << "select failure: " << xstrerr(xerrno));
 
             examine_select(&readfds, &writefds);
 
@@ -712,9 +708,10 @@ examine_select(fd_set * readfds, fd_set * writefds)
             debugs(5, 5, "FD " << fd << " is valid.");
             continue;
         }
+        int xerrno = errno;
 
         F = &fd_table[fd];
-        debugs(5, DBG_CRITICAL, "FD " << fd << ": " << xstrerror());
+        debugs(5, DBG_CRITICAL, "fstat(FD " << fd << "): " << xstrerr(xerrno));
         debugs(5, DBG_CRITICAL, "WARNING: FD " << fd << " has handlers, but it's invalid.");
         debugs(5, DBG_CRITICAL, "FD " << fd << " is a " << fdTypeStr[F->type] << " called '" << F->desc << "'");
         debugs(5, DBG_CRITICAL, "tmout:" << F->timeoutHandler << " read:" << F->read_handler << " write:" << F->write_handler);

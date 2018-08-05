@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2017 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2018 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -19,8 +19,8 @@
  */
 
 #include "squid.h"
-#include "AIODiskFile.h"
-#include "AIODiskIOStrategy.h"
+#include "DiskIO/AIO/AIODiskFile.h"
+#include "DiskIO/AIO/AIODiskIOStrategy.h"
 #include "DiskIO/IORequestor.h"
 #include "DiskIO/ReadRequest.h"
 #include "DiskIO/WriteRequest.h"
@@ -101,8 +101,8 @@ int
 AIODiskIOStrategy::callback()
 {
     return 0;
+#if 0
     int i;
-    int completed = 0;
     int retval, reterr;
     FREE *freefunc;
     void *cbdata;
@@ -168,7 +168,8 @@ AIODiskIOStrategy::callback()
         }
     }
 
-    return completed;
+    return 0;
+#endif
 }
 
 void
@@ -184,7 +185,7 @@ AIODiskIOStrategy::init()
 }
 
 void
-AIODiskIOStrategy::statfs(StoreEntry & sentry)const
+AIODiskIOStrategy::statfs(StoreEntry &) const
 {}
 
 ConfigOption *

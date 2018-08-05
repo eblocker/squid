@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2017 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2018 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -9,7 +9,6 @@
 #ifndef SQUID_STOREIOBUFFER_H
 #define SQUID_STOREIOBUFFER_H
 
-/* TODO: move this and the range() method into a .cci */
 #include "MemBuf.h"
 #include "Range.h"
 

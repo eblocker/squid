@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2017 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2018 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -27,6 +27,8 @@ namespace Ipc
  */
 class Forwarder: public AsyncJob
 {
+    CBDATA_CLASS(Forwarder);
+
 public:
     Forwarder(Request::Pointer aRequest, double aTimeout);
     virtual ~Forwarder();
@@ -43,7 +45,6 @@ protected:
     virtual void swanSong();
     virtual bool doneAll() const;
 
-    virtual void cleanup(); ///< perform cleanup actions
     virtual void handleError();
     virtual void handleTimeout();
     virtual void handleException(const std::exception& e);
@@ -66,8 +67,6 @@ protected:
     static RequestsMap TheRequestsMap; ///< pending Coordinator requests
 
     static unsigned int LastRequestId; ///< last requestId used
-
-    CBDATA_CLASS2(Forwarder);
 };
 
 } // namespace Ipc

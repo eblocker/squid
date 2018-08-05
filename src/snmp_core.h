@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2017 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2018 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -11,19 +11,17 @@
 #ifndef SQUID_SNMP_CORE_H
 #define SQUID_SNMP_CORE_H
 
+#include "acl/Strategy.h"
 #include "cache_snmp.h"
 #include "comm/forward.h"
-#include "typedefs.h"
+#include "ip/forward.h"
 
-namespace Ip
-{
-class Address;
-}
 class MemBuf;
 
 #define SNMP_REQUEST_SIZE 4096
 #define MAX_PROTOSTAT 5
 
+typedef variable_list *(oid_ParseFn) (variable_list *, snint *);
 typedef struct _mib_tree_entry mib_tree_entry;
 typedef oid *(instance_Fn) (oid * name, snint * len, mib_tree_entry * current, oid_ParseFn ** Fn);
 typedef enum {atNone = 0, atSum, atAverage, atMax, atMin} AggrType;
@@ -53,6 +51,12 @@ void snmpClosePorts(void);
 const char * snmpDebugOid(oid * Name, snint Len, MemBuf &outbuf);
 void addr2oid(Ip::Address &addr, oid *Dest);
 void oid2addr(oid *Dest, Ip::Address &addr, u_int code);
+
+class ACLSNMPCommunityStrategy: public ACLStrategy<char const *>
+{
+public:
+    virtual int match (ACLData<MatchType> *&data, ACLFilledChecklist *checklist) override;
+};
 
 #endif /* SQUID_SNMP_CORE_H */
 

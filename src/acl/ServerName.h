@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2017 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2018 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -10,14 +10,12 @@
 #define SQUID_ACLSERVERNAME_H
 
 #include "acl/Acl.h"
-#include "acl/Checklist.h"
-#include "acl/Data.h"
 #include "acl/DomainData.h"
-#include "acl/Strategised.h"
+#include "acl/Strategy.h"
 
 class ACLServerNameData : public ACLDomainData {
-public:
     MEMPROXY_CLASS(ACLServerNameData);
+public:
     ACLServerNameData() : ACLDomainData() {}
     virtual bool match(const char *);
     virtual ACLData<char const *> *clone() const;
@@ -27,35 +25,16 @@ class ACLServerNameStrategy : public ACLStrategy<char const *>
 {
 
 public:
-    virtual int match (ACLData<MatchType> * &, ACLFilledChecklist *, ACLFlags &);
-    static ACLServerNameStrategy *Instance();
+    /* ACLStrategy API */
+    virtual int match (ACLData<MatchType> * &, ACLFilledChecklist *);
     virtual bool requiresRequest() const {return true;}
-
-    /**
-     * Not implemented to prevent copies of the instance.
-     \par
-     * Not private to prevent brain dead g+++ warnings about
-     * private constructors with no friends
-     */
-    ACLServerNameStrategy(ACLServerNameStrategy const &);
+    virtual const Acl::Options &options();
+    virtual bool valid() const;
 
 private:
-    static ACLServerNameStrategy Instance_;
-    ACLServerNameStrategy() {}
-
-    ACLServerNameStrategy&operator=(ACLServerNameStrategy const &);
-};
-
-MEMPROXY_CLASS_INLINE(ACLServerNameData);
-
-class ACLServerName
-{
-
-private:
-    static ACL::Prototype LiteralRegistryProtoype;
-    static ACLStrategised<char const *> LiteralRegistryEntry_;
-    static ACL::Prototype RegexRegistryProtoype;
-    static ACLStrategised<char const *> RegexRegistryEntry_;
+    Acl::BooleanOptionValue useClientRequested; ///< Ignore server-supplied names
+    Acl::BooleanOptionValue useServerProvided; ///< Ignore client-supplied names
+    Acl::BooleanOptionValue useConsensus; ///< Ignore mismatching names
 };
 
 #endif /* SQUID_ACLSERVERNAME_H */

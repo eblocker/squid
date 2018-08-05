@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2017 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2018 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -197,8 +197,10 @@ Comm::SelectLoopInit(void)
 
     /* attempt to open /dev/poll device */
     devpoll_fd = open("/dev/poll", O_RDWR);
-    if (devpoll_fd < 0)
-        fatalf("comm_select_init: can't open /dev/poll: %s\n", xstrerror());
+    if (devpoll_fd < 0) {
+        int xerrno = errno;
+        fatalf("comm_select_init: can't open /dev/poll: %s\n", xstrerr(xerrno));
+    }
 
     fd_open(devpoll_fd, FD_UNKNOWN, "devpoll ctl");
 
@@ -292,17 +294,6 @@ Comm::SetSelect(int fd, unsigned int type, PF * handler, void *client_data, time
 
     if (timeout)
         F->timeout = squid_curtime + timeout;
-}
-
-/** \brief Clear polling of file handle (both read and write)
- *
- * @param fd file descriptor to clear polling on
- */
-void
-Comm::ResetSelect(int fd)
-{
-    SetSelect(fd, COMM_SELECT_WRITE, NULL, NULL, 0);
-    SetSelect(fd, COMM_SELECT_READ, NULL, NULL, 0);
 }
 
 /** \brief Do poll and trigger callback functions as appropriate

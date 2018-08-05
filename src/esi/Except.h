@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2017 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2018 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -20,8 +20,6 @@ class esiExcept : public esiSequence
 {
 
 public:
-    //    void *operator new (size_t byteCount);
-    //    void operator delete (void *address);
     esiExcept(esiTreeParentPtr aParent) : esiSequence (aParent) {}
 };
 

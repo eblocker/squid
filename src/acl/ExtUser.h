@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2017 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2018 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -15,36 +15,29 @@
 #include "acl/Checklist.h"
 #include "acl/Data.h"
 
-/// \ingroup ACLAPI
 class ACLExtUser : public ACL
 {
-
-public:
     MEMPROXY_CLASS(ACLExtUser);
 
+public:
     ACLExtUser(ACLData<char const *> *newData, char const *);
     ACLExtUser (ACLExtUser const &old);
     ACLExtUser & operator= (ACLExtUser const &rhs);
     ~ACLExtUser();
 
+    /* ACL API */
     virtual char const *typeString() const;
     virtual void parse();
-
+    virtual void parseFlags();
     virtual int match(ACLChecklist *checklist);
     virtual SBufList dump() const;
     virtual bool empty () const;
     virtual ACL *clone()const;
 
 private:
-    static Prototype UserRegistryProtoype;
-    static ACLExtUser UserRegistryEntry_;
-    static Prototype RegexRegistryProtoype;
-    static ACLExtUser RegexRegistryEntry_;
     ACLData<char const *> *data;
     char const *type_;
 };
-
-MEMPROXY_CLASS_INLINE(ACLExtUser);
 
 #endif /* USE_AUTH */
 #endif /* SQUID_EXTUSER_H */

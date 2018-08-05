@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2017 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2018 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -37,7 +37,6 @@ Auth::Digest::Scheme::shutdownCleanup()
     if (_instance == NULL)
         return;
 
-    PurgeCredentialsCache();
     authenticateDigestNonceShutdown();
 
     _instance = NULL;
@@ -49,23 +48,5 @@ Auth::Digest::Scheme::createConfig()
 {
     Auth::Digest::Config *digestCfg = new Auth::Digest::Config;
     return dynamic_cast<Auth::Config*>(digestCfg);
-}
-
-void
-Auth::Digest::Scheme::PurgeCredentialsCache(void)
-{
-    AuthUserHashPointer *usernamehash;
-
-    debugs(29, 2, HERE << "Erasing Digest authentication credentials from username cache.");
-    hash_first(proxy_auth_username_cache);
-
-    while ((usernamehash = static_cast<AuthUserHashPointer *>(hash_next(proxy_auth_username_cache)) )) {
-        Auth::User::Pointer auth_user = usernamehash->user();
-
-        if (strcmp(auth_user->config->type(), "digest") == 0) {
-            hash_remove_link(proxy_auth_username_cache, static_cast<hash_link*>(usernamehash));
-            delete usernamehash;
-        }
-    }
 }
 

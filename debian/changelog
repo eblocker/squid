@@ -1,9 +1,12 @@
-squid (4.1-2) UNRELEASED; urgency=medium
+squid (4.2-1) UNRELEASED; urgency=high
+
+  * New Upstream Release
 
   * debian/patches/
     - Patch to use installed binary for upstream config tests
+    - Remove patches included upstream: 0011-upstream-pr172.patch
 
- -- Amos Jeffries <amosjeffries@squid-cache.org>  Sat, 21 Jul 2018 21:08:00 +1300
+ -- Amos Jeffries <amosjeffries@squid-cache.org>  Mon, 06 Aug 2018 04:13:00 +1300
 
 squid (4.1-1) unstable; urgency=high
 

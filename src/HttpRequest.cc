@@ -79,7 +79,7 @@ HttpRequest::init()
 #if USE_AUTH
     auth_user_request = NULL;
 #endif
-    memset(&flags, '\0', sizeof(flags));
+    flags = RequestFlags();
     range = NULL;
     ims = -1;
     imslen = 0;
@@ -671,6 +671,12 @@ HttpRequest::effectiveRequestUri() const
     if (method.id() == Http::METHOD_CONNECT || url.getScheme() == AnyP::PROTO_AUTHORITY_FORM)
         return url.authority(true); // host:port
     return url.absolute();
+}
+
+char *
+HttpRequest::canonicalCleanUrl() const
+{
+    return urlCanonicalCleanWithoutRequest(effectiveRequestUri(), method, url.getScheme());
 }
 
 void

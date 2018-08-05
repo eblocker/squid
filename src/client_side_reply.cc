@@ -1443,13 +1443,8 @@ clientReplyContext::buildReplyHeader()
              */
             /* TODO: if maxage or s-maxage is present, don't do this */
 
-            if (squid_curtime - http->storeEntry()->timestamp >= 86400) {
-                char tbuf[512];
-                snprintf (tbuf, sizeof(tbuf), "%s %s %s",
-                          "113", ThisCache,
-                          "This cache hit is still fresh and more than 1 day old");
-                hdr->putStr(Http::HdrType::WARNING, tbuf);
-            }
+            if (squid_curtime - http->storeEntry()->timestamp >= 86400)
+                hdr->putWarning(113, "This cache hit is still fresh and more than 1 day old");
         }
     }
 
@@ -2266,7 +2261,10 @@ clientReplyContext::createStoreEntry(const HttpRequestMethod& m, RequestFlags re
 
     if (http->request == NULL) {
         const MasterXaction::Pointer mx = new MasterXaction(XactionInitiator::initClient);
-        http->request = new HttpRequest(m, AnyP::PROTO_NONE, "http", null_string, mx);
+        // XXX: These fake URI parameters shadow the real (or error:...) URI.
+        // TODO: Either always set the request earlier and assert here OR use
+        // http->uri (converted to Anyp::Uri) to create this catch-all request.
+        const_cast<HttpRequest *&>(http->request) =  new HttpRequest(m, AnyP::PROTO_NONE, "http", null_string, mx);
         HTTPMSGLOCK(http->request);
     }
 

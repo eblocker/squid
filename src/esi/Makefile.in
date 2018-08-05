@@ -173,10 +173,10 @@ LTLIBRARIES = $(noinst_LTLIBRARIES)
 libesi_la_LIBADD =
 am__libesi_la_SOURCES_DIST = Assign.cc Assign.h Attempt.h Context.cc \
 	Context.h ExpatParser.cc ExpatParser.h Libxml2Parser.cc \
-	Libxml2Parser.h Element.h ElementList.h Esi.cc Esi.h Except.h \
-	Expression.cc Expression.h Include.cc Include.h Literal.h \
-	Module.cc Module.h Parser.cc Parser.h Segment.cc Segment.h \
-	Sequence.cc Sequence.h Var.h VarState.cc VarState.h
+	Libxml2Parser.h Element.h Esi.cc Esi.h Except.h Expression.cc \
+	Expression.h Include.cc Include.h Literal.h Module.cc Module.h \
+	Parser.cc Parser.h Segment.cc Segment.h Sequence.cc Sequence.h \
+	Var.h VarState.cc VarState.h
 @ENABLE_LIBEXPAT_TRUE@am__objects_1 = ExpatParser.lo
 @ENABLE_LIBXML2_TRUE@am__objects_2 = Libxml2Parser.lo
 am__objects_3 = $(am__objects_1) $(am__objects_2)
@@ -744,7 +744,6 @@ libesi_la_SOURCES = \
 	Context.h \
 	$(ESI_PARSER_SOURCES) \
 	Element.h \
-	ElementList.h \
 	Esi.cc \
 	Esi.h \
 	Except.h \

@@ -4,7 +4,7 @@ Priority: optional
 Maintainer: Luigi Gangitano <luigi@debian.org>
 Uploaders: Santiago Garcia Mantinan <manty@debian.org>
 Homepage: http://www.squid-cache.org
-Standards-Version: 4.1.4
+Standards-Version: 4.2.0.0
 Vcs-Git: git://salsa.debian.org/squid-team/squid.git
 Vcs-Browser: https://salsa.debian.org/squid-team/squid.git
 Build-Depends: ed, libltdl-dev, pkg-config

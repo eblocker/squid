@@ -1,0 +1,28 @@
+From 90218ea99bb5c79b9be594777963ca91667f5fa2 Mon Sep 17 00:00:00 2001
+From: Amos Jeffries <amosjeffries@squid-cache.org>
+Date: Sun, 29 Jul 2018 02:43:21 +1200
+Subject: [PATCH 1/2] Update systemd dependencies in squid.service
+
+The network.target is not sufficient to guarantee network interfces and IPs
+are assigned and available. Particularly when systemd is not in charge
+of the IP assignment itself.
+Use network-online.target as well, which should ensure network is
+properly configured and online before starting Squid.
+---
+ tools/systemd/squid.service | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/tools/systemd/squid.service b/tools/systemd/squid.service
+index badfb677..eca4fc5c 100644
+--- a/tools/systemd/squid.service
++++ b/tools/systemd/squid.service
+@@ -8,7 +8,8 @@
+ [Unit]
+ Description=Squid Web Proxy Server
+ Documentation=man:squid(8)
+-After=network.target nss-lookup.target
++After=network.target network-online.target nss-lookup.target
++Wants=network-online.target
+ 
+ [Service]
+ Type=forking

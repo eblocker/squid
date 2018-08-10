@@ -14,6 +14,9 @@ squid (4.2-1) UNRELEASED; urgency=high
   [ Andreas Hasenack ]
   * d/t/upstream-test-suite: also make libmem.la, needed by the tests.
   * d/t/test-squid.py: fix apparmor profile filename
+  * debian/tests/control: add ssl-cert to the list of dependencies of the
+    squid test, as apache is configured to load
+    /etc/ssl/certs/ssl-cert-snakeoil.pem in that test.
 
  -- Amos Jeffries <amosjeffries@squid-cache.org>  Tue, 07 Aug 2018 23:16:00 +1300
 

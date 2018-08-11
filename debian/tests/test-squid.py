@@ -106,7 +106,7 @@ class BasicTest(HttpdCommon):
 
         self.gophermap = "/var/gopher/gophermap"
 
-        self.aa_profile = "usr.sbin.squid3"
+        self.aa_profile = "usr.sbin.squid"
         self.aa_abs_profile = "/etc/apparmor.d/%s" % self.aa_profile
 
     def tearDown(self):
@@ -118,7 +118,7 @@ class BasicTest(HttpdCommon):
         '''Test daemon'''
 
         pidfile = "/run/squid.pid"
-        exe = "(squid-1)"
+        exe = "squid"
 
         self.assertTrue(check_pidfile(exe, pidfile))
 

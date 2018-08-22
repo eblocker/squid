@@ -20,6 +20,10 @@ squid (4.2-1) UNRELEASED; urgency=high
     /etc/ssl/certs/ssl-cert-snakeoil.pem in that test.
   * d/t/test-squid.py: fix the process name. The PID points at the parent.
 
+  [ Luigi Gangitano ]
+  * debian/control
+    - Fix Vcs-Git and Vcs-Browser URLs
+
  -- Amos Jeffries <amosjeffries@squid-cache.org>  Sun, 12 Aug 2018 01:11:00 +1300
 
 squid (4.1-1) unstable; urgency=high

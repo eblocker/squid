@@ -1,3 +1,11 @@
+squid (4.2-2) UNRELEASED; urgency=high
+
+  [ Adrian Bunk <bunk@debian.org> ]
+  * Add -latomic for rmel m68k mips mipsel powerpc powerpcspe sh4
+    (Closes: #907106)
+
+ -- Amos Jeffries <amosjeffries@squid-cache.org>  Fri, 24 Aug 2018 16:12:00 +1300
+
 squid (4.2-1) unstable; urgency=high
 
   [ Amos Jeffries <amosjeffries@squid-cache.org> ]

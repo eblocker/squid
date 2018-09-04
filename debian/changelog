@@ -1,3 +1,11 @@
+squid (4.2-3) UNRELEASED; urgency=low
+
+  [ Amos Jeffries <amosjeffries@squid-cache.org> ]
+  * debian/control
+    - Bumped Standards-Version to 4.2.1, no change needed
+
+ -- Amos Jeffries <amosjeffries@squid-cache.org>  Tue, 04 Sep 2018 16:19:00 +1300
+
 squid (4.2-2) unstable; urgency=high
 
   [ Adrian Bunk <bunk@debian.org> ]

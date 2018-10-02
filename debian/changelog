@@ -1,6 +1,11 @@
-squid (4.2-3) UNRELEASED; urgency=low
+squid (4.3-1) UNRELEASED; urgency=low
 
   [ Amos Jeffries <amosjeffries@squid-cache.org> ]
+  * New Upstream Release
+
+  * debian/patches/
+    - Remove upstream pr264 patch for systemd
+
   * debian/control
     - Bumped Standards-Version to 4.2.1, no change needed
 

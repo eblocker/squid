@@ -501,6 +501,9 @@
 /* "Define to 1 if the ASN1_STRING_get0_data() OpenSSL API function exists" */
 #undef HAVE_LIBCRYPTO_ASN1_STRING_GET0_DATA
 
+/* "Define to 1 if the BIO_get_data() OpenSSL API function exists" */
+#undef HAVE_LIBCRYPTO_BIO_GET_DATA
+
 /* "Define to 1 if the BIO_get_init() OpenSSL API function exists" */
 #undef HAVE_LIBCRYPTO_BIO_GET_INIT
 
@@ -512,6 +515,12 @@
 
 /* "Define to 1 if the EVP_PKEY_get0_RSA() OpenSSL API function exists" */
 #undef HAVE_LIBCRYPTO_EVP_PKEY_GET0_RSA
+
+/* "Define to 1 if the EVP_PKEY_up_ref() OpenSSL API function exists" */
+#undef HAVE_LIBCRYPTO_EVP_PKEY_UP_REF
+
+/* "Define to 1 if the OPENSSL_LH_strhash() OpenSSL API function exists" */
+#undef HAVE_LIBCRYPTO_OPENSSL_LH_STRHASH
 
 /* "Define to 1 if the X509_CRL_up_ref() OpenSSL API function exists" */
 #undef HAVE_LIBCRYPTO_X509_CRL_UP_REF
@@ -526,10 +535,6 @@
 /* "Define to 1 if the X509_STORE_CTX_get0_untrusted() OpenSSL API function
    exists" */
 #undef HAVE_LIBCRYPTO_X509_STORE_CTX_GET0_UNTRUSTED
-
-/* "Define to 1 if the X509_STORE_CTX_set0_untrusted() OpenSSL API function
-   exists" */
-#undef HAVE_LIBCRYPTO_X509_STORE_CTX_SET0_UNTRUSTED
 
 /* "Define to 1 if the X509_up_ref() OpenSSL API function exists" */
 #undef HAVE_LIBCRYPTO_X509_UP_REF
@@ -566,6 +571,9 @@
 /* Define to 1 if you have the
    <libnetfilter_conntrack/libnetfilter_conntrack_tcp.h> header file. */
 #undef HAVE_LIBNETFILTER_CONNTRACK_LIBNETFILTER_CONNTRACK_TCP_H
+
+/* "Define to 1 if the OPENSSL_init_ssl() OpenSSL API function exists" */
+#undef HAVE_LIBSSL_OPENSSL_INIT_SSL
 
 /* "Define to 1 if the SSL_CIPHER_find() OpenSSL API function exists" */
 #undef HAVE_LIBSSL_SSL_CIPHER_FIND
@@ -752,11 +760,20 @@
 /* OpenLDAP support */
 #undef HAVE_OPENLDAP
 
+/* Define to 1 if you have the <openssl/asn1.h> header file. */
+#undef HAVE_OPENSSL_ASN1_H
+
 /* Define to 1 if you have the <openssl/bio.h> header file. */
 #undef HAVE_OPENSSL_BIO_H
 
+/* Define to 1 if you have the <openssl/bn.h> header file. */
+#undef HAVE_OPENSSL_BN_H
+
 /* Define to 1 if you have the <openssl/crypto.h> header file. */
 #undef HAVE_OPENSSL_CRYPTO_H
+
+/* Define to 1 if you have the <openssl/dh.h> header file. */
+#undef HAVE_OPENSSL_DH_H
 
 /* Define to 1 if you have the <openssl/engine.h> header file. */
 #undef HAVE_OPENSSL_ENGINE_H
@@ -764,11 +781,20 @@
 /* Define to 1 if you have the <openssl/err.h> header file. */
 #undef HAVE_OPENSSL_ERR_H
 
+/* Define to 1 if you have the <openssl/evp.h> header file. */
+#undef HAVE_OPENSSL_EVP_H
+
+/* Define to 1 if you have the <openssl/lhash.h> header file. */
+#undef HAVE_OPENSSL_LHASH_H
+
 /* Define to 1 if you have the <openssl/md5.h> header file. */
 #undef HAVE_OPENSSL_MD5_H
 
 /* Define to 1 if you have the <openssl/opensslv.h> header file. */
 #undef HAVE_OPENSSL_OPENSSLV_H
+
+/* Define to 1 if you have the <openssl/rsa.h> header file. */
+#undef HAVE_OPENSSL_RSA_H
 
 /* Define to 1 if you have the <openssl/ssl.h> header file. */
 #undef HAVE_OPENSSL_SSL_H
@@ -787,6 +813,9 @@
 
 /* Define to 1 if you have the <openssl/x509v3.h> header file. */
 #undef HAVE_OPENSSL_X509V3_H
+
+/* Define to 1 if you have the <openssl/x509.h> header file. */
+#undef HAVE_OPENSSL_X509_H
 
 /* pad128_t is defined in system headers */
 #undef HAVE_PAD128_T
@@ -1352,6 +1381,10 @@
 /* configure command line used to configure Squid */
 #undef SQUID_CONFIGURE_OPTIONS
 
+/* Define to const if X509_get0_signature() accepts const parameters; define
+   as empty otherwise. Don't leave it undefined! */
+#undef SQUID_CONST_X509_GET0_SIGNATURE_ARGS
+
 /* UDP receive buffer size */
 #undef SQUID_DETECT_UDP_SO_RCVBUF
 
@@ -1391,9 +1424,6 @@
 /* "Define to 1 if the SSL_CTX_sess_set_get_cb() callback accepts a const ID
    argument" */
 #undef SQUID_USE_CONST_SSL_SESSION_CBID
-
-/* "Define if X509_get0_signature() accepts const parameters" */
-#undef SQUID_USE_CONST_X509_GET0_SIGNATURE_ARGS
 
 /* "Define to 1 if hello message can be overwritten in SSL struct" */
 #undef SQUID_USE_OPENSSL_HELLO_OVERWRITE_HACK

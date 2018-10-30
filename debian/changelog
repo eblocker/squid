@@ -1,7 +1,7 @@
 squid (4.4-1) UNRELEASED; urgency=high
 
   [ Amos Jeffries <amosjeffries@squid-cache.org> ]
-  * New Upstream Release
+  * New Upstream Release (Closes: #912293, #912294)
 
  -- Amos Jeffries <amosjeffries@squid-cache.org>  Sun, 28 Oct 2018 14:52:00 +1300
 

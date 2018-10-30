@@ -1,13 +1,17 @@
-squid (4.4-1) UNRELEASED; urgency=high
+squid (4.4-1) unstable; urgency=high
+
+  * Urgency high due to security fixes
 
   [ Amos Jeffries <amosjeffries@squid-cache.org> ]
-  * New Upstream Release (Closes: #912293, #912294)
+  * New Upstream Release
+    - Fix security issue SQUID-2018:4 (CVE: TBD) (Closes: #912293)
+    - Fix security issue SQUID-2018:5 (CVE: TBD) (Closes: #912294)
 
   [ Luigi Gangitano ]
   * debian/squid.preinst
     - Don't parse /etc/passwd, use getent to make lintian happy
 
- -- Amos Jeffries <amosjeffries@squid-cache.org>  Sun, 28 Oct 2018 14:52:00 +1300
+ -- Luigi Gangitano <luigi@debian.org>  Tue, 30 Oct 2018 14:57:15 +0100
 
 squid (4.3-1) unstable; urgency=low
 

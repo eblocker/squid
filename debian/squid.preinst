@@ -49,7 +49,7 @@ esac
 # Add the "proxy" user/group to /etc/passwd if needed.
 #
 
-if ! grep -q "^proxy:" /etc/passwd
+if ! getent passwd proxy
 then
 	#
 	#	Let's hope that this works; if /var/spool/squid is

@@ -27,6 +27,7 @@ BUILDINFO := $(shell lsb_release -si 2>/dev/null)
 
 DEB_CONFIGURE_EXTRA_FLAGS := BUILDCXXFLAGS="$(CXXFLAGS) $(CPPFLAGS) $(LDFLAGS)" \
 		BUILDCXX=$(CXX_FOR_BUILD) \
+		--with-build-environment=default \
 		--enable-build-info="$(BUILDINFO) $(DEB_HOST_ARCH_OS)" \
 		--datadir=/usr/share/squid \
 		--sysconfdir=/etc/squid \

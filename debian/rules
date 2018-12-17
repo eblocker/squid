@@ -11,6 +11,8 @@ export DEB_LDFLAGS_MAINT_APPEND
 
 export DEB_BUILD_PARALLEL = yes
 include /usr/share/dpkg/buildflags.mk
+-include /usr/share/dpkg/buildtools.mk
+CXX_FOR_BUILD ?= $(CXX)
 
 include /usr/share/cdbs/1/rules/debhelper.mk
 include /usr/share/cdbs/1/class/autotools.mk
@@ -24,6 +26,7 @@ DEB_INSTALL_DOCS_squid-common := debian/copyright CONTRIBUTORS CREDITS QUICKSTAR
 BUILDINFO := $(shell lsb_release -si 2>/dev/null)
 
 DEB_CONFIGURE_EXTRA_FLAGS := BUILDCXXFLAGS="$(CXXFLAGS) $(CPPFLAGS) $(LDFLAGS)" \
+		BUILDCXX=$(CXX_FOR_BUILD) \
 		--enable-build-info="$(BUILDINFO) $(DEB_HOST_ARCH_OS)" \
 		--datadir=/usr/share/squid \
 		--sysconfdir=/etc/squid \

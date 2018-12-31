@@ -5,7 +5,11 @@ squid (4.4-2) UNRELEASED; urgency=medium
     - Pass BUILDCXX to ./configure on cross-builds
     - use --with-build-environment=default to avoid arm64 flag issues
 
- -- Amos Jeffries <amosjeffries@squid-cache.org>  Mon, 17 Dec 2018 20:45:00 +1300
+  * debian/control
+    - Add cross-compile annotations to restrict GCC/LLVM dependency
+      (Closes: #916536)
+
+ -- Amos Jeffries <amosjeffries@squid-cache.org>  Tue, 01 Jan 2018 07:24:00 +1300
 
 squid (4.4-1) unstable; urgency=high
 

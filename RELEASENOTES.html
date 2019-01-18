@@ -2,10 +2,10 @@
 <HTML>
 <HEAD>
  <META NAME="GENERATOR" CONTENT="LinuxDoc-Tools 0.9.73">
- <TITLE>Squid 4.4 release notes</TITLE>
+ <TITLE>Squid 4.5 release notes</TITLE>
 </HEAD>
 <BODY>
-<H1>Squid 4.4 release notes</H1>
+<H1>Squid 4.5 release notes</H1>
 
 <H2>Squid Developers</H2>
 <HR>
@@ -63,7 +63,7 @@ for Applied Network Research and members of the Web Caching community.</EM>
 <HR>
 <H2><A NAME="s1">1.</A> <A HREF="#toc1">Notice</A></H2>
 
-<P>The Squid Team are pleased to announce the release of Squid-4.4 for testing.</P>
+<P>The Squid Team are pleased to announce the release of Squid-4.5 for testing.</P>
 <P>This new release is available for download from 
 <A HREF="http://www.squid-cache.org/Versions/v4/">http://www.squid-cache.org/Versions/v4/</A> or the
 <A HREF="http://www.squid-cache.org/Download/http-mirrors.html">mirrors</A>.</P>
@@ -369,8 +369,8 @@ obey the <EM>logfile_rotate</EM> directive.</P>
 
 <DT><B>acl</B><DD>
 <P>New <EM>-m</EM> flag for <EM>note</EM> ACL to match substrings.</P>
-<P>New <EM>clientside_mark</EM> type for matching Netfilter CONNMARK on
-the client TCP connection.</P>
+<P>New <EM>client_connection_mark</EM> type for matching Netfilter
+CONNMARK of the client TCP connection.</P>
 <P>New <EM>connections_encrypted</EM> type for matching transactions
 where all HTTP messages were received over TLS transport connections,
 including messages received from ICAP servers.</P>
@@ -499,6 +499,8 @@ the maximum TLS version supported by the TLS server.</P>
 negotiated cipher of the client connection.</P>
 <P>New code <EM>%ssl::&lt;negotiated_cipher</EM> to display the
 negotiated cipher of the last server or peer connection.</P>
+<P>New code <EM>%&gt;handshake</EM> to display initial octets
+received on a client connection (Base64 encoded).</P>
 <P>Fixed <EM>%&lt;Hs</EM>, <EM>%&lt;pt</EM> and <EM>%&lt;tt</EM>
 codes for received CONNECT errors.</P>
 <P>Improved <EM>%&lt;bs</EM> logging on forwarding retries.</P>

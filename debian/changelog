@@ -3,6 +3,9 @@ squid (4.5-1) UNRELEASED; urgency=medium
   [ Amos Jeffries <amosjeffries@squid-cache.org> ]
   * New Upstream Release
 
+  * debian/control
+    - Bumped Standards-Version to 4.3.0, no change needed
+
   [ Helmut Grohne <helmut@subdivi.de> ]
   * debian/rules
     - Pass BUILDCXX to ./configure on cross-builds

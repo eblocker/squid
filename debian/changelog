@@ -6,6 +6,9 @@ squid (4.5-1) UNRELEASED; urgency=medium
   * debian/control
     - Bumped Standards-Version to 4.3.0, no change needed
 
+  * debian/rules
+    - Add /var/run/squid directory for SMP workers and helpers
+
   [ Helmut Grohne <helmut@subdivi.de> ]
   * debian/rules
     - Pass BUILDCXX to ./configure on cross-builds
@@ -15,7 +18,7 @@ squid (4.5-1) UNRELEASED; urgency=medium
     - Add cross-compile annotations to restrict GCC/LLVM dependency
       (Closes: #916536)
 
- -- Amos Jeffries <amosjeffries@squid-cache.org>  Fri, 18 Jan 2018 17:40:00 +1300
+ -- Amos Jeffries <amosjeffries@squid-cache.org>  Tue, 19 Feb 2018 18:26:00 +1300
 
 squid (4.4-1) unstable; urgency=high
 

@@ -22,6 +22,9 @@ squid (4.5-1) UNRELEASED; urgency=medium
   * debian/control
     - Fixed dependency on winbind instead of winbindd
 
+  * debian/squid{,3}.{postinst,postrm,preinst,maintscript}
+    - Moved dpkg-maintscript-helper commands to proper DH file
+
  -- Amos Jeffries <amosjeffries@squid-cache.org>  Tue, 19 Feb 2018 18:26:00 +1300
 
 squid (4.4-1) unstable; urgency=high

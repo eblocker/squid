@@ -42,7 +42,7 @@ Package: squid
 Architecture: any
 Pre-Depends: adduser
 Depends: ${shlibs:Depends}, ${misc:Depends}, netbase, logrotate (>= 3.5.4-1), squid-common (>= ${source:Version}), lsb-base, libdbi-perl
-Suggests: squidclient, squid-cgi, squid-purge, resolvconf (>= 0.40), smbclient, ufw, winbindd
+Suggests: squidclient, squid-cgi, squid-purge, resolvconf (>= 0.40), smbclient, ufw, winbind
 Recommends: libcap2-bin [linux-any], ca-certificates
 Conflicts: squid3 (<< ${binary:Version})
 Replaces: squid3

@@ -1,3 +1,16 @@
+squid (4.6-1) UNRELEASED; urgency=high
+
+  [ Amos Jeffries <amosjeffries@squid-cache.org> ]
+  * New Upstream Release
+    - Fix multiple memory leak and data corruption issues
+    - Detect IPv6 loopback binding errors
+    - Do not call setsid() in --foreground mode
+    - Exit on fork() failures
+    - Fix OpenSSL builds that define OPENSSL_NO_ENGINE
+    - Fix multiple GCC-8 compile errors
+
+ -- Amos Jeffries <amosjeffries@squid-cache.org>  Fri, 22 Feb 2019 16:18:00 +1300
+
 squid (4.5-2) unstable; urgency=medium
 
   [ Luigi Gangitano <luigi@debian.org> ]

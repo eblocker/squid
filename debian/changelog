@@ -1,4 +1,4 @@
-squid (4.6-1) unstable; urgency=high
+squid (4.6-1) UNRELEASED; urgency=high
 
   [ Amos Jeffries <amosjeffries@squid-cache.org> ]
   * New Upstream Release
@@ -9,7 +9,7 @@ squid (4.6-1) unstable; urgency=high
     - Fix OpenSSL builds that define OPENSSL_NO_ENGINE
     - Fix multiple GCC-8 compile errors
 
- -- Luigi Gangitano <luigi@debian.org>  Fri, 22 Feb 2019 11:28:15 +0100
+ -- Amos Jeffries <amosjeffries@squid-cache.org>  Fri, 22 Feb 2019 16:18:00 +1300
 
 squid (4.5-2) unstable; urgency=medium
 

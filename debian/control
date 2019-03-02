@@ -12,6 +12,7 @@ Build-Depends: ed, libltdl-dev, pkg-config
 	, g++ (>= 4.9) <!cross> | clang (>= 3.7) <!cross>
 	, gcc (>= 4.9) <!cross> | clang (>= 3.7) <!cross>
 	, cdbs, debhelper (>=10), dpkg-dev (>= 1.17.11~), lsb-release
+	, dh-apparmor
 	, libcppunit-dev
 	, libcap2-dev [linux-any]
 	, libdb-dev
@@ -42,7 +43,7 @@ Package: squid
 Architecture: any
 Pre-Depends: adduser
 Depends: ${shlibs:Depends}, ${misc:Depends}, netbase, logrotate (>= 3.5.4-1), squid-common (>= ${source:Version}), lsb-base, libdbi-perl
-Suggests: squidclient, squid-cgi, squid-purge, resolvconf (>= 0.40), smbclient, ufw, winbind
+Suggests: squidclient, squid-cgi, squid-purge, resolvconf (>= 0.40), smbclient, ufw, winbind, apparmor
 Recommends: libcap2-bin [linux-any], ca-certificates
 Conflicts: squid3 (<< ${binary:Version})
 Replaces: squid3

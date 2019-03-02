@@ -28,3 +28,6 @@ usr/share/man/man8/negotiate_kerberos_auth.8
 usr/share/man/man8/security_fake_certverify.8
 usr/share/man/man8/storeid_file_rewrite.8
 usr/share/man/man8/squid.8
+etc/apparmor.d/disable
+etc/apparmor.d/force-complain
+etc/apparmor.d/usr.sbin.squid

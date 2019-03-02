@@ -1,0 +1,53 @@
+# Author: Simon Deziel
+#         Jamie Strandboge
+# vim:syntax=apparmor
+#include <tunables/global>
+
+/usr/sbin/squid flags=(attach_disconnected) {
+  #include <abstractions/base>
+  #include <abstractions/kerberosclient>
+  #include <abstractions/nameservice>
+  #include <abstractions/ssl_certs>
+
+  # If you are using squid with the default snakeoil certificates, you will
+  # probably have to uncomment the line below so that squid can read the
+  # private key:
+  #/etc/ssl/private/ssl-cert-snakeoil.key r,
+
+  # For a more generous permission, but also less secure, you could
+  # alternatively include the <abstractions/ssl_keys> abstraction, which
+  # gives read access to the entire contents of /etc/ssl
+
+  capability net_admin,
+  capability net_raw,
+  capability setuid,
+  capability setgid,
+  capability sys_chroot,
+
+  # allow child processes to run execvp(argv[0], [kidname, ...])
+  /usr/sbin/squid rix,
+
+  # pinger
+  network inet raw,
+  network inet6 raw,
+
+  /etc/mtab r,
+  @{PROC}/[0-9]*/mounts r,
+  @{PROC}/mounts r,
+
+  # squid configuration
+  /etc/squid/** r,
+  /{,var/}run/squid.pid rwk,
+  /var/spool/squid{,3}/ r,
+  /var/spool/squid{,3}/** rwk,
+  /usr/lib/squid{,3}/* rmix,
+  /usr/share/squid/** r,
+  /var/log/squid{,3}/* rw,
+  owner /dev/shm/** rmw,
+
+  # squid-langpack
+  /usr/share/squid-langpack/** r,
+
+  # Site-specific additions and overrides. See local/README for details.
+  #include <local/usr.sbin.squid>
+}

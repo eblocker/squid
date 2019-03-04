@@ -1,9 +1,9 @@
-squid (4.6-2) UNRELEASED; urgency=high
+squid (4.6-2) unstable; urgency=high
 
   [ Andreas Hasenack <andreas@canonical.com> ]
   * Add disabled by default AppArmor profile (Closes: #923213)
 
- -- Amos Jeffries <amosjeffries@squid-cache.org>  Sat, 02 Mar 2019 20:17:00 +1300
+ -- Luigi Gangitano <luigi@debian.org>  Mon, 04 Mar 2019 09:28:15 +0100
 
 squid (4.6-1) unstable; urgency=high
 

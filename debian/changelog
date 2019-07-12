@@ -8,7 +8,10 @@ squid (4.8-1) UNRELEASED; urgency=high
     - Fixes security issue SQUID-2019:5 (CVE-2019-12527)
     - Fixes security issue SQUID-2019:6 (CVE-2019-13345) (Closes: #931478)
 
- -- Amos Jeffries <amosjeffries@squid-cache.org>  Sat, 13 Jul 2019 01:22:00 +1200
+  * debian/control
+    - Bumped Standards-Version to 4.4.0, no change needed
+
+ -- Amos Jeffries <amosjeffries@squid-cache.org>  Sat, 13 Jul 2019 01:38:00 +1200
 
 squid (4.6-2) unstable; urgency=high
 

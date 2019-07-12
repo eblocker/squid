@@ -183,32 +183,35 @@ Welcome to the world of Gopher and enjoy!
     def test_zz_apparmor(self):
         '''Test apparmor'''
 
-        # Currently while we have a profile, it is shipped disabled by default.
-        # Verify that.
-        ret, report = check_apparmor(self.aa_abs_profile, is_running=False)
-        expected = 1
-        result = 'Got exit code %d, expected %d\n' % (ret, expected)
-        self.assertEquals(ret, expected, result + report)
+        # if 'apparmor-utils' was not installed before 'squid' package
+        # then dh_apparmor tool will not install the profile
+        if os.path.exists(self.aa_abs_profile):
+            # Currently while we have a profile, it is shipped disabled by default.
+            # Verify that.
+            ret, report = check_apparmor(self.aa_abs_profile, is_running=False)
+            expected = 1
+            result = 'Got exit code %d, expected %d\n' % (ret, expected)
+            self.assertEquals(ret, expected, result + report)
 
-        # Verify it is syntactically correct
-        ret, report = cmd(['apparmor_parser', '-p', self.aa_abs_profile])
-        expected = 0
-        result = 'Got exit code %d, expected %d\n' % (ret, expected)
-        self.assertEquals(ret, expected, result + report)
+            # Verify it is syntactically correct
+            ret, report = cmd(['apparmor_parser', '-p', self.aa_abs_profile])
+            expected = 0
+            result = 'Got exit code %d, expected %d\n' % (ret, expected)
+            self.assertEquals(ret, expected, result + report)
 
-        # Verify it loads ok
-        ret, report = cmd(['aa-enforce', self.aa_abs_profile])
-        expected = 0
-        result = 'Got exit code %d, expected %d\n' % (ret, expected)
-        self.assertEquals(ret, expected, result + report)
+            # Verify it loads ok
+            ret, report = cmd(['aa-enforce', self.aa_abs_profile])
+            expected = 0
+            result = 'Got exit code %d, expected %d\n' % (ret, expected)
+            self.assertEquals(ret, expected, result + report)
 
-        self._stop()
-        self._start()
+            self._stop()
+            self._start()
 
-        ret, report = check_apparmor(self.aa_abs_profile, is_running=True)
-        expected = 1
-        result = 'Got exit code %d, expected %d\n' % (ret, expected)
-        self.assertEquals(ret, expected, result + report)
+            ret, report = check_apparmor(self.aa_abs_profile, is_running=True)
+            expected = 1
+            result = 'Got exit code %d, expected %d\n' % (ret, expected)
+            self.assertEquals(ret, expected, result + report)
 
 
 # http://www.chiark.greenend.org.uk/ucgi/~cjwatson/blosxom/2009-07-02-python-sigpipe.html

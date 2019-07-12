@@ -11,7 +11,10 @@ squid (4.8-1) UNRELEASED; urgency=high
   * debian/control
     - Bumped Standards-Version to 4.4.0, no change needed
 
- -- Amos Jeffries <amosjeffries@squid-cache.org>  Sat, 13 Jul 2019 01:38:00 +1200
+  * debian/tests/test-squid.py
+    - Skip Apparmor tests when profile not installed
+
+ -- Amos Jeffries <amosjeffries@squid-cache.org>  Sat, 13 Jul 2019 02:45:00 +1200
 
 squid (4.6-2) unstable; urgency=high
 

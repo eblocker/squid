@@ -86,6 +86,7 @@ void Security::PeerOptions::updateTlsVersionLimits() STUB
 Security::ContextPointer Security::PeerOptions::createBlankContext() const STUB_RETVAL(Security::ContextPointer())
 void Security::PeerOptions::updateContextCa(Security::ContextPointer &) STUB
 void Security::PeerOptions::updateContextCrl(Security::ContextPointer &) STUB
+void Security::PeerOptions::updateContextTrust(Security::ContextPointer &) STUB
 void Security::PeerOptions::updateSessionOptions(Security::SessionPointer &) STUB
 void Security::PeerOptions::dumpCfg(Packable*, char const*) const STUB
 void Security::PeerOptions::parseOptions() STUB
@@ -109,7 +110,7 @@ void Security::ServerOptions::updateContextSessionId(Security::ContextPointer &)
 #include "security/Session.h"
 namespace Security {
 bool CreateClientSession(const Security::ContextPointer &, const Comm::ConnectionPointer &, const char *) STUB_RETVAL(false)
-bool CreateServerSession(const Security::ContextPointer &, const Comm::ConnectionPointer &, const char *) STUB_RETVAL(false)
+bool CreateServerSession(const Security::ContextPointer &, const Comm::ConnectionPointer &, Security::PeerOptions &, const char *) STUB_RETVAL(false)
 void SessionSendGoodbye(const Security::SessionPointer &) STUB
 bool SessionIsResumed(const Security::SessionPointer &) STUB_RETVAL(false)
 void MaybeGetSessionResumeData(const Security::SessionPointer &, Security::SessionStatePointer &) STUB

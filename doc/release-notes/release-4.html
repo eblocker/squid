@@ -2,10 +2,10 @@
 <HTML>
 <HEAD>
  <META NAME="GENERATOR" CONTENT="LinuxDoc-Tools 0.9.73">
- <TITLE>Squid 4.6 release notes</TITLE>
+ <TITLE>Squid 4.8 release notes</TITLE>
 </HEAD>
 <BODY>
-<H1>Squid 4.6 release notes</H1>
+<H1>Squid 4.8 release notes</H1>
 
 <H2>Squid Developers</H2>
 <HR>
@@ -63,7 +63,7 @@ for Applied Network Research and members of the Web Caching community.</EM>
 <HR>
 <H2><A NAME="s1">1.</A> <A HREF="#toc1">Notice</A></H2>
 
-<P>The Squid Team are pleased to announce the release of Squid-4.6 for testing.</P>
+<P>The Squid Team are pleased to announce the release of Squid-4.8 for testing.</P>
 <P>This new release is available for download from 
 <A HREF="http://www.squid-cache.org/Versions/v4/">http://www.squid-cache.org/Versions/v4/</A> or the
 <A HREF="http://www.squid-cache.org/Download/http-mirrors.html">mirrors</A>.</P>
@@ -366,6 +366,9 @@ logged with URI <EM>error:transaction-end-before-headers</EM>.</P>
 <P>New option <EM>rotate=</EM> to control the number of log file rotations
 to make when <EM>-k rotate</EM> command is received. Default is to
 obey the <EM>logfile_rotate</EM> directive.</P>
+<P>Extend <EM>buffer-size=</EM> support to UDP logging. Prior to Squid-4.7
+log entries would be buffered up to 1400 bytes before sending to UDP logger.
+This option may now set smaller buffers, but not larger than 1400 bytes.</P>
 
 <DT><B>acl</B><DD>
 <P>New <EM>-m</EM> flag for <EM>note</EM> ACL to match substrings.</P>
@@ -381,6 +384,7 @@ unusual transactions.</P>
 <P>New <EM>--consensus</EM>, <EM>--client-requested</EM> and
 <EM>--server-provided</EM> flags for the <EM>ssl::server_name</EM>
 type to control which server name to match against.</P>
+<P>Added <EM>::/128</EM> IPv6 range to <EM>to_localhost</EM> ACL.</P>
 
 <DT><B>auth_param</B><DD>
 <P>New parameter <EM>queue-size=</EM> to set the maximum number
@@ -396,6 +400,7 @@ which Kerberos credentials to use, instead of specifying a keytab.</P>
 <P>New option <EM>tls-min-version=1.N</EM> to set minimum TLS version allowed.</P>
 <P>New option <EM>tls-default-ca</EM> replaces <EM>sslflags=NO_DEFAULT_CA</EM></P>
 <P>New option <EM>tls-no-npn</EM> to disable sending TLS NPN extension.</P>
+<P>New <EM>tls-options=</EM> option value to disable TLS/1.3.</P>
 <P>All <EM>ssloptions=</EM> values for SSLv2 configuration or disabling
 have been removed.</P>
 <P>Removed <EM>sslversion=</EM> option. Use <EM>tls-options=</EM> instead.</P>
@@ -429,6 +434,7 @@ to a dash ('-') if the %DATA macro is not specified explicitly.</P>
 <P>New option <EM>tls-default-ca</EM> replaces <EM>sslflags=NO_DEFAULT_CA</EM>,
 the default is also changed to OFF.</P>
 <P>New option <EM>tls-no-npn</EM> to disable sending TLS NPN extension.</P>
+<P>New <EM>tls-options=</EM> option value to disable TLS/1.3.</P>
 <P>All <EM>option=</EM> values for SSLv2 configuration or disabling
 have been removed.</P>
 <P>Removed <EM>version=</EM> option. Use <EM>tls-options=</EM> instead.</P>
@@ -441,6 +447,7 @@ have been removed.</P>
 <P>New option <EM>tls-default-ca</EM> replaces <EM>sslflags=NO_DEFAULT_CA</EM>,
 the default is also changed to OFF.</P>
 <P>New option <EM>tls-no-npn</EM> to disable sending TLS NPN extension.</P>
+<P>New <EM>tls-options=</EM> option value to disable TLS/1.3.</P>
 <P>All <EM>options=</EM> values for SSLv2
 configuration or disabling have been removed.</P>
 <P>Removed <EM>version=</EM> option. Use <EM>tls-options=</EM> instead.</P>
@@ -459,6 +466,7 @@ certificate used.</P>
 <P>New <EM>tls-min-version=1.N</EM> option to set minimum TLS version allowed
 on server connections.</P>
 <P>New <EM>tls-options=</EM> option to set OpenSSL library parameters.</P>
+<P>New <EM>tls-options=</EM> option value to disable TLS/1.3.</P>
 <P>New <EM>tls-flags=</EM> option to set flags modifying Squid TLS operations.</P>
 <P>New <EM>tls-cipher=</EM> option to set a list of ciphers permitted.</P>
 <P>New <EM>tls-cafile=</EM> option to set a file with additional CA

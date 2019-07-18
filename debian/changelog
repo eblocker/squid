@@ -1,4 +1,4 @@
-squid (4.8-1) UNRELEASED; urgency=high
+squid (4.8-1) unstable; urgency=high
 
   [ Amos Jeffries <amosjeffries@squid-cache.org> ]
   * New Upstream Release
@@ -14,7 +14,7 @@ squid (4.8-1) UNRELEASED; urgency=high
   * debian/tests/test-squid.py
     - Skip Apparmor tests when profile not installed
 
- -- Amos Jeffries <amosjeffries@squid-cache.org>  Sat, 13 Jul 2019 02:45:00 +1200
+ -- Luigi Gangitano <luigi@debian.org>  Thu, 18 Jul 2019 22:28:15 +0200
 
 squid (4.6-2) unstable; urgency=high
 

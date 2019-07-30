@@ -199,6 +199,14 @@ Welcome to the world of Gopher and enjoy!
         result = 'Got exit code %d, expected %d\n' % (ret, expected)
         self.assertEquals(ret, expected, result + report)
 
+        # The remaining tests try to actually load a profile
+        # skip them if securityfs isn't mounted (i.e., we are in a lxc container)
+        ret, _ = _aa_status()
+        # from the manpage:
+        # 3   if the apparmor control files aren't available under /sys/kernel/security/.
+        if ret == 3:
+            return True
+
         # Verify it loads ok
         ret, report = cmd(['aa-enforce', self.aa_abs_profile])
         expected = 0

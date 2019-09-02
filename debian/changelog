@@ -1,3 +1,18 @@
+squid (4.6-1+deb10u1) buster-security; urgency=high
+
+  * Non-maintainer upload by the Security Team.
+  * Denial of Service issue in cachemgr.cgi (CVE-2019-12854)
+  * Denial of Service issue in HTTP Basic Authentication processing
+    (CVE-2019-12529)
+  * Denial of Service issue in HTTP Digest Authentication processing
+    (CVE-2019-12525)
+  * Heap Overflow issue in HTTP Basic Authentication processing
+    (CVE-2019-12527)
+  * Multiple Cross-Site Scripting issues in cachemgr.cgi (CVE-2019-13345)
+    (Closes: #931478)
+
+ -- Salvatore Bonaccorso <carnil@debian.org>  Wed, 24 Jul 2019 19:33:25 +0200
+
 squid (4.6-1) unstable; urgency=high
 
   [ Amos Jeffries <amosjeffries@squid-cache.org> ]

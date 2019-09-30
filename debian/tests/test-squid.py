@@ -183,6 +183,9 @@ Welcome to the world of Gopher and enjoy!
     def test_zz_apparmor(self):
         '''Test apparmor'''
 
+	# Disabled due to DebCI ERROR: Warning: unable to find a suitable fs in /proc/mounts
+	return
+
         # if 'apparmor-utils' was not installed before 'squid' package
         # then dh_apparmor tool will not install the profile
         if os.path.exists(self.aa_abs_profile):

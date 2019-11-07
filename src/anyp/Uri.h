@@ -11,6 +11,7 @@
 
 #include "anyp/UriScheme.h"
 #include "ip/Address.h"
+#include "parser/Tokenizer.h"
 #include "rfc2181.h"
 #include "sbuf/SBuf.h"
 
@@ -59,7 +60,7 @@ public:
     }
     void touch(); ///< clear the cached URI display forms
 
-    bool parse(const HttpRequestMethod &, const char *url);
+    bool parse(const HttpRequestMethod &, const SBuf &url);
 
     /// \return a new URI that honors uri_whitespace
     static char *cleanup(const char *uri);
@@ -71,6 +72,10 @@ public:
         scheme_ = AnyP::UriScheme(p, str);
         touch();
     }
+    void setScheme(const AnyP::UriScheme &s) {
+        scheme_ = s;
+        touch();
+    }
 
     void userInfo(const SBuf &s) {userInfo_=s; touch();}
     const SBuf &userInfo() const {return userInfo_;}
@@ -79,6 +84,11 @@ public:
     const char *host(void) const {return host_;}
     int hostIsNumeric(void) const {return hostIsNumeric_;}
     Ip::Address const & hostIP(void) const {return hostAddr_;}
+
+    /// \returns the host subcomponent of the authority component
+    /// If the host is an IPv6 address, returns that IP address without
+    /// [brackets]! See RFC 3986 Section 3.2.2.
+    SBuf hostOrIp() const;
 
     void port(unsigned short p) {port_=p; touch();}
     unsigned short port() const {return port_;}
@@ -115,7 +125,7 @@ public:
     SBuf &absolute() const;
 
 private:
-    void parseFinish(const AnyP::ProtocolType, const char *const, const char *const, const char *const, const SBuf &, const int);
+    void parseUrn(Parser::Tokenizer&);
 
     /**
      \par
@@ -191,6 +201,7 @@ bool urlIsRelative(const char *);
 char *urlMakeAbsolute(const HttpRequest *, const char *);
 char *urlRInternal(const char *host, unsigned short port, const char *dir, const char *name);
 char *urlInternal(const char *dir, const char *name);
+bool urlAppendDomain(char *host); ///< apply append_domain config to the given hostname
 
 enum MatchDomainNameFlags {
     mdnNone = 0,

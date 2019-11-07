@@ -489,9 +489,9 @@ tests_testACLMaxUserIP_OBJECTS = $(am_tests_testACLMaxUserIP_OBJECTS) \
 tests_testACLMaxUserIP_DEPENDENCIES = libsquid.la helper/libhelper.la \
 	http/libhttp.la parser/libparser.la $(AUTH_ACL_LIBS) \
 	ident/libident.la acl/libacls.la eui/libeui.la acl/libstate.la \
-	acl/libapi.la anyp/libanyp.la base/libbase.la ip/libip.la \
-	ipc/libipc.la mgr/libmgr.la sbuf/libsbuf.la \
-	$(top_builddir)/lib/libmisccontainers.la \
+	acl/libapi.la anyp/libanyp.la parser/libparser.la \
+	base/libbase.la ip/libip.la ipc/libipc.la mgr/libmgr.la \
+	sbuf/libsbuf.la $(top_builddir)/lib/libmisccontainers.la \
 	$(top_builddir)/lib/libmiscencoding.la \
 	$(top_builddir)/lib/libmiscutil.la $(am__DEPENDENCIES_1) \
 	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
@@ -3585,6 +3585,7 @@ tests_testACLMaxUserIP_LDADD = \
 	acl/libstate.la \
 	acl/libapi.la \
 	anyp/libanyp.la \
+	parser/libparser.la \
 	base/libbase.la \
 	ip/libip.la \
 	ipc/libipc.la \

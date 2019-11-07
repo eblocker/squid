@@ -1,7 +1,7 @@
 squid (4.9-1) UNRELEASED; urgency=high
 
   [ Amos Jeffries <amosjeffries@squid-cache.org> ]
-  * New Upstream Release
+  * New Upstream Release (Closes: #943692)
     - Fixes security issue SQUID-2019:7 (CVE-2019-12526)
     - Fixes security issue SQUID-2019:8 (CVE-2019-18676) (CVE-2019-12523)
     - Fixes security issue SQUID-2019:9 (CVE-2019-18677)
@@ -15,7 +15,7 @@ squid (4.9-1) UNRELEASED; urgency=high
   * debian/tests/test-squid.py
     - Disable Apparmor tests
 
- -- Amos Jeffries <amosjeffries@squid-cache.org>  Thu, 07 Nov 2019 21:53:00 +1200
+ -- Amos Jeffries <amosjeffries@squid-cache.org>  Thu, 07 Nov 2019 23:26:00 +1200
 
 squid (4.8-1) unstable; urgency=high
 

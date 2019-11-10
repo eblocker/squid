@@ -15,7 +15,10 @@ squid (4.9-1) UNRELEASED; urgency=high
   * debian/tests/test-squid.py
     - Disable Apparmor tests
 
- -- Amos Jeffries <amosjeffries@squid-cache.org>  Thu, 07 Nov 2019 23:26:00 +1200
+  [ Luigi Gangitano <luigi@debian.org> ]
+  * Source only upload (Closes: #943911) 
+
+ -- Luigi Gangitano <luigi@debian.org>  Sun, 10 Nov 2019 20:28:15 +0100
 
 squid (4.8-1) unstable; urgency=high
 

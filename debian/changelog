@@ -20,6 +20,11 @@ squid (4.9-1) UNRELEASED; urgency=high
 
   * debian/squid.resolvconf
     - Avoid reload before squid.pid is available (Closes: #911325)
+      thanks to Michael Biebl and Wolfgang Schweer
+
+  * debian/squid.rc
+    - Make squid.rc wait for directory creation (Closes: #933295),
+      thanks to Daniel Reichelt
 
  -- Luigi Gangitano <luigi@debian.org>  Sun, 10 Nov 2019 20:28:15 +0100
 

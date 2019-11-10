@@ -1,4 +1,6 @@
-squid (4.9-1) UNRELEASED; urgency=high
+squid (4.9-1) unstable; urgency=high
+
+  * Urgency high due to security fixes
 
   [ Amos Jeffries <amosjeffries@squid-cache.org> ]
   * New Upstream Release (Closes: #943692)

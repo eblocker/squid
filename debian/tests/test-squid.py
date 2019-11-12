@@ -183,9 +183,6 @@ Welcome to the world of Gopher and enjoy!
     def test_zz_apparmor(self):
         '''Test apparmor'''
 
-	# Disabled due to DebCI ERROR: Warning: unable to find a suitable fs in /proc/mounts
-	return
-
         # Currently while we have a profile, it is shipped disabled by default.
         # Verify that.
         ret, report = check_apparmor(self.aa_abs_profile, is_running=False)

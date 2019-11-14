@@ -17,6 +17,9 @@ squid (4.9-2) UNRELEASED; urgency=medium
   * debian/squid.rc
     - Change to --foreground while creating cache dirs to avoid SMP bug
 
+  * debian/squid.resolvconf
+    - Merge previous check for /usr being mounted before restart
+
  -- Luigi Gangitano <luigi@debian.org>  Thu, 14 Nov 2019 10:12:54 +0100
 
 squid (4.9-1) unstable; urgency=high

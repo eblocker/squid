@@ -31,4 +31,4 @@ service vsftpd restart 2>&1 > /dev/null
 a2enmod ssl
 a2ensite default-ssl
 systemctl restart apache2
-python `dirname $0`/test-squid.py 2>&1
+python3 `dirname $0`/test-squid.py 2>&1

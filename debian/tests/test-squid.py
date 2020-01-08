@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 #
 #    test-squid.py quality assurance test script
 #    Copyright (C) 2008-2017 Canonical Ltd.
@@ -58,7 +58,7 @@ class HttpdCommon(unittest.TestCase):
         expected = 0
         ret, report = cmd([self.initscript, 'start'])
         result = 'Got exit code %d, expected %d\n' % (ret, expected)
-        self.assertEquals(expected, ret, result + report)
+        self.assertEqual(expected, ret, result + report)
         time.sleep(2)
 
     def _stop(self):
@@ -66,7 +66,7 @@ class HttpdCommon(unittest.TestCase):
         expected = 0
         ret, report = cmd([self.initscript, 'stop'])
         result = 'Got exit code %d, expected %d\n' % (ret, expected)
-        self.assertEquals(expected, ret, result + report)
+        self.assertEqual(expected, ret, result + report)
 
     def _word_find(self, report, content, invert=False):
         '''Check for a specific string'''
@@ -90,7 +90,7 @@ class HttpdCommon(unittest.TestCase):
                         '-dump', url])
         expected = 0
         result = 'Got exit code %d, expected %d\n' % (ret, expected)
-        self.assertEquals(expected, ret, result + rep)
+        self.assertEqual(expected, ret, result + rep)
 
         if content != "":
             self._word_find(rep, content)
@@ -104,15 +104,12 @@ class BasicTest(HttpdCommon):
         self._set_initscript("/etc/init.d/squid")
         HttpdCommon._setUp(self)
 
-        self.gophermap = "/var/gopher/gophermap"
-
         self.aa_profile = "usr.sbin.squid"
         self.aa_abs_profile = "/etc/apparmor.d/%s" % self.aa_profile
 
     def tearDown(self):
         '''Shutdown methods'''
         HttpdCommon._tearDown(self)
-        config_restore(self.gophermap)
 
     def test_daemons(self):
         '''Test daemon'''
@@ -141,43 +138,13 @@ class BasicTest(HttpdCommon):
 
     def test_squidclient(self):
         '''Test squidclient'''
-        urls = ['ftp://anonymous@localhost:21', 'gopher://127.0.0.1']
-        for url in urls:
-            ret, report = cmd(['squidclient', '-h', '127.0.0.1', '-p',
-                               '3128', '-r', url])
-            expected = 0
-            result = 'Got exit code %d, expected %d\n' % (ret, expected)
-            self.assertEquals(expected, ret, result + report)
-
-    def test_CVE_2011_3205(self):
-        '''Test parsing lines > 4096 in length (CVE-2011-3205)'''
-
-        longline = "ABCDEF" * 4096
-
-        config_replace(self.gophermap,
-                       """Welcome to Pygopherd!  You can place your documents
-in /var/gopher for future use.  You can remove the gophermap
-file there to get rid of this message, or you can edit it to
-use other things.  (You'll need to do at least one of these
-two things in order to get your own data to show up!)
-
-%s
-
-Some links to get you started:
-
-1Pygopherd Home /devel/gopher/pygopherd gopher.quux.org 70
-1Quux.Org Mega Server   /   gopher.quux.org 70
-1The Gopher Project /Software/Gopher    gopher.quux.org 70
-1Traditional UMN Home Gopher    /   gopher.tc.umn.edu   70
-
-Welcome to the world of Gopher and enjoy!
-""" % (longline), append=False)
-
+        url = 'ftp://anonymous@localhost:21'
         ret, report = cmd(['squidclient', '-h', '127.0.0.1', '-p',
-                           '3128', '-r', "gopher://127.0.0.1"])
+                           '3128', '-r', url])
         expected = 0
         result = 'Got exit code %d, expected %d\n' % (ret, expected)
-        self.assertEquals(expected, ret, result + report)
+        self.assertEqual(expected, ret, result + report)
+
 
     # Run this last so if we enable the profile then we don't unload it
     def test_zz_apparmor(self):
@@ -188,13 +155,13 @@ Welcome to the world of Gopher and enjoy!
         ret, report = check_apparmor(self.aa_abs_profile, is_running=False)
         expected = 1
         result = 'Got exit code %d, expected %d\n' % (ret, expected)
-        self.assertEquals(ret, expected, result + report)
+        self.assertEqual(ret, expected, result + report)
 
         # Verify it is syntactically correct
         ret, report = cmd(['apparmor_parser', '-p', self.aa_abs_profile])
         expected = 0
         result = 'Got exit code %d, expected %d\n' % (ret, expected)
-        self.assertEquals(ret, expected, result + report)
+        self.assertEqual(ret, expected, result + report)
 
         # The remaining tests try to actually load a profile
         # skip them if securityfs isn't mounted (i.e., we are in a lxc container)
@@ -208,7 +175,7 @@ Welcome to the world of Gopher and enjoy!
         ret, report = cmd(['aa-enforce', self.aa_abs_profile])
         expected = 0
         result = 'Got exit code %d, expected %d\n' % (ret, expected)
-        self.assertEquals(ret, expected, result + report)
+        self.assertEqual(ret, expected, result + report)
 
         self._stop()
         self._start()
@@ -216,7 +183,7 @@ Welcome to the world of Gopher and enjoy!
         ret, report = check_apparmor(self.aa_abs_profile, is_running=True)
         expected = 1
         result = 'Got exit code %d, expected %d\n' % (ret, expected)
-        self.assertEquals(ret, expected, result + report)
+        self.assertEqual(ret, expected, result + report)
 
 
 # http://www.chiark.greenend.org.uk/ucgi/~cjwatson/blosxom/2009-07-02-python-sigpipe.html

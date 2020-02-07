@@ -1,3 +1,14 @@
+squid (4.10-1) UNRELEASED; urgency=high
+
+  [ Amos Jeffries <amosjeffries@squid-cache.org> ]
+  * New Upstream Release (Closes: #950641)
+    - Fixes security issue SQUID-2020:1 (CVE-2020-8449) (CVE-2020-8450)
+      (Closes: #950802)
+    - Fixes security issue SQUID-2020:2 (CVE-2019-12528)
+    - Fixes security issue SQUID-2020:3 (CVE-2020-8517)
+
+ -- Amos Jeffries <amosjeffries@squid-cache.org>  Sat, 08 Feb 2020 12:00:00 +1300
+
 squid (4.9-2) unstable; urgency=medium
 
   [ Andreas Hasenack <andreas@canonical.com> ]

@@ -7,7 +7,10 @@ squid (4.10-1) UNRELEASED; urgency=high
     - Fixes security issue SQUID-2020:2 (CVE-2019-12528)
     - Fixes security issue SQUID-2020:3 (CVE-2020-8517)
 
- -- Amos Jeffries <amosjeffries@squid-cache.org>  Sat, 08 Feb 2020 12:00:00 +1300
+  * debian/NEWS
+    - Fix syntax to make lintian happier
+
+ -- Amos Jeffries <amosjeffries@squid-cache.org>  Sat, 08 Feb 2020 13:02:00 +1300
 
 squid (4.9-2) unstable; urgency=medium
 

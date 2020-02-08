@@ -29,7 +29,7 @@ squid (4.0.24-1) unstable; urgency=medium
   Custom modifications can also be added in the form of a local .service
   file for systemd if you are familiar with those.
 
- -- Amos Jeffries <amosjeffries@squid-cache.org> Sat, 21 Apr 2018 18:53:00 +1300
+ -- Amos Jeffries <amosjeffries@squid-cache.org>  Sat, 21 Apr 2018 18:53:00 +1300
 
 squid3 (3.5.6-1) unstable; urgency=medium
 
@@ -59,7 +59,7 @@ squid3 (3.5.6-1) unstable; urgency=medium
   that cache store format changed from squid 2.x and cannot be reused with
   squid 3.x
 
- -- Luigi Gangitano <luigi@debian.org> Wed, 22 Jul 2015 15:48:13 +0200
+ -- Luigi Gangitano <luigi@debian.org>  Wed, 22 Jul 2015 15:48:13 +0200
 
 squid3 (3.0.STABLE15-1) unstable; urgency=low
 

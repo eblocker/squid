@@ -4,7 +4,7 @@ squid (4.10-1) UNRELEASED; urgency=high
   * New Upstream Release (Closes: #950641)
     - Fixes security issue SQUID-2020:1 (CVE-2020-8449) (CVE-2020-8450)
       (Closes: #950802)
-    - Fixes security issue SQUID-2020:2 (CVE-2019-12528)
+    - Fixes security issue SQUID-2020:2 (CVE-2019-12528) (Closes: #950925)
     - Fixes security issue SQUID-2020:3 (CVE-2020-8517)
 
   * debian/NEWS

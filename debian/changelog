@@ -13,6 +13,10 @@ squid (4.10-1) UNRELEASED; urgency=high
   * debian/control
     - Bumped Standards-Version to 4.5.0, no change needed
 
+  [ Luigi Gangitano <luigi@debian.org> ]
+  * debian/control
+    - Drop squid3 transitional package (Closes: #940785)
+
  -- Amos Jeffries <amosjeffries@squid-cache.org>  Sat, 08 Feb 2020 23:09:00 +1300
 
 squid (4.9-2) unstable; urgency=medium

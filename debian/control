@@ -27,26 +27,13 @@ Build-Depends: ed, libltdl-dev, pkg-config
 	, libxml2-dev
 	, nettle-dev
 
-Package: squid3
-Architecture: all
-Section: oldlibs
-Priority: optional
-Pre-Depends: squid (>= ${source:Version})
-Depends: ${misc:Depends}, lsb-base
-Description: Transitional package
- Squid is a high-performance proxy caching server for web clients, supporting
- FTP, gopher, ICY and HTTP data objects.
- .
- This is a transitional package used to migrate from squid3 to squid.
-
 Package: squid
 Architecture: any
 Pre-Depends: adduser
 Depends: ${shlibs:Depends}, ${misc:Depends}, netbase, logrotate (>= 3.5.4-1), squid-common (>= ${source:Version}), lsb-base, libdbi-perl
 Suggests: squidclient, squid-cgi, squid-purge, resolvconf (>= 0.40), smbclient, ufw, winbind, apparmor
 Recommends: libcap2-bin [linux-any], ca-certificates
-Conflicts: squid3 (<< ${binary:Version})
-Replaces: squid3
+Provides: squid3
 Description: Full featured Web Proxy cache (HTTP proxy)
  Squid is a high-performance proxy caching server for web clients, supporting
  FTP, gopher, ICY and HTTP data objects.
@@ -55,8 +42,6 @@ Package: squid-common
 Architecture: all
 Depends: ${misc:Depends}, squid-langpack (>= 20110214-1)
 Provides: squid3-common
-Conflicts: squid3-common
-Replaces: squid3-common
 Description: Full featured Web Proxy cache (HTTP proxy) - common files
  Squid is a high-performance proxy caching server for web clients, supporting
  FTP, gopher, ICY and HTTP data objects.
@@ -68,8 +53,6 @@ Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
 Recommends: ssl-cert, ca-certificates
 Provides: squid3-client
-Conflicts: squid3-client
-Replaces: squid3-client
 Description: Full featured Web Proxy cache (HTTP proxy) - HTTP(S) message utility
  Squid is a high-performance proxy caching server for web clients, supporting
  FTP, gopher, ICY and HTTP data objects.
@@ -81,8 +64,6 @@ Package: squid-cgi
 Architecture: any
 Depends: apache2 | httpd, ${shlibs:Depends}, ${misc:Depends}
 Provides: squid3-cgi
-Conflicts: squid3-cgi
-Replaces: squid3-cgi
 Description: Full featured Web Proxy cache (HTTP proxy) - control CGI
  Squid is a high-performance proxy caching server for web clients, supporting
  FTP, gopher, ICY and HTTP data objects.

@@ -1,4 +1,4 @@
-squid (4.10-1) UNRELEASED; urgency=high
+squid (4.10-1) unstable; urgency=high
 
   [ Amos Jeffries <amosjeffries@squid-cache.org> ]
   * New Upstream Release (Closes: #950641)
@@ -17,7 +17,7 @@ squid (4.10-1) UNRELEASED; urgency=high
   * debian/control
     - Drop squid3 transitional package (Closes: #940785)
 
- -- Amos Jeffries <amosjeffries@squid-cache.org>  Sat, 08 Feb 2020 23:09:00 +1300
+ -- Luigi Gangitano <luigi@debian.org>  Tue, 10 Feb 2020 14:12:54 +0100
 
 squid (4.9-2) unstable; urgency=medium
 

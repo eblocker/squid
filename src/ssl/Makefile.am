@@ -33,6 +33,8 @@ libsslsquid_la_SOURCES = \
 	context_storage.h \
 	Config.cc \
 	Config.h \
+	eblocker.cc \
+	eblocker.h \
 	ErrorDetail.cc \
 	ErrorDetail.h \
 	ErrorDetailManager.cc \

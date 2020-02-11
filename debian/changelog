@@ -1,3 +1,70 @@
+squid3 (3.5.23+eblocker10-5) unstable; urgency=medium
+
+  * [EB1-1608] increased maximal helper response size
+
+ -- Nikolas Lohmann <lohmann@eblocker.com>  Tue, 07 Jun 2018 14:42:00 +0100
+
+squid3 (3.5.23+eblocker9-5) unstable; urgency=medium
+
+  * [EB1-1541] close socket regardless of error type
+
+ -- Nikolas Lohmann <lohmann@eblocker.com>  Tue, 08 May 2018 09:14:00 +0100
+
+squid3 (3.5.23+eblocker8-5) unstable; urgency=medium
+
+  * [EB1-145] Fixed white listing domains by using ip-address to turn back
+    connection state to tunnel. This avoids terminating spliced connections due
+    to request header forgery detection.
+
+ -- Nikolas Lohmann <lohmann@eblocker.com>  Thu, 08 Mar 2018 13:49:00 +0100
+
+squid3 (3.5.23+eblocker7-5) unstable; urgency=medium
+
+  * [EB1-1376]
+    - Set KillMode to none
+    - Remove timeout setting
+
+ -- Boris Prinz <prinz@eblocker.com>  Tue, 20 Feb 2018 10:27:00 +0100
+
+squid3 (3.5.23+eblocker6-5) unstable; urgency=medium
+
+  * [EB1-1376]
+    - Set KillMode to control-group
+    - Reduce stopping timeout to 1 minute
+    - Do not abort installation if restarting the squid fails
+
+ -- Boris Prinz <prinz@eblocker.com>  Fri, 16 Feb 2018 12:11:00 +0100
+
+squid3 (3.5.23+eblocker5-5) unstable; urgency=medium
+
+  * [EB1-1362] provide default configuration but only install if necessary
+
+ -- Boris Prinz <prinz@eblocker.com>  Mon, 05 Feb 2018 17:55:00 +0100
+
+squid3 (3.5.23+eblocker4-5) unstable; urgency=medium
+
+  * [EB1-1353] updated service dependencies
+
+ -- Nikolas Lohmann <lohmann@eblocker.com>  Thu, 01 Feb 2018 13:29:00 +0100
+
+squid3 (3.5.23+eblocker3-5) unstable; urgency=medium
+
+  * [EB1-1309] base64 encode errors details
+
+ -- Nikolas Lohmann <lohmann@eblocker.com>  Wed, 31 Jan 2018 13:10:00 +0100
+
+squid3 (3.5.23+eblocker2-5) unstable; urgency=medium
+
+  * [EB1-1343] added option to disable aaaa queries
+
+ -- Nikolas Lohmann <lohmann@eblocker.com>  Tue, 30 Jan 2018 15:20:00 +0100
+
+squid3 (3.5.23+eblocker1-5) unstable; urgency=medium
+
+  * [EB1-1165] added log message for detecting ssl errors
+
+ -- Nikolas Lohmann <lohmann@eblocker.com>  Fri, 26 Jan 2018 11:30:00 +0100
+
 squid3 (3.5.23-5) unstable; urgency=medium
 
   * Reload squid so that it uses modified config, not default one.

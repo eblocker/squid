@@ -39,14 +39,16 @@ DEB_CONFIGURE_EXTRA_FLAGS := BUILDCXXFLAGS="$(CXXFLAGS) $(CPPFLAGS) $(LDFLAGS)" 
 		--enable-esi \
 		--enable-icmp \
 		--enable-zph-qos \
-		--enable-ecap \
 		--disable-translation \
 		--with-swapdir=/var/spool/squid \
 		--with-logdir=/var/log/squid \
 		--with-pidfile=/var/run/squid.pid \
 		--with-filedescriptors=65536 \
 		--with-large-files \
-		--with-default-user=proxy
+		--with-default-user=proxy \
+		--enable-ssl \
+		--enable-ssl-crtd \
+		--with-openssl
 
 BUILDINFO := $(shell lsb_release -si 2>/dev/null)
 
@@ -63,24 +65,27 @@ endif
 
 DEB_MAKE_CLEAN_TARGET = distclean
 
-install/squid::
+install/squidssl::
 	install -m 755 -g root -d $(INSTALLDIR)/usr/lib/cgi-bin
-	mv $(INSTALLDIR)/etc/squid/squid.conf.documented $(INSTALLDIR)/etc/squid/squid.conf
+	mv $(INSTALLDIR)/etc/squid/squid.conf.documented $(INSTALLDIR)/etc/squid/default.conf
 	mv $(INSTALLDIR)/usr/lib/squid/cachemgr.cgi $(INSTALLDIR)/usr/lib/cgi-bin/cachemgr.cgi
 	install -m 755 -g root -d $(INSTALLDIR)/etc/init.d
 	install -m 755 -g root -d $(INSTALLDIR)/etc/logrotate.d
 	install -m 755 -g root -d $(INSTALLDIR)/etc/resolvconf
 	install -m 755 -g root -d $(INSTALLDIR)/etc/resolvconf/update-libc.d
+	install -m 755 -g root -d $(INSTALLDIR)/etc/systemd/system/squid.service.d
 	install -m 755 -g root -d $(INSTALLDIR)/etc/ufw/applications.d
-	install -m 755 -g root debian/squid.rc $(INSTALLDIR)/etc/init.d/squid
-	install -m 755 -g root debian/squid.resolvconf $(INSTALLDIR)/etc/resolvconf/update-libc.d/squid
-	install -m 644 -g root debian/squid.logrotate $(INSTALLDIR)/etc/logrotate.d/squid
-	install -m 644 -g root debian/squid.ufw.profile $(INSTALLDIR)/etc/ufw/applications.d/squid
-	install -m 755 -g root -d debian/squid/var/log
-	install -m 755 -g root -d debian/squid/var/spool
-	install -m 755 -g root -d debian/squid/var/run
-	install -m 750 -o proxy -g proxy -d debian/squid/var/log/squid
-	install -m 750 -o proxy -g proxy -d debian/squid/var/spool/squid
+	install -m 755 -g root debian/squidssl.rc $(INSTALLDIR)/etc/init.d/squid
+	install -m 755 -g root debian/squidssl.resolvconf $(INSTALLDIR)/etc/resolvconf/update-libc.d/squid
+	install -m 644 -g root debian/squidssl.logrotate $(INSTALLDIR)/etc/logrotate.d/squid
+	install -m 644 -g root debian/squidssl.systemd.drop.in $(INSTALLDIR)/etc/systemd/system/squid.service.d/requires-certvalidator.conf
+	install -m 644 -g root debian/squidssl.systemd.killmode.drop.in $(INSTALLDIR)/etc/systemd/system/squid.service.d/kill-mode-control-group.conf
+	install -m 644 -g root debian/squidssl.ufw.profile $(INSTALLDIR)/etc/ufw/applications.d/squid
+	install -m 755 -g root -d debian/squidssl/var/log
+	install -m 755 -g root -d debian/squidssl/var/spool
+	install -m 755 -g root -d debian/squidssl/var/run
+	install -m 750 -o proxy -g proxy -d debian/squidssl/var/log/squid
+	install -m 750 -o proxy -g proxy -d debian/squidssl/var/spool/squid
 	install -m 755 -g root -d $(INSTALLDIR)/usr/share/man/man1
 	mv $(INSTALLDIR)/usr/bin/purge $(INSTALLDIR)/usr/bin/squid-purge
 	install -m 644 -g root debian/squid-purge.8  $(INSTALLDIR)/usr/share/man/man8

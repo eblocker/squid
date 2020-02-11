@@ -24,6 +24,7 @@
 #include "ssl/bio.h"
 #include "ssl/cert_validate_message.h"
 #include "ssl/Config.h"
+#include "ssl/eblocker.h"
 #include "ssl/ErrorDetail.h"
 #include "ssl/helper.h"
 #include "ssl/PeerConnector.h"
@@ -499,6 +500,14 @@ Ssl::PeerConnector::sslCrtvdHandleReply(Ssl::CertValidationResponse::Pointer val
         anErr =  new ErrorState(ERR_SECURE_CONNECT_FAIL, Http::scServiceUnavailable, request.getRaw());
         anErr->detail = errDetails;
         /*anErr->xerrno= Should preserved*/
+
+        ConnStateData* conn = request->clientConnectionManager.valid();
+        debugs(83, DBG_IMPORTANT, "eblkr: "
+	        << " crtvd:" << errDetails->errorNo() << ":" << errDetails->errorName()
+                << " log_addr: " << request->client_addr
+                << " host: " << request->GetHost()
+      	        << " sni: " << (conn != NULL ? conn->serverBump()->clientSni.c_str() : "<null>")
+                << " cert: " << eblocker::pem(errDetails->brokenCert()));
     }
 
     bail(anErr);

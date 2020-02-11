@@ -8,8 +8,8 @@
 #
 ### BEGIN INIT INFO
 # Provides:          squid
-# Required-Start:    $network $remote_fs $syslog
-# Required-Stop:     $network $remote_fs $syslog
+# Required-Start:    $network $remote_fs $syslog certvalidator
+# Required-Stop:     $network $remote_fs $syslog certvalidator
 # Should-Start:      $named
 # Should-Stop:       $named
 # Default-Start:     2 3 4 5

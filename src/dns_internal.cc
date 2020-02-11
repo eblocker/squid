@@ -1249,7 +1249,7 @@ idnsGrokReply(const char *buf, size_t sz, int from_ns)
 
             idnsCheckMDNS(q);
             idnsSendQuery(q);
-            if (Ip::EnableIpv6)
+            if (Ip::EnableIpv6 && Config.onoff.dns_aaaa)
                 idnsSendSlaveAAAAQuery(q);
             return;
         }
@@ -1747,7 +1747,7 @@ idnsALookup(const char *name, IDNSCB * callback, void *data)
     idnsCheckMDNS(q);
     idnsStartQuery(q, callback, data);
 
-    if (Ip::EnableIpv6)
+    if (Ip::EnableIpv6 && Config.onoff.dns_aaaa)
         idnsSendSlaveAAAAQuery(q);
 
 }

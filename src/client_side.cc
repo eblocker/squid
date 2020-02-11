@@ -122,6 +122,7 @@
 #if USE_OPENSSL
 #include "ssl/bio.h"
 #include "ssl/context_storage.h"
+#include "ssl/eblocker.h"
 #include "ssl/gadgets.h"
 #include "ssl/helper.h"
 #include "ssl/ProxyCerts.h"
@@ -133,6 +134,7 @@
 #include "ssl/crtd_message.h"
 #endif
 
+#include <algorithm>
 #include <climits>
 #include <cmath>
 #include <limits>
@@ -3721,13 +3723,31 @@ httpAccept(const CommAcceptCbParams &params)
 static SSL *
 httpsCreate(const Comm::ConnectionPointer &conn, SSL_CTX *sslContext)
 {
-    if (SSL *ssl = Ssl::CreateServer(sslContext, conn->fd, "client https start")) {
-        debugs(33, 5, "will negotate SSL on " << conn);
-        return ssl;
+  if (SSL *ssl = Ssl::CreateServer(sslContext, conn->fd, "client https start")) {
+    debugs(33, 5, "will negotate SSL on " << conn);
+    return ssl;
+  }
+
+  conn->close();
+  return NULL;
+}
+
+static std::string eblocker_pem(ConnStateData* conn) {
+    if (conn->serverBump() == NULL) {
+        return "";
     }
 
-    conn->close();
-    return NULL;
+    X509* x509 = conn->serverBump()->serverCert.get();
+    return eblocker::pem(x509);
+}
+
+static void eblocker_log(ConnStateData* conn, const char* src, int no, const char* desc) {
+    debugs(83, DBG_IMPORTANT, "eblkr: "
+           << src << ":" << no << ":" << desc
+           << " log_addr: " << conn->log_addr
+           << " host: " << (conn->pinning.host != 0 ? conn->pinning.host : "<null>")
+           << " sni: "<< (conn->serverBump() != 0 ? conn->serverBump()->clientSni.c_str() : "<null>")
+           << " cert: " << eblocker_pem(conn));
 }
 
 static bool
@@ -3736,6 +3756,8 @@ Squid_SSL_accept(ConnStateData *conn, PF *callback)
     int fd = conn->clientConnection->fd;
     SSL *ssl = fd_table[fd].ssl;
     int ret;
+    int ssl_lib_error;
+    char* ssl_lib_error_str;
 
     errno = 0;
     if ((ret = SSL_accept(ssl)) <= 0) {
@@ -3752,25 +3774,41 @@ Squid_SSL_accept(ConnStateData *conn, PF *callback)
             Comm::SetSelect(fd, COMM_SELECT_WRITE, callback, conn, 0);
             return false;
 
-        case SSL_ERROR_SYSCALL:
-            if (ret == 0) {
-                debugs(83, 2, "Error negotiating SSL connection on FD " << fd << ": Aborted by client: " << ssl_error);
+        case SSL_ERROR_SYSCALL:            
+            ssl_lib_error = ERR_get_error();
+            if (ssl_lib_error == 0) {
+                if (ret == 0) {
+                    debugs(83, 2, "SSL_ERROR_SYSCALL: Error negotiating SSL connection on FD " << fd << ": Aborted by client: " << ssl_error);
+                    eblocker_log(conn, "ssl", ssl_error, "unexpected-eof");
+                } else {
+                    debugs(83, (xerrno == ECONNRESET) ? 1 : 2, "SSL_ERROR_SYSCALL: Error negotiating SSL connection on FD " << fd << ": " <<
+                           xstrerr(xerrno));
+                    eblocker_log(conn, "io", xerrno, xstrerr(xerrno));
+                }                
             } else {
-                debugs(83, (xerrno == ECONNRESET) ? 1 : 2, "Error negotiating SSL connection on FD " << fd << ": " <<
-                       (xerrno == 0 ? ERR_error_string(ssl_error, NULL) : xstrerr(xerrno)));
+                eblocker_log(conn, "ssl", ssl_error, ERR_error_string(ssl_lib_error, NULL));
             }
             conn->clientConnection->close();
             return false;
 
         case SSL_ERROR_ZERO_RETURN:
-            debugs(83, DBG_IMPORTANT, "Error negotiating SSL connection on FD " << fd << ": Closed by client");
-            conn->clientConnection->close();
+            debugs(83, DBG_IMPORTANT, "SSL_ERROR_ZERO_RETURN: Error negotiating SSL connection on FD " << fd << ": Closed by client");
+            ssl_lib_error = ERR_get_error();
+            if (ssl_lib_error == 0) {
+                eblocker_log(conn, "ssl", ssl_error, ERR_error_string(ssl_lib_error, NULL));
+            } else {
+                eblocker_log(conn, "ssl", ssl_error, "none");
+            }
+	    conn->clientConnection->close();
             return false;
 
         default:
-            debugs(83, DBG_IMPORTANT, "Error negotiating SSL connection on FD " <<
-                   fd << ": " << ERR_error_string(ERR_get_error(), NULL) <<
+            ssl_lib_error = ERR_get_error();
+            ssl_lib_error_str = ERR_error_string(ssl_lib_error, NULL);
+            debugs(83, DBG_IMPORTANT, "default: Error negotiating SSL connection on FD " <<
+                   fd << ": " << ssl_lib_error_str <<
                    " (" << ssl_error << "/" << ret << ")");
+	    eblocker_log(conn, "ssl", ssl_error, ssl_lib_error_str);
             conn->clientConnection->close();
             return false;
         }
@@ -4456,17 +4494,11 @@ ConnStateData::fakeAConnectRequest(const char *reason, const SBuf &payload)
 {
     // fake a CONNECT request to force connState to tunnel
     SBuf connectHost;
-#if USE_OPENSSL
-    if (serverBump() && !serverBump()->clientSni.isEmpty()) {
-        connectHost.assign(serverBump()->clientSni);
-        if (clientConnection->local.port() > 0)
-            connectHost.appendf(":%d",clientConnection->local.port());
-    } else
-#endif
-    {
-        static char ip[MAX_IPSTRLEN];
-        connectHost.assign(clientConnection->local.toUrl(ip, sizeof(ip)));
-    }
+    static char ip[MAX_IPSTRLEN];
+    connectHost.assign(clientConnection->local.toUrl(ip, sizeof(ip)));
+
+    debugs(33, 3, "EBLKR creating fake connect " << connectHost);
+
     // Pre-pend this fake request to the TLS bits already in the buffer
     SBuf retStr;
     retStr.append("CONNECT ");

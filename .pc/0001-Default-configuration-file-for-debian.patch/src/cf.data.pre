@@ -1213,11 +1213,11 @@ NOCOMMENT_START
 # Example rule allowing access from your local networks.
 # Adapt to list your (internal) IP networks from where browsing
 # should be allowed
-#acl localnet src 10.0.0.0/8	# RFC1918 possible internal network
-#acl localnet src 172.16.0.0/12	# RFC1918 possible internal network
-#acl localnet src 192.168.0.0/16	# RFC1918 possible internal network
-#acl localnet src fc00::/7       # RFC 4193 local private network range
-#acl localnet src fe80::/10      # RFC 4291 link-local (directly plugged) machines
+acl localnet src 10.0.0.0/8	# RFC1918 possible internal network
+acl localnet src 172.16.0.0/12	# RFC1918 possible internal network
+acl localnet src 192.168.0.0/16	# RFC1918 possible internal network
+acl localnet src fc00::/7       # RFC 4193 local private network range
+acl localnet src fe80::/10      # RFC 4291 link-local (directly plugged) machines
 
 acl SSL_ports port 443
 acl Safe_ports port 80		# http
@@ -1466,7 +1466,7 @@ http_access deny manager
 # Example rule allowing access from your local networks.
 # Adapt localnet in the ACL section to list your (internal) IP networks
 # from where browsing should be allowed
-#http_access allow localnet
+http_access allow localnet
 http_access allow localhost
 
 # And finally deny all other access to this proxy
@@ -4604,7 +4604,7 @@ DOC_END
 
 NAME: logfile_rotate
 TYPE: int
-DEFAULT: 0
+DEFAULT: 10
 LOC: Config.Log.rotateNumber
 DOC_START
 	Specifies the number of logfile rotations to make when you
@@ -4623,9 +4623,6 @@ DOC_START
 
 	Note, from Squid-3.1 this option is only a default for cache.log,
 	that log can be rotated separately by using debug_options.
-
-	Note2, for Debian/Linux the default of logfile_rotate is
-	zero, since it includes external logfile-rotation methods.
 DOC_END
 
 NAME: mime_table
@@ -5608,16 +5605,6 @@ DOC_START
 	This also sets the lower cache limit on positive lookups.
 	Minimum value is 1 second, and it is not recommendable to go
 	much below 10 seconds.
-DOC_END
-
-NAME: dns_aaaa
-COMMENT: on|off
-TYPE: onoff
-DEFAULT: on
-LOC: Config.onoff.dns_aaaa
-DOC_START
-	On platforms supporting ipv6 both A and AAAA records are resolved.
-	This option can be used to turn AAAA queries off.
 DOC_END
 
 NAME: range_offset_limit
@@ -8992,8 +8979,8 @@ DOC_START
 
 	WARNING:
 	  This option will restrict the situations under which IPv6
-	  connectivity is used (and tested), potentially hiding network
-	  problems which would otherwise be detected and warned about.
+	  connectivity is used (and tested). Hiding network problems
+	  which would otherwise be detected and warned about.
 DOC_END
 
 NAME: ipcache_size

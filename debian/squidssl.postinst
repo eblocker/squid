@@ -54,6 +54,11 @@ grepconf2 () {
 
 case "$1" in
 	configure)
+		# Copy the default configuration if there is no configuration yet:
+		if test ! -f /etc/squid/squid.conf; then
+			cp /etc/squid/default.conf /etc/squid/squid.conf
+		fi
+
 		#
 		# If the squid (2.7) package was being used previously we protected
 		# the squid.conf file, which was not tracked as a conffile.
@@ -119,13 +124,19 @@ case "$1" in
 		#
 		#	Update links if needed and start squid.
 		#
+		# Reload systemd manager configuration so the drop-ins are active
+		if [ -d /run/systemd/system ] ; then
+			systemctl daemon-reload || true
+		fi
+
 		update-rc.d squid defaults 30 >/dev/null
 
+		# Restart squid (but a failure to restart should not abort the installation)
 		if [ -f /var/run/squid3.pid ] && kill -0 "$(cat /var/run/squid3.pid)" 2>/dev/null && dpkg --compare-versions "$2" lt '3.5'; then
-			invoke-rc.d squid3 stop
-			invoke-rc.d squid restart
+			invoke-rc.d squid3 stop || true
+			invoke-rc.d squid restart || true
 		else
-			invoke-rc.d squid restart
+			invoke-rc.d squid restart || true
 		fi
 
 		;;

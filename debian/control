@@ -22,10 +22,10 @@ Description: Transitional package
  .
  This is a transitional package used to migrate from squid3 to squid.
 
-Package: squid
+Package: squidssl
 Architecture: any
 Pre-Depends: adduser
-Depends: ${shlibs:Depends}, ${misc:Depends}, netbase, logrotate (>= 3.5.4-1), squid-common (>= ${source:Version}), lsb-base, libdbi-perl
+Depends: ${shlibs:Depends}, ${misc:Depends}, netbase, logrotate (>= 3.5.4-1), squidssl-common (>= ${source:Version}), lsb-base, libdbi-perl, eblocker-certificate-validator (>= 1.11)
 Suggests: squidclient, squid-cgi, squid-purge, resolvconf (>= 0.40), smbclient, ufw, winbindd
 Recommends: libcap2-bin [linux-any]
 Conflicts: squid3 (<< ${binary:Version})
@@ -37,11 +37,11 @@ Description: Full featured Web Proxy cache (HTTP proxy)
  Squid version 3 is a major rewrite of Squid in C++ and introduces a number of
  new features including ICAP and ESI support.
 
-Package: squid-dbg
+Package: squidssl-dbg
 Architecture: any
 Section: debug
 Priority: extra
-Depends: squid (= ${binary:Version}), ${misc:Depends}
+Depends: squidssl (= ${binary:Version}), ${misc:Depends}
 Description: Full featured Web Proxy cache (HTTP proxy) - Debug symbols
  Squid is a high-performance proxy caching server for web clients, supporting
  FTP, gopher, ICY and HTTP data objects.
@@ -51,7 +51,7 @@ Description: Full featured Web Proxy cache (HTTP proxy) - Debug symbols
  .
  This package contains debugging symbols for binaries in squid.
 
-Package: squid-common
+Package: squidssl-common
 Architecture: all
 Depends: ${misc:Depends}, squid-langpack (>= 20110214-1)
 Provides: squid3-common
@@ -83,7 +83,7 @@ Description: Full featured Web Proxy cache (HTTP proxy) - control utility
  This package contains a small utility that can be used to get URLs from the 
  command line.
 
-Package: squid-cgi
+Package: squidssl-cgi
 Architecture: any
 Depends: apache2 | httpd, ${shlibs:Depends}, ${misc:Depends}
 Provides: squid3-cgi
@@ -99,7 +99,7 @@ Description: Full featured Web Proxy cache (HTTP proxy) - control CGI
  This package contains a CGI program that can be used to query and administrate 
  a `squid' proxy cache through a web browser.
  
-Package: squid-purge
+Package: squidssl-purge
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
 Description: Full featured Web Proxy cache (HTTP proxy) - control utility

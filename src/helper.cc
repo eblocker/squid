@@ -40,7 +40,7 @@ const size_t ReadBufMinSize(4*1024);
  * ssl_crtd helper is known to produce responses of at least 10KB in size.
  * Some undocumented helpers are known to produce responses exceeding 8KB.
  */
-const size_t ReadBufMaxSize(32*1024);
+const size_t ReadBufMaxSize(64*1024);
 
 static IOCB helperHandleRead;
 static IOCB helperStatefulHandleRead;

@@ -1,8 +1,10 @@
-etc/squid/squid.conf
+etc/squid/default.conf
 etc/squid/errorpage.css
 etc/logrotate.d
 etc/resolvconf
 etc/init.d/squid
+etc/systemd/system/squid.service.d/requires-certvalidator.conf
+etc/systemd/system/squid.service.d/kill-mode-control-group.conf
 etc/ufw
 usr/lib/squid
 usr/sbin/squid

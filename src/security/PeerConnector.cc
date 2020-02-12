@@ -10,6 +10,7 @@
 
 #include "squid.h"
 #include "acl/FilledChecklist.h"
+#include "client_side.h"
 #include "comm/Loops.h"
 #include "Downloader.h"
 #include "errorpage.h"
@@ -308,11 +309,15 @@ Security::PeerConnector::sslCrtvdHandleReply(Ssl::CertValidationResponse::Pointe
         /*anErr->xerrno= Should preserved*/
 
         ConnStateData* conn = request->clientConnectionManager.valid();
+        SBuf clientSni;
+        if (conn != NULL) {
+            clientSni = conn->tlsClientSni();
+        }
         debugs(83, DBG_IMPORTANT, "eblkr: "
 	        << " crtvd:" << errDetails->errorNo() << ":" << errDetails->errorName()
                 << " log_addr: " << request->client_addr
-                << " host: " << request->GetHost()
-      	        << " sni: " << (conn != NULL ? conn->serverBump()->clientSni.c_str() : "<null>")
+                << " host: " << request->url.host()
+                << " sni: " << (clientSni.isEmpty() ? "<null>" : clientSni.c_str())
                 << " cert: " << eblocker::pem(errDetails->brokenCert()));
     }
 

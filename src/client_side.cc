@@ -2546,11 +2546,12 @@ static std::string eblocker_pem(ConnStateData* conn) {
 }
 
 static void eblocker_log(ConnStateData* conn, const char* src, int no, const char* desc) {
+    SBuf clientSni = conn->tlsClientSni();
     debugs(83, DBG_IMPORTANT, "eblkr: "
            << src << ":" << no << ":" << desc
            << " log_addr: " << conn->log_addr
            << " host: " << (conn->pinning.host != 0 ? conn->pinning.host : "<null>")
-           << " sni: "<< (conn->serverBump() != 0 ? conn->serverBump()->clientSni.c_str() : "<null>")
+           << " sni: "<< (clientSni.isEmpty() ? "<null>" : clientSni.c_str())
            << " cert: " << eblocker_pem(conn));
 }
 

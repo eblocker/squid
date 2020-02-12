@@ -770,10 +770,16 @@ ErrorState::Dump(MemBuf * mb)
 
 // Encodes a (null-terminated) string in base64 and returns a newly allocated one (also null-terminated).
 static char* base64encode(const char* value) {
-    int len = strlen(value);
-    int maxSize = 4 * ceil(strlen(value) / 3.0f) + 1;
+    int valLength = strlen(value);
+    int maxSize = base64_encode_len(valLength) + 1;
     char* value64 = (char*) malloc(maxSize);
-    base64_encode_str(value64, maxSize, value, len);
+
+    struct base64_encode_ctx ctx;
+    base64_encode_init(&ctx);
+    auto encLength = base64_encode_update(&ctx, value64, valLength, reinterpret_cast<const uint8_t*>(value));
+    encLength += base64_encode_final(&ctx, value64 + encLength);
+    value64[encLength] = '\0';
+
     return value64;
 }
 

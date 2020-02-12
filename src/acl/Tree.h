@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -10,7 +10,7 @@
 #define SQUID_ACL_TREE_H
 
 #include "acl/BoolOps.h"
-#include "SBufList.h"
+#include "sbuf/List.h"
 
 namespace Acl
 {
@@ -19,11 +19,15 @@ namespace Acl
 /// unique properties: cbdata protection and optional rule actions.
 class Tree: public OrNode
 {
+    // XXX: We should use refcounting instead, but it requires making ACLs
+    // refcounted as well. Otherwise, async lookups will reach deleted ACLs.
+    CBDATA_CLASS(Tree);
+
 public:
     /// dumps <name, action, rule, new line> tuples
-    /// action.kind is mapped to a string using the supplied conversion table
-    typedef const char **ActionToString;
-    SBufList treeDump(const char *name, const ActionToString &convert) const;
+    /// the supplied converter maps action.kind to a string
+    template <class ActionToStringConverter>
+    SBufList treeDump(const char *name, ActionToStringConverter converter) const;
 
     /// Returns the corresponding action after a successful tree match.
     allow_t winningAction() const;
@@ -37,18 +41,49 @@ public:
 
 protected:
     /// Acl::OrNode API
-    virtual bool bannedAction(ACLChecklist *, Nodes::const_iterator) const;
+    virtual bool bannedAction(ACLChecklist *, Nodes::const_iterator) const override;
     allow_t actionAt(const Nodes::size_type pos) const;
 
     /// if not empty, contains actions corresponding to InnerNode::nodes
     typedef std::vector<allow_t> Actions;
     Actions actions;
-
-private:
-    // XXX: We should use refcounting instead, but it requires making ACLs
-    // refcounted as well. Otherwise, async lookups will reach deleted ACLs.
-    CBDATA_CLASS2(Tree);
 };
+
+inline const char *
+AllowOrDeny(const allow_t &action)
+{
+    return action.allowed() ? "allow" : "deny";
+}
+
+template <class ActionToStringConverter>
+inline SBufList
+Tree::treeDump(const char *prefix, ActionToStringConverter converter) const
+{
+    SBufList text;
+    Actions::const_iterator action = actions.begin();
+    typedef Nodes::const_iterator NCI;
+    for (NCI node = nodes.begin(); node != nodes.end(); ++node) {
+
+        text.push_back(SBuf(prefix));
+
+        if (action != actions.end()) {
+            static const SBuf DefaultActString("???");
+            const char *act = converter(*action);
+            text.push_back(act ? SBuf(act) : DefaultActString);
+            ++action;
+        }
+
+#if __cplusplus >= 201103L
+        text.splice(text.end(), (*node)->dump());
+#else
+        // temp is needed until c++11 move constructor
+        SBufList temp = (*node)->dump();
+        text.splice(text.end(), temp);
+#endif
+        text.push_back(SBuf("\n"));
+    }
+    return text;
+}
 
 } // namespace Acl
 

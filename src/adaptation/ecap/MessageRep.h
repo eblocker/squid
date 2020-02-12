@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -51,7 +51,7 @@ public:
     virtual void parse(const Area &buf); // throws on failures
 
 protected:
-    static http_hdr_type TranslateHeaderId(const Name &name);
+    static Http::HdrType TranslateHeaderId(const Name &name);
 
 private:
     HttpHeader &theHeader; // the header being translated to libecap

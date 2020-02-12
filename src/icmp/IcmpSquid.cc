@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -13,6 +13,7 @@
 #include "comm/Loops.h"
 #include "defines.h"
 #include "fd.h"
+#include "icmp/IcmpConfig.h"
 #include "icmp/IcmpSquid.h"
 #include "icmp/net_db.h"
 #include "ip/tools.h"
@@ -92,11 +93,12 @@ IcmpSquid::SendEcho(Ip::Address &to, int opcode, const char *payload, int len)
     x = comm_udp_send(icmp_sock, (char *)&pecho, slen, 0);
 
     if (x < 0) {
-        debugs(37, DBG_IMPORTANT, HERE << "send: " << xstrerror());
+        int xerrno = errno;
+        debugs(37, DBG_IMPORTANT, MYNAME << "send: " << xstrerr(xerrno));
 
         /** \li  If the send results in ECONNREFUSED or EPIPE errors from helper, will cleanly shutdown the module. */
         /** \todo This should try restarting the helper a few times?? before giving up? */
-        if (errno == ECONNREFUSED || errno == EPIPE) {
+        if (xerrno == ECONNREFUSED || xerrno == EPIPE) {
             Close();
             return;
         }
@@ -123,19 +125,19 @@ IcmpSquid::Recv()
     static Ip::Address F;
 
     Comm::SetSelect(icmp_sock, COMM_SELECT_READ, icmpSquidRecv, NULL, 0);
-    memset(&preply, '\0', sizeof(pingerReplyData));
     n = comm_udp_recv(icmp_sock,
                       (char *) &preply,
                       sizeof(pingerReplyData),
                       0);
 
     if (n < 0 && EAGAIN != errno) {
-        debugs(37, DBG_IMPORTANT, HERE << "recv: " << xstrerror());
+        int xerrno = errno;
+        debugs(37, DBG_IMPORTANT, MYNAME << "recv: " << xstrerr(xerrno));
 
-        if (errno == ECONNREFUSED)
+        if (xerrno == ECONNREFUSED)
             Close();
 
-        if (errno == ECONNRESET)
+        if (xerrno == ECONNRESET)
             Close();
 
         if (++fail_count == 10)
@@ -193,7 +195,7 @@ IcmpSquid::Open(void)
     Ip::Address localhost;
 
     /* User configured disabled. */
-    if (!Config.pinger.enable) {
+    if (!IcmpCfg.enable) {
         Close();
         return -1;
     }
@@ -208,7 +210,7 @@ IcmpSquid::Open(void)
      * least on FreeBSD).
      */
     pid = ipcCreate(IPC_UDP_SOCKET,
-                    Config.pinger.program,
+                    IcmpCfg.program.c_str(),
                     args,
                     "Pinger Socket",
                     localhost,

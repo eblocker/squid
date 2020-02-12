@@ -2,10 +2,10 @@
 set -e
 
 dpkg-source --before-build `pwd`
-sed -i -e 's/\$(top_builddir)\/src\/squid/\/usr\/sbin\/squid/' test-suite/Makefile.am
 dpkg-buildpackage -rfakeroot --target=pre-build
 dpkg-buildpackage -rfakeroot --target=common-configure-arch 2>/dev/null
 make -C src/base libbase.la
+make -C src/mem libmem.la
 make -C src globals.o
 make -C lib all
 make -C compat

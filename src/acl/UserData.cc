@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -14,7 +14,15 @@
 #include "ConfigParser.h"
 #include "Debug.h"
 #include "globals.h"
-#include "SBufAlgos.h"
+#include "sbuf/Algorithms.h"
+#include "util.h"
+
+const Acl::ParameterFlags &
+ACLUserData::supportedFlags() const
+{
+    static const Acl::ParameterFlags flagNames = { "-i", "+i" };
+    return flagNames;
+}
 
 bool
 ACLUserData::match(char const *user)
@@ -54,19 +62,22 @@ ACLUserData::dump() const
 }
 
 static bool
+CaseSensitiveSBufCompare(const SBuf &lhs, const SBuf &rhs)
+{
+    return (lhs.cmp(rhs) < 0);
+}
+
+static bool
 CaseInsensitveSBufCompare(const SBuf &lhs, const SBuf &rhs)
 {
     return (lhs.caseCmp(rhs) < 0);
 }
 
-static bool
-CaseSensitveSBufCompare(const SBuf &lhs, const SBuf &rhs)
+ACLUserData::ACLUserData() :
+    userDataNames(CaseSensitiveSBufCompare)
 {
-    return (lhs < rhs);
-}
-
-ACLUserData::ACLUserData() : userDataNames(CaseSensitveSBufCompare)
-{
+    flags.case_insensitive = false;
+    flags.required = false;
 }
 
 void

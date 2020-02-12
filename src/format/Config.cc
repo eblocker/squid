@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -20,10 +20,12 @@ Format::FmtConfig::parseFormats()
 {
     char *name, *def;
 
-    if ((name = ConfigParser::NextToken()) == NULL)
+    if ((name = ConfigParser::NextToken()) == nullptr) {
         self_destruct();
+        return;
+    }
 
-    if ((def = ConfigParser::NextQuotedOrToEol()) == NULL) {
+    if ((def = ConfigParser::NextQuotedOrToEol()) == nullptr) {
         self_destruct();
         return;
     }

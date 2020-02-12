@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -10,8 +10,9 @@
 #define _SQUID_ICP_OPCODE_H
 
 /// \ingroup ServerProtocolICPAPI
-typedef enum {
-    ICP_INVALID,
+enum icp_opcode {
+    enumBegin_ = 0,
+    ICP_INVALID = enumBegin_,
     ICP_QUERY,
     ICP_HIT,
     ICP_MISS,
@@ -35,8 +36,9 @@ typedef enum {
     ICP_MISS_NOFETCH,
     ICP_DENIED,
     ICP_HIT_OBJ,
-    ICP_END
-} icp_opcode;
+    ICP_END,
+    enumEnd_ = ICP_END // We misuse ICP_END in stats. Do not do this elsewhere.
+};
 
 extern const char *icp_opcode_str[];
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -96,11 +96,10 @@ void Mgr::CountersAction::dump(StoreEntry* entry) STUB
 //Mgr::Forwarder::Forwarder(int aFd, const ActionParams &aParams, HttpRequest* aRequest, StoreEntry* anEntry) STUB
 //Mgr::Forwarder::~Forwarder() STUB
 //protected:
-void Mgr::Forwarder::cleanup() STUB
+//void Mgr::Forwarder::swanSong() STUB
 void Mgr::Forwarder::handleError() STUB
 void Mgr::Forwarder::handleTimeout() STUB
 void Mgr::Forwarder::handleException(const std::exception& e) STUB
-void Mgr::Forwarder::handleRemoteAck() STUB
 
 #include "mgr/FunAction.h"
 Mgr::Action::Pointer Mgr::FunAction::Create(const CommandPointer &cmd, OBJH *aHandler) STUB_RETVAL(dummyAction)

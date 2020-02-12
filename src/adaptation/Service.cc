@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -49,7 +49,7 @@ Adaptation::Service::wants(const ServiceFilter &filter) const
         // Sending a message to a service that does not want it is useless.
         // note that we cannot check wantsUrl for service that is not "up"
         // note that even essential services are skipped on unwanted URLs!
-        return wantsUrl(filter.request->urlpath);
+        return wantsUrl(filter.request->url.path());
     }
 
     // The service is down and is either not bypassable or not probed due

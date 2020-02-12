@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -16,6 +16,7 @@
 #include "fde.h"
 #include "http/StatusCode.h"
 #include "ip/Address.h"
+#include "security/forward.h"
 #if USE_OPENSSL
 #include "ssl/support.h"
 #endif
@@ -34,7 +35,6 @@ namespace Ssl
 {
 class ErrorDetail;
 class CertValidationResponse;
-class PeerConnectorAnswer;
 };
 #endif
 
@@ -57,6 +57,8 @@ class HelperReply;
 
 class FwdState : public RefCountable
 {
+    CBDATA_CLASS(FwdState);
+
 public:
     typedef RefCount<FwdState> Pointer;
     ~FwdState();
@@ -66,6 +68,11 @@ public:
     static void Start(const Comm::ConnectionPointer &client, StoreEntry *, HttpRequest *, const AccessLogEntryPointer &alp);
     /// Same as Start() but no master xaction info (AccessLogEntry) available.
     static void fwdStart(const Comm::ConnectionPointer &client, StoreEntry *, HttpRequest *);
+    /// time left to finish the whole forwarding process (which started at fwdStart)
+    static time_t ForwardTimeout(const time_t fwdStart);
+    /// Whether there is still time to re-try after a previous connection failure.
+    /// \param fwdStart The start time of the peer selection/connection process.
+    static bool EnoughTimeToReForward(const time_t fwdStart);
 
     /// This is the real beginning of server connection. Call it whenever
     /// the forwarding server destination has changed and a new one needs to be opened.
@@ -83,7 +90,6 @@ public:
     void connectStart();
     void connectDone(const Comm::ConnectionPointer & conn, Comm::Flag status, int xerrno);
     void connectTimeout(int fd);
-    time_t timeLeft() const; ///< the time left before the forwarding timeout expired
     bool checkRetry();
     bool checkRetriable();
     void dispatch();
@@ -112,15 +118,17 @@ private:
     void completed();
     void retryOrBail();
     ErrorState *makeConnectingError(const err_type type) const;
-#if USE_OPENSSL
-    void connectedToPeer(Ssl::PeerConnectorAnswer &answer);
-#endif
+    void connectedToPeer(Security::EncryptorAnswer &answer);
     static void RegisterWithCacheManager(void);
 
     /// stops monitoring server connection for closure and updates pconn stats
     void closeServerConnection(const char *reason);
 
     void syncWithServerConn(const char *host);
+    void syncHierNote(const Comm::ConnectionPointer &server, const char *host);
+
+    /// whether we have used up all permitted forwarding attempts
+    bool exhaustedTries() const;
 
 public:
     StoreEntry *entry;
@@ -134,7 +142,7 @@ private:
     ErrorState *err;
     Comm::ConnectionPointer clientConn;        ///< a possibly open connection to the client.
     time_t start_t;
-    int n_tries;
+    int n_tries; ///< the number of forwarding attempts so far
 
     // AsyncCalls which we set and may need cancelling.
     struct {
@@ -157,9 +165,6 @@ private:
     /// possible pconn race states
     typedef enum { raceImpossible, racePossible, raceHappened } PconnRace;
     PconnRace pconnRace; ///< current pconn race state
-
-    // NP: keep this last. It plays with private/public
-    CBDATA_CLASS2(FwdState);
 };
 
 void getOutgoingAddress(HttpRequest * request, Comm::ConnectionPointer conn);

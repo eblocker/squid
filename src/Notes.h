@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -11,11 +11,9 @@
 
 #include "acl/forward.h"
 #include "base/RefCount.h"
-#include "CbDataList.h"
 #include "format/Format.h"
-#include "MemPool.h"
+#include "mem/forward.h"
 #include "SquidString.h"
-#include "typedefs.h"
 
 #include <string>
 #include <vector>
@@ -128,11 +126,11 @@ public:
      */
     class Entry
     {
+        MEMPROXY_CLASS(Entry);
     public:
         Entry(const char *aKey, const char *aValue): name(aKey), value(aValue) {}
         String name;
         String value;
-        MEMPROXY_CLASS(Entry);
     };
 
     NotePairs() {}
@@ -207,8 +205,6 @@ private:
     NotePairs &operator = (NotePairs const &); // Not implemented
     NotePairs(NotePairs const &); // Not implemented
 };
-
-MEMPROXY_CLASS_INLINE(NotePairs::Entry);
 
 class AccessLogEntry;
 /**

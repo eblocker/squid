@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -95,6 +95,12 @@ public:
      * for the logformat option.
      */
     static char *NextQuotedOrToEol();
+
+    /**
+     * the next key value pair which must be separated by "="
+     * \return true on success, false otherwise
+     */
+    static bool NextKvPair(char * &key, char * &value);
 
     /**
      * Preview the next token. The next NextToken() and strtokFile() call
@@ -203,6 +209,8 @@ protected:
     static bool ParseQuotedOrToEol_; ///< The next tokens will be handled as quoted or to_eol token
     static bool RecognizeQuotedPair_; ///< The next tokens may contain quoted-pair (\-escaped) characters
     static bool PreviewMode_; ///< The next token will not poped from cfg files, will just previewd.
+    static bool ParseKvPair_; ///<The next token will be handled as kv-pair token
+    static enum ParsingStates {atParseKey, atParseValue} KvPairState_; ///< Parsing state while parsing kv-pair tokens
 };
 
 int parseConfigFile(const char *file_name);

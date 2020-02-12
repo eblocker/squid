@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -9,19 +9,19 @@
 /* DEBUG: section 28    Access Control */
 
 #include "squid.h"
-#include "acl/Checklist.h"
 #include "acl/DomainData.h"
+#include "acl/FilledChecklist.h"
 #include "acl/RegexData.h"
 #include "acl/ServerName.h"
 #include "client_side.h"
 #include "fde.h"
+#include "http/Stream.h"
 #include "HttpRequest.h"
 #include "ipcache.h"
 #include "SquidString.h"
 #include "ssl/bio.h"
 #include "ssl/ServerBump.h"
 #include "ssl/support.h"
-#include "URL.h"
 
 // Compare function for tree search algorithms
 static int
@@ -86,25 +86,35 @@ check_cert_domain( void *check_data, ASN1_STRING *cn_data)
 }
 
 int
-ACLServerNameStrategy::match (ACLData<MatchType> * &data, ACLFilledChecklist *checklist, ACLFlags &flags)
+ACLServerNameStrategy::match (ACLData<MatchType> * &data, ACLFilledChecklist *checklist)
 {
     assert(checklist != NULL && checklist->request != NULL);
 
-    const char *serverName = NULL;
-    SBuf serverNameKeeper; // because c_str() is not constant
+    const char *serverName = nullptr;
+    SBuf clientSniKeeper; // because c_str() is not constant
     if (ConnStateData *conn = checklist->conn()) {
-        if (conn->serverBump()) {
-            if (X509 *peer_cert = conn->serverBump()->serverCert.get())
-                return Ssl::matchX509CommonNames(peer_cert, (void *)data, check_cert_domain<MatchType>);
-        }
-
-        if (conn->sslCommonName().isEmpty()) {
-            const char *host = checklist->request->GetHost();
+        const char *clientRequestedServerName = nullptr;
+        clientSniKeeper = conn->tlsClientSni();
+        if (clientSniKeeper.isEmpty()) {
+            const char *host = checklist->request->url.host();
             if (host && *host) // paranoid first condition: host() is never nil
-                serverName = host;
-        } else {
-            serverNameKeeper = conn->sslCommonName();
-            serverName = serverNameKeeper.c_str();
+                clientRequestedServerName = host;
+        } else
+            clientRequestedServerName = clientSniKeeper.c_str();
+
+        if (useConsensus) {
+            X509 *peer_cert = conn->serverBump() ? conn->serverBump()->serverCert.get() : nullptr;
+            // use the client requested name if it matches the server
+            // certificate or if the certificate is not available
+            if (!peer_cert || Ssl::checkX509ServerValidity(peer_cert, clientRequestedServerName))
+                serverName = clientRequestedServerName;
+        } else if (useClientRequested)
+            serverName = clientRequestedServerName;
+        else { // either no options or useServerProvided
+            if (X509 *peer_cert = (conn->serverBump() ? conn->serverBump()->serverCert.get() : nullptr))
+                return Ssl::matchX509CommonNames(peer_cert, (void *)data, check_cert_domain<MatchType>);
+            if (!useServerProvided)
+                serverName = clientRequestedServerName;
         }
     }
 
@@ -114,11 +124,40 @@ ACLServerNameStrategy::match (ACLData<MatchType> * &data, ACLFilledChecklist *ch
     return data->match(serverName);
 }
 
-ACLServerNameStrategy *
-ACLServerNameStrategy::Instance()
+const Acl::Options &
+ACLServerNameStrategy::options()
 {
-    return &Instance_;
+    static const Acl::BooleanOption ClientRequested;
+    static const Acl::BooleanOption ServerProvided;
+    static const Acl::BooleanOption Consensus;
+    static const Acl::Options MyOptions = {
+        {"--client-requested", &ClientRequested},
+        {"--server-provided", &ServerProvided},
+        {"--consensus", &Consensus}
+    };
+
+    ClientRequested.linkWith(&useClientRequested);
+    ServerProvided.linkWith(&useServerProvided);
+    Consensus.linkWith(&useConsensus);
+    return MyOptions;
 }
 
-ACLServerNameStrategy ACLServerNameStrategy::Instance_;
+bool
+ACLServerNameStrategy::valid() const
+{
+    int optionCount = 0;
+
+    if (useClientRequested)
+        optionCount++;
+    if (useServerProvided)
+        optionCount++;
+    if (useConsensus)
+        optionCount++;
+
+    if (optionCount > 1) {
+        debugs(28, DBG_CRITICAL, "ERROR: Multiple options given for the server_name ACL");
+        return false;
+    }
+    return true;
+}
 

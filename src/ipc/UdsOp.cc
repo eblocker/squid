@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -193,7 +193,7 @@ void Ipc::SendMessage(const String& toAddress, const TypedMsgHdr &message)
 const Comm::ConnectionPointer &
 Ipc::ImportFdIntoComm(const Comm::ConnectionPointer &conn, int socktype, int protocol, Ipc::FdNoteId noteId)
 {
-    struct sockaddr_in addr;
+    struct sockaddr_storage addr;
     socklen_t len = sizeof(addr);
     if (getsockname(conn->fd, reinterpret_cast<sockaddr*>(&addr), &len) == 0) {
         conn->remote = addr;
@@ -204,7 +204,8 @@ Ipc::ImportFdIntoComm(const Comm::ConnectionPointer &conn, int socktype, int pro
         comm_import_opened(conn, Ipc::FdNote(noteId), addr_info);
         Ip::Address::FreeAddr(addr_info);
     } else {
-        debugs(54, DBG_CRITICAL, "ERROR: Ipc::ImportFdIntoComm: " << conn << ' ' << xstrerror());
+        int xerrno = errno;
+        debugs(54, DBG_CRITICAL, "ERROR: Ipc::ImportFdIntoComm: " << conn << ' ' << xstrerr(xerrno));
         conn->close();
     }
     return conn;

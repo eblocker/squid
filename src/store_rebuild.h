@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -11,20 +11,21 @@
 #ifndef SQUID_STORE_REBUILD_H_
 #define SQUID_STORE_REBUILD_H_
 
-// currently a POD
+#include "store_key_md5.h"
+
 class StoreRebuildData
 {
 public:
-    int objcount;       /* # objects successfully reloaded */
-    int expcount;       /* # objects expired */
-    int scancount;      /* # entries scanned or read from state file */
-    int clashcount;     /* # swapfile clashes avoided */
-    int dupcount;       /* # duplicates purged */
-    int cancelcount;        /* # SWAP_LOG_DEL objects purged */
-    int invalid;        /* # bad lines */
-    int badflags;       /* # bad e->flags */
-    int bad_log_op;
-    int zero_object_sz;
+    int objcount = 0;       /* # objects successfully reloaded */
+    int expcount = 0;       /* # objects expired */
+    int scancount = 0;      /* # entries scanned or read from state file */
+    int clashcount = 0;     /* # swapfile clashes avoided */
+    int dupcount = 0;       /* # duplicates purged */
+    int cancelcount = 0;    /* # SWAP_LOG_DEL objects purged */
+    int invalid = 0;        /* # bad lines */
+    int badflags = 0;       /* # bad e->flags */
+    int bad_log_op = 0;
+    int zero_object_sz = 0;
 };
 
 void storeRebuildStart(void);
@@ -35,8 +36,6 @@ void storeRebuildProgress(int sd_index, int total, int sofar);
 bool storeRebuildLoadEntry(int fd, int diskIndex, MemBuf &buf, StoreRebuildData &counts);
 /// parses entry buffer and validates entry metadata; fills e on success
 bool storeRebuildParseEntry(MemBuf &buf, StoreEntry &e, cache_key *key, StoreRebuildData &counts, uint64_t expectedSize);
-/// checks whether the loaded entry should be kept; updates counters
-bool storeRebuildKeepEntry(const StoreEntry &e, const cache_key *key, StoreRebuildData &counts);
 
 #endif /* SQUID_STORE_REBUILD_H_ */
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -11,18 +11,22 @@
 
 #include "CommRead.h"
 #include "dlink.h"
-#include "HttpRequestMethod.h"
+#include "http/RequestMethod.h"
 #include "RemovalPolicy.h"
-#include "SBuf.h"
+#include "sbuf/SBuf.h"
+#include "SquidString.h"
 #include "stmem.h"
+#include "store/forward.h"
 #include "StoreIOBuffer.h"
 #include "StoreIOState.h"
+#include "typedefs.h" //for IRCB
 
 #if USE_DELAY_POOLS
 #include "DelayId.h"
 #endif
 
 typedef void STMCB (void *data, StoreIOBuffer wroteBuffer);
+typedef void STABH(void *);
 
 class store_client;
 class HttpRequest;
@@ -30,16 +34,21 @@ class HttpReply;
 
 class MemObject
 {
+    MEMPROXY_CLASS(MemObject);
 
 public:
     static size_t inUseCount();
-    MEMPROXY_CLASS(MemObject);
 
     void dump() const;
     MemObject();
     ~MemObject();
 
-    /// sets store ID, log URI, and request method; TODO: find a better name
+    /// Sets store ID, log URI, and request method (unless already set). Does
+    /// not clobber the method so that, say, a HEAD hit for a GET entry keeps
+    /// the GET method that matches the entry key. Same for the other parts of
+    /// the trio because the entry filling code may expect them to be constant.
+    /// XXX: Avoid this method. We plan to remove it and make the trio constant
+    /// after addressing the XXX in MemStore::get().
     void setUris(char const *aStoreId, char const *aLogUri, const HttpRequestMethod &aMethod);
 
     /// whether setUris() has been called
@@ -94,41 +103,41 @@ public:
 
     HttpRequestMethod method;
     mem_hdr data_hdr;
-    int64_t inmem_lo;
+    int64_t inmem_lo = 0;
     dlink_list clients;
 
-    /** \todo move into .cc or .cci */
     size_t clientCount() const {return nclients;}
 
     bool clientIsFirst(void *sc) const {return (clients.head && sc == clients.head->data);}
 
-    int nclients;
+    int nclients = 0;
 
     class SwapOut
     {
-
     public:
-        int64_t queue_offset; ///< number of bytes sent to SwapDir for writing
+        int64_t queue_offset = 0; ///< number of bytes sent to SwapDir for writing
         StoreIOState::Pointer sio;
 
         /// Decision states for StoreEntry::swapoutPossible() and related code.
         typedef enum { swNeedsCheck = 0, swImpossible = -1, swPossible = +1, swStarted } Decision;
-        Decision decision; ///< current decision state
+        Decision decision = swNeedsCheck; ///< current decision state
     };
 
     SwapOut swapout;
 
-    /// cache "I/O" direction and status
-    typedef enum { ioUndecided, ioWriting, ioReading, ioDone } Io;
+    /* TODO: Remove this change-minimizing hack */
+    using Io = Store::IoStatus;
+    static constexpr Io ioUndecided = Store::ioUndecided;
+    static constexpr Io ioReading = Store::ioReading;
+    static constexpr Io ioWriting = Store::ioWriting;
+    static constexpr Io ioDone = Store::ioDone;
 
     /// State of an entry with regards to the [shared] in-transit table.
     class XitTable
     {
     public:
-        XitTable(): index(-1), io(ioUndecided) {}
-
-        int32_t index; ///< entry position inside the in-transit table
-        Io io; ///< current I/O state
+        int32_t index = -1; ///< entry position inside the in-transit table
+        Io io = ioUndecided; ///< current I/O state
     };
     XitTable xitTable; ///< current [shared] memory caching state for the entry
 
@@ -136,36 +145,32 @@ public:
     class MemCache
     {
     public:
-        MemCache(): index(-1), offset(0), io(ioUndecided) {}
+        int32_t index = -1; ///< entry position inside the memory cache
+        int64_t offset = 0; ///< bytes written/read to/from the memory cache so far
 
-        int32_t index; ///< entry position inside the memory cache
-        int64_t offset; ///< bytes written/read to/from the memory cache so far
-
-        Io io; ///< current I/O state
+        Io io = ioUndecided; ///< current I/O state
     };
     MemCache memCache; ///< current [shared] memory caching state for the entry
 
-    bool smpCollapsed; ///< whether this entry gets data from another worker
-
     /* Read only - this reply must be preserved by store clients */
     /* The original reply. possibly with updated metadata. */
-    HttpRequest *request;
+    HttpRequest *request = nullptr;
 
     struct timeval start_ping;
     IRCB *ping_reply_callback;
-    void *ircb_data;
+    void *ircb_data = nullptr;
 
-    struct {
+    struct abort_ {
+        abort_() { callback = nullptr; }
         STABH *callback;
-        void *data;
+        void *data = nullptr;
     } abort;
     RemovalPolicyNode repl;
-    int id;
-    int64_t object_sz;
-    size_t swap_hdr_sz;
+    int id = 0;
+    int64_t object_sz = -1;
+    size_t swap_hdr_sz = 0;
 #if URL_CHECKSUM_DEBUG
-
-    unsigned int chksum;
+    unsigned int chksum = 0;
 #endif
 
     SBuf vary_headers;
@@ -174,15 +179,13 @@ public:
     void kickReads();
 
 private:
-    HttpReply *_reply;
+    HttpReply *_reply = nullptr;
 
     mutable String storeId_; ///< StoreId for our entry (usually request URI)
     mutable String logUri_;  ///< URI used for logging (usually request URI)
 
     DeferredReadManager deferredReads;
 };
-
-MEMPROXY_CLASS_INLINE(MemObject);
 
 /** global current memory removal policy */
 extern RemovalPolicy *mem_policy;

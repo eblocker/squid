@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -23,6 +23,7 @@
 #include "format/Format.h"
 #include "HttpReply.h"
 #include "HttpRequest.h"
+#include "MasterXaction.h"
 #include "SquidTime.h"
 
 CBDATA_NAMESPACED_CLASS_INIT(Adaptation::Ecap::XactionRep, XactionRep);
@@ -420,6 +421,7 @@ Adaptation::Ecap::XactionRep::useAdapted(const libecap::shared_ptr<libecap::Mess
     Must(proxyingAb == opUndecided);
 
     HttpMsg *msg = answer().header;
+    updateSources(msg);
     if (!theAnswerRep->body()) { // final, bodyless answer
         proxyingAb = opNever;
         updateHistory(msg);
@@ -699,7 +701,7 @@ Adaptation::Ecap::XactionRep::status() const
     buf.append(" [", 2);
 
     if (makingVb)
-        buf.Printf("M%d", static_cast<int>(makingVb));
+        buf.appendf("M%d", static_cast<int>(makingVb));
 
     const BodyPipePointer &vp = theVirginRep.raw().body_pipe;
     if (!vp)
@@ -712,7 +714,7 @@ Adaptation::Ecap::XactionRep::status() const
     if (vbProductionFinished)
         buf.append(".", 1);
 
-    buf.Printf(" A%d", static_cast<int>(proxyingAb));
+    buf.appendf(" A%d", static_cast<int>(proxyingAb));
 
     if (proxyingAb == opOn) {
         MessageRep *rep = dynamic_cast<MessageRep*>(theAnswerRep.get());
@@ -726,10 +728,24 @@ Adaptation::Ecap::XactionRep::status() const
             buf.append(" A?", 3);
     }
 
-    buf.Printf(" %s%u]", id.prefix(), id.value);
+    buf.appendf(" %s%u]", id.prefix(), id.value);
 
     buf.terminate();
 
     return buf.content();
+}
+
+void
+Adaptation::Ecap::XactionRep::updateSources(HttpMsg *adapted)
+{
+    adapted->sources |= service().cfg().connectionEncryption ? HttpMsg::srcEcaps : HttpMsg::srcEcap;
+
+    // Update masterXaction object for adapted HTTP requests.
+    if (HttpRequest *adaptedReq = dynamic_cast<HttpRequest*>(adapted)) {
+        HttpRequest *request = dynamic_cast<HttpRequest*> (theCauseRep ?
+                               theCauseRep->raw().header : theVirginRep.raw().header);
+        Must(request);
+        adaptedReq->masterXaction = request->masterXaction;
+    }
 }
 

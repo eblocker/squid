@@ -1,4 +1,5 @@
 etc/squid/default.conf
+etc/squid/conf.d
 etc/squid/errorpage.css
 etc/logrotate.d
 etc/resolvconf
@@ -26,5 +27,6 @@ usr/share/man/man8/ext_unix_group_acl.8
 usr/share/man/man8/ext_wbinfo_group_acl.8
 usr/share/man/man8/log_db_daemon.8
 usr/share/man/man8/negotiate_kerberos_auth.8
+usr/share/man/man8/security_fake_certverify.8
 usr/share/man/man8/storeid_file_rewrite.8
 usr/share/man/man8/squid.8

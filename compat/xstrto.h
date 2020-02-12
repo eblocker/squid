@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -11,10 +11,6 @@
 
 // these functions are not used by the remaining Squid C code.
 #if defined(__cplusplus)
-
-#if HAVE_STDBOOL_H
-#include <stdbool.h>
-#endif
 
 /**
  * xstrtou{i,l} - string to number conversion

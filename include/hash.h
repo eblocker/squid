@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -15,7 +15,7 @@ typedef unsigned int HASHHASH(const void *, unsigned int);
 
 class hash_link {
 public:
-    hash_link() : key(NULL), next(NULL) {}
+    hash_link() : key(nullptr), next(nullptr) {}
     void *key;
     hash_link *next;
 };
@@ -44,7 +44,7 @@ SQUIDCEXTERN void hashFreeMemory(hash_table *);
 SQUIDCEXTERN void hashFreeItems(hash_table *, HASHFREE *);
 SQUIDCEXTERN HASHHASH hash_string;
 SQUIDCEXTERN HASHHASH hash4;
-SQUIDCEXTERN const char *hashKeyStr(hash_link *);
+SQUIDCEXTERN const char *hashKeyStr(const hash_link *);
 
 /*
  *  Here are some good prime number choices.  It's important not to

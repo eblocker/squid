@@ -1,4 +1,4 @@
-## Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+## Copyright (C) 1996-2019 The Squid Software Foundation and contributors
 ##
 ## Squid software is distributed under GPLv2+ license and includes
 ## contributions from numerous individuals and organizations.
@@ -10,17 +10,15 @@ include $(top_srcdir)/src/TestHeaders.am
 
 noinst_LTLIBRARIES = libesi.la
 
-ESI_PARSER_SOURCES = \
-	CustomParser.cc \
-	CustomParser.h
+ESI_PARSER_SOURCES =
 
-if HAVE_LIBEXPAT
+if ENABLE_LIBEXPAT
 ESI_PARSER_SOURCES += \
 	ExpatParser.cc \
 	ExpatParser.h
 endif
 
-if HAVE_LIBXML2
+if ENABLE_LIBXML2
 ESI_PARSER_SOURCES += \
 	Libxml2Parser.cc \
 	Libxml2Parser.h
@@ -34,7 +32,6 @@ libesi_la_SOURCES = \
 	Context.h \
 	$(ESI_PARSER_SOURCES) \
 	Element.h \
-	ElementList.h \
 	Esi.cc \
 	Esi.h \
 	Except.h \

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -14,6 +14,8 @@
 #include "SquidTime.h"
 #include "util.h"
 
+#include <algorithm>
+
 /* for shutting_down flag in xassert() */
 #include "globals.h"
 
@@ -24,8 +26,6 @@ bool Debug::log_syslog = false;
 int Debug::Levels[MAX_DEBUG_SECTIONS];
 char *Debug::cache_log = NULL;
 int Debug::rotateNumber = -1;
-FILE *debug_log = NULL;
-static char *debug_log_file = NULL;
 static int Ctx_Lock = 0;
 static const char *debugLogTime(void);
 static const char *debugLogKid(void);
@@ -34,7 +34,7 @@ static void ctx_print(void);
 #ifdef LOG_LOCAL4
 static int syslog_facility = 0;
 #endif
-static void _db_print_syslog(const char *format, va_list args);
+static void _db_print_syslog(const bool forceAlert, const char *format, va_list args);
 #endif
 static void _db_print_stderr(const char *format, va_list args);
 static void _db_print_file(const char *format, va_list args);
@@ -44,8 +44,73 @@ extern LPCRITICAL_SECTION dbg_mutex;
 typedef BOOL (WINAPI * PFInitializeCriticalSectionAndSpinCount) (LPCRITICAL_SECTION, DWORD);
 #endif
 
+/// a (FILE*, file name) pair that uses stderr FILE as the last resort
+class DebugFile
+{
+public:
+    DebugFile() {}
+    ~DebugFile() { clear(); }
+    DebugFile(DebugFile &&) = delete; // no copying or moving of any kind
+
+    /// switches to the new pair, absorbing FILE and duping the name
+    void reset(FILE *newFile, const char *newName);
+
+    /// go back to the initial state
+    void clear() { reset(nullptr, nullptr); }
+
+    /// logging stream; the only method that uses stderr as the last resort
+    FILE *file() { return file_ ? file_ : stderr; }
+
+    char *name = nullptr;
+
+private:
+    friend void ResyncDebugLog(FILE *newFile);
+
+    FILE *file_ = nullptr; ///< opened "real" file or nil; never stderr
+};
+
+/// configured cache.log file or stderr
+/// safe during static initialization, even if it has not been constructed yet
+static DebugFile TheLog;
+
+FILE *
+DebugStream() {
+    return TheLog.file();
+}
+
 void
-_db_print(const char *format,...)
+StopUsingDebugLog()
+{
+    TheLog.clear();
+}
+
+void
+ResyncDebugLog(FILE *newFile)
+{
+    TheLog.file_ = newFile;
+}
+
+void
+DebugFile::reset(FILE *newFile, const char *newName)
+{
+    // callers must use nullptr instead of the used-as-the-last-resort stderr
+    assert(newFile != stderr || !stderr);
+
+    if (file_)
+        fclose(file_);
+    file_ = newFile; // may be nil
+
+    xfree(name);
+    name = newName ? xstrdup(newName) : nullptr;
+
+    // all open files must have a name
+    // all cleared files must not have a name
+    assert(!file_ == !name);
+}
+
+static
+void
+_db_print(const bool forceAlert, const char *format,...)
 {
     char f[BUFSIZ];
     f[0]='\0';
@@ -103,7 +168,7 @@ _db_print(const char *format,...)
     _db_print_stderr(f, args2);
 
 #if HAVE_SYSLOG
-    _db_print_syslog(format, args3);
+    _db_print_syslog(forceAlert, format, args3);
 #endif
 
 #if _SQUID_WINDOWS_
@@ -143,15 +208,17 @@ _db_print_stderr(const char *format, va_list args)
 
 #if HAVE_SYSLOG
 static void
-_db_print_syslog(const char *format, va_list args)
+_db_print_syslog(const bool forceAlert, const char *format, va_list args)
 {
     /* level 0,1 go to syslog */
 
-    if (Debug::Level() > 1)
-        return;
+    if (!forceAlert) {
+        if (Debug::Level() > 1)
+            return;
 
-    if (!Debug::log_syslog)
-        return;
+        if (!Debug::log_syslog)
+            return;
+    }
 
     char tmpbuf[BUFSIZ];
     tmpbuf[0] = '\0';
@@ -160,7 +227,7 @@ _db_print_syslog(const char *format, va_list args)
 
     tmpbuf[BUFSIZ - 1] = '\0';
 
-    syslog(Debug::Level() == 0 ? LOG_WARNING : LOG_NOTICE, "%s", tmpbuf);
+    syslog(forceAlert ? LOG_ALERT : (Debug::Level() == 0 ? LOG_WARNING : LOG_NOTICE), "%s", tmpbuf);
 }
 #endif /* HAVE_SYSLOG */
 
@@ -208,17 +275,9 @@ static void
 debugOpenLog(const char *logfile)
 {
     if (logfile == NULL) {
-        debug_log = stderr;
+        TheLog.clear();
         return;
     }
-
-    if (debug_log_file)
-        xfree(debug_log_file);
-
-    debug_log_file = xstrdup(logfile);  /* keep a static copy */
-
-    if (debug_log && debug_log != stderr)
-        fclose(debug_log);
 
     // Bug 4423: ignore the stdio: logging module name if present
     const char *logfilename;
@@ -227,19 +286,18 @@ debugOpenLog(const char *logfile)
     else
         logfilename = logfile;
 
-    debug_log = fopen(logfilename, "a+");
-
-    if (!debug_log) {
+    if (auto log = fopen(logfilename, "a+")) {
+#if _SQUID_WINDOWS_
+        setmode(fileno(log), O_TEXT);
+#endif
+        TheLog.reset(log, logfilename);
+    } else {
         fprintf(stderr, "WARNING: Cannot write log file: %s\n", logfile);
         perror(logfile);
         fprintf(stderr, "         messages will be sent to 'stderr'.\n");
         fflush(stderr);
-        debug_log = stderr;
+        TheLog.clear();
     }
-
-#if _SQUID_WINDOWS_
-    setmode(fileno(debug_log), O_TEXT);
-#endif
 }
 
 #if HAVE_SYSLOG
@@ -443,12 +501,12 @@ _db_init(const char *logfile, const char *options)
 void
 _db_rotate_log(void)
 {
-    if (debug_log_file == NULL)
+    if (!TheLog.name)
         return;
 
 #ifdef S_ISREG
     struct stat sb;
-    if (stat(debug_log_file, &sb) == 0)
+    if (stat(TheLog.name, &sb) == 0)
         if (S_ISREG(sb.st_mode) == 0)
             return;
 #endif
@@ -467,37 +525,44 @@ _db_rotate_log(void)
     /* Rotate numbers 0 through N up one */
     for (int i = Debug::rotateNumber; i > 1;) {
         --i;
-        snprintf(from, MAXPATHLEN, "%s.%d", debug_log_file, i - 1);
-        snprintf(to, MAXPATHLEN, "%s.%d", debug_log_file, i);
+        snprintf(from, MAXPATHLEN, "%s.%d", TheLog.name, i - 1);
+        snprintf(to, MAXPATHLEN, "%s.%d", TheLog.name, i);
 #if _SQUID_WINDOWS_
         remove
         (to);
 #endif
-        rename(from, to);
+        errno = 0;
+        if (rename(from, to) == -1) {
+            const auto saved_errno = errno;
+            debugs(0, DBG_IMPORTANT, "log rotation failed: " << xstrerr(saved_errno));
+        }
     }
 
-    /*
-     * You can't rename open files on Microsoft "operating systems"
-     * so we close before renaming.
-     */
-#if _SQUID_WINDOWS_
-    if (debug_log != stderr)
-        fclose(debug_log);
-#endif
     /* Rotate the current log to .0 */
     if (Debug::rotateNumber > 0) {
-        snprintf(to, MAXPATHLEN, "%s.%d", debug_log_file, 0);
+        // form file names before we may clear TheLog below
+        snprintf(from, MAXPATHLEN, "%s", TheLog.name);
+        snprintf(to, MAXPATHLEN, "%s.%d", TheLog.name, 0);
+
 #if _SQUID_WINDOWS_
-        remove
-        (to);
+        errno = 0;
+        if (remove(to) == -1) {
+            const auto saved_errno = errno;
+            debugs(0, DBG_IMPORTANT, "removal of log file " << to << " failed: " << xstrerr(saved_errno));
+        }
+        TheLog.clear(); // Windows cannot rename() open files
 #endif
-        rename(debug_log_file, to);
+        errno = 0;
+        if (rename(from, to) == -1) {
+            const auto saved_errno = errno;
+            debugs(0, DBG_IMPORTANT, "renaming file " << from << " to "
+                   << to << "failed: " << xstrerr(saved_errno));
+        }
     }
 
-    /* Close and reopen the log.  It may have been renamed "manually"
-     * before HUP'ing us. */
-    if (debug_log != stderr)
-        debugOpenLog(Debug::cache_log);
+    // Close (if we have not already) and reopen the log because
+    // it may have been renamed "manually" before HUP'ing us.
+    debugOpenLog(Debug::cache_log);
 }
 
 static const char *
@@ -507,23 +572,27 @@ debugLogTime(void)
     time_t t = getCurrentTime();
 
     struct tm *tm;
-    static char buf[128];
+    static char buf[128]; // arbitrary size, big enough for the below timestamp strings.
     static time_t last_t = 0;
 
     if (Debug::Level() > 1) {
-        char buf2[128];
+        // 4 bytes smaller than buf to ensure .NNN catenation by snprintf()
+        // is safe and works even if strftime() fills its buffer.
+        char buf2[sizeof(buf)-4];
         tm = localtime(&t);
-        strftime(buf2, 127, "%Y/%m/%d %H:%M:%S", tm);
-        buf2[127] = '\0';
-        snprintf(buf, 127, "%s.%03d", buf2, (int) current_time.tv_usec / 1000);
+        strftime(buf2, sizeof(buf2), "%Y/%m/%d %H:%M:%S", tm);
+        buf2[sizeof(buf2)-1] = '\0';
+        const int sz = snprintf(buf, sizeof(buf), "%s.%03d", buf2, static_cast<int>(current_time.tv_usec / 1000));
+        assert(0 < sz && sz < static_cast<int>(sizeof(buf)));
         last_t = t;
     } else if (t != last_t) {
         tm = localtime(&t);
-        strftime(buf, 127, "%Y/%m/%d %H:%M:%S", tm);
+        const int sz = strftime(buf, sizeof(buf), "%Y/%m/%d %H:%M:%S", tm);
+        assert(0 < sz && sz <= static_cast<int>(sizeof(buf)));
         last_t = t;
     }
 
-    buf[127] = '\0';
+    buf[sizeof(buf)-1] = '\0';
     return buf;
 }
 
@@ -682,10 +751,10 @@ ctx_print(void)
 
     if (Ctx_Valid_Level < Ctx_Reported_Level) {
         if (Ctx_Reported_Level != Ctx_Valid_Level + 1)
-            _db_print("ctx: exit levels from %2d down to %2d\n",
+            _db_print(false, "ctx: exit levels from %2d down to %2d\n",
                       Ctx_Reported_Level, Ctx_Valid_Level + 1);
         else
-            _db_print("ctx: exit level %2d\n", Ctx_Reported_Level);
+            _db_print(false, "ctx: exit level %2d\n", Ctx_Reported_Level);
 
         Ctx_Reported_Level = Ctx_Valid_Level;
     }
@@ -694,7 +763,7 @@ ctx_print(void)
     while (Ctx_Reported_Level < Ctx_Current_Level) {
         ++Ctx_Reported_Level;
         ++Ctx_Valid_Level;
-        _db_print("ctx: enter level %2d: '%s'\n", Ctx_Reported_Level,
+        _db_print(false, "ctx: enter level %2d: '%s'\n", Ctx_Reported_Level,
                   ctx_get_descr(Ctx_Reported_Level));
     }
 
@@ -712,12 +781,13 @@ ctx_get_descr(Ctx ctx)
     return Ctx_Descrs[ctx] ? Ctx_Descrs[ctx] : "<null>";
 }
 
-Debug::Context *Debug::Current = NULL;
+Debug::Context *Debug::Current = nullptr;
 
 Debug::Context::Context(const int aSection, const int aLevel):
     level(aLevel),
     sectionLevel(Levels[aSection]),
-    upper(Current)
+    upper(Current),
+    forceAlert(false)
 {
     formatStream();
 }
@@ -752,7 +822,7 @@ Debug::Context::formatStream()
 std::ostringstream &
 Debug::Start(const int section, const int level)
 {
-    Context *future = NULL;
+    Context *future = nullptr;
 
     // prepare future context
     if (Current) {
@@ -774,7 +844,8 @@ void
 Debug::Finish()
 {
     // TODO: Optimize to remove at least one extra copy.
-    _db_print("%s\n", Current->buf.str().c_str());
+    _db_print(Current->forceAlert, "%s\n", Current->buf.str().c_str());
+    Current->forceAlert = false;
 
     Context *past = Current;
     Current = past->upper;
@@ -783,27 +854,32 @@ Debug::Finish()
     // else it was a static topContext from Debug::Start()
 }
 
-size_t
-BuildPrefixInit()
+void
+Debug::ForceAlert()
 {
-    // XXX: This must be kept in sync with the actual debug.cc location
-    const char *ThisFileNameTail = "src/debug.cc";
-
-    const char *file=__FILE__;
-
-    // Disable heuristic if it does not work.
-    if (!strstr(file, ThisFileNameTail))
-        return 0;
-
-    return strlen(file)-strlen(ThisFileNameTail);
+    //  the ForceAlert(ostream) manipulator should only be used inside debugs()
+    if (Current)
+        Current->forceAlert = true;
 }
 
-const char*
-SkipBuildPrefix(const char* path)
+std::ostream&
+ForceAlert(std::ostream& s)
 {
-    static const size_t BuildPrefixLength = BuildPrefixInit();
+    Debug::ForceAlert();
+    return s;
+}
 
-    return path+BuildPrefixLength;
+/// print data bytes using hex notation
+void
+Raw::printHex(std::ostream &os) const
+{
+    const auto savedFill = os.fill('0');
+    const auto savedFlags = os.flags(); // std::ios_base::fmtflags
+    os << std::hex;
+    std::for_each(data_, data_ + size_,
+    [&os](const char &c) { os << std::setw(2) << static_cast<uint8_t>(c); });
+    os.flags(savedFlags);
+    os.fill(savedFill);
 }
 
 std::ostream &
@@ -820,10 +896,14 @@ Raw::print(std::ostream &os) const
                            (size_ > 40 ? DBG_DATA : Debug::SectionLevel());
     if (finalLevel <= Debug::SectionLevel()) {
         os << (label_ ? '=' : ' ');
-        if (data_)
-            os.write(data_, size_);
-        else
+        if (data_) {
+            if (useHex_)
+                printHex(os);
+            else
+                os.write(data_, size_);
+        } else {
             os << "[null]";
+        }
     }
 
     return os;

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -31,34 +31,6 @@ typedef enum {
     PEER_MULTICAST
 } peer_t;
 
-typedef enum {
-    CC_BADHDR = -1,
-    CC_PUBLIC = 0,
-    CC_PRIVATE,
-    CC_NO_CACHE,
-    CC_NO_STORE,
-    CC_NO_TRANSFORM,
-    CC_MUST_REVALIDATE,
-    CC_PROXY_REVALIDATE,
-    CC_MAX_AGE,
-    CC_S_MAXAGE,
-    CC_MAX_STALE,
-    CC_MIN_FRESH,
-    CC_ONLY_IF_CACHED,
-    CC_STALE_IF_ERROR,
-    CC_OTHER,
-    CC_ENUM_END
-} http_hdr_cc_type;
-
-typedef enum {
-    SC_NO_STORE,
-    SC_NO_STORE_REMOTE,
-    SC_MAX_AGE,
-    SC_CONTENT,
-    SC_OTHER,
-    SC_ENUM_END
-} http_hdr_sc_type;
-
 typedef enum _mem_status_t {
     NOT_IN_MEMORY,
     IN_MEMORY
@@ -75,9 +47,16 @@ typedef enum {
     STORE_PENDING
 } store_status_t;
 
+/// StoreEntry relationship with a disk cache
 typedef enum {
+    /// StoreEntry is currently not associated with any disk store entry.
+    /// Does not guarantee (or preclude!) a matching disk store entry existence.
     SWAPOUT_NONE,
+    /// StoreEntry is being swapped out to the associated disk store entry.
+    /// Guarantees the disk store entry existence.
     SWAPOUT_WRITING,
+    /// StoreEntry is associated with a complete (i.e., fully swapped out) disk store entry.
+    /// Guarantees the disk store entry existence.
     SWAPOUT_DONE
 } swap_status_t;
 
@@ -96,12 +75,31 @@ typedef enum {
 enum {
     ENTRY_SPECIAL,
     ENTRY_REVALIDATE_ALWAYS,
+
+    /// Tiny Store writes are likely. The writes should be aggregated together
+    /// before Squid announces the new content availability to the store
+    /// clients. For example, forming a cached HTTP response header may result
+    /// in dozens of StoreEntry::write() calls, many of which adding as little
+    /// as two bytes. Sharing those small writes with the store clients
+    /// increases overhead, especially because the client code can do nothing
+    /// useful with the written content until the whole response header is
+    /// stored. Might be combined with ENTRY_FWD_HDR_WAIT. TODO: Rename to
+    /// ENTRY_DELAY_WHILE_COALESCING to emphasize the difference from and
+    /// similarity with ENTRY_FWD_HDR_WAIT.
     DELAY_SENDING,
-    RELEASE_REQUEST,
+    RELEASE_REQUEST, ///< prohibits making the key public
     REFRESH_REQUEST,
     ENTRY_REVALIDATE_STALE,
     ENTRY_DISPATCHED,
     KEY_PRIVATE,
+
+    /// The current entry response may change. The contents of an entry in this
+    /// state must not be shared with its store clients. For example, Squid
+    /// receives (and buffers) an HTTP/504 response but may decide to retry that
+    /// transaction to receive a successful response from another server
+    /// instead. Might be combined with DELAY_SENDING. TODO: Rename to
+    /// ENTRY_DELAY_WHILE_WOBBLING to emphasize the difference from and
+    /// similarity with DELAY_SENDING.
     ENTRY_FWD_HDR_WAIT,
     ENTRY_NEGCACHED,
     ENTRY_VALIDATED,
@@ -116,12 +114,12 @@ enum {
 typedef enum {
     STREAM_NONE,        /* No particular status */
     STREAM_COMPLETE,        /* All data has been flushed, no more reads allowed */
-    /* an unpredicted end has occured, no more
-     * reads occured, but no need to tell
-     * downstream that an error occured
+    /* an unpredicted end has occurred, no more
+     * reads occurred, but no need to tell
+     * downstream that an error occurred
      */
     STREAM_UNPLANNED_COMPLETE,
-    /* An error has occured in this node or an above one,
+    /* An error has occurred in this node or an above one,
      * and the node is not generating an error body / it's
      * midstream
      */
@@ -142,38 +140,6 @@ enum {
     SNMP_C_COMMUNITY
 };
 #endif /* SQUID_SNMP */
-
-typedef enum {
-    MEM_NONE,
-    MEM_2K_BUF,
-    MEM_4K_BUF,
-    MEM_8K_BUF,
-    MEM_16K_BUF,
-    MEM_32K_BUF,
-    MEM_64K_BUF,
-    MEM_ACL_DENY_INFO_LIST,
-    MEM_ACL_NAME_LIST,
-#if USE_CACHE_DIGESTS
-    MEM_CACHE_DIGEST,
-#endif
-    MEM_CLIENT_INFO,
-    MEM_LINK_LIST,
-    MEM_DLINK_NODE,
-    MEM_DREAD_CTRL,
-    MEM_DWRITE_Q,
-    MEM_HTTP_HDR_CONTENT_RANGE,
-    MEM_MD5_DIGEST,
-    MEM_NETDBENTRY,
-    MEM_NET_DB_NAME,
-    MEM_RELIST,
-    // IMPORTANT: leave this here. pools above are initialized early with memInit()
-    MEM_DONTFREE,
-    // following pools are initialized late by their component if needed (or never)
-    MEM_FQDNCACHE_ENTRY,
-    MEM_IDNS_QUERY,
-    MEM_IPCACHE_ENTRY,
-    MEM_MAX
-} mem_type;
 
 enum {
     STORE_LOG_CREATE,
@@ -238,12 +204,6 @@ typedef enum {
     DIGEST_READ_MASK,
     DIGEST_READ_DONE
 } digest_read_state_t;
-
-/* Distinguish between Request and Reply (for header mangling) */
-enum {
-    ROR_REQUEST,
-    ROR_REPLY
-};
 
 /* CygWin & Windows NT Port */
 #if _SQUID_WINDOWS_

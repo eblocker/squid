@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -7,12 +7,12 @@
  */
 
 #include "squid.h"
+#include "base/PackableStream.h"
 #include "ipc/Messages.h"
 #include "ipc/TypedMsgHdr.h"
 #include "mgr/Registration.h"
-#include "SBufDetailedStats.h"
+#include "sbuf/DetailedStats.h"
 #include "SBufStatsAction.h"
-#include "StoreEntryStream.h"
 
 SBufStatsAction::SBufStatsAction(const Mgr::CommandPointer &cmd_):
     Action(cmd_)
@@ -43,7 +43,7 @@ SBufStatsAction::collect()
 }
 
 static void
-statHistSBufDumper(StoreEntry * sentry, int idx, double val, double size, int count)
+statHistSBufDumper(StoreEntry * sentry, int, double val, double size, int count)
 {
     if (count == 0)
         return;
@@ -53,7 +53,7 @@ statHistSBufDumper(StoreEntry * sentry, int idx, double val, double size, int co
 void
 SBufStatsAction::dump(StoreEntry* entry)
 {
-    StoreEntryStream ses(entry);
+    PackableStream ses(*entry);
     ses << "\n\n\nThese statistics are experimental; their format and contents "
         "should not be relied upon, they are bound to change as "
         "the SBuf feature is evolved\n";

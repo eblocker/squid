@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -25,9 +25,6 @@ void authenticateInit(Auth::ConfigVector *) STUB
 void authenticateRotate(void) STUB
 void authenticateReset(void) STUB
 
-AuthUserHashPointer::AuthUserHashPointer(Auth::User::Pointer anAuth_user) STUB
-Auth::User::Pointer AuthUserHashPointer::user() const STUB_RETVAL(NULL)
-
 #include "auth/Scheme.h"
 #include <vector>
 std::vector<Auth::Scheme::Pointer> *Auth::Scheme::_Schemes = NULL;
@@ -42,14 +39,10 @@ Auth::CredentialState Auth::User::credentials() const STUB_RETVAL(credentials_st
 void Auth::User::credentials(CredentialState) STUB
 void Auth::User::absorb(Auth::User::Pointer) STUB
 Auth::User::~User() STUB_NOP
-void Auth::User::cacheInit(void) STUB
-void Auth::User::CachedACLsReset() STUB
-void Auth::User::cacheCleanup(void *) STUB
 void Auth::User::clearIp() STUB
 void Auth::User::removeIp(Ip::Address) STUB
 void Auth::User::addIp(Ip::Address) STUB
-void Auth::User::addToNameCache() STUB
-void Auth::User::UsernameCacheStats(StoreEntry *) STUB
+void Auth::User::CredentialsCacheStats(StoreEntry *) STUB
 
 #include "auth/UserRequest.h"
 char const * Auth::UserRequest::username() const STUB_RETVAL("stub_username")
@@ -60,8 +53,8 @@ void Auth::UserRequest::operator delete (void *) STUB
 Auth::UserRequest::UserRequest() STUB
 Auth::UserRequest::~UserRequest() STUB
 void Auth::UserRequest::setDenyMessage(char const *) STUB
-char const * Auth::UserRequest::getDenyMessage() STUB_RETVAL("stub")
-char const * Auth::UserRequest::denyMessage(char const * const) STUB_RETVAL("stub")
+char const * Auth::UserRequest::getDenyMessage() const STUB_RETVAL("stub")
+char const * Auth::UserRequest::denyMessage(char const * const) const STUB_RETVAL("stub")
 void authenticateAuthUserRequestRemoveIp(Auth::UserRequest::Pointer, Ip::Address const &) STUB
 void authenticateAuthUserRequestClearIp(Auth::UserRequest::Pointer) STUB
 int authenticateAuthUserRequestIPCount(Auth::UserRequest::Pointer) STUB_RETVAL(0)
@@ -71,8 +64,8 @@ void Auth::UserRequest::addAuthenticationInfoHeader(HttpReply *, int) STUB
 void Auth::UserRequest::addAuthenticationInfoTrailer(HttpReply *, int) STUB
 void Auth::UserRequest::releaseAuthServer() STUB
 const char * Auth::UserRequest::connLastHeader() STUB_RETVAL("stub")
-AuthAclState Auth::UserRequest::authenticate(Auth::UserRequest::Pointer *, http_hdr_type, HttpRequest *, ConnStateData *, Ip::Address &, AccessLogEntry::Pointer &) STUB_RETVAL(AUTH_AUTHENTICATED)
-AuthAclState Auth::UserRequest::tryToAuthenticateAndSetAuthUser(Auth::UserRequest::Pointer *, http_hdr_type, HttpRequest *, ConnStateData *, Ip::Address &, AccessLogEntry::Pointer &) STUB_RETVAL(AUTH_AUTHENTICATED)
+AuthAclState Auth::UserRequest::authenticate(Auth::UserRequest::Pointer *, Http::HdrType, HttpRequest *, ConnStateData *, Ip::Address &, AccessLogEntry::Pointer &) STUB_RETVAL(AUTH_AUTHENTICATED)
+AuthAclState Auth::UserRequest::tryToAuthenticateAndSetAuthUser(Auth::UserRequest::Pointer *, Http::HdrType, HttpRequest *, ConnStateData *, Ip::Address &, AccessLogEntry::Pointer &) STUB_RETVAL(AUTH_AUTHENTICATED)
 void Auth::UserRequest::addReplyAuthHeader(HttpReply *, Auth::UserRequest::Pointer, HttpRequest *, int, int) STUB
 void authenticateFixHeader(HttpReply *, Auth::UserRequest::Pointer, HttpRequest *, int, int) STUB
 void authenticateAddTrailer(HttpReply *, Auth::UserRequest::Pointer, HttpRequest *, int) STUB

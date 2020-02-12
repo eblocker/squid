@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -17,8 +17,8 @@ void WIN32_SetServiceCommandLine(void);
 void WIN32_InstallService(void);
 void WIN32_RemoveService(void);
 #else /* _SQUID_WINDOWS_ */
-inline int WIN32_Subsystem_Init(int *foo, char ***bar) {return 0; } /* NOP */
-inline void WIN32_sendSignal(int foo) { return; } /* NOP */
+inline int WIN32_Subsystem_Init(int *, char ***) {return 0;} /* NOP */
+inline void WIN32_sendSignal(int) {return;} /* NOP */
 inline void WIN32_SetServiceCommandLine(void) {} /* NOP */
 inline void WIN32_InstallService(void) {} /* NOP */
 inline  void WIN32_RemoveService(void) {} /* NOP */

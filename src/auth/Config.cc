@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -71,7 +71,7 @@ Auth::Config::registerWithCacheManager(void)
 {}
 
 void
-Auth::Config::parse(Auth::Config * scheme, int n_configured, char *param_str)
+Auth::Config::parse(Auth::Config * scheme, int, char *param_str)
 {
     if (strcmp(param_str, "program") == 0) {
         if (authenticateProgram)
@@ -155,24 +155,5 @@ Auth::Config::done()
     delete keyExtras;
     keyExtras = NULL;
     keyExtrasLine.clean();
-}
-
-Auth::User::Pointer
-Auth::Config::findUserInCache(const char *nameKey, Auth::Type authType)
-{
-    AuthUserHashPointer *usernamehash;
-    debugs(29, 9, "Looking for user '" << nameKey << "'");
-
-    if (nameKey && (usernamehash = static_cast<AuthUserHashPointer *>(hash_lookup(proxy_auth_username_cache, nameKey)))) {
-        while (usernamehash) {
-            if ((usernamehash->user()->auth_type == authType) &&
-                    !strcmp(nameKey, (char const *)usernamehash->key))
-                return usernamehash->user();
-
-            usernamehash = static_cast<AuthUserHashPointer *>(usernamehash->next);
-        }
-    }
-
-    return NULL;
 }
 

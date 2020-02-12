@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -9,26 +9,21 @@
 #ifndef SQUID_TRANSIENTS_H
 #define SQUID_TRANSIENTS_H
 
-#include "http/MethodType.h"
 #include "ipc/mem/Page.h"
 #include "ipc/mem/PageStack.h"
 #include "ipc/StoreMap.h"
 #include "Store.h"
+#include "store/Controlled.h"
+#include "store/forward.h"
 #include <vector>
 
-// StoreEntry restoration info not already stored by Ipc::StoreMap
-struct TransientsMapExtraItem {
-    char url[MAX_URL+1]; ///< Request-URI; TODO: decrease MAX_URL by one
-    RequestFlags reqFlags; ///< request flags
-    Http::MethodType reqMethod; ///< request method; extensions are not supported
-};
-typedef Ipc::StoreMapItems<TransientsMapExtraItem> TransientsMapExtras;
 typedef Ipc::StoreMap TransientsMap;
 
 /// Keeps track of store entries being delivered to clients that arrived before
-/// those entries were [fully] cached. This shared table is necessary to sync
-/// the entry-writing worker with entry-reading worker(s).
-class Transients: public Store, public Ipc::StoreMapCleaner
+/// those entries were [fully] cached. This SMP-shared table is necessary to
+/// * sync an entry-writing worker with entry-reading worker(s); and
+/// * sync an entry-deleting worker with both entry-reading/writing workers.
+class Transients: public Store::Controlled, public Ipc::StoreMapCleaner
 {
 public:
     Transients();
@@ -37,64 +32,66 @@ public:
     /// return a local, previously collapsed entry
     StoreEntry *findCollapsed(const sfileno xitIndex);
 
-    /// add an in-transit entry suitable for collapsing future requests
-    void startWriting(StoreEntry *e, const RequestFlags &reqFlags, const HttpRequestMethod &reqMethod);
+    /// start listening for remote DELETE requests targeting either a complete
+    /// StoreEntry (ioReading) or a being-formed miss StoreEntry (ioWriting)
+    void monitorIo(StoreEntry*, const cache_key*, const Store::IoStatus);
 
     /// called when the in-transit entry has been successfully cached
     void completeWriting(const StoreEntry &e);
 
-    /// the calling entry writer no longer expects to cache this entry
-    void abandon(const StoreEntry &e);
-
-    /// whether an in-transit entry is now abandoned by its writer
-    bool abandoned(const StoreEntry &e) const;
+    /// copies current shared entry metadata into parameters
+    /// \param aborted whether the entry was aborted
+    /// \param waitingToBeFreed whether the entry was marked for deletion
+    void status(const StoreEntry &e, bool &aborted, bool &waitingToBeFreed) const;
 
     /// number of entry readers some time ago
     int readers(const StoreEntry &e) const;
 
-    /// the caller is done writing or reading this entry
-    void disconnect(MemObject &mem_obj);
+    /// the caller is done writing or reading the given entry
+    void disconnect(StoreEntry &);
 
     /* Store API */
-    virtual int callback();
-    virtual StoreEntry * get(const cache_key *);
-    virtual void get(String const key , STOREGETCLIENT callback, void *cbdata);
-    virtual void init();
-    virtual uint64_t maxSize() const;
-    virtual uint64_t minSize() const;
-    virtual uint64_t currentSize() const;
-    virtual uint64_t currentCount() const;
-    virtual int64_t maxObjectSize() const;
-    virtual void getStats(StoreInfoStats &stats) const;
-    virtual void stat(StoreEntry &) const;
-    virtual StoreSearch *search(String const url, HttpRequest *);
-    virtual void reference(StoreEntry &);
-    virtual bool dereference(StoreEntry &, bool);
-    virtual void markForUnlink(StoreEntry &e);
-    virtual void maintain();
-    virtual bool smpAware() const { return true; }
+    virtual StoreEntry *get(const cache_key *) override;
+    virtual void create() override {}
+    virtual void init() override;
+    virtual uint64_t maxSize() const override;
+    virtual uint64_t minSize() const override;
+    virtual uint64_t currentSize() const override;
+    virtual uint64_t currentCount() const override;
+    virtual int64_t maxObjectSize() const override;
+    virtual void getStats(StoreInfoStats &stats) const override;
+    virtual void stat(StoreEntry &e) const override;
+    virtual void reference(StoreEntry &e) override;
+    virtual bool dereference(StoreEntry &e) override;
+    virtual void evictCached(StoreEntry &) override;
+    virtual void evictIfFound(const cache_key *) override;
+    virtual void maintain() override;
+    virtual bool smpAware() const override { return true; }
+
+    /// Whether an entry with the given public key exists and (but) was
+    /// marked for removal some time ago; get(key) returns nil in such cases.
+    bool markedForDeletion(const cache_key *) const;
+
+    /// whether the entry is in "reading from Transients" I/O state
+    bool isReader(const StoreEntry &) const;
+    /// whether the entry is in "writing to Transients" I/O state
+    bool isWriter(const StoreEntry &) const;
 
     static int64_t EntryLimit();
 
 protected:
-    StoreEntry *copyFromShm(const sfileno index);
-    bool copyToShm(const StoreEntry &e, const sfileno index, const RequestFlags &reqFlags, const HttpRequestMethod &reqMethod);
-
-    bool abandonedAt(const sfileno index) const;
+    void addEntry(StoreEntry*, const cache_key *, const Store::IoStatus);
 
     // Ipc::StoreMapCleaner API
-    virtual void noteFreeMapSlice(const Ipc::StoreMapSliceId sliceId);
+    virtual void noteFreeMapSlice(const Ipc::StoreMapSliceId sliceId) override;
 
 private:
     /// shared packed info indexed by Store keys, for creating new StoreEntries
     TransientsMap *map;
 
-    /// shared packed info that standard StoreMap does not store for us
-    typedef TransientsMapExtras Extras;
-    Ipc::Mem::Pointer<Extras> extras;
-
     typedef std::vector<StoreEntry*> Locals;
-    /// local collapsed entries indexed by transient ID, for syncing old StoreEntries
+    /// local collapsed reader and writer entries, indexed by transient ID,
+    /// for syncing old StoreEntries
     Locals *locals;
 };
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -19,8 +19,10 @@
 #include "fde.h"
 #include "format/Token.h"
 #include "globals.h"
+#include "http/Stream.h"
 #include "HttpRequest.h"
 #include "IoStats.h"
+#include "mem/Pool.h"
 #include "mem_node.h"
 #include "MemBuf.h"
 #include "MemObject.h"
@@ -42,6 +44,8 @@
 #include "store_digest.h"
 #include "StoreClient.h"
 #include "tools.h"
+// for tvSubDsec() which should be in SquidTime.h
+#include "util.h"
 #if USE_AUTH
 #include "auth/UserRequest.h"
 #endif
@@ -65,14 +69,12 @@ typedef int STOBJFLT(const StoreEntry *);
 
 class StatObjectsState
 {
+    CBDATA_CLASS(StatObjectsState);
 
 public:
     StoreEntry *sentry;
     STOBJFLT *filter;
     StoreSearchPointer theSearch;
-
-private:
-    CBDATA_CLASS2(StatObjectsState);
 };
 
 /* LOCALS */
@@ -82,10 +84,6 @@ static void statAvgDump(StoreEntry *, int minutes, int hours);
 #if STAT_GRAPHS
 static void statGraphDump(StoreEntry *);
 #endif
-static void statCountersInit(StatCounters *);
-static void statCountersInitSpecial(StatCounters *);
-static void statCountersClean(StatCounters *);
-static void statCountersCopy(StatCounters * dest, const StatCounters * orig);
 static double statPctileSvc(double, int, int);
 static void statStoreEntry(MemBuf * mb, StoreEntry * e);
 static double statCPUUsage(int minutes);
@@ -331,21 +329,17 @@ static void
 statStoreEntry(MemBuf * mb, StoreEntry * e)
 {
     MemObject *mem = e->mem_obj;
-    mb->Printf("KEY %s\n", e->getMD5Text());
-    mb->Printf("\t%s\n", describeStatuses(e));
-    mb->Printf("\t%s\n", storeEntryFlags(e));
-    mb->Printf("\t%s\n", e->describeTimestamps());
-    mb->Printf("\t%d locks, %d clients, %d refs\n",
-               (int) e->locks(),
-               storePendingNClients(e),
-               (int) e->refcount);
-    mb->Printf("\tSwap Dir %d, File %#08X\n",
-               e->swap_dirn, e->swap_filen);
+    mb->appendf("KEY %s\n", e->getMD5Text());
+    mb->appendf("\t%s\n", describeStatuses(e));
+    mb->appendf("\t%s\n", storeEntryFlags(e));
+    mb->appendf("\t%s\n", e->describeTimestamps());
+    mb->appendf("\t%d locks, %d clients, %d refs\n", (int) e->locks(), storePendingNClients(e), (int) e->refcount);
+    mb->appendf("\tSwap Dir %d, File %#08X\n", e->swap_dirn, e->swap_filen);
 
     if (mem != NULL)
         mem->stat (mb);
 
-    mb->Printf("\n");
+    mb->append("\n", 1);
 }
 
 /* process objects list */
@@ -402,7 +396,7 @@ statObjectsStart(StoreEntry * sentry, STOBJFLT * filter)
     state->filter = filter;
 
     sentry->lock("statObjects");
-    state->theSearch = Store::Root().search(NULL, NULL);
+    state->theSearch = Store::Root().search();
 
     eventAdd("statObjects", statObjects, state, 0.0, 1);
 }
@@ -797,7 +791,6 @@ void
 DumpMallocStatistics(StoreEntry* sentry)
 {
 #if XMALLOC_STATISTICS
-
     xm_deltat = current_dtime - xm_time;
     xm_time = current_dtime;
     storeAppendPrintf(sentry, "\nMemory allocation statistics\n");
@@ -1210,7 +1203,7 @@ statRegisterWithCacheManager(void)
 #if USE_AUTH
     Mgr::RegisterAction("username_cache",
                         "Active Cached Usernames",
-                        Auth::User::UsernameCacheStats, 0, 1);
+                        Auth::User::CredentialsCacheStats, 0, 1);
 #endif
 #if DEBUG_OPENFD
     Mgr::RegisterAction("openfd_objects", "Objects with Swapout files open",
@@ -1220,98 +1213,6 @@ statRegisterWithCacheManager(void)
     Mgr::RegisterAction("graph_variables", "Display cache metrics graphically",
                         statGraphDump, 0, 1);
 #endif
-}
-
-void
-statInit(void)
-{
-    int i;
-    debugs(18, 5, "statInit: Initializing...");
-
-    for (i = 0; i < N_COUNT_HIST; ++i)
-        statCountersInit(&CountHist[i]);
-
-    for (i = 0; i < N_COUNT_HOUR_HIST; ++i)
-        statCountersInit(&CountHourHist[i]);
-
-    statCountersInit(&statCounter);
-
-    eventAdd("statAvgTick", statAvgTick, NULL, (double) COUNT_INTERVAL, 1);
-
-    ClientActiveRequests.head = NULL;
-
-    ClientActiveRequests.tail = NULL;
-
-    statRegisterWithCacheManager();
-}
-
-static void
-statAvgTick(void *notused)
-{
-    StatCounters *t = &CountHist[0];
-    StatCounters *p = &CountHist[1];
-    StatCounters *c = &statCounter;
-
-    struct rusage rusage;
-    eventAdd("statAvgTick", statAvgTick, NULL, (double) COUNT_INTERVAL, 1);
-    squid_getrusage(&rusage);
-    c->page_faults = rusage_pagefaults(&rusage);
-    c->cputime = rusage_cputime(&rusage);
-    c->timestamp = current_time;
-    /* even if NCountHist is small, we already Init()ed the tail */
-    statCountersClean(CountHist + N_COUNT_HIST - 1);
-    memmove(p, t, (N_COUNT_HIST - 1) * sizeof(StatCounters));
-    statCountersCopy(t, c);
-    ++NCountHist;
-
-    if ((NCountHist % COUNT_INTERVAL) == 0) {
-        /* we have an hours worth of readings.  store previous hour */
-        StatCounters *t2 = &CountHourHist[0];
-        StatCounters *p2 = &CountHourHist[1];
-        StatCounters *c2 = &CountHist[N_COUNT_HIST - 1];
-        statCountersClean(CountHourHist + N_COUNT_HOUR_HIST - 1);
-        memmove(p2, t2, (N_COUNT_HOUR_HIST - 1) * sizeof(StatCounters));
-        statCountersCopy(t2, c2);
-        ++NCountHourHist;
-    }
-
-    if (Config.warnings.high_rptm > 0) {
-        int i = (int) statPctileSvc(0.5, 20, PCTILE_HTTP);
-
-        if (Config.warnings.high_rptm < i)
-            debugs(18, DBG_CRITICAL, "WARNING: Median response time is " << i << " milliseconds");
-    }
-
-    if (Config.warnings.high_pf) {
-        int i = (CountHist[0].page_faults - CountHist[1].page_faults);
-        double dt = tvSubDsec(CountHist[0].timestamp, CountHist[1].timestamp);
-
-        if (i > 0 && dt > 0.0) {
-            i /= (int) dt;
-
-            if (Config.warnings.high_pf < i)
-                debugs(18, DBG_CRITICAL, "WARNING: Page faults occuring at " << i << "/sec");
-        }
-    }
-
-    if (Config.warnings.high_memory) {
-        size_t i = 0;
-#if HAVE_MSTATS && HAVE_GNUMALLOC_H
-        struct mstats ms = mstats();
-        i = ms.bytes_total;
-#endif
-        if (Config.warnings.high_memory < i)
-            debugs(18, DBG_CRITICAL, "WARNING: Memory usage at " << ((unsigned long int)(i >> 20)) << " MB");
-    }
-}
-
-static void
-statCountersInit(StatCounters * C)
-{
-    assert(C);
-    memset(C, 0, sizeof(*C));
-    C->timestamp = current_time;
-    statCountersInitSpecial(C);
 }
 
 /* add special cases here as they arrive */
@@ -1345,51 +1246,89 @@ statCountersInitSpecial(StatCounters * C)
     C->select_fds_hist.enumInit(256);   /* was SQUID_MAXFD, but it is way too much. It is OK to crop this statistics */
 }
 
-/* add special cases here as they arrive */
 static void
-statCountersClean(StatCounters * C)
+statCountersInit(StatCounters * C)
 {
     assert(C);
-    C->client_http.allSvcTime.clear();
-    C->client_http.missSvcTime.clear();
-    C->client_http.nearMissSvcTime.clear();
-    C->client_http.nearHitSvcTime.clear();
-    C->client_http.hitSvcTime.clear();
-    C->icp.querySvcTime.clear();
-    C->icp.replySvcTime.clear();
-    C->dns.svcTime.clear();
-    C->cd.on_xition_count.clear();
-    C->comm_udp_incoming.clear();
-    C->comm_dns_incoming.clear();
-    C->comm_tcp_incoming.clear();
-    C->select_fds_hist.clear();
+    *C = StatCounters();
+    statCountersInitSpecial(C);
 }
 
-/* add special cases here as they arrive */
-static void
-statCountersCopy(StatCounters * dest, const StatCounters * orig)
+void
+statInit(void)
 {
-    assert(dest && orig);
-    /* this should take care of all the fields, but "special" ones */
-    memcpy(dest, orig, sizeof(*dest));
-    /* prepare space where to copy special entries */
-    statCountersInitSpecial(dest);
-    /* now handle special cases */
-    /* note: we assert that histogram capacities do not change */
-    dest->client_http.allSvcTime=orig->client_http.allSvcTime;
-    dest->client_http.missSvcTime=orig->client_http.missSvcTime;
-    dest->client_http.nearMissSvcTime=orig->client_http.nearMissSvcTime;
-    dest->client_http.nearHitSvcTime=orig->client_http.nearHitSvcTime;
+    int i;
+    debugs(18, 5, "statInit: Initializing...");
 
-    dest->client_http.hitSvcTime=orig->client_http.hitSvcTime;
-    dest->icp.querySvcTime=orig->icp.querySvcTime;
-    dest->icp.replySvcTime=orig->icp.replySvcTime;
-    dest->dns.svcTime=orig->dns.svcTime;
-    dest->cd.on_xition_count=orig->cd.on_xition_count;
-    dest->comm_udp_incoming=orig->comm_udp_incoming;
-    dest->comm_dns_incoming=orig->comm_dns_incoming;
-    dest->comm_tcp_incoming=orig->comm_tcp_incoming;
-    dest->select_fds_hist=orig->select_fds_hist;
+    for (i = 0; i < N_COUNT_HIST; ++i)
+        statCountersInit(&CountHist[i]);
+
+    for (i = 0; i < N_COUNT_HOUR_HIST; ++i)
+        statCountersInit(&CountHourHist[i]);
+
+    statCountersInit(&statCounter);
+
+    eventAdd("statAvgTick", statAvgTick, NULL, (double) COUNT_INTERVAL, 1);
+
+    ClientActiveRequests.head = NULL;
+
+    ClientActiveRequests.tail = NULL;
+
+    statRegisterWithCacheManager();
+}
+
+static void
+statAvgTick(void *)
+{
+    struct rusage rusage;
+    eventAdd("statAvgTick", statAvgTick, NULL, (double) COUNT_INTERVAL, 1);
+    squid_getrusage(&rusage);
+    statCounter.page_faults = rusage_pagefaults(&rusage);
+    statCounter.cputime = rusage_cputime(&rusage);
+    statCounter.timestamp = current_time;
+    // shift all elements right and prepend statCounter
+    for(int i = N_COUNT_HIST-1; i > 0; --i)
+        CountHist[i] = CountHist[i-1];
+    CountHist[0] = statCounter;
+    ++NCountHist;
+
+    if ((NCountHist % COUNT_INTERVAL) == 0) {
+        /* we have an hours worth of readings.  store previous hour */
+        // shift all elements right and prepend final CountHist element
+        for(int i = N_COUNT_HOUR_HIST-1; i > 0; --i)
+            CountHourHist[i] = CountHourHist[i-1];
+        CountHourHist[0] = CountHist[N_COUNT_HIST - 1];
+        ++NCountHourHist;
+    }
+
+    if (Config.warnings.high_rptm > 0) {
+        int i = (int) statPctileSvc(0.5, 20, PCTILE_HTTP);
+
+        if (Config.warnings.high_rptm < i)
+            debugs(18, DBG_CRITICAL, "WARNING: Median response time is " << i << " milliseconds");
+    }
+
+    if (Config.warnings.high_pf) {
+        int i = (CountHist[0].page_faults - CountHist[1].page_faults);
+        double dt = tvSubDsec(CountHist[0].timestamp, CountHist[1].timestamp);
+
+        if (i > 0 && dt > 0.0) {
+            i /= (int) dt;
+
+            if (Config.warnings.high_pf < i)
+                debugs(18, DBG_CRITICAL, "WARNING: Page faults occurring at " << i << "/sec");
+        }
+    }
+
+    if (Config.warnings.high_memory) {
+        size_t i = 0;
+#if HAVE_MSTATS && HAVE_GNUMALLOC_H
+        struct mstats ms = mstats();
+        i = ms.bytes_total;
+#endif
+        if (Config.warnings.high_memory < i)
+            debugs(18, DBG_CRITICAL, "WARNING: Memory usage at " << ((unsigned long int)(i >> 20)) << " MB");
+    }
 }
 
 static void
@@ -1627,13 +1566,12 @@ DumpCountersStats(Mgr::CountersActionData& stats, StoreEntry* sentry)
 void
 statFreeMemory(void)
 {
-    int i;
+    // TODO: replace with delete[]
+    for (int i = 0; i < N_COUNT_HIST; ++i)
+        CountHist[i] = StatCounters();
 
-    for (i = 0; i < N_COUNT_HIST; ++i)
-        statCountersClean(&CountHist[i]);
-
-    for (i = 0; i < N_COUNT_HOUR_HIST; ++i)
-        statCountersClean(&CountHourHist[i]);
+    for (int i = 0; i < N_COUNT_HOUR_HIST; ++i)
+        CountHourHist[i] = StatCounters();
 }
 
 static void
@@ -1851,17 +1789,16 @@ statClientRequests(StoreEntry * s)
                               fd_table[fd].bytes_read, fd_table[fd].bytes_written);
             storeAppendPrintf(s, "\tFD desc: %s\n", fd_table[fd].desc);
             storeAppendPrintf(s, "\tin: buf %p, used %ld, free %ld\n",
-                              conn->in.buf.c_str(), (long int) conn->in.buf.length(), (long int) conn->in.buf.spaceSize());
+                              conn->inBuf.rawContent(), (long int) conn->inBuf.length(), (long int) conn->inBuf.spaceSize());
             storeAppendPrintf(s, "\tremote: %s\n",
                               conn->clientConnection->remote.toUrl(buf,MAX_IPSTRLEN));
             storeAppendPrintf(s, "\tlocal: %s\n",
                               conn->clientConnection->local.toUrl(buf,MAX_IPSTRLEN));
-            storeAppendPrintf(s, "\tnrequests: %d\n",
-                              conn->nrequests);
+            storeAppendPrintf(s, "\tnrequests: %u\n", conn->pipeline.nrequests);
         }
 
         storeAppendPrintf(s, "uri %s\n", http->uri);
-        storeAppendPrintf(s, "logType %s\n", LogTags_str[http->logType]);
+        storeAppendPrintf(s, "logType %s\n", http->logType.c_str());
         storeAppendPrintf(s, "out.offset %ld, out.size %lu\n",
                           (long int) http->out.offset, (unsigned long int) http->out.size);
         storeAppendPrintf(s, "req_sz %ld\n", (long int) http->req_sz);
@@ -1884,10 +1821,8 @@ statClientRequests(StoreEntry * s)
             p = conn->clientConnection->rfc931;
 
 #if USE_OPENSSL
-
         if (!p && conn != NULL && Comm::IsConnOpen(conn->clientConnection))
-            p = sslGetUserEmail(fd_table[conn->clientConnection->fd].ssl);
-
+            p = sslGetUserEmail(fd_table[conn->clientConnection->fd].ssl.get());
 #endif
 
         if (!p)

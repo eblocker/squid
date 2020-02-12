@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -11,9 +11,11 @@
 #ifndef SQUID_NEIGHBORS_H_
 #define SQUID_NEIGHBORS_H_
 
+#include "anyp/forward.h"
 #include "enums.h"
 #include "ICP.h"
 #include "lookup_t.h"
+#include "typedefs.h" //for IRCB
 
 class HttpRequest;
 class HttpRequestMethod;
@@ -51,13 +53,19 @@ CachePeer *neighborsDigestSelect(HttpRequest * request);
 void peerNoteDigestLookup(HttpRequest * request, CachePeer * p, lookup_t lookup);
 void peerNoteDigestGone(CachePeer * p);
 int neighborUp(const CachePeer * e);
-CBDUNL peerDestroy;
 const char *neighborTypeStr(const CachePeer * e);
-peer_t neighborType(const CachePeer *, const HttpRequest *);
+peer_t neighborType(const CachePeer *, const AnyP::Uri &);
 void peerConnectFailed(CachePeer *);
 void peerConnectSucceded(CachePeer *);
 void dump_peer_options(StoreEntry *, CachePeer *);
 int peerHTTPOkay(const CachePeer *, HttpRequest *);
+
+// TODO: Consider moving this method to CachePeer class.
+/// \returns the effective connect timeout for the given peer
+time_t peerConnectTimeout(const CachePeer *peer);
+
+/// \returns max(1, timeout)
+time_t positiveTimeout(const time_t timeout);
 
 /// Whether we can open new connections to the peer (e.g., despite max-conn)
 bool peerCanOpenMore(const CachePeer *p);

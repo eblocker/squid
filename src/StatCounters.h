@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -9,6 +9,7 @@
 #ifndef STATCOUNTERS_H_
 #define STATCOUNTERS_H_
 
+#include "base/ByteCounter.h"
 #include "StatHist.h"
 
 #if USE_CACHE_DIGESTS
@@ -16,32 +17,34 @@
 class CacheDigestGuessStats
 {
 public:
-    int trueHits;
-    int falseHits;
-    int trueMisses;
-    int falseMisses;
-    int closeHits;     /// \todo: temporary remove it later
+    int trueHits = 0;
+    int falseHits = 0;
+    int trueMisses = 0;
+    int falseMisses = 0;
+    int closeHits = 0;     /// \todo: temporary remove it later
 };
 #endif
 
 /** General collection of process-wide statistics.
  *
- * \note if you add a field to StatCounters,
- * you MUST sync statCountersInitSpecial, statCountersClean, and statCountersCopy
+ * \note if you add a field to StatCounters which requires any non-trivial
+ *  initialization or copy you MUST sync statCountersInitSpecial()
  */
 class StatCounters
 {
 public:
+    StatCounters() : timestamp(current_time) {}
+
     struct {
-        int clients;
-        int requests;
-        int hits;
-        int mem_hits;
-        int disk_hits;
-        int errors;
-        kb_t kbytes_in;
-        kb_t kbytes_out;
-        kb_t hit_kbytes_out;
+        int clients = 0;
+        int requests = 0;
+        int hits = 0;
+        int mem_hits = 0;
+        int disk_hits = 0;
+        int errors = 0;
+        ByteCounter kbytes_in;
+        ByteCounter kbytes_out;
+        ByteCounter hit_kbytes_out;
         StatHist missSvcTime;
         StatHist nearMissSvcTime;
         StatHist nearHitSvcTime;
@@ -52,43 +55,43 @@ public:
     struct {
 
         struct {
-            int requests;
-            int errors;
-            kb_t kbytes_in;
-            kb_t kbytes_out;
+            int requests = 0;
+            int errors = 0;
+            ByteCounter kbytes_in;
+            ByteCounter kbytes_out;
         } all , http, ftp, other;
     } server;
 
     struct {
-        int pkts_sent;
-        int queries_sent;
-        int replies_sent;
-        int pkts_recv;
-        int queries_recv;
-        int replies_recv;
-        int hits_sent;
-        int hits_recv;
-        int replies_queued;
-        int replies_dropped;
-        kb_t kbytes_sent;
-        kb_t q_kbytes_sent;
-        kb_t r_kbytes_sent;
-        kb_t kbytes_recv;
-        kb_t q_kbytes_recv;
-        kb_t r_kbytes_recv;
+        int pkts_sent = 0;
+        int queries_sent = 0;
+        int replies_sent = 0;
+        int pkts_recv = 0;
+        int queries_recv = 0;
+        int replies_recv = 0;
+        int hits_sent = 0;
+        int hits_recv = 0;
+        int replies_queued = 0;
+        int replies_dropped = 0;
+        ByteCounter kbytes_sent;
+        ByteCounter q_kbytes_sent;
+        ByteCounter r_kbytes_sent;
+        ByteCounter kbytes_recv;
+        ByteCounter q_kbytes_recv;
+        ByteCounter r_kbytes_recv;
         StatHist querySvcTime;
         StatHist replySvcTime;
-        int query_timeouts;
-        int times_used;
+        int query_timeouts = 0;
+        int times_used = 0;
     } icp;
 
     struct {
-        int pkts_sent;
-        int pkts_recv;
+        int pkts_sent = 0;
+        int pkts_recv = 0;
     } htcp;
 
     struct {
-        int requests;
+        int requests = 0;
     } unlink;
 
     struct {
@@ -96,28 +99,26 @@ public:
     } dns;
 
     struct {
-        int times_used;
-        kb_t kbytes_sent;
-        kb_t kbytes_recv;
-        kb_t memory;
-        int msgs_sent;
-        int msgs_recv;
+        int times_used = 0;
+        ByteCounter kbytes_sent;
+        ByteCounter kbytes_recv;
+        ByteCounter memory;
+        int msgs_sent = 0;
+        int msgs_recv = 0;
 #if USE_CACHE_DIGESTS
-
         CacheDigestGuessStats guess;
 #endif
-
         StatHist on_xition_count;
     } cd;
 
     struct {
-        int times_used;
+        int times_used = 0;
     } netdb;
-    int page_faults;
-    unsigned long int select_loops;
-    int select_fds;
-    double select_time;
-    double cputime;
+    int page_faults = 0;
+    unsigned long int select_loops = 0;
+    int select_fds = 0;
+    double select_time = 0.0;
+    double cputime = 0.0;
 
     struct timeval timestamp;
     StatHist comm_udp_incoming;
@@ -127,36 +128,34 @@ public:
 
     struct {
         struct {
-            int opens;
-            int closes;
-            int reads;
-            int writes;
-            int seeks;
-            int unlinks;
+            int opens = 0;
+            int closes = 0;
+            int reads = 0;
+            int writes = 0;
+            int seeks = 0;
+            int unlinks = 0;
         } disk;
 
         struct {
-            int accepts;
-            int sockets;
-            int connects;
-            int binds;
-            int closes;
-            int reads;
-            int writes;
-            int recvfroms;
-            int sendtos;
+            int accepts = 0;
+            int sockets = 0;
+            int connects = 0;
+            int binds = 0;
+            int closes = 0;
+            int reads = 0;
+            int writes = 0;
+            int recvfroms = 0;
+            int sendtos = 0;
         } sock;
-        int selects;
+        int selects = 0;
     } syscalls;
-    int aborted_requests;
+    int aborted_requests = 0;
 
     struct {
-        int files_cleaned;
-        int outs;
-        int ins;
+        int files_cleaned = 0;
+        int outs = 0;
+        int ins = 0;
     } swap;
-
-private:
 };
 
 extern StatCounters statCounter;

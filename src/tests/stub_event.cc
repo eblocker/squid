@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -21,10 +21,7 @@ int eventFind(EVH *, void *) STUB_RETVAL(-1)
 
 // ev_entry::ev_entry(char const * name, EVH * func, void *arg, double when, int weight, bool cbdata) STUB
 // ev_entry::~ev_entry() STUB
-//    MEMPROXY_CLASS(ev_entry);
 //    EVH *func;
-
-//MEMPROXY_CLASS_INLINE(ev_entry);
 
 EventScheduler::EventScheduler() STUB
 EventScheduler::~EventScheduler() STUB

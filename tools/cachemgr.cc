@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -294,7 +294,8 @@ auth_html(const char *host, int port, const char *user_name)
 
         while (fgets(config_line, BUFSIZ, fp)) {
             char *server, *comment;
-            strtok(config_line, "\r\n");
+            if (strtok(config_line, "\r\n") == nullptr)
+                continue;
 
             if (config_line[0] == '#')
                 continue;
@@ -440,7 +441,7 @@ munge_menu_line(MemBuf &out, const char *buf, cachemgr_request * req)
         return;
     }
 
-    buf_copy = x = xstrndup(buf, bufLen);
+    buf_copy = x = xstrndup(buf, bufLen+1);
 
     a = xstrtok(&x, '\t');
 
@@ -452,25 +453,25 @@ munge_menu_line(MemBuf &out, const char *buf, cachemgr_request * req)
 
     /* no reason to give a url for a disabled action */
     if (!strcmp(p, "disabled"))
-        out.Printf("<LI type=\"circle\">%s (disabled)<A HREF=\"%s\">.</A>\n", d, a_url);
+        out.appendf("<LI type=\"circle\">%s (disabled)<A HREF=\"%s\">.</A>\n", d, a_url);
     else
         /* disable a hidden action (requires a password, but password is not in squid.conf) */
         if (!strcmp(p, "hidden"))
-            out.Printf("<LI type=\"circle\">%s (hidden)<A HREF=\"%s\">.</A>\n", d, a_url);
+            out.appendf("<LI type=\"circle\">%s (hidden)<A HREF=\"%s\">.</A>\n", d, a_url);
         else
             /* disable link if authentication is required and we have no password */
             if (!strcmp(p, "protected") && !req->passwd)
-                out.Printf("<LI type=\"circle\">%s (requires <a href=\"%s\">authentication</a>)<A HREF=\"%s\">.</A>\n",
-                           d, menu_url(req, "authenticate"), a_url);
+                out.appendf("<LI type=\"circle\">%s (requires <a href=\"%s\">authentication</a>)<A HREF=\"%s\">.</A>\n",
+                            d, menu_url(req, "authenticate"), a_url);
             else
                 /* highlight protected but probably available entries */
                 if (!strcmp(p, "protected"))
-                    out.Printf("<LI type=\"square\"><A HREF=\"%s\"><font color=\"#FF0000\">%s</font></A>\n",
-                               a_url, d);
+                    out.appendf("<LI type=\"square\"><A HREF=\"%s\"><font color=\"#FF0000\">%s</font></A>\n",
+                                a_url, d);
 
     /* public entry or unknown type of protection */
                 else
-                    out.Printf("<LI type=\"disk\"><A HREF=\"%s\">%s</A>\n", a_url, d);
+                    out.appendf("<LI type=\"disk\"><A HREF=\"%s\">%s</A>\n", a_url, d);
 
     xfree(a_url);
 
@@ -494,7 +495,7 @@ munge_other_line(MemBuf &out, const char *buf, cachemgr_request *)
         /* nope, just text */
         if (table_line_num)
             out.append("</table>\n<pre>", 14);
-        out.Printf("%s", html_quote(buf));
+        out.appendf("%s", html_quote(buf));
         table_line_num = 0;
         return;
     }
@@ -528,10 +529,10 @@ munge_other_line(MemBuf &out, const char *buf, cachemgr_request *)
             ++x;
         }
 
-        out.Printf("<%s colspan=\"%d\" align=\"%s\">%s</%s>",
-                   ttag, column_span,
-                   is_header ? "center" : is_number(cell) ? "right" : "left",
-                   html_quote(cell), ttag);
+        out.appendf("<%s colspan=\"%d\" align=\"%s\">%s</%s>",
+                    ttag, column_span,
+                    is_header ? "center" : is_number(cell) ? "right" : "left",
+                    html_quote(cell), ttag);
     }
 
     xfree(buf_copy);
@@ -820,16 +821,16 @@ process_request(cachemgr_request * req)
 #else
     if ((s = socket(PF_INET, SOCK_STREAM, 0)) < 0) {
 #endif
-        snprintf(buf, sizeof(buf), "socket: %s\n", xstrerror());
+        int xerrno = errno;
+        snprintf(buf, sizeof(buf), "socket: %s\n", xstrerr(xerrno));
         error_html(buf);
         Ip::Address::FreeAddr(AI);
         return 1;
     }
 
     if (connect(s, AI->ai_addr, AI->ai_addrlen) < 0) {
-        snprintf(buf, sizeof(buf), "connect %s: %s\n",
-                 S.toUrl(ipbuf,MAX_IPSTRLEN),
-                 xstrerror());
+        int xerrno = errno;
+        snprintf(buf, sizeof(buf), "connect %s: %s\n", S.toUrl(ipbuf,MAX_IPSTRLEN), xstrerr(xerrno));
         error_html(buf);
         Ip::Address::FreeAddr(AI);
         close(s);
@@ -1079,7 +1080,11 @@ make_pub_auth(cachemgr_request * req)
 
     const int encodedLen = base64_encode_len(bufLen);
     req->pub_auth = (char *) xmalloc(encodedLen);
-    base64_encode_str(req->pub_auth, encodedLen, buf, bufLen);
+    struct base64_encode_ctx ctx;
+    base64_encode_init(&ctx);
+    size_t blen = base64_encode_update(&ctx, req->pub_auth, bufLen, reinterpret_cast<uint8_t*>(buf));
+    blen += base64_encode_final(&ctx, req->pub_auth + blen);
+    req->pub_auth[blen] = '\0';
     debug("cmgr: encoded: '%s'\n", req->pub_auth);
 }
 
@@ -1098,9 +1103,16 @@ decode_pub_auth(cachemgr_request * req)
     if (!req->pub_auth || strlen(req->pub_auth) < 4 + strlen(safe_str(req->hostname)))
         return;
 
-    const int decodedLen = base64_decode_len(req->pub_auth);
+    size_t decodedLen = BASE64_DECODE_LENGTH(strlen(req->pub_auth));
     buf = (char*)xmalloc(decodedLen);
-    base64_decode(buf, decodedLen, req->pub_auth);
+    struct base64_decode_ctx ctx;
+    base64_decode_init(&ctx);
+    if (!base64_decode_update(&ctx, &decodedLen, reinterpret_cast<uint8_t*>(buf), strlen(req->pub_auth), req->pub_auth) ||
+            !base64_decode_final(&ctx)) {
+        debug("cmgr: base64 decode failure. Incomplete auth token string.\n");
+        xfree(buf);
+        return;
+    }
 
     debug("cmgr: length ok\n");
 
@@ -1180,14 +1192,18 @@ make_auth_header(const cachemgr_request * req)
     if (encodedLen <= 0)
         return "";
 
-    char *str64 = static_cast<char*>(xmalloc(encodedLen));
-    base64_encode_str(str64, encodedLen, buf, bufLen);
+    char *str64 = static_cast<char *>(xmalloc(encodedLen));
+    struct base64_encode_ctx ctx;
+    base64_encode_init(&ctx);
+    size_t blen = base64_encode_update(&ctx, str64, bufLen, reinterpret_cast<uint8_t*>(buf));
+    blen += base64_encode_final(&ctx, str64+blen);
+    str64[blen] = '\0';
 
-    stringLength += snprintf(buf, sizeof(buf), "Authorization: Basic %s\r\n", str64);
+    stringLength += snprintf(buf, sizeof(buf), "Authorization: Basic %.*s\r\n", (int)blen, str64);
 
     assert(stringLength < sizeof(buf));
 
-    snprintf(&buf[stringLength], sizeof(buf) - stringLength, "Proxy-Authorization: Basic %s\r\n", str64);
+    snprintf(&buf[stringLength], sizeof(buf) - stringLength, "Proxy-Authorization: Basic %.*s\r\n", (int)blen, str64);
 
     xfree(str64);
     return buf;

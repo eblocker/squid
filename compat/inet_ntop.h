@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -21,7 +21,9 @@
 *      Paul Vixie, 1996.
 */
 SQUIDCEXTERN const char * xinet_ntop(int af, const void *src, char *dst, size_t size);
+#ifndef inet_ntop
 #define inet_ntop xinet_ntop
+#endif
 
 #endif /* HAVE_DECL_INET_NTOP */
 #endif /* _INC_INET_NTOP_H */

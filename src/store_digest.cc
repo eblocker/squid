@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -33,6 +33,7 @@
 #include "SquidTime.h"
 #include "Store.h"
 #include "StoreSearch.h"
+#include "util.h"
 
 #include <cmath>
 
@@ -42,25 +43,26 @@
 
 class StoreDigestState
 {
-
 public:
     StoreDigestCBlock cblock;
-    int rebuild_lock;       /* bucket number */
-    StoreEntry * rewrite_lock;  /* points to store entry with the digest */
+    int rebuild_lock = 0;                 ///< bucket number
+    StoreEntry * rewrite_lock = nullptr;  ///< points to store entry with the digest
     StoreSearchPointer theSearch;
-    int rewrite_offset;
-    int rebuild_count;
-    int rewrite_count;
+    int rewrite_offset = 0;
+    int rebuild_count = 0;
+    int rewrite_count = 0;
 };
 
-typedef struct {
-    int del_count;      /* #store entries deleted from store_digest */
-    int del_lost_count;     /* #store entries not found in store_digest on delete */
-    int add_count;      /* #store entries accepted to store_digest */
-    int add_coll_count;     /* #accepted entries that collided with existing ones */
-    int rej_count;      /* #store entries not accepted to store_digest */
-    int rej_coll_count;     /* #not accepted entries that collided with existing ones */
-} StoreDigestStats;
+class StoreDigestStats
+{
+public:
+    int del_count = 0;          /* #store entries deleted from store_digest */
+    int del_lost_count = 0;     /* #store entries not found in store_digest on delete */
+    int add_count = 0;          /* #store entries accepted to store_digest */
+    int add_coll_count = 0;     /* #accepted entries that collided with existing ones */
+    int rej_count = 0;          /* #store entries not accepted to store_digest */
+    int rej_coll_count = 0;     /* #not accepted entries that collided with existing ones */
+};
 
 /* local vars */
 static StoreDigestState sd_state;
@@ -133,12 +135,12 @@ storeDigestInit(void)
     }
 
     const uint64_t cap = storeDigestCalcCap();
-    store_digest = cacheDigestCreate(cap, Config.digest.bits_per_entry);
+    store_digest = new CacheDigest(cap, Config.digest.bits_per_entry);
     debugs(71, DBG_IMPORTANT, "Local cache digest enabled; rebuild/rewrite every " <<
            (int) Config.digest.rebuild_period << "/" <<
            (int) Config.digest.rewrite_period << " sec");
 
-    memset(&sd_state, 0, sizeof(sd_state));
+    sd_state = StoreDigestState();
 #else
     store_digest = NULL;
     debugs(71, 3, "Local cache digest is 'off'");
@@ -173,12 +175,12 @@ storeDigestDel(const StoreEntry * entry)
     debugs(71, 6, "storeDigestDel: checking entry, key: " << entry->getMD5Text());
 
     if (!EBIT_TEST(entry->flags, KEY_PRIVATE)) {
-        if (!cacheDigestTest(store_digest,  (const cache_key *)entry->key)) {
+        if (!store_digest->contains(static_cast<const cache_key *>(entry->key))) {
             ++sd_stats.del_lost_count;
             debugs(71, 6, "storeDigestDel: lost entry, key: " << entry->getMD5Text() << " url: " << entry->url()  );
         } else {
             ++sd_stats.del_count;
-            cacheDigestDel(store_digest,  (const cache_key *)entry->key);
+            store_digest->remove(static_cast<const cache_key *>(entry->key));
             debugs(71, 6, "storeDigestDel: deled entry, key: " << entry->getMD5Text());
         }
     }
@@ -280,16 +282,16 @@ storeDigestAdd(const StoreEntry * entry)
     if (storeDigestAddable(entry)) {
         ++sd_stats.add_count;
 
-        if (cacheDigestTest(store_digest, (const cache_key *)entry->key))
+        if (store_digest->contains(static_cast<const cache_key *>(entry->key)))
             ++sd_stats.add_coll_count;
 
-        cacheDigestAdd(store_digest,  (const cache_key *)entry->key);
+        store_digest->add(static_cast<const cache_key *>(entry->key));
 
         debugs(71, 6, "storeDigestAdd: added entry, key: " << entry->getMD5Text());
     } else {
         ++sd_stats.rej_count;
 
-        if (cacheDigestTest(store_digest,  (const cache_key *)entry->key))
+        if (store_digest->contains(static_cast<const cache_key *>(entry->key)))
             ++sd_stats.rej_coll_count;
     }
 }
@@ -337,7 +339,7 @@ storeDigestResize()
         return false;
     } else {
         debugs(71, 2, "big change, resizing.");
-        cacheDigestChangeCap(store_digest, cap);
+        store_digest->updateCapacity(cap);
     }
     return true;
 }
@@ -348,13 +350,13 @@ storeDigestRebuildResume(void)
 {
     assert(sd_state.rebuild_lock);
     assert(!sd_state.rewrite_lock);
-    sd_state.theSearch = Store::Root().search(NULL, NULL);
+    sd_state.theSearch = Store::Root().search();
     /* resize or clear */
 
     if (!storeDigestResize())
-        cacheDigestClear(store_digest);     /* not clean()! */
+        store_digest->clear();     /* not clean()! */
 
-    memset(&sd_stats, 0, sizeof(sd_stats));
+    sd_stats = StoreDigestStats();
 
     eventAdd("storeDigestRebuildStep", storeDigestRebuildStep, NULL, 0.0, 1);
 }
@@ -400,10 +402,6 @@ storeDigestRebuildStep(void *datanotused)
 static void
 storeDigestRewriteStart(void *datanotused)
 {
-    RequestFlags flags;
-    char *url;
-    StoreEntry *e;
-
     assert(store_digest);
     /* prevent overlapping if rewrite schedule is too tight */
 
@@ -413,18 +411,22 @@ storeDigestRewriteStart(void *datanotused)
     }
 
     debugs(71, 2, "storeDigestRewrite: start rewrite #" << sd_state.rewrite_count + 1);
-    /* make new store entry */
-    url = internalLocalUri("/squid-internal-periodic/", StoreDigestFileName);
+
+    const char *url = internalLocalUri("/squid-internal-periodic/", SBuf(StoreDigestFileName));
+    const MasterXaction::Pointer mx = new MasterXaction(XactionInitiator::initCacheDigest);
+    auto req = HttpRequest::FromUrl(url, mx);
+
+    RequestFlags flags;
     flags.cachable = true;
-    e = storeCreateEntry(url, url, flags, Http::METHOD_GET);
+
+    StoreEntry *e = storeCreateEntry(url, url, flags, Http::METHOD_GET);
     assert(e);
     sd_state.rewrite_lock = e;
     debugs(71, 3, "storeDigestRewrite: url: " << url << " key: " << e->getMD5Text());
-    HttpRequest *req = HttpRequest::CreateFromUrl(url);
     e->mem_obj->request = req;
     HTTPMSGLOCK(e->mem_obj->request);
-    /* wait for rebuild (if any) to finish */
 
+    /* wait for rebuild (if any) to finish */
     if (sd_state.rebuild_lock) {
         debugs(71, 2, "storeDigestRewriteStart: waiting for rebuild to finish.");
         return;

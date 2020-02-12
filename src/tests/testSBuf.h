@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -11,7 +11,7 @@
 
 #include <cppunit/extensions/HelperMacros.h>
 
-#include "OutOfBoundsException.h"
+#include "base/TextException.h"
 
 /*
  * test the SBuf functionalities
@@ -30,7 +30,7 @@ class testSBuf : public CPPUNIT_NS::TestFixture
     CPPUNIT_TEST( testAppendStdString );
     CPPUNIT_TEST( testAppendf );
     CPPUNIT_TEST( testSubscriptOp );
-    CPPUNIT_TEST_EXCEPTION( testSubscriptOpFail , OutOfBoundsException );
+    CPPUNIT_TEST_EXCEPTION( testSubscriptOpFail, TextException );
     CPPUNIT_TEST( testComparisons );
     CPPUNIT_TEST( testConsume );
     CPPUNIT_TEST( testRawContent );
@@ -45,13 +45,15 @@ class testSBuf : public CPPUNIT_NS::TestFixture
     CPPUNIT_TEST( testFindFirstOf );
     CPPUNIT_TEST( testFindFirstNotOf );
     CPPUNIT_TEST( testPrintf );
-    CPPUNIT_TEST( testScanf );
     CPPUNIT_TEST( testCopy );
     CPPUNIT_TEST( testStringOps );
     CPPUNIT_TEST( testGrow );
+    CPPUNIT_TEST( testReserve );
     CPPUNIT_TEST( testSBufStream );
     CPPUNIT_TEST( testAutoFind );
     CPPUNIT_TEST( testStdStringOps );
+    CPPUNIT_TEST( testIterators );
+    CPPUNIT_TEST( testSBufHash );
 //    CPPUNIT_TEST( testDumpStats ); //fake test, to print alloc stats
     CPPUNIT_TEST_SUITE_END();
 protected:
@@ -64,7 +66,6 @@ protected:
     void testAppendStdString();
     void testAppendf();
     void testPrintf();
-    void testScanf();
     void testSubscriptOp();
     void testSubscriptOpFail();
     void testDumpStats();
@@ -85,12 +86,15 @@ protected:
     void testCopy();
     void testStringOps();
     void testGrow();
+    void testReserve();
     void testStartsWith();
     void testSBufStream();
     void testFindFirstOf();
     void testFindFirstNotOf();
     void testAutoFind();
     void testStdStringOps();
+    void testIterators();
+    void testSBufHash();
 };
 
 #endif

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -31,8 +31,8 @@ static char * SSP_Package_InUse;
 SECURITY_STATUS SecurityStatus = SEC_E_OK;
 
 static DWORD cbMaxToken = 0;
-static PVOID pClientBuf = NULL;
-static PVOID pServerBuf = NULL;
+static uint8_t * pClientBuf = NULL;
+static uint8_t * pServerBuf = NULL;
 
 static AUTH_SEQ NTLM_asServer = {0};
 
@@ -200,8 +200,8 @@ HMODULE LoadSecurityDll(int mode, const char * SSP_Package)
     _FreeContextBuffer(pSPI);
 
     /* Allocate buffers for client and server messages */
-    pClientBuf = xcalloc(cbMaxToken, sizeof(char));
-    pServerBuf = xcalloc(cbMaxToken, sizeof(char));
+    pClientBuf = static_cast<uint8_t *>(xcalloc(cbMaxToken, sizeof(char)));
+    pServerBuf = static_cast<uint8_t *>(xcalloc(cbMaxToken, sizeof(char)));
     SSP_Package_InUse = xstrdup(SSP_Package);
 
     return hModule;
@@ -458,11 +458,10 @@ BOOL WINAPI SSP_LogonUser(PTSTR szUser, PTSTR szPassword, PTSTR szDomain)
 const char * WINAPI SSP_MakeChallenge(PVOID PNegotiateBuf, int NegotiateLen)
 {
     BOOL        fDone      = FALSE;
-    PVOID       fResult    = NULL;
+    uint8_t  * fResult = NULL;
     DWORD       cbOut      = 0;
     DWORD       cbIn       = 0;
     ntlm_challenge * challenge;
-    const char * encoded = NULL;
 
     if (NTLM_asServer.fHaveCtxtHandle)
         _DeleteSecurityContext(&NTLM_asServer.hctxt);
@@ -490,9 +489,17 @@ const char * WINAPI SSP_MakeChallenge(PVOID PNegotiateBuf, int NegotiateLen)
         challenge = (ntlm_challenge *) fResult;
         Use_Unicode = NTLM_NEGOTIATE_UNICODE & challenge->flags;
         NTLM_LocalCall = NTLM_NEGOTIATE_THIS_IS_LOCAL_CALL & challenge->flags;
-        encoded = base64_encode_bin((char *) fResult, cbOut);
+        struct base64_encode_ctx ctx;
+        base64_encode_init(&ctx);
+        static char encoded[8192];
+        size_t dstLen = base64_encode_update(&ctx, encoded, cbOut, fResult);
+        assert(dstLen < sizeof(encoded));
+        dstLen += base64_encode_final(&ctx, encoded+dstLen);
+        assert(dstLen < sizeof(encoded));
+        encoded[dstLen] = '\0';
+        return reinterpret_cast<char *>(encoded);
     }
-    return encoded;
+    return NULL;
 }
 
 BOOL WINAPI SSP_ValidateNTLMCredentials(PVOID PAutenticateBuf, int AutenticateLen, char * credentials)
@@ -524,7 +531,6 @@ const char * WINAPI SSP_MakeNegotiateBlob(PVOID PNegotiateBuf, int NegotiateLen,
 {
     DWORD       cbOut      = 0;
     DWORD       cbIn       = 0;
-    const char * encoded = NULL;
 
     if (NTLM_asServer.fHaveCtxtHandle)
         _DeleteSecurityContext(&NTLM_asServer.hctxt);
@@ -548,16 +554,24 @@ const char * WINAPI SSP_MakeNegotiateBlob(PVOID PNegotiateBuf, int NegotiateLen,
         }
         *Status = SSP_OK;
     } while (0);
-    if (pServerBuf != NULL && cbOut > 0)
-        encoded = base64_encode_bin((char *) pServerBuf, cbOut);
-    return encoded;
+    if (pServerBuf != NULL && cbOut > 0) {
+        struct base64_encode_ctx ctx;
+        base64_encode_init(&ctx);
+        static char encoded[8192];
+        size_t dstLen = base64_encode_update(&ctx, encoded, cbOut, pServerBuf);
+        assert(dstLen < sizeof(encoded));
+        dstLen += base64_encode_final(&ctx, encoded+dstLen);
+        assert(dstLen < sizeof(encoded));
+        encoded[dstLen] = '\0';
+        return reinterpret_cast<char *>(encoded);
+    }
+    return NULL;
 }
 
 const char * WINAPI SSP_ValidateNegotiateCredentials(PVOID PAutenticateBuf, int AutenticateLen, PBOOL fDone, int * Status, char * credentials)
 {
     DWORD       cbOut      = 0;
     DWORD       cbIn       = 0;
-    const char * encoded = NULL;
 
     memcpy(pClientBuf, PAutenticateBuf, AutenticateLen);
     ZeroMemory(pServerBuf, cbMaxToken);
@@ -575,8 +589,17 @@ const char * WINAPI SSP_ValidateNegotiateCredentials(PVOID PAutenticateBuf, int 
         }
         *Status = SSP_OK;
     } while (0);
-    if (pServerBuf != NULL && cbOut > 0)
-        encoded = base64_encode_bin((char *) pServerBuf, cbOut);
-    return encoded;
+    if (pServerBuf != NULL && cbOut > 0) {
+        struct base64_encode_ctx ctx;
+        base64_encode_init(&ctx);
+        static char encoded[8192];
+        size_t dstLen = base64_encode_update(&ctx, encoded, cbOut, pServerBuf);
+        assert(dstLen < sizeof(encoded));
+        dstLen += base64_encode_final(&ctx, encoded+dstLen);
+        assert(dstLen < sizeof(encoded));
+        encoded[dstLen] = '\0';
+        return reinterpret_cast<char *>(encoded);
+    }
+    return NULL;
 }
 

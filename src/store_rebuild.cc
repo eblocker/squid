@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -16,11 +16,13 @@
 #include "SquidTime.h"
 #include "StatCounters.h"
 #include "Store.h"
+#include "store/Disk.h"
 #include "store_digest.h"
 #include "store_key_md5.h"
 #include "store_rebuild.h"
 #include "StoreSearch.h"
-#include "SwapDir.h"
+// for tvSubDsec() which should be in SquidTime.h
+#include "util.h"
 
 #include <cerrno>
 
@@ -46,7 +48,7 @@ storeCleanupDoubleCheck(StoreEntry * e)
 }
 
 static void
-storeCleanup(void *datanotused)
+storeCleanup(void *)
 {
     static int store_errors = 0;
     static StoreSearchPointer currentSearch;
@@ -54,7 +56,7 @@ storeCleanup(void *datanotused)
     static int seen = 0;
 
     if (currentSearch == NULL || currentSearch->isDone())
-        currentSearch = Store::Root().search(NULL, NULL);
+        currentSearch = Store::Root().search();
 
     size_t statCount = 500;
 
@@ -73,7 +75,7 @@ storeCleanup(void *datanotused)
          * Calling StoreEntry->release() has no effect because we're
          * still in 'store_rebuilding' state
          */
-        if (e->swap_filen < 0)
+        if (!e->hasDisk())
             continue;
 
         if (opt_store_doublecheck)
@@ -170,7 +172,7 @@ storeRebuildComplete(StoreRebuildData *dc)
 void
 storeRebuildStart(void)
 {
-    memset(&counts, '\0', sizeof(counts));
+    counts = StoreRebuildData(); // reset counters
     rebuild_start = current_time;
     /*
      * Note: store_dirs_rebuilding is initialized to 1.
@@ -307,17 +309,14 @@ storeRebuildParseEntry(MemBuf &buf, StoreEntry &tmpe, cache_key *key,
         return false;
     }
 
-    if (!aBuilder.isBufferSane()) {
-        debugs(47, DBG_IMPORTANT, "WARNING: Ignoring malformed cache entry.");
+    StoreMeta *tlv_list = nullptr;
+    try {
+        tlv_list = aBuilder.createStoreMeta();
+    } catch (const std::exception &e) {
+        debugs(47, DBG_IMPORTANT, "WARNING: Ignoring store entry because " << e.what());
         return false;
     }
-
-    StoreMeta *tlv_list = aBuilder.createStoreMeta();
-    if (!tlv_list) {
-        debugs(47, DBG_IMPORTANT, "WARNING: Ignoring cache entry with invalid " <<
-               "meta data");
-        return false;
-    }
+    assert(tlv_list);
 
     // TODO: consume parsed metadata?
 
@@ -355,51 +354,6 @@ storeRebuildParseEntry(MemBuf &buf, StoreEntry &tmpe, cache_key *key,
     if (EBIT_TEST(tmpe.flags, KEY_PRIVATE)) {
         ++ stats.badflags;
         return false;
-    }
-
-    return true;
-}
-
-bool
-storeRebuildKeepEntry(const StoreEntry &tmpe, const cache_key *key, StoreRebuildData &stats)
-{
-    /* this needs to become
-     * 1) unpack url
-     * 2) make synthetic request with headers ?? or otherwise search
-     * for a matching object in the store
-     * TODO FIXME change to new async api
-     * TODO FIXME I think there is a race condition here with the
-     * async api :
-     * store A reads in object foo, searchs for it, and finds nothing.
-     * store B reads in object foo, searchs for it, finds nothing.
-     * store A gets called back with nothing, so registers the object
-     * store B gets called back with nothing, so registers the object,
-     * which will conflict when the in core index gets around to scanning
-     * store B.
-     *
-     * this suggests that rather than searching for duplicates, the
-     * index rebuild should just assume its the most recent accurate
-     * store entry and whoever indexes the stores handles duplicates.
-     */
-    if (StoreEntry *e = Store::Root().get(key)) {
-
-        if (e->lastref >= tmpe.lastref) {
-            /* key already exists, old entry is newer */
-            /* keep old, ignore new */
-            ++stats.dupcount;
-
-            // For some stores, get() creates/unpacks a store entry. Signal
-            // such stores that we will no longer use the get() result:
-            e->lock("storeRebuildKeepEntry");
-            e->unlock("storeRebuildKeepEntry");
-
-            return false;
-        } else {
-            /* URL already exists, this swapfile not being used */
-            /* junk old, load new */
-            e->release();   /* release old entry */
-            ++stats.dupcount;
-        }
     }
 
     return true;

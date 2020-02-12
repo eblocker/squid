@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -144,7 +144,8 @@ Ip::Intercept::NetfilterInterception(const Comm::ConnectionPointer &newConn, int
                     &lookup,
                     &len) != 0) {
         if (!silent) {
-            debugs(89, DBG_IMPORTANT, "ERROR: NF getsockopt(ORIGINAL_DST) failed on " << newConn << ": " << xstrerror());
+            int xerrno = errno;
+            debugs(89, DBG_IMPORTANT, "ERROR: NF getsockopt(ORIGINAL_DST) failed on " << newConn << ": " << xstrerr(xerrno));
             lastReported_ = squid_curtime;
         }
         debugs(89, 9, "address: " << newConn);
@@ -159,7 +160,7 @@ Ip::Intercept::NetfilterInterception(const Comm::ConnectionPointer &newConn, int
 }
 
 bool
-Ip::Intercept::TproxyTransparent(const Comm::ConnectionPointer &newConn, int silent)
+Ip::Intercept::TproxyTransparent(const Comm::ConnectionPointer &newConn, int)
 {
 #if (LINUX_NETFILTER && defined(IP_TRANSPARENT)) || \
     (PF_TRANSPARENT && defined(SO_BINDANY)) || \
@@ -168,7 +169,6 @@ Ip::Intercept::TproxyTransparent(const Comm::ConnectionPointer &newConn, int sil
     /* Trust the user configured properly. If not no harm done.
      * We will simply attempt a bind outgoing on our own IP.
      */
-    newConn->remote.port(0); // allow random outgoing port to prevent address clashes
     debugs(89, 5, HERE << "address TPROXY: " << newConn);
     return true;
 #else
@@ -177,7 +177,7 @@ Ip::Intercept::TproxyTransparent(const Comm::ConnectionPointer &newConn, int sil
 }
 
 bool
-Ip::Intercept::IpfwInterception(const Comm::ConnectionPointer &newConn, int silent)
+Ip::Intercept::IpfwInterception(const Comm::ConnectionPointer &newConn, int)
 {
 #if IPFW_TRANSPARENT
     /* The getsockname() call performed already provided the TCP packet details.
@@ -204,16 +204,7 @@ Ip::Intercept::IpfInterception(const Comm::ConnectionPointer &newConn, int silen
     memset(&natLookup, 0, sizeof(natLookup));
     // for NAT lookup set local and remote IP:port's
     if (newConn->remote.isIPv6()) {
-#if IPFILTER_VERSION < 5000003
-        // warn once every 10 at critical level, then push down a level each repeated event
-        static int warningLevel = DBG_CRITICAL;
-        debugs(89, warningLevel, "IPF (IPFilter v4) NAT does not support IPv6. Please upgrade to IPFilter v5.1");
-        warningLevel = (warningLevel + 1) % 10;
-        return false;
-    }
-    newConn->local.getInAddr(natLookup.nl_inip);
-    newConn->remote.getInAddr(natLookup.nl_outip);
-#else
+#if HAVE_NATLOOKUP_NL_INIPADDR_IN6
         natLookup.nl_v = 6;
         newConn->local.getInAddr(natLookup.nl_inipaddr.in6);
         newConn->remote.getInAddr(natLookup.nl_outipaddr.in6);
@@ -223,6 +214,15 @@ Ip::Intercept::IpfInterception(const Comm::ConnectionPointer &newConn, int silen
         newConn->local.getInAddr(natLookup.nl_inipaddr.in4);
         newConn->remote.getInAddr(natLookup.nl_outipaddr.in4);
     }
+#else
+        // warn once every 10 at critical level, then push down a level each repeated event
+        static int warningLevel = DBG_CRITICAL;
+        debugs(89, warningLevel, "Your IPF (IPFilter) NAT does not support IPv6. Please upgrade it.");
+        warningLevel = (warningLevel + 1) % 10;
+        return false;
+    }
+    newConn->local.getInAddr(natLookup.nl_inip);
+    newConn->remote.getInAddr(natLookup.nl_outip);
 #endif
     natLookup.nl_inport = htons(newConn->local.port());
     natLookup.nl_outport = htons(newConn->remote.port());
@@ -244,7 +244,8 @@ Ip::Intercept::IpfInterception(const Comm::ConnectionPointer &newConn, int silen
 
     if (natfd < 0) {
         if (!silent) {
-            debugs(89, DBG_IMPORTANT, "IPF (IPFilter) NAT open failed: " << xstrerror());
+            int xerrno = errno;
+            debugs(89, DBG_IMPORTANT, "IPF (IPFilter) NAT open failed: " << xstrerr(xerrno));
             lastReported_ = squid_curtime;
             return false;
         }
@@ -277,9 +278,10 @@ Ip::Intercept::IpfInterception(const Comm::ConnectionPointer &newConn, int silen
 
 #endif
     if (x < 0) {
-        if (errno != ESRCH) {
+        int xerrno = errno;
+        if (xerrno != ESRCH) {
             if (!silent) {
-                debugs(89, DBG_IMPORTANT, "IPF (IPFilter) NAT lookup failed: ioctl(SIOCGNATL) (v=" << IPFILTER_VERSION << "): " << xstrerror());
+                debugs(89, DBG_IMPORTANT, "IPF (IPFilter) NAT lookup failed: ioctl(SIOCGNATL) (v=" << IPFILTER_VERSION << "): " << xstrerr(xerrno));
                 lastReported_ = squid_curtime;
             }
 
@@ -290,13 +292,13 @@ Ip::Intercept::IpfInterception(const Comm::ConnectionPointer &newConn, int silen
         debugs(89, 9, HERE << "address: " << newConn);
         return false;
     } else {
-#if IPFILTER_VERSION < 5000003
-        newConn->local = natLookup.nl_realip;
-#else
+#if HAVE_NATLOOKUP_NL_REALIPADDR_IN6
         if (newConn->remote.isIPv6())
             newConn->local = natLookup.nl_realipaddr.in6;
         else
             newConn->local = natLookup.nl_realipaddr.in4;
+#else
+        newConn->local = natLookup.nl_realip;
 #endif
         newConn->local.port(ntohs(natLookup.nl_realport));
         debugs(89, 5, HERE << "address NAT: " << newConn);
@@ -332,7 +334,8 @@ Ip::Intercept::PfInterception(const Comm::ConnectionPointer &newConn, int silent
 
     if (pffd < 0) {
         if (!silent) {
-            debugs(89, DBG_IMPORTANT, HERE << "PF open failed: " << xstrerror());
+            int xerrno = errno;
+            debugs(89, DBG_IMPORTANT, MYNAME << "PF open failed: " << xstrerr(xerrno));
             lastReported_ = squid_curtime;
         }
         return false;
@@ -357,9 +360,10 @@ Ip::Intercept::PfInterception(const Comm::ConnectionPointer &newConn, int silent
     nl.direction = PF_OUT;
 
     if (ioctl(pffd, DIOCNATLOOK, &nl)) {
-        if (errno != ENOENT) {
+        int xerrno = errno;
+        if (xerrno != ENOENT) {
             if (!silent) {
-                debugs(89, DBG_IMPORTANT, HERE << "PF lookup failed: ioctl(DIOCNATLOOK)");
+                debugs(89, DBG_IMPORTANT, HERE << "PF lookup failed: ioctl(DIOCNATLOOK): " << xstrerr(xerrno));
                 lastReported_ = squid_curtime;
             }
             close(pffd);

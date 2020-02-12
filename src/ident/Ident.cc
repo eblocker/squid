@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -39,6 +39,11 @@ typedef struct _IdentClient {
 class IdentStateData
 {
 public:
+    hash_link hash;     /* must be first */
+private:
+    CBDATA_CLASS(IdentStateData);
+
+public:
     /* AsyncJob API emulated */
     void deleteThis(const char *aReason);
     void swanSong();
@@ -46,14 +51,10 @@ public:
     /// notify all waiting IdentClient callbacks
     void notify(const char *result);
 
-    hash_link hash;     /* must be first */
     Comm::ConnectionPointer conn;
     MemBuf queryMsg;  ///< the lookup message sent to IDENT server
     IdentClient *clients;
     char buf[IDENT_BUFSIZE];
-
-private:
-    CBDATA_CLASS2(IdentStateData);
 };
 
 CBDATA_CLASS_INIT(IdentStateData);
@@ -72,7 +73,7 @@ static void ClientAdd(IdentStateData * state, IDCB * callback, void *callback_da
 Ident::IdentConfig Ident::TheConfig;
 
 void
-Ident::IdentStateData::deleteThis(const char *aReason)
+Ident::IdentStateData::deleteThis(const char *)
 {
     swanSong();
     delete this;
@@ -123,7 +124,7 @@ Ident::Timeout(const CommTimeoutCbParams &io)
 }
 
 void
-Ident::ConnectDone(const Comm::ConnectionPointer &conn, Comm::Flag status, int xerrno, void *data)
+Ident::ConnectDone(const Comm::ConnectionPointer &conn, Comm::Flag status, int, void *data)
 {
     IdentStateData *state = (IdentStateData *)data;
 
@@ -163,7 +164,7 @@ Ident::ConnectDone(const Comm::ConnectionPointer &conn, Comm::Flag status, int x
 }
 
 void
-Ident::WriteFeedback(const Comm::ConnectionPointer &conn, char *buf, size_t len, Comm::Flag flag, int xerrno, void *data)
+Ident::WriteFeedback(const Comm::ConnectionPointer &conn, char *, size_t len, Comm::Flag flag, int xerrno, void *data)
 {
     debugs(30, 5, HERE << conn << ": Wrote IDENT request " << len << " bytes.");
 
@@ -176,7 +177,7 @@ Ident::WriteFeedback(const Comm::ConnectionPointer &conn, char *buf, size_t len,
 }
 
 void
-Ident::ReadReply(const Comm::ConnectionPointer &conn, char *buf, size_t len, Comm::Flag flag, int xerrno, void *data)
+Ident::ReadReply(const Comm::ConnectionPointer &conn, char *buf, size_t len, Comm::Flag flag, int, void *data)
 {
     IdentStateData *state = (IdentStateData *)data;
     char *ident = NULL;
@@ -238,11 +239,13 @@ Ident::Start(const Comm::ConnectionPointer &conn, IDCB * callback, void *data)
     IdentStateData *state;
     char key1[IDENT_KEY_SZ];
     char key2[IDENT_KEY_SZ];
-    char key[IDENT_KEY_SZ];
+    char key[IDENT_KEY_SZ*2+2]; // key1 + ',' + key2 + terminator
 
     conn->local.toUrl(key1, IDENT_KEY_SZ);
     conn->remote.toUrl(key2, IDENT_KEY_SZ);
-    snprintf(key, IDENT_KEY_SZ, "%s,%s", key1, key2);
+    const auto res = snprintf(key, sizeof(key), "%s,%s", key1, key2);
+    assert(res > 0);
+    assert(static_cast<std::make_unsigned<decltype(res)>::type>(res) < sizeof(key));
 
     if (!ident_hash) {
         Init();
@@ -255,7 +258,7 @@ Ident::Start(const Comm::ConnectionPointer &conn, IDCB * callback, void *data)
     state = new IdentStateData;
     state->hash.key = xstrdup(key);
 
-    // copy the conn details. We dont want the original FD to be re-used by IDENT.
+    // copy the conn details. We do not want the original FD to be re-used by IDENT.
     state->conn = conn->copyDetails();
     // NP: use random port for secure outbound to IDENT_PORT
     state->conn->local.port(0);
@@ -263,7 +266,7 @@ Ident::Start(const Comm::ConnectionPointer &conn, IDCB * callback, void *data)
 
     // build our query from the original connection details
     state->queryMsg.init();
-    state->queryMsg.Printf("%d, %d\r\n", conn->remote.port(), conn->local.port());
+    state->queryMsg.appendf("%d, %d\r\n", conn->remote.port(), conn->local.port());
 
     ClientAdd(state, callback, data);
     hash_join(ident_hash, &state->hash);

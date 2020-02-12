@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -67,14 +67,20 @@ CvtBin(const HASHHEX Hex, HASH Bin)
         else
             Bin[i / 2] |= n;
     }
-    /* FIXME: Coverity detects the below as dead code.
+
+#if HASHHEXLEN != (2*HASHLEN)
+    /*
       Why? :: right here i == 32
         which means the first step of the for loop makes i==16
         and cannot be < HASHLEN (which is also 16)
+
+      But only guaranteed if HASHHEXLEN == 2*HASHLEN
+      This will ensure correct 0-ing of bins no matter what.
     */
     for (i = i / 2; i < HASHLEN; i++) {
         Bin[i] = '\0';
     }
+#endif
 }
 
 /* calculate H(A1) as per spec */

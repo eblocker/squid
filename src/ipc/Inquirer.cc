@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -203,7 +203,7 @@ Ipc::Inquirer::status() const
 {
     static MemBuf buf;
     buf.reset();
-    buf.Printf(" [request->requestId %u]", request->requestId);
+    buf.appendf(" [request->requestId %u]", request->requestId);
     buf.terminate();
     return buf.content();
 }

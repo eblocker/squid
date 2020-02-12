@@ -1,4 +1,4 @@
-## Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+## Copyright (C) 1996-2019 The Squid Software Foundation and contributors
 ##
 ## Squid software is distributed under GPLv2+ license and includes
 ## contributions from numerous individuals and organizations.
@@ -21,6 +21,8 @@ libauth_la_SOURCES = \
 	Type.cc \
 	Config.cc \
 	Config.h \
+	CredentialsCache.h \
+	CredentialsCache.cc \
 	CredentialState.cc \
 	CredentialState.h \
 	Gadgets.cc \

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -11,6 +11,7 @@
 
 #include "base/AsyncCall.h"
 #include "base/InstanceId.h"
+#include "cbdata.h"
 
 template <class Cbc>
 class CbcPointer;
@@ -27,16 +28,13 @@ class CbcPointer;
 
 /// \ingroup AsyncJobAPI
 /// Base class for all asynchronous jobs
-class AsyncJob
+class AsyncJob: public CbdataParent
 {
 public:
     typedef CbcPointer<AsyncJob> Pointer;
 
 public:
     AsyncJob(const char *aTypeName);
-    virtual ~AsyncJob();
-
-    virtual void *toCbdata() = 0;
 
     /// starts a freshly created job (i.e., makes the job asynchronous)
     static Pointer Start(AsyncJob *job);
@@ -65,6 +63,9 @@ public:
     virtual void callException(const std::exception &e);
 
 protected:
+    // external destruction prohibited to ensure swanSong() is called
+    virtual ~AsyncJob();
+
     const char *stopReason; ///< reason for forcing done() to be true
     const char *typeName; ///< kid (leaf) class name, for debugging
     AsyncCall::Pointer inCall; ///< the asynchronous call being handled, if any

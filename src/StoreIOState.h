@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -11,6 +11,8 @@
 
 #include "base/RefCount.h"
 #include "cbdata.h"
+#include "mem/forward.h"
+#include "store/forward.h"
 
 class StoreIOState : public RefCountable
 {
@@ -51,11 +53,11 @@ public:
     /* StoreIOState does not get mempooled - it's children do */
     void *operator new (size_t amount);
     void operator delete (void *address);
+
+    StoreIOState(StoreIOState::STFNCB *cbFile, StoreIOState::STIOCB *cbIo, void *data);
     virtual ~StoreIOState();
 
-    StoreIOState();
-
-    off_t offset() const;
+    off_t offset() const {return offset_;}
 
     virtual void read_(char *buf, size_t size, off_t offset, STRCB * callback, void *callback_data) = 0;
     /** write the given buffer and free it when it is no longer needed
@@ -71,12 +73,19 @@ public:
     } CloseHow;
     virtual void close(int how) = 0; ///< finish or abort swapping per CloseHow
 
+    // Tests whether we are working with the primary/public StoreEntry chain.
+    // Reads start reading the primary chain, but it may become secondary.
+    // There are two store write kinds:
+    // * regular writes that change (usually append) the entry visible to all and
+    // * header updates that create a fresh chain (while keeping the stale one usable).
+    bool touchingStoreEntry() const;
+
     sdirno swap_dirn;
     sfileno swap_filen;
     StoreEntry *e;      /* Need this so the FS layers can play god */
     mode_t mode;
     off_t offset_; ///< number of bytes written or read for this entry so far
-    STFNCB *file_callback;  /* called on delayed sfileno assignments */
+    STFNCB *file_callback;  // XXX: Unused. TODO: Remove.
     STIOCB *callback;
     void *callback_data;
 

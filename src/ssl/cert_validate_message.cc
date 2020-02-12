@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -10,26 +10,42 @@
 #include "acl/FilledChecklist.h"
 #include "globals.h"
 #include "helper.h"
+#include "security/CertError.h"
 #include "ssl/cert_validate_message.h"
 #include "ssl/ErrorDetail.h"
 #include "ssl/support.h"
+#include "util.h"
+
+/// Retrieves the certificates chain used to verify the peer.
+/// This is the full chain built by OpenSSL while verifying the server
+/// certificate or, if this is not available, the chain sent by server.
+/// \return the certificates chain or nil
+static STACK_OF(X509) *
+PeerValidationCertificatesChain(const Security::SessionPointer &ssl)
+{
+    assert(ssl);
+    // The full chain built by openSSL while verifying the server cert,
+    // retrieved from verify callback:
+    if (const auto certs = static_cast<STACK_OF(X509) *>(SSL_get_ex_data(ssl.get(), ssl_ex_index_ssl_cert_chain)))
+        return certs;
+
+    /// Last resort: certificates chain sent by server
+    return SSL_get_peer_cert_chain(ssl.get()); // may be nil
+}
 
 void
 Ssl::CertValidationMsg::composeRequest(CertValidationRequest const &vcert)
 {
     body.clear();
     body += Ssl::CertValidationMsg::param_host + "=" + vcert.domainName;
-    STACK_OF(X509) *peerCerts = static_cast<STACK_OF(X509) *>(SSL_get_ex_data(vcert.ssl, ssl_ex_index_ssl_cert_chain));
 
-    if (const char *sslVersion = SSL_get_version(vcert.ssl))
+    if (const char *sslVersion = SSL_get_version(vcert.ssl.get()))
         body += "\n" +  Ssl::CertValidationMsg::param_proto_version + "=" + sslVersion;
 
-    if (const char *cipherName = SSL_CIPHER_get_name(SSL_get_current_cipher(vcert.ssl)))
+    if (const char *cipherName = SSL_CIPHER_get_name(SSL_get_current_cipher(vcert.ssl.get())))
         body += "\n" +  Ssl::CertValidationMsg::param_cipher + "=" + cipherName;
 
-    if (!peerCerts)
-        peerCerts = SSL_get_peer_cert_chain(vcert.ssl);
-
+    STACK_OF(X509) *peerCerts = PeerValidationCertificatesChain(vcert.ssl);
     if (peerCerts) {
         Ssl::BIO_Pointer bio(BIO_new(BIO_s_mem()));
         for (int i = 0; i < sk_X509_num(peerCerts); ++i) {
@@ -47,7 +63,7 @@ Ssl::CertValidationMsg::composeRequest(CertValidationRequest const &vcert)
 
     if (vcert.errors) {
         int i = 0;
-        for (const Ssl::CertErrors *err = vcert.errors; err; err = err->next, ++i) {
+        for (const Security::CertErrors *err = vcert.errors; err; err = err->next, ++i) {
             body +="\n";
             body = body + param_error_name + xitoa(i) + "=" + GetErrorName(err->element.code) + "\n";
             int errorCertPos = -1;
@@ -73,9 +89,11 @@ get_error_id(const char *label, size_t len)
 }
 
 bool
-Ssl::CertValidationMsg::parseResponse(CertValidationResponse &resp, STACK_OF(X509) *peerCerts, std::string &error)
+Ssl::CertValidationMsg::parseResponse(CertValidationResponse &resp, std::string &error)
 {
     std::vector<CertItem> certs;
+
+    const STACK_OF(X509) *peerCerts = PeerValidationCertificatesChain(resp.ssl);
 
     const char *param = body.c_str();
     while (*param) {
@@ -94,7 +112,7 @@ Ssl::CertValidationMsg::parseResponse(CertValidationResponse &resp, STACK_OF(X50
                 strncmp(param, param_cert.c_str(), param_cert.length()) == 0) {
             CertItem ci;
             ci.name.assign(param, param_len);
-            X509_Pointer x509;
+            Security::CertPointer x509;
             readCertFromMemory(x509, value);
             ci.setCert(x509.get());
             certs.push_back(ci);
@@ -144,6 +162,10 @@ Ssl::CertValidationMsg::parseResponse(CertValidationResponse &resp, STACK_OF(X50
                 //if certId is not correct sk_X509_value returns NULL
                 currentItem.setCert(sk_X509_value(peerCerts, certId));
             }
+        } else if (param_len > param_error_depth.length() &&
+                   strncmp(param, param_error_depth.c_str(), param_error_depth.length()) == 0 &&
+                   std::all_of(v.begin(), v.end(), isdigit)) {
+            currentItem.error_depth = atoi(v.c_str());
         } else {
             debugs(83, DBG_IMPORTANT, "WARNING: cert validator response parse error: Unknown parameter name " << std::string(param, param_len).c_str());
             return false;
@@ -194,6 +216,7 @@ Ssl::CertValidationResponse::RecvdError::RecvdError(const RecvdError &old)
     id = old.id;
     error_no = old.error_no;
     error_reason = old.error_reason;
+    error_depth = old.error_depth;
     setCert(old.cert.get());
 }
 
@@ -202,6 +225,7 @@ Ssl::CertValidationResponse::RecvdError & Ssl::CertValidationResponse::RecvdErro
     id = old.id;
     error_no = old.error_no;
     error_reason = old.error_reason;
+    error_depth = old.error_depth;
     setCert(old.cert.get());
     return *this;
 }
@@ -237,6 +261,7 @@ const std::string Ssl::CertValidationMsg::param_cert("cert_");
 const std::string Ssl::CertValidationMsg::param_error_name("error_name_");
 const std::string Ssl::CertValidationMsg::param_error_reason("error_reason_");
 const std::string Ssl::CertValidationMsg::param_error_cert("error_cert_");
+const std::string Ssl::CertValidationMsg::param_error_depth("error_depth_");
 const std::string Ssl::CertValidationMsg::param_proto_version("proto_version");
 const std::string Ssl::CertValidationMsg::param_cipher("cipher");
 

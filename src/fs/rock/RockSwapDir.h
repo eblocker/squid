@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -16,7 +16,8 @@
 #include "ipc/mem/Page.h"
 #include "ipc/mem/PageStack.h"
 #include "ipc/StoreMap.h"
-#include "SwapDir.h"
+#include "store/Disk.h"
+#include <vector>
 
 class DiskIOStrategy;
 class ReadRequest;
@@ -37,18 +38,19 @@ public:
 
     /* public ::SwapDir API */
     virtual void reconfigure();
-    virtual StoreSearch *search(String const url, HttpRequest *);
     virtual StoreEntry *get(const cache_key *key);
-    virtual void get(String const, STOREGETCLIENT, void * cbdata);
-    virtual void markForUnlink(StoreEntry &e);
+    virtual void evictCached(StoreEntry &);
+    virtual void evictIfFound(const cache_key *);
     virtual void disconnect(StoreEntry &e);
     virtual uint64_t currentSize() const;
     virtual uint64_t currentCount() const;
     virtual bool doReportStat() const;
-    virtual void swappedOut(const StoreEntry &e);
+    virtual void finalizeSwapoutSuccess(const StoreEntry &);
+    virtual void finalizeSwapoutFailure(StoreEntry &);
     virtual void create();
     virtual void parse(int index, char *path);
     virtual bool smpAware() const { return true; }
+    virtual bool hasReadableEntry(const StoreEntry &) const;
 
     // temporary path to the shared memory map of first slots of cached entries
     SBuf inodeMapPath() const;
@@ -60,16 +62,18 @@ public:
     int64_t slotLimitAbsolute() const; ///< Rock store implementation limit
     int64_t slotLimitActual() const; ///< total number of slots in this db
 
-    /// removes a slot from a list of free slots or returns false
-    bool useFreeSlot(Ipc::Mem::PageId &pageId);
     /// whether the given slot ID may point to a slot in this db
     bool validSlotId(const SlotId slotId) const;
+
+    /// finds and returns a free db slot to fill or throws
+    SlotId reserveSlotForWriting();
+
     /// purges one or more entries to make full() false and free some slots
     void purgeSome();
 
     int64_t diskOffset(Ipc::Mem::PageId &pageId) const;
     int64_t diskOffset(int filen) const;
-    void writeError(StoreEntry &e);
+    void writeError(StoreIOState &sio);
 
     /* StoreMapCleaner API */
     virtual void noteFreeMapSlice(const Ipc::StoreMapSliceId fileno);
@@ -78,8 +82,8 @@ public:
 
 protected:
     /* Store API */
-    virtual bool anchorCollapsed(StoreEntry &collapsed, bool &inSync);
-    virtual bool updateCollapsed(StoreEntry &collapsed);
+    virtual bool anchorToCache(StoreEntry &entry, bool &inSync);
+    virtual bool updateAnchored(StoreEntry &);
 
     /* protected ::SwapDir API */
     virtual bool needsDiskStrand() const;
@@ -92,9 +96,9 @@ protected:
     virtual void maintain();
     virtual void diskFull();
     virtual void reference(StoreEntry &e);
-    virtual bool dereference(StoreEntry &e, bool);
+    virtual bool dereference(StoreEntry &e);
+    virtual void updateHeaders(StoreEntry *e);
     virtual bool unlinkdUseful() const;
-    virtual void unlink(StoreEntry &e);
     virtual void statfs(StoreEntry &e) const;
 
     /* IORequestor API */
@@ -120,16 +124,23 @@ protected:
 
     int64_t diskOffsetLimit() const;
 
+    void updateHeadersOrThrow(Ipc::StoreMapUpdate &update);
+    StoreIOState::Pointer createUpdateIO(const Ipc::StoreMapUpdate &update, StoreIOState::STFNCB *, StoreIOState::STIOCB *, void *);
+
     void anchorEntry(StoreEntry &e, const sfileno filen, const Ipc::StoreMapAnchor &anchor);
-    bool updateCollapsedWith(StoreEntry &collapsed, const Ipc::StoreMapAnchor &anchor);
+    bool updateAnchoredWith(StoreEntry &, const Ipc::StoreMapAnchor &);
 
     friend class Rebuild;
     friend class IoState;
+    friend class HeaderUpdater;
     const char *filePath; ///< location of cache storage file inside path/
     DirMap *map; ///< entry key/sfileno to MaxExtras/inode mapping
 
 private:
     void createError(const char *const msg);
+    void handleWriteCompletionSuccess(const WriteRequest &request);
+    void handleWriteCompletionProblem(const int errflag, const WriteRequest &request);
+    bool droppedEarlierRequest(const WriteRequest &request) const;
 
     DiskIOStrategy *io;
     RefCount<DiskFile> theFile; ///< cache storage for this cache_dir

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -37,7 +37,6 @@ Mgr::Forwarder::Forwarder(const Comm::ConnectionPointer &aConn, const ActionPara
 
     HTTPMSGLOCK(httpRequest);
     entry->lock("Mgr::Forwarder");
-    EBIT_SET(entry->flags, ENTRY_FWD_HDR_WAIT);
 
     closer = asyncCall(16, 5, "Mgr::Forwarder::noteCommClosed",
                        CommCbMemFunT<Forwarder, CommCloseCbParams>(this, &Forwarder::noteCommClosed));
@@ -46,19 +45,17 @@ Mgr::Forwarder::Forwarder(const Comm::ConnectionPointer &aConn, const ActionPara
 
 Mgr::Forwarder::~Forwarder()
 {
-    debugs(16, 5, HERE);
-    Must(httpRequest != NULL);
-    Must(entry != NULL);
-
-    HTTPMSGUNLOCK(httpRequest);
-    entry->unregisterAbort();
-    entry->unlock("Mgr::Forwarder");
-    cleanup();
+    SWALLOW_EXCEPTIONS({
+        Must(entry);
+        entry->unlock("Mgr::Forwarder");
+        Must(httpRequest);
+        HTTPMSGUNLOCK(httpRequest);
+    });
 }
 
 /// closes our copy of the client HTTP connection socket
 void
-Mgr::Forwarder::cleanup()
+Mgr::Forwarder::swanSong()
 {
     if (Comm::IsConnOpen(conn)) {
         if (closer != NULL) {
@@ -68,6 +65,7 @@ Mgr::Forwarder::cleanup()
         conn->close();
     }
     conn = NULL;
+    Ipc::Forwarder::swanSong();
 }
 
 void
@@ -86,7 +84,7 @@ Mgr::Forwarder::handleTimeout()
 }
 
 void
-Mgr::Forwarder::handleException(const std::exception& e)
+Mgr::Forwarder::handleException(const std::exception &e)
 {
     if (entry != NULL && httpRequest != NULL && Comm::IsConnOpen(conn))
         sendError(new ErrorState(ERR_INVALID_RESP, Http::scInternalServerError, httpRequest));
@@ -95,22 +93,11 @@ Mgr::Forwarder::handleException(const std::exception& e)
 
 /// called when the client socket gets closed by some external force
 void
-Mgr::Forwarder::noteCommClosed(const CommCloseCbParams& params)
+Mgr::Forwarder::noteCommClosed(const CommCloseCbParams &)
 {
     debugs(16, 5, HERE);
     conn = NULL; // needed?
     mustStop("commClosed");
-}
-
-/// called when Coordinator starts processing the request
-void
-Mgr::Forwarder::handleRemoteAck()
-{
-    Ipc::Forwarder::handleRemoteAck();
-
-    Must(entry != NULL);
-    EBIT_CLR(entry->flags, ENTRY_FWD_HDR_WAIT);
-    entry->complete();
 }
 
 /// send error page
@@ -122,7 +109,6 @@ Mgr::Forwarder::sendError(ErrorState *error)
     Must(entry != NULL);
     Must(httpRequest != NULL);
 
-    EBIT_CLR(entry->flags, ENTRY_FWD_HDR_WAIT);
     entry->buffer();
     entry->replaceHttpReply(error->BuildHttpReply());
     entry->expires = squid_curtime;

@@ -185,7 +185,7 @@ am__v_lt_0 = --silent
 am__v_lt_1 = 
 libmiscencoding_la_LIBADD =
 am_libmiscencoding_la_OBJECTS = base64.lo charset.lo html_quote.lo \
-	md5.lo rfc1738.lo rfc2617.lo uudecode.lo
+	md5.lo rfc1738.lo rfc2617.lo
 libmiscencoding_la_OBJECTS = $(am_libmiscencoding_la_OBJECTS)
 libmiscutil_la_LIBADD =
 am_libmiscutil_la_OBJECTS = getfullhostname.lo heap.lo iso3307.lo \
@@ -236,7 +236,7 @@ am__depfiles_remade = ./$(DEPDIR)/Splay.Plo ./$(DEPDIR)/base64.Plo \
 	./$(DEPDIR)/radix.Plo ./$(DEPDIR)/rfc1123.Plo \
 	./$(DEPDIR)/rfc1738.Plo ./$(DEPDIR)/rfc2617.Plo \
 	./$(DEPDIR)/sspwin32.Plo ./$(DEPDIR)/stub_memaccount.Plo \
-	./$(DEPDIR)/util.Plo ./$(DEPDIR)/uudecode.Plo \
+	./$(DEPDIR)/util.Plo \
 	./$(DEPDIR)/xusleep.Plo tests/$(DEPDIR)/testRFC1738.Po
 am__mv = mv -f
 COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
@@ -838,8 +838,7 @@ libmiscencoding_la_SOURCES = \
 	html_quote.c \
 	md5.c \
 	rfc1738.c \
-	rfc2617.c \
-	uudecode.c
+	rfc2617.c
 
 libmisccontainers_la_SOURCES = \
 	hash.cc
@@ -972,7 +971,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sspwin32.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/stub_memaccount.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/util.Plo@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/uudecode.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/xusleep.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@tests/$(DEPDIR)/testRFC1738.Po@am__quote@ # am--include-marker
 
@@ -1421,7 +1419,6 @@ distclean: distclean-recursive
 	-rm -f ./$(DEPDIR)/sspwin32.Plo
 	-rm -f ./$(DEPDIR)/stub_memaccount.Plo
 	-rm -f ./$(DEPDIR)/util.Plo
-	-rm -f ./$(DEPDIR)/uudecode.Plo
 	-rm -f ./$(DEPDIR)/xusleep.Plo
 	-rm -f tests/$(DEPDIR)/testRFC1738.Po
 	-rm -f Makefile
@@ -1488,7 +1485,6 @@ maintainer-clean: maintainer-clean-recursive
 	-rm -f ./$(DEPDIR)/sspwin32.Plo
 	-rm -f ./$(DEPDIR)/stub_memaccount.Plo
 	-rm -f ./$(DEPDIR)/util.Plo
-	-rm -f ./$(DEPDIR)/uudecode.Plo
 	-rm -f ./$(DEPDIR)/xusleep.Plo
 	-rm -f tests/$(DEPDIR)/testRFC1738.Po
 	-rm -f Makefile

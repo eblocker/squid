@@ -61,7 +61,8 @@ libmiscencoding_la_SOURCES = \
 	html_quote.c \
 	md5.c \
 	rfc1738.c \
-	rfc2617.c
+	rfc2617.c \
+	uudecode.c
 
 libmisccontainers_la_SOURCES = \
 	hash.cc

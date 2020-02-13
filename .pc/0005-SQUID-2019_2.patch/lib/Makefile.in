@@ -13,6 +13,7 @@
 # PARTICULAR PURPOSE.
 
 @SET_MAKE@
+
 VPATH = @srcdir@
 am__is_gnu_make = { \
   if test -z '$(MAKELEVEL)'; then \
@@ -87,17 +88,23 @@ PRE_UNINSTALL = :
 POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
-check_PROGRAMS = debug$(EXEEXT) $(am__EXEEXT_2) MemPoolTest$(EXEEXT) \
-	mem_node_test$(EXEEXT) mem_hdr_test$(EXEEXT) splay$(EXEEXT) \
-	syntheticoperators$(EXEEXT) VirtualDeleteOperator$(EXEEXT)
-TESTS = debug$(EXEEXT) syntheticoperators$(EXEEXT) \
-	VirtualDeleteOperator$(EXEEXT) splay$(EXEEXT) \
-	MemPoolTest$(EXEEXT) mem_node_test$(EXEEXT) \
-	mem_hdr_test$(EXEEXT) $(am__EXEEXT_2) squid-conf-tests
+check_PROGRAMS = tests/testRFC1738$(EXEEXT)
+TESTS = tests/testRFC1738$(EXEEXT) testHeaders
 @ENABLE_LOADABLE_MODULES_TRUE@am__append_1 = $(INCLTDL)
-EXTRA_PROGRAMS = mem_node_test$(EXEEXT) membanger$(EXEEXT) \
-	splay$(EXEEXT) tcp-banger2$(EXEEXT)
-subdir = test-suite
+@ENABLE_ESI_TRUE@am__append_2 = libTrie
+@ENABLE_SNMP_TRUE@am__append_3 = snmplib
+@ENABLE_XPROF_STATS_TRUE@am__append_4 = profiler
+
+#
+# Some libraries are only available on Windows
+# and others are unable to be built.
+#
+@ENABLE_WIN32SPECIFIC_TRUE@am__append_5 = libsspwin32.la
+@ENABLE_WIN32SPECIFIC_FALSE@am__append_6 = sspwin32.cc
+# smblib is the only user of the rfcnb library
+@ENABLE_SMBLIB_TRUE@am__append_7 = rfcnb smblib
+@ENABLE_AUTH_NTLM_TRUE@am__append_8 = ntlmauth
+subdir = lib
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/acinclude/ax_with_prog.m4 \
 	$(top_srcdir)/acinclude/init.m4 \
@@ -168,85 +175,43 @@ mkinstalldirs = $(install_sh) -d
 CONFIG_HEADER = $(top_builddir)/include/autoconf.h
 CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
-am__EXEEXT_1 = ESIExpressions$(EXEEXT)
-@ENABLE_ESI_TRUE@am__EXEEXT_2 = $(am__EXEEXT_1)
-am__objects_1 = stub_cbdata.$(OBJEXT) stub_debug.$(OBJEXT) \
-	stub_MemBuf.$(OBJEXT) stub_SBuf.$(OBJEXT) stub_tools.$(OBJEXT) \
-	stub_fatal.$(OBJEXT)
-am__objects_2 = test_tools.$(OBJEXT) $(am__objects_1)
-am_ESIExpressions_OBJECTS = ESIExpressions.$(OBJEXT) \
-	stub_libmem.$(OBJEXT) $(am__objects_2)
-ESIExpressions_OBJECTS = $(am_ESIExpressions_OBJECTS)
-@ENABLE_XPROF_STATS_TRUE@am__DEPENDENCIES_1 = $(top_builddir)/lib/profiler/libprofiler.la
-am__DEPENDENCIES_2 = $(top_builddir)/compat/libcompatsquid.la \
-	$(am__DEPENDENCIES_1)
-am__DEPENDENCIES_3 =
-am__DEPENDENCIES_4 = $(top_builddir)/src/base/libbase.la \
-	$(top_builddir)/src/globals.o $(top_builddir)/src/time.o \
-	$(top_builddir)/lib/libmiscutil.la $(am__DEPENDENCIES_2) \
-	$(am__DEPENDENCIES_3)
-ESIExpressions_DEPENDENCIES = $(top_builddir)/src/esi/Expression.o \
-	$(am__DEPENDENCIES_4)
+LTLIBRARIES = $(noinst_LTLIBRARIES)
+libmisccontainers_la_LIBADD =
+am_libmisccontainers_la_OBJECTS = hash.lo
+libmisccontainers_la_OBJECTS = $(am_libmisccontainers_la_OBJECTS)
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
 am__v_lt_0 = --silent
 am__v_lt_1 = 
-am_MemPoolTest_OBJECTS = MemPoolTest.$(OBJEXT) $(am__objects_2)
-MemPoolTest_OBJECTS = $(am_MemPoolTest_OBJECTS)
-MemPoolTest_DEPENDENCIES = $(top_builddir)/src/mem/libmem.la \
-	$(am__DEPENDENCIES_4)
-am_VirtualDeleteOperator_OBJECTS = VirtualDeleteOperator.$(OBJEXT) \
-	stub_libmem.$(OBJEXT) $(am__objects_2)
-VirtualDeleteOperator_OBJECTS = $(am_VirtualDeleteOperator_OBJECTS)
-VirtualDeleteOperator_LDADD = $(LDADD)
-VirtualDeleteOperator_DEPENDENCIES =  \
-	$(top_builddir)/src/base/libbase.la \
-	$(top_builddir)/src/globals.o $(top_builddir)/src/time.o \
-	$(top_builddir)/lib/libmiscutil.la $(am__DEPENDENCIES_2) \
+libmiscencoding_la_LIBADD =
+am_libmiscencoding_la_OBJECTS = base64.lo charset.lo html_quote.lo \
+	md5.lo rfc1738.lo rfc2617.lo uudecode.lo
+libmiscencoding_la_OBJECTS = $(am_libmiscencoding_la_OBJECTS)
+libmiscutil_la_LIBADD =
+am_libmiscutil_la_OBJECTS = getfullhostname.lo heap.lo iso3307.lo \
+	radix.lo rfc1123.lo Splay.lo stub_memaccount.lo util.lo \
+	xusleep.lo
+libmiscutil_la_OBJECTS = $(am_libmiscutil_la_OBJECTS)
+libsspwin32_la_LIBADD =
+am__libsspwin32_la_SOURCES_DIST = sspwin32.cc
+@ENABLE_WIN32SPECIFIC_TRUE@am_libsspwin32_la_OBJECTS = sspwin32.lo
+libsspwin32_la_OBJECTS = $(am_libsspwin32_la_OBJECTS)
+@ENABLE_WIN32SPECIFIC_TRUE@am_libsspwin32_la_rpath =
+am__dirstamp = $(am__leading_dot)dirstamp
+am_tests_testRFC1738_OBJECTS = tests/testRFC1738.$(OBJEXT)
+tests_testRFC1738_OBJECTS = $(am_tests_testRFC1738_OBJECTS)
+am__DEPENDENCIES_1 =
+@ENABLE_XPROF_STATS_TRUE@am__DEPENDENCIES_2 = $(top_builddir)/lib/profiler/libprofiler.la
+am__DEPENDENCIES_3 = $(top_builddir)/compat/libcompatsquid.la \
+	$(am__DEPENDENCIES_2)
+tests_testRFC1738_DEPENDENCIES =  \
+	$(top_builddir)/lib/libmiscencoding.la \
+	$(top_builddir)/lib/libmiscutil.la $(am__DEPENDENCIES_1) \
 	$(am__DEPENDENCIES_3)
-am_debug_OBJECTS = debug.$(OBJEXT) stub_libmem.$(OBJEXT) \
-	$(am__objects_2)
-debug_OBJECTS = $(am_debug_OBJECTS)
-debug_LDADD = $(LDADD)
-debug_DEPENDENCIES = $(top_builddir)/src/base/libbase.la \
-	$(top_builddir)/src/globals.o $(top_builddir)/src/time.o \
-	$(top_builddir)/lib/libmiscutil.la $(am__DEPENDENCIES_2) \
-	$(am__DEPENDENCIES_3)
-am_mem_hdr_test_OBJECTS = mem_hdr_test.$(OBJEXT) $(am__objects_2)
-mem_hdr_test_OBJECTS = $(am_mem_hdr_test_OBJECTS)
-mem_hdr_test_DEPENDENCIES = $(top_builddir)/src/stmem.o \
-	$(top_builddir)/src/mem_node.o \
-	$(top_builddir)/src/mem/libmem.la $(am__DEPENDENCIES_4)
-am_mem_node_test_OBJECTS = mem_node_test.$(OBJEXT) $(am__objects_2)
-mem_node_test_OBJECTS = $(am_mem_node_test_OBJECTS)
-mem_node_test_DEPENDENCIES = $(top_builddir)/src/mem_node.o \
-	$(top_builddir)/src/mem/libmem.la $(am__DEPENDENCIES_4)
-membanger_SOURCES = membanger.c
-membanger_OBJECTS = membanger.$(OBJEXT)
-membanger_LDADD = $(LDADD)
-membanger_DEPENDENCIES = $(top_builddir)/src/base/libbase.la \
-	$(top_builddir)/src/globals.o $(top_builddir)/src/time.o \
-	$(top_builddir)/lib/libmiscutil.la $(am__DEPENDENCIES_2) \
-	$(am__DEPENDENCIES_3)
-am_splay_OBJECTS = splay.$(OBJEXT) stub_libmem.$(OBJEXT) \
-	$(am__objects_2)
-splay_OBJECTS = $(am_splay_OBJECTS)
-splay_LDADD = $(LDADD)
-splay_DEPENDENCIES = $(top_builddir)/src/base/libbase.la \
-	$(top_builddir)/src/globals.o $(top_builddir)/src/time.o \
-	$(top_builddir)/lib/libmiscutil.la $(am__DEPENDENCIES_2) \
-	$(am__DEPENDENCIES_3)
-am_syntheticoperators_OBJECTS = syntheticoperators.$(OBJEXT) \
-	stub_libmem.$(OBJEXT) $(am__objects_2)
-syntheticoperators_OBJECTS = $(am_syntheticoperators_OBJECTS)
-syntheticoperators_LDADD = $(LDADD)
-syntheticoperators_DEPENDENCIES = $(top_builddir)/src/base/libbase.la \
-	$(top_builddir)/src/globals.o $(top_builddir)/src/time.o \
-	$(top_builddir)/lib/libmiscutil.la $(am__DEPENDENCIES_2) \
-	$(am__DEPENDENCIES_3)
-tcp_banger2_SOURCES = tcp-banger2.c
-tcp_banger2_OBJECTS = tcp-banger2.$(OBJEXT)
-tcp_banger2_DEPENDENCIES = $(top_builddir)/lib/libmiscutil.la
+tests_testRFC1738_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CXX \
+	$(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link $(CXXLD) \
+	$(AM_CXXFLAGS) $(CXXFLAGS) $(tests_testRFC1738_LDFLAGS) \
+	$(LDFLAGS) -o $@
 AM_V_P = $(am__v_P_@AM_V@)
 am__v_P_ = $(am__v_P_@AM_DEFAULT_V@)
 am__v_P_0 = false
@@ -262,16 +227,17 @@ am__v_at_1 =
 DEFAULT_INCLUDES = 
 depcomp = $(SHELL) $(top_srcdir)/cfgaux/depcomp
 am__maybe_remake_depfiles = depfiles
-am__depfiles_remade = ./$(DEPDIR)/ESIExpressions.Po \
-	./$(DEPDIR)/MemPoolTest.Po \
-	./$(DEPDIR)/VirtualDeleteOperator.Po ./$(DEPDIR)/debug.Po \
-	./$(DEPDIR)/mem_hdr_test.Po ./$(DEPDIR)/mem_node_test.Po \
-	./$(DEPDIR)/membanger.Po ./$(DEPDIR)/splay.Po \
-	./$(DEPDIR)/stub_MemBuf.Po ./$(DEPDIR)/stub_SBuf.Po \
-	./$(DEPDIR)/stub_cbdata.Po ./$(DEPDIR)/stub_debug.Po \
-	./$(DEPDIR)/stub_fatal.Po ./$(DEPDIR)/stub_libmem.Po \
-	./$(DEPDIR)/stub_tools.Po ./$(DEPDIR)/syntheticoperators.Po \
-	./$(DEPDIR)/tcp-banger2.Po ./$(DEPDIR)/test_tools.Po
+am__depfiles_remade = ./$(DEPDIR)/Splay.Plo ./$(DEPDIR)/base64.Plo \
+	./$(DEPDIR)/charset.Plo ./$(DEPDIR)/dirent.Plo \
+	./$(DEPDIR)/encrypt.Plo ./$(DEPDIR)/getfullhostname.Plo \
+	./$(DEPDIR)/getopt.Plo ./$(DEPDIR)/hash.Plo \
+	./$(DEPDIR)/heap.Plo ./$(DEPDIR)/html_quote.Plo \
+	./$(DEPDIR)/iso3307.Plo ./$(DEPDIR)/md5.Plo \
+	./$(DEPDIR)/radix.Plo ./$(DEPDIR)/rfc1123.Plo \
+	./$(DEPDIR)/rfc1738.Plo ./$(DEPDIR)/rfc2617.Plo \
+	./$(DEPDIR)/sspwin32.Plo ./$(DEPDIR)/stub_memaccount.Plo \
+	./$(DEPDIR)/util.Plo ./$(DEPDIR)/uudecode.Plo \
+	./$(DEPDIR)/xusleep.Plo tests/$(DEPDIR)/testRFC1738.Po
 am__mv = mv -f
 COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
 	$(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
@@ -309,19 +275,36 @@ AM_V_CXXLD = $(am__v_CXXLD_@AM_V@)
 am__v_CXXLD_ = $(am__v_CXXLD_@AM_DEFAULT_V@)
 am__v_CXXLD_0 = @echo "  CXXLD   " $@;
 am__v_CXXLD_1 = 
-SOURCES = $(ESIExpressions_SOURCES) $(MemPoolTest_SOURCES) \
-	$(VirtualDeleteOperator_SOURCES) $(debug_SOURCES) \
-	$(mem_hdr_test_SOURCES) $(mem_node_test_SOURCES) membanger.c \
-	$(splay_SOURCES) $(syntheticoperators_SOURCES) tcp-banger2.c
-DIST_SOURCES = $(ESIExpressions_SOURCES) $(MemPoolTest_SOURCES) \
-	$(VirtualDeleteOperator_SOURCES) $(debug_SOURCES) \
-	$(mem_hdr_test_SOURCES) $(mem_node_test_SOURCES) membanger.c \
-	$(splay_SOURCES) $(syntheticoperators_SOURCES) tcp-banger2.c
+SOURCES = $(libmisccontainers_la_SOURCES) \
+	$(libmiscencoding_la_SOURCES) $(libmiscutil_la_SOURCES) \
+	$(EXTRA_libmiscutil_la_SOURCES) $(libsspwin32_la_SOURCES) \
+	$(tests_testRFC1738_SOURCES)
+DIST_SOURCES = $(libmisccontainers_la_SOURCES) \
+	$(libmiscencoding_la_SOURCES) $(libmiscutil_la_SOURCES) \
+	$(EXTRA_libmiscutil_la_SOURCES) \
+	$(am__libsspwin32_la_SOURCES_DIST) \
+	$(tests_testRFC1738_SOURCES)
+RECURSIVE_TARGETS = all-recursive check-recursive cscopelist-recursive \
+	ctags-recursive dvi-recursive html-recursive info-recursive \
+	install-data-recursive install-dvi-recursive \
+	install-exec-recursive install-html-recursive \
+	install-info-recursive install-pdf-recursive \
+	install-ps-recursive install-recursive installcheck-recursive \
+	installdirs-recursive pdf-recursive ps-recursive \
+	tags-recursive uninstall-recursive
 am__can_run_installinfo = \
   case $$AM_UPDATE_INFO_DIR in \
     n|no|NO) false;; \
     *) (install-info --version) >/dev/null 2>&1;; \
   esac
+RECURSIVE_CLEAN_TARGETS = mostlyclean-recursive clean-recursive	\
+  distclean-recursive maintainer-clean-recursive
+am__recursive_targets = \
+  $(RECURSIVE_TARGETS) \
+  $(RECURSIVE_CLEAN_TARGETS) \
+  $(am__extra_recursive_targets)
+AM_RECURSIVE_TARGETS = $(am__recursive_targets:-recursive=) TAGS CTAGS \
+	check recheck distdir distdir-am
 am__tagged_files = $(HEADERS) $(SOURCES) $(TAGS_FILES) $(LISP)
 # Read a list of newline-separated strings from the standard input,
 # and print each of them once, without duplicates.  Input order is
@@ -524,7 +507,6 @@ am__set_TESTS_bases = \
   bases=`for i in $$bases; do echo $$i; done | sed 's/\.log$$//'`; \
   bases=`echo $$bases`
 RECHECK_LOGS = $(TEST_LOGS)
-AM_RECURSIVE_TARGETS = check recheck
 TEST_SUITE_LOG = test-suite.log
 TEST_EXTENSIONS = @EXEEXT@ .test
 LOG_DRIVER = $(SHELL) $(top_srcdir)/cfgaux/test-driver
@@ -548,6 +530,31 @@ TEST_LOG_COMPILE = $(TEST_LOG_COMPILER) $(AM_TEST_LOG_FLAGS) \
 am__DIST_COMMON = $(srcdir)/Makefile.in $(top_srcdir)/cfgaux/depcomp \
 	$(top_srcdir)/cfgaux/test-driver $(top_srcdir)/src/Common.am
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
+am__relativize = \
+  dir0=`pwd`; \
+  sed_first='s,^\([^/]*\)/.*$$,\1,'; \
+  sed_rest='s,^[^/]*/*,,'; \
+  sed_last='s,^.*/\([^/]*\)$$,\1,'; \
+  sed_butlast='s,/*[^/]*$$,,'; \
+  while test -n "$$dir1"; do \
+    first=`echo "$$dir1" | sed -e "$$sed_first"`; \
+    if test "$$first" != "."; then \
+      if test "$$first" = ".."; then \
+        dir2=`echo "$$dir0" | sed -e "$$sed_last"`/"$$dir2"; \
+        dir0=`echo "$$dir0" | sed -e "$$sed_butlast"`; \
+      else \
+        first2=`echo "$$dir2" | sed -e "$$sed_first"`; \
+        if test "$$first2" = "$$first"; then \
+          dir2=`echo "$$dir2" | sed -e "$$sed_rest"`; \
+        else \
+          dir2="../$$dir2"; \
+        fi; \
+        dir0="$$dir0"/"$$first"; \
+      fi; \
+    fi; \
+    dir1=`echo "$$dir1" | sed -e "$$sed_rest"`; \
+  done; \
+  reldir="$$dir2"
 ACLOCAL = @ACLOCAL@
 ADAPTATION_LIBS = @ADAPTATION_LIBS@
 AIOLIB = @AIOLIB@
@@ -800,73 +807,67 @@ DEFAULT_ICON_DIR = $(datadir)/icons
 DEFAULT_ERROR_DIR = $(datadir)/errors
 AM_CFLAGS = $(SQUID_CFLAGS)
 AM_CXXFLAGS = $(SQUID_CXXFLAGS)
-CLEANFILES = $(STUBS) stub_libmem.cc squid-conf-tests
+CLEANFILES = testHeaders
 AM_CPPFLAGS = -I$(top_srcdir) -I$(top_srcdir)/include \
 	-I$(top_srcdir)/lib -I$(top_srcdir)/src \
 	-I$(top_builddir)/include $(LIBCPPUNIT_CFLAGS) $(KRB5INCS) \
-	$(am__append_1) -I$(srcdir)
+	$(am__append_1)
 @ENABLE_XPROF_STATS_FALSE@LIBPROFILER = 
 @ENABLE_XPROF_STATS_TRUE@LIBPROFILER = $(top_builddir)/lib/profiler/libprofiler.la
 COMPAT_LIB = $(top_builddir)/compat/libcompatsquid.la $(LIBPROFILER)
 subst_perlshell = sed -e 's,[@]PERL[@],$(PERL),g' <$(srcdir)/$@.pl.in >$@ || ($(RM) -f $@ ; exit 1)
-LDADD = \
-	$(top_builddir)/src/base/libbase.la \
-	$(top_builddir)/src/globals.o \
-	$(top_builddir)/src/time.o \
+DIST_SUBDIRS = ntlmauth profiler rfcnb smblib libTrie snmplib
+SUBDIRS = $(am__append_2) $(am__append_3) $(am__append_4) \
+	$(am__append_7) $(am__append_8)
+EXTRA_DIST = $(am__append_6)
+noinst_LTLIBRARIES = libmiscencoding.la libmisccontainers.la \
+	libmiscutil.la $(am__append_5)
+@ENABLE_WIN32SPECIFIC_TRUE@libsspwin32_la_SOURCES = sspwin32.cc
+
+#
+# dirent.c, encrypt.c and getopt.c are needed for native Windows support.
+#
+EXTRA_libmiscutil_la_SOURCES = \
+	dirent.c \
+	encrypt.c \
+	getopt.c
+
+libmiscencoding_la_SOURCES = \
+	base64.c \
+	charset.c \
+	html_quote.c \
+	md5.c \
+	rfc1738.c \
+	rfc2617.c \
+	uudecode.c
+
+libmisccontainers_la_SOURCES = \
+	hash.cc
+
+libmiscutil_la_SOURCES = \
+	getfullhostname.c \
+	heap.c \
+	iso3307.c \
+	radix.c \
+	rfc1123.c \
+	$(SNPRINTFSOURCE) \
+	Splay.cc \
+	stub_memaccount.c \
+	util.c \
+	xusleep.c
+
+tests_testRFC1738_SOURCES = \
+	tests/testRFC1738.h \
+	tests/testRFC1738.cc
+
+tests_testRFC1738_LDADD = \
+	$(top_builddir)/lib/libmiscencoding.la \
 	$(top_builddir)/lib/libmiscutil.la \
-	$(COMPAT_LIB) \
-	$(XTRA_LIBS)
+	$(LIBCPPUNIT_LIBS) \
+	$(COMPAT_LIB)
 
-EXTRA_DIST = \
-	$(srcdir)/squidconf/* \
-	testheaders.sh
-
-ESI_ALL_TESTS = \
-	ESIExpressions
-
-@ENABLE_ESI_FALSE@ESI_TESTS = 
-@ENABLE_ESI_TRUE@ESI_TESTS = $(ESI_ALL_TESTS)
-tcp_banger2_LDADD = $(top_builddir)/lib/libmiscutil.la
-
-#do not include stub_libmem.cc here, as it would override libmem.la in
-# several tests whose purpose is testing libmem itself.
-STUBS = \
-	stub_cbdata.cc \
-	stub_debug.cc \
-	stub_MemBuf.cc \
-	stub_SBuf.cc \
-	stub_tools.cc \
-	stub_fatal.cc \
-	STUB.h
-
-DEBUG_SOURCE = test_tools.cc $(STUBS)
-debug_SOURCES = debug.cc stub_libmem.cc $(DEBUG_SOURCE) 
-ESIExpressions_SOURCES = ESIExpressions.cc stub_libmem.cc $(DEBUG_SOURCE)
-ESIExpressions_LDADD = $(top_builddir)/src/esi/Expression.o \
-		$(LDADD)
-
-mem_node_test_SOURCES = mem_node_test.cc $(DEBUG_SOURCE)
-mem_node_test_LDADD = \
-	$(top_builddir)/src/mem_node.o \
-	$(top_builddir)/src/mem/libmem.la \
-	$(LDADD)
-
-mem_hdr_test_SOURCES = mem_hdr_test.cc $(DEBUG_SOURCE)
-mem_hdr_test_LDADD = \
-	$(top_builddir)/src/stmem.o \
-	$(top_builddir)/src/mem_node.o \
-	$(top_builddir)/src/mem/libmem.la \
-	$(LDADD)
-
-MemPoolTest_SOURCES = MemPoolTest.cc $(DEBUG_SOURCE)
-MemPoolTest_LDADD = \
-	$(top_builddir)/src/mem/libmem.la \
-	$(LDADD)
-
-splay_SOURCES = splay.cc stub_libmem.cc $(DEBUG_SOURCE)
-syntheticoperators_SOURCES = syntheticoperators.cc stub_libmem.cc $(DEBUG_SOURCE)
-VirtualDeleteOperator_SOURCES = VirtualDeleteOperator.cc stub_libmem.cc $(DEBUG_SOURCE)
-all: all-am
+tests_testRFC1738_LDFLAGS = $(LIBADD_DL)
+all: all-recursive
 
 .SUFFIXES:
 .SUFFIXES: .c .cc .lo .log .o .obj .test .test$(EXEEXT) .trs
@@ -879,9 +880,9 @@ $(srcdir)/Makefile.in: @MAINTAINER_MODE_TRUE@ $(srcdir)/Makefile.am $(top_srcdir
 	      exit 1;; \
 	  esac; \
 	done; \
-	echo ' cd $(top_srcdir) && $(AUTOMAKE) --foreign test-suite/Makefile'; \
+	echo ' cd $(top_srcdir) && $(AUTOMAKE) --foreign lib/Makefile'; \
 	$(am__cd) $(top_srcdir) && \
-	  $(AUTOMAKE) --foreign test-suite/Makefile
+	  $(AUTOMAKE) --foreign lib/Makefile
 Makefile: $(srcdir)/Makefile.in $(top_builddir)/config.status
 	@case '$?' in \
 	  *config.status*) \
@@ -910,70 +911,70 @@ clean-checkPROGRAMS:
 	echo " rm -f" $$list; \
 	rm -f $$list
 
-ESIExpressions$(EXEEXT): $(ESIExpressions_OBJECTS) $(ESIExpressions_DEPENDENCIES) $(EXTRA_ESIExpressions_DEPENDENCIES) 
-	@rm -f ESIExpressions$(EXEEXT)
-	$(AM_V_CXXLD)$(CXXLINK) $(ESIExpressions_OBJECTS) $(ESIExpressions_LDADD) $(LIBS)
+clean-noinstLTLIBRARIES:
+	-test -z "$(noinst_LTLIBRARIES)" || rm -f $(noinst_LTLIBRARIES)
+	@list='$(noinst_LTLIBRARIES)'; \
+	locs=`for p in $$list; do echo $$p; done | \
+	      sed 's|^[^/]*$$|.|; s|/[^/]*$$||; s|$$|/so_locations|' | \
+	      sort -u`; \
+	test -z "$$locs" || { \
+	  echo rm -f $${locs}; \
+	  rm -f $${locs}; \
+	}
 
-MemPoolTest$(EXEEXT): $(MemPoolTest_OBJECTS) $(MemPoolTest_DEPENDENCIES) $(EXTRA_MemPoolTest_DEPENDENCIES) 
-	@rm -f MemPoolTest$(EXEEXT)
-	$(AM_V_CXXLD)$(CXXLINK) $(MemPoolTest_OBJECTS) $(MemPoolTest_LDADD) $(LIBS)
+libmisccontainers.la: $(libmisccontainers_la_OBJECTS) $(libmisccontainers_la_DEPENDENCIES) $(EXTRA_libmisccontainers_la_DEPENDENCIES) 
+	$(AM_V_CXXLD)$(CXXLINK)  $(libmisccontainers_la_OBJECTS) $(libmisccontainers_la_LIBADD) $(LIBS)
 
-VirtualDeleteOperator$(EXEEXT): $(VirtualDeleteOperator_OBJECTS) $(VirtualDeleteOperator_DEPENDENCIES) $(EXTRA_VirtualDeleteOperator_DEPENDENCIES) 
-	@rm -f VirtualDeleteOperator$(EXEEXT)
-	$(AM_V_CXXLD)$(CXXLINK) $(VirtualDeleteOperator_OBJECTS) $(VirtualDeleteOperator_LDADD) $(LIBS)
+libmiscencoding.la: $(libmiscencoding_la_OBJECTS) $(libmiscencoding_la_DEPENDENCIES) $(EXTRA_libmiscencoding_la_DEPENDENCIES) 
+	$(AM_V_CCLD)$(LINK)  $(libmiscencoding_la_OBJECTS) $(libmiscencoding_la_LIBADD) $(LIBS)
 
-debug$(EXEEXT): $(debug_OBJECTS) $(debug_DEPENDENCIES) $(EXTRA_debug_DEPENDENCIES) 
-	@rm -f debug$(EXEEXT)
-	$(AM_V_CXXLD)$(CXXLINK) $(debug_OBJECTS) $(debug_LDADD) $(LIBS)
+libmiscutil.la: $(libmiscutil_la_OBJECTS) $(libmiscutil_la_DEPENDENCIES) $(EXTRA_libmiscutil_la_DEPENDENCIES) 
+	$(AM_V_CXXLD)$(CXXLINK)  $(libmiscutil_la_OBJECTS) $(libmiscutil_la_LIBADD) $(LIBS)
 
-mem_hdr_test$(EXEEXT): $(mem_hdr_test_OBJECTS) $(mem_hdr_test_DEPENDENCIES) $(EXTRA_mem_hdr_test_DEPENDENCIES) 
-	@rm -f mem_hdr_test$(EXEEXT)
-	$(AM_V_CXXLD)$(CXXLINK) $(mem_hdr_test_OBJECTS) $(mem_hdr_test_LDADD) $(LIBS)
+libsspwin32.la: $(libsspwin32_la_OBJECTS) $(libsspwin32_la_DEPENDENCIES) $(EXTRA_libsspwin32_la_DEPENDENCIES) 
+	$(AM_V_CXXLD)$(CXXLINK) $(am_libsspwin32_la_rpath) $(libsspwin32_la_OBJECTS) $(libsspwin32_la_LIBADD) $(LIBS)
+tests/$(am__dirstamp):
+	@$(MKDIR_P) tests
+	@: > tests/$(am__dirstamp)
+tests/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) tests/$(DEPDIR)
+	@: > tests/$(DEPDIR)/$(am__dirstamp)
+tests/testRFC1738.$(OBJEXT): tests/$(am__dirstamp) \
+	tests/$(DEPDIR)/$(am__dirstamp)
 
-mem_node_test$(EXEEXT): $(mem_node_test_OBJECTS) $(mem_node_test_DEPENDENCIES) $(EXTRA_mem_node_test_DEPENDENCIES) 
-	@rm -f mem_node_test$(EXEEXT)
-	$(AM_V_CXXLD)$(CXXLINK) $(mem_node_test_OBJECTS) $(mem_node_test_LDADD) $(LIBS)
-
-membanger$(EXEEXT): $(membanger_OBJECTS) $(membanger_DEPENDENCIES) $(EXTRA_membanger_DEPENDENCIES) 
-	@rm -f membanger$(EXEEXT)
-	$(AM_V_CCLD)$(LINK) $(membanger_OBJECTS) $(membanger_LDADD) $(LIBS)
-
-splay$(EXEEXT): $(splay_OBJECTS) $(splay_DEPENDENCIES) $(EXTRA_splay_DEPENDENCIES) 
-	@rm -f splay$(EXEEXT)
-	$(AM_V_CXXLD)$(CXXLINK) $(splay_OBJECTS) $(splay_LDADD) $(LIBS)
-
-syntheticoperators$(EXEEXT): $(syntheticoperators_OBJECTS) $(syntheticoperators_DEPENDENCIES) $(EXTRA_syntheticoperators_DEPENDENCIES) 
-	@rm -f syntheticoperators$(EXEEXT)
-	$(AM_V_CXXLD)$(CXXLINK) $(syntheticoperators_OBJECTS) $(syntheticoperators_LDADD) $(LIBS)
-
-tcp-banger2$(EXEEXT): $(tcp_banger2_OBJECTS) $(tcp_banger2_DEPENDENCIES) $(EXTRA_tcp_banger2_DEPENDENCIES) 
-	@rm -f tcp-banger2$(EXEEXT)
-	$(AM_V_CCLD)$(LINK) $(tcp_banger2_OBJECTS) $(tcp_banger2_LDADD) $(LIBS)
+tests/testRFC1738$(EXEEXT): $(tests_testRFC1738_OBJECTS) $(tests_testRFC1738_DEPENDENCIES) $(EXTRA_tests_testRFC1738_DEPENDENCIES) tests/$(am__dirstamp)
+	@rm -f tests/testRFC1738$(EXEEXT)
+	$(AM_V_CXXLD)$(tests_testRFC1738_LINK) $(tests_testRFC1738_OBJECTS) $(tests_testRFC1738_LDADD) $(LIBS)
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
+	-rm -f tests/*.$(OBJEXT)
 
 distclean-compile:
 	-rm -f *.tab.c
 
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ESIExpressions.Po@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/MemPoolTest.Po@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/VirtualDeleteOperator.Po@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/debug.Po@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mem_hdr_test.Po@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mem_node_test.Po@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/membanger.Po@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/splay.Po@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/stub_MemBuf.Po@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/stub_SBuf.Po@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/stub_cbdata.Po@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/stub_debug.Po@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/stub_fatal.Po@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/stub_libmem.Po@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/stub_tools.Po@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/syntheticoperators.Po@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/tcp-banger2.Po@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_tools.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Splay.Plo@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/base64.Plo@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/charset.Plo@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/dirent.Plo@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/encrypt.Plo@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/getfullhostname.Plo@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/getopt.Plo@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/hash.Plo@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/heap.Plo@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/html_quote.Plo@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/iso3307.Plo@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/md5.Plo@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/radix.Plo@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/rfc1123.Plo@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/rfc1738.Plo@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/rfc2617.Plo@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sspwin32.Plo@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/stub_memaccount.Plo@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/util.Plo@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/uudecode.Plo@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/xusleep.Plo@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@tests/$(DEPDIR)/testRFC1738.Po@am__quote@ # am--include-marker
 
 $(am__depfiles_remade):
 	@$(MKDIR_P) $(@D)
@@ -1034,15 +1035,63 @@ mostlyclean-libtool:
 
 clean-libtool:
 	-rm -rf .libs _libs
+	-rm -rf tests/.libs tests/_libs
+
+# This directory's subdirectories are mostly independent; you can cd
+# into them and run 'make' without going through this Makefile.
+# To change the values of 'make' variables: instead of editing Makefiles,
+# (1) if the variable is set in 'config.status', edit 'config.status'
+#     (which will cause the Makefiles to be regenerated when you run 'make');
+# (2) otherwise, pass the desired values on the 'make' command line.
+$(am__recursive_targets):
+	@fail=; \
+	if $(am__make_keepgoing); then \
+	  failcom='fail=yes'; \
+	else \
+	  failcom='exit 1'; \
+	fi; \
+	dot_seen=no; \
+	target=`echo $@ | sed s/-recursive//`; \
+	case "$@" in \
+	  distclean-* | maintainer-clean-*) list='$(DIST_SUBDIRS)' ;; \
+	  *) list='$(SUBDIRS)' ;; \
+	esac; \
+	for subdir in $$list; do \
+	  echo "Making $$target in $$subdir"; \
+	  if test "$$subdir" = "."; then \
+	    dot_seen=yes; \
+	    local_target="$$target-am"; \
+	  else \
+	    local_target="$$target"; \
+	  fi; \
+	  ($(am__cd) $$subdir && $(MAKE) $(AM_MAKEFLAGS) $$local_target) \
+	  || eval $$failcom; \
+	done; \
+	if test "$$dot_seen" = "no"; then \
+	  $(MAKE) $(AM_MAKEFLAGS) "$$target-am" || exit 1; \
+	fi; test -z "$$fail"
 
 ID: $(am__tagged_files)
 	$(am__define_uniq_tagged_files); mkid -fID $$unique
-tags: tags-am
+tags: tags-recursive
 TAGS: tags
 
 tags-am: $(TAGS_DEPENDENCIES) $(am__tagged_files)
 	set x; \
 	here=`pwd`; \
+	if ($(ETAGS) --etags-include --version) >/dev/null 2>&1; then \
+	  include_option=--etags-include; \
+	  empty_fix=.; \
+	else \
+	  include_option=--include; \
+	  empty_fix=; \
+	fi; \
+	list='$(SUBDIRS)'; for subdir in $$list; do \
+	  if test "$$subdir" = .; then :; else \
+	    test ! -f $$subdir/TAGS || \
+	      set "$$@" "$$include_option=$$here/$$subdir/TAGS"; \
+	  fi; \
+	done; \
 	$(am__define_uniq_tagged_files); \
 	shift; \
 	if test -z "$(ETAGS_ARGS)$$*$$unique"; then :; else \
@@ -1055,7 +1104,7 @@ tags-am: $(TAGS_DEPENDENCIES) $(am__tagged_files)
 	      $$unique; \
 	  fi; \
 	fi
-ctags: ctags-am
+ctags: ctags-recursive
 
 CTAGS: ctags
 ctags-am: $(TAGS_DEPENDENCIES) $(am__tagged_files)
@@ -1068,7 +1117,7 @@ GTAGS:
 	here=`$(am__cd) $(top_builddir) && pwd` \
 	  && $(am__cd) $(top_srcdir) \
 	  && gtags -i $(GTAGS_ARGS) "$$here"
-cscopelist: cscopelist-am
+cscopelist: cscopelist-recursive
 
 cscopelist-am: $(am__tagged_files)
 	list='$(am__tagged_files)'; \
@@ -1228,65 +1277,16 @@ recheck: all $(check_PROGRAMS)
 	        am__force_recheck=am--force-recheck \
 	        TEST_LOGS="$$log_list"; \
 	exit $$?
-debug.log: debug$(EXEEXT)
-	@p='debug$(EXEEXT)'; \
-	b='debug'; \
+tests/testRFC1738.log: tests/testRFC1738$(EXEEXT)
+	@p='tests/testRFC1738$(EXEEXT)'; \
+	b='tests/testRFC1738'; \
 	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
 	--log-file $$b.log --trs-file $$b.trs \
 	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
 	"$$tst" $(AM_TESTS_FD_REDIRECT)
-syntheticoperators.log: syntheticoperators$(EXEEXT)
-	@p='syntheticoperators$(EXEEXT)'; \
-	b='syntheticoperators'; \
-	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
-	--log-file $$b.log --trs-file $$b.trs \
-	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
-	"$$tst" $(AM_TESTS_FD_REDIRECT)
-VirtualDeleteOperator.log: VirtualDeleteOperator$(EXEEXT)
-	@p='VirtualDeleteOperator$(EXEEXT)'; \
-	b='VirtualDeleteOperator'; \
-	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
-	--log-file $$b.log --trs-file $$b.trs \
-	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
-	"$$tst" $(AM_TESTS_FD_REDIRECT)
-splay.log: splay$(EXEEXT)
-	@p='splay$(EXEEXT)'; \
-	b='splay'; \
-	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
-	--log-file $$b.log --trs-file $$b.trs \
-	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
-	"$$tst" $(AM_TESTS_FD_REDIRECT)
-MemPoolTest.log: MemPoolTest$(EXEEXT)
-	@p='MemPoolTest$(EXEEXT)'; \
-	b='MemPoolTest'; \
-	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
-	--log-file $$b.log --trs-file $$b.trs \
-	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
-	"$$tst" $(AM_TESTS_FD_REDIRECT)
-mem_node_test.log: mem_node_test$(EXEEXT)
-	@p='mem_node_test$(EXEEXT)'; \
-	b='mem_node_test'; \
-	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
-	--log-file $$b.log --trs-file $$b.trs \
-	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
-	"$$tst" $(AM_TESTS_FD_REDIRECT)
-mem_hdr_test.log: mem_hdr_test$(EXEEXT)
-	@p='mem_hdr_test$(EXEEXT)'; \
-	b='mem_hdr_test'; \
-	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
-	--log-file $$b.log --trs-file $$b.trs \
-	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
-	"$$tst" $(AM_TESTS_FD_REDIRECT)
-ESIExpressions.log: ESIExpressions$(EXEEXT)
-	@p='ESIExpressions$(EXEEXT)'; \
-	b='ESIExpressions'; \
-	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
-	--log-file $$b.log --trs-file $$b.trs \
-	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
-	"$$tst" $(AM_TESTS_FD_REDIRECT)
-squid-conf-tests.log: squid-conf-tests
-	@p='squid-conf-tests'; \
-	b='squid-conf-tests'; \
+testHeaders.log: testHeaders
+	@p='testHeaders'; \
+	b='testHeaders'; \
 	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
 	--log-file $$b.log --trs-file $$b.trs \
 	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
@@ -1339,31 +1339,46 @@ distdir-am: $(DISTFILES)
 	    || exit 1; \
 	  fi; \
 	done
+	@list='$(DIST_SUBDIRS)'; for subdir in $$list; do \
+	  if test "$$subdir" = .; then :; else \
+	    $(am__make_dryrun) \
+	      || test -d "$(distdir)/$$subdir" \
+	      || $(MKDIR_P) "$(distdir)/$$subdir" \
+	      || exit 1; \
+	    dir1=$$subdir; dir2="$(distdir)/$$subdir"; \
+	    $(am__relativize); \
+	    new_distdir=$$reldir; \
+	    dir1=$$subdir; dir2="$(top_distdir)"; \
+	    $(am__relativize); \
+	    new_top_distdir=$$reldir; \
+	    echo " (cd $$subdir && $(MAKE) $(AM_MAKEFLAGS) top_distdir="$$new_top_distdir" distdir="$$new_distdir" \\"; \
+	    echo "     am__remove_distdir=: am__skip_length_check=: am__skip_mode_fix=: distdir)"; \
+	    ($(am__cd) $$subdir && \
+	      $(MAKE) $(AM_MAKEFLAGS) \
+	        top_distdir="$$new_top_distdir" \
+	        distdir="$$new_distdir" \
+		am__remove_distdir=: \
+		am__skip_length_check=: \
+		am__skip_mode_fix=: \
+	        distdir) \
+	      || exit 1; \
+	  fi; \
+	done
 check-am: all-am
 	$(MAKE) $(AM_MAKEFLAGS) $(check_PROGRAMS)
 	$(MAKE) $(AM_MAKEFLAGS) check-TESTS
-check: check-am
-all-am: Makefile
-installdirs:
-install: install-am
-install-exec: install-exec-am
-install-data: install-data-am
-uninstall: uninstall-am
+check: check-recursive
+all-am: Makefile $(LTLIBRARIES)
+installdirs: installdirs-recursive
+installdirs-am:
+install-exec: install-exec-recursive
+install-data: install-data-recursive
+uninstall: uninstall-recursive
 
 install-am: all-am
 	@$(MAKE) $(AM_MAKEFLAGS) install-exec-am install-data-am
 
-installcheck: installcheck-am
-install-strip:
-	if test -z '$(STRIP)'; then \
-	  $(MAKE) $(AM_MAKEFLAGS) INSTALL_PROGRAM="$(INSTALL_STRIP_PROGRAM)" \
-	    install_sh_PROGRAM="$(INSTALL_STRIP_PROGRAM)" INSTALL_STRIP_FLAG=-s \
-	      install; \
-	else \
-	  $(MAKE) $(AM_MAKEFLAGS) INSTALL_PROGRAM="$(INSTALL_STRIP_PROGRAM)" \
-	    install_sh_PROGRAM="$(INSTALL_STRIP_PROGRAM)" INSTALL_STRIP_FLAG=-s \
-	    "INSTALL_PROGRAM_ENV=STRIPPROG='$(STRIP)'" install; \
-	fi
+installcheck: installcheck-recursive
 mostlyclean-generic:
 	-test -z "$(TEST_LOGS)" || rm -f $(TEST_LOGS)
 	-test -z "$(TEST_LOGS:.log=.trs)" || rm -f $(TEST_LOGS:.log=.trs)
@@ -1375,176 +1390,154 @@ clean-generic:
 distclean-generic:
 	-test -z "$(CONFIG_CLEAN_FILES)" || rm -f $(CONFIG_CLEAN_FILES)
 	-test . = "$(srcdir)" || test -z "$(CONFIG_CLEAN_VPATH_FILES)" || rm -f $(CONFIG_CLEAN_VPATH_FILES)
+	-rm -f tests/$(DEPDIR)/$(am__dirstamp)
+	-rm -f tests/$(am__dirstamp)
 
 maintainer-clean-generic:
 	@echo "This command is intended for maintainers to use"
 	@echo "it deletes files that may require special tools to rebuild."
-clean: clean-am
+clean: clean-recursive
 
 clean-am: clean-checkPROGRAMS clean-generic clean-libtool \
-	mostlyclean-am
+	clean-noinstLTLIBRARIES mostlyclean-am
 
-distclean: distclean-am
-		-rm -f ./$(DEPDIR)/ESIExpressions.Po
-	-rm -f ./$(DEPDIR)/MemPoolTest.Po
-	-rm -f ./$(DEPDIR)/VirtualDeleteOperator.Po
-	-rm -f ./$(DEPDIR)/debug.Po
-	-rm -f ./$(DEPDIR)/mem_hdr_test.Po
-	-rm -f ./$(DEPDIR)/mem_node_test.Po
-	-rm -f ./$(DEPDIR)/membanger.Po
-	-rm -f ./$(DEPDIR)/splay.Po
-	-rm -f ./$(DEPDIR)/stub_MemBuf.Po
-	-rm -f ./$(DEPDIR)/stub_SBuf.Po
-	-rm -f ./$(DEPDIR)/stub_cbdata.Po
-	-rm -f ./$(DEPDIR)/stub_debug.Po
-	-rm -f ./$(DEPDIR)/stub_fatal.Po
-	-rm -f ./$(DEPDIR)/stub_libmem.Po
-	-rm -f ./$(DEPDIR)/stub_tools.Po
-	-rm -f ./$(DEPDIR)/syntheticoperators.Po
-	-rm -f ./$(DEPDIR)/tcp-banger2.Po
-	-rm -f ./$(DEPDIR)/test_tools.Po
+distclean: distclean-recursive
+		-rm -f ./$(DEPDIR)/Splay.Plo
+	-rm -f ./$(DEPDIR)/base64.Plo
+	-rm -f ./$(DEPDIR)/charset.Plo
+	-rm -f ./$(DEPDIR)/dirent.Plo
+	-rm -f ./$(DEPDIR)/encrypt.Plo
+	-rm -f ./$(DEPDIR)/getfullhostname.Plo
+	-rm -f ./$(DEPDIR)/getopt.Plo
+	-rm -f ./$(DEPDIR)/hash.Plo
+	-rm -f ./$(DEPDIR)/heap.Plo
+	-rm -f ./$(DEPDIR)/html_quote.Plo
+	-rm -f ./$(DEPDIR)/iso3307.Plo
+	-rm -f ./$(DEPDIR)/md5.Plo
+	-rm -f ./$(DEPDIR)/radix.Plo
+	-rm -f ./$(DEPDIR)/rfc1123.Plo
+	-rm -f ./$(DEPDIR)/rfc1738.Plo
+	-rm -f ./$(DEPDIR)/rfc2617.Plo
+	-rm -f ./$(DEPDIR)/sspwin32.Plo
+	-rm -f ./$(DEPDIR)/stub_memaccount.Plo
+	-rm -f ./$(DEPDIR)/util.Plo
+	-rm -f ./$(DEPDIR)/uudecode.Plo
+	-rm -f ./$(DEPDIR)/xusleep.Plo
+	-rm -f tests/$(DEPDIR)/testRFC1738.Po
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
 	distclean-tags
 
-dvi: dvi-am
+dvi: dvi-recursive
 
 dvi-am:
 
-html: html-am
+html: html-recursive
 
 html-am:
 
-info: info-am
+info: info-recursive
 
 info-am:
 
 install-data-am:
 
-install-dvi: install-dvi-am
+install-dvi: install-dvi-recursive
 
 install-dvi-am:
 
 install-exec-am:
 
-install-html: install-html-am
+install-html: install-html-recursive
 
 install-html-am:
 
-install-info: install-info-am
+install-info: install-info-recursive
 
 install-info-am:
 
 install-man:
 
-install-pdf: install-pdf-am
+install-pdf: install-pdf-recursive
 
 install-pdf-am:
 
-install-ps: install-ps-am
+install-ps: install-ps-recursive
 
 install-ps-am:
 
 installcheck-am:
 
-maintainer-clean: maintainer-clean-am
-		-rm -f ./$(DEPDIR)/ESIExpressions.Po
-	-rm -f ./$(DEPDIR)/MemPoolTest.Po
-	-rm -f ./$(DEPDIR)/VirtualDeleteOperator.Po
-	-rm -f ./$(DEPDIR)/debug.Po
-	-rm -f ./$(DEPDIR)/mem_hdr_test.Po
-	-rm -f ./$(DEPDIR)/mem_node_test.Po
-	-rm -f ./$(DEPDIR)/membanger.Po
-	-rm -f ./$(DEPDIR)/splay.Po
-	-rm -f ./$(DEPDIR)/stub_MemBuf.Po
-	-rm -f ./$(DEPDIR)/stub_SBuf.Po
-	-rm -f ./$(DEPDIR)/stub_cbdata.Po
-	-rm -f ./$(DEPDIR)/stub_debug.Po
-	-rm -f ./$(DEPDIR)/stub_fatal.Po
-	-rm -f ./$(DEPDIR)/stub_libmem.Po
-	-rm -f ./$(DEPDIR)/stub_tools.Po
-	-rm -f ./$(DEPDIR)/syntheticoperators.Po
-	-rm -f ./$(DEPDIR)/tcp-banger2.Po
-	-rm -f ./$(DEPDIR)/test_tools.Po
+maintainer-clean: maintainer-clean-recursive
+		-rm -f ./$(DEPDIR)/Splay.Plo
+	-rm -f ./$(DEPDIR)/base64.Plo
+	-rm -f ./$(DEPDIR)/charset.Plo
+	-rm -f ./$(DEPDIR)/dirent.Plo
+	-rm -f ./$(DEPDIR)/encrypt.Plo
+	-rm -f ./$(DEPDIR)/getfullhostname.Plo
+	-rm -f ./$(DEPDIR)/getopt.Plo
+	-rm -f ./$(DEPDIR)/hash.Plo
+	-rm -f ./$(DEPDIR)/heap.Plo
+	-rm -f ./$(DEPDIR)/html_quote.Plo
+	-rm -f ./$(DEPDIR)/iso3307.Plo
+	-rm -f ./$(DEPDIR)/md5.Plo
+	-rm -f ./$(DEPDIR)/radix.Plo
+	-rm -f ./$(DEPDIR)/rfc1123.Plo
+	-rm -f ./$(DEPDIR)/rfc1738.Plo
+	-rm -f ./$(DEPDIR)/rfc2617.Plo
+	-rm -f ./$(DEPDIR)/sspwin32.Plo
+	-rm -f ./$(DEPDIR)/stub_memaccount.Plo
+	-rm -f ./$(DEPDIR)/util.Plo
+	-rm -f ./$(DEPDIR)/uudecode.Plo
+	-rm -f ./$(DEPDIR)/xusleep.Plo
+	-rm -f tests/$(DEPDIR)/testRFC1738.Po
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic
 
-mostlyclean: mostlyclean-am
+mostlyclean: mostlyclean-recursive
 
 mostlyclean-am: mostlyclean-compile mostlyclean-generic \
 	mostlyclean-libtool
 
-pdf: pdf-am
+pdf: pdf-recursive
 
 pdf-am:
 
-ps: ps-am
+ps: ps-recursive
 
 ps-am:
 
 uninstall-am:
 
-.MAKE: check-am install-am install-strip
+.MAKE: $(am__recursive_targets) check-am install-am install-strip
 
-.PHONY: CTAGS GTAGS TAGS all all-am am--depfiles check check-TESTS \
-	check-am clean clean-checkPROGRAMS clean-generic clean-libtool \
-	cscopelist-am ctags ctags-am distclean distclean-compile \
-	distclean-generic distclean-libtool distclean-tags distdir dvi \
-	dvi-am html html-am info info-am install install-am \
-	install-data install-data-am install-dvi install-dvi-am \
-	install-exec install-exec-am install-html install-html-am \
-	install-info install-info-am install-man install-pdf \
-	install-pdf-am install-ps install-ps-am install-strip \
-	installcheck installcheck-am installdirs maintainer-clean \
-	maintainer-clean-generic mostlyclean mostlyclean-compile \
-	mostlyclean-generic mostlyclean-libtool pdf pdf-am ps ps-am \
-	recheck tags tags-am uninstall uninstall-am
+.PHONY: $(am__recursive_targets) CTAGS GTAGS TAGS all all-am \
+	am--depfiles check check-TESTS check-am clean \
+	clean-checkPROGRAMS clean-generic clean-libtool \
+	clean-noinstLTLIBRARIES cscopelist-am ctags ctags-am distclean \
+	distclean-compile distclean-generic distclean-libtool \
+	distclean-tags distdir dvi dvi-am html html-am info info-am \
+	install install-am install-data install-data-am install-dvi \
+	install-dvi-am install-exec install-exec-am install-html \
+	install-html-am install-info install-info-am install-man \
+	install-pdf install-pdf-am install-ps install-ps-am \
+	install-strip installcheck installcheck-am installdirs \
+	installdirs-am maintainer-clean maintainer-clean-generic \
+	mostlyclean mostlyclean-compile mostlyclean-generic \
+	mostlyclean-libtool pdf pdf-am ps ps-am recheck tags tags-am \
+	uninstall uninstall-am
 
 .PRECIOUS: Makefile
 
 
 $(OBJS): $(top_srcdir)/include/version.h $(top_builddir)/include/autoconf.h
 
-stub_cbdata.cc: $(top_srcdir)/src/tests/stub_cbdata.cc
-	cp $(top_srcdir)/src/tests/stub_cbdata.cc $@
+install: all
+install-strip: all
 
-stub_debug.cc: $(top_srcdir)/src/tests/stub_debug.cc
-	cp $(top_srcdir)/src/tests/stub_debug.cc $@
-
-stub_MemBuf.cc: $(top_srcdir)/src/tests/stub_MemBuf.cc
-	cp $(top_srcdir)/src/tests/stub_MemBuf.cc $@
-
-stub_SBuf.cc: $(top_srcdir)/src/tests/stub_SBuf.cc
-	cp $(top_srcdir)/src/tests/stub_SBuf.cc $@
-
-stub_tools.cc: $(top_srcdir)/src/tests/stub_tools.cc
-	cp $(top_srcdir)/src/tests/stub_tools.cc $@
-
-stub_fatal.cc: $(top_srcdir)/src/tests/stub_fatal.cc
-	cp $(top_srcdir)/src/tests/stub_fatal.cc $@
-
-stub_libmem.cc: $(top_srcdir)/src/tests/stub_libmem.cc STUB.h
-	cp $(top_srcdir)/src/tests/stub_libmem.cc $@
-
-STUB.h: $(top_srcdir)/src/tests/STUB.h
-	cp $(top_srcdir)/src/tests/STUB.h $@
-
-squid-conf-tests: $(top_builddir)/src/squid.conf.default $(srcdir)/squidconf/*
-	@failed=0; cfglist="$?"; rm -f $@ || $(TRUE); \
-	for cfg in $$cfglist ; do \
-		/usr/sbin/squid -k parse -f $$cfg || \
-			{ echo "FAIL: squid.conf test: $$cfg" | \
-				sed s%$(top_builddir)/src/%% | \
-				sed s%$(srcdir)/squidconf/%% ; \
-				failed=1; break; \
-			}; \
-		if test "$$failed" -eq 0; then \
-			echo "PASS: squid.conf test: $$cfg" | \
-				sed s%$(top_builddir)/src/%% | \
-				sed s%$(srcdir)/squidconf/%% ; \
-		else break; fi; \
-	done; \
-	if test "$$failed" -eq 0; then cp $(TRUE) $@ ; fi
+testHeaders: $(top_srcdir)/include/*.h
+	$(SHELL) $(top_srcdir)/test-suite/testheaders.sh "$(CXXCOMPILE)" $^ || exit 1
+.PHONY: testHeaders
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.

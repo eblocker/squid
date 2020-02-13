@@ -78,7 +78,7 @@ DEB_MAKE_CLEAN_TARGET = distclean
 debian/copyright: debian/copyright.Debian CREDITS
 	cat $^ | sed -e "s/59 Temple Place.* Suite 330/51 Franklin St, Fifth Floor/" -e "s/MA  \?02111[^, ]*/MA 02110-1301/" -e "s/675 Mass Ave/51 Franklin St, Fifth Floor/" -e "s/Cambridge, MA 02139/Boston, MA 02110-1301/" > $@
 
-install/squid::
+install/squidssl::
 	install -m 755 -g root -d $(INSTALLDIR)/usr/lib/cgi-bin
 	mv $(INSTALLDIR)/etc/squid/squid.conf.documented $(INSTALLDIR)/etc/squid/default.conf
 	install -m 755 -g root -d $(INSTALLDIR)/etc/squid/conf.d

@@ -1,3 +1,11 @@
+squid (4.10-2) UNRELEASED; urgency=low
+
+  [ Amos Jeffries <amosjeffries@squid-cache.org> ]
+  * debian/squid3.{maintscript,postinst,postrm,preinst,rc}
+    - Remove unused scripts
+
+ -- Amos Jeffries <amosjeffries@squid-cache.org>  Fri, 14 Feb 2020 23:38:00 +1300
+
 squid (4.10-1) unstable; urgency=high
 
   [ Amos Jeffries <amosjeffries@squid-cache.org> ]

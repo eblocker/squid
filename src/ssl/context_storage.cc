@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -7,14 +7,17 @@
  */
 
 #include "squid.h"
+#include "base/PackableStream.h"
 #include "mgr/Registration.h"
 #include "ssl/context_storage.h"
 #include "Store.h"
-#include "StoreEntryStream.h"
 
 #include <limits>
+#if USE_OPENSSL
+#include "compat/openssl.h"
 #if HAVE_OPENSSL_SSL_H
 #include <openssl/ssl.h>
+#endif
 #endif
 
 Ssl::CertificateStorageAction::CertificateStorageAction(const Mgr::Command::Pointer &aCmd)
@@ -29,7 +32,7 @@ Ssl::CertificateStorageAction::Create(const Mgr::Command::Pointer &aCmd)
 
 void Ssl::CertificateStorageAction::dump (StoreEntry *sentry)
 {
-    StoreEntryStream stream(sentry);
+    PackableStream stream(*sentry);
     const char delimiter = '\t';
     const char endString = '\n';
     // Page title.

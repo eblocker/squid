@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -9,22 +9,25 @@
 #ifndef ICMP_NET_DB_H
 #define ICMP_NET_DB_H
 
+#include "anyp/forward.h"
 #include "hash.h"
+#include "ip/forward.h"
+#include "mem/forward.h"
 
 class CachePeer;
 class HttpRequest;
 class netdbEntry;
 class StoreEntry;
-namespace Ip
-{
-class Address;
-};
 
-// POD
-class net_db_name
+class net_db_name:
+    public hash_link /* must be first */
 {
+    MEMPROXY_CLASS(net_db_name);
+
 public:
-    hash_link hash;     /* must be first */
+    net_db_name(const char *name, netdbEntry *);
+    ~net_db_name() { xfree(key); }
+
     net_db_name *next;
     netdbEntry *net_db_entry;
 };
@@ -39,23 +42,26 @@ public:
     time_t expires;
 };
 
-// POD
-class netdbEntry
+class netdbEntry:
+    public hash_link /* must be first */
 {
+    MEMPROXY_CLASS(netdbEntry);
+
 public:
-    hash_link hash;     /* must be first */
+    netdbEntry() { *network = 0; }
+
     char network[MAX_IPSTRLEN];
-    int pings_sent;
-    int pings_recv;
-    double hops;
-    double rtt;
-    time_t next_ping_time;
-    time_t last_use_time;
-    int link_count;
-    net_db_name *hosts;
-    net_db_peer *peers;
-    int n_peers_alloc;
-    int n_peers;
+    int pings_sent = 0;
+    int pings_recv = 0;
+    double hops = 0;
+    double rtt = 1.0;
+    time_t next_ping_time = 0;
+    time_t last_use_time = 0;
+    int link_count = 0;
+    net_db_name *hosts = nullptr;
+    net_db_peer *peers = nullptr;
+    int n_peers_alloc = 0;
+    int n_peers = 0;
 };
 
 void netdbInit(void);
@@ -67,7 +73,7 @@ void netdbDump(StoreEntry *);
 void netdbFreeMemory(void);
 int netdbHostHops(const char *host);
 int netdbHostRtt(const char *host);
-void netdbUpdatePeer(HttpRequest *, CachePeer * e, int rtt, int hops);
+void netdbUpdatePeer(const AnyP::Uri &, CachePeer *, int rtt, int hops);
 
 void netdbDeleteAddrNetwork(Ip::Address &addr);
 void netdbBinaryExchange(StoreEntry *);

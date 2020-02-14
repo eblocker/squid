@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -25,6 +25,8 @@ namespace Snmp
 /// aggregates strand responses and send back the result to client
 class Inquirer: public Ipc::Inquirer
 {
+    CBDATA_CLASS(Inquirer);
+
 public:
     Inquirer(const Request& aRequest, const Ipc::StrandCoords& coords);
 
@@ -48,8 +50,6 @@ private:
 
     AsyncCall::Pointer writer; ///< comm_write callback
     AsyncCall::Pointer closer; ///< comm_close handler
-
-    CBDATA_CLASS2(Inquirer);
 };
 
 } // namespace Snmp

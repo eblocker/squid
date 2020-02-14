@@ -1,21 +1,37 @@
-Source: squid3
+Source: squid
 Section: web
 Priority: optional
 Maintainer: Luigi Gangitano <luigi@debian.org>
 Uploaders: Santiago Garcia Mantinan <manty@debian.org>
 Homepage: http://www.squid-cache.org
-Standards-Version: 3.9.8
-Vcs-Git: git://anonscm.debian.org/pkg-squid/pkg-squid3.git/
-Vcs-Browser: https://anonscm.debian.org/git/pkg-squid/pkg-squid3.git/
-Build-Depends: libldap2-dev, libpam0g-dev, libdb-dev, cdbs, libsasl2-dev, debhelper (>=10), libcppunit-dev, libkrb5-dev, comerr-dev, libcap2-dev [linux-any], libecap3-dev (>= 1.0.1-2), libexpat1-dev, libxml2-dev, autotools-dev, libltdl-dev, dpkg-dev (>= 1.16.1~), pkg-config, libnetfilter-conntrack-dev [linux-any], nettle-dev, libgnutls28-dev, lsb-release
-XS-Testsuite: autopkgtest
+Standards-Version: 4.3.0
+Vcs-Git: https://salsa.debian.org/squid-team/squid.git
+Vcs-Browser: https://salsa.debian.org/squid-team/squid
+Build-Depends: ed, libltdl-dev, pkg-config
+# The compiler dependencies are relevant for backporting.
+	, g++ (>= 4.9) <!cross> | clang (>= 3.7) <!cross>
+	, gcc (>= 4.9) <!cross> | clang (>= 3.7) <!cross>
+	, cdbs, debhelper (>=10), dpkg-dev (>= 1.17.11~), lsb-release
+	, libcppunit-dev
+	, libcap2-dev [linux-any]
+	, libdb-dev
+	, libecap3-dev (>= 1.0.1-2)
+	, libexpat1-dev
+	, libgnutls28-dev (>= 3.5)
+	, libkrb5-dev, comerr-dev
+	, libldap2-dev
+	, libnetfilter-conntrack-dev [linux-any]
+	, libpam0g-dev
+	, libsasl2-dev
+	, libxml2-dev
+	, nettle-dev
 
 Package: squid3
 Architecture: all
 Section: oldlibs
-Priority: extra
+Priority: optional
 Pre-Depends: squid (>= ${source:Version})
-Depends: ${shlibs:Depends}, ${misc:Depends}, lsb-base
+Depends: ${misc:Depends}, lsb-base
 Description: Transitional package
  Squid is a high-performance proxy caching server for web clients, supporting
  FTP, gopher, ICY and HTTP data objects.
@@ -26,30 +42,13 @@ Package: squidssl
 Architecture: any
 Pre-Depends: adduser
 Depends: ${shlibs:Depends}, ${misc:Depends}, netbase, logrotate (>= 3.5.4-1), squidssl-common (>= ${source:Version}), lsb-base, libdbi-perl, eblocker-certificate-validator (>= 1.11)
-Suggests: squidclient, squid-cgi, squid-purge, resolvconf (>= 0.40), smbclient, ufw, winbindd
-Recommends: libcap2-bin [linux-any]
+Suggests: squidclient, squid-cgi, squid-purge, resolvconf (>= 0.40), smbclient, ufw, winbind
+Recommends: libcap2-bin [linux-any], ca-certificates
 Conflicts: squid3 (<< ${binary:Version})
 Replaces: squid3
 Description: Full featured Web Proxy cache (HTTP proxy)
  Squid is a high-performance proxy caching server for web clients, supporting
  FTP, gopher, ICY and HTTP data objects.
- .
- Squid version 3 is a major rewrite of Squid in C++ and introduces a number of
- new features including ICAP and ESI support.
-
-Package: squidssl-dbg
-Architecture: any
-Section: debug
-Priority: extra
-Depends: squidssl (= ${binary:Version}), ${misc:Depends}
-Description: Full featured Web Proxy cache (HTTP proxy) - Debug symbols
- Squid is a high-performance proxy caching server for web clients, supporting
- FTP, gopher, ICY and HTTP data objects.
- .
- Squid version 3 is a major rewrite of Squid in C++ and introduces a number of
- new features including ICAP and ESI support.
- .
- This package contains debugging symbols for binaries in squid.
 
 Package: squidssl-common
 Architecture: all
@@ -61,26 +60,20 @@ Description: Full featured Web Proxy cache (HTTP proxy) - common files
  Squid is a high-performance proxy caching server for web clients, supporting
  FTP, gopher, ICY and HTTP data objects.
  .
- Squid version 3 is a major rewrite of Squid in C++ and introduces a number of
- new features including ICAP and ESI support.
- .
  This package contains common files (MIB and icons)
 
 Package: squidclient
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
-Recommends: ssl-cert
+Recommends: ssl-cert, ca-certificates
 Provides: squid3-client
 Conflicts: squid3-client
 Replaces: squid3-client
-Description: Full featured Web Proxy cache (HTTP proxy) - control utility
+Description: Full featured Web Proxy cache (HTTP proxy) - HTTP(S) message utility
  Squid is a high-performance proxy caching server for web clients, supporting
  FTP, gopher, ICY and HTTP data objects.
  .
- Squid version 3 is a major rewrite of Squid in C++ and introduces a number of
- new features including ICAP and ESI support.
- .
- This package contains a small utility that can be used to get URLs from the 
+ This package contains a small utility that can be used to get URLs from the
  command line.
 
 Package: squidssl-cgi
@@ -93,21 +86,15 @@ Description: Full featured Web Proxy cache (HTTP proxy) - control CGI
  Squid is a high-performance proxy caching server for web clients, supporting
  FTP, gopher, ICY and HTTP data objects.
  .
- Squid version 3 is a major rewrite of Squid in C++ and introduces a number of
- new features including ICAP and ESI support.
- .
- This package contains a CGI program that can be used to query and administrate 
+ This package contains a CGI program that can be used to query and administrate
  a `squid' proxy cache through a web browser.
- 
+
 Package: squidssl-purge
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
-Description: Full featured Web Proxy cache (HTTP proxy) - control utility
+Description: Full featured Web Proxy cache (HTTP proxy) - cache management utility
  Squid is a high-performance proxy caching server for web clients, supporting
  FTP, gopher, ICY and HTTP data objects.
- .
- Squid version 3 is a major rewrite of Squid in C++ and introduces a number of
- new features including ICAP and ESI support.
  .
  This package contains a small utility that can be used to manage the disk cache
  from the command line.

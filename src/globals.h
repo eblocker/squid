@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -9,13 +9,12 @@
 #ifndef SQUID_GLOBALS_H
 #define SQUID_GLOBALS_H
 
-#include "acl/AclDenyInfoList.h"
 #include "CacheDigest.h"
 #include "defines.h"
 #include "hash.h"
 #include "IoStats.h"
 #include "rfc2181.h"
-#include "SBuf.h"
+#include "sbuf/SBuf.h"
 
 extern char *ConfigFile;    /* NULL */
 extern char *IcpOpcodeStr[];
@@ -25,7 +24,6 @@ extern char ThisCache2[RFC2181_MAXHOSTNAMELEN << 1];
 extern char config_input_line[BUFSIZ];
 /// During parsing, the name of the current squid.conf directive being parsed.
 extern const char *cfg_directive; /* NULL */
-extern const char *DefaultConfigFile;   /* DEFAULT_CONFIG_FILE */
 extern const char *cfg_filename;    /* NULL */
 extern const char *dash_str;    /* "-" */
 extern const char *null_string; /* "" */
@@ -48,6 +46,7 @@ extern int config_lineno;   /* 0 */
 extern int opt_reuseaddr;   /* 1 */
 extern int neighbors_do_private_keys;   /* 1 */
 extern int opt_catch_signals;   /* 1 */
+extern int opt_foreground;    /* 0 */
 extern int opt_foreground_rebuild;  /* 0 */
 extern char *opt_forwarded_for; /* NULL */
 extern int opt_reload_hit_only; /* 0 */
@@ -60,8 +59,6 @@ extern int DnsSocketA;      /* -1 */
 extern int DnsSocketB;      /* -1 */
 extern int n_disk_objects;  /* 0 */
 extern IoStats IOStats;
-
-extern AclDenyInfoList *DenyInfoList;   /* NULL */
 
 extern struct timeval squid_start;
 extern int starting_up; /* 1 */
@@ -88,7 +85,6 @@ extern int store_swap_low;  /* 0 */
 extern int store_swap_high; /* 0 */
 extern size_t store_pages_max;  /* 0 */
 extern int64_t store_maxobjsize;    /* 0 */
-extern hash_table *proxy_auth_username_cache;   /* NULL */
 extern int incoming_sockets_accepted;
 #if _SQUID_WINDOWS_
 extern unsigned int WIN32_Socks_initialized;    /* 0 */

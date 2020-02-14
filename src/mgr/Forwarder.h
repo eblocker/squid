@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -29,6 +29,8 @@ namespace Mgr
  */
 class Forwarder: public Ipc::Forwarder
 {
+    CBDATA_CLASS(Forwarder);
+
 public:
     Forwarder(const Comm::ConnectionPointer &aConn, const ActionParams &aParams, HttpRequest* aRequest,
               StoreEntry* anEntry);
@@ -36,11 +38,10 @@ public:
 
 protected:
     /* Ipc::Forwarder API */
-    virtual void cleanup(); ///< perform cleanup actions
+    virtual void swanSong();
     virtual void handleError();
     virtual void handleTimeout();
     virtual void handleException(const std::exception& e);
-    virtual void handleRemoteAck();
 
 private:
     void noteCommClosed(const CommCloseCbParams& params);
@@ -51,8 +52,6 @@ private:
     StoreEntry* entry; ///< Store entry expecting the response
     Comm::ConnectionPointer conn; ///< HTTP client connection descriptor
     AsyncCall::Pointer closer; ///< comm_close handler for the HTTP connection
-
-    CBDATA_CLASS2(Forwarder);
 };
 
 } // namespace Mgr

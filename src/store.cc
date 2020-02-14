@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -9,6 +9,7 @@
 /* DEBUG: section 20    Storage Manager */
 
 #include "squid.h"
+#include "base/TextException.h"
 #include "CacheDigest.h"
 #include "CacheManager.h"
 #include "comm/Connection.h"
@@ -32,6 +33,9 @@
 #include "StatCounters.h"
 #include "stmem.h"
 #include "Store.h"
+#include "store/Controller.h"
+#include "store/Disk.h"
+#include "store/Disks.h"
 #include "store_digest.h"
 #include "store_key_md5.h"
 #include "store_log.h"
@@ -41,11 +45,15 @@
 #include "StoreMeta.h"
 #include "StrList.h"
 #include "swap_log_op.h"
-#include "SwapDir.h"
 #include "tools.h"
 #if USE_DELAY_POOLS
 #include "DelayPools.h"
 #endif
+
+/** StoreEntry uses explicit new/delete operators, which set pool chunk size to 2MB
+ * XXX: convert to MEMPROXY_CLASS() API
+ */
+#include "mem/Pool.h"
 
 #include <climits>
 #include <stack>
@@ -104,49 +112,19 @@ static EVH storeLateRelease;
 static std::stack<StoreEntry*> LateReleaseStack;
 MemAllocator *StoreEntry::pool = NULL;
 
-StorePointer Store::CurrentRoot = NULL;
-
-void
-Store::Root(Store * aRoot)
-{
-    CurrentRoot = aRoot;
-}
-
-void
-Store::Root(StorePointer aRoot)
-{
-    Root(aRoot.getRaw());
-}
-
 void
 Store::Stats(StoreEntry * output)
 {
-    assert (output);
+    assert(output);
     Root().stat(*output);
 }
 
-void
-Store::create()
-{}
-
-void
-Store::diskFull()
-{}
-
-void
-Store::sync()
-{}
-
-void
-Store::unlink (StoreEntry &anEntry)
-{
-    fatal("Store::unlink on invalid Store\n");
-}
-
+// XXX: new/delete operators need to be replaced with MEMPROXY_CLASS
+// definitions but doing so exposes bug 4370, and maybe 4354 and 4355
 void *
 StoreEntry::operator new (size_t bytecount)
 {
-    assert (bytecount == sizeof (StoreEntry));
+    assert(bytecount == sizeof (StoreEntry));
 
     if (!pool) {
         pool = memPoolCreate ("StoreEntry", bytecount);
@@ -161,29 +139,36 @@ StoreEntry::operator delete (void *address)
     pool->freeOne(address);
 }
 
-void
+bool
 StoreEntry::makePublic(const KeyScope scope)
 {
     /* This object can be cached for a long time */
-
-    if (!EBIT_TEST(flags, RELEASE_REQUEST))
-        setPublicKey(scope);
+    return !EBIT_TEST(flags, RELEASE_REQUEST) && setPublicKey(scope);
 }
 
 void
-StoreEntry::makePrivate()
+StoreEntry::makePrivate(const bool shareable)
 {
-    /* This object should never be cached at all */
-    expireNow();
-    releaseRequest(); /* delete object when not used */
+    releaseRequest(shareable); /* delete object when not used */
 }
 
 void
+StoreEntry::clearPrivate()
+{
+    assert(!EBIT_TEST(flags, RELEASE_REQUEST));
+    EBIT_CLR(flags, KEY_PRIVATE);
+    shareableWhenPrivate = false;
+}
+
+bool
 StoreEntry::cacheNegatively()
 {
     /* This object may be negatively cached */
-    negativeCache();
-    makePublic();
+    if (makePublic()) {
+        negativeCache();
+        return true;
+    }
+    return false;
 }
 
 size_t
@@ -220,24 +205,10 @@ StoreEntry::delayAwareRead(const Comm::ConnectionPointer &conn, char *buf, int l
      * ->deferRead (fd, buf, len, callback, DelayAwareRead, this)
      */
 
-    if (amountToRead == 0) {
+    if (amountToRead <= 0) {
         assert (mem_obj);
-        /* read ahead limit */
-        /* Perhaps these two calls should both live in MemObject */
-#if USE_DELAY_POOLS
-        if (!mem_obj->readAheadPolicyCanRead()) {
-#endif
-            mem_obj->delayRead(DeferredRead(DeferReader, this, CommRead(conn, buf, len, callback)));
-            return;
-#if USE_DELAY_POOLS
-        }
-
-        /* delay id limit */
-        mem_obj->mostBytesAllowed().delayRead(DeferredRead(DeferReader, this, CommRead(conn, buf, len, callback)));
+        mem_obj->delayRead(DeferredRead(DeferReader, this, CommRead(conn, buf, len, callback)));
         return;
-
-#endif
-
     }
 
     if (fd_table[conn->fd].closing()) {
@@ -245,8 +216,7 @@ StoreEntry::delayAwareRead(const Comm::ConnectionPointer &conn, char *buf, int l
         // readers appeared to care around 2009/12/14 as they skipped reading
         // for other reasons. Closing may already be true at the delyaAwareRead
         // call time or may happen while we wait after delayRead() above.
-        debugs(20, 3, HERE << "wont read from closing " << conn << " for " <<
-               callback);
+        debugs(20, 3, "will not read from closing " << conn << " for " << callback);
         return; // the read callback will never be called
     }
 
@@ -272,13 +242,13 @@ StoreEntry::bytesWanted (Range<size_t> const aRange, bool ignoreDelayPools) cons
 }
 
 bool
-StoreEntry::checkDeferRead(int fd) const
+StoreEntry::checkDeferRead(int) const
 {
     return (bytesWanted(Range<size_t>(0,INT_MAX)) == 0);
 }
 
 void
-StoreEntry::setNoDelay (bool const newValue)
+StoreEntry::setNoDelay(bool const newValue)
 {
     if (mem_obj)
         mem_obj->setNoDelay(newValue);
@@ -313,7 +283,7 @@ StoreEntry::storeClientType() const
         /* the object has completed. */
 
         if (mem_obj->inmem_lo == 0 && !isEmpty()) {
-            if (swap_status == SWAPOUT_DONE) {
+            if (swappedOut()) {
                 debugs(20,7, HERE << mem_obj << " lo: " << mem_obj->inmem_lo << " hi: " << mem_obj->endOffset() << " size: " << mem_obj->object_sz);
                 if (mem_obj->endOffset() == mem_obj->object_sz) {
                     /* hot object fully swapped in (XXX: or swapped out?) */
@@ -365,7 +335,8 @@ StoreEntry::StoreEntry() :
     ping_status(PING_NONE),
     store_status(STORE_PENDING),
     swap_status(SWAPOUT_NONE),
-    lock_count(0)
+    lock_count(0),
+    shareableWhenPrivate(false)
 {
     debugs(20, 5, "StoreEntry constructed, this=" << this);
 }
@@ -382,7 +353,7 @@ StoreEntry::deferProducer(const AsyncCall::Pointer &producer)
     if (!deferredProducer)
         deferredProducer = producer;
     else
-        debugs(20, 5, HERE << "Deferred producer call is allready set to: " <<
+        debugs(20, 5, "Deferred producer call is already set to: " <<
                *deferredProducer << ", requested call: " << *producer);
 }
 
@@ -399,15 +370,15 @@ StoreEntry::kickProducer()
 void
 StoreEntry::destroyMemObject()
 {
-    debugs(20, 3, HERE << "destroyMemObject " << mem_obj);
+    debugs(20, 3, mem_obj << " in " << *this);
+
+    // Store::Root() is FATALly missing during shutdown
+    if (hasTransients() && !shutting_down)
+        Store::Root().transientsDisconnect(*this);
+    if (hasMemStore() && !shutting_down)
+        Store::Root().memoryDisconnect(*this);
 
     if (MemObject *mem = mem_obj) {
-        // Store::Root() is FATALly missing during shutdown
-        if (mem->xitTable.index >= 0 && !shutting_down)
-            Store::Root().transientsDisconnect(*mem);
-        if (mem->memCache.index >= 0 && !shutting_down)
-            Store::Root().memoryDisconnect(*this);
-
         setMemStatus(NOT_IN_MEMORY);
         mem_obj = NULL;
         delete mem;
@@ -425,10 +396,8 @@ destroyStoreEntry(void *data)
         return;
 
     // Store::Root() is FATALly missing during shutdown
-    if (e->swap_filen >= 0 && !shutting_down) {
-        SwapDir &sd = dynamic_cast<SwapDir&>(*e->store());
-        sd.disconnect(*e);
-    }
+    if (e->hasDisk() && !shutting_down)
+        e->disk().disconnect(*e);
 
     e->destroyMemObject();
 
@@ -445,6 +414,7 @@ void
 StoreEntry::hashInsert(const cache_key * someKey)
 {
     debugs(20, 3, "StoreEntry::hashInsert: Inserting Entry " << *this << " key '" << storeKeyText(someKey) << "'");
+    assert(!key);
     key = storeKeyDup(someKey);
     hash_join(store_table, this);
 }
@@ -461,21 +431,6 @@ StoreEntry::hashDelete()
 
 /* -------------------------------------------------------------------------- */
 
-/* get rid of memory copy of the object */
-void
-StoreEntry::purgeMem()
-{
-    if (mem_obj == NULL)
-        return;
-
-    debugs(20, 3, "StoreEntry::purgeMem: Freeing memory-copy of " << getMD5Text());
-
-    Store::Root().memoryUnlink(*this);
-
-    if (swap_status != SWAPOUT_DONE)
-        release();
-}
-
 void
 StoreEntry::lock(const char *context)
 {
@@ -487,31 +442,18 @@ void
 StoreEntry::touch()
 {
     lastref = squid_curtime;
-    Store::Root().reference(*this);
 }
 
 void
-StoreEntry::setReleaseFlag()
+StoreEntry::releaseRequest(const bool shareable)
 {
+    debugs(20, 3, shareable << ' ' << *this);
+    if (!shareable)
+        shareableWhenPrivate = false; // may already be false
     if (EBIT_TEST(flags, RELEASE_REQUEST))
         return;
 
-    debugs(20, 3, "StoreEntry::setReleaseFlag: '" << getMD5Text() << "'");
-
-    EBIT_SET(flags, RELEASE_REQUEST);
-
-    Store::Root().markForUnlink(*this);
-}
-
-void
-StoreEntry::releaseRequest()
-{
-    if (EBIT_TEST(flags, RELEASE_REQUEST))
-        return;
-
-    setReleaseFlag(); // makes validToSend() false, preventing future hits
-
-    setPrivateKey();
+    setPrivateKey(shareable, true);
 }
 
 int
@@ -525,21 +467,31 @@ StoreEntry::unlock(const char *context)
     if (lock_count)
         return (int) lock_count;
 
-    if (store_status == STORE_PENDING)
-        setReleaseFlag();
+    abandon(context);
+    return 0;
+}
 
+/// keep the unlocked StoreEntry object in the local store_table (if needed) or
+/// delete it (otherwise)
+void
+StoreEntry::doAbandon(const char *context)
+{
+    debugs(20, 5, *this << " via " << (context ? context : "somebody"));
+    assert(!locked());
     assert(storePendingNClients(this) == 0);
 
-    if (EBIT_TEST(flags, RELEASE_REQUEST)) {
+    // Both aborted local writers and aborted local readers (of remote writers)
+    // are STORE_PENDING, but aborted readers should never release().
+    if (EBIT_TEST(flags, RELEASE_REQUEST) ||
+            (store_status == STORE_PENDING && !Store::Root().transientsReader(*this))) {
         this->release();
-        return 0;
+        return;
     }
 
     if (EBIT_TEST(flags, KEY_PRIVATE))
         debugs(20, DBG_IMPORTANT, "WARNING: " << __FILE__ << ":" << __LINE__ << ": found KEY_PRIVATE");
 
     Store::Root().handleIdleEntry(*this); // may delete us
-    return 0;
 }
 
 void
@@ -581,13 +533,13 @@ StoreEntry::getPublic (StoreClient *aClient, const char *uri, const HttpRequestM
 StoreEntry *
 storeGetPublic(const char *uri, const HttpRequestMethod& method)
 {
-    return Store::Root().get(storeKeyPublic(uri, method));
+    return Store::Root().find(storeKeyPublic(uri, method));
 }
 
 StoreEntry *
 storeGetPublicByRequestMethod(HttpRequest * req, const HttpRequestMethod& method, const KeyScope keyScope)
 {
-    return Store::Root().get(storeKeyPublicByRequestMethod(req, method, keyScope));
+    return Store::Root().find(storeKeyPublicByRequestMethod(req, method, keyScope));
 }
 
 StoreEntry *
@@ -623,40 +575,38 @@ getKeyCounter(void)
  * concept'.
  */
 void
-StoreEntry::setPrivateKey()
+StoreEntry::setPrivateKey(const bool shareable, const bool permanent)
 {
-    const cache_key *newkey;
+    debugs(20, 3, shareable << permanent << ' ' << *this);
+    if (permanent)
+        EBIT_SET(flags, RELEASE_REQUEST); // may already be set
+    if (!shareable)
+        shareableWhenPrivate = false; // may already be false
 
-    if (key && EBIT_TEST(flags, KEY_PRIVATE))
-        return;                 /* is already private */
+    if (EBIT_TEST(flags, KEY_PRIVATE))
+        return;
 
     if (key) {
-        setReleaseFlag(); // will markForUnlink(); all caches/workers will know
-
-        // TODO: move into SwapDir::markForUnlink() already called by Root()
-        if (swap_filen > -1)
-            storeDirSwapLog(this, SWAP_LOG_DEL);
-
+        Store::Root().evictCached(*this); // all caches/workers will know
         hashDelete();
     }
 
-    if (mem_obj && mem_obj->hasUris()) {
+    if (mem_obj && mem_obj->hasUris())
         mem_obj->id = getKeyCounter();
-        newkey = storeKeyPrivate(mem_obj->storeId(), mem_obj->method, mem_obj->id);
-    } else {
-        newkey = storeKeyPrivate("JUNK", Http::METHOD_NONE, getKeyCounter());
-    }
+    const cache_key *newkey = storeKeyPrivate();
 
     assert(hash_lookup(store_table, newkey) == NULL);
     EBIT_SET(flags, KEY_PRIVATE);
+    shareableWhenPrivate = shareable;
     hashInsert(newkey);
 }
 
-void
+bool
 StoreEntry::setPublicKey(const KeyScope scope)
 {
+    debugs(20, 3, *this);
     if (key && !EBIT_TEST(flags, KEY_PRIVATE))
-        return;                 /* is already public */
+        return true; // already public
 
     assert(mem_obj);
 
@@ -678,8 +628,17 @@ StoreEntry::setPublicKey(const KeyScope scope)
 
     assert(!EBIT_TEST(flags, RELEASE_REQUEST));
 
-    adjustVary();
-    forcePublicKey(calcPublicKey(scope));
+    try {
+        EntryGuard newVaryMarker(adjustVary(), "setPublicKey+failure");
+        const cache_key *pubKey = calcPublicKey(scope);
+        Store::Root().addWriting(this, pubKey);
+        forcePublicKey(pubKey);
+        newVaryMarker.unlockAndReset("setPublicKey+success");
+        return true;
+    } catch (const std::exception &ex) {
+        debugs(20, 2, "for " << *this << " failed: " << ex.what());
+    }
+    return false;
 }
 
 void
@@ -702,27 +661,32 @@ StoreEntry::clearPublicKeyScope()
 void
 StoreEntry::forcePublicKey(const cache_key *newkey)
 {
+    debugs(20, 3, storeKeyText(newkey) << " for " << *this);
+    assert(mem_obj);
+
     if (StoreEntry *e2 = (StoreEntry *)hash_lookup(store_table, newkey)) {
         assert(e2 != this);
-        debugs(20, 3, "Making old " << *e2 << " private.");
-        e2->setPrivateKey();
-        e2->release();
+        debugs(20, 3, "releasing clashing " << *e2);
+        e2->release(true);
     }
 
     if (key)
         hashDelete();
 
-    EBIT_CLR(flags, KEY_PRIVATE);
+    clearPrivate();
 
+    assert(mem_obj->hasUris());
     hashInsert(newkey);
 
-    if (swap_filen > -1)
+    if (hasDisk())
         storeDirSwapLog(this, SWAP_LOG_ADD);
 }
 
 /// Calculates correct public key for feeding forcePublicKey().
 /// Assumes adjustVary() has been called for this entry already.
-const cache_key *StoreEntry::calcPublicKey(const KeyScope keyScope) {
+const cache_key *
+StoreEntry::calcPublicKey(const KeyScope keyScope)
+{
     assert(mem_obj);
     return mem_obj->request ?  storeKeyPublicByRequest(mem_obj->request, keyScope) :
            storeKeyPublic(mem_obj->storeId(), mem_obj->method, keyScope);
@@ -731,11 +695,15 @@ const cache_key *StoreEntry::calcPublicKey(const KeyScope keyScope) {
 /// Updates mem_obj->request->vary_headers to reflect the current Vary.
 /// The vary_headers field is used to calculate the Vary marker key.
 /// Releases the old Vary marker with an outdated key (if any).
-void StoreEntry::adjustVary() {
+/// \returns new (locked) Vary marker StoreEntry or, if none was needed, nil
+/// \throws std::exception on failures
+StoreEntry *
+StoreEntry::adjustVary()
+{
     assert(mem_obj);
 
     if (!mem_obj->request)
-        return;
+        return nullptr;
 
     HttpRequest *request = mem_obj->request;
 
@@ -749,7 +717,7 @@ void StoreEntry::adjustVary() {
              */
             request->vary_headers.clear();       /* free old "bad" variance key */
             if (StoreEntry *pe = storeGetPublic(mem_obj->storeId(), mem_obj->method))
-                pe->release();
+                pe->release(true);
         }
 
         /* Make sure the request knows the variance status */
@@ -761,58 +729,57 @@ void StoreEntry::adjustVary() {
     // We should add/use storeHas() API or lock/unlock those entries.
     if (!mem_obj->vary_headers.isEmpty() && !storeGetPublic(mem_obj->storeId(), mem_obj->method)) {
         /* Create "vary" base object */
-        String vary;
         StoreEntry *pe = storeCreateEntry(mem_obj->storeId(), mem_obj->logUri(), request->flags, request->method);
+        // XXX: storeCreateEntry() already tries to make `pe` public under
+        // certain conditions. If those conditions do not apply to Vary markers,
+        // then refactor to call storeCreatePureEntry() above.  Otherwise,
+        // refactor to simply check whether `pe` is already public below.
+        if (!pe->makePublic()) {
+            pe->unlock("StoreEntry::adjustVary+failed_makePublic");
+            throw TexcHere("failed to make Vary marker public");
+        }
         /* We are allowed to do this typecast */
         HttpReply *rep = new HttpReply;
         rep->setHeaders(Http::scOkay, "Internal marker object", "x-squid-internal/vary", -1, -1, squid_curtime + 100000);
-        vary = mem_obj->getReply()->header.getList(HDR_VARY);
+        String vary = mem_obj->getReply()->header.getList(Http::HdrType::VARY);
 
         if (vary.size()) {
             /* Again, we own this structure layout */
-            rep->header.putStr(HDR_VARY, vary.termedBuf());
+            rep->header.putStr(Http::HdrType::VARY, vary.termedBuf());
             vary.clean();
         }
 
 #if X_ACCELERATOR_VARY
-        vary = mem_obj->getReply()->header.getList(HDR_X_ACCELERATOR_VARY);
+        vary = mem_obj->getReply()->header.getList(Http::HdrType::HDR_X_ACCELERATOR_VARY);
 
         if (vary.size() > 0) {
             /* Again, we own this structure layout */
-            rep->header.putStr(HDR_X_ACCELERATOR_VARY, vary.termedBuf());
+            rep->header.putStr(Http::HdrType::HDR_X_ACCELERATOR_VARY, vary.termedBuf());
             vary.clean();
         }
 
 #endif
-        pe->replaceHttpReply(rep, false); // no write until key is public
+        pe->replaceHttpReply(rep, false); // no write until timestampsSet()
 
         pe->timestampsSet();
 
-        pe->makePublic();
-
-        pe->startWriting(); // after makePublic()
+        pe->startWriting(); // after timestampsSet()
 
         pe->complete();
 
-        pe->unlock("StoreEntry::forcePublicKey+Vary");
+        return pe;
     }
+    return nullptr;
 }
 
 StoreEntry *
-storeCreatePureEntry(const char *url, const char *log_url, const RequestFlags &flags, const HttpRequestMethod& method)
+storeCreatePureEntry(const char *url, const char *log_url, const HttpRequestMethod& method)
 {
     StoreEntry *e = NULL;
     debugs(20, 3, "storeCreateEntry: '" << url << "'");
 
     e = new StoreEntry();
-    e->makeMemObject();
-    e->mem_obj->setUris(url, log_url, method);
-
-    if (flags.cachable) {
-        EBIT_CLR(e->flags, RELEASE_REQUEST);
-    } else {
-        e->releaseRequest();
-    }
+    e->createMemObject(url, log_url, method);
 
     e->store_status = STORE_PENDING;
     e->refcount = 0;
@@ -826,14 +793,13 @@ storeCreatePureEntry(const char *url, const char *log_url, const RequestFlags &f
 StoreEntry *
 storeCreateEntry(const char *url, const char *logUrl, const RequestFlags &flags, const HttpRequestMethod& method)
 {
-    StoreEntry *e = storeCreatePureEntry(url, logUrl, flags, method);
+    StoreEntry *e = storeCreatePureEntry(url, logUrl, method);
     e->lock("storeCreateEntry");
 
-    if (neighbors_do_private_keys || !flags.hierarchical)
-        e->setPrivateKey();
-    else
-        e->setPublicKey();
+    if (!neighbors_do_private_keys && flags.hierarchical && flags.cachable && e->setPublicKey())
+        return e;
 
+    e->setPrivateKey(false, !flags.cachable);
     return e;
 }
 
@@ -862,8 +828,12 @@ StoreEntry::write (StoreIOBuffer writeBuffer)
     storeGetMemSpace(writeBuffer.length);
     mem_obj->write(writeBuffer);
 
-    if (!EBIT_TEST(flags, DELAY_SENDING))
-        invokeHandlers();
+    if (EBIT_TEST(flags, ENTRY_FWD_HDR_WAIT) && !mem_obj->readAheadPolicyCanRead()) {
+        debugs(20, 3, "allow Store clients to get entry content after buffering too much for " << *this);
+        EBIT_CLR(flags, ENTRY_FWD_HDR_WAIT);
+    }
+
+    invokeHandlers();
 }
 
 /* Append incoming data from a primary server to an entry. */
@@ -886,23 +856,53 @@ StoreEntry::append(char const *buf, int len)
 }
 
 void
+StoreEntry::vappendf(const char *fmt, va_list vargs)
+{
+    LOCAL_ARRAY(char, buf, 4096);
+    *buf = 0;
+    int x;
+
+    va_list ap;
+    /* Fix of bug 753r. The value of vargs is undefined
+     * after vsnprintf() returns. Make a copy of vargs
+     * incase we loop around and call vsnprintf() again.
+     */
+    va_copy(ap,vargs);
+    errno = 0;
+    if ((x = vsnprintf(buf, sizeof(buf), fmt, ap)) < 0) {
+        fatal(xstrerr(errno));
+        return;
+    }
+    va_end(ap);
+
+    if (x < static_cast<int>(sizeof(buf))) {
+        append(buf, x);
+        return;
+    }
+
+    // okay, do it the slow way.
+    char *buf2 = new char[x+1];
+    int y = vsnprintf(buf2, x+1, fmt, vargs);
+    assert(y >= 0 && y == x);
+    append(buf2, y);
+    delete[] buf2;
+}
+
+// deprecated. use StoreEntry::appendf() instead.
+void
 storeAppendPrintf(StoreEntry * e, const char *fmt,...)
 {
     va_list args;
     va_start(args, fmt);
-
-    storeAppendVPrintf(e, fmt, args);
+    e->vappendf(fmt, args);
     va_end(args);
 }
 
-/* used be storeAppendPrintf and Packer */
+// deprecated. use StoreEntry::appendf() instead.
 void
 storeAppendVPrintf(StoreEntry * e, const char *fmt, va_list vargs)
 {
-    LOCAL_ARRAY(char, buf, 4096);
-    buf[0] = '\0';
-    vsnprintf(buf, 4096, fmt, vargs);
-    e->append(buf, strlen(buf));
+    e->vappendf(fmt, vargs);
 }
 
 struct _store_check_cachable_hist {
@@ -1010,11 +1010,10 @@ StoreEntry::checkCachable()
         } else if (EBIT_TEST(flags, KEY_PRIVATE)) {
             debugs(20, 3, "StoreEntry::checkCachable: NO: private key");
             ++store_check_cachable_hist.no.private_key;
-        } else if (swap_status != SWAPOUT_NONE) {
+        } else if (hasDisk()) {
             /*
-             * here we checked the swap_status because the remaining
-             * cases are only relevant only if we haven't started swapping
-             * out the object yet.
+             * the remaining cases are only relevant if we haven't
+             * started swapping out the object yet.
              */
             return 1;
         } else if (storeTooManyDiskFilesOpen()) {
@@ -1078,6 +1077,9 @@ StoreEntry::complete()
 {
     debugs(20, 3, "storeComplete: '" << getMD5Text() << "'");
 
+    // To preserve forwarding retries, call FwdState::complete() instead.
+    EBIT_CLR(flags, ENTRY_FWD_HDR_WAIT);
+
     if (store_status != STORE_PENDING) {
         /*
          * if we're not STORE_PENDING, then probably we got aborted
@@ -1134,6 +1136,9 @@ StoreEntry::abort()
 
     EBIT_SET(flags, ENTRY_ABORTED);
 
+    // allow the Store clients to be told about the problem
+    EBIT_CLR(flags, ENTRY_FWD_HDR_WAIT);
+
     setMemStatus(NOT_IN_MEMORY);
 
     store_status = STORE_OK;
@@ -1174,44 +1179,8 @@ void
 storeGetMemSpace(int size)
 {
     PROF_start(storeGetMemSpace);
-    StoreEntry *e = NULL;
-    int released = 0;
-    static time_t last_check = 0;
-    size_t pages_needed;
-    RemovalPurgeWalker *walker;
-
-    if (squid_curtime == last_check) {
-        PROF_stop(storeGetMemSpace);
-        return;
-    }
-
-    last_check = squid_curtime;
-
-    pages_needed = (size + SM_PAGE_SIZE-1) / SM_PAGE_SIZE;
-
-    if (mem_node::InUseCount() + pages_needed < store_pages_max) {
-        PROF_stop(storeGetMemSpace);
-        return;
-    }
-
-    debugs(20, 2, "storeGetMemSpace: Starting, need " << pages_needed <<
-           " pages");
-
-    /* XXX what to set as max_scan here? */
-    walker = mem_policy->PurgeInit(mem_policy, 100000);
-
-    while ((e = walker->Next(walker))) {
-        e->purgeMem();
-        ++released;
-
-        if (mem_node::InUseCount() + pages_needed < store_pages_max)
-            break;
-    }
-
-    walker->Done(walker);
-    debugs(20, 3, "storeGetMemSpace stats:");
-    debugs(20, 3, "  " << std::setw(6) << hot_obj_count  << " HOT objects");
-    debugs(20, 3, "  " << std::setw(6) << released  << " were released");
+    if (!shutting_down) // Store::Root() is FATALly missing during shutdown
+        Store::Root().freeMemorySpace(size);
     PROF_stop(storeGetMemSpace);
 }
 
@@ -1221,7 +1190,7 @@ storeGetMemSpace(int size)
  * it becomes active will self register
  */
 void
-Store::Maintain(void *notused)
+Store::Maintain(void *)
 {
     Store::Root().maintain();
 
@@ -1234,91 +1203,44 @@ Store::Maintain(void *notused)
 #define MAINTAIN_MAX_SCAN       1024
 #define MAINTAIN_MAX_REMOVE     64
 
-/*
- * This routine is to be called by main loop in main.c.
- * It removes expired objects on only one bucket for each time called.
- *
- * This should get called 1/s from main().
- */
 void
-StoreController::maintain()
-{
-    static time_t last_warn_time = 0;
-
-    PROF_start(storeMaintainSwapSpace);
-    swapDir->maintain();
-
-    /* this should be emitted by the oversize dir, not globally */
-
-    if (Store::Root().currentSize() > Store::Root().maxSize()) {
-        if (squid_curtime - last_warn_time > 10) {
-            debugs(20, DBG_CRITICAL, "WARNING: Disk space over limit: "
-                   << Store::Root().currentSize() / 1024.0 << " KB > "
-                   << (Store::Root().maxSize() >> 10) << " KB");
-            last_warn_time = squid_curtime;
-        }
-    }
-
-    PROF_stop(storeMaintainSwapSpace);
-}
-
-/* release an object from a cache */
-void
-StoreEntry::release()
+StoreEntry::release(const bool shareable)
 {
     PROF_start(storeRelease);
-    debugs(20, 3, "releasing " << *this << ' ' << getMD5Text());
+    debugs(20, 3, shareable << ' ' << *this << ' ' << getMD5Text());
     /* If, for any reason we can't discard this object because of an
      * outstanding request, mark it for pending release */
 
     if (locked()) {
-        expireNow();
-        debugs(20, 3, "storeRelease: Only setting RELEASE_REQUEST bit");
-        releaseRequest();
+        releaseRequest(shareable);
         PROF_stop(storeRelease);
         return;
     }
 
-    Store::Root().memoryUnlink(*this);
+    if (Store::Controller::store_dirs_rebuilding && hasDisk()) {
+        /* TODO: Teach disk stores to handle releases during rebuild instead. */
 
-    if (StoreController::store_dirs_rebuilding && swap_filen > -1) {
-        setPrivateKey();
-
-        if (swap_filen > -1) {
-            // lock the entry until rebuilding is done
-            lock("storeLateRelease");
-            setReleaseFlag();
-            LateReleaseStack.push(this);
-        } else {
-            destroyStoreEntry(static_cast<hash_link *>(this));
-            // "this" is no longer valid
-        }
-
+        // lock the entry until rebuilding is done
+        lock("storeLateRelease");
+        releaseRequest(shareable);
+        LateReleaseStack.push(this);
         PROF_stop(storeRelease);
         return;
     }
 
     storeLog(STORE_LOG_RELEASE, this);
-
-    if (swap_filen > -1) {
-        // log before unlink() below clears swap_filen
-        if (!EBIT_TEST(flags, KEY_PRIVATE))
-            storeDirSwapLog(this, SWAP_LOG_DEL);
-
-        unlink();
-    }
-
+    Store::Root().evictCached(*this);
     destroyStoreEntry(static_cast<hash_link *>(this));
     PROF_stop(storeRelease);
 }
 
 static void
-storeLateRelease(void *unused)
+storeLateRelease(void *)
 {
     StoreEntry *e;
     static int n = 0;
 
-    if (StoreController::store_dirs_rebuilding) {
+    if (Store::Controller::store_dirs_rebuilding) {
         eventAdd("storeLateRelease", storeLateRelease, NULL, 1.0, 1);
         return;
     }
@@ -1425,40 +1347,10 @@ storeInit(void)
     storeRegisterWithCacheManager();
 }
 
-/// computes maximum size of a cachable object
-/// larger objects are rejected by all (disk and memory) cache stores
-static int64_t
-storeCalcMaxObjSize()
-{
-    int64_t ms = 0; // nothing can be cached without at least one store consent
-
-    // global maximum is at least the disk store maximum
-    for (int i = 0; i < Config.cacheSwap.n_configured; ++i) {
-        assert (Config.cacheSwap.swapDirs[i].getRaw());
-        const int64_t storeMax = dynamic_cast<SwapDir *>(Config.cacheSwap.swapDirs[i].getRaw())->maxObjectSize();
-        if (ms < storeMax)
-            ms = storeMax;
-    }
-
-    // global maximum is at least the memory store maximum
-    // TODO: move this into a memory cache class when we have one
-    const int64_t memMax = static_cast<int64_t>(min(Config.Store.maxInMemObjSize, Config.memMaxSize));
-    if (ms < memMax)
-        ms = memMax;
-
-    return ms;
-}
-
 void
 storeConfigure(void)
 {
-    store_swap_high = (long) (((float) Store::Root().maxSize() *
-                               (float) Config.Swap.highWaterMark) / (float) 100);
-    store_swap_low = (long) (((float) Store::Root().maxSize() *
-                              (float) Config.Swap.lowWaterMark) / (float) 100);
-    store_pages_max = Config.memMaxSize / sizeof(mem_node);
-
-    store_maxobjsize = storeCalcMaxObjSize();
+    Store::Root().updateLimits();
 }
 
 bool
@@ -1476,7 +1368,7 @@ StoreEntry::memoryCachable()
     if (mem_obj->inmem_lo != 0)
         return 0;
 
-    if (!Config.onoff.memory_cache_first && swap_status == SWAPOUT_DONE && refcount == 1)
+    if (!Config.onoff.memory_cache_first && swappedOut() && refcount == 1)
         return 0;
 
     return 1;
@@ -1520,14 +1412,10 @@ StoreEntry::negativeCache()
 void
 storeFreeMemory(void)
 {
-    Store::Root(NULL);
+    Store::FreeMemory();
 #if USE_CACHE_DIGESTS
-
-    if (store_digest)
-        cacheDigestDestroy(store_digest);
-
+    delete store_digest;
 #endif
-
     store_digest = NULL;
 }
 
@@ -1554,7 +1442,7 @@ StoreEntry::validToSend() const
         return 0;
 
     // now check that the entry has a cache backing or is collapsed
-    if (swap_filen > -1) // backed by a disk cache
+    if (hasDisk()) // backed by a disk cache
         return 1;
 
     if (swappingOut()) // will be backed by a disk cache
@@ -1585,7 +1473,7 @@ StoreEntry::timestampsSet()
 {
     const HttpReply *reply = getReply();
     time_t served_date = reply->date;
-    int age = reply->header.getInt(HDR_AGE);
+    int age = reply->header.getInt(Http::HdrType::AGE);
     /* Compute the timestamp, mimicking RFC2616 section 13.2.3. */
     /* make sure that 0 <= served_date <= squid_curtime */
 
@@ -1612,10 +1500,9 @@ StoreEntry::timestampsSet()
 
     // compensate for Squid-to-server and server-to-Squid delays
     if (mem_obj && mem_obj->request) {
-        const time_t request_sent =
-            mem_obj->request->hier.peer_http_request_sent.tv_sec;
-        if (0 < request_sent && request_sent < squid_curtime)
-            served_date -= (squid_curtime - request_sent);
+        struct timeval responseTime;
+        if (mem_obj->request->hier.peerResponseTime(responseTime))
+            served_date -= responseTime.tv_sec;
     }
 
     time_t exp = 0;
@@ -1736,29 +1623,43 @@ StoreEntry::url() const
         return mem_obj->storeId();
 }
 
-MemObject *
-StoreEntry::makeMemObject()
+void
+StoreEntry::createMemObject()
 {
-    if (!mem_obj)
-        mem_obj = new MemObject();
-    return mem_obj;
+    assert(!mem_obj);
+    mem_obj = new MemObject();
 }
 
 void
 StoreEntry::createMemObject(const char *aUrl, const char *aLogUrl, const HttpRequestMethod &aMethod)
 {
-    makeMemObject();
+    assert(!mem_obj);
+    ensureMemObject(aUrl, aLogUrl, aMethod);
+}
+
+void
+StoreEntry::ensureMemObject(const char *aUrl, const char *aLogUrl, const HttpRequestMethod &aMethod)
+{
+    if (!mem_obj)
+        mem_obj = new MemObject();
     mem_obj->setUris(aUrl, aLogUrl, aMethod);
 }
 
-/* this just sets DELAY_SENDING */
+/** disable sending content to the clients.
+ *
+ * This just sets DELAY_SENDING.
+ */
 void
 StoreEntry::buffer()
 {
     EBIT_SET(flags, DELAY_SENDING);
 }
 
-/* this just clears DELAY_SENDING and Invokes the handlers */
+/** flush any buffered content.
+ *
+ * This just clears DELAY_SENDING and Invokes the handlers
+ * to begin sending anything that may be buffered.
+ */
 void
 StoreEntry::flush()
 {
@@ -1892,7 +1793,7 @@ StoreEntry::storeErrorResponse(HttpReply *reply)
     flush();
     complete();
     negativeCache();
-    releaseRequest();
+    releaseRequest(false); // if it is safe to negatively cache, sharing is OK
     unlock("StoreEntry::storeErrorResponse");
 }
 
@@ -1919,12 +1820,9 @@ StoreEntry::replaceHttpReply(HttpReply *rep, bool andStartWriting)
 void
 StoreEntry::startWriting()
 {
-    Packer p;
-
-    /* TODO: when we store headers serparately remove the header portion */
+    /* TODO: when we store headers separately remove the header portion */
     /* TODO: mark the length of the headers ? */
     /* We ONLY want the headers */
-    packerToStoreInit(&p, this);
 
     assert (isEmpty());
     assert(mem_obj);
@@ -1932,13 +1830,12 @@ StoreEntry::startWriting()
     const HttpReply *rep = getReply();
     assert(rep);
 
-    rep->packHeadersInto(&p);
+    buffer();
+    rep->packHeadersUsingSlowPacker(*this);
     mem_obj->markEndOfReplyHeaders();
-    EBIT_CLR(flags, ENTRY_FWD_HDR_WAIT);
 
-    rep->body.packInto(&p);
-
-    packerClean(&p);
+    rep->body.packInto(this);
+    flush();
 }
 
 char const *
@@ -1962,18 +1859,18 @@ StoreEntry::getSerialisedMetaData()
 void
 StoreEntry::transientsAbandonmentCheck()
 {
-    if (mem_obj && !mem_obj->smpCollapsed && // this worker is responsible
-            mem_obj->xitTable.index >= 0 && // other workers may be interested
-            mem_obj->memCache.index < 0 && // rejected by the shared memory cache
+    if (mem_obj && !Store::Root().transientsReader(*this) && // this worker is responsible
+            hasTransients() && // other workers may be interested
+            !hasMemStore() && // rejected by the shared memory cache
             mem_obj->swapout.decision == MemObject::SwapOut::swImpossible) {
         debugs(20, 7, "cannot be shared: " << *this);
         if (!shutting_down) // Store::Root() is FATALly missing during shutdown
-            Store::Root().transientsAbandon(*this);
+            Store::Root().stopSharing(*this);
     }
 }
 
 void
-StoreEntry::memOutDecision(const bool willCacheInRam)
+StoreEntry::memOutDecision(const bool)
 {
     transientsAbandonmentCheck();
 }
@@ -2050,7 +1947,7 @@ bool
 StoreEntry::hasEtag(ETag &etag) const
 {
     if (const HttpReply *reply = getReply()) {
-        etag = reply->header.getETag(HDR_ETAG);
+        etag = reply->header.getETag(Http::HdrType::ETAG);
         if (etag.str)
             return true;
     }
@@ -2060,14 +1957,14 @@ StoreEntry::hasEtag(ETag &etag) const
 bool
 StoreEntry::hasIfMatchEtag(const HttpRequest &request) const
 {
-    const String reqETags = request.header.getList(HDR_IF_MATCH);
+    const String reqETags = request.header.getList(Http::HdrType::IF_MATCH);
     return hasOneOfEtags(reqETags, false);
 }
 
 bool
 StoreEntry::hasIfNoneMatchEtag(const HttpRequest &request) const
 {
-    const String reqETags = request.header.getList(HDR_IF_NONE_MATCH);
+    const String reqETags = request.header.getList(Http::HdrType::IF_NONE_MATCH);
     // weak comparison is allowed only for HEAD or full-body GET requests
     const bool allowWeakMatch = !request.flags.isRanged &&
                                 (request.method == Http::METHOD_GET || request.method == Http::METHOD_HEAD);
@@ -2078,7 +1975,7 @@ StoreEntry::hasIfNoneMatchEtag(const HttpRequest &request) const
 bool
 StoreEntry::hasOneOfEtags(const String &reqETags, const bool allowWeakMatch) const
 {
-    const ETag repETag = getReply()->header.getETag(HDR_ETAG);
+    const ETag repETag = getReply()->header.getETag(Http::HdrType::ETAG);
     if (!repETag.str)
         return strListIsMember(&reqETags, "*", ',');
 
@@ -2102,20 +1999,59 @@ StoreEntry::hasOneOfEtags(const String &reqETags, const bool allowWeakMatch) con
     return matched;
 }
 
-SwapDir::Pointer
-StoreEntry::store() const
+Store::Disk &
+StoreEntry::disk() const
 {
-    assert(0 <= swap_dirn && swap_dirn < Config.cacheSwap.n_configured);
-    return INDEXSD(swap_dirn);
+    assert(hasDisk());
+    const RefCount<Store::Disk> &sd = INDEXSD(swap_dirn);
+    assert(sd);
+    return *sd;
+}
+
+bool
+StoreEntry::hasDisk(const sdirno dirn, const sfileno filen) const
+{
+    checkDisk();
+    if (dirn < 0 && filen < 0)
+        return swap_dirn >= 0;
+    Must(dirn >= 0);
+    const bool matchingDisk = (swap_dirn == dirn);
+    return filen < 0 ? matchingDisk : (matchingDisk && swap_filen == filen);
 }
 
 void
-StoreEntry::unlink()
+StoreEntry::attachToDisk(const sdirno dirn, const sfileno fno, const swap_status_t status)
 {
-    store()->unlink(*this); // implies disconnect()
-    swap_filen = -1;
+    debugs(88, 3, "attaching entry with key " << getMD5Text() << " : " <<
+           swapStatusStr[status] << " " << dirn << " " <<
+           std::hex << std::setw(8) << std::setfill('0') <<
+           std::uppercase << fno);
+    checkDisk();
+    swap_dirn = dirn;
+    swap_filen = fno;
+    swap_status = status;
+    checkDisk();
+}
+
+void
+StoreEntry::detachFromDisk()
+{
     swap_dirn = -1;
+    swap_filen = -1;
     swap_status = SWAPOUT_NONE;
+}
+
+void
+StoreEntry::checkDisk() const
+{
+    const bool ok = (swap_dirn < 0) == (swap_filen < 0) &&
+                    (swap_dirn < 0) == (swap_status == SWAPOUT_NONE) &&
+                    (swap_dirn < 0 || swap_dirn < Config.cacheSwap.n_configured);
+
+    if (!ok) {
+        debugs(88, DBG_IMPORTANT, "ERROR: inconsistent disk entry state " << *this);
+        throw std::runtime_error("inconsistent disk entry state ");
+    }
 }
 
 /*
@@ -2146,16 +2082,41 @@ StoreEntry::describeTimestamps() const
     return buf;
 }
 
+static std::ostream &
+operator <<(std::ostream &os, const Store::IoStatus &io)
+{
+    switch (io) {
+    case Store::ioUndecided:
+        os << 'u';
+        break;
+    case Store::ioReading:
+        os << 'r';
+        break;
+    case Store::ioWriting:
+        os << 'w';
+        break;
+    case Store::ioDone:
+        os << 'o';
+        break;
+    }
+    return os;
+}
+
 std::ostream &operator <<(std::ostream &os, const StoreEntry &e)
 {
     os << "e:";
 
-    if (e.mem_obj) {
-        if (e.mem_obj->xitTable.index > -1)
-            os << 't' << e.mem_obj->xitTable.index;
-        if (e.mem_obj->memCache.index > -1)
-            os << 'm' << e.mem_obj->memCache.index;
+    if (e.hasTransients()) {
+        const auto &xitTable = e.mem_obj->xitTable;
+        os << 't' << xitTable.io << xitTable.index;
     }
+
+    if (e.hasMemStore()) {
+        const auto &memCache = e.mem_obj->memCache;
+        os << 'm' << memCache.io << memCache.index << '@' << memCache.offset;
+    }
+
+    // Do not use e.hasDisk() here because its checkDisk() call may calls us.
     if (e.swap_filen > -1 || e.swap_dirn > -1)
         os << 'd' << e.swap_filen << '@' << e.swap_dirn;
 
@@ -2180,17 +2141,17 @@ std::ostream &operator <<(std::ostream &os, const StoreEntry &e)
         if (EBIT_TEST(e.flags, RELEASE_REQUEST)) os << 'X';
         if (EBIT_TEST(e.flags, REFRESH_REQUEST)) os << 'F';
         if (EBIT_TEST(e.flags, ENTRY_REVALIDATE_STALE)) os << 'E';
-        if (EBIT_TEST(e.flags, ENTRY_DISPATCHED)) os << 'D';
-        if (EBIT_TEST(e.flags, KEY_PRIVATE)) os << 'I';
+        if (EBIT_TEST(e.flags, KEY_PRIVATE)) {
+            os << 'I';
+            if (e.shareableWhenPrivate)
+                os << 'H';
+        }
         if (EBIT_TEST(e.flags, ENTRY_FWD_HDR_WAIT)) os << 'W';
         if (EBIT_TEST(e.flags, ENTRY_NEGCACHED)) os << 'N';
         if (EBIT_TEST(e.flags, ENTRY_VALIDATED)) os << 'V';
         if (EBIT_TEST(e.flags, ENTRY_BAD_LENGTH)) os << 'L';
         if (EBIT_TEST(e.flags, ENTRY_ABORTED)) os << 'A';
     }
-
-    if (e.mem_obj && e.mem_obj->smpCollapsed)
-        os << 'O';
 
     return os << '/' << &e << '*' << e.locks();
 }
@@ -2221,5 +2182,14 @@ char const *
 NullStoreEntry::getSerialisedMetaData()
 {
     return NULL;
+}
+
+void
+Store::EntryGuard::onException() noexcept
+{
+    SWALLOW_EXCEPTIONS({
+        entry_->releaseRequest(false);
+        entry_->unlock(context_);
+    });
 }
 

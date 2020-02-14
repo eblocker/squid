@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -26,10 +26,9 @@ struct acl_httpstatus_data {
 /// \ingroup ACLAPI
 class ACLHTTPStatus : public ACL
 {
-
-public:
     MEMPROXY_CLASS(ACLHTTPStatus);
 
+public:
     ACLHTTPStatus(char const *);
     ACLHTTPStatus(ACLHTTPStatus const &);
     ~ACLHTTPStatus();
@@ -44,13 +43,9 @@ public:
     virtual bool requiresReply() const { return true; }
 
 protected:
-    static Prototype RegistryProtoype;
-    static ACLHTTPStatus RegistryEntry_;
     Splay<acl_httpstatus_data*> *data;
     char const *class_;
 };
-
-MEMPROXY_CLASS_INLINE(ACLHTTPStatus);
 
 #endif /* SQUID_ACLHTTPSTATUS_H */
 

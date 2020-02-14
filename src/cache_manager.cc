@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -27,6 +27,7 @@
 #include "mgr/FunAction.h"
 #include "mgr/QueryParams.h"
 #include "protos.h"
+#include "sbuf/StringConvert.h"
 #include "SquidConfig.h"
 #include "SquidTime.h"
 #include "Store.h"
@@ -243,20 +244,20 @@ CacheManager::ParseHeaders(const HttpRequest * request, Mgr::ActionParams &param
     // TODO: use the authentication system decode to retrieve these details properly.
 
     /* base 64 _decoded_ user:passwd pair */
-    const char *basic_cookie = request->header.getAuth(HDR_AUTHORIZATION, "Basic");
+    const auto basic_cookie(request->header.getAuthToken(Http::HdrType::AUTHORIZATION, "Basic"));
 
-    if (!basic_cookie)
+    if (basic_cookie.isEmpty())
         return;
 
-    const char *passwd_del;
-    if (!(passwd_del = strchr(basic_cookie, ':'))) {
+    const auto colonPos = basic_cookie.find(':');
+    if (colonPos == SBuf::npos) {
         debugs(16, DBG_IMPORTANT, "CacheManager::ParseHeaders: unknown basic_cookie format '" << basic_cookie << "'");
         return;
     }
 
     /* found user:password pair, reset old values */
-    params.userName.limitInit(basic_cookie, passwd_del - basic_cookie);
-    params.password = passwd_del + 1;
+    params.userName = SBufToString(basic_cookie.substr(0, colonPos));
+    params.password = SBufToString(basic_cookie.substr(colonPos+1));
 
     /* warning: this prints decoded password which maybe not be what you want to do @?@ @?@ */
     debugs(16, 9, "CacheManager::ParseHeaders: got user: '" <<
@@ -356,8 +357,8 @@ CacheManager::Start(const Comm::ConnectionPointer &client, HttpRequest * request
         rep->header.putAuth("Basic", actionName);
 #endif
         // Allow cachemgr and other XHR scripts access to our version string
-        if (request->header.has(HDR_ORIGIN)) {
-            rep->header.putExt("Access-Control-Allow-Origin",request->header.getStr(HDR_ORIGIN));
+        if (request->header.has(Http::HdrType::ORIGIN)) {
+            rep->header.putExt("Access-Control-Allow-Origin",request->header.getStr(Http::HdrType::ORIGIN));
 #if HAVE_AUTH_MODULE_BASIC
             rep->header.putExt("Access-Control-Allow-Credentials","true");
 #endif
@@ -374,8 +375,8 @@ CacheManager::Start(const Comm::ConnectionPointer &client, HttpRequest * request
         return;
     }
 
-    if (request->header.has(HDR_ORIGIN)) {
-        cmd->params.httpOrigin = request->header.getStr(HDR_ORIGIN);
+    if (request->header.has(Http::HdrType::ORIGIN)) {
+        cmd->params.httpOrigin = request->header.getStr(Http::HdrType::ORIGIN);
     }
 
     debugs(16, 2, "CacheManager: " <<
@@ -391,8 +392,8 @@ CacheManager::Start(const Comm::ConnectionPointer &client, HttpRequest * request
         if (strncmp(rep->body.content(),"Internal Error:", 15) == 0)
             rep->sline.set(Http::ProtocolVersion(1,1), Http::scNotFound);
         // Allow cachemgr and other XHR scripts access to our version string
-        if (request->header.has(HDR_ORIGIN)) {
-            rep->header.putExt("Access-Control-Allow-Origin",request->header.getStr(HDR_ORIGIN));
+        if (request->header.has(Http::HdrType::ORIGIN)) {
+            rep->header.putExt("Access-Control-Allow-Origin",request->header.getStr(Http::HdrType::ORIGIN));
 #if HAVE_AUTH_MODULE_BASIC
             rep->header.putExt("Access-Control-Allow-Credentials","true");
 #endif
@@ -445,14 +446,13 @@ CacheManager::ActionProtection(const Mgr::ActionProfile::Pointer &profile)
 char *
 CacheManager::PasswdGet(Mgr::ActionPasswordList * a, const char *action)
 {
-    wordlist *w;
-
-    while (a != NULL) {
-        for (w = a->actions; w != NULL; w = w->next) {
-            if (0 == strcmp(w->key, action))
+    while (a) {
+        for (auto &w : a->actions) {
+            if (w.cmp(action) == 0)
                 return a->passwd;
 
-            if (0 == strcmp(w->key, "all"))
+            static const SBuf allAction("all");
+            if (w == allAction)
                 return a->passwd;
         }
 
@@ -462,17 +462,12 @@ CacheManager::PasswdGet(Mgr::ActionPasswordList * a, const char *action)
     return NULL;
 }
 
-CacheManager* CacheManager::instance=0;
-
-/**
- \ingroup CacheManagerAPI
- * Singleton accessor method.
- */
 CacheManager*
 CacheManager::GetInstance()
 {
-    if (instance == 0) {
-        debugs(16, 6, "CacheManager::GetInstance: starting cachemanager up");
+    static CacheManager *instance = nullptr;
+    if (!instance) {
+        debugs(16, 6, "starting cachemanager up");
         instance = new CacheManager;
         Mgr::RegisterBasics();
     }

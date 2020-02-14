@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -9,11 +9,12 @@
 /* DEBUG: section 47    Store Directory Routines */
 
 #include "squid.h"
-#include "disk.h"
+#include "fs_io.h"
 #include "globals.h"
 #include "RebuildState.h"
 #include "SquidConfig.h"
 #include "SquidTime.h"
+#include "store/Disks.h"
 #include "store_key_md5.h"
 #include "store_rebuild.h"
 #include "StoreSwapLogData.h"
@@ -29,8 +30,23 @@
 CBDATA_NAMESPACED_CLASS_INIT(Fs::Ufs,RebuildState);
 
 Fs::Ufs::RebuildState::RebuildState(RefCount<UFSSwapDir> aSwapDir) :
-    sd (aSwapDir), LogParser(NULL), e(NULL), fromLog(true), _done (false)
+    sd(aSwapDir),
+    n_read(0),
+    LogParser(NULL),
+    curlvl1(0),
+    curlvl2(0),
+    in_dir(0),
+    done(0),
+    fn(0),
+    entry(NULL),
+    td(NULL),
+    fromLog(true),
+    _done(false),
+    cbdata(NULL)
 {
+    *fullpath = 0;
+    *fullfilename = 0;
+
     /*
      * If the swap.state file exists in the cache_dir, then
      * we'll use commonUfsDirRebuildFromSwapLog(), otherwise we'll
@@ -91,8 +107,6 @@ Fs::Ufs::RebuildState::RebuildStep(void *data)
 void
 Fs::Ufs::RebuildState::rebuildStep()
 {
-    currentEntry(NULL);
-
     // Balance our desire to maximize the number of entries processed at once
     // (and, hence, minimize overheads and total rebuild time) with a
     // requirement to also process Coordinator events, disk I/Os, etc.
@@ -154,7 +168,8 @@ Fs::Ufs::RebuildState::rebuildFromDirectory()
     ++n_read;
 
     if (fstat(fd, &sb) < 0) {
-        debugs(47, DBG_IMPORTANT, HERE << "fstat(FD " << fd << "): " << xstrerror());
+        int xerrno = errno;
+        debugs(47, DBG_IMPORTANT, MYNAME << "fstat(FD " << fd << "): " << xstrerr(xerrno));
         file_close(fd);
         --store_open_disk_fd;
         fd = -1;
@@ -190,34 +205,65 @@ Fs::Ufs::RebuildState::rebuildFromDirectory()
         return;
     }
 
-    if (!storeRebuildKeepEntry(tmpe, key, counts))
+    addIfFresh(key,
+               filn,
+               tmpe.swap_file_sz,
+               tmpe.expires,
+               tmpe.timestamp,
+               tmpe.lastref,
+               tmpe.lastModified(),
+               tmpe.refcount,
+               tmpe.flags);
+}
+
+/// if the loaded entry metadata is still relevant, indexes the entry
+void
+Fs::Ufs::RebuildState::addIfFresh(const cache_key *key,
+                                  sfileno file_number,
+                                  uint64_t swap_file_sz,
+                                  time_t expires,
+                                  time_t timestamp,
+                                  time_t lastref,
+                                  time_t lastmod,
+                                  uint32_t refcount,
+                                  uint16_t newFlags)
+{
+    if (!evictStaleAndContinue(key, lastref, counts.dupcount))
         return;
 
     ++counts.objcount;
-    // tmpe.dump(5);
-    currentEntry(sd->addDiskRestore(key,
-                                    filn,
-                                    tmpe.swap_file_sz,
-                                    tmpe.expires,
-                                    tmpe.timestamp,
-                                    tmpe.lastref,
-                                    tmpe.lastModified(),
-                                    tmpe.refcount,  /* refcount */
-                                    tmpe.flags,     /* flags */
-                                    (int) flags.clean));
-    storeDirSwapLog(currentEntry(), SWAP_LOG_ADD);
+    const auto addedEntry = sd->addDiskRestore(key,
+                            file_number,
+                            swap_file_sz,
+                            expires,
+                            timestamp,
+                            lastref,
+                            lastmod,
+                            refcount,
+                            newFlags,
+                            0 /* XXX: unused */);
+    storeDirSwapLog(addedEntry, SWAP_LOG_ADD);
 }
 
-StoreEntry *
-Fs::Ufs::RebuildState::currentEntry() const
+/// Evicts a matching entry if it was last touched before caller's maxRef.
+/// \returns false only if the matching entry was touched at or after maxRef,
+/// indicating that the caller has supplied outdated maxRef.
+bool
+Fs::Ufs::RebuildState::evictStaleAndContinue(const cache_key *candidateKey, const time_t maxRef, int &staleCount)
 {
-    return e;
-}
+    if (auto *indexedEntry = Store::Root().peek(candidateKey)) {
 
-void
-Fs::Ufs::RebuildState::currentEntry(StoreEntry *newValue)
-{
-    e = newValue;
+        if (indexedEntry->lastref >= maxRef) {
+            indexedEntry->abandon("Fs::Ufs::RebuildState::evictStaleAndContinue");
+            ++counts.clashcount;
+            return false;
+        }
+
+        ++staleCount;
+        indexedEntry->release(true); // evict previously indexedEntry
+    }
+
+    return true;
 }
 
 /// process one swap log entry
@@ -260,20 +306,8 @@ Fs::Ufs::RebuildState::rebuildFromSwapLog()
     if (swapData.op == SWAP_LOG_ADD) {
         (void) 0;
     } else if (swapData.op == SWAP_LOG_DEL) {
-        /* Delete unless we already have a newer copy anywhere in any store */
-        /* this needs to become
-         * 1) unpack url
-         * 2) make synthetic request with headers ?? or otherwise search
-         * for a matching object in the store
-         * TODO FIXME change to new async api
-         */
-        currentEntry (Store::Root().get(swapData.key));
-
-        if (currentEntry() != NULL && swapData.lastref >= e->lastref) {
-            undoAdd();
-            --counts.objcount;
-            ++counts.cancelcount;
-        }
+        // remove any older or same-age entry; +1 covers same-age entries
+        (void)evictStaleAndContinue(swapData.key, swapData.lastref+1, counts.cancelcount);
         return;
     } else {
         const double
@@ -299,127 +333,27 @@ Fs::Ufs::RebuildState::rebuildFromSwapLog()
         return;
     }
 
-    /* this needs to become
-     * 1) unpack url
-     * 2) make synthetic request with headers ?? or otherwise search
-     * for a matching object in the store
-     * TODO FIXME change to new async api
-     */
-    currentEntry (Store::Root().get(swapData.key));
-
-    int used;           /* is swapfile already in use? */
-
-    used = sd->mapBitTest(swapData.swap_filen);
-
-    /* If this URL already exists in the cache, does the swap log
-     * appear to have a newer entry?  Compare 'lastref' from the
-     * swap log to e->lastref. */
-    /* is the log entry newer than current entry? */
-    int disk_entry_newer = currentEntry() ? (swapData.lastref > currentEntry()->lastref ? 1 : 0) : 0;
-
-    if (used && !disk_entry_newer) {
-        /* log entry is old, ignore it */
+    if (sd->mapBitTest(swapData.swap_filen)) {
+        // While we were scanning the logs, some (unrelated) entry was added to
+        // our disk using our logged swap_filen. We could change our swap_filen
+        // and move the store file, but there is no Store API to do that (TODO).
         ++counts.clashcount;
         return;
-    } else if (used && currentEntry() && currentEntry()->swap_filen == swapData.swap_filen && currentEntry()->swap_dirn == sd->index) {
-        /* swapfile taken, same URL, newer, update meta */
-
-        if (currentEntry()->store_status == STORE_OK) {
-            currentEntry()->lastref = swapData.timestamp;
-            currentEntry()->timestamp = swapData.timestamp;
-            currentEntry()->expires = swapData.expires;
-            currentEntry()->lastModified(swapData.lastmod);
-            currentEntry()->flags = swapData.flags;
-            currentEntry()->refcount += swapData.refcount;
-            sd->dereference(*currentEntry(), false);
-        } else {
-            debug_trap("commonUfsDirRebuildFromSwapLog: bad condition");
-            debugs(47, DBG_IMPORTANT, HERE << "bad condition");
-        }
-        return;
-    } else if (used) {
-        /* swapfile in use, not by this URL, log entry is newer */
-        /* This is sorta bad: the log entry should NOT be newer at this
-         * point.  If the log is dirty, the filesize check should have
-         * caught this.  If the log is clean, there should never be a
-         * newer entry. */
-        debugs(47, DBG_IMPORTANT, "WARNING: newer swaplog entry for dirno " <<
-               sd->index  << ", fileno "<< std::setfill('0') << std::hex <<
-               std::uppercase << std::setw(8) << swapData.swap_filen);
-
-        /* I'm tempted to remove the swapfile here just to be safe,
-         * but there is a bad race condition in the NOVM version if
-         * the swapfile has recently been opened for writing, but
-         * not yet opened for reading.  Because we can't map
-         * swapfiles back to StoreEntrys, we don't know the state
-         * of the entry using that file.  */
-        /* We'll assume the existing entry is valid, probably because
-         * were in a slow rebuild and the the swap file number got taken
-         * and the validation procedure hasn't run. */
-        assert(flags.need_to_validate);
-        ++counts.clashcount;
-        return;
-    } else if (currentEntry() && !disk_entry_newer) {
-        /* key already exists, current entry is newer */
-        /* keep old, ignore new */
-        ++counts.dupcount;
-        return;
-    } else if (currentEntry()) {
-        /* key already exists, this swapfile not being used */
-        /* junk old, load new */
-        undoAdd();
-        --counts.objcount;
-        ++counts.dupcount;
-    } else {
-        /* URL doesnt exist, swapfile not in use */
-        /* load new */
-        (void) 0;
     }
 
-    ++counts.objcount;
-
-    currentEntry(sd->addDiskRestore(swapData.key,
-                                    swapData.swap_filen,
-                                    swapData.swap_file_sz,
-                                    swapData.expires,
-                                    swapData.timestamp,
-                                    swapData.lastref,
-                                    swapData.lastmod,
-                                    swapData.refcount,
-                                    swapData.flags,
-                                    (int) flags.clean));
-
-    storeDirSwapLog(currentEntry(), SWAP_LOG_ADD);
-}
-
-/// undo the effects of adding an entry in rebuildFromSwapLog()
-void
-Fs::Ufs::RebuildState::undoAdd()
-{
-    StoreEntry *added = currentEntry();
-    assert(added);
-    currentEntry(NULL);
-
-    // TODO: Why bother with these two if we are going to release?!
-    added->expireNow();
-    added->releaseRequest();
-
-    if (added->swap_filen > -1) {
-        SwapDir *someDir = INDEXSD(added->swap_dirn);
-        assert(someDir);
-        if (UFSSwapDir *ufsDir = dynamic_cast<UFSSwapDir*>(someDir))
-            ufsDir->undoAddDiskRestore(added);
-        // else the entry was loaded from and/or is currently in a non-UFS dir
-        // Thus, there is no use in preserving its disk file (the only purpose
-        // of undoAddDiskRestore!), even if we could. Instead, we release the
-        // the entry and [eventually] unlink its disk file or free its slot.
-    }
-
-    added->release();
+    addIfFresh(swapData.key,
+               swapData.swap_filen,
+               swapData.swap_file_sz,
+               swapData.expires,
+               swapData.timestamp,
+               swapData.lastref,
+               swapData.lastmod,
+               swapData.refcount,
+               swapData.flags);
 }
 
 int
-Fs::Ufs::RebuildState::getNextFile(sfileno * filn_p, int *size)
+Fs::Ufs::RebuildState::getNextFile(sfileno * filn_p, int *)
 {
     int fd = -1;
     int dirs_opened = 0;
@@ -435,6 +369,7 @@ Fs::Ufs::RebuildState::getNextFile(sfileno * filn_p, int *size)
         fd = -1;
 
         if (!flags.init) {  /* initialize, open first file */
+            // XXX: 0's should not be needed, constructor inits now
             done = 0;
             curlvl1 = 0;
             curlvl2 = 0;
@@ -444,7 +379,7 @@ Fs::Ufs::RebuildState::getNextFile(sfileno * filn_p, int *size)
         }
 
         if (0 == in_dir) {  /* we need to read in a new directory */
-            snprintf(fullpath, MAXPATHLEN, "%s/%02X/%02X",
+            snprintf(fullpath, sizeof(fullpath), "%s/%02X/%02X",
                      sd->path,
                      curlvl1, curlvl2);
 
@@ -455,8 +390,9 @@ Fs::Ufs::RebuildState::getNextFile(sfileno * filn_p, int *size)
 
             ++dirs_opened;
 
-            if (td == NULL) {
-                debugs(47, DBG_IMPORTANT, HERE << "error in opendir (" << fullpath << "): " << xstrerror());
+            if (!td) {
+                int xerrno = errno;
+                debugs(47, DBG_IMPORTANT, MYNAME << "error in opendir (" << fullpath << "): " << xstrerr(xerrno));
             } else {
                 entry = readdir(td);    /* skip . and .. */
                 entry = readdir(td);
@@ -489,14 +425,15 @@ Fs::Ufs::RebuildState::getNextFile(sfileno * filn_p, int *size)
                 continue;
             }
 
-            snprintf(fullfilename, MAXPATHLEN, "%s/%s",
+            snprintf(fullfilename, sizeof(fullfilename), "%s/%s",
                      fullpath, entry->d_name);
             debugs(47, 3, HERE << "Opening " << fullfilename);
             fd = file_open(fullfilename, O_RDONLY | O_BINARY);
 
-            if (fd < 0)
-                debugs(47, DBG_IMPORTANT, HERE << "error opening " << fullfilename << ": " << xstrerror());
-            else
+            if (fd < 0) {
+                int xerrno = errno;
+                debugs(47, DBG_IMPORTANT, MYNAME << "error opening " << fullfilename << ": " << xstrerr(xerrno));
+            } else
                 ++store_open_disk_fd;
 
             continue;
@@ -536,11 +473,5 @@ bool
 Fs::Ufs::RebuildState::isDone() const
 {
     return _done;
-}
-
-StoreEntry *
-Fs::Ufs::RebuildState::currentItem()
-{
-    return currentEntry();
 }
 

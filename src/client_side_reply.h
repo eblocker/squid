@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -21,6 +21,7 @@ class ErrorState;
 
 class clientReplyContext : public RefCountable, public StoreClient
 {
+    CBDATA_CLASS(clientReplyContext);
 
 public:
     static STCB CacheHit;
@@ -82,17 +83,17 @@ public:
     int old_reqsize;        /* ... again, for the buffer */
     size_t reqsize;
     size_t reqofs;
-    char tempbuf[HTTP_REQBUF_SZ];   /* a temporary buffer if we need working storage */
+    char tempbuf[HTTP_REQBUF_SZ];   ///< a temporary buffer if we need working storage
 #if USE_CACHE_DIGESTS
 
     const char *lookup_type;    /* temporary hack: storeGet() result: HIT/MISS/NONE */
 #endif
 
-    struct {
+    struct Flags {
+        Flags() : storelogiccomplete(0), complete(0), headersSent(false) {}
 
         unsigned storelogiccomplete:1;
-
-        unsigned complete:1;        /* we have read all we can from upstream */
+        unsigned complete:1;        ///< we have read all we can from upstream
         bool headersSent;
     } flags;
     clientStreamNode *ourNode;  /* This will go away if/when this file gets refactored some more */
@@ -130,7 +131,11 @@ private:
     void sendNotModifiedOrPreconditionFailedError();
 
     StoreEntry *old_entry;
-    store_client *old_sc;   /* ... for entry to be validated */
+    /* ... for entry to be validated */
+    store_client *old_sc;
+    time_t old_lastmod;
+    String old_etag;
+
     bool deleting;
 
     typedef enum {
@@ -140,8 +145,6 @@ private:
     } CollapsedRevalidation;
 
     CollapsedRevalidation collapsedRevalidation;
-
-    CBDATA_CLASS2(clientReplyContext);
 };
 
 #endif /* SQUID_CLIENTSIDEREPLY_H */

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -8,16 +8,16 @@
 
 #include "squid.h"
 #include "base/CharacterSet.h"
-#include "Mem.h"
-#include "SBuf.h"
-#include "SBufFindTest.h"
-#include "SBufStream.h"
-#include "SquidString.h"
-#include "testSBuf.h"
+#include "sbuf/Algorithms.h"
+#include "sbuf/SBuf.h"
+#include "sbuf/Stream.h"
+#include "tests/SBufFindTest.h"
+#include "tests/testSBuf.h"
 #include "unitTestMain.h"
 
 #include <iostream>
 #include <stdexcept>
+#include <unordered_map>
 
 CPPUNIT_TEST_SUITE_REGISTRATION( testSBuf );
 
@@ -115,13 +115,6 @@ testSBuf::testSBufConstructDestruct()
         CPPUNIT_ASSERT_EQUAL(s4,s3);
     }
 
-    // TEST: go via SquidString adapters.
-    {
-        String str(fox);
-        SBuf s1(str);
-        CPPUNIT_ASSERT_EQUAL(literal,s1);
-    }
-
     // TEST: go via std::string adapter.
     {
         std::string str(fox);
@@ -158,9 +151,22 @@ testSBuf::testEqualityTest()
 void
 testSBuf::testAppendSBuf()
 {
-    SBuf s1(fox1),s2(fox2);
-    s1.append(s2);
-    CPPUNIT_ASSERT_EQUAL(s1,literal);
+    const SBuf appendix(fox1);
+    const char * const rawAppendix = appendix.rawContent();
+
+    // check whether the optimization that prevents copying when append()ing to
+    // default-constructed SBuf actually works
+    SBuf s0;
+    s0.append(appendix);
+    CPPUNIT_ASSERT_EQUAL(s0.rawContent(), appendix.rawContent());
+    CPPUNIT_ASSERT_EQUAL(s0, appendix);
+
+    // paranoid: check that the above code can actually detect copies
+    SBuf s1(fox1);
+    s1.append(appendix);
+    CPPUNIT_ASSERT(s1.rawContent() != appendix.rawContent());
+    CPPUNIT_ASSERT(s1 != appendix);
+    CPPUNIT_ASSERT_EQUAL(rawAppendix, appendix.rawContent());
 }
 
 void
@@ -412,10 +418,9 @@ testSBuf::testRawSpace()
 {
     SBuf s1(literal);
     SBuf s2(fox1);
-    SBuf::size_type sz=s2.length();
-    char *rb=s2.rawSpace(strlen(fox2)+1);
+    char *rb=s2.rawAppendStart(strlen(fox2)+1);
     strcpy(rb,fox2);
-    s2.forceSize(sz+strlen(fox2));
+    s2.rawAppendFinish(rb, strlen(fox2));
     CPPUNIT_ASSERT_EQUAL(s1,s2);
 }
 
@@ -761,22 +766,6 @@ testSBuf::testSBufLength()
 }
 
 void
-testSBuf::testScanf()
-{
-    SBuf s1;
-    char s[128];
-    int i;
-    float f;
-    int rv;
-    s1.assign("string , 123 , 123.50");
-    rv=s1.scanf("%s , %d , %f",s,&i,&f);
-    CPPUNIT_ASSERT_EQUAL(3,rv);
-    CPPUNIT_ASSERT_EQUAL(0,strcmp(s,"string"));
-    CPPUNIT_ASSERT_EQUAL(123,i);
-    CPPUNIT_ASSERT_EQUAL(static_cast<float>(123.5),f);
-}
-
-void
 testSBuf::testCopy()
 {
     char buf[40]; //shorter than literal()
@@ -817,6 +806,49 @@ testSBuf::testGrow()
     t.append(literal).append(literal).append(literal).append(literal).append(literal);
     t.append(t).append(t).append(t).append(t).append(t);
     CPPUNIT_ASSERT_EQUAL(ref,match);
+}
+
+void
+testSBuf::testReserve()
+{
+    SBufReservationRequirements requirements;
+    // use unusual numbers to ensure we do not hit a lucky boundary situation
+    requirements.minSpace = 10;
+    requirements.idealSpace = 82;
+    requirements.maxCapacity = 259;
+    requirements.allowShared = true;
+
+    // for each possible starting buffer length within the capacity
+    for (SBuf::size_type startLength = 0; startLength <= requirements.maxCapacity; ++startLength) {
+        std::cerr << ".";
+        SBuf b;
+        b.reserveCapacity(startLength);
+        CPPUNIT_ASSERT_EQUAL(b.length(), static_cast<unsigned int>(0));
+        CPPUNIT_ASSERT_EQUAL(b.spaceSize(), startLength);
+
+        // check that it never grows outside capacity.
+        // do 5 excess cycles to check that.
+        for (SBuf::size_type filled = 0; filled < requirements.maxCapacity +5; ++filled) {
+            CPPUNIT_ASSERT_EQUAL(b.length(), min(filled, requirements.maxCapacity));
+            auto x = b.reserve(requirements);
+            // the amount of space advertized must not cause users to exceed capacity
+            CPPUNIT_ASSERT(x <= requirements.maxCapacity - filled);
+            CPPUNIT_ASSERT(b.spaceSize() <= requirements.maxCapacity - filled);
+            // the total size of buffer must not cause users to exceed capacity
+            CPPUNIT_ASSERT(b.length() + b.spaceSize() <= requirements.maxCapacity);
+            if (x > 0)
+                b.append('X');
+        }
+    }
+
+    // the minimal space requirement should overwrite idealSpace preferences
+    requirements.minSpace = 10;
+    for (const int delta: {-1,0,+1}) {
+        requirements.idealSpace = requirements.minSpace + delta;
+        SBuf buffer;
+        buffer.reserve(requirements);
+        CPPUNIT_ASSERT(buffer.spaceSize() >= requirements.minSpace);
+    }
 }
 
 void
@@ -914,5 +946,70 @@ testSBuf::testStdStringOps()
     std::string astr(alphabet);
     SBuf sb(alphabet);
     CPPUNIT_ASSERT_EQUAL(astr,sb.toStdString());
+}
+
+void
+testSBuf::testIterators()
+{
+    SBuf text("foo"), text2("foo");
+    CPPUNIT_ASSERT(text.begin() == text.begin());
+    CPPUNIT_ASSERT(text.begin() != text.end());
+    CPPUNIT_ASSERT(text.begin() != text2.begin());
+    {
+        auto i = text.begin();
+        auto e = text.end();
+        CPPUNIT_ASSERT_EQUAL('f', *i);
+        CPPUNIT_ASSERT(i != e);
+        ++i;
+        CPPUNIT_ASSERT_EQUAL('o', *i);
+        CPPUNIT_ASSERT(i != e);
+        ++i;
+        CPPUNIT_ASSERT_EQUAL('o', *i);
+        CPPUNIT_ASSERT(i != e);
+        ++i;
+        CPPUNIT_ASSERT(i == e);
+    }
+    {
+        auto i = text.rbegin();
+        auto e = text.rend();
+        CPPUNIT_ASSERT_EQUAL('o', *i);
+        CPPUNIT_ASSERT(i != e);
+        ++i;
+        CPPUNIT_ASSERT_EQUAL('o', *i);
+        CPPUNIT_ASSERT(i != e);
+        ++i;
+        CPPUNIT_ASSERT_EQUAL('f', *i);
+        CPPUNIT_ASSERT(i != e);
+        ++i;
+        CPPUNIT_ASSERT(i == e);
+    }
+}
+
+void
+testSBuf::testSBufHash()
+{
+    // same SBuf must have same hash
+    auto hasher=std::hash<SBuf>();
+    CPPUNIT_ASSERT_EQUAL(hasher(literal),hasher(literal));
+
+    // same content must have same hash
+    CPPUNIT_ASSERT_EQUAL(hasher(literal),hasher(SBuf(fox)));
+    CPPUNIT_ASSERT_EQUAL(hasher(SBuf(fox)),hasher(SBuf(fox)));
+
+    //differen content should have different hash
+    CPPUNIT_ASSERT(hasher(SBuf(fox)) != hasher(SBuf(fox1)));
+
+    {
+        std::unordered_map<SBuf, int> um;
+        um[SBuf("one")] = 1;
+        um[SBuf("two")] = 2;
+
+        auto i = um.find(SBuf("one"));
+        CPPUNIT_ASSERT(i != um.end());
+        CPPUNIT_ASSERT(i->second == 1);
+
+        i = um.find(SBuf("eleventy"));
+        CPPUNIT_ASSERT(i == um.end());
+    }
 }
 

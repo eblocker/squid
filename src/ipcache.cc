@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -12,19 +12,18 @@
 #include "CacheManager.h"
 #include "cbdata.h"
 #include "dlink.h"
-#include "DnsLookupDetails.h"
+#include "dns/LookupDetails.h"
+#include "dns/rfc3596.h"
 #include "event.h"
 #include "ip/Address.h"
 #include "ip/tools.h"
 #include "ipcache.h"
-#include "Mem.h"
 #include "mgr/Registration.h"
-#include "rfc3596.h"
 #include "SquidConfig.h"
-#include "SquidDns.h"
 #include "SquidTime.h"
 #include "StatCounters.h"
 #include "Store.h"
+#include "util.h"
 #include "wordlist.h"
 
 #if SQUID_SNMP
@@ -50,7 +49,7 @@
  \defgroup IPCacheInternal IP Cache Internals
  \ingroup IPCacheAPI
  \todo  when IP cache is provided as a class. These sub-groups will be obsolete
- *  for now they are used to seperate the public and private functions.
+ *  for now they are used to separate the public and private functions.
  *  with the private ones all being in IPCachInternal and public in IPCacheAPI
  *
  \section InternalOperation Internal Operation
@@ -79,7 +78,12 @@
  */
 class ipcache_entry
 {
+    MEMPROXY_CLASS(ipcache_entry);
+
 public:
+    ipcache_entry(const char *);
+    ~ipcache_entry();
+
     hash_link hash;     /* must be first */
     time_t lastref;
     time_t expires;
@@ -91,7 +95,9 @@ public:
     struct timeval request_time;
     dlink_node lru;
     unsigned short locks;
-    struct {
+    struct Flags {
+        Flags() : negcached(false), fromhosts(false) {}
+
         bool negcached;
         bool fromhosts;
     } flags;
@@ -209,7 +215,7 @@ ipcacheExpiredEntry(ipcache_entry * i)
 
 /// \ingroup IPCacheAPI
 void
-ipcache_purgelru(void *voidnotused)
+ipcache_purgelru(void *)
 {
     dlink_node *m;
     dlink_node *prev = NULL;
@@ -265,20 +271,19 @@ purge_entries_fromhosts(void)
         ipcacheRelease(i);
 }
 
-/**
- \ingroup IPCacheInternal
- *
- * create blank ipcache_entry
- */
-static ipcache_entry *
-ipcacheCreateEntry(const char *name)
+ipcache_entry::ipcache_entry(const char *name) :
+    lastref(0),
+    expires(0),
+    handler(nullptr),
+    handlerData(nullptr),
+    error_message(nullptr),
+    locks(0) // XXX: use Lock type ?
 {
-    static ipcache_entry *i;
-    i = (ipcache_entry *)memAllocate(MEM_IPCACHE_ENTRY);
-    i->hash.key = xstrdup(name);
-    Tolower(static_cast<char*>(i->hash.key));
-    i->expires = squid_curtime + Config.negativeDnsTtl;
-    return i;
+    hash.key = xstrdup(name);
+    Tolower(static_cast<char*>(hash.key));
+    expires = squid_curtime + Config.negativeDnsTtl;
+
+    memset(&request_time, 0, sizeof(request_time));
 }
 
 /// \ingroup IPCacheInternal
@@ -320,7 +325,7 @@ ipcacheCallback(ipcache_entry *i, int wait)
     i->handler = NULL;
 
     if (cbdataReferenceValidDone(i->handlerData, &cbdata)) {
-        const DnsLookupDetails details(i->error_message, wait);
+        const Dns::LookupDetails details(i->error_message, wait);
         callback((i->addrs.count ? &i->addrs : NULL), details, cbdata);
     }
 
@@ -496,7 +501,7 @@ ipcache_nbgethostbyname(const char *name, IPH * handler, void *handlerData)
     if (name == NULL || name[0] == '\0') {
         debugs(14, 4, "ipcache_nbgethostbyname: Invalid name!");
         ++IpcacheStats.invalid;
-        const DnsLookupDetails details("Invalid hostname", -1); // error, no lookup
+        const Dns::LookupDetails details("Invalid hostname", -1); // error, no lookup
         if (handler)
             handler(NULL, details, handlerData);
         return;
@@ -505,7 +510,7 @@ ipcache_nbgethostbyname(const char *name, IPH * handler, void *handlerData)
     if ((addrs = ipcacheCheckNumeric(name))) {
         debugs(14, 4, "ipcache_nbgethostbyname: BYPASS for '" << name << "' (already numeric)");
         ++IpcacheStats.numeric_hits;
-        const DnsLookupDetails details(NULL, -1); // no error, no lookup
+        const Dns::LookupDetails details; // no error, no lookup
         if (handler)
             handler(addrs, details, handlerData);
         return;
@@ -540,7 +545,7 @@ ipcache_nbgethostbyname(const char *name, IPH * handler, void *handlerData)
 
     debugs(14, 5, "ipcache_nbgethostbyname: MISS for '" << name << "'");
     ++IpcacheStats.misses;
-    i = ipcacheCreateEntry(name);
+    i = new ipcache_entry(name);
     i->handler = handler;
     i->handlerData = cbdataReference(handlerData);
     i->request_time = current_time;
@@ -570,8 +575,7 @@ ipcache_init(void)
     int n;
     debugs(14, DBG_IMPORTANT, "Initializing IP Cache...");
     memset(&IpcacheStats, '\0', sizeof(IpcacheStats));
-    memset(&lru_list, '\0', sizeof(lru_list));
-    memset(&static_addrs, '\0', sizeof(ipcache_addrs));
+    lru_list = dlink_list();
 
     static_addrs.in_addrs = static_cast<Ip::Address *>(xcalloc(1, sizeof(Ip::Address)));
     static_addrs.in_addrs->setEmpty(); // properly setup the Ip::Address!
@@ -582,7 +586,6 @@ ipcache_init(void)
                            (float) Config.ipcache.low) / (float) 100);
     n = hashPrime(ipcache_high / 4);
     ip_table = hash_create((HASHCMP *) strcmp, n, hash4);
-    memDataInit(MEM_IPCACHE_ENTRY, "ipcache_entry", sizeof(ipcache_entry), 0);
 
     ipcacheRegisterWithCacheManager();
 }
@@ -598,7 +601,7 @@ ipcache_init(void)
  \param flags       Default is NULL, set to IP_LOOKUP_IF_MISS
  *          to explicitly perform DNS lookups.
  *
- \retval NULL   An error occured during lookup
+ \retval NULL   An error occurred during lookup
  \retval NULL   No results available in cache and no lookup specified
  \retval *  Pointer to the ipcahce_addrs structure containing the lookup results
  */
@@ -707,7 +710,7 @@ stat_ipcache_get(StoreEntry * sentry)
     assert(ip_table != NULL);
     storeAppendPrintf(sentry, "IP Cache Statistics:\n");
     storeAppendPrintf(sentry, "IPcache Entries In Use:  %d\n",
-                      memInUse(MEM_IPCACHE_ENTRY));
+                      ipcache_entry::UseCount());
     storeAppendPrintf(sentry, "IPcache Entries Cached:  %d\n",
                       ipcacheCount());
     storeAppendPrintf(sentry, "IPcache Requests: %d\n",
@@ -978,11 +981,15 @@ static void
 ipcacheFreeEntry(void *data)
 {
     ipcache_entry *i = (ipcache_entry *)data;
-    safe_free(i->addrs.in_addrs);
-    safe_free(i->addrs.bad_mask);
-    safe_free(i->hash.key);
-    safe_free(i->error_message);
-    memFree(i, MEM_IPCACHE_ENTRY);
+    delete i;
+}
+
+ipcache_entry::~ipcache_entry()
+{
+    xfree(addrs.in_addrs);
+    xfree(addrs.bad_mask);
+    xfree(error_message);
+    xfree(hash.key);
 }
 
 /// \ingroup IPCacheAPI
@@ -1050,7 +1057,7 @@ ipcacheAddEntryFromHosts(const char *name, const char *ipaddr)
         }
     }
 
-    i = ipcacheCreateEntry(name);
+    i = new ipcache_entry(name);
     i->addrs.count = 1;
     i->addrs.cur = 0;
     i->addrs.badcount = 0;

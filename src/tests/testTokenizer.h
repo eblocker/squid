@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -16,6 +16,7 @@ class testTokenizer : public CPPUNIT_NS::TestFixture
     CPPUNIT_TEST_SUITE( testTokenizer );
     CPPUNIT_TEST ( testCharacterSet );
     CPPUNIT_TEST ( testTokenizerPrefix );
+    CPPUNIT_TEST ( testTokenizerSuffix );
     CPPUNIT_TEST ( testTokenizerSkip );
     CPPUNIT_TEST ( testTokenizerToken );
     CPPUNIT_TEST ( testTokenizerInt64 );
@@ -23,6 +24,7 @@ class testTokenizer : public CPPUNIT_NS::TestFixture
 
 protected:
     void testTokenizerPrefix();
+    void testTokenizerSuffix();
     void testTokenizerSkip();
     void testTokenizerToken();
     void testCharacterSet();

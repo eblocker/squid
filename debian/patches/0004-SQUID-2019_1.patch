@@ -1,0 +1,43 @@
+commit 2981a957716c61ff7e21eee1d7d6eb5a237e466d
+Author: Amos Jeffries <yadij@users.noreply.github.com>
+Date:   2019-05-18 17:02:33 +0000
+
+    Bug 4937: cachemgr.cgi: unallocated memory access (#407)
+    
+    ... after base64_decode_update
+    
+    Ensure that a terminator exists for the decoded string before
+    using str*() syscalls.
+
+diff --git a/tools/cachemgr.cc b/tools/cachemgr.cc
+index 0e5d4f1..1a05cb4 100644
+--- a/tools/cachemgr.cc
++++ b/tools/cachemgr.cc
+@@ -1091,7 +1091,6 @@ make_pub_auth(cachemgr_request * req)
+ static void
+ decode_pub_auth(cachemgr_request * req)
+ {
+-    char *buf;
+     const char *host_name;
+     const char *time_str;
+     const char *user_name;
+@@ -1103,16 +1102,17 @@ decode_pub_auth(cachemgr_request * req)
+     if (!req->pub_auth || strlen(req->pub_auth) < 4 + strlen(safe_str(req->hostname)))
+         return;
+ 
+-    size_t decodedLen = BASE64_DECODE_LENGTH(strlen(req->pub_auth));
+-    buf = (char*)xmalloc(decodedLen);
++    char *buf = static_cast<char*>(xmalloc(BASE64_DECODE_LENGTH(strlen(req->pub_auth))+1));
+     struct base64_decode_ctx ctx;
+     base64_decode_init(&ctx);
++    size_t decodedLen = 0;
+     if (!base64_decode_update(&ctx, &decodedLen, reinterpret_cast<uint8_t*>(buf), strlen(req->pub_auth), req->pub_auth) ||
+             !base64_decode_final(&ctx)) {
+         debug("cmgr: base64 decode failure. Incomplete auth token string.\n");
+         xfree(buf);
+         return;
+     }
++    buf[decodedLen] = '\0';
+ 
+     debug("cmgr: length ok\n");
+ 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -7,7 +7,7 @@
  */
 
 #include "squid.h"
-#include "typedefs.h" /* for cache_key */
+#include "store_key_md5.h"
 
 #define STUB_API "CacheDigest.cc"
 #include "tests/STUB.h"
@@ -16,17 +16,18 @@ class CacheDigest;
 class CacheDigestGuessStats;
 class StoreEntry;
 
-CacheDigest * cacheDigestCreate(uint64_t, uint8_t) STUB_RETVAL(NULL)
-void cacheDigestDestroy(CacheDigest *) STUB
-CacheDigest * cacheDigestClone(const CacheDigest *) STUB_RETVAL(NULL)
-void cacheDigestClear(CacheDigest * ) STUB
-void cacheDigestChangeCap(CacheDigest *,uint64_t) STUB
-int cacheDigestTest(const CacheDigest *, const cache_key *) STUB_RETVAL(1)
-void cacheDigestAdd(CacheDigest *, const cache_key *) STUB
-void cacheDigestDel(CacheDigest *, const cache_key *) STUB
-int cacheDigestBitUtil(const CacheDigest *) STUB_RETVAL(0)
+#include "CacheDigest.h"
+CacheDigest::CacheDigest(uint64_t, uint8_t) {STUB}
+CacheDigest::~CacheDigest() {STUB}
+CacheDigest *CacheDigest::clone() const STUB_RETVAL(nullptr)
+void CacheDigest::clear() STUB
+void CacheDigest::updateCapacity(uint64_t) STUB
+bool CacheDigest::contains(const cache_key *) const STUB_RETVAL(false)
+void CacheDigest::add(const cache_key *) STUB
+void CacheDigest::remove(const cache_key *) STUB
+double CacheDigest::usedMaskPercent() const STUB_RETVAL(0.0)
 void cacheDigestGuessStatsUpdate(CacheDigestGuessStats *, int, int) STUB
 void cacheDigestGuessStatsReport(const CacheDigestGuessStats *, StoreEntry *, const char *) STUB
 void cacheDigestReport(CacheDigest *, const char *, StoreEntry *) STUB
-uint32_t cacheDigestCalcMaskSize(uint64_t, uint8_t) STUB_RETVAL(1)
+uint32_t CacheDigest::CalcMaskSize(uint64_t, uint8_t) STUB_RETVAL(1)
 

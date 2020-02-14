@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -12,7 +12,6 @@
 #if USE_CACHE_DIGESTS
 
 #include "cbdata.h"
-/* for CacheDigestGuessStats */
 #include "StatCounters.h"
 
 class Version
@@ -44,7 +43,12 @@ class store_client;
 
 class DigestFetchState
 {
+    CBDATA_CLASS(DigestFetchState);
+
 public:
+    DigestFetchState(PeerDigest *,HttpRequest *);
+    ~DigestFetchState();
+
     PeerDigest *pd;
     StoreEntry *entry;
     StoreEntry *old_entry;
@@ -60,9 +64,8 @@ public:
     struct {
         int msg;
         int bytes;
-    }
+    } sent, recv;
 
-    sent, recv;
     char buf[SM_PAGE_SIZE];
     ssize_t bufofs;
     digest_read_state_t state;
@@ -70,48 +73,49 @@ public:
 
 class PeerDigest
 {
+    CBDATA_CLASS(PeerDigest);
 
 public:
-    CachePeer *peer;          /**< pointer back to peer structure, argh */
-    CacheDigest *cd;            /**< actual digest structure */
+    PeerDigest(CachePeer *);
+    ~PeerDigest();
+
+    CachePeer *peer = nullptr;          /**< pointer back to peer structure, argh */
+    CacheDigest *cd = nullptr;            /**< actual digest structure */
     String host;                /**< copy of peer->host */
-    const char *req_result;     /**< text status of the last request */
+    const char *req_result = nullptr;     /**< text status of the last request */
 
     struct {
-        bool needed;          /**< there were requests for this digest */
-        bool usable;          /**< can be used for lookups */
-        bool requested;       /**< in process of receiving [fresh] digest */
+        bool needed = false;          /**< there were requests for this digest */
+        bool usable = false;          /**< can be used for lookups */
+        bool requested = false;       /**< in process of receiving [fresh] digest */
     } flags;
 
     struct {
         /* all times are absolute unless augmented with _delay */
-        time_t initialized; /* creation */
-        time_t needed;      /* first lookup/use by a peer */
-        time_t next_check;  /* next scheduled check/refresh event */
-        time_t retry_delay; /* delay before re-checking _invalid_ digest */
-        time_t requested;   /* requested a fresh copy of a digest */
-        time_t req_delay;   /* last request response time */
-        time_t received;    /* received the current copy of a digest */
-        time_t disabled;    /* disabled for good */
+        time_t initialized = 0; /* creation */
+        time_t needed = 0;      /* first lookup/use by a peer */
+        time_t next_check = 0;  /* next scheduled check/refresh event */
+        time_t retry_delay = 0; /* delay before re-checking _invalid_ digest */
+        time_t requested = 0;   /* requested a fresh copy of a digest */
+        time_t req_delay = 0;   /* last request response time */
+        time_t received = 0;    /* received the current copy of a digest */
+        time_t disabled = 0;    /* disabled for good */
     } times;
 
     struct {
         CacheDigestGuessStats guess;
-        int used_count;
+        int used_count = 0;
 
         struct {
-            int msgs;
-            kb_t kbytes;
+            int msgs = 0;
+            ByteCounter kbytes;
         } sent, recv;
     } stats;
-
-private:
-    CBDATA_CLASS2(PeerDigest);
 };
 
 extern const Version CacheDigestVer;
 
-PeerDigest *peerDigestCreate(CachePeer * p);
+void peerDigestCreate(CachePeer * p);
 void peerDigestNeeded(PeerDigest * pd);
 void peerDigestNotePeerGone(PeerDigest * pd);
 void peerDigestStatsReport(const PeerDigest * pd, StoreEntry * e);

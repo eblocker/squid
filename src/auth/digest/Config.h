@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -8,6 +8,8 @@
 
 #ifndef __AUTH_DIGEST_H__
 #define __AUTH_DIGEST_H__
+
+#if HAVE_AUTH_MODULE_DIGEST
 
 #include "auth/Config.h"
 #include "auth/Gadgets.h"
@@ -32,7 +34,7 @@ struct _digest_nonce_data {
     time_t creationtime;
     /* in memory address of the nonce struct (similar purpose to an ETag) */
     digest_nonce_h *self;
-    long randomdata;
+    uint32_t randomdata;
 };
 
 /* the nonce structure we'll pass around */
@@ -79,7 +81,7 @@ public:
     virtual void done();
     virtual void rotateHelpers();
     virtual bool dump(StoreEntry *, const char *, Auth::Config *) const;
-    virtual void fixHeader(Auth::UserRequest::Pointer, HttpReply *, http_hdr_type, HttpRequest *);
+    virtual void fixHeader(Auth::UserRequest::Pointer, HttpReply *, Http::HdrType, HttpRequest *);
     virtual void init(Auth::Config *);
     virtual void parse(Auth::Config *, int, char *);
     virtual void registerWithCacheManager(void);
@@ -103,5 +105,6 @@ public:
 
 extern helper *digestauthenticators;
 
+#endif /* HAVE_AUTH_MODULE_DIGEST */
 #endif
 

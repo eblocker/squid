@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -10,15 +10,15 @@
 #define SQUID_ACLINTRANGE_H
 
 #include "acl/Data.h"
-#include "CbDataList.h"
 #include "Range.h"
 
-/// \ingroup ACLAPI
+#include <list>
+
 class ACLIntRange : public ACLData<int>
 {
 
 public:
-    ACLIntRange() {};
+    ACLIntRange() {}
 
     virtual ~ACLIntRange();
     virtual bool match(int);
@@ -29,7 +29,7 @@ public:
 
 private:
     typedef Range<int> RangeType;
-    CbDataListContainer <RangeType> ranges;
+    std::list<RangeType> ranges;
 };
 
 #endif /* SQUID_ACLINTRANGE_H */

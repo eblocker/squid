@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -10,8 +10,8 @@
 
 #include "squid.h"
 #include "MemBuf.h"
+#include "store/Controller.h"
 #include "store_rebuild.h"
-#include "SwapDir.h"
 
 #include <cstring>
 
@@ -19,7 +19,6 @@
 #include "tests/STUB.h"
 
 void storeRebuildProgress(int sd_index, int total, int sofar) STUB
-bool storeRebuildKeepEntry(const StoreEntry &tmpe, const cache_key *key, StoreRebuildData &counts) STUB_RETVAL(false)
 bool storeRebuildParseEntry(MemBuf &, StoreEntry &, cache_key *, StoreRebuildData &, uint64_t) STUB_RETVAL(false)
 
 void storeRebuildComplete(StoreRebuildData *)

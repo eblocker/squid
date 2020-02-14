@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -11,6 +11,7 @@
 #include "squid.h"
 #include "acl/Checklist.h"
 #include "acl/DomainData.h"
+#include "acl/FilledChecklist.h"
 #include "acl/RegexData.h"
 #include "acl/SourceDomain.h"
 #include "fqdncache.h"
@@ -31,7 +32,7 @@ SourceDomainLookup::checkForAsync(ACLChecklist *checklist) const
 }
 
 void
-SourceDomainLookup::LookupDone(const char *fqdn, const DnsLookupDetails &details, void *data)
+SourceDomainLookup::LookupDone(const char *, const Dns::LookupDetails &details, void *data)
 {
     ACLFilledChecklist *checklist = Filled((ACLChecklist*)data);
     checklist->markSourceDomainChecked();
@@ -40,7 +41,7 @@ SourceDomainLookup::LookupDone(const char *fqdn, const DnsLookupDetails &details
 }
 
 int
-ACLSourceDomainStrategy::match (ACLData<MatchType> * &data, ACLFilledChecklist *checklist, ACLFlags &)
+ACLSourceDomainStrategy::match (ACLData<MatchType> * &data, ACLFilledChecklist *checklist)
 {
     const char *fqdn = NULL;
     fqdn = fqdncache_gethostbyaddr(checklist->src_addr, FQDN_LOOKUP_IF_MISS);
@@ -57,12 +58,4 @@ ACLSourceDomainStrategy::match (ACLData<MatchType> * &data, ACLFilledChecklist *
 
     return data->match("none");
 }
-
-ACLSourceDomainStrategy *
-ACLSourceDomainStrategy::Instance()
-{
-    return &Instance_;
-}
-
-ACLSourceDomainStrategy ACLSourceDomainStrategy::Instance_;
 

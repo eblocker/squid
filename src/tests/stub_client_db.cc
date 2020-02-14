@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -15,7 +15,7 @@
 class ClientInfo;
 
 void clientdbInit(void) STUB
-void clientdbUpdate(const Ip::Address &, LogTags, AnyP::ProtocolType, size_t) STUB
+void clientdbUpdate(const Ip::Address &, const LogTags &, AnyP::ProtocolType, size_t) STUB
 int clientdbCutoffDenied(const Ip::Address &) STUB_RETVAL(-1)
 void clientdbDump(StoreEntry *) STUB
 void clientdbFreeMemory(void) STUB

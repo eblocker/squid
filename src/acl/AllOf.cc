@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -62,7 +62,7 @@ Acl::AllOf::parse()
 
         MemBuf wholeCtx;
         wholeCtx.init();
-        wholeCtx.Printf("(%s lines)", name);
+        wholeCtx.appendf("(%s lines)", name);
         wholeCtx.terminate();
 
         Acl::OrNode *newWhole = new Acl::OrNode;
@@ -79,7 +79,7 @@ Acl::AllOf::parse()
 
     MemBuf lineCtx;
     lineCtx.init();
-    lineCtx.Printf("(%s line #%d)", name, lineId);
+    lineCtx.appendf("(%s line #%d)", name, lineId);
     lineCtx.terminate();
 
     Acl::AndNode *line = new AndNode;

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -37,6 +37,8 @@ class AcceptLimiter;
  */
 class TcpAcceptor : public AsyncJob
 {
+    CBDATA_CLASS(TcpAcceptor);
+
 public:
     typedef CbcPointer<Comm::TcpAcceptor> Pointer;
 
@@ -74,9 +76,12 @@ public:
     /// errno code of the last accept() or listen() action if one occurred.
     int errcode;
 
+    /// Method to test if there are enough file descriptors to open a new client connection
+    /// if not the accept() will be postponed
+    static bool okToAccept();
+
 protected:
     friend class AcceptLimiter;
-    int32_t isLimited;                   ///< whether this socket is delayed and on the AcceptLimiter queue.
 
 private:
     Subscription::Pointer theCallSub;    ///< used to generate AsyncCalls handling our events.
@@ -91,10 +96,6 @@ private:
     /// listen socket closure handler
     AsyncCall::Pointer closer_;
 
-    /// Method to test if there are enough file descriptors to open a new client connection
-    /// if not the accept() will be postponed
-    static bool okToAccept();
-
     /// Method callback for whenever an FD is ready to accept a client connection.
     static void doAccept(int fd, void *data);
 
@@ -102,8 +103,8 @@ private:
     Comm::Flag oldAccept(Comm::ConnectionPointer &details);
     void setListen();
     void handleClosure(const CommCloseCbParams &io);
-
-    CBDATA_CLASS2(TcpAcceptor);
+    /// whether we are listening on one of the squid.conf *ports
+    bool intendedForUserConnections() const { return bool(listenPort_); }
 };
 
 } // namespace Comm

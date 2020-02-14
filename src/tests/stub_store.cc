@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -17,14 +17,10 @@ const char *pingStatusStr[] = { };
 const char *memStatusStr[] = { };
 const char *swapStatusStr[] = { };
 
-/* and code defined in the wrong .cc file */
-#include "SwapDir.h"
-void StoreController::maintain() STUB
 #include "RemovalPolicy.h"
 RemovalPolicy * createRemovalPolicy(RemovalPolicySettings * settings) STUB_RETVAL(NULL)
 
 #include "Store.h"
-StorePointer Store::CurrentRoot = NULL;
 StoreIoStats store_io_stats;
 bool StoreEntry::checkDeferRead(int fd) const STUB_RETVAL(false)
 const char *StoreEntry::getMD5Text() const STUB_RETVAL(NULL)
@@ -41,16 +37,14 @@ void StoreEntry::replaceHttpReply(HttpReply *, bool andStartWriting) STUB
 bool StoreEntry::mayStartSwapOut() STUB_RETVAL(false)
 void StoreEntry::trimMemory(const bool preserveSwappable) STUB
 void StoreEntry::abort() STUB
-void StoreEntry::unlink() STUB
-void StoreEntry::makePublic(const KeyScope keyScope) STUB
-void StoreEntry::makePrivate() STUB
-void StoreEntry::setPublicKey(const KeyScope keyScope) STUB
-void StoreEntry::setPrivateKey() STUB
+bool StoreEntry::makePublic(const KeyScope scope) STUB
+void StoreEntry::makePrivate(const bool shareable) STUB
+bool StoreEntry::setPublicKey(const KeyScope scope) STUB
+void StoreEntry::setPrivateKey(const bool, const bool) STUB
 void StoreEntry::expireNow() STUB
-void StoreEntry::releaseRequest() STUB
+void StoreEntry::releaseRequest(const bool shareable) STUB
 void StoreEntry::negativeCache() STUB
-void StoreEntry::cacheNegatively() STUB
-void StoreEntry::purgeMem() STUB
+bool StoreEntry::cacheNegatively() STUB
 void StoreEntry::swapOut() STUB
 void StoreEntry::swapOutFileClose(int how) STUB
 const char *StoreEntry::url() const STUB_RETVAL(NULL)
@@ -59,8 +53,9 @@ int StoreEntry::checkNegativeHit() const STUB_RETVAL(0)
 int StoreEntry::locked() const STUB_RETVAL(0)
 int StoreEntry::validToSend() const STUB_RETVAL(0)
 bool StoreEntry::memoryCachable() STUB_RETVAL(false)
-MemObject *StoreEntry::makeMemObject() STUB_RETVAL(NULL)
+void StoreEntry::createMemObject() STUB
 void StoreEntry::createMemObject(const char *, const char *, const HttpRequestMethod &aMethod) STUB
+void StoreEntry::ensureMemObject(const char *, const char *, const HttpRequestMethod &) STUB
 void StoreEntry::dump(int debug_lvl) const STUB
 void StoreEntry::hashDelete() STUB
 void StoreEntry::hashInsert(const cache_key *) STUB
@@ -73,10 +68,10 @@ void StoreEntry::destroyMemObject() STUB
 int StoreEntry::checkTooSmall() STUB_RETVAL(0)
 void StoreEntry::delayAwareRead(const Comm::ConnectionPointer&, char *buf, int len, AsyncCall::Pointer callback) STUB
 void StoreEntry::setNoDelay (bool const) STUB
-bool StoreEntry::modifiedSince(const time_t ims, const int imslen) const STUB_RETVAL(false);
+bool StoreEntry::modifiedSince(const time_t, const int) const STUB_RETVAL(false)
 bool StoreEntry::hasIfMatchEtag(const HttpRequest &request) const STUB_RETVAL(false)
 bool StoreEntry::hasIfNoneMatchEtag(const HttpRequest &request) const STUB_RETVAL(false)
-RefCount<SwapDir> StoreEntry::store() const STUB_RETVAL(NULL)
+Store::Disk &StoreEntry::disk() const STUB_RETREF(Store::Disk)
 size_t StoreEntry::inUseCount() STUB_RETVAL(0)
 void StoreEntry::getPublicByRequestMethod(StoreClient * aClient, HttpRequest * request, const HttpRequestMethod& method) STUB
 void StoreEntry::getPublicByRequest(StoreClient * aClient, HttpRequest * request) STUB
@@ -87,11 +82,9 @@ void *StoreEntry::operator new(size_t byteCount)
     return new StoreEntry();
 }
 void StoreEntry::operator delete(void *address) STUB
-void StoreEntry::setReleaseFlag() STUB
 //#if USE_SQUID_ESI
 //ESIElement::Pointer StoreEntry::cachedESITree STUB_RETVAL(NULL)
 //#endif
-void StoreEntry::append(char const *, int len) STUB
 void StoreEntry::buffer() STUB
 void StoreEntry::flush() STUB
 int StoreEntry::unlock(const char *) STUB_RETVAL(0)
@@ -99,7 +92,9 @@ int64_t StoreEntry::objectLen() const STUB_RETVAL(0)
 int64_t StoreEntry::contentLen() const STUB_RETVAL(0)
 void StoreEntry::lock(const char *) STUB
 void StoreEntry::touch() STUB
-void StoreEntry::release() STUB
+void StoreEntry::release(const bool shareable) STUB
+void StoreEntry::append(char const *, int) STUB
+void StoreEntry::vappendf(const char *, va_list) STUB
 
 NullStoreEntry *NullStoreEntry::getInstance() STUB_RETVAL(NULL)
 const char *NullStoreEntry::getMD5Text() const STUB_RETVAL(NULL)
@@ -107,14 +102,16 @@ void NullStoreEntry::operator delete(void *address) STUB
 // private virtual. Why is this linked from outside?
 const char *NullStoreEntry::getSerialisedMetaData() STUB_RETVAL(NULL)
 
-void Store::Root(Store *) STUB
-void Store::Root(RefCount<Store>) STUB
+Store::Controller &Store::Root() STUB_RETREF(Store::Controller)
+void Store::Init(Store::Controller *root) STUB
+void Store::FreeMemory() STUB
 void Store::Stats(StoreEntry * output) STUB
 void Store::Maintain(void *unused) STUB
-void Store::create() STUB
-void Store::diskFull() STUB
-void Store::sync() STUB
-void Store::unlink(StoreEntry &) STUB
+int Store::Controller::store_dirs_rebuilding = 0;
+StoreSearch *Store::Controller::search() STUB_RETVAL(NULL)
+void Store::Controller::maintain() STUB
+bool Store::Controller::markedForDeletion(const cache_key *) const STUB_RETVAL(false)
+void Store::Controller::freeMemorySpace(const int) STUB
 
 std::ostream &operator <<(std::ostream &os, const StoreEntry &)
 {
@@ -125,13 +122,11 @@ std::ostream &operator <<(std::ostream &os, const StoreEntry &)
 size_t storeEntryInUse() STUB_RETVAL(0)
 void storeEntryReplaceObject(StoreEntry *, HttpReply *) STUB
 StoreEntry *storeGetPublic(const char *uri, const HttpRequestMethod& method) STUB_RETVAL(NULL)
-StoreEntry *storeGetPublicByRequest(HttpRequest * request, const KeyScope keyScope) STUB_RETVAL(NULL)
-StoreEntry *storeGetPublicByRequestMethod(HttpRequest * request, const HttpRequestMethod& method, const KeyScope keyScope) STUB_RETVAL(NULL)
+StoreEntry *storeGetPublicByRequest(HttpRequest * request, const KeyScope scope) STUB_RETVAL(NULL)
+StoreEntry *storeGetPublicByRequestMethod(HttpRequest * request, const HttpRequestMethod& method, const KeyScope scope) STUB_RETVAL(NULL)
 StoreEntry *storeCreateEntry(const char *, const char *, const RequestFlags &, const HttpRequestMethod&) STUB_RETVAL(NULL)
-StoreEntry *storeCreatePureEntry(const char *storeId, const char *logUrl, const RequestFlags &, const HttpRequestMethod&) STUB_RETVAL(NULL)
-void storeInit(void) STUB
+StoreEntry *storeCreatePureEntry(const char *storeId, const char *logUrl, const HttpRequestMethod&) STUB_RETVAL(nullptr)
 void storeConfigure(void) STUB
-void storeFreeMemory(void) STUB
 int expiresMoreThan(time_t, time_t) STUB_RETVAL(0)
 void storeAppendPrintf(StoreEntry *, const char *,...) STUB
 void storeAppendVPrintf(StoreEntry *, const char *, va_list ap) STUB
@@ -142,6 +137,5 @@ void storeFsInit(void) STUB
 void storeFsDone(void) STUB
 void storeReplAdd(const char *, REMOVALPOLICYCREATE *) STUB
 void destroyStoreEntry(void *) STUB
-// in Packer.cc !? void packerToStoreInit(Packer * p, StoreEntry * e) STUB
 void storeGetMemSpace(int size) STUB
 

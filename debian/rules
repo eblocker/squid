@@ -2,20 +2,33 @@
 
 export DEB_BUILD_MAINT_OPTIONS = hardening=+all
 export DEB_CFLAGS_MAINT_APPEND = -Wall
-export DEB_LDFLAGS_MAINT_APPEND = -Wl,--as-needed
+
+DEB_LDFLAGS_MAINT_APPEND = -Wl,--as-needed -latomic
+ifneq (,$(filter $(DEB_HOST_ARCH), armel m68k mips mipsel powerpc powerpcspe sh4))
+	DEB_LDFLAGS_MAINT_APPEND += -latomic
+endif
+export DEB_LDFLAGS_MAINT_APPEND
+
+export DEB_BUILD_PARALLEL = yes
 include /usr/share/dpkg/buildflags.mk
+-include /usr/share/dpkg/buildtools.mk
+CXX_FOR_BUILD ?= $(CXX)
 
 include /usr/share/cdbs/1/rules/debhelper.mk
 include /usr/share/cdbs/1/class/autotools.mk
- 
+
 INSTALLDIR := $(CURDIR)/debian/tmp
 datadir=/usr/share/squid
 
 DEB_DH_INSTALL_SOURCEDIR := $(INSTALLDIR)
-DEB_INSTALL_DOCS_squid-common := CONTRIBUTORS CREDITS QUICKSTART RELEASENOTES.html \
-						SPONSORS 
+DEB_INSTALL_DOCS_squid-common := debian/copyright CONTRIBUTORS CREDITS QUICKSTART RELEASENOTES.html SPONSORS
+
+BUILDINFO := $(shell lsb_release -si 2>/dev/null)
 
 DEB_CONFIGURE_EXTRA_FLAGS := BUILDCXXFLAGS="$(CXXFLAGS) $(CPPFLAGS) $(LDFLAGS)" \
+		BUILDCXX=$(CXX_FOR_BUILD) \
+		--with-build-environment=default \
+		--enable-build-info="$(BUILDINFO) $(DEB_HOST_ARCH_OS)" \
 		--datadir=/usr/share/squid \
 		--sysconfdir=/etc/squid \
 		--libexecdir=/usr/lib/squid \
@@ -32,8 +45,10 @@ DEB_CONFIGURE_EXTRA_FLAGS := BUILDCXXFLAGS="$(CXXFLAGS) $(CPPFLAGS) $(LDFLAGS)" 
 		--enable-auth-basic="DB,fake,getpwnam,LDAP,NCSA,NIS,PAM,POP3,RADIUS,SASL,SMB" \
 		--enable-auth-digest="file,LDAP" \
 		--enable-auth-negotiate="kerberos,wrapper" \
-		--enable-auth-ntlm="fake,smb_lm" \
+		--enable-auth-ntlm="fake,SMB_LM" \
 		--enable-external-acl-helpers="file_userip,kerberos_ldap_group,LDAP_group,session,SQL_session,time_quota,unix_group,wbinfo_group" \
+		--enable-security-cert-validators="fake" \
+		--enable-storeid-rewrite-helpers="file" \
 		--enable-url-rewrite-helpers="fake" \
 		--enable-eui \
 		--enable-esi \
@@ -50,11 +65,6 @@ DEB_CONFIGURE_EXTRA_FLAGS := BUILDCXXFLAGS="$(CXXFLAGS) $(CPPFLAGS) $(LDFLAGS)" 
 		--enable-ssl-crtd \
 		--with-openssl
 
-BUILDINFO := $(shell lsb_release -si 2>/dev/null)
-
-DEB_HOST_ARCH_OS := $(shell dpkg-architecture -qDEB_HOST_ARCH_OS 2>/dev/null)
-
-DEB_CONFIGURE_EXTRA_FLAGS += --enable-build-info="$(BUILDINFO) $(DEB_HOST_ARCH_OS)"
 
 ifeq ($(DEB_HOST_ARCH_OS), kfreebsd)
 		DEB_CONFIGURE_EXTRA_FLAGS += --enable-kqueue
@@ -65,9 +75,14 @@ endif
 
 DEB_MAKE_CLEAN_TARGET = distclean
 
+debian/copyright: debian/copyright.Debian CREDITS
+	cat $^ | sed -e "s/59 Temple Place.* Suite 330/51 Franklin St, Fifth Floor/" -e "s/MA  \?02111[^, ]*/MA 02110-1301/" -e "s/675 Mass Ave/51 Franklin St, Fifth Floor/" -e "s/Cambridge, MA 02139/Boston, MA 02110-1301/" > $@
+
 install/squidssl::
 	install -m 755 -g root -d $(INSTALLDIR)/usr/lib/cgi-bin
 	mv $(INSTALLDIR)/etc/squid/squid.conf.documented $(INSTALLDIR)/etc/squid/default.conf
+	install -m 755 -g root -d $(INSTALLDIR)/etc/squid/conf.d
+	install -m 644 -g root debian/debian.conf $(INSTALLDIR)/etc/squid/conf.d/debian.conf
 	mv $(INSTALLDIR)/usr/lib/squid/cachemgr.cgi $(INSTALLDIR)/usr/lib/cgi-bin/cachemgr.cgi
 	install -m 755 -g root -d $(INSTALLDIR)/etc/init.d
 	install -m 755 -g root -d $(INSTALLDIR)/etc/logrotate.d
@@ -88,7 +103,4 @@ install/squidssl::
 	install -m 750 -o proxy -g proxy -d debian/squidssl/var/spool/squid
 	install -m 755 -g root -d $(INSTALLDIR)/usr/share/man/man1
 	mv $(INSTALLDIR)/usr/bin/purge $(INSTALLDIR)/usr/bin/squid-purge
-	install -m 644 -g root debian/squid-purge.8  $(INSTALLDIR)/usr/share/man/man8
-
-clean::
-	# nothing to do
+	mv $(INSTALLDIR)/usr/share/man/man1/purge.1 $(INSTALLDIR)/usr/share/man/man1/squid-purge.1

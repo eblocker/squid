@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -10,7 +10,6 @@
 
 #include "squid.h"
 #include "base/TextException.h"
-#include "Mem.h"
 #include "mgr/Registration.h"
 #include "profiler/Profiler.h"
 #include "Store.h"
@@ -165,8 +164,8 @@ String::append( char const *str, int len)
     assert(str && len >= 0);
 
     PROF_start(StringAppend);
-    if (len_ + len < size_) {
-        strncat(buf_, str, len);
+    if (len_ + len + 1 /*'\0'*/ < size_) {
+        xstrncpy(buf_+len_, str, len+1);
         len_ += len;
     } else {
         // Create a temporary string and absorb it later.

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -7,24 +7,16 @@
  */
 
 #include "squid.h"
-#include "acl/Checklist.h"
+#include "acl/FilledChecklist.h"
 #include "acl/StringData.h"
 #include "acl/Tag.h"
 #include "HttpRequest.h"
 
 int
-ACLTagStrategy::match (ACLData<MatchType> * &data, ACLFilledChecklist *checklist, ACLFlags &)
+ACLTagStrategy::match (ACLData<MatchType> * &data, ACLFilledChecklist *checklist)
 {
     if (checklist->request != NULL)
         return data->match (checklist->request->tag.termedBuf());
     return 0;
 }
-
-ACLTagStrategy *
-ACLTagStrategy::Instance()
-{
-    return &Instance_;
-}
-
-ACLTagStrategy ACLTagStrategy::Instance_;
 

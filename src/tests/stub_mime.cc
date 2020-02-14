@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -11,5 +11,5 @@
 #define STUB_API "mime.cc"
 #include "tests/STUB.h"
 
-size_t headersEnd(const char *mime, size_t l) STUB_RETVAL(0)
+size_t headersEnd(const char *, size_t, bool &) STUB_RETVAL(0)
 

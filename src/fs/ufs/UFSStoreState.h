@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -10,16 +10,19 @@
 #define SQUID_FS_UFS_UFSSTORESTATE_H
 
 #include "DiskIO/IORequestor.h"
-#include "SquidList.h"
 #include "StoreIOState.h"
+
+#include <queue>
 
 namespace Fs
 {
 namespace Ufs
 {
-/// \ingroup UFS
+
 class UFSStoreState : public StoreIOState, public IORequestor
 {
+    CBDATA_CLASS(UFSStoreState);
+
 public:
     UFSStoreState(SwapDir * SD, StoreEntry * anEntry, STIOCB * callback_, void *callback_data_);
     ~UFSStoreState();
@@ -44,26 +47,58 @@ protected:
 
     class _queued_read
     {
-    public:
         MEMPROXY_CLASS(UFSStoreState::_queued_read);
+    public:
+        _queued_read(char *b, size_t s, off_t o, STRCB *cb, void *data) :
+            buf(b),
+            size(s),
+            offset(o),
+            callback(cb),
+            callback_data(cbdataReference(data))
+        {}
+        ~_queued_read() {
+            cbdataReferenceDone(callback_data);
+        }
+        _queued_read(const _queued_read &qr) = delete;
+        _queued_read &operator =(const _queued_read &qr) = delete;
+
         char *buf;
         size_t size;
         off_t offset;
         STRCB *callback;
         void *callback_data;
-
     };
+    std::queue<Ufs::UFSStoreState::_queued_read> pending_reads;
 
     class _queued_write
     {
-    public:
         MEMPROXY_CLASS(UFSStoreState::_queued_write);
+    public:
+        _queued_write(const char *b, size_t s, off_t o, FREE *f) :
+            buf(b),
+            size(s),
+            offset(o),
+            free_func(f)
+        {}
+        ~_queued_write() {
+            /*
+              * DPW 2006-05-24
+              * Note "free_func" is memNodeWriteComplete(), which doesn't
+              * really free the memory.  Instead it clears the node's
+              * write_pending flag.
+              */
+            if (free_func && buf)
+                free_func(const_cast<char *>(buf));
+        }
+        _queued_write(const _queued_write &qr) = delete;
+        _queued_write &operator =(const _queued_write &qr) = delete;
+
         char const *buf;
         size_t size;
         off_t offset;
         FREE *free_func;
-
     };
+    std::queue<Ufs::UFSStoreState::_queued_write> pending_writes;
 
     /** \todo These should be in the IO strategy */
 
@@ -83,10 +118,7 @@ protected:
          */
         bool try_closing;
     } flags;
-    link_list *pending_reads;
-    link_list *pending_writes;
-    void queueRead(char *, size_t, off_t, STRCB *, void *);
-    void queueWrite(char const *, size_t, off_t, FREE *);
+
     bool kickReadQueue();
     void drainWriteQueue();
     void tryClosing();
@@ -96,11 +128,7 @@ private:
     void openDone();
     void freePending();
     void doWrite();
-    CBDATA_CLASS2(UFSStoreState);
 };
-
-MEMPROXY_CLASS_INLINE(UFSStoreState::_queued_read);
-MEMPROXY_CLASS_INLINE(UFSStoreState::_queued_write);
 
 } //namespace Ufs
 } //namespace Fs

@@ -1,4 +1,4 @@
-## Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+## Copyright (C) 1996-2019 The Squid Software Foundation and contributors
 ##
 ## Squid software is distributed under GPLv2+ license and includes
 ## contributions from numerous individuals and organizations.
@@ -7,6 +7,8 @@
 
 include $(top_srcdir)/src/Common.am
 include $(top_srcdir)/src/TestHeaders.am
+
+SUBDIRS= external
 
 noinst_LTLIBRARIES = libapi.la libstate.la libacls.la
 
@@ -21,20 +23,23 @@ libapi_la_SOURCES = \
 	forward.h \
 	InnerNode.cc \
 	InnerNode.h \
+	Options.h \
+	Options.cc \
 	Tree.cc \
 	Tree.h
 
 ## Data-dependent Squid/transaction state used by specific ACLs.
 ## Does not refer to specific ACLs to avoid circular dependencies.
 libstate_la_SOURCES = \
+	CharacterSetOption.h \
 	Data.h \
 	Strategy.h \
 	Strategised.cc \
 	Strategised.h \
 	FilledChecklist.cc \
 	FilledChecklist.h \
-	AclAddress.h \
-	AclAddress.cc
+	Address.h \
+	Address.cc
 
 ## data-specific ACLs
 libacls_la_SOURCES = \
@@ -54,8 +59,10 @@ libacls_la_SOURCES = \
 	AnyOf.h \
 	Asn.cc \
 	Asn.h \
-	Browser.cc \
-	Browser.h \
+	ConnectionsEncrypted.cc \
+	ConnectionsEncrypted.h \
+	ConnMark.cc \
+	ConnMark.h \
 	DestinationAsn.h \
 	DestinationDomain.cc \
 	DestinationDomain.h \
@@ -65,6 +72,10 @@ libacls_la_SOURCES = \
 	DomainData.h \
 	ExtUser.cc \
 	ExtUser.h \
+	HasComponent.cc \
+	HasComponent.h \
+	HasComponentData.cc \
+	HasComponentData.h \
 	HierCodeData.cc \
 	HierCodeData.h \
 	HierCode.cc \
@@ -103,21 +114,23 @@ libacls_la_SOURCES = \
 	Protocol.h \
 	Random.cc \
 	Random.h \
-	Referer.cc \
-	Referer.h \
 	ReplyHeaderStrategy.h \
-	ReplyMimeType.cc \
 	ReplyMimeType.h \
 	RequestHeaderStrategy.h \
-	RequestMimeType.cc \
 	RequestMimeType.h \
 	SourceAsn.h \
 	SourceDomain.cc \
 	SourceDomain.h \
 	SourceIp.cc \
 	SourceIp.h \
+	SquidError.h \
+	SquidError.cc \
+	SquidErrorData.cc \
+	SquidErrorData.h \
 	Tag.cc \
 	Tag.h \
+	TransactionInitiator.cc \
+	TransactionInitiator.h \
 	Url.cc \
 	Url.h \
 	UrlLogin.cc \
@@ -132,10 +145,11 @@ libacls_la_SOURCES = \
 	AclDenyInfoList.h \
 	Gadgets.cc \
 	Gadgets.h \
+	AclSizeLimit.cc \
 	AclSizeLimit.h
 
 ## Add conditional sources
-## TODO: move these to their respectful dirs when those dirs are created
+## TODO: move these to their respective dirs when those dirs are created
 
 EXTRA_libacls_la_SOURCES =
 
@@ -160,22 +174,22 @@ SSL_ACLS = \
 if ENABLE_SSL
 libacls_la_SOURCES += $(SSL_ACLS)
 endif
+EXTRA_libacls_la_SOURCES += $(SSL_ACLS)
 
-if USE_ADAPTATION
-libacls_la_SOURCES += AdaptationService.h \
+ADAPT_ACLS= \
+	AdaptationService.h \
 	AdaptationService.cc \
 	AdaptationServiceData.h \
 	AdaptationServiceData.cc
+
+if ENABLE_ADAPTATION
+libacls_la_SOURCES += $(ADAPT_ACLS)
 endif
-
-
-EXTRA_libacls_la_SOURCES += $(SSL_ACLS)
-
+EXTRA_libacls_la_SOURCES += $(ADAPT_ACLS)
 
 ARP_ACLS = Arp.cc Arp.h Eui64.cc Eui64.h
 
-if USE_SQUID_EUI
+if ENABLE_EUI
 libacls_la_SOURCES += $(ARP_ACLS)
 endif
-
 EXTRA_libacls_la_SOURCES += $(ARP_ACLS)

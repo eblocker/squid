@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -14,16 +14,8 @@
 #include "SquidTime.h"
 
 int
-ACLTimeStrategy::match (ACLData<MatchType> * &data, ACLFilledChecklist *checklist, ACLFlags &)
+ACLTimeStrategy::match(ACLData<MatchType> * &data, ACLFilledChecklist *)
 {
-    return data->match (squid_curtime);
+    return data->match(squid_curtime);
 }
-
-ACLTimeStrategy *
-ACLTimeStrategy::Instance()
-{
-    return &Instance_;
-}
-
-ACLTimeStrategy ACLTimeStrategy::Instance_;
 

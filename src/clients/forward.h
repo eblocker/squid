@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -8,6 +8,8 @@
 
 #ifndef SQUID_CLIENTS_FORWARD_H
 #define SQUID_CLIENTS_FORWARD_H
+
+#include "sbuf/forward.h"
 
 class FwdState;
 class HttpRequest;
@@ -35,7 +37,7 @@ AsyncJobPointer StartRelay(FwdState *const fwdState);
  *
  * \todo Should be a URL class API call.
  */
-const char *UrlWith2f(HttpRequest *);
+const SBuf &UrlWith2f(HttpRequest *);
 
 } // namespace Ftp
 

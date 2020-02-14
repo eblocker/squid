@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -25,7 +25,7 @@ typedef enum {
     LOG_TCP_REFRESH_FAIL_OLD,   // refresh from origin failed, stale reply sent
     LOG_TCP_REFRESH_FAIL_ERR,   // refresh from origin failed, error forwarded
     LOG_TCP_REFRESH_MODIFIED,   // refresh from origin replaced existing entry
-    LOG_TCP_REFRESH_IGNORED,    // refresh from origin ignored, stale entry sent
+    LOG_TCP_REFRESH,            // refresh from origin started, but still pending
     LOG_TCP_CLIENT_REFRESH_MISS,
     LOG_TCP_IMS_HIT,
     LOG_TCP_INM_HIT,
@@ -44,30 +44,49 @@ typedef enum {
     LOG_UDP_MISS_NOFETCH,
     LOG_ICP_QUERY,
     LOG_TYPE_MAX
-} LogTags;
+} LogTags_ot;
 
-/// list of string representations for LogTags
-extern const char *LogTags_str[];
-
-/// determine if the log tag code indicates a cache HIT
-inline bool logTypeIsATcpHit(LogTags code)
+class LogTags
 {
-    return
-        (code == LOG_TCP_HIT) ||
-        (code == LOG_TCP_IMS_HIT) ||
-        (code == LOG_TCP_INM_HIT) ||
-        (code == LOG_TCP_REFRESH_FAIL_OLD) ||
-        (code == LOG_TCP_REFRESH_UNMODIFIED) ||
-        (code == LOG_TCP_NEGATIVE_HIT) ||
-        (code == LOG_TCP_MEM_HIT) ||
-        (code == LOG_TCP_OFFLINE_HIT);
-}
+public:
+    LogTags(LogTags_ot t) : oldType(t) {assert(oldType < LOG_TYPE_MAX);}
+    // XXX: this operator does not reset flags
+    // TODO: either replace with a category-only setter or remove
+    LogTags &operator =(const LogTags_ot &t) {assert(t < LOG_TYPE_MAX); oldType = t; return *this;}
 
-/// iterator for LogTags enumeration
-inline LogTags &operator++ (LogTags &aLogType)
+    /// compute the status access.log field
+    const char *c_str() const;
+
+    /// determine if the log tag code indicates a cache HIT
+    bool isTcpHit() const;
+
+    /// Things that may happen to a transaction while it is being
+    /// processed according to its LOG_* category. Logged as _SUFFIX(es).
+    /// Unlike LOG_* categories, these flags may not be mutually exclusive.
+    class Errors {
+    public:
+        Errors() : ignored(false), timedout(false), aborted(false) {}
+
+        bool ignored; ///< _IGNORED: the response was not used for anything
+        bool timedout; ///< _TIMEDOUT: terminated due to a lifetime or I/O timeout
+        bool aborted;  ///< _ABORTED: other abnormal termination (e.g., I/O error)
+    } err;
+
+private:
+    /// list of string representations for LogTags_ot
+    static const char *Str_[];
+
+public: // XXX: only until client_db.cc stats are redesigned.
+
+    // deprecated LogTag enum value
+    LogTags_ot oldType;
+};
+
+/// iterator for LogTags_ot enumeration
+inline LogTags_ot &operator++ (LogTags_ot &aLogType)
 {
     int tmp = (int)aLogType;
-    aLogType = (LogTags)(++tmp);
+    aLogType = (LogTags_ot)(++tmp);
     return aLogType;
 }
 

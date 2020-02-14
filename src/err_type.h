@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -68,10 +68,14 @@ typedef enum {
     ERR_DIR_LISTING,            /* Display of remote directory (FTP, Gopher) */
     ERR_SQUID_SIGNATURE,        /* not really an error */
     ERR_SHUTTING_DOWN,
+    ERR_PROTOCOL_UNKNOWN,
 
     // NOTE: error types defined below TCP_RESET are optional and do not generate
     //       a log warning if the files are missing
     TCP_RESET,                  // Send TCP RST packet instead of error page
+
+    ERR_SECURE_ACCEPT_FAIL, // Rejects the SSL connection intead of error page
+    ERR_REQUEST_START_TIMEOUT, // Aborts the connection instead of error page
 
     /* Cache Manager GUI can install a manager index/home page */
     MGR_INDEX,
@@ -80,6 +84,25 @@ typedef enum {
 } err_type;
 
 extern const char *err_type_str[];
+
+inline
+err_type
+errorTypeByName(const char *name)
+{
+    for (int i = 0; i < ERR_MAX; ++i)
+        if (strcmp(name, err_type_str[i]) == 0)
+            return (err_type)i;
+    return ERR_MAX;
+}
+
+inline
+const char *
+errorTypeName(err_type err)
+{
+    if (err < ERR_NONE || err >= ERR_MAX)
+        return "UNKNOWN";
+    return err_type_str[err];
+}
 
 #endif /* _SQUID_ERR_TYPE_H */
 

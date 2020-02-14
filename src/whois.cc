@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -27,6 +27,8 @@
 
 class WhoisState
 {
+    CBDATA_CLASS(WhoisState);
+
 public:
     void readReply(const Comm::ConnectionPointer &, char *aBuffer, size_t aBufferLength, Comm::Flag flag, int xerrno);
     void setReplyToOK(StoreEntry *sentry);
@@ -35,9 +37,6 @@ public:
     FwdState::Pointer fwd;
     char buf[BUFSIZ+1];     /* readReply adds terminating NULL */
     bool dataWritten;
-
-private:
-    CBDATA_CLASS2(WhoisState);
 };
 
 CBDATA_CLASS_INIT(WhoisState);
@@ -49,7 +48,7 @@ static IOCB whoisReadReply;
 /* PUBLIC */
 
 static void
-whoisWriteComplete(const Comm::ConnectionPointer &, char *buf, size_t size, Comm::Flag flag, int xerrno, void *data)
+whoisWriteComplete(const Comm::ConnectionPointer &, char *buf, size_t, Comm::Flag, int, void *)
 {
     xfree(buf);
 }
@@ -57,8 +56,6 @@ whoisWriteComplete(const Comm::ConnectionPointer &, char *buf, size_t size, Comm
 void
 whoisStart(FwdState * fwd)
 {
-    char *buf;
-    size_t l;
     WhoisState *p = new WhoisState;
     p->request = fwd->request;
     p->entry = fwd->entry;
@@ -68,12 +65,11 @@ whoisStart(FwdState * fwd)
     p->entry->lock("whoisStart");
     comm_add_close_handler(fwd->serverConnection()->fd, whoisClose, p);
 
-    l = p->request->urlpath.size() + 3;
+    size_t l = p->request->url.path().length() + 3;
+    char *buf = (char *)xmalloc(l);
 
-    buf = (char *)xmalloc(l);
-
-    String str_print=p->request->urlpath.substr(1,p->request->urlpath.size());
-    snprintf(buf, l, SQUIDSTRINGPH"\r\n", SQUIDSTRINGPRINT(str_print));
+    const SBuf str_print = p->request->url.path().substr(1);
+    snprintf(buf, l, SQUIDSBUFPH "\r\n", SQUIDSBUFPRINT(str_print));
 
     AsyncCall::Pointer writeCall = commCbCall(5,5, "whoisWriteComplete",
                                    CommIoCbPtrFun(whoisWriteComplete, p));
@@ -109,6 +105,7 @@ WhoisState::setReplyToOK(StoreEntry *sentry)
     HttpReply *reply = new HttpReply;
     sentry->buffer();
     reply->setHeaders(Http::scOkay, "Gatewaying", "text/plain", -1, -1, -2);
+    reply->sources |= HttpMsg::srcWhois;
     sentry->replaceHttpReply(reply);
 }
 
@@ -124,9 +121,9 @@ WhoisState::readReply(const Comm::ConnectionPointer &conn, char *aBuffer, size_t
     debugs(75, 5, "{" << aBuffer << "}");
 
     if (flag != Comm::OK) {
-        debugs(50, 2, HERE  << conn << ": read failure: " << xstrerror() << ".");
+        debugs(50, 2, conn << ": read failure: " << xstrerr(xerrno));
 
-        if (ignoreErrno(errno)) {
+        if (ignoreErrno(xerrno)) {
             AsyncCall::Pointer call = commCbCall(5,4, "whoisReadReply",
                                                  CommIoCbPtrFun(whoisReadReply, this));
             comm_read(conn, aBuffer, BUFSIZ, call);
@@ -143,8 +140,8 @@ WhoisState::readReply(const Comm::ConnectionPointer &conn, char *aBuffer, size_t
         if (!dataWritten)
             setReplyToOK(entry);
 
-        kb_incr(&(statCounter.server.all.kbytes_in), aBufferLength);
-        kb_incr(&(statCounter.server.http.kbytes_in), aBufferLength);
+        statCounter.server.all.kbytes_in += aBufferLength;
+        statCounter.server.http.kbytes_in += aBufferLength;
 
         /* No range support, we always grab it all */
         dataWritten = true;
@@ -161,7 +158,8 @@ WhoisState::readReply(const Comm::ConnectionPointer &conn, char *aBuffer, size_t
     entry->timestampsSet();
     entry->flush();
 
-    entry->makePublic();
+    if (!entry->makePublic())
+        entry->makePrivate(true);
 
     fwd->complete();
     debugs(75, 3, "whoisReadReply: Done: " << entry->url());

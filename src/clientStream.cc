@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -11,6 +11,7 @@
 #include "squid.h"
 #include "client_side_request.h"
 #include "clientStream.h"
+#include "http/Stream.h"
 #include "HttpReply.h"
 #include "HttpRequest.h"
 
@@ -44,7 +45,7 @@
  \par
  * Each node including the HEAD of the clientStream has a cbdataReference
  * held by the stream. Freeing the stream then removes that reference
- * and cbdataFree()'s every node.
+ * and delete's every node.
  * Any node with other References, and all nodes downstream will only
  * free when those references are released.
  * Stream nodes MAY hold references to the data member of the node.
@@ -72,7 +73,7 @@
  \code
    mycontext = thisObject->data;
    thisObject->data = NULL;
-   clientStreamFree (thisObject->head);
+   delete thisObject->head;
    mycontext = NULL;
    return;
  \endcode
@@ -80,26 +81,23 @@
  \todo rather than each node undeleting the next, have a clientStreamDelete that walks the list.
  */
 
-/// \ingroup ClientStreamInternal
-CBDATA_TYPE(clientStreamNode);
+CBDATA_CLASS_INIT(clientStreamNode);
 
-/* Local functions */
-static FREE clientStreamFree;
+clientStreamNode::clientStreamNode(CSR * aReadfunc, CSCB * aCallback, CSD * aDetach, CSS * aStatus, ClientStreamData aData) :
+    head(NULL),
+    readfunc(aReadfunc),
+    callback(aCallback),
+    detach(aDetach),
+    status(aStatus),
+    data(aData)
+{}
 
-/// \ingroup ClientStreamInternal
-clientStreamNode *
-clientStreamNew(CSR * readfunc, CSCB * callback, CSD * detach, CSS * status,
-                ClientStreamData data)
+clientStreamNode::~clientStreamNode()
 {
-    clientStreamNode *temp;
-    CBDATA_INIT_TYPE_FREECB(clientStreamNode, clientStreamFree);
-    temp = cbdataAlloc(clientStreamNode);
-    temp->readfunc = readfunc;
-    temp->callback = callback;
-    temp->detach = detach;
-    temp->status = status;
-    temp->data = data;
-    return temp;
+    debugs(87, 3, "Freeing clientStreamNode " << this);
+
+    removeFromStream();
+    data = NULL;
 }
 
 /**
@@ -115,8 +113,7 @@ clientStreamInit(dlink_list * list, CSR * func, CSD * rdetach, CSS * readstatus,
                  ClientStreamData readdata, CSCB * callback, CSD * cdetach, ClientStreamData callbackdata,
                  StoreIOBuffer tailBuffer)
 {
-    clientStreamNode *temp = clientStreamNew(func, NULL, rdetach, readstatus,
-                             readdata);
+    clientStreamNode *temp = new clientStreamNode(func, NULL, rdetach, readstatus, readdata);
     dlinkAdd(cbdataReference(temp), &temp->node, list);
     temp->head = list;
     clientStreamInsertHead(list, NULL, callback, cdetach, NULL, callbackdata);
@@ -134,11 +131,10 @@ void
 clientStreamInsertHead(dlink_list * list, CSR * func, CSCB * callback,
                        CSD * detach, CSS * status, ClientStreamData data)
 {
-
     /* test preconditions */
     assert(list != NULL);
     assert(list->head);
-    clientStreamNode *temp = clientStreamNew(func, callback, detach, status, data);
+    clientStreamNode *temp = new clientStreamNode(func, callback, detach, status, data);
     temp->head = list;
     debugs(87, 3, "clientStreamInsertHead: Inserted node " << temp <<
            " with data " << data.getRaw() << " after head");
@@ -211,9 +207,9 @@ clientStreamDetach(clientStreamNode * thisObject, ClientHttpRequest * http)
 
     cbdataReferenceDone(temp);
 
-    cbdataFree(thisObject);
+    delete thisObject;
 
-    /* and tell the prev that the detach has occured */
+    /* and tell the prev that the detach has occurred */
     /*
      * We do it in thisObject order so that the detaching node is always
      * at the end of the list
@@ -267,8 +263,6 @@ clientStreamStatus(clientStreamNode * thisObject, ClientHttpRequest * http)
     return prev->status(prev, http);
 }
 
-/* Local function bodies */
-
 void
 clientStreamNode::removeFromStream()
 {
@@ -276,18 +270,6 @@ clientStreamNode::removeFromStream()
         dlinkDelete(&node, head);
 
     head = NULL;
-}
-
-/// \ingroup ClientStreamInternal
-void
-clientStreamFree(void *foo)
-{
-    clientStreamNode *thisObject = (clientStreamNode *)foo;
-
-    debugs(87, 3, "Freeing clientStreamNode " << thisObject);
-
-    thisObject->removeFromStream();
-    thisObject->data = NULL;
 }
 
 clientStreamNode *

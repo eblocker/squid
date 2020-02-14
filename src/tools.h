@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -11,9 +11,7 @@
 #ifndef SQUID_TOOLS_H_
 #define SQUID_TOOLS_H_
 
-#include "Packer.h"
-#include "SBuf.h"
-#include "SquidString.h"
+#include "sbuf/SBuf.h"
 #include "typedefs.h"
 
 class MemBuf;
@@ -24,14 +22,21 @@ extern int DebugSignal;
 /// Default is APP_SHORTNAME ('squid').
 extern SBuf service_name;
 
-void kb_incr(kb_t *, size_t);
 void parseEtcHosts(void);
 int getMyPort(void);
 void setUmask(mode_t mask);
 void strwordquote(MemBuf * mb, const char *str);
 
+class Packable;
+
+/* a common objPackInto interface; used by debugObj */
+typedef void (*ObjPackMethod) (void *obj, Packable * p);
+
 /* packs, then prints an object using debugs() */
 void debugObj(int section, int level, const char *label, void *obj, ObjPackMethod pm);
+
+/// callback type for signal handlers
+typedef void SIGHDLR(int sig);
 
 const char *getMyHostname(void);
 const char *uniqueHostname(void);
@@ -43,11 +48,9 @@ void sig_shutdown(int sig); ///< handles shutdown notifications from kids
 void leave_suid(void);
 void enter_suid(void);
 void no_suid(void);
-void writePidFile(void);
 void setMaxFD(void);
 void setSystemLimits(void);
 void squid_signal(int sig, SIGHDLR *, int flags);
-pid_t readPidFile(void);
 void keepCapabilities(void);
 void BroadcastSignalIfAny(int& sig);
 
@@ -71,7 +74,7 @@ bool UsingSmp(); // try using specific Iam*() checks above first
 /// number of Kid processes as defined in src/ipc/Kid.h
 int NumberOfKids();
 /// a string describing this process roles such as worker or coordinator
-String ProcessRoles();
+SBuf ProcessRoles();
 
 void debug_trap(const char *);
 
@@ -84,6 +87,36 @@ int rusage_pagefaults(struct rusage *r);
 void releaseServerSockets(void);
 void PrintRusage(void);
 void dumpMallocStats(void);
+
+#if _SQUID_NEXT_
+typedef union wait PidStatus;
+#else
+typedef int PidStatus;
+#endif
+
+/**
+ * Compatibility wrapper function for waitpid
+ * \pid the pid of child proccess to wait for.
+ * \param status the exit status returned by waitpid
+ * \param flags WNOHANG or 0
+ */
+pid_t WaitForOnePid(pid_t pid, PidStatus &status, int flags);
+
+/**
+ * Wait for state changes in any of the kid processes.
+ * Equivalent to waitpid(-1, ...) system call
+ * \param status the exit status returned by waitpid
+ * \param flags WNOHANG or 0
+ */
+inline pid_t WaitForAnyPid(PidStatus &status, int flags)
+{
+    return WaitForOnePid(-1, status, flags);
+}
+
+#if _SQUID_WINDOWS_
+/// xstrerror(errno) equivalent for Windows errors returned by GetLastError()
+SBuf WindowsErrorMessage(DWORD errorId);
+#endif // _SQUID_WINDOWS_
 
 #endif /* SQUID_TOOLS_H_ */
 

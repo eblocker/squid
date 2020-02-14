@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -18,6 +18,7 @@
 #include "base/TextException.h"
 #include "HttpReply.h"
 #include "HttpRequest.h"
+#include "MasterXaction.h"
 
 const libecap::Name Adaptation::Ecap::protocolInternal("internal", libecap::Name::NextId());
 const libecap::Name Adaptation::Ecap::protocolCacheObj("cache_object", libecap::Name::NextId());
@@ -38,12 +39,12 @@ Adaptation::Ecap::Host::Host()
     // assign our host-specific IDs to well-known names
     // this code can run only once
 
-    libecap::headerTransferEncoding.assignHostId(HDR_TRANSFER_ENCODING);
-    libecap::headerReferer.assignHostId(HDR_REFERER);
-    libecap::headerContentLength.assignHostId(HDR_CONTENT_LENGTH);
-    libecap::headerVia.assignHostId(HDR_VIA);
-    // TODO: libecap::headerXClientIp.assignHostId(HDR_X_CLIENT_IP);
-    // TODO: libecap::headerXServerIp.assignHostId(HDR_X_SERVER_IP);
+    libecap::headerTransferEncoding.assignHostId(Http::HdrType::TRANSFER_ENCODING);
+    libecap::headerReferer.assignHostId(Http::HdrType::REFERER);
+    libecap::headerContentLength.assignHostId(Http::HdrType::CONTENT_LENGTH);
+    libecap::headerVia.assignHostId(Http::HdrType::VIA);
+    // TODO: libecap::headerXClientIp.assignHostId(Http::HdrType::X_CLIENT_IP);
+    // TODO: libecap::headerXServerIp.assignHostId(Http::HdrType::X_SERVER_IP);
 
     libecap::protocolHttp.assignHostId(AnyP::PROTO_HTTP);
     libecap::protocolHttps.assignHostId(AnyP::PROTO_HTTPS);
@@ -149,7 +150,7 @@ Adaptation::Ecap::Host::openDebug(libecap::LogVerbosity lv)
     const int squidSection = 93; // XXX: this should be a global constant
     return Debug::Enabled(squidSection, squidLevel) ?
            &Debug::Start(squidSection, squidLevel) :
-           NULL;
+           nullptr;
 }
 
 void
@@ -162,7 +163,8 @@ Adaptation::Ecap::Host::closeDebug(std::ostream *debug)
 Adaptation::Ecap::Host::MessagePtr
 Adaptation::Ecap::Host::newRequest() const
 {
-    return MessagePtr(new Adaptation::Ecap::MessageRep(new HttpRequest));
+    static const MasterXaction::Pointer mx = new MasterXaction(XactionInitiator::initAdaptationOrphan_);
+    return MessagePtr(new Adaptation::Ecap::MessageRep(new HttpRequest(mx)));
 }
 
 Adaptation::Ecap::Host::MessagePtr

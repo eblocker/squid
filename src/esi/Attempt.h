@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -14,11 +14,7 @@
 #include "esi/Element.h"
 #include "esi/Sequence.h"
 
-/* esiAttempt */
-
 struct esiAttempt : public esiSequence {
-    //    void *operator new (size_t byteCount);
-    //    void operator delete (void *address);
     esiAttempt(esiTreeParentPtr aParent) : esiSequence (aParent) {}
 };
 

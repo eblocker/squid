@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -10,59 +10,27 @@
 #define SQUID_ACL_H
 
 #include "acl/forward.h"
+#include "acl/Options.h"
 #include "cbdata.h"
 #include "defines.h"
 #include "dlink.h"
-#include "MemPool.h"
-#include "SBufList.h"
+#include "sbuf/forward.h"
 
+#include <algorithm>
 #include <ostream>
-#include <string>
-#include <vector>
 
 class ConfigParser;
 
-typedef char ACLFlag;
-// ACLData Flags
-#define ACL_F_REGEX_CASE 'i'
-#define ACL_F_NO_LOOKUP 'n'
-#define ACL_F_STRICT 's'
-#define ACL_F_END '\0'
+namespace Acl {
 
-/**
- * \ingroup ACLAPI
- * Used to hold a list of one-letter flags which can be passed as parameters
- * to acls  (eg '-i', '-n' etc)
- */
-class ACLFlags
-{
-public:
-    explicit ACLFlags(const ACLFlag flags[]) : supported_(flags), flags_(0) {}
-    ACLFlags() : flags_(0) {}
-    bool supported(const ACLFlag f) const; ///< True if the given flag supported
-    void makeSet(const ACLFlag f) { flags_ |= flagToInt(f); } ///< Set the given flag
-    void makeUnSet(const ACLFlag f) { flags_ &= ~flagToInt(f); } ///< Unset the given flag
-    /// Return true if the given flag is set
-    bool isSet(const ACLFlag f) const { return flags_ & flagToInt(f);}
-    /// Parse optional flags given in the form -[A..Z|a..z]
-    void parseFlags();
-    const char *flagsStr() const; ///< Convert the flags to a string representation
+/// the ACL type name known to admins
+typedef const char *TypeName;
+/// a "factory" function for making ACL objects (of some ACL child type)
+typedef ACL *(*Maker)(TypeName typeName);
+/// use the given ACL Maker for all ACLs of the named type
+void RegisterMaker(TypeName typeName, Maker maker);
 
-private:
-    /// Convert a flag to a 64bit unsigned integer.
-    /// The characters from 'A' to 'z' represented by the values from 65 to 122.
-    /// They are 57 different characters which can be fit to the bits of an 64bit
-    /// integer.
-    uint64_t flagToInt(const ACLFlag f) const {
-        assert('A' <= f && f <= 'z');
-        return ((uint64_t)1 << (f - 'A'));
-    }
-
-    std::string supported_; ///< The supported character flags
-    uint64_t flags_; ///< The flags which is set
-public:
-    static const ACLFlag NoFlags[1]; ///< An empty flags list
-};
+} // namespace Acl
 
 /// A configurable condition. A node in the ACL expression tree.
 /// Can evaluate itself in FilledChecklist context.
@@ -75,15 +43,11 @@ public:
     void *operator new(size_t);
     void operator delete(void *);
 
-    static ACL *Factory(char const *);
     static void ParseAclLine(ConfigParser &parser, ACL ** head);
     static void Initialize();
     static ACL *FindByName(const char *name);
 
     ACL();
-    explicit ACL(const ACLFlag flgs[]) : cfgline(NULL), next(NULL), flags(flgs), registered(false) {
-        *name = 0;
-    }
     virtual ~ACL();
 
     /// sets user-specified ACL name and squid.conf context
@@ -91,11 +55,15 @@ public:
 
     /// Orchestrates matching checklist against the ACL using match(),
     /// after checking preconditions and while providing debugging.
-    /// Returns true if and only if there was a successful match.
+    /// \return true if and only if there was a successful match.
     /// Updates the checklist state on match, async, and failure.
     bool matches(ACLChecklist *checklist) const;
 
-    virtual ACL *clone() const = 0;
+    /// \returns (linked) Options supported by this ACL
+    virtual const Acl::Options &options() { return Acl::NoOptions(); }
+
+    /// configures ACL options, throwing on configuration errors
+    virtual void parseFlags();
 
     /// parses node represenation in squid.conf; dies on failures
     virtual void parse() = 0;
@@ -110,40 +78,19 @@ public:
 
     virtual void prepareForUse() {}
 
+    SBufList dumpOptions(); ///< \returns approximate options configuration
+
     char name[ACL_NAME_SZ];
     char *cfgline;
     ACL *next; // XXX: remove or at least use refcounting
-    ACLFlags flags; ///< The list of given ACL flags
     bool registered; ///< added to the global list of ACLs via aclRegister()
-
-public:
-
-    class Prototype
-    {
-
-    public:
-        Prototype();
-        Prototype(ACL const *, char const *);
-        ~Prototype();
-        static bool Registered(char const *);
-        static ACL *Factory(char const *);
-
-    private:
-        ACL const *prototype;
-        char const *typeString;
-
-    private:
-        static std::vector<Prototype const *> * Registry;
-        static void *Initialized;
-        typedef std::vector<Prototype const*>::iterator iterator;
-        typedef std::vector<Prototype const*>::const_iterator const_iterator;
-        void registerMe();
-    };
 
 private:
     /// Matches the actual data in checklist against this ACL.
     virtual int match(ACLChecklist *checklist) = 0; // XXX: missing const
 
+    /// whether our (i.e. shallow) match() requires checklist to have a AccessLogEntry
+    virtual bool requiresAle() const;
     /// whether our (i.e. shallow) match() requires checklist to have a request
     virtual bool requiresRequest() const;
     /// whether our (i.e. shallow) match() requires checklist to have a reply
@@ -187,6 +134,22 @@ public:
         return code;
     }
 
+    /// Whether an "allow" rule matched. If in doubt, use this popular method.
+    /// Also use this method to treat exceptional ACCESS_DUNNO and
+    /// ACCESS_AUTH_REQUIRED outcomes as if a "deny" rule matched.
+    /// See also: denied().
+    bool allowed() const { return code == ACCESS_ALLOWED; }
+
+    /// Whether a "deny" rule matched. Avoid this rarely used method.
+    /// Use this method (only) to treat exceptional ACCESS_DUNNO and
+    /// ACCESS_AUTH_REQUIRED outcomes as if an "allow" rule matched.
+    /// See also: allowed().
+    bool denied() const { return code == ACCESS_DENIED; }
+
+    /// whether there was either a default rule, a rule without any ACLs, or a
+    /// a rule with ACLs that all matched
+    bool someRuleMatched() const { return allowed() || denied(); }
+
     aclMatchCode code; ///< ACCESS_* code
     int kind; ///< which custom access list verb matched
 };
@@ -214,15 +177,18 @@ operator <<(std::ostream &o, const allow_t a)
 /// \ingroup ACLAPI
 class acl_proxy_auth_match_cache
 {
+    MEMPROXY_CLASS(acl_proxy_auth_match_cache);
 
 public:
-    MEMPROXY_CLASS(acl_proxy_auth_match_cache);
+    acl_proxy_auth_match_cache(int matchRv, void * aclData) :
+        matchrv(matchRv),
+        acl_data(aclData)
+    {}
+
     dlink_node link;
     int matchrv;
     void *acl_data;
 };
-
-MEMPROXY_CLASS_INLINE(acl_proxy_auth_match_cache);
 
 /// \ingroup ACLAPI
 /// XXX: find a way to remove or at least use a refcounted ACL pointer

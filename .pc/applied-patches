@@ -1,2 +1,8 @@
 0001-Default-configuration-file-for-debian.patch
 0002-Change-default-file-locations-for-debian.patch
+0003-installed-binary-for-debian-ci.patch
+0004-SQUID-2019_1.patch
+0005-SQUID-2019_2.patch
+0006-SQUID-2019_3.patch
+0007-SQUID-2019_5.patch
+0008-SQUID-2019_6.patch

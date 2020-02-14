@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -32,34 +32,28 @@ private:
 /// \ingroup ACLAPI
 class ACLIdent : public ACL
 {
-
-public:
     MEMPROXY_CLASS(ACLIdent);
 
+public:
     ACLIdent(ACLData<char const *> *newData, char const *);
     ACLIdent (ACLIdent const &old);
     ACLIdent & operator= (ACLIdent const &rhs);
     ~ACLIdent();
 
+    /* ACL API */
     virtual char const *typeString() const;
     virtual void parse();
     virtual bool isProxyAuth() const {return true;}
-
+    virtual void parseFlags();
     virtual int match(ACLChecklist *checklist);
     virtual SBufList dump() const;
     virtual bool empty () const;
     virtual ACL *clone()const;
 
 private:
-    static Prototype UserRegistryProtoype;
-    static ACLIdent UserRegistryEntry_;
-    static Prototype RegexRegistryProtoype;
-    static ACLIdent RegexRegistryEntry_;
     ACLData<char const *> *data;
     char const *type_;
 };
-
-MEMPROXY_CLASS_INLINE(ACLIdent);
 
 #endif /* USE_IDENT */
 #endif /* SQUID_IDENT_ACLIDENT_H */

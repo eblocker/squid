@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -16,11 +16,6 @@
 #include "lib/rfc1738.c"
 
 CPPUNIT_TEST_SUITE_REGISTRATION( testRFC1738 );
-
-#if _SQUID_OPENBSD_
-// the quite old GCC on OpenBSD 5.4 needs this when linking to libmisc-util.la
-time_t squid_curtime;
-#endif
 
 /* Regular Format de-coding tests */
 void testRFC1738::testUrlDecode()

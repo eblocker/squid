@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -9,6 +9,7 @@
 /* DEBUG: section 05    Listener Socket Handler */
 
 #include "squid.h"
+#include "acl/FilledChecklist.h"
 #include "anyp/PortCfg.h"
 #include "base/TextException.h"
 #include "client_db.h"
@@ -24,6 +25,7 @@
 #include "globals.h"
 #include "ip/Intercept.h"
 #include "ip/QosConfig.h"
+#include "log/access_log.h"
 #include "MasterXaction.h"
 #include "profiler/Profiler.h"
 #include "SquidConfig.h"
@@ -38,19 +40,17 @@
 
 CBDATA_NAMESPACED_CLASS_INIT(Comm, TcpAcceptor);
 
-Comm::TcpAcceptor::TcpAcceptor(const Comm::ConnectionPointer &newConn, const char *note, const Subscription::Pointer &aSub) :
+Comm::TcpAcceptor::TcpAcceptor(const Comm::ConnectionPointer &newConn, const char *, const Subscription::Pointer &aSub) :
     AsyncJob("Comm::TcpAcceptor"),
     errcode(0),
-    isLimited(0),
     theCallSub(aSub),
     conn(newConn),
     listenPort_()
 {}
 
-Comm::TcpAcceptor::TcpAcceptor(const AnyP::PortCfgPointer &p, const char *note, const Subscription::Pointer &aSub) :
+Comm::TcpAcceptor::TcpAcceptor(const AnyP::PortCfgPointer &p, const char *, const Subscription::Pointer &aSub) :
     AsyncJob("Comm::TcpAcceptor"),
     errcode(0),
-    isLimited(0),
     theCallSub(aSub),
     conn(p->listenConn),
     listenPort_(p)
@@ -132,7 +132,7 @@ Comm::TcpAcceptor::status() const
 
     static MemBuf buf;
     buf.reset();
-    buf.Printf(" FD %d, %s",conn->fd, ipbuf);
+    buf.appendf(" FD %d, %s",conn->fd, ipbuf);
 
     const char *jobStatus = AsyncJob::status();
     buf.append(jobStatus, strlen(jobStatus));
@@ -163,14 +163,18 @@ Comm::TcpAcceptor::setListen()
         bzero(&afa, sizeof(afa));
         debugs(5, DBG_IMPORTANT, "Installing accept filter '" << Config.accept_filter << "' on " << conn);
         xstrncpy(afa.af_name, Config.accept_filter, sizeof(afa.af_name));
-        if (setsockopt(conn->fd, SOL_SOCKET, SO_ACCEPTFILTER, &afa, sizeof(afa)) < 0)
-            debugs(5, DBG_CRITICAL, "WARNING: SO_ACCEPTFILTER '" << Config.accept_filter << "': '" << xstrerror());
+        if (setsockopt(conn->fd, SOL_SOCKET, SO_ACCEPTFILTER, &afa, sizeof(afa)) < 0) {
+            int xerrno = errno;
+            debugs(5, DBG_CRITICAL, "WARNING: SO_ACCEPTFILTER '" << Config.accept_filter << "': '" << xstrerr(xerrno));
+        }
 #elif defined(TCP_DEFER_ACCEPT)
         int seconds = 30;
         if (strncmp(Config.accept_filter, "data=", 5) == 0)
             seconds = atoi(Config.accept_filter + 5);
-        if (setsockopt(conn->fd, IPPROTO_TCP, TCP_DEFER_ACCEPT, &seconds, sizeof(seconds)) < 0)
-            debugs(5, DBG_CRITICAL, "WARNING: TCP_DEFER_ACCEPT '" << Config.accept_filter << "': '" << xstrerror());
+        if (setsockopt(conn->fd, IPPROTO_TCP, TCP_DEFER_ACCEPT, &seconds, sizeof(seconds)) < 0) {
+            int xerrno = errno;
+            debugs(5, DBG_CRITICAL, "WARNING: TCP_DEFER_ACCEPT '" << Config.accept_filter << "': '" << xstrerr(xerrno));
+        }
 #else
         debugs(5, DBG_CRITICAL, "WARNING: accept_filter not supported on your OS");
 #endif
@@ -197,7 +201,7 @@ Comm::TcpAcceptor::setListen()
 /// called when listening descriptor is closed by an external force
 /// such as clientHttpConnectionsClose()
 void
-Comm::TcpAcceptor::handleClosure(const CommCloseCbParams &io)
+Comm::TcpAcceptor::handleClosure(const CommCloseCbParams &)
 {
     closer_ = NULL;
     conn = NULL;
@@ -227,12 +231,11 @@ Comm::TcpAcceptor::doAccept(int fd, void *data)
         } else {
             afd->acceptNext();
         }
-        SetSelect(fd, COMM_SELECT_READ, Comm::TcpAcceptor::doAccept, afd, 0);
 
     } catch (const std::exception &e) {
         fatalf("FATAL: error while accepting new client connection: %s\n", e.what());
     } catch (...) {
-        fatal("FATAL: error while accepting new client connection: [unkown]\n");
+        fatal("FATAL: error while accepting new client connection: [unknown]\n");
     }
 }
 
@@ -250,6 +253,20 @@ Comm::TcpAcceptor::okToAccept()
     }
 
     return false;
+}
+
+static void
+logAcceptError(const Comm::ConnectionPointer &conn)
+{
+    AccessLogEntry::Pointer al = new AccessLogEntry;
+    al->tcpClient = conn;
+    al->url = "error:accept-client-connection";
+    al->setVirginUrlForMissingRequest(al->url);
+    ACLFilledChecklist ch(nullptr, nullptr, nullptr);
+    ch.src_addr = conn->remote;
+    ch.my_addr = conn->local;
+    ch.al = al;
+    accessLogLog(al, &ch);
 }
 
 void
@@ -277,15 +294,20 @@ Comm::TcpAcceptor::acceptOne()
 
         // A non-recoverable error; notify the caller */
         debugs(5, 5, HERE << "non-recoverable error:" << status() << " handler Subscription: " << theCallSub);
+        if (intendedForUserConnections())
+            logAcceptError(newConnDetails);
         notify(flag, newConnDetails);
         mustStop("Listener socket closed");
         return;
     }
 
+    newConnDetails->nfmark = Ip::Qos::getNfmarkFromConnection(newConnDetails, Ip::Qos::dirAccepted);
+
     debugs(5, 5, HERE << "Listener: " << conn <<
            " accepted new connection " << newConnDetails <<
            " handler Subscription: " << theCallSub);
     notify(flag, newConnDetails);
+    SetSelect(conn->fd, COMM_SELECT_READ, doAccept, this, 0);
 }
 
 void
@@ -308,7 +330,7 @@ Comm::TcpAcceptor::notify(const Comm::Flag flag, const Comm::ConnectionPointer &
     if (theCallSub != NULL) {
         AsyncCall::Pointer call = theCallSub->callback();
         CommAcceptCbParams &params = GetCommParams<CommAcceptCbParams>(call);
-        params.xaction = new MasterXaction;
+        params.xaction = new MasterXaction(XactionInitiator::initClient);
         params.xaction->squidPort = listenPort_;
         params.fd = conn->fd;
         params.conn = params.xaction->tcpClient = newConnDetails;
@@ -322,10 +344,10 @@ Comm::TcpAcceptor::notify(const Comm::Flag flag, const Comm::ConnectionPointer &
  * accept() and process
  * Wait for an incoming connection on our listener socket.
  *
- * \retval Comm::OK         success. details parameter filled.
- * \retval Comm::NOMESSAGE  attempted accept() but nothing useful came in.
- * \retval Comm::COMM_ERROR      an outright failure occured.
- *                         Or if this client has too many connections already.
+ * \retval Comm::OK          success. details parameter filled.
+ * \retval Comm::NOMESSAGE   attempted accept() but nothing useful came in.
+ * \retval Comm::COMM_ERROR  an outright failure occurred.
+ *                           Or this client has too many connections already.
  */
 Comm::Flag
 Comm::TcpAcceptor::oldAccept(Comm::ConnectionPointer &details)
@@ -344,14 +366,14 @@ Comm::TcpAcceptor::oldAccept(Comm::ConnectionPointer &details)
 
         PROF_stop(comm_accept);
 
-        if (ignoreErrno(errno)) {
-            debugs(50, 5, HERE << status() << ": " << xstrerror());
+        if (ignoreErrno(errcode)) {
+            debugs(50, 5, status() << ": " << xstrerr(errcode));
             return Comm::NOMESSAGE;
         } else if (ENFILE == errno || EMFILE == errno) {
-            debugs(50, 3, HERE << status() << ": " << xstrerror());
+            debugs(50, 3, status() << ": " << xstrerr(errcode));
             return Comm::COMM_ERROR;
         } else {
-            debugs(50, DBG_IMPORTANT, HERE << status() << ": " << xstrerror());
+            debugs(50, DBG_IMPORTANT, MYNAME << status() << ": " << xstrerr(errcode));
             return Comm::COMM_ERROR;
         }
     }
@@ -373,7 +395,8 @@ Comm::TcpAcceptor::oldAccept(Comm::ConnectionPointer &details)
     Ip::Address::InitAddr(gai);
     details->local.setEmpty();
     if (getsockname(sock, gai->ai_addr, &gai->ai_addrlen) != 0) {
-        debugs(50, DBG_IMPORTANT, "ERROR: getsockname() failed to locate local-IP on " << details << ": " << xstrerror());
+        int xerrno = errno;
+        debugs(50, DBG_IMPORTANT, "ERROR: getsockname() failed to locate local-IP on " << details << ": " << xstrerr(xerrno));
         Ip::Address::FreeAddr(gai);
         PROF_stop(comm_accept);
         return Comm::COMM_ERROR;

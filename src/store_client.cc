@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -41,7 +41,6 @@ static StoreIOState::STRCB storeClientReadHeader;
 static void storeClientCopy2(StoreEntry * e, store_client * sc);
 static EVH storeClientCopyEvent;
 static bool CheckQuickAbortIsReasonable(StoreEntry * entry);
-static void CheckQuickAbort(StoreEntry * entry);
 
 CBDATA_CLASS_INIT(store_client);
 
@@ -146,27 +145,25 @@ storeClientCopyEvent(void *data)
     storeClientCopy2(sc->entry, sc);
 }
 
-store_client::store_client(StoreEntry *e) : entry (e)
-#if USE_DELAY_POOLS
-    , delayId()
+store_client::store_client(StoreEntry *e) :
+    cmp_offset(0),
+#if STORE_CLIENT_LIST_DEBUG
+    owner(cbdataReference(data)),
 #endif
-    , type (e->storeClientType())
-    ,  object_ok(true)
+    entry(e),
+    type(e->storeClientType()),
+    object_ok(true)
 {
-    cmp_offset = 0;
     flags.disk_io_pending = false;
+    flags.store_copying = false;
+    flags.copy_event_pending = false;
     ++ entry->refcount;
 
-    if (getType() == STORE_DISK_CLIENT)
+    if (getType() == STORE_DISK_CLIENT) {
         /* assert we'll be able to get the data we want */
         /* maybe we should open swapin_sio here */
-        assert(entry->swap_filen > -1 || entry->swappingOut());
-
-#if STORE_CLIENT_LIST_DEBUG
-
-    owner = cbdataReference(data);
-
-#endif
+        assert(entry->hasDisk() || entry->swappingOut());
+    }
 }
 
 store_client::~store_client()
@@ -254,7 +251,7 @@ store_client::moreToSend() const
     const int64_t len = entry->objectLen();
 
     // If we do not know the entry length, then we have to open the swap file.
-    const bool canSwapIn = entry->swap_filen >= 0;
+    const bool canSwapIn = entry->hasDisk();
     if (len < 0)
         return canSwapIn;
 
@@ -282,11 +279,6 @@ storeClientCopy2(StoreEntry * e, store_client * sc)
         return;
     }
 
-    if (EBIT_TEST(e->flags, ENTRY_FWD_HDR_WAIT)) {
-        debugs(90, 5, "storeClientCopy2: returning because ENTRY_FWD_HDR_WAIT set");
-        return;
-    }
-
     if (sc->flags.store_copying) {
         sc->flags.copy_event_pending = true;
         debugs(90, 3, "storeClientCopy2: Queueing storeClientCopyEvent()");
@@ -308,13 +300,11 @@ storeClientCopy2(StoreEntry * e, store_client * sc)
      * this function
      * XXX: Locking does not prevent calling sc destructor (it only prevents
      * freeing sc memory) so sc may become invalid from C++ p.o.v.
-     *
      */
-    cbdataInternalLock(sc);
+    CbcPointer<store_client> tmpLock = sc;
     assert (!sc->flags.store_copying);
     sc->doCopy(e);
-    assert (!sc->flags.store_copying);
-    cbdataInternalUnlock(sc);
+    assert(!sc->flags.store_copying);
 }
 
 void
@@ -446,7 +436,7 @@ store_client::fileRead()
     flags.disk_io_pending = true;
 
     if (mem->swap_hdr_sz != 0)
-        if (entry->swap_status == SWAPOUT_WRITING)
+        if (entry->swappingOut())
             assert(mem->swapout.sio->offset() > copyInto.offset + (int64_t)mem->swap_hdr_sz);
 
     storeRead(swapin_sio,
@@ -459,7 +449,7 @@ store_client::fileRead()
 }
 
 void
-store_client::readBody(const char *buf, ssize_t len)
+store_client::readBody(const char *, ssize_t len)
 {
     int parsed_header = 0;
 
@@ -513,14 +503,14 @@ store_client::fail()
 }
 
 static void
-storeClientReadHeader(void *data, const char *buf, ssize_t len, StoreIOState::Pointer self)
+storeClientReadHeader(void *data, const char *buf, ssize_t len, StoreIOState::Pointer)
 {
     store_client *sc = (store_client *)data;
     sc->readHeader(buf, len);
 }
 
 static void
-storeClientReadBody(void *data, const char *buf, ssize_t len, StoreIOState::Pointer self)
+storeClientReadBody(void *data, const char *buf, ssize_t len, StoreIOState::Pointer)
 {
     store_client *sc = (store_client *)data;
     sc->readBody(buf, len);
@@ -529,28 +519,24 @@ storeClientReadBody(void *data, const char *buf, ssize_t len, StoreIOState::Poin
 bool
 store_client::unpackHeader(char const *buf, ssize_t len)
 {
+    int xerrno = errno; // FIXME: where does errno come from?
     debugs(90, 3, "store_client::unpackHeader: len " << len << "");
 
     if (len < 0) {
-        debugs(90, 3, "WARNING: unpack error: " << xstrerror());
+        debugs(90, 3, "WARNING: unpack error: " << xstrerr(xerrno));
         return false;
     }
 
     int swap_hdr_sz = 0;
-    StoreMetaUnpacker aBuilder(buf, len, &swap_hdr_sz);
-
-    if (!aBuilder.isBufferSane()) {
-        /* oops, bad disk file? */
-        debugs(90, DBG_IMPORTANT, "WARNING: swapfile header inconsistent with available data");
+    tlv *tlv_list = nullptr;
+    try {
+        StoreMetaUnpacker aBuilder(buf, len, &swap_hdr_sz);
+        tlv_list = aBuilder.createStoreMeta();
+    } catch (const std::exception &e) {
+        debugs(90, DBG_IMPORTANT, "WARNING: failed to unpack metadata because " << e.what());
         return false;
     }
-
-    tlv *tlv_list = aBuilder.createStoreMeta ();
-
-    if (tlv_list == NULL) {
-        debugs(90, DBG_IMPORTANT, "WARNING: failed to unpack meta data");
-        return false;
-    }
+    assert(tlv_list);
 
     /*
      * Check the meta data and make sure we got the right object.
@@ -676,7 +662,7 @@ storeUnregister(store_client * sc, StoreEntry * e, void *data)
     dlinkDelete(&sc->node, &mem->clients);
     -- mem->nclients;
 
-    if (e->store_status == STORE_OK && e->swap_status != SWAPOUT_DONE)
+    if (e->store_status == STORE_OK && !e->swappedOut())
         e->swapOut();
 
     if (sc->swapin_sio != NULL) {
@@ -700,11 +686,11 @@ storeUnregister(store_client * sc, StoreEntry * e, void *data)
 
     assert(e->locked());
     // An entry locked by others may be unlocked (and destructed) by others, so
-    // we must lock again to safely dereference e after CheckQuickAbort().
+    // we must lock again to safely dereference e after CheckQuickAbortIsReasonable().
     e->lock("storeUnregister");
 
-    if (mem->nclients == 0)
-        CheckQuickAbort(e);
+    if (CheckQuickAbortIsReasonable(e))
+        e->abort();
     else
         mem->kickReads();
 
@@ -720,6 +706,15 @@ storeUnregister(store_client * sc, StoreEntry * e, void *data)
 void
 StoreEntry::invokeHandlers()
 {
+    if (EBIT_TEST(flags, DELAY_SENDING)) {
+        debugs(90, 3, "DELAY_SENDING is on, exiting " << *this);
+        return;
+    }
+    if (EBIT_TEST(flags, ENTRY_FWD_HDR_WAIT)) {
+        debugs(90, 3, "ENTRY_FWD_HDR_WAIT is on, exiting " << *this);
+        return;
+    }
+
     /* Commit what we can to disk, if appropriate */
     swapOut();
     int i = 0;
@@ -763,9 +758,32 @@ storePendingNClients(const StoreEntry * e)
 static bool
 CheckQuickAbortIsReasonable(StoreEntry * entry)
 {
+    assert(entry);
+    debugs(90, 3, "entry=" << *entry);
+
+    if (storePendingNClients(entry) > 0) {
+        debugs(90, 3, "quick-abort? NO storePendingNClients() > 0");
+        return false;
+    }
+
+    if (!shutting_down && Store::Root().transientReaders(*entry)) {
+        debugs(90, 3, "quick-abort? NO still have one or more transient readers");
+        return false;
+    }
+
+    if (entry->store_status != STORE_PENDING) {
+        debugs(90, 3, "quick-abort? NO store_status != STORE_PENDING");
+        return false;
+    }
+
+    if (EBIT_TEST(entry->flags, ENTRY_SPECIAL)) {
+        debugs(90, 3, "quick-abort? NO ENTRY_SPECIAL");
+        return false;
+    }
+
     MemObject * const mem = entry->mem_obj;
     assert(mem);
-    debugs(90, 3, "entry=" << entry << ", mem=" << mem);
+    debugs(90, 3, "mem=" << mem);
 
     if (mem->request && !mem->request->flags.cachable) {
         debugs(90, 3, "quick-abort? YES !mem->request->flags.cachable");
@@ -827,57 +845,27 @@ CheckQuickAbortIsReasonable(StoreEntry * entry)
     return true;
 }
 
-/// Aborts a swapping-out entry if nobody needs it any more _and_
-/// continuing swap out is not reasonable per CheckQuickAbortIsReasonable().
-static void
-CheckQuickAbort(StoreEntry * entry)
-{
-    assert (entry);
-
-    if (storePendingNClients(entry) > 0)
-        return;
-
-    if (!shutting_down && Store::Root().transientReaders(*entry))
-        return;
-
-    if (entry->store_status != STORE_PENDING)
-        return;
-
-    if (EBIT_TEST(entry->flags, ENTRY_SPECIAL))
-        return;
-
-    if (!CheckQuickAbortIsReasonable(entry))
-        return;
-
-    entry->abort();
-}
-
 void
 store_client::dumpStats(MemBuf * output, int clientNumber) const
 {
     if (_callback.pending())
         return;
 
-    output->Printf("\tClient #%d, %p\n", clientNumber, _callback.callback_data);
-
-    output->Printf("\t\tcopy_offset: %" PRId64 "\n",
-                   copyInto.offset);
-
-    output->Printf("\t\tcopy_size: %d\n",
-                   (int) copyInto.length);
-
-    output->Printf("\t\tflags:");
+    output->appendf("\tClient #%d, %p\n", clientNumber, _callback.callback_data);
+    output->appendf("\t\tcopy_offset: %" PRId64 "\n", copyInto.offset);
+    output->appendf("\t\tcopy_size: %" PRIuSIZE "\n", copyInto.length);
+    output->append("\t\tflags:", 8);
 
     if (flags.disk_io_pending)
-        output->Printf(" disk_io_pending");
+        output->append(" disk_io_pending", 16);
 
     if (flags.store_copying)
-        output->Printf(" store_copying");
+        output->append(" store_copying", 14);
 
     if (flags.copy_event_pending)
-        output->Printf(" copy_event_pending");
+        output->append(" copy_event_pending", 19);
 
-    output->Printf("\n");
+    output->append("\n",1);
 }
 
 bool

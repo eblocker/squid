@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -272,7 +272,7 @@ log_extended( const char* fn, int code, long size, const SquidMetaList* meta )
         snprintf( md5, sizeof(md5), "%-32s", "(no_md5_data_available)" );
     }
 
-    char timeb[64];
+    char timeb[256];
     if ( meta && (findings = meta->search( STORE_META_STD )) ) {
         StoreMetaStd temp;
         // make data aligned, avoid SIGBUS on RISC machines (ARGH!)
@@ -283,7 +283,7 @@ log_extended( const char* fn, int code, long size, const SquidMetaList* meta )
     } else if ( meta && (findings = meta->search( STORE_META_STD_LFS )) ) {
         StoreMetaStdLFS temp;
         // make data aligned, avoid SIGBUS on RISC machines (ARGH!)
-        memcpy( &temp, findings->data, sizeof(StoreMetaStd) );
+        memcpy( &temp, findings->data, sizeof(StoreMetaStdLFS) );
         snprintf( timeb, sizeof(timeb), "%08lx %08lx %08lx %08lx %04x %5hu ",
                   (unsigned long)temp.timestamp, (unsigned long)temp.lastref,
                   (unsigned long)temp.expires, (unsigned long)temp.lastmod, temp.flags, temp.refcount );
@@ -615,7 +615,7 @@ helpMe( void )
         "\t0 and 1 are recommended - slow rebuild your cache with other modes.\n"
         " -s\tshow all options after option parsing, but before really starting.\n"
         " -v\tshow more information about the file, e.g. MD5, timestamps and flags.\n"
-        "\n", DEFAULT_SQUID_CONF, DEFAULTHOST, DEFAULTPORT );
+        "\n", DEFAULT_CONFIG_FILE, DEFAULTHOST, DEFAULTPORT );
 
 }
 
@@ -890,7 +890,7 @@ main( int argc, char* argv[] )
 {
     // setup variables
     REList* list = 0;
-    char* conffile = xstrdup( DEFAULT_SQUID_CONF );
+    char* conffile = xstrdup(DEFAULT_CONFIG_FILE);
     serverPort = htons(DEFAULTPORT);
     if ( convertHostname(DEFAULTHOST,serverHost) == -1 ) {
         fprintf( stderr, "unable to resolve host %s!\n", DEFAULTHOST );

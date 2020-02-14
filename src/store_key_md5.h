@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -12,13 +12,13 @@
 #define SQUID_STORE_KEY_MD5_H_
 
 #include "hash.h"
-#include "typedefs.h"
+#include "store/forward.h"
 
 class HttpRequestMethod;
 class HttpRequest;
 
 typedef enum {
-    ksDefault,
+    ksDefault = 0,
     ksRevalidation
 } KeyScope;
 
@@ -30,7 +30,7 @@ const char *storeKeyText(const cache_key *);
 const cache_key *storeKeyPublic(const char *, const HttpRequestMethod&, const KeyScope keyScope = ksDefault);
 const cache_key *storeKeyPublicByRequest(HttpRequest *, const KeyScope keyScope = ksDefault);
 const cache_key *storeKeyPublicByRequestMethod(HttpRequest *, const HttpRequestMethod&, const KeyScope keyScope = ksDefault);
-const cache_key *storeKeyPrivate(const char *, const HttpRequestMethod&, int);
+const cache_key *storeKeyPrivate();
 int storeKeyHashBuckets(int);
 int storeKeyNull(const cache_key *);
 void storeKeyInit(void);

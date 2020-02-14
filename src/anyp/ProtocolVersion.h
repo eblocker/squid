@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -88,13 +88,13 @@ public:
     }
 };
 
-} // namespace AnyP
-
 inline std::ostream &
 operator << (std::ostream &os, const AnyP::ProtocolVersion &v)
 {
     return (os << AnyP::ProtocolType_str[v.protocol] << '/' << v.major << '.' << v.minor);
 }
+
+} // namespace AnyP
 
 #endif /* SQUID_ANYP_PROTOCOLVERSION_H */
 

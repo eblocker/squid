@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -46,13 +46,13 @@ typedef enum {
     XPROF_HttpHeader_getCc,
     XPROF_HttpHeaderParse,
     XPROF_HttpMsg_httpMsgParseStep,
+    XPROF_HttpParserParseReplyLine,
     XPROF_HttpParserParseReqLine,
     XPROF_httpRequestFree,
     XPROF_HttpServer_parseOneRequest,
     XPROF_httpStart,
     XPROF_HttpStateData_processReplyBody,
     XPROF_HttpStateData_processReplyHeader,
-    XPROF_HttpStateData_readReply,
     XPROF_InvokeHandlers,
     XPROF_malloc,
     XPROF_MemBuf_append,
@@ -70,7 +70,6 @@ typedef enum {
     XPROF_storeClient_kickReads,
     XPROF_storeDirCallback,
     XPROF_StoreEntry_write,
-    XPROF_storeGet,
     XPROF_storeGetMemSpace,
     XPROF_storeMaintainSwapSpace,
     XPROF_storeRelease,

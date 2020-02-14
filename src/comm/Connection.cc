@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -12,7 +12,10 @@
 #include "comm.h"
 #include "comm/Connection.h"
 #include "fde.h"
+#include "FwdState.h"
 #include "neighbors.h"
+#include "security/NegotiationHistory.h"
+#include "SquidConfig.h"
 #include "SquidTime.h"
 
 class CachePeer;
@@ -23,15 +26,14 @@ Comm::IsConnOpen(const Comm::ConnectionPointer &conn)
 }
 
 Comm::Connection::Connection() :
-    local(),
-    remote(),
     peerType(HIER_NONE),
     fd(-1),
     tos(0),
     nfmark(0),
     flags(COMM_NONBLOCKING),
-    peer_(NULL),
-    startTime_(squid_curtime)
+    peer_(nullptr),
+    startTime_(squid_curtime),
+    tlsHistory(nullptr)
 {
     *rfc931 = 0; // quick init the head. the rest does not matter.
 }
@@ -46,6 +48,8 @@ Comm::Connection::~Connection()
     }
 
     cbdataReferenceDone(peer_);
+
+    delete tlsHistory;
 }
 
 Comm::ConnectionPointer
@@ -108,5 +112,43 @@ Comm::Connection::setPeer(CachePeer *p)
     if (p) {
         peer_ = cbdataReference(p);
     }
+}
+
+time_t
+Comm::Connection::timeLeft(const time_t idleTimeout) const
+{
+    if (!Config.Timeout.pconnLifetime)
+        return idleTimeout;
+
+    const time_t lifeTimeLeft = lifeTime() < Config.Timeout.pconnLifetime ? Config.Timeout.pconnLifetime - lifeTime() : 1;
+    return min(lifeTimeLeft, idleTimeout);
+}
+
+Security::NegotiationHistory *
+Comm::Connection::tlsNegotiations()
+{
+    if (!tlsHistory)
+        tlsHistory = new Security::NegotiationHistory;
+    return tlsHistory;
+}
+
+time_t
+Comm::Connection::connectTimeout(const time_t fwdStart) const
+{
+    // a connection opening timeout (ignoring forwarding time limits for now)
+    const CachePeer *peer = getPeer();
+    const time_t ctimeout = peer ? peerConnectTimeout(peer) : Config.Timeout.connect;
+
+    // time we have left to finish the whole forwarding process
+    const time_t fwdTimeLeft = FwdState::ForwardTimeout(fwdStart);
+
+    // The caller decided to connect. If there is no time left, to protect
+    // connecting code from trying to establish a connection while a zero (i.e.,
+    // "immediate") timeout notification is firing, ensure a positive timeout.
+    // XXX: This hack gives some timed-out forwarding sequences more time than
+    // some sequences that have not quite reached the forwarding timeout yet!
+    const time_t ftimeout = fwdTimeLeft ? fwdTimeLeft : 5; // seconds
+
+    return min(ctimeout, ftimeout);
 }
 

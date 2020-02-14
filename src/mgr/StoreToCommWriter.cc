@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -126,7 +126,7 @@ Mgr::StoreToCommWriter::noteCommWrote(const CommIoCbParams& params)
 }
 
 void
-Mgr::StoreToCommWriter::noteCommClosed(const CommCloseCbParams& params)
+Mgr::StoreToCommWriter::noteCommClosed(const CommCloseCbParams &)
 {
     debugs(16, 6, HERE);
     Must(!Comm::IsConnOpen(clientConnection));

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2016 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -11,12 +11,12 @@
 #include "base/TextException.h"
 #include "BodyPipe.h"
 
-CBDATA_CLASS_INIT(BodyPipe);
-
 // BodySink is a BodyConsumer class which  just consume and drops
 // data from a BodyPipe
 class BodySink: public BodyConsumer
 {
+    CBDATA_CLASS(BodySink);
+
 public:
     BodySink(const BodyPipe::Pointer &bp): AsyncJob("BodySink"), body_pipe(bp) {}
     virtual ~BodySink() { assert(!body_pipe); }
@@ -25,18 +25,16 @@ public:
         size_t contentSize = bp->buf().contentSize();
         bp->consume(contentSize);
     }
-    virtual void noteBodyProductionEnded(BodyPipe::Pointer bp) {
+    virtual void noteBodyProductionEnded(BodyPipe::Pointer) {
         stopConsumingFrom(body_pipe);
     }
-    virtual void noteBodyProducerAborted(BodyPipe::Pointer bp) {
+    virtual void noteBodyProducerAborted(BodyPipe::Pointer) {
         stopConsumingFrom(body_pipe);
     }
     bool doneAll() const {return !body_pipe && AsyncJob::doneAll();}
 
 private:
     BodyPipe::Pointer body_pipe; ///< the pipe we are consuming from
-
-    CBDATA_CLASS2(BodySink);
 };
 
 CBDATA_CLASS_INIT(BodySink);
@@ -288,8 +286,7 @@ BodyPipe::expectNoConsumption()
         abortedConsumption = true;
 
         // in case somebody enabled auto-consumption before regular one aborted
-        if (mustAutoConsume)
-            startAutoConsumption();
+        startAutoConsumptionIfNeeded();
     }
 }
 
@@ -315,23 +312,28 @@ BodyPipe::consume(size_t size)
     postConsume(size);
 }
 
-// In the AutoConsumption  mode the consumer has gone but the producer continues
-// producing data. We are using a BodySink BodyConsumer which just discards the produced data.
 void
 BodyPipe::enableAutoConsumption()
 {
     mustAutoConsume = true;
     debugs(91,5, HERE << "enabled auto consumption" << status());
-    if (!theConsumer && theBuf.hasContent())
-        startAutoConsumption();
+    startAutoConsumptionIfNeeded();
 }
 
-// start auto consumption by creating body sink
+/// Check the current need and, if needed, start auto consumption. In auto
+/// consumption mode, the consumer is gone, but the producer continues to
+/// produce data. We use a BodySink BodyConsumer to discard that data.
 void
-BodyPipe::startAutoConsumption()
+BodyPipe::startAutoConsumptionIfNeeded()
 {
-    Must(mustAutoConsume);
-    Must(!theConsumer);
+    const auto startNow =
+        mustAutoConsume && // was enabled
+        !theConsumer && // has not started yet
+        theProducer.valid() && // still useful (and will eventually stop)
+        theBuf.hasContent(); // has something to consume right now
+    if (!startNow)
+        return;
+
     theConsumer = new BodySink(this);
     debugs(91,7, HERE << "starting auto consumption" << status());
     scheduleBodyDataNotification();
@@ -395,15 +397,16 @@ BodyPipe::postAppend(size_t size)
     thePutSize += size;
     debugs(91,7, HERE << "added " << size << " bytes" << status());
 
-    if (mustAutoConsume && !theConsumer && size > 0)
-        startAutoConsumption();
-
     // We should not consume here even if mustAutoConsume because the
     // caller may not be ready for the data to be consumed during this call.
     scheduleBodyDataNotification();
 
+    // Do this check after scheduleBodyDataNotification() to ensure the
+    // natural order of "more body data" and "production ended" events.
     if (!mayNeedMoreData())
         clearProducer(true); // reached end-of-body
+
+    startAutoConsumptionIfNeeded();
 }
 
 void
@@ -446,19 +449,19 @@ const char *BodyPipe::status() const
 
     outputBuffer.append(" [", 2);
 
-    outputBuffer.Printf("%" PRIu64 "<=%" PRIu64, theGetSize, thePutSize);
+    outputBuffer.appendf("%" PRIu64 "<=%" PRIu64, theGetSize, thePutSize);
     if (theBodySize >= 0)
-        outputBuffer.Printf("<=%" PRId64, theBodySize);
+        outputBuffer.appendf("<=%" PRId64, theBodySize);
     else
         outputBuffer.append("<=?", 3);
 
-    outputBuffer.Printf(" %d+%d", (int)theBuf.contentSize(), (int)theBuf.spaceSize());
+    outputBuffer.appendf(" %" PRId64 "+%" PRId64, static_cast<int64_t>(theBuf.contentSize()), static_cast<int64_t>(theBuf.spaceSize()));
 
-    outputBuffer.Printf(" pipe%p", this);
+    outputBuffer.appendf(" pipe%p", this);
     if (theProducer.set())
-        outputBuffer.Printf(" prod%p", theProducer.get());
+        outputBuffer.appendf(" prod%p", theProducer.get());
     if (theConsumer.set())
-        outputBuffer.Printf(" cons%p", theConsumer.get());
+        outputBuffer.appendf(" cons%p", theConsumer.get());
 
     if (mustAutoConsume)
         outputBuffer.append(" A", 2);

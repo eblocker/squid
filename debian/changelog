@@ -1,6 +1,8 @@
-squid (4.10-3) UNRELEASED; urgency=low
+squid (4.11-1) UNRELEASED; urgency=high
 
   [ Amos Jeffries <amosjeffries@squid-cache.org> ]
+  * New Upstream Release (Closes: #957840)
+
   * debian/squid{3,}.{maintscript,postinst,postrm,preinst,rc},squid-common.postinst
     - Remove unused and obsolete scripts
 

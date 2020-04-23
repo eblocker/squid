@@ -1,4 +1,4 @@
-squid (4.11-1) UNRELEASED; urgency=high
+squid (4.11-1) unstable; urgency=high
 
   * Urgency high due to security fixes
 
@@ -22,7 +22,7 @@ squid (4.11-1) UNRELEASED; urgency=high
   * debian/patches/
     - Add upstream fix for missing Debug::Extra in systemd builds
 
- -- Amos Jeffries <amosjeffries@squid-cache.org>  Fri, 24 Apr 2020 00:54:00 +1300
+ -- Luigi Gangitano <luigi@debian.org>  Thu, 23 Apr 2020 19:34:54 +0200
 
 squid (4.10-1) unstable; urgency=high
 

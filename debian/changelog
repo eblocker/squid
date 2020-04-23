@@ -1,12 +1,25 @@
 squid (4.11-1) UNRELEASED; urgency=high
 
-  [ Amos Jeffries <amosjeffries@squid-cache.org> ]
-  * New Upstream Release (Closes: #957840)
+  * Urgency high due to security fixes
 
-  * debian/squid{3,}.{maintscript,postinst,postrm,preinst,rc},squid-common.postinst
+  [ Amos Jeffries <amosjeffries@squid-cache.org> ]
+  * New Upstream Release (Closes: #957840, #929574, #910337)
+    - Fixes security issue SQUID-2019:12 (CVE-2019-12519, CVE-2019-12521)
+    - Fixes security issue SQUID-2020:4 (CVE-2020-11945)
+
+  * debian/squid3.{maintscript,postinst,postrm,preinst,rc}
     - Remove unused and obsolete scripts
 
- -- Amos Jeffries <amosjeffries@squid-cache.org>  Fri, 14 Feb 2020 23:38:00 +1300
+  * debian/squid.{postrm,preinst}
+    - Remove obsolete script logic
+
+  * debian/squid-common.postinst
+    - Remove obsolete script
+
+  * debian/changelog
+    - Add missing historic CVE references
+
+ -- Amos Jeffries <amosjeffries@squid-cache.org>  Thu, 23 Apr 2020 21:18:00 +1300
 
 squid (4.10-1) unstable; urgency=high
 
@@ -169,8 +182,8 @@ squid (4.4-1) unstable; urgency=high
 
   [ Amos Jeffries <amosjeffries@squid-cache.org> ]
   * New Upstream Release
-    - Fix security issue SQUID-2018:4 (CVE: TBD) (Closes: #912293)
-    - Fix security issue SQUID-2018:5 (CVE: TBD) (Closes: #912294)
+    - Fix security issue SQUID-2018:4 (CVE-2018-19131) (Closes: #912293)
+    - Fix security issue SQUID-2018:5 (CVE-2018-19132) (Closes: #912294)
 
   [ Luigi Gangitano ]
   * debian/squid.preinst
@@ -1395,7 +1408,7 @@ squid3 (3.0.STABLE8-3) unstable; urgency=high
 
   * debian/patches/11-SQUID-2009-1
     - Added upstream patch fixing Denial of Service in request processing
-      (Ref: SQUID-2009-1, CVE: TBA)
+      (Ref: SQUID-2009-1) (CVE-2009-0478)
 
  -- Luigi Gangitano <luigi@debian.org>  Fri, 06 Feb 2009 20:23:57 +0100
 

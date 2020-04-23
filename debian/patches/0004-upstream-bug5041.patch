@@ -1,0 +1,60 @@
+commit c26cd1cb6a60ff196ef13c00e82576d3bfeb2e30 (HEAD, refs/remotes/origin/v4, refs/heads/v4)
+Author: Alex Rousskov <rousskov@measurement-factory.com>
+Date:   2020-04-23 05:56:35 -0600
+
+    Bug 5041: Missing Debug::Extra breaks build on hosts with systemd (#611)
+    
+    * Bug 5041: Missing Debug::Extra breaks build on hosts with systemd
+    
+    Master commit 6fa8c66 (i.e. Bug 5016 fix) relied on Debug::Extra added
+    by master commit (ccfbe8f) that was not ported to v4. The port of the
+    former master commit lacked the required piece of the latter commit.
+    
+    The problem is invisible on hosts without a systemd package (that Squid
+    can find/use) and with Squids explicitly ./configured --without-systemd.
+    
+    * "Minimum features" build test should be --without-systemd
+    
+    * LDFLAGS were missing SYSTEMD_LIBS in builds with systemd support
+    
+    Co-authored-by: Amos Jeffries <yadij@users.noreply.github.com>
+
+diff --git a/configure.ac b/configure.ac
+index 9d1a38c..281d237 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -2162,6 +2162,7 @@ if test "x$with_systemd" != "xno" -a "x$squid_host_os" = "xlinux"; then
+   fi
+   if test "x$SYSTEMD_LIBS" != "x" ; then
+     CXXFLAGS="$SYSTEMD_CFLAGS $CXXFLAGS"
++    LDFLAGS="$SYSTEMD_LIBS $LDFLAGS"
+     AC_DEFINE(USE_SYSTEMD,1,[systemd support is available])
+   else
+     with_systemd=no
+diff --git a/src/Debug.h b/src/Debug.h
+index 6eecd01..ddd9e38 100644
+--- a/src/Debug.h
++++ b/src/Debug.h
+@@ -99,6 +99,10 @@ public:
+ 
+     /// configures the active debugging context to write syslog ALERT
+     static void ForceAlert();
++
++    /// prefixes each grouped debugs() line after the first one in the group
++    static std::ostream& Extra(std::ostream &os) { return os << "\n    "; }
++
+ private:
+     static Context *Current; ///< deepest active context; nil outside debugs()
+ };
+diff --git a/test-suite/buildtests/layer-01-minimal.opts b/test-suite/buildtests/layer-01-minimal.opts
+index 3de29a3..603b5b5 100644
+--- a/test-suite/buildtests/layer-01-minimal.opts
++++ b/test-suite/buildtests/layer-01-minimal.opts
+@@ -108,6 +108,7 @@ DISTCHECK_CONFIGURE_FLAGS=" \
+ 	--without-gnutls \
+ 	--without-openssl \
+ 	--without-po2html \
++	--without-systemd \
+ 	"
+ 
+ # Fix the distclean testing.

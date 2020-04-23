@@ -19,7 +19,10 @@ squid (4.11-1) UNRELEASED; urgency=high
   * debian/changelog
     - Add missing historic CVE references
 
- -- Amos Jeffries <amosjeffries@squid-cache.org>  Thu, 23 Apr 2020 21:18:00 +1300
+  * debian/patches/
+    - Add upstream fix for missing Debug::Extra in systemd builds
+
+ -- Amos Jeffries <amosjeffries@squid-cache.org>  Fri, 24 Apr 2020 00:42:00 +1300
 
 squid (4.10-1) unstable; urgency=high
 

@@ -68,7 +68,7 @@ ifeq ($(DEB_HOST_ARCH_OS), kfreebsd)
 		DEB_CONFIGURE_EXTRA_FLAGS += --enable-kqueue
 endif
 ifeq ($(DEB_HOST_ARCH_OS), linux)
-		DEB_CONFIGURE_EXTRA_FLAGS += --enable-linux-netfilter
+		DEB_CONFIGURE_EXTRA_FLAGS += --enable-linux-netfilter --with-systemd
 endif
 
 DEB_MAKE_CLEAN_TARGET = distclean

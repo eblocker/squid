@@ -24,6 +24,7 @@ Build-Depends: ed, libltdl-dev, pkg-config
 	, libnetfilter-conntrack-dev [linux-any]
 	, libpam0g-dev
 	, libsasl2-dev
+	, libsystemd-dev [linux-any]
 	, libxml2-dev
 	, nettle-dev
 

@@ -3,7 +3,6 @@
 export DEB_BUILD_MAINT_OPTIONS = hardening=+all
 export DEB_CFLAGS_MAINT_APPEND = -Wall
 
-DEB_LDFLAGS_MAINT_APPEND = -Wl,--as-needed
 ifneq (,$(filter $(DEB_HOST_ARCH), armel m68k mips mipsel powerpc powerpcspe sh4))
 	DEB_LDFLAGS_MAINT_APPEND += -latomic
 endif

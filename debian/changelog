@@ -1,10 +1,14 @@
-squid (4.11-2) UNRELEASED; urgency=high
+squid (4.11-2) unstable; urgency=high
 
   [ Amos Jeffries <amosjeffries@squid-cache.org> ]
   * Add libsystemd-dev dependency on Linux (Closes: 958708)
     - fixes systemd timeout failure during install
 
- -- Amos Jeffries <amosjeffries@squid-cache.org>  Sat, 25 Apr 2020 06:27:00 +1300
+  [ Luigi Gangitano <luigi@debian.org> ]
+  * debian/rules
+    - Removed --as-needed flag
+
+ -- Luigi Gangitano <luigi@debian.org>  Fri, 24 Apr 2020 20:49:54 +0200
 
 squid (4.11-1) unstable; urgency=high
 

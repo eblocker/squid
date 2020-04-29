@@ -1,0 +1,431 @@
+commit 1338aee3bf673e10417adc00a267ea6ff25fab4a (refs/remotes/origin/v4)
+Author: Amos Jeffries <yadij@users.noreply.github.com>
+Date:   2019-06-08 11:40:40 +0000
+
+    Fix GCC-9 build issues (#413)
+    
+    GCC-9 continues the development track started with GCC-8
+    producing more warnings and errors about possible code issues
+    which Squid use of "-Wall -Werror" turns into hard build
+    failures:
+    
+     error: 'strncpy' output may be truncated copying 6 bytes from a
+       string of length 6 [-Werror=stringop-truncation]
+    
+     error: '%s' directive argument is null
+      [-Werror=format-overflow=]
+    
+     error: 'void* memset(void*, int, size_t)' clearing an object of
+      type ... with no trivial copy-assignment; use assignment or
+      value-initialization instead [-Werror=class-memaccess]
+    
+     error: 'void* memset(void*, int, size_t)' clearing an object of
+      non-trivial type ...; use assignment or value-initialization
+      instead [-Werror=class-memaccess]
+    
+    Also, segmentation faults with minimal builds have been
+    identified as std::string template differences between
+    optimized and non-optimized object binaries. This results in
+    cppunit (built with optimizations) crashing unit tests when
+    freeing memory. Workaround that temporarily by removing the use
+    of --disable-optimizations from minimal builds.
+
+diff --git a/lib/html_quote.c b/lib/html_quote.c
+index 8c179f9..6215417 100644
+--- a/lib/html_quote.c
++++ b/lib/html_quote.c
+@@ -90,7 +90,7 @@ html_quote(const char *string)
+         }
+         if (escape) {
+             /* Ok, An escaped form was found above. Use it */
+-            strncpy(dst, escape, 6);
++            strncpy(dst, escape, 7);
+             dst += strlen(escape);
+         } else {
+             /* Apparently there is no need to escape this character */
+diff --git a/src/StoreStats.cc b/src/StoreStats.cc
+index 63cff8b..8ac359e 100644
+--- a/src/StoreStats.cc
++++ b/src/StoreStats.cc
+@@ -12,13 +12,6 @@
+ #include "StoreStats.h"
+ #include "tools.h"
+ 
+-/* StoreInfoStats */
+-
+-StoreInfoStats::StoreInfoStats()
+-{
+-    memset(this, 0, sizeof(*this));
+-}
+-
+ StoreInfoStats &
+ StoreInfoStats::operator +=(const StoreInfoStats &stats)
+ {
+diff --git a/src/StoreStats.h b/src/StoreStats.h
+index 9ba56a6..1d5ee95 100644
+--- a/src/StoreStats.h
++++ b/src/StoreStats.h
+@@ -17,9 +17,9 @@ public:
+     class Part
+     {
+     public:
+-        double size; ///< bytes currently in use
+-        double count; ///< number of cached objects
+-        double capacity; ///< the size limit
++        double size = 0.0; ///< bytes currently in use
++        double count = 0.0; ///< number of cached objects
++        double capacity = 0.0; ///< the size limit
+ 
+         /// mean size of a cached object
+         double meanObjectSize() const { return count > 0 ? size/count : 0.0; }
+@@ -32,25 +32,24 @@ public:
+     class Swap: public Part
+     {
+     public:
+-        double open_disk_fd; ///< number of opened disk files
++        double open_disk_fd = 0.0; ///< number of opened disk files
+     };
+ 
+     /// memory cache (cache_mem) storage stats
+     class Mem: public Part
+     {
+     public:
+-        bool shared; ///< whether memory cache is shared among workers
++        bool shared = false; ///< whether memory cache is shared among workers
+     };
+ 
+-    StoreInfoStats();
+     StoreInfoStats &operator +=(const StoreInfoStats &stats);
+ 
+     Swap swap; ///< cache_mem stats
+     Mem mem; ///< all cache_dirs stats
+ 
+     /* stats that could be shared by memory and disk storage */
+-    double store_entry_count; ///< number of StoreEntry objects in existence
+-    double mem_object_count; ///< number of MemObject objects in existence
++    double store_entry_count = 0.0; ///< number of StoreEntry objects in existence
++    double mem_object_count = 0.0; ///< number of MemObject objects in existence
+ };
+ 
+ // TODO: this should be adjusted for use in StoreIoActionData, DiskdActionData
+diff --git a/src/StoreSwapLogData.cc b/src/StoreSwapLogData.cc
+index c8c045c..a21392b 100644
+--- a/src/StoreSwapLogData.cc
++++ b/src/StoreSwapLogData.cc
+@@ -49,11 +49,6 @@ SwapChecksum24::print(std::ostream &os) const
+     return os << raw[0] << '-' << raw[1] << '-' << raw[2];
+ }
+ 
+-StoreSwapLogData::StoreSwapLogData()
+-{
+-    memset(this, 0, sizeof(*this));
+-}
+-
+ bool
+ StoreSwapLogData::sane() const
+ {
+diff --git a/src/StoreSwapLogData.h b/src/StoreSwapLogData.h
+index 2f4b468..424bf83 100644
+--- a/src/StoreSwapLogData.h
++++ b/src/StoreSwapLogData.h
+@@ -90,8 +90,6 @@ public:
+     /// type to use for storing time-related members; must be signed
+     typedef int64_t SwappedTime;
+ 
+-    StoreSwapLogData();
+-
+     /// consistency self-check: whether the data appears to make sense
+     bool sane() const;
+ 
+@@ -102,7 +100,7 @@ public:
+      * Either SWAP_LOG_ADD when an object is added to the disk storage,
+      * or SWAP_LOG_DEL when an object is deleted.
+      */
+-    uint8_t op;
++    uint8_t op = 0;
+ 
+     /**
+      * Fingerprint to weed out bogus/corrupted swap.state entries.
+@@ -116,7 +114,7 @@ public:
+      * are set at run time because the order of storage directories
+      * may change over time.
+      */
+-    sfileno swap_filen;
++    sfileno swap_filen = 0;
+ 
+     /**
+      * A Unix time value that represents the time when
+@@ -125,12 +123,12 @@ public:
+      * to that time. Otherwise, it is set to the Squid process time
+      * when the response is read (as soon as the end of headers are found).
+      */
+-    SwappedTime timestamp;
++    SwappedTime timestamp = 0;
+ 
+     /**
+      * The last time that a client requested this object.
+      */
+-    SwappedTime lastref;
++    SwappedTime lastref = 0;
+ 
+     /**
+      * The value of the response's Expires: header, if any.
+@@ -141,20 +139,20 @@ public:
+      * where Squid sets expires to -2. This happens for the
+      * internal "netdb" object and for FTP URL responses.
+      */
+-    SwappedTime expires;
++    SwappedTime expires = 0;
+ 
+     /**
+      * The value of the response's Last-modified: header, if any.
+      * This is set to -1 if there is no Last-modified: header,
+      * or if it is unparseable.
+      */
+-    SwappedTime lastmod;
++    SwappedTime lastmod = 0;
+ 
+     /**
+      * This is the number of bytes that the object occupies on
+      * disk. It includes the Squid "swap file header".
+      */
+-    uint64_t swap_file_sz;
++    uint64_t swap_file_sz = 0;
+ 
+     /**
+      * The number of times that this object has been accessed (referenced).
+@@ -168,12 +166,12 @@ public:
+      * check when rebuilding the cache at startup. Objects that
+      * have the KEY_PRIVATE flag set are not added back to the cache.
+      */
+-    uint16_t flags;
++    uint16_t flags = 0;
+ 
+     /**
+      * The 128-bit MD5 hash for this object.
+      */
+-    unsigned char key[SQUID_MD5_DIGEST_LENGTH];
++    unsigned char key[SQUID_MD5_DIGEST_LENGTH] = {};
+ };
+ 
+ /// \ingroup FileFormatSwapStateAPI
+diff --git a/src/auth/negotiate/kerberos/negotiate_kerberos_auth.cc b/src/auth/negotiate/kerberos/negotiate_kerberos_auth.cc
+index 3291663..dbf1b19 100644
+--- a/src/auth/negotiate/kerberos/negotiate_kerberos_auth.cc
++++ b/src/auth/negotiate/kerberos/negotiate_kerberos_auth.cc
+@@ -822,7 +822,8 @@ main(int argc, char *const argv[])
+                 goto cleanup;
+             if (major_status & GSS_S_CONTINUE_NEEDED) {
+                 debug((char *) "%s| %s: INFO: continuation needed\n", LogTime(), PROGRAM);
+-                fprintf(stdout, "ERR token=%s\n", token);
++                // XXX: where to get the server token for delivery to client? token is nullptr here.
++                fprintf(stdout, "ERR\n");
+                 goto cleanup;
+             }
+             gss_release_buffer(&minor_status, &output_token);
+diff --git a/src/ipc/SharedListen.cc b/src/ipc/SharedListen.cc
+index 2030006..1a0a577 100644
+--- a/src/ipc/SharedListen.cc
++++ b/src/ipc/SharedListen.cc
+@@ -54,11 +54,6 @@ AddToMap(const PendingOpenRequest &por)
+     return -1;
+ }
+ 
+-Ipc::OpenListenerParams::OpenListenerParams()
+-{
+-    memset(this, 0, sizeof(*this));
+-}
+-
+ bool
+ Ipc::OpenListenerParams::operator <(const OpenListenerParams &p) const
+ {
+diff --git a/src/ipc/SharedListen.h b/src/ipc/SharedListen.h
+index ed0a018..9d888af 100644
+--- a/src/ipc/SharedListen.h
++++ b/src/ipc/SharedListen.h
+@@ -24,18 +24,16 @@ namespace Ipc
+ class OpenListenerParams
+ {
+ public:
+-    OpenListenerParams();
+-
+     bool operator <(const OpenListenerParams &p) const; ///< useful for map<>
+ 
+     // bits to re-create the fde entry
+-    int sock_type;
+-    int proto;
+-    int fdNote; ///< index into fd_note() comment strings
++    int sock_type = 0;
++    int proto = 0;
++    int fdNote = 0; ///< index into fd_note() comment strings
+ 
+     // bits to re-create the listener Comm::Connection descriptor
+     Ip::Address addr; ///< will be memset and memcopied
+-    int flags;
++    int flags = 0;
+ 
+     /// handler to subscribe to Comm::ConnAcceptor when we get the response
+     Subscription::Pointer handlerSubscription;
+diff --git a/src/mgr/InfoAction.cc b/src/mgr/InfoAction.cc
+index b9a5190..c7a341f 100644
+--- a/src/mgr/InfoAction.cc
++++ b/src/mgr/InfoAction.cc
+@@ -28,11 +28,6 @@ void GetInfo(Mgr::InfoActionData& stats);
+ void DumpInfo(Mgr::InfoActionData& stats, StoreEntry* sentry);
+ void DumpMallocStatistics(StoreEntry* sentry);
+ 
+-Mgr::InfoActionData::InfoActionData()
+-{
+-    memset(this, 0, sizeof(*this));
+-}
+-
+ Mgr::InfoActionData&
+ Mgr::InfoActionData::operator += (const InfoActionData& stats)
+ {
+diff --git a/src/mgr/InfoAction.h b/src/mgr/InfoAction.h
+index 2a66b25..caea722 100644
+--- a/src/mgr/InfoAction.h
++++ b/src/mgr/InfoAction.h
+@@ -22,73 +22,72 @@ namespace Mgr
+ class InfoActionData
+ {
+ public:
+-    InfoActionData();
+     InfoActionData& operator += (const InfoActionData& stats);
+ 
+ public:
+-    struct timeval squid_start;
+-    struct timeval current_time;
+-    double client_http_clients;
+-    double client_http_requests;
+-    double icp_pkts_recv;
+-    double icp_pkts_sent;
+-    double icp_replies_queued;
++    struct timeval squid_start = {};
++    struct timeval current_time = {};
++    double client_http_clients = 0.0;
++    double client_http_requests = 0.0;
++    double icp_pkts_recv = 0.0;
++    double icp_pkts_sent = 0.0;
++    double icp_replies_queued = 0.0;
+ #if USE_HTCP
+-    double htcp_pkts_recv;
+-    double htcp_pkts_sent;
++    double htcp_pkts_recv = 0.0;
++    double htcp_pkts_sent = 0.0;
+ #endif
+-    double request_failure_ratio;
+-    double avg_client_http_requests;
+-    double avg_icp_messages;
+-    double select_loops;
+-    double avg_loop_time;
+-    double request_hit_ratio5;
+-    double request_hit_ratio60;
+-    double byte_hit_ratio5;
+-    double byte_hit_ratio60;
+-    double request_hit_mem_ratio5;
+-    double request_hit_mem_ratio60;
+-    double request_hit_disk_ratio5;
+-    double request_hit_disk_ratio60;
++    double request_failure_ratio = 0.0;
++    double avg_client_http_requests = 0.0;
++    double avg_icp_messages = 0.0;
++    double select_loops = 0.0;
++    double avg_loop_time = 0.0;
++    double request_hit_ratio5 = 0.0;
++    double request_hit_ratio60 = 0.0;
++    double byte_hit_ratio5 = 0.0;
++    double byte_hit_ratio60 = 0.0;
++    double request_hit_mem_ratio5 = 0.0;
++    double request_hit_mem_ratio60 = 0.0;
++    double request_hit_disk_ratio5 = 0.0;
++    double request_hit_disk_ratio60 = 0.0;
+ 
+     StoreInfoStats store; ///< disk and memory cache statistics
+ 
+-    double unlink_requests;
+-    double http_requests5;
+-    double http_requests60;
+-    double cache_misses5;
+-    double cache_misses60;
+-    double cache_hits5;
+-    double cache_hits60;
+-    double near_hits5;
+-    double near_hits60;
+-    double not_modified_replies5;
+-    double not_modified_replies60;
+-    double dns_lookups5;
+-    double dns_lookups60;
+-    double icp_queries5;
+-    double icp_queries60;
+-    double up_time;
+-    double cpu_time;
+-    double cpu_usage;
+-    double cpu_usage5;
+-    double cpu_usage60;
+-    double maxrss;
+-    double page_faults;
++    double unlink_requests = 0.0;
++    double http_requests5 = 0.0;
++    double http_requests60 = 0.0;
++    double cache_misses5 = 0.0;
++    double cache_misses60 = 0.0;
++    double cache_hits5 = 0.0;
++    double cache_hits60 = 0.0;
++    double near_hits5 = 0.0;
++    double near_hits60 = 0.0;
++    double not_modified_replies5 = 0.0;
++    double not_modified_replies60 = 0.0;
++    double dns_lookups5 = 0.0;
++    double dns_lookups60 = 0.0;
++    double icp_queries5 = 0.0;
++    double icp_queries60 = 0.0;
++    double up_time = 0.0;
++    double cpu_time = 0.0;
++    double cpu_usage = 0.0;
++    double cpu_usage5 = 0.0;
++    double cpu_usage60 = 0.0;
++    double maxrss = 0.0;
++    double page_faults = 0.0;
+ #if HAVE_MSTATS && HAVE_GNUMALLOC_H
+-    double ms_bytes_total;
+-    double ms_bytes_free;
++    double ms_bytes_total = 0.0;
++    double ms_bytes_free = 0.0;
+ #endif
+-    double total_accounted;
+-    double gb_saved_count;
+-    double gb_freed_count;
+-    double max_fd;
+-    double biggest_fd;
+-    double number_fd;
+-    double opening_fd;
+-    double num_fd_free;
+-    double reserved_fd;
+-    unsigned int count;
++    double total_accounted = 0.0;
++    double gb_saved_count = 0.0;
++    double gb_freed_count = 0.0;
++    double max_fd = 0.0;
++    double biggest_fd = 0.0;
++    double number_fd = 0.0;
++    double opening_fd = 0.0;
++    double num_fd_free = 0.0;
++    double reserved_fd = 0.0;
++    unsigned int count = 0;
+ };
+ 
+ /// implement aggregated 'info' action
+diff --git a/src/tests/stub_store_stats.cc b/src/tests/stub_store_stats.cc
+index c8188a3..7735f08 100644
+--- a/src/tests/stub_store_stats.cc
++++ b/src/tests/stub_store_stats.cc
+@@ -14,8 +14,6 @@
+ #include "StoreStats.h"
+ #include <cstring>
+ 
+-StoreInfoStats::StoreInfoStats() STUB
+-
+ StoreInfoStats &
+ StoreInfoStats::operator +=(const StoreInfoStats &stats) STUB_RETVAL(*this)
+ 

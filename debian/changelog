@@ -5,8 +5,9 @@ squid (4.6-1+deb10u1~exp1) UNRELEASED; urgency=high
     - Add upstream patches for GCC-8/9 build issues (Closes: #925836)
     - Multiple Issues in HTTP Request processing (CVE-2019-12520) (CVE-2019-12524)
     - Heap Overflow issue in URN processing (CVE-2019-12526)
+    - Multiple issues in URI processing (CVE-2019-12523) (CVE-2019-18676)
 
- -- Amos Jeffries <amosjeffries@squid-cache.org>  Thu, 30 Apr 2020 10:39:00 +1300
+ -- Amos Jeffries <amosjeffries@squid-cache.org>  Thu, 30 Apr 2020 11:05:00 +1300
 
 squid (4.6-1+deb10u1) buster-security; urgency=high
 

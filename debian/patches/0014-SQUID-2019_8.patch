@@ -1,0 +1,960 @@
+commit fbbdf75efd7a5cc244b4886a9d42ea458c5a3a73
+Author: Amos Jeffries <yadij@users.noreply.github.com>
+Date:   2019-09-10 09:32:43 +0000
+
+    Update URI parser to use SBuf parsing APIs (#275)
+    
+    Initial replacement of URI/URL parse method internals with
+    SBuf and Tokenizer based parse.
+    
+    For now this parsing only handles the scheme section of
+    URL. With this we add the missing check for alpha character
+    as first in the scheme name for unknown schemes and
+    prohibit URL without any scheme (previously accepted).
+    
+    Also polishes the documentation, URN and asterisk-form
+    URI parsing.
+    
+    Also, adds validation of URN NID portion characters to
+    ensure valid authority host names are generated for
+    THTTP lookup URLs.
+
+diff --git a/src/Downloader.cc b/src/Downloader.cc
+index 7f7a8d6..fb102a8 100644
+--- a/src/Downloader.cc
++++ b/src/Downloader.cc
+@@ -129,7 +129,7 @@ Downloader::buildRequest()
+     const HttpRequestMethod method = Http::METHOD_GET;
+ 
+     const MasterXaction::Pointer mx = new MasterXaction(initiator_);
+-    HttpRequest *const request = HttpRequest::FromUrl(url_.c_str(), mx, method);
++    auto * const request = HttpRequest::FromUrl(url_, mx, method);
+     if (!request) {
+         debugs(33, 5, "Invalid URI: " << url_);
+         return false; //earlyError(...)
+diff --git a/src/HttpRequest.cc b/src/HttpRequest.cc
+index 3132a76..dc48d15 100644
+--- a/src/HttpRequest.cc
++++ b/src/HttpRequest.cc
+@@ -327,15 +327,7 @@ HttpRequest::parseFirstLine(const char *start, const char *end)
+     if (end < start)   // missing URI
+         return false;
+ 
+-    char save = *end;
+-
+-    * (char *) end = '\0';     // temp terminate URI, XXX dangerous?
+-
+-    const bool ret = url.parse(method, start);
+-
+-    * (char *) end = save;
+-
+-    return ret;
++    return url.parse(method, SBuf(start, size_t(end-start)));
+ }
+ 
+ /* swaps out request using httpRequestPack */
+@@ -519,7 +511,7 @@ HttpRequest::expectingBody(const HttpRequestMethod &, int64_t &theSize) const
+  * If the request cannot be created cleanly, NULL is returned
+  */
+ HttpRequest *
+-HttpRequest::FromUrl(const char * url, const MasterXaction::Pointer &mx, const HttpRequestMethod& method)
++HttpRequest::FromUrl(const SBuf &url, const MasterXaction::Pointer &mx, const HttpRequestMethod& method)
+ {
+     std::unique_ptr<HttpRequest> req(new HttpRequest(mx));
+     if (req->url.parse(method, url)) {
+@@ -529,6 +521,12 @@ HttpRequest::FromUrl(const char * url, const MasterXaction::Pointer &mx, const H
+     return nullptr;
+ }
+ 
++HttpRequest *
++HttpRequest::FromUrlXXX(const char * url, const MasterXaction::Pointer &mx, const HttpRequestMethod& method)
++{
++    return FromUrl(SBuf(url), mx, method);
++}
++
+ /**
+  * Are responses to this request possible cacheable ?
+  * If false then no matter what the response must not be cached.
+diff --git a/src/HttpRequest.h b/src/HttpRequest.h
+index fdd13ce..62740c3 100644
+--- a/src/HttpRequest.h
++++ b/src/HttpRequest.h
+@@ -205,7 +205,10 @@ public:
+ 
+     static void httpRequestPack(void *obj, Packable *p);
+ 
+-    static HttpRequest * FromUrl(const char * url, const MasterXaction::Pointer &, const HttpRequestMethod &method = Http::METHOD_GET);
++    static HttpRequest * FromUrl(const SBuf &url, const MasterXaction::Pointer &, const HttpRequestMethod &method = Http::METHOD_GET);
++
++    /// \deprecated use SBuf variant instead
++    static HttpRequest * FromUrlXXX(const char * url, const MasterXaction::Pointer &, const HttpRequestMethod &method = Http::METHOD_GET);
+ 
+     ConnStateData *pinnedConnection();
+ 
+diff --git a/src/Makefile.am b/src/Makefile.am
+index 55b68fc..8605313 100644
+--- a/src/Makefile.am
++++ b/src/Makefile.am
+@@ -1136,6 +1136,7 @@ tests_testACLMaxUserIP_LDADD= \
+ 	acl/libstate.la \
+ 	acl/libapi.la \
+ 	anyp/libanyp.la \
++	parser/libparser.la \
+ 	base/libbase.la \
+ 	ip/libip.la \
+ 	ipc/libipc.la \
+diff --git a/src/acl/Asn.cc b/src/acl/Asn.cc
+index 63d4ee0..f9a822a 100644
+--- a/src/acl/Asn.cc
++++ b/src/acl/Asn.cc
+@@ -243,7 +243,7 @@ asnCacheStart(int as)
+     snprintf(asres, 4096, "whois://%s/!gAS%d", Config.as_whois_server, as);
+     asState->as_number = as;
+     const MasterXaction::Pointer mx = new MasterXaction(XactionInitiator::initAsn);
+-    asState->request = HttpRequest::FromUrl(asres, mx);
++    asState->request = HttpRequest::FromUrlXXX(asres, mx);
+     assert(asState->request != NULL);
+ 
+     if ((e = storeGetPublic(asres, Http::METHOD_GET)) == NULL) {
+diff --git a/src/adaptation/ecap/MessageRep.cc b/src/adaptation/ecap/MessageRep.cc
+index 039f9e1..202194d 100644
+--- a/src/adaptation/ecap/MessageRep.cc
++++ b/src/adaptation/ecap/MessageRep.cc
+@@ -200,8 +200,7 @@
+ {
+     // TODO: if method is not set, AnyP::Uri::parse will assume it is not connect;
+     // Can we change AnyP::Uri::parse API to remove the method parameter?
+-    const char *buf = aUri.toString().c_str();
+-    const bool ok = theMessage.url.parse(theMessage.method, buf);
++    const bool ok = theMessage.url.parse(theMessage.method, SBuf(aUri.toString()));
+     Must(ok);
+ }
+ 
+diff --git a/src/anyp/ProtocolType.h b/src/anyp/ProtocolType.h
+index 6ac8706..5aa7358 100644
+--- a/src/anyp/ProtocolType.h
++++ b/src/anyp/ProtocolType.h
+@@ -14,6 +14,7 @@
+ namespace AnyP
+ {
+ 
++// TODO order by current protocol popularity (eg HTTPS before FTP)
+ /**
+  * List of all protocols known and supported.
+  * This is a combined list. It is used as type-codes where needed and
+diff --git a/src/anyp/Uri.cc b/src/anyp/Uri.cc
+index 065aea5..e42f7c6 100644
+--- a/src/anyp/Uri.cc
++++ b/src/anyp/Uri.cc
+@@ -12,6 +12,7 @@
+ #include "anyp/Uri.h"
+ #include "globals.h"
+ #include "HttpRequest.h"
++#include "parser/Tokenizer.h"
+ #include "rfc1738.h"
+ #include "SquidConfig.h"
+ #include "SquidString.h"
+@@ -126,55 +127,40 @@ urlInitialize(void)
+ }
+ 
+ /**
+- * Parse the scheme name from string b, into protocol type.
+- * The string must be 0-terminated.
++ * Extract the URI scheme and ':' delimiter from the given input buffer.
++ *
++ * Schemes up to 16 characters are accepted.
++ *
++ * Governed by RFC 3986 section 3.1
+  */
+-AnyP::ProtocolType
+-urlParseProtocol(const char *b)
++static AnyP::UriScheme
++uriParseScheme(Parser::Tokenizer &tok)
+ {
+-    // make e point to the ':' character
+-    const char *e = b + strcspn(b, ":");
+-    int len = e - b;
+-
+-    /* test common stuff first */
+-
+-    if (strncasecmp(b, "http", len) == 0)
+-        return AnyP::PROTO_HTTP;
+-
+-    if (strncasecmp(b, "ftp", len) == 0)
+-        return AnyP::PROTO_FTP;
+-
+-    if (strncasecmp(b, "https", len) == 0)
+-        return AnyP::PROTO_HTTPS;
+-
+-    if (strncasecmp(b, "file", len) == 0)
+-        return AnyP::PROTO_FTP;
+-
+-    if (strncasecmp(b, "coap", len) == 0)
+-        return AnyP::PROTO_COAP;
+-
+-    if (strncasecmp(b, "coaps", len) == 0)
+-        return AnyP::PROTO_COAPS;
+-
+-    if (strncasecmp(b, "gopher", len) == 0)
+-        return AnyP::PROTO_GOPHER;
+-
+-    if (strncasecmp(b, "wais", len) == 0)
+-        return AnyP::PROTO_WAIS;
+-
+-    if (strncasecmp(b, "cache_object", len) == 0)
+-        return AnyP::PROTO_CACHE_OBJECT;
+-
+-    if (strncasecmp(b, "urn", len) == 0)
+-        return AnyP::PROTO_URN;
+-
+-    if (strncasecmp(b, "whois", len) == 0)
+-        return AnyP::PROTO_WHOIS;
+-
+-    if (len > 0)
+-        return AnyP::PROTO_UNKNOWN;
++    /*
++     * RFC 3986 section 3.1 paragraph 2:
++     *
++     * Scheme names consist of a sequence of characters beginning with a
++     * letter and followed by any combination of letters, digits, plus
++     * ("+"), period ("."), or hyphen ("-").
++     *
++     * The underscore ("_") required to match "cache_object://" squid
++     * special URI scheme.
++     */
++    static const auto schemeChars =
++#if USE_HTTP_VIOLATIONS
++        CharacterSet("special", "_") +
++#endif
++        CharacterSet("scheme", "+.-") + CharacterSet::ALPHA + CharacterSet::DIGIT;
++
++    SBuf str;
++    if (tok.prefix(str, schemeChars, 16) && tok.skip(':') && CharacterSet::ALPHA[str.at(0)]) {
++        const auto protocol = AnyP::UriScheme::FindProtocolType(str);
++        if (protocol == AnyP::PROTO_UNKNOWN)
++            return AnyP::UriScheme(protocol, str.c_str());
++        return AnyP::UriScheme(protocol, nullptr);
++    }
+ 
+-    return AnyP::PROTO_NONE;
++    throw TextException("invalid URI scheme", Here());
+ }
+ 
+ /**
+@@ -204,44 +190,49 @@ urlAppendDomain(char *host)
+ /*
+  * Parse a URI/URL.
+  *
+- * Stores parsed values in the `request` argument.
+- *
+- * This abuses HttpRequest as a way of representing the parsed url
+- * and its components.
+- * method is used to switch parsers and to init the HttpRequest.
+- * If method is Http::METHOD_CONNECT, then rather than a URL a hostname:port is
+- * looked for.
+- * The url is non const so that if its too long we can NULL-terminate it in place.
+- */
+-
+-/*
+- * This routine parses a URL. Its assumed that the URL is complete -
++ * It is assumed that the URL is complete -
+  * ie, the end of the string is the end of the URL. Don't pass a partial
+  * URL here as this routine doesn't have any way of knowing whether
+- * its partial or not (ie, it handles the case of no trailing slash as
++ * it is partial or not (ie, it handles the case of no trailing slash as
+  * being "end of host with implied path of /".
++ *
++ * method is used to switch parsers. If method is Http::METHOD_CONNECT,
++ * then rather than a URL a hostname:port is looked for.
+  */
+ bool
+-AnyP::Uri::parse(const HttpRequestMethod& method, const char *url)
++AnyP::Uri::parse(const HttpRequestMethod& method, const SBuf &rawUrl)
+ {
+-    LOCAL_ARRAY(char, proto, MAX_URL);
++    try {
++
+     LOCAL_ARRAY(char, login, MAX_URL);
+     LOCAL_ARRAY(char, foundHost, MAX_URL);
+     LOCAL_ARRAY(char, urlpath, MAX_URL);
+     char *t = NULL;
+     char *q = NULL;
+     int foundPort;
+-    AnyP::ProtocolType protocol = AnyP::PROTO_NONE;
+     int l;
+     int i;
+     const char *src;
+     char *dst;
+-    proto[0] = foundHost[0] = urlpath[0] = login[0] = '\0';
++    foundHost[0] = urlpath[0] = login[0] = '\0';
+ 
+-    if ((l = strlen(url)) + Config.appendDomainLen > (MAX_URL - 1)) {
++    if ((l = rawUrl.length()) + Config.appendDomainLen > (MAX_URL - 1)) {
+         debugs(23, DBG_IMPORTANT, MYNAME << "URL too large (" << l << " bytes)");
+         return false;
+     }
++
++    if ((method == Http::METHOD_OPTIONS || method == Http::METHOD_TRACE) &&
++               Asterisk().cmp(rawUrl) == 0) {
++        // XXX: these methods might also occur in HTTPS traffic. Handle this better.
++        setScheme(AnyP::PROTO_HTTP, nullptr);
++        port(getScheme().defaultPort());
++        path(Asterisk());
++        return true;
++    }
++
++    Parser::Tokenizer tok(rawUrl);
++    AnyP::UriScheme scheme;
++
+     if (method == Http::METHOD_CONNECT) {
+         /*
+          * RFC 7230 section 5.3.3:  authority-form = authority
+@@ -253,37 +244,37 @@ AnyP::Uri::parse(const HttpRequestMethod& method, const char *url)
+          */
+         foundPort = 443;
+ 
++        // XXX: use tokenizer
++        auto B = tok.buf();
++        const char *url = B.c_str();
++
+         if (sscanf(url, "[%[^]]]:%d", foundHost, &foundPort) < 1)
+             if (sscanf(url, "%[^:]:%d", foundHost, &foundPort) < 1)
+                 return false;
+ 
+-    } else if ((method == Http::METHOD_OPTIONS || method == Http::METHOD_TRACE) &&
+-               AnyP::Uri::Asterisk().cmp(url) == 0) {
+-        parseFinish(AnyP::PROTO_HTTP, nullptr, url, foundHost, SBuf(), 80 /* HTTP default port */);
+-        return true;
+-    } else if (strncmp(url, "urn:", 4) == 0) {
+-        debugs(23, 3, "Split URI '" << url << "' into proto='urn', path='" << (url+4) << "'");
+-        debugs(50, 5, "urn=" << (url+4));
+-        setScheme(AnyP::PROTO_URN, nullptr);
+-        path(url + 4);
+-        return true;
+     } else {
+-        /* Parse the URL: */
+-        src = url;
+-        i = 0;
+-        /* Find first : - everything before is protocol */
+-        for (i = 0, dst = proto; i < l && *src != ':'; ++i, ++src, ++dst) {
+-            *dst = *src;
++
++        scheme = uriParseScheme(tok);
++
++        if (scheme == AnyP::PROTO_NONE)
++            return false; // invalid scheme
++
++        if (scheme == AnyP::PROTO_URN) {
++            parseUrn(tok); // throws on any error
++            return true;
+         }
+-        if (i >= l)
+-            return false;
+-        *dst = '\0';
+ 
+-        /* Then its :// */
+-        if ((i+3) > l || *src != ':' || *(src + 1) != '/' || *(src + 2) != '/')
++        // URLs then have "//"
++        static const SBuf doubleSlash("//");
++        if (!tok.skip(doubleSlash))
+             return false;
+-        i += 3;
+-        src += 3;
++
++        auto B = tok.remaining();
++        const char *url = B.c_str();
++
++        /* Parse the URL: */
++        src = url;
++        i = 0;
+ 
+         /* Then everything until first /; thats host (and port; which we'll look for here later) */
+         // bug 1881: If we don't get a "/" then we imply it was there
+@@ -324,8 +315,7 @@ AnyP::Uri::parse(const HttpRequestMethod& method, const char *url)
+         }
+         *dst = '\0';
+ 
+-        protocol = urlParseProtocol(proto);
+-        foundPort = AnyP::UriScheme(protocol).defaultPort();
++        foundPort = scheme.defaultPort(); // may be reset later
+ 
+         /* Is there any login information? (we should eventually parse it above) */
+         t = strrchr(foundHost, '@');
+@@ -373,7 +363,7 @@ AnyP::Uri::parse(const HttpRequestMethod& method, const char *url)
+         }
+ 
+         // Bug 3183 sanity check: If scheme is present, host must be too.
+-        if (protocol != AnyP::PROTO_NONE && foundHost[0] == '\0') {
++        if (scheme != AnyP::PROTO_NONE && foundHost[0] == '\0') {
+             debugs(23, DBG_IMPORTANT, "SECURITY ALERT: Missing hostname in URL '" << url << "'. see access.log for details.");
+             return false;
+         }
+@@ -402,7 +392,7 @@ AnyP::Uri::parse(const HttpRequestMethod& method, const char *url)
+         }
+     }
+ 
+-    debugs(23, 3, "Split URL '" << url << "' into proto='" << proto << "', host='" << foundHost << "', port='" << foundPort << "', path='" << urlpath << "'");
++    debugs(23, 3, "Split URL '" << rawUrl << "' into proto='" << scheme.image() << "', host='" << foundHost << "', port='" << foundPort << "', path='" << urlpath << "'");
+ 
+     if (Config.onoff.check_hostnames &&
+             strspn(foundHost, Config.onoff.allow_underscore ? valid_hostname_chars_u : valid_hostname_chars) != strlen(foundHost)) {
+@@ -438,7 +428,7 @@ AnyP::Uri::parse(const HttpRequestMethod& method, const char *url)
+ #endif
+ 
+     if (stringHasWhitespace(urlpath)) {
+-        debugs(23, 2, "URI has whitespace: {" << url << "}");
++        debugs(23, 2, "URI has whitespace: {" << rawUrl << "}");
+ 
+         switch (Config.uri_whitespace) {
+ 
+@@ -471,24 +461,59 @@ AnyP::Uri::parse(const HttpRequestMethod& method, const char *url)
+         }
+     }
+ 
+-    parseFinish(protocol, proto, urlpath, foundHost, SBuf(login), foundPort);
++    setScheme(scheme);
++    path(urlpath);
++    host(foundHost);
++    userInfo(SBuf(login));
++    port(foundPort);
+     return true;
++
++    } catch (...) {
++        debugs(23, 2, "error: " << CurrentException << " " << Raw("rawUrl", rawUrl.rawContent(), rawUrl.length()));
++        return false;
++    }
+ }
+ 
+-/// Update the URL object with parsed URI data.
++/**
++ * Governed by RFC 8141 section 2:
++ *
++ *  assigned-name = "urn" ":" NID ":" NSS
++ *  NID           = (alphanum) 0*30(ldh) (alphanum)
++ *  ldh           = alphanum / "-"
++ *  NSS           = pchar *(pchar / "/")
++ *
++ * RFC 3986 Appendix D.2 defines (as deprecated):
++ *
++ *   alphanum     = ALPHA / DIGIT
++ *
++ * Notice that NID is exactly 2-32 characters in length.
++ */
+ void
+-AnyP::Uri::parseFinish(const AnyP::ProtocolType protocol,
+-                       const char *const protoStr, // for unknown protocols
+-                       const char *const aUrlPath,
+-                       const char *const aHost,
+-                       const SBuf &aLogin,
+-                       const int aPort)
++AnyP::Uri::parseUrn(Parser::Tokenizer &tok)
+ {
+-    setScheme(protocol, protoStr);
+-    path(aUrlPath);
+-    host(aHost);
+-    userInfo(aLogin);
+-    port(aPort);
++    static const auto nidChars = CharacterSet("NID","-") + CharacterSet::ALPHA + CharacterSet::DIGIT;
++    static const auto alphanum = (CharacterSet::ALPHA + CharacterSet::DIGIT).rename("alphanum");
++    SBuf nid;
++    if (!tok.prefix(nid, nidChars, 32))
++        throw TextException("NID not found", Here());
++
++    if (!tok.skip(':'))
++        throw TextException("NID too long or missing ':' delimiter", Here());
++
++    if (nid.length() < 2)
++        throw TextException("NID too short", Here());
++
++    if (!alphanum[*nid.begin()])
++        throw TextException("NID prefix is not alphanumeric", Here());
++
++    if (!alphanum[*nid.rbegin()])
++        throw TextException("NID suffix is not alphanumeric", Here());
++
++    setScheme(AnyP::PROTO_URN, nullptr);
++    host(nid.c_str());
++    // TODO validate path characters
++    path(tok.remaining());
++    debugs(23, 3, "Split URI into proto=urn, nid=" << nid << ", " << Raw("path",path().rawContent(),path().length()));
+ }
+ 
+ void
+@@ -536,6 +561,9 @@ AnyP::Uri::absolute() const
+                 absolute_.append("@", 1);
+             }
+             absolute_.append(authority());
++        } else {
++            absolute_.append(host());
++            absolute_.append(":", 1);
+         }
+         absolute_.append(path());
+     }
+diff --git a/src/anyp/Uri.h b/src/anyp/Uri.h
+index 5a167cb..71287d0 100644
+--- a/src/anyp/Uri.h
++++ b/src/anyp/Uri.h
+@@ -11,6 +11,7 @@
+ 
+ #include "anyp/UriScheme.h"
+ #include "ip/Address.h"
++#include "parser/Tokenizer.h"
+ #include "rfc2181.h"
+ #include "sbuf/SBuf.h"
+ 
+@@ -59,7 +60,7 @@ public:
+     }
+     void touch(); ///< clear the cached URI display forms
+ 
+-    bool parse(const HttpRequestMethod &, const char *url);
++    bool parse(const HttpRequestMethod &, const SBuf &url);
+ 
+     /// \return a new URI that honors uri_whitespace
+     static char *cleanup(const char *uri);
+@@ -71,6 +72,10 @@ public:
+         scheme_ = AnyP::UriScheme(p, str);
+         touch();
+     }
++    void setScheme(const AnyP::UriScheme &s) {
++        scheme_ = s;
++        touch();
++    }
+ 
+     void userInfo(const SBuf &s) {userInfo_=s; touch();}
+     const SBuf &userInfo() const {return userInfo_;}
+@@ -120,7 +125,7 @@ public:
+     SBuf &absolute() const;
+ 
+ private:
+-    void parseFinish(const AnyP::ProtocolType, const char *const, const char *const, const char *const, const SBuf &, const int);
++    void parseUrn(Parser::Tokenizer&);
+ 
+     /**
+      \par
+diff --git a/src/anyp/UriScheme.cc b/src/anyp/UriScheme.cc
+index b0b293d..0f4d531 100644
+--- a/src/anyp/UriScheme.cc
++++ b/src/anyp/UriScheme.cc
+@@ -48,6 +48,25 @@ AnyP::UriScheme::Init()
+     }
+ }
+ 
++const AnyP::ProtocolType
++AnyP::UriScheme::FindProtocolType(const SBuf &scheme)
++{
++    if (scheme.isEmpty())
++        return AnyP::PROTO_NONE;
++
++    Init();
++
++    auto img = scheme;
++    img.toLower();
++    // TODO: use base/EnumIterator.h if possible
++    for (int i = AnyP::PROTO_NONE + 1; i < AnyP::PROTO_UNKNOWN; ++i) {
++        if (LowercaseSchemeNames_.at(i) == img)
++            return AnyP::ProtocolType(i);
++    }
++
++    return AnyP::PROTO_UNKNOWN;
++}
++
+ unsigned short
+ AnyP::UriScheme::defaultPort() const
+ {
+diff --git a/src/anyp/UriScheme.h b/src/anyp/UriScheme.h
+index 7deb442..6ddedd2 100644
+--- a/src/anyp/UriScheme.h
++++ b/src/anyp/UriScheme.h
+@@ -54,6 +54,9 @@ public:
+     /// initializes down-cased protocol scheme names array
+     static void Init();
+ 
++    /// \returns ProtocolType for the given scheme name or PROTO_UNKNOWN
++    static const AnyP::ProtocolType FindProtocolType(const SBuf &);
++
+ private:
+     /// optimization: stores down-cased protocol scheme names, copied from
+     /// AnyP::ProtocolType_str
+diff --git a/src/client_side_request.cc b/src/client_side_request.cc
+index 8d1b000..a37f8d4 100644
+--- a/src/client_side_request.cc
++++ b/src/client_side_request.cc
+@@ -346,7 +346,8 @@ clientBeginRequest(const HttpRequestMethod& method, char const *url, CSCB * stre
+     http->uri = (char *)xcalloc(url_sz, 1);
+     strcpy(http->uri, url); // XXX: polluting http->uri before parser validation
+ 
+-    if ((request = HttpRequest::FromUrl(http->uri, mx, method)) == NULL) {
++    request = HttpRequest::FromUrlXXX(http->uri, mx, method);
++    if (!request) {
+         debugs(85, 5, "Invalid URL: " << http->uri);
+         return -1;
+     }
+@@ -1262,7 +1263,7 @@ ClientRequestContext::clientRedirectDone(const Helper::Reply &reply)
+             // prevent broken helpers causing too much damage. If old URL == new URL skip the re-write.
+             if (urlNote != NULL && strcmp(urlNote, http->uri)) {
+                 AnyP::Uri tmpUrl;
+-                if (tmpUrl.parse(old_request->method, urlNote)) {
++                if (tmpUrl.parse(old_request->method, SBuf(urlNote))) {
+                     HttpRequest *new_request = old_request->clone();
+                     new_request->url = tmpUrl;
+                     debugs(61, 2, "URL-rewriter diverts URL from " << old_request->effectiveRequestUri() << " to " << new_request->effectiveRequestUri());
+diff --git a/src/htcp.cc b/src/htcp.cc
+index 5ff6026..5649c9f 100644
+--- a/src/htcp.cc
++++ b/src/htcp.cc
+@@ -674,7 +674,7 @@ htcpUnpackSpecifier(char *buf, int sz)
+     method.HttpRequestMethodXXX(s->method);
+ 
+     const MasterXaction::Pointer mx = new MasterXaction(XactionInitiator::initHtcp);
+-    s->request = HttpRequest::FromUrl(s->uri, mx, method == Http::METHOD_NONE ? HttpRequestMethod(Http::METHOD_GET) : method);
++    s->request = HttpRequest::FromUrlXXX(s->uri, mx, method == Http::METHOD_NONE ? HttpRequestMethod(Http::METHOD_GET) : method);
+     if (!s->request) {
+         debugs(31, 3, "failed to create request. Invalid URI?");
+         return nil;
+diff --git a/src/icmp/net_db.cc b/src/icmp/net_db.cc
+index a97656d..bc7443a 100644
+--- a/src/icmp/net_db.cc
++++ b/src/icmp/net_db.cc
+@@ -1285,7 +1285,7 @@ netdbExchangeStart(void *data)
+     char *uri = internalRemoteUri(p->secure.encryptTransport, p->host, p->http_port, "/squid-internal-dynamic/", netDB);
+     debugs(38, 3, "Requesting '" << uri << "'");
+     const MasterXaction::Pointer mx = new MasterXaction(XactionInitiator::initIcmp);
+-    HttpRequest *req = HttpRequest::FromUrl(uri, mx);
++    auto req = HttpRequest::FromUrlXXX(uri, mx);
+ 
+     if (!req) {
+         debugs(38, DBG_IMPORTANT, MYNAME << ": Bad URI " << uri);
+diff --git a/src/icp_v2.cc b/src/icp_v2.cc
+index 9bb36c6..7434929 100644
+--- a/src/icp_v2.cc
++++ b/src/icp_v2.cc
+@@ -440,9 +440,9 @@ icpGetRequest(char *url, int reqnum, int fd, Ip::Address &from)
+         return NULL;
+     }
+ 
+-    HttpRequest *result;
+     const MasterXaction::Pointer mx = new MasterXaction(XactionInitiator::initIcp);
+-    if ((result = HttpRequest::FromUrl(url, mx)) == NULL)
++    auto *result = HttpRequest::FromUrlXXX(url, mx);
++    if (!result)
+         icpCreateAndSend(ICP_ERR, 0, url, reqnum, 0, fd, from);
+ 
+     return result;
+diff --git a/src/mgr/Inquirer.cc b/src/mgr/Inquirer.cc
+index 71706a4..86bacc5 100644
+--- a/src/mgr/Inquirer.cc
++++ b/src/mgr/Inquirer.cc
+@@ -76,7 +76,7 @@ Mgr::Inquirer::start()
+     if (strands.empty()) {
+         const char *url = aggrAction->command().params.httpUri.termedBuf();
+         const MasterXaction::Pointer mx = new MasterXaction(XactionInitiator::initIpc);
+-        HttpRequest *req = HttpRequest::FromUrl(url, mx);
++        auto *req = HttpRequest::FromUrlXXX(url, mx);
+         ErrorState err(ERR_INVALID_URL, Http::scNotFound, req);
+         std::unique_ptr<HttpReply> reply(err.BuildHttpReply());
+         replyBuf.reset(reply->pack());
+diff --git a/src/mime.cc b/src/mime.cc
+index 34a0253..ab2ad45 100644
+--- a/src/mime.cc
++++ b/src/mime.cc
+@@ -402,7 +402,7 @@ MimeIcon::created(StoreEntry *newEntry)
+     /* fill `e` with a canned 2xx response object */
+ 
+     const MasterXaction::Pointer mx = new MasterXaction(XactionInitiator::initIcon);
+-    HttpRequest *r = HttpRequest::FromUrl(url_, mx);
++    auto r = HttpRequest::FromUrlXXX(url_, mx);
+     if (!r)
+         fatalf("mimeLoadIcon: cannot parse internal URL: %s", url_);
+ 
+diff --git a/src/neighbors.cc b/src/neighbors.cc
+index 67b2c5c..55b73f2 100644
+--- a/src/neighbors.cc
++++ b/src/neighbors.cc
+@@ -1373,7 +1373,7 @@ peerCountMcastPeersStart(void *data)
+     p->in_addr.toUrl(url+7, MAX_URL -8 );
+     strcat(url, "/");
+     const MasterXaction::Pointer mx = new MasterXaction(XactionInitiator::initPeerMcast);
+-    HttpRequest *req = HttpRequest::FromUrl(url, mx);
++    auto *req = HttpRequest::FromUrlXXX(url, mx);
+     assert(req != nullptr);
+     StoreEntry *fake = storeCreateEntry(url, url, RequestFlags(), Http::METHOD_GET);
+     psstate = new ps_state;
+diff --git a/src/peer_digest.cc b/src/peer_digest.cc
+index 548a151..fb8fb3d 100644
+--- a/src/peer_digest.cc
++++ b/src/peer_digest.cc
+@@ -327,7 +327,7 @@ peerDigestRequest(PeerDigest * pd)
+     debugs(72, 2, url);
+ 
+     const MasterXaction::Pointer mx = new MasterXaction(XactionInitiator::initCacheDigest);
+-    req = HttpRequest::FromUrl(url, mx);
++    req = HttpRequest::FromUrlXXX(url, mx);
+ 
+     assert(req);
+ 
+diff --git a/src/servers/FtpServer.cc b/src/servers/FtpServer.cc
+index d63dc84..5171893 100644
+--- a/src/servers/FtpServer.cc
++++ b/src/servers/FtpServer.cc
+@@ -726,7 +726,7 @@ Ftp::Server::parseOneRequest()
+     calcUri(path);
+     MasterXaction::Pointer mx = new MasterXaction(XactionInitiator::initClient);
+     mx->tcpClient = clientConnection;
+-    HttpRequest *const request = HttpRequest::FromUrl(uri.c_str(), mx, method);
++    auto * const request = HttpRequest::FromUrl(uri, mx, method);
+     if (!request) {
+         debugs(33, 5, "Invalid FTP URL: " << uri);
+         uri.clear();
+diff --git a/src/servers/Http1Server.cc b/src/servers/Http1Server.cc
+index 66722f7..fccbf72 100644
+--- a/src/servers/Http1Server.cc
++++ b/src/servers/Http1Server.cc
+@@ -139,7 +139,8 @@ Http::One::Server::buildHttpRequest(Http::StreamPointer &context)
+     // TODO: move URL parse into Http Parser and INVALID_URL into the above parse error handling
+     MasterXaction::Pointer mx = new MasterXaction(XactionInitiator::initClient);
+     mx->tcpClient = clientConnection;
+-    if ((request = HttpRequest::FromUrl(http->uri, mx, parser_->method())) == NULL) {
++    request = HttpRequest::FromUrlXXX(http->uri, mx, parser_->method());
++    if (!request) {
+         debugs(33, 5, "Invalid URL: " << http->uri);
+         // setReplyToError() requires log_uri
+         http->setLogUriToRawUri(http->uri, parser_->method());
+diff --git a/src/store_digest.cc b/src/store_digest.cc
+index 6cfdeec..358bdcf 100644
+--- a/src/store_digest.cc
++++ b/src/store_digest.cc
+@@ -414,7 +414,7 @@ storeDigestRewriteStart(void *datanotused)
+ 
+     const char *url = internalLocalUri("/squid-internal-periodic/", SBuf(StoreDigestFileName));
+     const MasterXaction::Pointer mx = new MasterXaction(XactionInitiator::initCacheDigest);
+-    auto req = HttpRequest::FromUrl(url, mx);
++    auto req = HttpRequest::FromUrlXXX(url, mx);
+ 
+     RequestFlags flags;
+     flags.cachable = true;
+diff --git a/src/tests/stub_HttpRequest.cc b/src/tests/stub_HttpRequest.cc
+index 8ec6eea..7a77387 100644
+--- a/src/tests/stub_HttpRequest.cc
++++ b/src/tests/stub_HttpRequest.cc
+@@ -47,7 +47,8 @@ int HttpRequest::prefixLen() const STUB_RETVAL(0)
+ void HttpRequest::swapOut(StoreEntry *) STUB
+ void HttpRequest::pack(Packable *) const STUB
+ void HttpRequest::httpRequestPack(void *, Packable *) STUB
+-HttpRequest * HttpRequest::FromUrl(const char *, const MasterXaction::Pointer &, const HttpRequestMethod &) STUB_RETVAL(NULL)
++HttpRequest * HttpRequest::FromUrl(const SBuf &, const MasterXaction::Pointer &, const HttpRequestMethod &) STUB_RETVAL(nullptr)
++HttpRequest * HttpRequest::FromUrlXXX(const char *, const MasterXaction::Pointer &, const HttpRequestMethod &) STUB_RETVAL(nullptr)
+ ConnStateData *HttpRequest::pinnedConnection() STUB_RETVAL(NULL)
+ const SBuf HttpRequest::storeId() STUB_RETVAL(SBuf("."))
+ void HttpRequest::ignoreRange(const char *) STUB
+diff --git a/src/tests/stub_libanyp.cc b/src/tests/stub_libanyp.cc
+index 2eeff19..47dfb49 100644
+--- a/src/tests/stub_libanyp.cc
++++ b/src/tests/stub_libanyp.cc
+@@ -14,7 +14,7 @@
+ #include "anyp/Uri.h"
+ AnyP::Uri::Uri(AnyP::UriScheme const &) {STUB}
+ void AnyP::Uri::touch() STUB
+-bool AnyP::Uri::parse(const HttpRequestMethod&, const char *) STUB_RETVAL(true)
++bool AnyP::Uri::parse(const HttpRequestMethod&, const SBuf &) STUB_RETVAL(true)
+ void AnyP::Uri::host(const char *) STUB
+ static SBuf nil;
+ const SBuf &AnyP::Uri::path() const STUB_RETVAL(nil)
+diff --git a/src/tests/testHttpRequest.cc b/src/tests/testHttpRequest.cc
+index c4d743e..3d7d968 100644
+--- a/src/tests/testHttpRequest.cc
++++ b/src/tests/testHttpRequest.cc
+@@ -45,60 +45,55 @@ testHttpRequest::testCreateFromUrl()
+ {
+     /* vanilla url, implict method */
+     unsigned short expected_port;
+-    char * url = xstrdup("http://foo:90/bar");
++    SBuf url("http://foo:90/bar");
+     const MasterXaction::Pointer mx = new MasterXaction(XactionInitiator::initClient);
+     HttpRequest *aRequest = HttpRequest::FromUrl(url, mx);
+     expected_port = 90;
++    CPPUNIT_ASSERT(aRequest != nullptr);
+     CPPUNIT_ASSERT_EQUAL(expected_port, aRequest->url.port());
+     CPPUNIT_ASSERT(aRequest->method == Http::METHOD_GET);
+     CPPUNIT_ASSERT_EQUAL(String("foo"), String(aRequest->url.host()));
+     CPPUNIT_ASSERT_EQUAL(SBuf("/bar"), aRequest->url.path());
+     CPPUNIT_ASSERT_EQUAL(AnyP::PROTO_HTTP, static_cast<AnyP::ProtocolType>(aRequest->url.getScheme()));
+-    CPPUNIT_ASSERT_EQUAL(String("http://foo:90/bar"), String(url));
+-    xfree(url);
+ 
+     /* vanilla url */
+-    url = xstrdup("http://foo:90/bar");
++    url = "http://foo:90/bar";
+     aRequest = HttpRequest::FromUrl(url, mx, Http::METHOD_GET);
+     expected_port = 90;
++    CPPUNIT_ASSERT(aRequest != nullptr);
+     CPPUNIT_ASSERT_EQUAL(expected_port, aRequest->url.port());
+     CPPUNIT_ASSERT(aRequest->method == Http::METHOD_GET);
+     CPPUNIT_ASSERT_EQUAL(String("foo"), String(aRequest->url.host()));
+     CPPUNIT_ASSERT_EQUAL(SBuf("/bar"), aRequest->url.path());
+     CPPUNIT_ASSERT_EQUAL(AnyP::PROTO_HTTP, static_cast<AnyP::ProtocolType>(aRequest->url.getScheme()));
+-    CPPUNIT_ASSERT_EQUAL(String("http://foo:90/bar"), String(url));
+-    xfree(url);
+ 
+     /* vanilla url, different method */
+-    url = xstrdup("http://foo/bar");
++    url = "http://foo/bar";
+     aRequest = HttpRequest::FromUrl(url, mx, Http::METHOD_PUT);
+     expected_port = 80;
++    CPPUNIT_ASSERT(aRequest != nullptr);
+     CPPUNIT_ASSERT_EQUAL(expected_port, aRequest->url.port());
+     CPPUNIT_ASSERT(aRequest->method == Http::METHOD_PUT);
+     CPPUNIT_ASSERT_EQUAL(String("foo"), String(aRequest->url.host()));
+     CPPUNIT_ASSERT_EQUAL(SBuf("/bar"), aRequest->url.path());
+     CPPUNIT_ASSERT_EQUAL(AnyP::PROTO_HTTP, static_cast<AnyP::ProtocolType>(aRequest->url.getScheme()));
+-    CPPUNIT_ASSERT_EQUAL(String("http://foo/bar"), String(url));
+-    xfree(url);
+ 
+     /* a connect url with non-CONNECT data */
+     HttpRequest *nullRequest = nullptr;
+-    url = xstrdup(":foo/bar");
++    url = ":foo/bar";
+     aRequest = HttpRequest::FromUrl(url, mx, Http::METHOD_CONNECT);
+-    xfree(url);
+     CPPUNIT_ASSERT_EQUAL(nullRequest, aRequest);
+ 
+     /* a CONNECT url with CONNECT data */
+-    url = xstrdup("foo:45");
++    url = "foo:45";
+     aRequest = HttpRequest::FromUrl(url, mx, Http::METHOD_CONNECT);
+     expected_port = 45;
++    CPPUNIT_ASSERT(aRequest != nullptr);
+     CPPUNIT_ASSERT_EQUAL(expected_port, aRequest->url.port());
+     CPPUNIT_ASSERT(aRequest->method == Http::METHOD_CONNECT);
+     CPPUNIT_ASSERT_EQUAL(String("foo"), String(aRequest->url.host()));
+     CPPUNIT_ASSERT_EQUAL(SBuf(), aRequest->url.path());
+     CPPUNIT_ASSERT_EQUAL(AnyP::PROTO_NONE, static_cast<AnyP::ProtocolType>(aRequest->url.getScheme()));
+-    CPPUNIT_ASSERT_EQUAL(String("foo:45"), String(url));
+-    xfree(url);
+ 
+     // XXX: check METHOD_NONE input handling
+ }
+@@ -110,11 +105,10 @@ void
+ testHttpRequest::testIPv6HostColonBug()
+ {
+     unsigned short expected_port;
+-    char * url = NULL;
+     HttpRequest *aRequest = NULL;
+ 
+     /* valid IPv6 address without port */
+-    url = xstrdup("http://[2000:800::45]/foo");
++    SBuf url("http://[2000:800::45]/foo");
+     const MasterXaction::Pointer mx = new MasterXaction(XactionInitiator::initClient);
+     aRequest = HttpRequest::FromUrl(url, mx, Http::METHOD_GET);
+     expected_port = 80;
+@@ -123,11 +117,9 @@ testHttpRequest::testIPv6HostColonBug()
+     CPPUNIT_ASSERT_EQUAL(String("[2000:800::45]"), String(aRequest->url.host()));
+     CPPUNIT_ASSERT_EQUAL(SBuf("/foo"), aRequest->url.path());
+     CPPUNIT_ASSERT_EQUAL(AnyP::PROTO_HTTP, static_cast<AnyP::ProtocolType>(aRequest->url.getScheme()));
+-    CPPUNIT_ASSERT_EQUAL(String("http://[2000:800::45]/foo"), String(url));
+-    xfree(url);
+ 
+     /* valid IPv6 address with port */
+-    url = xstrdup("http://[2000:800::45]:90/foo");
++    url = "http://[2000:800::45]:90/foo";
+     aRequest = HttpRequest::FromUrl(url, mx, Http::METHOD_GET);
+     expected_port = 90;
+     CPPUNIT_ASSERT_EQUAL(expected_port, aRequest->url.port());
+@@ -135,11 +127,9 @@ testHttpRequest::testIPv6HostColonBug()
+     CPPUNIT_ASSERT_EQUAL(String("[2000:800::45]"), String(aRequest->url.host()));
+     CPPUNIT_ASSERT_EQUAL(SBuf("/foo"), aRequest->url.path());
+     CPPUNIT_ASSERT_EQUAL(AnyP::PROTO_HTTP, static_cast<AnyP::ProtocolType>(aRequest->url.getScheme()));
+-    CPPUNIT_ASSERT_EQUAL(String("http://[2000:800::45]:90/foo"), String(url));
+-    xfree(url);
+ 
+     /* IPv6 address as invalid (bug trigger) */
+-    url = xstrdup("http://2000:800::45/foo");
++    url = "http://2000:800::45/foo";
+     aRequest = HttpRequest::FromUrl(url, mx, Http::METHOD_GET);
+     expected_port = 80;
+     CPPUNIT_ASSERT_EQUAL(expected_port, aRequest->url.port());
+@@ -147,8 +137,6 @@ testHttpRequest::testIPv6HostColonBug()
+     CPPUNIT_ASSERT_EQUAL(String("[2000:800::45]"), String(aRequest->url.host()));
+     CPPUNIT_ASSERT_EQUAL(SBuf("/foo"), aRequest->url.path());
+     CPPUNIT_ASSERT_EQUAL(AnyP::PROTO_HTTP, static_cast<AnyP::ProtocolType>(aRequest->url.getScheme()));
+-    CPPUNIT_ASSERT_EQUAL(String("http://2000:800::45/foo"), String(url));
+-    xfree(url);
+ }
+ 
+ void
+diff --git a/src/urn.cc b/src/urn.cc
+index 26ca180..e64da1f 100644
+--- a/src/urn.cc
++++ b/src/urn.cc
+@@ -34,7 +34,6 @@ class UrnState : public StoreClient
+ public:
+     void created (StoreEntry *newEntry);
+     void start (HttpRequest *, StoreEntry *);
+-    char *getHost(const SBuf &urlpath);
+     void setUriResFromRequest(HttpRequest *);
+ 
+     virtual ~UrnState();
+@@ -45,11 +44,8 @@ public:
+     HttpRequest::Pointer request;
+     HttpRequest::Pointer urlres_r;
+ 
+-    struct {
+-        bool force_menu;
+-    } flags;
+-    char reqbuf[URN_REQBUF_SZ];
+-    int reqofs;
++    char reqbuf[URN_REQBUF_SZ] = { '\0' };
++    int reqofs = 0;
+ 
+ private:
+     char *urlres;
+@@ -122,35 +118,16 @@ urnFindMinRtt(url_entry * urls, const HttpRequestMethod &, int *rtt_ret)
+     return min_u;
+ }
+ 
+-char *
+-UrnState::getHost(const SBuf &urlpath)
+-{
+-    /** FIXME: this appears to be parsing the URL. *very* badly. */
+-    /*   a proper encapsulated URI/URL type needs to clear this up. */
+-    size_t p;
+-    if ((p = urlpath.find(':')) != SBuf::npos)
+-        return SBufToCstring(urlpath.substr(0, p-1));
+-
+-    return SBufToCstring(urlpath);
+-}
+-
+ void
+ UrnState::setUriResFromRequest(HttpRequest *r)
+ {
+-    static const SBuf menu(".menu");
+-    if (r->url.path().startsWith(menu)) {
+-        r->url.path(r->url.path().substr(5)); // strip prefix "menu."
+-        flags.force_menu = true;
+-    }
+-
+-    SBuf uri = r->url.path();
++    const auto &query = r->url.absolute();
++    const auto host = r->url.host();
+     // TODO: use class AnyP::Uri instead of generating a string and re-parsing
+     LOCAL_ARRAY(char, local_urlres, 4096);
+-    char *host = getHost(uri);
+-    snprintf(local_urlres, 4096, "http://%s/uri-res/N2L?urn:" SQUIDSBUFPH, host, SQUIDSBUFPRINT(uri));
+-    safe_free(host);
++    snprintf(local_urlres, 4096, "http://%s/uri-res/N2L?" SQUIDSBUFPH, host, SQUIDSBUFPRINT(query));
+     safe_free(urlres);
+-    urlres_r = HttpRequest::FromUrl(local_urlres, r->masterXaction);
++    urlres_r = HttpRequest::FromUrlXXX(local_urlres, r->masterXaction);
+ 
+     if (!urlres_r) {
+         debugs(52, 3, "Bad uri-res URL " << local_urlres);
+@@ -366,9 +343,7 @@ urnHandleReply(void *data, StoreIOBuffer result)
+     rep = new HttpReply;
+     rep->setHeaders(Http::scFound, NULL, "text/html", mb->contentSize(), 0, squid_curtime);
+ 
+-    if (urnState->flags.force_menu) {
+-        debugs(51, 3, "urnHandleReply: forcing menu");
+-    } else if (min_u) {
++    if (min_u) {
+         rep->header.putStr(Http::HdrType::LOCATION, min_u->url);
+     }
+ 

@@ -20,7 +20,7 @@ Date:   2019-09-10 09:32:43 +0000
     THTTP lookup URLs.
 
 diff --git a/src/Downloader.cc b/src/Downloader.cc
-index 7f7a8d6..fb102a8 100644
+index 7f7a8d61..fb102a82 100644
 --- a/src/Downloader.cc
 +++ b/src/Downloader.cc
 @@ -129,7 +129,7 @@ Downloader::buildRequest()
@@ -33,7 +33,7 @@ index 7f7a8d6..fb102a8 100644
          debugs(33, 5, "Invalid URI: " << url_);
          return false; //earlyError(...)
 diff --git a/src/HttpRequest.cc b/src/HttpRequest.cc
-index 3132a76..dc48d15 100644
+index 3132a767..dc48d156 100644
 --- a/src/HttpRequest.cc
 +++ b/src/HttpRequest.cc
 @@ -327,15 +327,7 @@ HttpRequest::parseFirstLine(const char *start, const char *end)
@@ -76,7 +76,7 @@ index 3132a76..dc48d15 100644
   * Are responses to this request possible cacheable ?
   * If false then no matter what the response must not be cached.
 diff --git a/src/HttpRequest.h b/src/HttpRequest.h
-index fdd13ce..62740c3 100644
+index fdd13ce2..62740c36 100644
 --- a/src/HttpRequest.h
 +++ b/src/HttpRequest.h
 @@ -205,7 +205,10 @@ public:
@@ -92,7 +92,7 @@ index fdd13ce..62740c3 100644
      ConnStateData *pinnedConnection();
  
 diff --git a/src/Makefile.am b/src/Makefile.am
-index 55b68fc..8605313 100644
+index 55b68fc6..86053131 100644
 --- a/src/Makefile.am
 +++ b/src/Makefile.am
 @@ -1136,6 +1136,7 @@ tests_testACLMaxUserIP_LDADD= \
@@ -104,7 +104,7 @@ index 55b68fc..8605313 100644
  	ip/libip.la \
  	ipc/libipc.la \
 diff --git a/src/acl/Asn.cc b/src/acl/Asn.cc
-index 63d4ee0..f9a822a 100644
+index 63d4ee05..f9a822a6 100644
 --- a/src/acl/Asn.cc
 +++ b/src/acl/Asn.cc
 @@ -243,7 +243,7 @@ asnCacheStart(int as)
@@ -117,10 +117,10 @@ index 63d4ee0..f9a822a 100644
  
      if ((e = storeGetPublic(asres, Http::METHOD_GET)) == NULL) {
 diff --git a/src/adaptation/ecap/MessageRep.cc b/src/adaptation/ecap/MessageRep.cc
-index 039f9e1..202194d 100644
+index 96af88c8..4ef40139 100644
 --- a/src/adaptation/ecap/MessageRep.cc
 +++ b/src/adaptation/ecap/MessageRep.cc
-@@ -200,8 +200,7 @@
+@@ -200,8 +200,7 @@ Adaptation::Ecap::RequestLineRep::uri(const Area &aUri)
  {
      // TODO: if method is not set, AnyP::Uri::parse will assume it is not connect;
      // Can we change AnyP::Uri::parse API to remove the method parameter?
@@ -131,7 +131,7 @@ index 039f9e1..202194d 100644
  }
  
 diff --git a/src/anyp/ProtocolType.h b/src/anyp/ProtocolType.h
-index 6ac8706..5aa7358 100644
+index 6ac8706c..5aa7358e 100644
 --- a/src/anyp/ProtocolType.h
 +++ b/src/anyp/ProtocolType.h
 @@ -14,6 +14,7 @@
@@ -143,7 +143,7 @@ index 6ac8706..5aa7358 100644
   * List of all protocols known and supported.
   * This is a combined list. It is used as type-codes where needed and
 diff --git a/src/anyp/Uri.cc b/src/anyp/Uri.cc
-index 065aea5..e42f7c6 100644
+index c6d68369..1c5f1bb4 100644
 --- a/src/anyp/Uri.cc
 +++ b/src/anyp/Uri.cc
 @@ -12,6 +12,7 @@
@@ -154,7 +154,7 @@ index 065aea5..e42f7c6 100644
  #include "rfc1738.h"
  #include "SquidConfig.h"
  #include "SquidString.h"
-@@ -126,55 +127,40 @@ urlInitialize(void)
+@@ -116,98 +117,88 @@ urlInitialize(void)
  }
  
  /**
@@ -240,8 +240,6 @@ index 065aea5..e42f7c6 100644
 +    throw TextException("invalid URI scheme", Here());
  }
  
- /**
-@@ -204,44 +190,49 @@ urlAppendDomain(char *host)
  /*
   * Parse a URI/URL.
   *
@@ -309,7 +307,7 @@ index 065aea5..e42f7c6 100644
      if (method == Http::METHOD_CONNECT) {
          /*
           * RFC 7230 section 5.3.3:  authority-form = authority
-@@ -253,37 +244,37 @@ AnyP::Uri::parse(const HttpRequestMethod& method, const char *url)
+@@ -219,37 +210,37 @@ AnyP::Uri::parse(const HttpRequestMethod& method, const char *url)
           */
          foundPort = 443;
  
@@ -370,7 +368,7 @@ index 065aea5..e42f7c6 100644
  
          /* Then everything until first /; thats host (and port; which we'll look for here later) */
          // bug 1881: If we don't get a "/" then we imply it was there
-@@ -324,8 +315,7 @@ AnyP::Uri::parse(const HttpRequestMethod& method, const char *url)
+@@ -290,8 +281,7 @@ AnyP::Uri::parse(const HttpRequestMethod& method, const char *url)
          }
          *dst = '\0';
  
@@ -380,7 +378,7 @@ index 065aea5..e42f7c6 100644
  
          /* Is there any login information? (we should eventually parse it above) */
          t = strrchr(foundHost, '@');
-@@ -373,7 +363,7 @@ AnyP::Uri::parse(const HttpRequestMethod& method, const char *url)
+@@ -339,7 +329,7 @@ AnyP::Uri::parse(const HttpRequestMethod& method, const char *url)
          }
  
          // Bug 3183 sanity check: If scheme is present, host must be too.
@@ -389,7 +387,7 @@ index 065aea5..e42f7c6 100644
              debugs(23, DBG_IMPORTANT, "SECURITY ALERT: Missing hostname in URL '" << url << "'. see access.log for details.");
              return false;
          }
-@@ -402,7 +392,7 @@ AnyP::Uri::parse(const HttpRequestMethod& method, const char *url)
+@@ -368,7 +358,7 @@ AnyP::Uri::parse(const HttpRequestMethod& method, const char *url)
          }
      }
  
@@ -398,7 +396,7 @@ index 065aea5..e42f7c6 100644
  
      if (Config.onoff.check_hostnames &&
              strspn(foundHost, Config.onoff.allow_underscore ? valid_hostname_chars_u : valid_hostname_chars) != strlen(foundHost)) {
-@@ -438,7 +428,7 @@ AnyP::Uri::parse(const HttpRequestMethod& method, const char *url)
+@@ -405,7 +395,7 @@ AnyP::Uri::parse(const HttpRequestMethod& method, const char *url)
  #endif
  
      if (stringHasWhitespace(urlpath)) {
@@ -407,7 +405,7 @@ index 065aea5..e42f7c6 100644
  
          switch (Config.uri_whitespace) {
  
-@@ -471,24 +461,59 @@ AnyP::Uri::parse(const HttpRequestMethod& method, const char *url)
+@@ -438,24 +428,59 @@ AnyP::Uri::parse(const HttpRequestMethod& method, const char *url)
          }
      }
  
@@ -480,7 +478,7 @@ index 065aea5..e42f7c6 100644
  }
  
  void
-@@ -536,6 +561,9 @@ AnyP::Uri::absolute() const
+@@ -503,6 +528,9 @@ AnyP::Uri::absolute() const
                  absolute_.append("@", 1);
              }
              absolute_.append(authority());
@@ -491,7 +489,7 @@ index 065aea5..e42f7c6 100644
          absolute_.append(path());
      }
 diff --git a/src/anyp/Uri.h b/src/anyp/Uri.h
-index 5a167cb..71287d0 100644
+index 1a8f0571..d815442d 100644
 --- a/src/anyp/Uri.h
 +++ b/src/anyp/Uri.h
 @@ -11,6 +11,7 @@
@@ -522,7 +520,7 @@ index 5a167cb..71287d0 100644
  
      void userInfo(const SBuf &s) {userInfo_=s; touch();}
      const SBuf &userInfo() const {return userInfo_;}
-@@ -120,7 +125,7 @@ public:
+@@ -115,7 +120,7 @@ public:
      SBuf &absolute() const;
  
  private:
@@ -532,7 +530,7 @@ index 5a167cb..71287d0 100644
      /**
       \par
 diff --git a/src/anyp/UriScheme.cc b/src/anyp/UriScheme.cc
-index b0b293d..0f4d531 100644
+index b0b293d2..0f4d5319 100644
 --- a/src/anyp/UriScheme.cc
 +++ b/src/anyp/UriScheme.cc
 @@ -48,6 +48,25 @@ AnyP::UriScheme::Init()
@@ -562,7 +560,7 @@ index b0b293d..0f4d531 100644
  AnyP::UriScheme::defaultPort() const
  {
 diff --git a/src/anyp/UriScheme.h b/src/anyp/UriScheme.h
-index 7deb442..6ddedd2 100644
+index 7deb4420..6ddedd26 100644
 --- a/src/anyp/UriScheme.h
 +++ b/src/anyp/UriScheme.h
 @@ -54,6 +54,9 @@ public:
@@ -576,7 +574,7 @@ index 7deb442..6ddedd2 100644
      /// optimization: stores down-cased protocol scheme names, copied from
      /// AnyP::ProtocolType_str
 diff --git a/src/client_side_request.cc b/src/client_side_request.cc
-index 8d1b000..a37f8d4 100644
+index 8d1b0006..a37f8d49 100644
 --- a/src/client_side_request.cc
 +++ b/src/client_side_request.cc
 @@ -346,7 +346,8 @@ clientBeginRequest(const HttpRequestMethod& method, char const *url, CSCB * stre
@@ -599,7 +597,7 @@ index 8d1b000..a37f8d4 100644
                      new_request->url = tmpUrl;
                      debugs(61, 2, "URL-rewriter diverts URL from " << old_request->effectiveRequestUri() << " to " << new_request->effectiveRequestUri());
 diff --git a/src/htcp.cc b/src/htcp.cc
-index 5ff6026..5649c9f 100644
+index 5ff6026a..5649c9fb 100644
 --- a/src/htcp.cc
 +++ b/src/htcp.cc
 @@ -674,7 +674,7 @@ htcpUnpackSpecifier(char *buf, int sz)
@@ -612,7 +610,7 @@ index 5ff6026..5649c9f 100644
          debugs(31, 3, "failed to create request. Invalid URI?");
          return nil;
 diff --git a/src/icmp/net_db.cc b/src/icmp/net_db.cc
-index a97656d..bc7443a 100644
+index a97656da..bc7443a2 100644
 --- a/src/icmp/net_db.cc
 +++ b/src/icmp/net_db.cc
 @@ -1285,7 +1285,7 @@ netdbExchangeStart(void *data)
@@ -625,7 +623,7 @@ index a97656d..bc7443a 100644
      if (!req) {
          debugs(38, DBG_IMPORTANT, MYNAME << ": Bad URI " << uri);
 diff --git a/src/icp_v2.cc b/src/icp_v2.cc
-index 9bb36c6..7434929 100644
+index 9bb36c62..74349292 100644
 --- a/src/icp_v2.cc
 +++ b/src/icp_v2.cc
 @@ -440,9 +440,9 @@ icpGetRequest(char *url, int reqnum, int fd, Ip::Address &from)
@@ -641,7 +639,7 @@ index 9bb36c6..7434929 100644
  
      return result;
 diff --git a/src/mgr/Inquirer.cc b/src/mgr/Inquirer.cc
-index 71706a4..86bacc5 100644
+index 71706a4b..86bacc54 100644
 --- a/src/mgr/Inquirer.cc
 +++ b/src/mgr/Inquirer.cc
 @@ -76,7 +76,7 @@ Mgr::Inquirer::start()
@@ -654,7 +652,7 @@ index 71706a4..86bacc5 100644
          std::unique_ptr<HttpReply> reply(err.BuildHttpReply());
          replyBuf.reset(reply->pack());
 diff --git a/src/mime.cc b/src/mime.cc
-index 34a0253..ab2ad45 100644
+index 34a0253e..ab2ad45e 100644
 --- a/src/mime.cc
 +++ b/src/mime.cc
 @@ -402,7 +402,7 @@ MimeIcon::created(StoreEntry *newEntry)
@@ -667,7 +665,7 @@ index 34a0253..ab2ad45 100644
          fatalf("mimeLoadIcon: cannot parse internal URL: %s", url_);
  
 diff --git a/src/neighbors.cc b/src/neighbors.cc
-index 67b2c5c..55b73f2 100644
+index 67b2c5cc..55b73f24 100644
 --- a/src/neighbors.cc
 +++ b/src/neighbors.cc
 @@ -1373,7 +1373,7 @@ peerCountMcastPeersStart(void *data)
@@ -680,7 +678,7 @@ index 67b2c5c..55b73f2 100644
      StoreEntry *fake = storeCreateEntry(url, url, RequestFlags(), Http::METHOD_GET);
      psstate = new ps_state;
 diff --git a/src/peer_digest.cc b/src/peer_digest.cc
-index 548a151..fb8fb3d 100644
+index 548a1514..fb8fb3da 100644
 --- a/src/peer_digest.cc
 +++ b/src/peer_digest.cc
 @@ -327,7 +327,7 @@ peerDigestRequest(PeerDigest * pd)
@@ -693,7 +691,7 @@ index 548a151..fb8fb3d 100644
      assert(req);
  
 diff --git a/src/servers/FtpServer.cc b/src/servers/FtpServer.cc
-index d63dc84..5171893 100644
+index d63dc84e..51718930 100644
 --- a/src/servers/FtpServer.cc
 +++ b/src/servers/FtpServer.cc
 @@ -726,7 +726,7 @@ Ftp::Server::parseOneRequest()
@@ -706,10 +704,10 @@ index d63dc84..5171893 100644
          debugs(33, 5, "Invalid FTP URL: " << uri);
          uri.clear();
 diff --git a/src/servers/Http1Server.cc b/src/servers/Http1Server.cc
-index 66722f7..fccbf72 100644
+index 59db6f1e..1574555c 100644
 --- a/src/servers/Http1Server.cc
 +++ b/src/servers/Http1Server.cc
-@@ -139,7 +139,8 @@ Http::One::Server::buildHttpRequest(Http::StreamPointer &context)
+@@ -135,7 +135,8 @@ Http::One::Server::buildHttpRequest(Http::StreamPointer &context)
      // TODO: move URL parse into Http Parser and INVALID_URL into the above parse error handling
      MasterXaction::Pointer mx = new MasterXaction(XactionInitiator::initClient);
      mx->tcpClient = clientConnection;
@@ -720,7 +718,7 @@ index 66722f7..fccbf72 100644
          // setReplyToError() requires log_uri
          http->setLogUriToRawUri(http->uri, parser_->method());
 diff --git a/src/store_digest.cc b/src/store_digest.cc
-index 6cfdeec..358bdcf 100644
+index 6cfdeec7..358bdcf9 100644
 --- a/src/store_digest.cc
 +++ b/src/store_digest.cc
 @@ -414,7 +414,7 @@ storeDigestRewriteStart(void *datanotused)
@@ -733,7 +731,7 @@ index 6cfdeec..358bdcf 100644
      RequestFlags flags;
      flags.cachable = true;
 diff --git a/src/tests/stub_HttpRequest.cc b/src/tests/stub_HttpRequest.cc
-index 8ec6eea..7a77387 100644
+index 8ec6eea0..7a773873 100644
 --- a/src/tests/stub_HttpRequest.cc
 +++ b/src/tests/stub_HttpRequest.cc
 @@ -47,7 +47,8 @@ int HttpRequest::prefixLen() const STUB_RETVAL(0)
@@ -747,7 +745,7 @@ index 8ec6eea..7a77387 100644
  const SBuf HttpRequest::storeId() STUB_RETVAL(SBuf("."))
  void HttpRequest::ignoreRange(const char *) STUB
 diff --git a/src/tests/stub_libanyp.cc b/src/tests/stub_libanyp.cc
-index 2eeff19..47dfb49 100644
+index 2eeff191..47dfb493 100644
 --- a/src/tests/stub_libanyp.cc
 +++ b/src/tests/stub_libanyp.cc
 @@ -14,7 +14,7 @@
@@ -760,7 +758,7 @@ index 2eeff19..47dfb49 100644
  static SBuf nil;
  const SBuf &AnyP::Uri::path() const STUB_RETVAL(nil)
 diff --git a/src/tests/testHttpRequest.cc b/src/tests/testHttpRequest.cc
-index c4d743e..3d7d968 100644
+index c4d743ef..3d7d9680 100644
 --- a/src/tests/testHttpRequest.cc
 +++ b/src/tests/testHttpRequest.cc
 @@ -45,60 +45,55 @@ testHttpRequest::testCreateFromUrl()
@@ -882,7 +880,7 @@ index c4d743e..3d7d968 100644
  
  void
 diff --git a/src/urn.cc b/src/urn.cc
-index 26ca180..e64da1f 100644
+index 26ca180c..e64da1ff 100644
 --- a/src/urn.cc
 +++ b/src/urn.cc
 @@ -34,7 +34,6 @@ class UrnState : public StoreClient

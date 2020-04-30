@@ -14,8 +14,10 @@ squid (4.6-1+deb10u1~exp2) UNRELEASED; urgency=high
       (CVE-2019-18678)
     - Information Disclosure issue in HTTP Digest Authentication
       (CVE-2019-18679)
+    - Multiple issues in ESI Response processing (CVE-2019-12519)
+      (CVE-2019-12521)
 
- -- Amos Jeffries <amosjeffries@squid-cache.org>  Thu, 30 Apr 2020 15:26:00 +1300
+ -- Amos Jeffries <amosjeffries@squid-cache.org>  Thu, 30 Apr 2020 15:30:00 +1300
 
 squid (4.6-1+deb10u1) buster-security; urgency=high
 

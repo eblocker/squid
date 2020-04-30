@@ -6,9 +6,6 @@
 0006-SQUID-2019_3.patch
 0007-SQUID-2019_5.patch
 0008-SQUID-2019_6.patch
-0009-gcc8-stringop-truncation.patch
-0010-gcc8-smblib.patch
-0011-gcc8-sysctl.patch
 0012-SQUID-2019_4.patch
 0013-SQUID-2019_7.patch
 0014-SQUID-2019_8.patch

@@ -1,8 +1,7 @@
-squid (4.6-1+deb10u1~exp2) UNRELEASED; urgency=high
+squid (4.6-1+deb10u2) UNRELEASED; urgency=high
 
   [ Amos Jeffries <amosjeffries@squid-cache.org> ]
   * debian/patches/
-    - Add upstream patches for GCC-8/9 build issues (Closes: #925836)
     - Multiple Issues in HTTP Request processing (CVE-2019-12520)
       (CVE-2019-12524)
     - Heap Overflow issue in URN processing (CVE-2019-12526)

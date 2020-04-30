@@ -3,12 +3,17 @@ squid (4.6-1+deb10u1~exp2) UNRELEASED; urgency=high
   [ Amos Jeffries <amosjeffries@squid-cache.org> ]
   * debian/patches/
     - Add upstream patches for GCC-8/9 build issues (Closes: #925836)
-    - Multiple Issues in HTTP Request processing (CVE-2019-12520) (CVE-2019-12524)
+    - Multiple Issues in HTTP Request processing (CVE-2019-12520)
+      (CVE-2019-12524)
     - Heap Overflow issue in URN processing (CVE-2019-12526)
-    - Multiple issues in URI processing (CVE-2019-12523) (CVE-2019-18676)
-    - Cross-Site Request Forgery issue in HTTP Request processing (CVE-2019-18677)
+    - Multiple issues in URI processing (CVE-2019-12523)
+      (CVE-2019-18676)
+    - Cross-Site Request Forgery issue in HTTP Request processing
+      (CVE-2019-18677)
+    - HTTP Request Splitting issue in HTTP message processing
+      (CVE-2019-18678)
 
- -- Amos Jeffries <amosjeffries@squid-cache.org>  Thu, 30 Apr 2020 15:05:00 +1300
+ -- Amos Jeffries <amosjeffries@squid-cache.org>  Thu, 30 Apr 2020 15:18:00 +1300
 
 squid (4.6-1+deb10u1) buster-security; urgency=high
 

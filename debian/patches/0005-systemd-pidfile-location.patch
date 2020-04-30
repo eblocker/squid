@@ -1,0 +1,16 @@
+From: Amos Jeffries <amosjeffries@squid-cache.org>
+Date: Thu, 30 Apr 2020 17:03:00 +1300
+
+diff --git a/tools/systemd/squid.service b/tools/systemd/squid.service
+index 4094f0ce..665ec8f8 100644
+--- a/tools/systemd/squid.service
++++ b/tools/systemd/squid.service
+@@ -12,7 +12,7 @@ After=network.target network-online.target nss-lookup.target
+ 
+ [Service]
+ Type=notify
+-PIDFile=/var/run/squid.pid
++PIDFile=/run/squid/squid.pid
+ ExecStartPre=/usr/sbin/squid --foreground -z
+ ExecStart=/usr/sbin/squid --foreground -sYC
+ ExecReload=/bin/kill -HUP $MAINPID

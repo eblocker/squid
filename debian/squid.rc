@@ -4,7 +4,7 @@
 #
 # Version:	@(#)squid.rc  1.0  07-Jul-2006  luigi@debian.org
 #
-# pidfile: /var/run/squid.pid
+# pidfile: /run/squid/squid.pid
 #
 ### BEGIN INIT INFO
 # Provides:          squid
@@ -20,7 +20,7 @@
 NAME=squid
 DESC="Squid HTTP Proxy"
 DAEMON=/usr/sbin/squid
-PIDFILE=/var/run/$NAME.pid
+PIDFILE=/run/squid/$NAME.pid
 CONFIG=/etc/squid/squid.conf
 SQUID_ARGS="-YC -f $CONFIG"
 
@@ -63,7 +63,7 @@ grepconf () {
 }
 
 create_run_dir () {
-	run_dir=/var/run/squid
+	run_dir=/run/squid
 	usr=`grepconf cache_effective_user proxy`
 	grp=`grepconf cache_effective_group proxy`
 
@@ -78,7 +78,7 @@ create_run_dir () {
 start () {
 	cache_dir=`find_cache_dir cache_dir`
 	cache_type=`grepconf cache_dir`
-	run_dir=/var/run/squid
+	run_dir=/run/squid
 
 	#
 	# Create run dir (needed for several workers on SMP)

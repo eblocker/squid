@@ -57,7 +57,7 @@ DEB_CONFIGURE_EXTRA_FLAGS := BUILDCXXFLAGS="$(CXXFLAGS) $(CPPFLAGS) $(LDFLAGS)" 
 		--disable-translation \
 		--with-swapdir=/var/spool/squid \
 		--with-logdir=/var/log/squid \
-		--with-pidfile=/var/run/squid.pid \
+		--with-pidfile=/run/squid/squid.pid \
 		--with-filedescriptors=65536 \
 		--with-large-files \
 		--with-default-user=proxy \
@@ -92,7 +92,7 @@ install/squid::
 	install -m 644 -g root debian/squid.ufw.profile $(INSTALLDIR)/etc/ufw/applications.d/squid
 	install -m 755 -g root -d debian/squid/var/log
 	install -m 755 -g root -d debian/squid/var/spool
-	install -m 755 -g root -d debian/squid/var/run
+	install -m 755 -g root -d debian/squid/run/squid
 	install -m 750 -o proxy -g proxy -d debian/squid/var/log/squid
 	install -m 750 -o proxy -g proxy -d debian/squid/var/spool/squid
 	install -m 755 -g root -d $(INSTALLDIR)/usr/share/man/man1

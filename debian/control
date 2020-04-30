@@ -41,6 +41,7 @@ Description: Full featured Web Proxy cache (HTTP proxy)
 
 Package: squid-common
 Architecture: all
+Multi-Arch: foreign
 Depends: ${misc:Depends}, squid-langpack (>= 20110214-1)
 Provides: squid3-common
 Description: Full featured Web Proxy cache (HTTP proxy) - common files

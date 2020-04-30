@@ -19,8 +19,9 @@ squid (4.6-1+deb10u1~exp2) UNRELEASED; urgency=high
     - Improper Input Validation issues in HTTP Request processing
       (CVE-2020-8449) (CVE-2020-8450)
     - Information Disclosure issue in FTP Gateway (CVE-2019-12528)
+    - Multiple issues in HTTP Digest authentication (CVE-2020-11945)
 
- -- Amos Jeffries <amosjeffries@squid-cache.org>  Thu, 30 Apr 2020 15:42:00 +1300
+ -- Amos Jeffries <amosjeffries@squid-cache.org>  Thu, 30 Apr 2020 15:46:00 +1300
 
 squid (4.6-1+deb10u1) buster-security; urgency=high
 

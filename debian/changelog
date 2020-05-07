@@ -1,3 +1,10 @@
+squid (4.11-4) UNRELEASED; urgency=medium
+
+  [ Amos Jeffries <amosjeffries@squid-cache.org> ]
+  * Fix permissions on /run/squid
+
+ -- Amos Jeffries <amosjeffries@squid-cache.org>  Thu,  7 May 2020 17:04:00 +1300
+
 squid (4.11-3) unstable; urgency=low
 
   [ Amos Jeffries <amosjeffries@squid-cache.org> ]

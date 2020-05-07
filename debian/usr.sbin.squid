@@ -38,6 +38,7 @@
   # squid configuration
   /etc/squid/** r,
   /{,var/}run/squid.pid rwk,
+  /{,var/}run/squid/** rwk,
   /var/spool/squid{,3}/ r,
   /var/spool/squid{,3}/** rwk,
   /usr/lib/squid{,3}/* rmix,

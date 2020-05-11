@@ -1,3 +1,21 @@
+squid (4.11-5) unstable; urgency=medium
+
+  * Don't install /run/squid (use systemd's RuntimeDirectory instead).
+    Debian Policy states that /run is normally cleared at boot time, and
+    therefore packages must not install files/directories under /run.
+    Init scripts should be taught to dynamically handle /run instead.
+    This change uses systemd's RuntimeDirectory and RuntimeDirectoryMode
+    directives when starting the squid service in order to guarantee that
+    /run/squid/ will be created with the correct permission.  This has the
+    added benefit of deleting the directory when the service is stopped.
+  * Allow /run/system/notify to be accessed by squid.
+    When apparmor is enabled and the squid profile is enforced, we must
+    make sure that the daemon will be able to access the
+    /run/system/notify file (because squid's systemd service file type is
+    "notify").
+
+ -- Sergio Durigan Junior <sergiodj@debian.org>  Mon, 11 May 2020 18:40:41 -0400
+
 squid (4.11-4) unstable; urgency=medium
 
   [ Amos Jeffries <amosjeffries@squid-cache.org> ]

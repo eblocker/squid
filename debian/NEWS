@@ -1,4 +1,4 @@
-squid (4.0.24-1) unstable; urgency=medium
+squid (4.1-1) unstable; urgency=medium
 
   Starting from this release support for systemd init has been added to the
   packaging. On machines running systemd as their init system this has

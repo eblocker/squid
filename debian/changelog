@@ -16,6 +16,10 @@ squid (4.11-5) unstable; urgency=medium
     /run/system/notify file (because squid's systemd service file type is
     "notify").
 
+  [ Luigi Gangitano <luigi@debian.org> ]
+  * debian/NEWS
+    - Fix unknown version of latest entry
+
  -- Luigi Gangitano <luigi@debian.org>  Sat, 16 May 2020 12:00:54 +0200
 
 squid (4.11-4) unstable; urgency=medium

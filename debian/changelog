@@ -1,3 +1,19 @@
+squid (4.11-6) UNRELEASED; urgency=medium
+
+  * Don't restart squid by hand on postinst script.
+    When installing/upgrading squid, the service is being restarted
+    manually in the postinst script, which can break installations that
+    have the squid apparmor enabled because it will try to restart the
+    service before reloading the apparmor profile.
+    There is no reason to restart squid manually, since the restart will
+    be automatically performed later.
+  * Drop conffile check for squid < 2.7
+    squid 2.7 is long, long gone, so it should be safe to drop the
+    postinst code to make sure that /etc/squid/squid.conf was properly
+    upgraded.
+
+ -- Sergio Durigan Junior <sergiodj@debian.org>  Mon, 18 May 2020 18:23:41 -0400
+
 squid (4.11-5) unstable; urgency=medium
 
   [ Sergio Durigan Junior <sergiodj@debian.org> ]

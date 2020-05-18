@@ -35,33 +35,6 @@ grepconf2 () {
 case "$1" in
 	configure)
 		#
-		# If the squid (2.7) package was being used previously we protected
-		# the squid.conf file, which was not tracked as a conffile.
-		# Use '< 2.8' version to catch backports and security versions >2.7.
-		#
-		if dpkg --compare-versions "$2" lt '2.8' && test -f /etc/squid/squid.conf.pre3.5_upgrade; then
-			md5pre35=$(md5sum /etc/squid/squid.conf.pre3.5_upgrade | awk '{ print $1 }')
-			if [ "$md5pre35" = "6d674d5f9842b50a2c691a135007c804" ] || \
-				[ "$md5pre35" = "5d85f7dce9a84082e23a656b3cb0c984" ]; then
-				# The old configuration file was unchanged from the version shipped
-				# with squid 2.7, keep the new one in place and delete the old one.
-				rm -f /etc/squid/squid.conf.pre3.5_upgrade
-			else
-				#
-				# Our special 2.x protection left squid.conf absent,
-				# so the new package installing put its own there.
-				# It would normally have just created a *.dpkg-dist
-				#
-				mv /etc/squid/squid.conf /etc/squid/squid.conf.dpkg-dist
-
-				#
-				# Restore the old user file as main squid.conf
-				#
-				mv /etc/squid/squid.conf.pre3.5_upgrade /etc/squid/squid.conf
-			fi
-		fi
-
-		#
 		# Chown the directories.
 		#
 		log_dir=/var/log/squid

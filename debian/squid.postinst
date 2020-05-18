@@ -97,16 +97,6 @@ case "$1" in
 			chmod u+s $PINGER
 		fi
 
-		#
-		# Ensure that any obsolete squid3 that may be running is stopped.
-		#
-		if [ -f /var/run/squid3.pid ] && kill -0 "$(cat /var/run/squid3.pid)" 2>/dev/null && dpkg --compare-versions "$2" lt '3.5'; then
-			invoke-rc.d squid3 stop
-			invoke-rc.d squid restart
-		else
-			invoke-rc.d squid restart
-		fi
-
 		;;
 	abort-upgrade|abort-remove|abort-deconfigure)
 		;;

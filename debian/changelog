@@ -1,5 +1,6 @@
-squid (4.11-6) UNRELEASED; urgency=medium
+squid (4.12-1) UNRELEASED; urgency=medium
 
+  [ Sergio Durigan Junior ]
   * Don't restart squid by hand on postinst script.
     When installing/upgrading squid, the service is being restarted
     manually in the postinst script, which can break installations that
@@ -12,7 +13,12 @@ squid (4.11-6) UNRELEASED; urgency=medium
     postinst code to make sure that /etc/squid/squid.conf was properly
     upgraded.
 
- -- Sergio Durigan Junior <sergiodj@debian.org>  Mon, 18 May 2020 18:23:41 -0400
+  [ Juri Grabowski ]
+  * add gbp.conf for squid
+  * New upstream version 4.12
+  * remove 0004-upstream-bug5041.patch - Fixed in upstream
+
+ -- Juri Grabowski <debian@jugra.de>  Thu, 18 Jun 2020 12:37:45 +0000
 
 squid (4.11-5) unstable; urgency=medium
 

@@ -8,19 +8,25 @@ squid (4.12-1) UNRELEASED; urgency=high
     service before reloading the apparmor profile.
     There is no reason to restart squid manually, since the restart will
     be automatically performed later.
+
   * Drop conffile check for squid < 2.7
     squid 2.7 is long, long gone, so it should be safe to drop the
     postinst code to make sure that /etc/squid/squid.conf was properly
     upgraded.
 
+  * Fix 'pidfile' on d/t/tests-squid.py.
+    The pidfile lives under '/run/squid/', not '/run/'. (Closes: #960327)
+
   [ Juri Grabowski <debian@jugra.de> ]
   * add gbp.conf for squid
+
   * New upstream version 4.12
     - Fixes security issue SQUID-2020:5 (CVE-2020-14059)
     - Fixes security issue SQUID-2020:6 (CVE-2020-14058)
+
   * remove 0004-upstream-bug5041.patch - Fixed in upstream
 
- -- Amos Jeffries <amosjeffries@squid-cache.org>  Fri, 19 Jun 2020 23:42:00 +1200
+ -- Amos Jeffries <amosjeffries@squid-cache.org>  Fri, 19 Jun 2020 23:56:00 +1200
 
 squid (4.11-5) unstable; urgency=medium
 

@@ -114,7 +114,7 @@ class BasicTest(HttpdCommon):
     def test_daemons(self):
         '''Test daemon'''
 
-        pidfile = "/run/squid.pid"
+        pidfile = "/run/squid/squid.pid"
         exe = "squid"
 
         self.assertTrue(check_pidfile(exe, pidfile))

@@ -23,10 +23,11 @@ squid (4.12-1) UNRELEASED; urgency=high
   * New upstream version 4.12
     - Fixes security issue SQUID-2020:5 (CVE-2020-14059)
     - Fixes security issue SQUID-2020:6 (CVE-2020-14058)
+    - Fixes security issue SQUID-2020:7 (CVE-2020-15049)
 
   * remove 0004-upstream-bug5041.patch - Fixed in upstream
 
- -- Amos Jeffries <amosjeffries@squid-cache.org>  Fri, 19 Jun 2020 23:56:00 +1200
+ -- Amos Jeffries <amosjeffries@squid-cache.org>  Fri, 27 Jun 2020 06:39:00 +1200
 
 squid (4.11-5) unstable; urgency=medium
 

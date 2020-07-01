@@ -1,4 +1,6 @@
-squid (4.12-1) UNRELEASED; urgency=high
+squid (4.12-1) unstable; urgency=high
+
+  * Urgency high due to security fixes
 
   [ Sergio Durigan Junior <sergiodj@debian.org> ]
   * Don't restart squid by hand on postinst script.
@@ -31,7 +33,7 @@ squid (4.12-1) UNRELEASED; urgency=high
 
   * Move PID file to /run (Closes: #960819)
 
- -- Amos Jeffries <amosjeffries@squid-cache.org>  Fri, 27 Jun 2020 06:39:00 +1200
+ -- Luigi Gangitano <luigi@debian.org>  Wed,  1 Jul 2020 10:52:54 +0200
 
 squid (4.11-5) unstable; urgency=medium
 

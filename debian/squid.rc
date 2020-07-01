@@ -4,7 +4,7 @@
 #
 # Version:	@(#)squid.rc  1.0  07-Jul-2006  luigi@debian.org
 #
-# pidfile: /run/squid/squid.pid
+# pidfile: /run/squid.pid
 #
 ### BEGIN INIT INFO
 # Provides:          squid
@@ -20,7 +20,7 @@
 NAME=squid
 DESC="Squid HTTP Proxy"
 DAEMON=/usr/sbin/squid
-PIDFILE=/run/squid/$NAME.pid
+PIDFILE=/run/NAME.pid
 CONFIG=/etc/squid/squid.conf
 SQUID_ARGS="-YC -f $CONFIG"
 

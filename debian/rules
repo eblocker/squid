@@ -57,7 +57,7 @@ DEB_CONFIGURE_EXTRA_FLAGS := BUILDCXXFLAGS="$(CXXFLAGS) $(CPPFLAGS) $(LDFLAGS)" 
 		--disable-translation \
 		--with-swapdir=/var/spool/squid \
 		--with-logdir=/var/log/squid \
-		--with-pidfile=/run/squid/squid.pid \
+		--with-pidfile=/run/squid.pid \
 		--with-filedescriptors=65536 \
 		--with-large-files \
 		--with-default-user=proxy \

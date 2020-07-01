@@ -18,7 +18,7 @@ index 4094f0c..b1b0526 100644
  [Service]
  Type=notify
 -PIDFile=/var/run/squid.pid
-+PIDFile=/run/squid/squid.pid
++PIDFile=/run/squid.pid
 +Group=proxy
 +RuntimeDirectory=squid
 +RuntimeDirectoryMode=0775

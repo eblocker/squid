@@ -1,3 +1,10 @@
+squid (4.6-1+deb10u3) buster-security; urgency=medium
+
+  * CVE-2019-18860
+  * CVE-2020-1504
+
+ -- Moritz Mühlenhoff <jmm@debian.org>  Tue, 14 Jul 2020 22:25:06 +0200
+
 squid (4.6-1+deb10u2) buster-security; urgency=high
 
   [ Amos Jeffries <amosjeffries@squid-cache.org> ]

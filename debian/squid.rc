@@ -20,7 +20,7 @@
 NAME=squid
 DESC="Squid HTTP Proxy"
 DAEMON=/usr/sbin/squid
-PIDFILE=/run/NAME.pid
+PIDFILE=/run/$NAME.pid
 CONFIG=/etc/squid/squid.conf
 SQUID_ARGS="-YC -f $CONFIG"
 
@@ -91,7 +91,7 @@ start () {
 	if test -d "$cache_dir" -a ! -d "$cache_dir/00"
 	then
 		log_warning_msg "Creating $DESC cache structure"
-		$DAEMON -z —-foreground -f $CONFIG
+		$DAEMON -z --foreground -f $CONFIG
 		[ -x /sbin/restorecon ] && restorecon -R $cache_dir
 	fi
 

@@ -174,6 +174,7 @@ HttpHeader::operator =(const HttpHeader &other)
         update(&other); // will update the mask as well
         len = other.len;
         conflictingContentLength_ = other.conflictingContentLength_;
+        teUnsupported_ = other.teUnsupported_;
     }
     return *this;
 }
@@ -222,6 +223,7 @@ HttpHeader::clean()
     httpHeaderMaskInit(&mask, 0);
     len = 0;
     conflictingContentLength_ = false;
+    teUnsupported_ = false;
     PROF_stop(HttpHeaderClean);
 }
 
@@ -317,6 +319,9 @@ HttpHeader::update(HttpHeader const *fresh)
     return true;
 }
 
+// XXX: callers treat this return as boolean.
+// XXX: A better mechanism is needed to signal different types of error.
+//      lexicon, syntax, semantics, validation, access policy - are all (ab)using 'return 0'
 int
 HttpHeader::parse(const char *header_start, size_t hdrLen)
 {
@@ -346,9 +351,12 @@ HttpHeader::parse(const char *header_start, size_t hdrLen)
         const char *field_start = field_ptr;
         const char *field_end;
 
+        const char *hasBareCr = nullptr;
+        size_t lines = 0;
         do {
             const char *this_line = field_ptr;
             field_ptr = (const char *)memchr(field_ptr, '\n', header_end - field_ptr);
+            ++lines;
 
             if (!field_ptr) {
                 // missing <LF>
@@ -383,6 +391,7 @@ HttpHeader::parse(const char *header_start, size_t hdrLen)
 
             /* Barf on stray CR characters */
             if (memchr(this_line, '\r', field_end - this_line)) {
+                hasBareCr = "bare CR";
                 debugs(55, warnOnError, "WARNING: suspicious CR characters in HTTP header {" <<
                        getStringPrefix(field_start, field_end-field_start) << "}");
 
@@ -432,6 +441,18 @@ HttpHeader::parse(const char *header_start, size_t hdrLen)
             return 0;
         }
 
+        if (lines > 1 || hasBareCr) {
+            const auto framingHeader = (e->id == Http::HdrType::CONTENT_LENGTH || e->id == Http::HdrType::TRANSFER_ENCODING);
+            if (framingHeader) {
+                if (!hasBareCr) // already warned about bare CRs
+                    debugs(55, warnOnError, "WARNING: obs-fold in framing-sensitive " << e->name << ": " << e->value);
+                delete e;
+                PROF_stop(HttpHeaderParse);
+                clean();
+                return 0;
+            }
+        }
+
         if (e->id == Http::HdrType::CONTENT_LENGTH && !clen.checkField(e->value)) {
             delete e;
 
@@ -443,18 +464,6 @@ HttpHeader::parse(const char *header_start, size_t hdrLen)
             return 0;
         }
 
-        if (e->id == Http::HdrType::OTHER && stringHasWhitespace(e->name.termedBuf())) {
-            debugs(55, warnOnError, "WARNING: found whitespace in HTTP header name {" <<
-                   getStringPrefix(field_start, field_end-field_start) << "}");
-
-            if (!Config.onoff.relaxed_header_parser) {
-                delete e;
-                PROF_stop(HttpHeaderParse);
-                clean();
-                return 0;
-            }
-        }
-
         addEntry(e);
     }
 
@@ -464,11 +473,23 @@ HttpHeader::parse(const char *header_start, size_t hdrLen)
                Raw("header", header_start, hdrLen));
     }
 
-    if (chunked()) {
+    String rawTe;
+    if (getByIdIfPresent(Http::HdrType::TRANSFER_ENCODING, &rawTe)) {
         // RFC 2616 section 4.4: ignore Content-Length with Transfer-Encoding
         // RFC 7230 section 3.3.3 #3: Transfer-Encoding overwrites Content-Length
         delById(Http::HdrType::CONTENT_LENGTH);
         // and clen state becomes irrelevant
+
+        if (rawTe == "chunked") {
+            ; // leave header present for chunked() method
+        } else if (rawTe == "identity") { // deprecated. no coding
+            delById(Http::HdrType::TRANSFER_ENCODING);
+        } else {
+            // This also rejects multiple encodings until we support them properly.
+            debugs(55, warnOnError, "WARNING: unsupported Transfer-Encoding used by client: " << rawTe);
+            teUnsupported_ = true;
+        }
+
     } else if (clen.sawBad) {
         // ensure our callers do not accidentally see bad Content-Length values
         delById(Http::HdrType::CONTENT_LENGTH);
@@ -1434,6 +1455,20 @@ HttpHeaderEntry::parse(const char *field_start, const char *field_end, const htt
         if (!name_len) {
             debugs(55, 2, "found header with only whitespace for name");
             return NULL;
+        }
+    }
+
+    /* RFC 7230 section 3.2:
+     *
+     *  header-field   = field-name ":" OWS field-value OWS
+     *  field-name     = token
+     *  token          = 1*TCHAR
+     */
+    for (const char *pos = field_start; pos < (field_start+name_len); ++pos) {
+        if (!CharacterSet::TCHAR[*pos]) {
+            debugs(55, 2, "found header with invalid characters in " <<
+                   Raw("field-name", field_start, min(name_len,100)) << "...");
+            return nullptr;
         }
     }
 

@@ -1,14 +1,14 @@
-squid (4.13-1) UNRELEASED; urgency=high
+squid (4.13-1) unstable; urgency=high
 
   [ Amos Jeffries <amosjeffries@squid-cache.org> ]
   * New Upstream Release
-    - Fixes security issue SQUID-2020:8 (CVE-2020-15811)
-    - Fixes security issue SQUID-2020:9
-    - Fixes security issue SQUID-2020:10 (CVE-2020-15810)
+    - Fixes security issue SQUID-2020:8 (CVE-2020-15811) (Closes: #968932)
+    - Fixes security issue SQUID-2020:9 (Closes: #968933)
+    - Fixes security issue SQUID-2020:10 (CVE-2020-15810) (Closes: #968934)
 
   * debian/squid.rc: Fix several typos (Closes: #968101)
 
- -- Amos Jeffries <amosjeffries@squid-cache.org>  Sun, 23 Aug 2020 20:49:00 +1200
+ -- Luigi Gangitano <luigi@debian.org>  Mon, 24 Aug 2020 17:27:54 +0200
 
 squid (4.12-1) unstable; urgency=high
 

@@ -1,0 +1,156 @@
+commit fd68382860633aca92065e6c343cfd1b12b126e7
+Author: Amos Jeffries <yadij@users.noreply.github.com>
+Date:   2020-08-16 02:21:22 +0000
+
+    Improve Transfer-Encoding handling (#702)
+    
+    Reject messages containing Transfer-Encoding header with coding other
+    than chunked or identity. Squid does not support other codings.
+    
+    For simplicity and security sake, also reject messages where
+    Transfer-Encoding contains unnecessary complex values that are
+    technically equivalent to "chunked" or "identity" (e.g., ",,chunked" or
+    "identity, chunked").
+    
+    RFC 7230 formally deprecated and removed identity coding, but it is
+    still used by some agents.
+
+diff --git a/src/HttpHeader.cc b/src/HttpHeader.cc
+index 80c23458e..f30802eb7 100644
+--- a/src/HttpHeader.cc
++++ b/src/HttpHeader.cc
+@@ -174,6 +174,7 @@ HttpHeader::operator =(const HttpHeader &other)
+         update(&other); // will update the mask as well
+         len = other.len;
+         conflictingContentLength_ = other.conflictingContentLength_;
++        teUnsupported_ = other.teUnsupported_;
+     }
+     return *this;
+ }
+@@ -222,6 +223,7 @@ HttpHeader::clean()
+     httpHeaderMaskInit(&mask, 0);
+     len = 0;
+     conflictingContentLength_ = false;
++    teUnsupported_ = false;
+     PROF_stop(HttpHeaderClean);
+ }
+ 
+@@ -471,11 +473,23 @@ HttpHeader::parse(const char *header_start, size_t hdrLen)
+                Raw("header", header_start, hdrLen));
+     }
+ 
+-    if (chunked()) {
++    String rawTe;
++    if (getByIdIfPresent(Http::HdrType::TRANSFER_ENCODING, &rawTe)) {
+         // RFC 2616 section 4.4: ignore Content-Length with Transfer-Encoding
+         // RFC 7230 section 3.3.3 #3: Transfer-Encoding overwrites Content-Length
+         delById(Http::HdrType::CONTENT_LENGTH);
+         // and clen state becomes irrelevant
++
++        if (rawTe == "chunked") {
++            ; // leave header present for chunked() method
++        } else if (rawTe == "identity") { // deprecated. no coding
++            delById(Http::HdrType::TRANSFER_ENCODING);
++        } else {
++            // This also rejects multiple encodings until we support them properly.
++            debugs(55, warnOnError, "WARNING: unsupported Transfer-Encoding used by client: " << rawTe);
++            teUnsupported_ = true;
++        }
++
+     } else if (clen.sawBad) {
+         // ensure our callers do not accidentally see bad Content-Length values
+         delById(Http::HdrType::CONTENT_LENGTH);
+diff --git a/src/HttpHeader.h b/src/HttpHeader.h
+index e3553a4e4..64f294a50 100644
+--- a/src/HttpHeader.h
++++ b/src/HttpHeader.h
+@@ -140,7 +140,13 @@ public:
+     int hasListMember(Http::HdrType id, const char *member, const char separator) const;
+     int hasByNameListMember(const char *name, const char *member, const char separator) const;
+     void removeHopByHopEntries();
+-    inline bool chunked() const; ///< whether message uses chunked Transfer-Encoding
++
++    /// whether the message uses chunked Transfer-Encoding
++    /// optimized implementation relies on us rejecting/removing other codings
++    bool chunked() const { return has(Http::HdrType::TRANSFER_ENCODING); }
++
++    /// whether message used an unsupported and/or invalid Transfer-Encoding
++    bool unsupportedTe() const { return teUnsupported_; }
+ 
+     /* protected, do not use these, use interface functions instead */
+     std::vector<HttpHeaderEntry *> entries;     /**< parsed fields in raw format */
+@@ -158,6 +164,9 @@ protected:
+ private:
+     HttpHeaderEntry *findLastEntry(Http::HdrType id) const;
+     bool conflictingContentLength_; ///< found different Content-Length fields
++    /// unsupported encoding, unnecessary syntax characters, and/or
++    /// invalid field-value found in Transfer-Encoding header
++    bool teUnsupported_ = false;
+ };
+ 
+ int httpHeaderParseQuotedString(const char *start, const int len, String *val);
+@@ -167,13 +176,6 @@ SBuf httpHeaderQuoteString(const char *raw);
+ 
+ void httpHeaderCalcMask(HttpHeaderMask * mask, Http::HdrType http_hdr_type_enums[], size_t count);
+ 
+-inline bool
+-HttpHeader::chunked() const
+-{
+-    return has(Http::HdrType::TRANSFER_ENCODING) &&
+-           hasListMember(Http::HdrType::TRANSFER_ENCODING, "chunked", ',');
+-}
+-
+ void httpHeaderInitModule(void);
+ 
+ #endif /* SQUID_HTTPHEADER_H */
+diff --git a/src/client_side.cc b/src/client_side.cc
+index f7038ba98..547b0ca72 100644
+--- a/src/client_side.cc
++++ b/src/client_side.cc
+@@ -1600,9 +1600,7 @@ void
+ clientProcessRequest(ConnStateData *conn, const Http1::RequestParserPointer &hp, Http::Stream *context)
+ {
+     ClientHttpRequest *http = context->http;
+-    bool chunked = false;
+     bool mustReplyToOptions = false;
+-    bool unsupportedTe = false;
+     bool expectBody = false;
+ 
+     // We already have the request parsed and checked, so we
+@@ -1659,13 +1657,7 @@ clientProcessRequest(ConnStateData *conn, const Http1::RequestParserPointer &hp,
+         request->http_ver.minor = http_ver.minor;
+     }
+ 
+-    if (request->header.chunked()) {
+-        chunked = true;
+-    } else if (request->header.has(Http::HdrType::TRANSFER_ENCODING)) {
+-        const String te = request->header.getList(Http::HdrType::TRANSFER_ENCODING);
+-        // HTTP/1.1 requires chunking to be the last encoding if there is one
+-        unsupportedTe = te.size() && te != "identity";
+-    } // else implied identity coding
++    const auto unsupportedTe = request->header.unsupportedTe();
+ 
+     mustReplyToOptions = (request->method == Http::METHOD_OPTIONS) &&
+                          (request->header.getInt64(Http::HdrType::MAX_FORWARDS) == 0);
+@@ -1682,6 +1674,7 @@ clientProcessRequest(ConnStateData *conn, const Http1::RequestParserPointer &hp,
+         return;
+     }
+ 
++    const auto chunked = request->header.chunked();
+     if (!chunked && !clientIsContentLengthValid(request.getRaw())) {
+         clientStreamNode *node = context->getClientReplyContext();
+         clientReplyContext *repContext = dynamic_cast<clientReplyContext *>(node->data.getRaw());
+diff --git a/src/http.cc b/src/http.cc
+index 53f428a4d..79ab2cf22 100644
+--- a/src/http.cc
++++ b/src/http.cc
+@@ -1292,6 +1292,9 @@ HttpStateData::continueAfterParsingHeader()
+             } else if (vrep->header.conflictingContentLength()) {
+                 fwd->dontRetry(true);
+                 error = ERR_INVALID_RESP;
++            } else if (vrep->header.unsupportedTe()) {
++                fwd->dontRetry(true);
++                error = ERR_INVALID_RESP;
+             } else {
+                 return true; // done parsing, got reply, and no error
+             }

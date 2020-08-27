@@ -1,0 +1,61 @@
+commit 9c8e2a71aa1d3c159a319d9365c346c48dc783a5 (HEAD -> refs/heads/v4, refs/remotes/origin/v4)
+Author: Amos Jeffries <yadij@users.noreply.github.com>
+Date:   2020-08-04 04:34:32 +0000
+
+    Enforce token characters for field-name  (#700)
+    
+    RFC 7230 defines field-name as a token. Request splitting and cache
+    poisoning attacks have used non-token characters to fool broken HTTP
+    agents behind or in front of Squid for years. This change should
+    significantly reduce that abuse.
+    
+    If we discover exceptional situations that need special treatment, the
+    relaxed parser can allow them on a case-by-case basis (while being extra
+    careful about framing-related header fields), just like we already
+    tolerate some header whitespace (e.g., between the response header
+    field-name and colon).
+
+diff --git a/src/HttpHeader.cc b/src/HttpHeader.cc
+index dc6e0ffd6..9e5e47fb3 100644
+--- a/src/HttpHeader.cc
++++ b/src/HttpHeader.cc
+@@ -443,18 +443,6 @@ HttpHeader::parse(const char *header_start, size_t hdrLen)
+             return 0;
+         }
+ 
+-        if (e->id == Http::HdrType::OTHER && stringHasWhitespace(e->name.termedBuf())) {
+-            debugs(55, warnOnError, "WARNING: found whitespace in HTTP header name {" <<
+-                   getStringPrefix(field_start, field_end-field_start) << "}");
+-
+-            if (!Config.onoff.relaxed_header_parser) {
+-                delete e;
+-                PROF_stop(HttpHeaderParse);
+-                clean();
+-                return 0;
+-            }
+-        }
+-
+         addEntry(e);
+     }
+ 
+@@ -1437,6 +1425,20 @@ HttpHeaderEntry::parse(const char *field_start, const char *field_end, const htt
+         }
+     }
+ 
++    /* RFC 7230 section 3.2:
++     *
++     *  header-field   = field-name ":" OWS field-value OWS
++     *  field-name     = token
++     *  token          = 1*TCHAR
++     */
++    for (const char *pos = field_start; pos < (field_start+name_len); ++pos) {
++        if (!CharacterSet::TCHAR[*pos]) {
++            debugs(55, 2, "found header with invalid characters in " <<
++                   Raw("field-name", field_start, min(name_len,100)) << "...");
++            return nullptr;
++        }
++    }
++
+     /* now we know we can parse it */
+ 
+     debugs(55, 9, "parsing HttpHeaderEntry: near '" <<  getStringPrefix(field_start, field_end-field_start) << "'");

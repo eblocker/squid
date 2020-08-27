@@ -1,3 +1,13 @@
+squid (4.6-1+deb10u4) buster-security; urgency=high
+
+  * Non-maintainer upload by the Security Team.
+  * SQUID-2020:8 HTTP(S) Request Splitting (CVE-2020-15811) (Closes: #968932)
+  * SQUID-2020:9 Denial of Service processing Cache Digest Response
+    (CVE-2020-24606) (Closes: #968933)
+  * SQUID-2020:10 HTTP(S) Request Smuggling (CVE-2020-15810) (Closes: #968934)
+
+ -- Salvatore Bonaccorso <carnil@debian.org>  Wed, 26 Aug 2020 12:35:13 +0200
+
 squid (4.6-1+deb10u3) buster-security; urgency=medium
 
   * CVE-2019-18860

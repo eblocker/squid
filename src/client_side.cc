@@ -1143,26 +1143,22 @@ prepareAcceleratedURL(ConnStateData * conn, const Http1::RequestParserPointer &h
     if (vport < 0)
         vport = conn->clientConnection->local.port();
 
-    char *host = NULL;
-    if (vhost && (host = hp->getHeaderField("Host"))) {
+    char *receivedHost = nullptr;
+    if (vhost && (receivedHost = hp->getHostHeaderField())) {
+        SBuf host(receivedHost);
         debugs(33, 5, "ACCEL VHOST REWRITE: vhost=" << host << " + vport=" << vport);
-        char thost[256];
         if (vport > 0) {
-            thost[0] = '\0';
-            char *t = NULL;
-            if (host[strlen(host) - 1] != ']' && (t = strrchr(host,':')) != nullptr) {
-                strncpy(thost, host, (t-host));
-                snprintf(thost+(t-host), sizeof(thost)-(t-host), ":%d", vport);
-                host = thost;
-            } else if (!t) {
-                snprintf(thost, sizeof(thost), "%s:%d",host, vport);
-                host = thost;
+            // remove existing :port (if any), cope with IPv6+ without port
+            const auto lastColonPos = host.rfind(':');
+            if (lastColonPos != SBuf::npos && *host.rbegin() != ']') {
+                host.chop(0, lastColonPos); // truncate until the last colon
             }
+            host.appendf(":%d", vport);
         } // else nothing to alter port-wise.
         const SBuf &scheme = AnyP::UriScheme(conn->transferProtocol.protocol).image();
-        const int url_sz = scheme.length() + strlen(host) + url.length() + 32;
+        const auto url_sz = scheme.length() + host.length() + url.length() + 32;
         char *uri = static_cast<char *>(xcalloc(url_sz, 1));
-        snprintf(uri, url_sz, SQUIDSBUFPH "://%s" SQUIDSBUFPH, SQUIDSBUFPRINT(scheme), host, SQUIDSBUFPRINT(url));
+        snprintf(uri, url_sz, SQUIDSBUFPH "://" SQUIDSBUFPH SQUIDSBUFPH, SQUIDSBUFPRINT(scheme), SQUIDSBUFPRINT(host), SQUIDSBUFPRINT(url));
         debugs(33, 5, "ACCEL VHOST REWRITE: " << uri);
         return uri;
     } else if (conn->port->defaultsite /* && !vhost */) {
@@ -1200,7 +1196,7 @@ buildUrlFromHost(ConnStateData * conn, const Http1::RequestParserPointer &hp)
 {
     char *uri = nullptr;
     /* BUG: Squid cannot deal with '*' URLs (RFC2616 5.1.2) */
-    if (const char *host = hp->getHeaderField("Host")) {
+    if (const char *host = hp->getHostHeaderField()) {
         const SBuf &scheme = AnyP::UriScheme(conn->transferProtocol.protocol).image();
         const int url_sz = scheme.length() + strlen(host) + hp->requestUri().length() + 32;
         uri = static_cast<char *>(xcalloc(url_sz, 1));
@@ -1602,9 +1598,7 @@ void
 clientProcessRequest(ConnStateData *conn, const Http1::RequestParserPointer &hp, Http::Stream *context)
 {
     ClientHttpRequest *http = context->http;
-    bool chunked = false;
     bool mustReplyToOptions = false;
-    bool unsupportedTe = false;
     bool expectBody = false;
 
     // We already have the request parsed and checked, so we
@@ -1661,13 +1655,7 @@ clientProcessRequest(ConnStateData *conn, const Http1::RequestParserPointer &hp,
         request->http_ver.minor = http_ver.minor;
     }
 
-    if (request->header.chunked()) {
-        chunked = true;
-    } else if (request->header.has(Http::HdrType::TRANSFER_ENCODING)) {
-        const String te = request->header.getList(Http::HdrType::TRANSFER_ENCODING);
-        // HTTP/1.1 requires chunking to be the last encoding if there is one
-        unsupportedTe = te.size() && te != "identity";
-    } // else implied identity coding
+    const auto unsupportedTe = request->header.unsupportedTe();
 
     mustReplyToOptions = (request->method == Http::METHOD_OPTIONS) &&
                          (request->header.getInt64(Http::HdrType::MAX_FORWARDS) == 0);
@@ -1684,6 +1672,7 @@ clientProcessRequest(ConnStateData *conn, const Http1::RequestParserPointer &hp,
         return;
     }
 
+    const auto chunked = request->header.chunked();
     if (!chunked && !clientIsContentLengthValid(request.getRaw())) {
         clientStreamNode *node = context->getClientReplyContext();
         clientReplyContext *repContext = dynamic_cast<clientReplyContext *>(node->data.getRaw());

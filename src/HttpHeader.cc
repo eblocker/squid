@@ -174,6 +174,7 @@ HttpHeader::operator =(const HttpHeader &other)
         update(&other); // will update the mask as well
         len = other.len;
         conflictingContentLength_ = other.conflictingContentLength_;
+        teUnsupported_ = other.teUnsupported_;
     }
     return *this;
 }
@@ -222,6 +223,7 @@ HttpHeader::clean()
     httpHeaderMaskInit(&mask, 0);
     len = 0;
     conflictingContentLength_ = false;
+    teUnsupported_ = false;
     PROF_stop(HttpHeaderClean);
 }
 
@@ -421,14 +423,11 @@ HttpHeader::parse(const char *header_start, size_t hdrLen)
             break;      /* terminating blank line */
         }
 
-        HttpHeaderEntry *e;
-        if ((e = HttpHeaderEntry::parse(field_start, field_end)) == NULL) {
+        const auto e = HttpHeaderEntry::parse(field_start, field_end, owner);
+        if (!e) {
             debugs(55, warnOnError, "WARNING: unparseable HTTP header field {" <<
                    getStringPrefix(field_start, field_end-field_start) << "}");
             debugs(55, warnOnError, " in {" << getStringPrefix(header_start, hdrLen) << "}");
-
-            if (Config.onoff.relaxed_header_parser)
-                continue;
 
             PROF_stop(HttpHeaderParse);
             clean();
@@ -446,18 +445,6 @@ HttpHeader::parse(const char *header_start, size_t hdrLen)
             return 0;
         }
 
-        if (e->id == Http::HdrType::OTHER && stringHasWhitespace(e->name.termedBuf())) {
-            debugs(55, warnOnError, "WARNING: found whitespace in HTTP header name {" <<
-                   getStringPrefix(field_start, field_end-field_start) << "}");
-
-            if (!Config.onoff.relaxed_header_parser) {
-                delete e;
-                PROF_stop(HttpHeaderParse);
-                clean();
-                return 0;
-            }
-        }
-
         addEntry(e);
     }
 
@@ -467,11 +454,23 @@ HttpHeader::parse(const char *header_start, size_t hdrLen)
                Raw("header", header_start, hdrLen));
     }
 
-    if (chunked()) {
+    String rawTe;
+    if (getByIdIfPresent(Http::HdrType::TRANSFER_ENCODING, &rawTe)) {
         // RFC 2616 section 4.4: ignore Content-Length with Transfer-Encoding
         // RFC 7230 section 3.3.3 #3: Transfer-Encoding overwrites Content-Length
         delById(Http::HdrType::CONTENT_LENGTH);
         // and clen state becomes irrelevant
+
+        if (rawTe == "chunked") {
+            ; // leave header present for chunked() method
+        } else if (rawTe == "identity") { // deprecated. no coding
+            delById(Http::HdrType::TRANSFER_ENCODING);
+        } else {
+            // This also rejects multiple encodings until we support them properly.
+            debugs(55, warnOnError, "WARNING: unsupported Transfer-Encoding used by client: " << rawTe);
+            teUnsupported_ = true;
+        }
+
     } else if (clen.sawBad) {
         // ensure our callers do not accidentally see bad Content-Length values
         delById(Http::HdrType::CONTENT_LENGTH);
@@ -1386,7 +1385,7 @@ HttpHeaderEntry::~HttpHeaderEntry()
 
 /* parses and inits header entry, returns true/false */
 HttpHeaderEntry *
-HttpHeaderEntry::parse(const char *field_start, const char *field_end)
+HttpHeaderEntry::parse(const char *field_start, const char *field_end, const http_hdr_owner_type msgType)
 {
     /* note: name_start == field_start */
     const char *name_end = (const char *)memchr(field_start, ':', field_end - field_start);
@@ -1403,19 +1402,55 @@ HttpHeaderEntry::parse(const char *field_start, const char *field_end)
 
     if (name_len > 65534) {
         /* String must be LESS THAN 64K and it adds a terminating NULL */
-        debugs(55, DBG_IMPORTANT, "WARNING: ignoring header name of " << name_len << " bytes");
+        // TODO: update this to show proper name_len in Raw markup, but not print all that
+        debugs(55, 2, "ignoring huge header field (" << Raw("field_start", field_start, 100) << "...)");
         return NULL;
     }
 
-    if (Config.onoff.relaxed_header_parser && xisspace(field_start[name_len - 1])) {
+    /*
+     * RFC 7230 section 3.2.4:
+     * "No whitespace is allowed between the header field-name and colon.
+     * ...
+     *  A server MUST reject any received request message that contains
+     *  whitespace between a header field-name and colon with a response code
+     *  of 400 (Bad Request).  A proxy MUST remove any such whitespace from a
+     *  response message before forwarding the message downstream."
+     */
+    if (xisspace(field_start[name_len - 1])) {
+
+        if (msgType == hoRequest)
+            return nullptr;
+
+        // for now, also let relaxed parser remove this BWS from any non-HTTP messages
+        const bool stripWhitespace = (msgType == hoReply) ||
+                                     Config.onoff.relaxed_header_parser;
+        if (!stripWhitespace)
+            return nullptr; // reject if we cannot strip
+
         debugs(55, Config.onoff.relaxed_header_parser <= 0 ? 1 : 2,
                "NOTICE: Whitespace after header name in '" << getStringPrefix(field_start, field_end-field_start) << "'");
 
         while (name_len > 0 && xisspace(field_start[name_len - 1]))
             --name_len;
 
-        if (!name_len)
+        if (!name_len) {
+            debugs(55, 2, "found header with only whitespace for name");
             return NULL;
+        }
+    }
+
+    /* RFC 7230 section 3.2:
+     *
+     *  header-field   = field-name ":" OWS field-value OWS
+     *  field-name     = token
+     *  token          = 1*TCHAR
+     */
+    for (const char *pos = field_start; pos < (field_start+name_len); ++pos) {
+        if (!CharacterSet::TCHAR[*pos]) {
+            debugs(55, 2, "found header with invalid characters in " <<
+                   Raw("field-name", field_start, min(name_len,100)) << "...");
+            return nullptr;
+        }
     }
 
     /* now we know we can parse it */
@@ -1448,11 +1483,7 @@ HttpHeaderEntry::parse(const char *field_start, const char *field_end)
 
     if (field_end - value_start > 65534) {
         /* String must be LESS THAN 64K and it adds a terminating NULL */
-        debugs(55, DBG_IMPORTANT, "WARNING: ignoring '" << name << "' header of " << (field_end - value_start) << " bytes");
-
-        if (id == Http::HdrType::OTHER)
-            name.clean();
-
+        debugs(55, 2, "WARNING: found '" << name << "' header of " << (field_end - value_start) << " bytes");
         return NULL;
     }
 

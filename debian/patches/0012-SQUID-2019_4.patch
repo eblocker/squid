@@ -1,0 +1,55 @@
+commit e1e861eb9a04137fe81decd1c9370b13c6f18a18
+Author: Amos Jeffries <yadij@users.noreply.github.com>
+Date:   2019-05-16 15:22:54 +0000
+
+    RFC 7230 forbids generation of userinfo subcomponent of https URL (#405)
+
+diff --git a/src/anyp/Uri.cc b/src/anyp/Uri.cc
+index c6d6836..12b1aaf 100644
+--- a/src/anyp/Uri.cc
++++ b/src/anyp/Uri.cc
+@@ -496,7 +496,7 @@ AnyP::Uri::absolute() const
+         if (getScheme() != AnyP::PROTO_URN) {
+             absolute_.append("//", 2);
+             const bool omitUserInfo = getScheme() == AnyP::PROTO_HTTP ||
+-                                      getScheme() != AnyP::PROTO_HTTPS ||
++                                      getScheme() == AnyP::PROTO_HTTPS ||
+                                       userInfo().isEmpty();
+             if (!omitUserInfo) {
+                 absolute_.append(userInfo());
+commit 2d3a615ea3440fae6dbe66277a95e6264c586c6b
+Author: Amos Jeffries <yadij@users.noreply.github.com>
+Date:   2019-06-23 15:15:56 +0000
+
+    Remove userinfo support from old protocols (#419)
+    
+    RFC 1738 defines the URL schemes for gopher and wais as not
+    having the userinfo@ segment.
+    
+    coap, coaps, whois and cache_object also do not use this segment.
+    
+    For these cases we can obey the RFC7230 requirement to ignore the
+    segment when producing normalized absolute URL.
+    
+    Of the supported protocols only FTP requires userinfo, and because
+    we cannot be certain for unknown protocols allow it as well.
+
+diff --git a/src/anyp/Uri.cc b/src/anyp/Uri.cc
+index 12b1aaf..6ce8d9b 100644
+--- a/src/anyp/Uri.cc
++++ b/src/anyp/Uri.cc
+@@ -495,10 +495,10 @@ AnyP::Uri::absolute() const
+         absolute_.append(":",1);
+         if (getScheme() != AnyP::PROTO_URN) {
+             absolute_.append("//", 2);
+-            const bool omitUserInfo = getScheme() == AnyP::PROTO_HTTP ||
+-                                      getScheme() == AnyP::PROTO_HTTPS ||
+-                                      userInfo().isEmpty();
+-            if (!omitUserInfo) {
++            const bool allowUserInfo = getScheme() == AnyP::PROTO_FTP ||
++                                       getScheme() == AnyP::PROTO_UNKNOWN;
++
++            if (allowUserInfo && !userInfo().isEmpty()) {
+                 absolute_.append(userInfo());
+                 absolute_.append("@", 1);
+             }

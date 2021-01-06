@@ -1,0 +1,136 @@
+commit d8e4715992d0e530871519549add5519cbac0598 (refs/remotes/origin/v4)
+Author: Amos Jeffries <yadij@users.noreply.github.com>
+Date:   2019-08-13 13:50:06 +0000
+
+    Ignore malformed Host header in intercept and reverse proxy mode (#456)
+
+diff --git a/src/client_side.cc b/src/client_side.cc
+index ba1006d..7c0121a 100644
+--- a/src/client_side.cc
++++ b/src/client_side.cc
+@@ -1142,7 +1142,7 @@ prepareAcceleratedURL(ConnStateData * conn, const Http1::RequestParserPointer &h
+         vport = conn->clientConnection->local.port();
+ 
+     char *host = NULL;
+-    if (vhost && (host = hp->getHeaderField("Host"))) {
++    if (vhost && (host = hp->getHostHeaderField())) {
+         debugs(33, 5, "ACCEL VHOST REWRITE: vhost=" << host << " + vport=" << vport);
+         char thost[256];
+         if (vport > 0) {
+@@ -1198,7 +1198,7 @@ buildUrlFromHost(ConnStateData * conn, const Http1::RequestParserPointer &hp)
+ {
+     char *uri = nullptr;
+     /* BUG: Squid cannot deal with '*' URLs (RFC2616 5.1.2) */
+-    if (const char *host = hp->getHeaderField("Host")) {
++    if (const char *host = hp->getHostHeaderField()) {
+         const SBuf &scheme = AnyP::UriScheme(conn->transferProtocol.protocol).image();
+         const int url_sz = scheme.length() + strlen(host) + hp->requestUri().length() + 32;
+         uri = static_cast<char *>(xcalloc(url_sz, 1));
+diff --git a/src/http/one/Parser.cc b/src/http/one/Parser.cc
+index 069bdac..c51ebe0 100644
+--- a/src/http/one/Parser.cc
++++ b/src/http/one/Parser.cc
+@@ -210,18 +210,19 @@ Http::One::Parser::grabMimeBlock(const char *which, const size_t limit)
+     return true;
+ }
+ 
+-// arbitrary maximum-length for headers which can be found by Http1Parser::getHeaderField()
++// arbitrary maximum-length for headers which can be found by Http1Parser::getHostHeaderField()
+ #define GET_HDR_SZ  1024
+ 
+ // BUG: returns only the first header line with given name,
+ //      ignores multi-line headers and obs-fold headers
+ char *
+-Http::One::Parser::getHeaderField(const char *name)
++Http::One::Parser::getHostHeaderField()
+ {
+-    if (!headerBlockSize() || !name)
++    if (!headerBlockSize())
+         return NULL;
+ 
+     LOCAL_ARRAY(char, header, GET_HDR_SZ);
++    const char *name = "Host";
+     const int namelen = strlen(name);
+ 
+     debugs(25, 5, "looking for " << name);
+@@ -256,6 +257,11 @@ Http::One::Parser::getHeaderField(const char *name)
+         // prevent buffer overrun on char header[];
+         p.chop(0, sizeof(header)-1);
+ 
++        // currently only used for pre-parse Host header, ensure valid domain[:port] or ip[:port]
++        static const auto hostChars = CharacterSet("host",":[].-_") + CharacterSet::ALPHA + CharacterSet::DIGIT;
++        if (p.findFirstNotOf(hostChars) != SBuf::npos)
++            break; // error. line contains character not accepted in Host header
++
+         // return the header field-value
+         SBufToCstring(header, p);
+         debugs(25, 5, "returning " << header);
+diff --git a/src/http/one/Parser.h b/src/http/one/Parser.h
+index a5b0e15..046a96f 100644
+--- a/src/http/one/Parser.h
++++ b/src/http/one/Parser.h
+@@ -78,7 +78,7 @@ public:
+     const AnyP::ProtocolVersion & messageProtocol() const {return msgProtocol_;}
+ 
+     /**
+-     * Scan the mime header block (badly) for a header with the given name.
++     * Scan the mime header block (badly) for a Host header.
+      *
+      * BUG: omits lines when searching for headers with obs-fold or multiple entries.
+      *
+@@ -86,7 +86,7 @@ public:
+      *
+      * \return A pointer to a field-value of the first matching field-name, or NULL.
+      */
+-    char *getHeaderField(const char *name);
++    char *getHostHeaderField();
+ 
+     /// the remaining unprocessed section of buffer
+     const SBuf &remaining() const {return buf_;}
+commit b3a0719affab099c684f1cd62b79ab02816fa962
+Author: Guido Vranken <guidovranken@users.noreply.github.com>
+Date:   2019-12-12 03:27:40 +0000
+
+    Fix request URL generation in reverse proxy configurations (#519)
+
+diff --git a/src/client_side.cc b/src/client_side.cc
+index 538bd5e..671f6c6 100644
+--- a/src/client_side.cc
++++ b/src/client_side.cc
+@@ -1141,26 +1141,22 @@ prepareAcceleratedURL(ConnStateData * conn, const Http1::RequestParserPointer &h
+     if (vport < 0)
+         vport = conn->clientConnection->local.port();
+ 
+-    char *host = NULL;
+-    if (vhost && (host = hp->getHostHeaderField())) {
++    char *receivedHost = nullptr;
++    if (vhost && (receivedHost = hp->getHostHeaderField())) {
++        SBuf host(receivedHost);
+         debugs(33, 5, "ACCEL VHOST REWRITE: vhost=" << host << " + vport=" << vport);
+-        char thost[256];
+         if (vport > 0) {
+-            thost[0] = '\0';
+-            char *t = NULL;
+-            if (host[strlen(host) - 1] != ']' && (t = strrchr(host,':')) != nullptr) {
+-                strncpy(thost, host, (t-host));
+-                snprintf(thost+(t-host), sizeof(thost)-(t-host), ":%d", vport);
+-                host = thost;
+-            } else if (!t) {
+-                snprintf(thost, sizeof(thost), "%s:%d",host, vport);
+-                host = thost;
++            // remove existing :port (if any), cope with IPv6+ without port
++            const auto lastColonPos = host.rfind(':');
++            if (lastColonPos != SBuf::npos && *host.rbegin() != ']') {
++                host.chop(0, lastColonPos); // truncate until the last colon
+             }
++            host.appendf(":%d", vport);
+         } // else nothing to alter port-wise.
+         const SBuf &scheme = AnyP::UriScheme(conn->transferProtocol.protocol).image();
+-        const int url_sz = scheme.length() + strlen(host) + url.length() + 32;
++        const auto url_sz = scheme.length() + host.length() + url.length() + 32;
+         char *uri = static_cast<char *>(xcalloc(url_sz, 1));
+-        snprintf(uri, url_sz, SQUIDSBUFPH "://%s" SQUIDSBUFPH, SQUIDSBUFPRINT(scheme), host, SQUIDSBUFPRINT(url));
++        snprintf(uri, url_sz, SQUIDSBUFPH "://" SQUIDSBUFPH SQUIDSBUFPH, SQUIDSBUFPRINT(scheme), SQUIDSBUFPRINT(host), SQUIDSBUFPRINT(url));
+         debugs(33, 5, "ACCEL VHOST REWRITE: " << uri);
+         return uri;
+     } else if (conn->port->defaultsite /* && !vhost */) {

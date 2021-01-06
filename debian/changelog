@@ -1,3 +1,44 @@
+squid (4.6-1+deb10u4) buster-security; urgency=high
+
+  * Non-maintainer upload by the Security Team.
+  * SQUID-2020:8 HTTP(S) Request Splitting (CVE-2020-15811) (Closes: #968932)
+  * SQUID-2020:9 Denial of Service processing Cache Digest Response
+    (CVE-2020-24606) (Closes: #968933)
+  * SQUID-2020:10 HTTP(S) Request Smuggling (CVE-2020-15810) (Closes: #968934)
+
+ -- Salvatore Bonaccorso <carnil@debian.org>  Wed, 26 Aug 2020 12:35:13 +0200
+
+squid (4.6-1+deb10u3) buster-security; urgency=medium
+
+  * CVE-2019-18860
+  * CVE-2020-1504
+
+ -- Moritz Mühlenhoff <jmm@debian.org>  Tue, 14 Jul 2020 22:25:06 +0200
+
+squid (4.6-1+deb10u2) buster-security; urgency=high
+
+  [ Amos Jeffries <amosjeffries@squid-cache.org> ]
+  * debian/patches/
+    - Multiple Issues in HTTP Request processing (CVE-2019-12520)
+      (CVE-2019-12524)
+    - Heap Overflow issue in URN processing (CVE-2019-12526)
+    - Multiple issues in URI processing (CVE-2019-12523)
+      (CVE-2019-18676)
+    - Cross-Site Request Forgery issue in HTTP Request processing
+      (CVE-2019-18677)
+    - HTTP Request Splitting issue in HTTP message processing
+      (CVE-2019-18678)
+    - Information Disclosure issue in HTTP Digest Authentication
+      (CVE-2019-18679)
+    - Multiple issues in ESI Response processing (CVE-2019-12519)
+      (CVE-2019-12521)
+    - Improper Input Validation issues in HTTP Request processing
+      (CVE-2020-8449) (CVE-2020-8450)
+    - Information Disclosure issue in FTP Gateway (CVE-2019-12528)
+    - Multiple issues in HTTP Digest authentication (CVE-2020-11945)
+
+ -- Luigi Gangitano <luigi@debian.org>  Mon,  4 May 2020 21:07:15 +0200
+
 squid (4.6-1+deb10u1) buster-security; urgency=high
 
   * Non-maintainer upload by the Security Team.

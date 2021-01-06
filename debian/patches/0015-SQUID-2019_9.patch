@@ -1,0 +1,89 @@
+commit 36492033ea4097821a4f7ff3ddcb971fbd1e8ba0
+Author: Amos Jeffries <yadij@users.noreply.github.com>
+Date:   2019-07-12 03:08:00 +0000
+
+    Prevent truncation for large origin-relative domains (#427)
+    
+    The domain in a URL must obey hostname length restrictions after
+    append_domain is applied, not just MAX_URL for the normalized
+    absolute-URL.
+
+diff --git a/src/anyp/Uri.cc b/src/anyp/Uri.cc
+index 6ce8d9b..36d3fe2 100644
+--- a/src/anyp/Uri.cc
++++ b/src/anyp/Uri.cc
+@@ -153,6 +153,30 @@
+     throw TextException("invalid URI scheme", Here());
+ }
+ 
++/**
++ * Appends configured append_domain to hostname, assuming
++ * the given buffer is at least SQUIDHOSTNAMELEN bytes long,
++ * and that the host FQDN is not a 'dotless' TLD.
++ *
++ * \returns false if and only if there is not enough space to append
++ */
++bool
++urlAppendDomain(char *host)
++{
++    /* For IPv4 addresses check for a dot */
++    /* For IPv6 addresses also check for a colon */
++    if (Config.appendDomain && !strchr(host, '.') && !strchr(host, ':')) {
++        const uint64_t dlen = strlen(host);
++        const uint64_t want = dlen + Config.appendDomainLen;
++        if (want > SQUIDHOSTNAMELEN - 1) {
++            debugs(23, 2, "URL domain too large (" << dlen << " bytes)");
++            return false;
++        }
++        strncat(host, Config.appendDomain, SQUIDHOSTNAMELEN - dlen - 1);
++    }
++    return true;
++}
++
+ /*
+  * Parse a URI/URL.
+  *
+@@ -376,9 +400,8 @@ AnyP::Uri::parse(const HttpRequestMethod& method, const char *url)
+         return false;
+     }
+ 
+-    /* For IPV6 addresses also check for a colon */
+-    if (Config.appendDomain && !strchr(foundHost, '.') && !strchr(foundHost, ':'))
+-        strncat(foundHost, Config.appendDomain, SQUIDHOSTNAMELEN - strlen(foundHost) - 1);
++    if (!urlAppendDomain(foundHost))
++        return false;
+ 
+     /* remove trailing dots from hostnames */
+     while ((l = strlen(foundHost)) > 0 && foundHost[--l] == '.')
+diff --git a/src/anyp/Uri.h b/src/anyp/Uri.h
+index 1a8f057..c0b8416 100644
+--- a/src/anyp/Uri.h
++++ b/src/anyp/Uri.h
+@@ -191,6 +191,7 @@ bool urlIsRelative(const char *);
+ char *urlMakeAbsolute(const HttpRequest *, const char *);
+ char *urlRInternal(const char *host, unsigned short port, const char *dir, const char *name);
+ char *urlInternal(const char *dir, const char *name);
++bool urlAppendDomain(char *host); ///< apply append_domain config to the given hostname
+ 
+ enum MatchDomainNameFlags {
+     mdnNone = 0,
+diff --git a/src/internal.cc b/src/internal.cc
+index 11fae9b..facc3d9 100644
+--- a/src/internal.cc
++++ b/src/internal.cc
+@@ -98,13 +98,9 @@ internalRemoteUri(bool encrypt, const char *host, unsigned short port, const cha
+ 
+     /*
+      * append the domain in order to mirror the requests with appended
+-     * domains
++     * domains. If that fails, just use the hostname anyway.
+      */
+-
+-    /* For IPv6 addresses also check for a colon */
+-    if (Config.appendDomain && !strchr(lc_host, '.') && !strchr(lc_host, ':'))
+-        strncat(lc_host, Config.appendDomain, SQUIDHOSTNAMELEN -
+-                strlen(lc_host) - 1);
++    (void)urlAppendDomain(lc_host);
+ 
+     /* build URI */
+     AnyP::Uri tmp(AnyP::PROTO_HTTP);

@@ -1,0 +1,34 @@
+commit b789e719affbb0a6ff9c22095f6ca8db6a5f4926
+Author: Eduard Bagdasaryan <eduard.bagdasaryan@measurement-factory.com>
+Date:   2020-07-27 15:28:31 +0000
+
+    Fix livelocking in peerDigestHandleReply (#698)
+    
+    peerDigestHandleReply() was missing a premature EOF check. The existing
+    peerDigestFetchedEnough() cannot detect EOF because it does not have
+    access to receivedData.length used to indicate the EOF condition. We did
+    not adjust peerDigestFetchedEnough() because it is abused to check both
+    post-I/O state and the state after each digest processing step. The
+    latter invocations lack access to receivedData.length and should not
+    really bother with EOF anyway.
+
+diff --git a/src/peer_digest.cc b/src/peer_digest.cc
+index d48340f97..265f16183 100644
+--- a/src/peer_digest.cc
++++ b/src/peer_digest.cc
+@@ -483,6 +483,15 @@ peerDigestHandleReply(void *data, StoreIOBuffer receivedData)
+ 
+     } while (cbdataReferenceValid(fetch) && prevstate != fetch->state && fetch->bufofs > 0);
+ 
++    // Check for EOF here, thus giving the parser one extra run. We could avoid this overhead by
++    // checking at the beginning of this function. However, in this case, we would have to require
++    // that the parser does not regard EOF as a special condition (it is true now but may change
++    // in the future).
++    if (!receivedData.length) { // EOF
++        peerDigestFetchAbort(fetch, fetch->buf, "premature end of digest reply");
++        return;
++    }
++
+     /* Update the copy offset */
+     fetch->offset += receivedData.length;
+ 

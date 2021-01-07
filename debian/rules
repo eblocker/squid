@@ -95,6 +95,7 @@ install/squidssl::
 	install -m 644 -g root debian/squidssl.logrotate $(INSTALLDIR)/etc/logrotate.d/squid
 	install -m 644 -g root debian/squidssl.systemd.drop.in $(INSTALLDIR)/etc/systemd/system/squid.service.d/requires-certvalidator.conf
 	install -m 644 -g root debian/squidssl.systemd.killmode.drop.in $(INSTALLDIR)/etc/systemd/system/squid.service.d/kill-mode-control-group.conf
+	install -m 644 -g root debian/squidssl.systemd.restart.drop.in $(INSTALLDIR)/etc/systemd/system/squid.service.d/restart.conf
 	install -m 644 -g root debian/squidssl.ufw.profile $(INSTALLDIR)/etc/ufw/applications.d/squid
 	install -m 755 -g root -d debian/squidssl/var/log
 	install -m 755 -g root -d debian/squidssl/var/spool

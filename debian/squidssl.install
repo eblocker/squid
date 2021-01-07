@@ -6,6 +6,7 @@ etc/resolvconf
 etc/init.d/squid
 etc/systemd/system/squid.service.d/requires-certvalidator.conf
 etc/systemd/system/squid.service.d/kill-mode-control-group.conf
+etc/systemd/system/squid.service.d/restart.conf
 etc/ufw
 usr/lib/squid
 usr/sbin/squid

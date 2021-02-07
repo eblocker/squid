@@ -27,6 +27,7 @@ Build-Depends: ed, libltdl-dev, pkg-config
 	, libsystemd-dev [linux-any]
 	, libxml2-dev
 	, nettle-dev
+	, libssl-dev
 
 Package: squid
 Architecture: any

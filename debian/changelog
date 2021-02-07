@@ -1,3 +1,11 @@
+squid (4.13-2) unstable; urgency=high
+
+  * Add a new brand, the new squid-openssl package compiled
+    with openssl.
+  * Change rules to allow double building the two brands.
+
+ -- Santiago Garcia Mantinan <manty@debian.org>  Sun, 07 Feb 2021 01:39:45 +0100
+
 squid (4.13-1) unstable; urgency=high
 
   [ Amos Jeffries <amosjeffries@squid-cache.org> ]

@@ -11,7 +11,7 @@ Build-Depends: ed, libltdl-dev, pkg-config
 # The compiler dependencies are relevant for backporting.
 	, g++ (>= 4.9) <!cross> | clang (>= 3.7) <!cross>
 	, gcc (>= 4.9) <!cross> | clang (>= 3.7) <!cross>
-	, cdbs, debhelper (>=10), dpkg-dev (>= 1.17.11~), lsb-release
+	, debhelper (>=12), dpkg-dev (>= 1.17.11~), lsb-release
 	, dh-apparmor
 	, libcppunit-dev
 	, libcap2-dev [linux-any]
@@ -34,8 +34,21 @@ Pre-Depends: adduser
 Depends: ${shlibs:Depends}, ${misc:Depends}, netbase, logrotate (>= 3.5.4-1), squid-common (>= ${source:Version}), lsb-base, libdbi-perl
 Suggests: squidclient, squid-cgi, squid-purge, resolvconf (>= 0.40), smbclient, ufw, winbind, apparmor
 Recommends: libcap2-bin [linux-any], ca-certificates
+Conflicts: squid-openssl
 Provides: squid3
-Description: Full featured Web Proxy cache (HTTP proxy)
+Description: Full featured Web Proxy cache (HTTP proxy GnuTLS flavour)
+ Squid is a high-performance proxy caching server for web clients, supporting
+ FTP, gopher, ICY and HTTP data objects.
+
+Package: squid-openssl
+Architecture: any
+Pre-Depends: adduser
+Depends: ${shlibs:Depends}, ${misc:Depends}, netbase, logrotate (>= 3.5.4-1), squid-common (>= ${source:Version}), lsb-base, libdbi-perl
+Suggests: squidclient, squid-cgi, squid-purge, resolvconf (>= 0.40), smbclient, ufw, winbind, apparmor
+Recommends: libcap2-bin [linux-any], ca-certificates
+Conflicts: squid
+Provides: squid3
+Description: Full featured Web Proxy cache (HTTP proxy OpenSSL flavour)
  Squid is a high-performance proxy caching server for web clients, supporting
  FTP, gopher, ICY and HTTP data objects.
 

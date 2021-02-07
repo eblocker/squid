@@ -1,3 +1,14 @@
+squid (4.13-2) UNRELEASED; urgency=high
+
+  Starting from this release we ship the old squid package compiled against
+  GnuTLS and a new brand, the new squid-openssl package which is compiled
+  against OpenSSL, this new brand allows the intercept mode with ssl-bump.
+  Both packages have the squid binary and service so conflict with each
+  other, the feature set of each build is different, choose the one that
+  suits you better.
+
+ -- Santiago Garcia Mantinan <manty@debian.org>  Sun, 07 Feb 2021 01:43:37 +0100
+
 squid (4.1-1) unstable; urgency=medium
 
   Starting from this release support for systemd init has been added to the

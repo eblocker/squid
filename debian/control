@@ -4,7 +4,7 @@ Priority: optional
 Maintainer: Luigi Gangitano <luigi@debian.org>
 Uploaders: Santiago Garcia Mantinan <manty@debian.org>
 Homepage: http://www.squid-cache.org
-Standards-Version: 4.5.0
+Standards-Version: 4.5.1
 Vcs-Git: https://salsa.debian.org/squid-team/squid.git
 Vcs-Browser: https://salsa.debian.org/squid-team/squid
 Build-Depends: ed, libltdl-dev, pkg-config
@@ -30,7 +30,7 @@ Build-Depends: ed, libltdl-dev, pkg-config
 
 Package: squid
 Architecture: any
-Pre-Depends: adduser
+Pre-Depends: ${misc:Pre-Depends}, adduser
 Depends: ${shlibs:Depends}, ${misc:Depends}, netbase, logrotate (>= 3.5.4-1), squid-common (>= ${source:Version}), lsb-base, libdbi-perl
 Suggests: squidclient, squid-cgi, squid-purge, resolvconf (>= 0.40), smbclient, ufw, winbind, apparmor
 Recommends: libcap2-bin [linux-any], ca-certificates
@@ -42,7 +42,7 @@ Description: Full featured Web Proxy cache (HTTP proxy GnuTLS flavour)
 
 Package: squid-openssl
 Architecture: any
-Pre-Depends: adduser
+Pre-Depends: ${misc:Pre-Depends}, adduser
 Depends: ${shlibs:Depends}, ${misc:Depends}, netbase, logrotate (>= 3.5.4-1), squid-common (>= ${source:Version}), lsb-base, libdbi-perl
 Suggests: squidclient, squid-cgi, squid-purge, resolvconf (>= 0.40), smbclient, ufw, winbind, apparmor
 Recommends: libcap2-bin [linux-any], ca-certificates

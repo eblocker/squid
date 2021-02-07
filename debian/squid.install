@@ -3,7 +3,6 @@ etc/squid/conf.d
 etc/squid/errorpage.css
 etc/logrotate.d
 etc/resolvconf
-etc/init.d/squid
 etc/ufw
 usr/lib/squid
 usr/sbin/squid

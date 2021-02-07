@@ -1,3 +1,4 @@
 usr/share/squid/icons
 usr/share/squid/mib.txt
+usr/share/squid/mime.conf
 etc/squid/squid.conf.documented /usr/share/doc/squid-common

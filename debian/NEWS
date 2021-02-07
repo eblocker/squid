@@ -1,4 +1,4 @@
-squid (4.13-2) UNRELEASED; urgency=high
+squid (4.13-2) unstable; urgency=high
 
   Starting from this release we ship the old squid package compiled against
   GnuTLS and a new brand, the new squid-openssl package which is compiled

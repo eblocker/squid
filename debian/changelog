@@ -1,3 +1,16 @@
+squid (4.13-5) unstable; urgency=high
+
+  * Have a deeper look and change all dpkg-buildpackage commands
+    for similar dh ones. At least at home it works now.
+
+ -- Santiago Garcia Mantinan <manty@debian.org>  Mon, 08 Feb 2021 21:35:48 +0100
+
+squid (4.13-4) unstable; urgency=high
+
+  * Remove pre-build from upstream-test-suite.
+
+ -- Santiago Garcia Mantinan <manty@debian.org>  Mon, 08 Feb 2021 09:26:25 +0100
+
 squid (4.13-3) unstable; urgency=high
 
   * Source only upload to allow migration to testing.

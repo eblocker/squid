@@ -2,8 +2,9 @@
 set -e
 
 dpkg-source --before-build `pwd`
-dpkg-buildpackage -rfakeroot --target=pre-build
-dpkg-buildpackage -rfakeroot --target=common-configure-arch 2>/dev/null
+dh_update_autotools_config
+dh_autoreconf
+dh_auto_configure -- ${DEB_CONFIGURE_EXTRA_FLAGS} --with-gnutls
 make -C src/base libbase.la
 make -C src/mem libmem.la
 make -C src globals.o

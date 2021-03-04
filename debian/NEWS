@@ -1,3 +1,12 @@
+squid (4.13-6) unstable; urgency=medium
+
+  If you want to transition from squid to squid-openssl or vice versa you
+  should first make sure you have at least version 4.13-6 of the packages
+  installed or don't purge your packages, as older packages will remove
+  logs and config file on purge.
+
+ -- Santiago Garcia Mantinan <manty@debian.org>  Thu, 04 Mar 2021 15:36:44 +0100
+
 squid (4.13-2) unstable; urgency=high
 
   Starting from this release we ship the old squid package compiled against

@@ -11,7 +11,7 @@ Build-Depends: ed, libltdl-dev, pkg-config
 # The compiler dependencies are relevant for backporting.
 	, g++ (>= 4.9) <!cross> | clang (>= 3.7) <!cross>
 	, gcc (>= 4.9) <!cross> | clang (>= 3.7) <!cross>
-	, debhelper (>=12), dpkg-dev (>= 1.17.11~), lsb-release
+	, debhelper (>=12.8), dpkg-dev (>= 1.17.11~), lsb-release
 	, dh-apparmor
 	, libcppunit-dev
 	, libcap2-dev [linux-any]

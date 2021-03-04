@@ -1,3 +1,11 @@
+squid (4.13-6) unstable; urgency=medium
+
+  * Stop removing cache and config file on postrm. Closes: #984510.
+  * Increase debhelper build dependency to 12.8 as we need that from -5.
+  * Add NEWS note on the problem with purge on previous versions.
+
+ -- Santiago Garcia Mantinan <manty@debian.org>  Thu, 04 Mar 2021 14:45:00 +0100
+
 squid (4.13-5) unstable; urgency=high
 
   * Have a deeper look and change all dpkg-buildpackage commands

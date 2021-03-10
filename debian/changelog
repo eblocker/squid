@@ -1,3 +1,10 @@
+squid (4.13-7) unstable; urgency=medium
+
+  * Add full postrm scripts while we don't solve #984897 on debhelper.
+    Closes: #984880.
+
+ -- Santiago Garcia Mantinan <manty@debian.org>  Wed, 10 Mar 2021 09:19:32 +0100
+
 squid (4.13-6) unstable; urgency=medium
 
   * Stop removing cache and config file on postrm. Closes: #984510.

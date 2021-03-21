@@ -1,3 +1,10 @@
+squid (4.13-8) unstable; urgency=medium
+
+  * Add SQUID-2020_11.patch to fix HTTP Request Smuggling.
+    Fixes: CVE-2020-25097. Closes: #985068.
+
+ -- Santiago Garcia Mantinan <manty@debian.org>  Sun, 21 Mar 2021 00:58:29 +0100
+
 squid (4.13-7) unstable; urgency=medium
 
   * Add full postrm scripts while we don't solve #984897 on debhelper.

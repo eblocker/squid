@@ -1,0 +1,58 @@
+commit 50e0ba1b03ec39720e981a641bb0d4e73aaa7b94
+Author: Amos Jeffries <yadij@users.noreply.github.com>
+Date:   2020-09-04 17:38:30 +1200
+
+    Merge pull request from GHSA-jvf6-h9gj-pmj6
+    
+    * Add slash prefix to path-rootless or path-noscheme URLs
+    
+    * Update src/anyp/Uri.cc
+    
+    Co-authored-by: Alex Rousskov <rousskov@measurement-factory.com>
+    
+    * restore file trailer GH auto-removes
+    
+    * Remove redundant path-empty check
+    
+    * Removed stale comment left behind by b2ab59a
+    
+    Many things imply a leading `/` in a URI. Their enumeration is likely to
+    (and did) become stale, misleading the reader.
+    
+    * fixup: Remind that the `src` iterator may be at its end
+    
+    We are dereferencing `src` without comparing it to `\0`.
+    To many readers that (incorrectly) implies that we are not done iterating yet.
+    
+    Also fixed branch-added comment indentation.
+    
+    Co-authored-by: Alex Rousskov <rousskov@measurement-factory.com>
+
+diff --git a/src/anyp/Uri.cc b/src/anyp/Uri.cc
+index e4909ff1d..80131e17d 100644
+--- a/src/anyp/Uri.cc
++++ b/src/anyp/Uri.cc
+@@ -343,8 +343,9 @@ AnyP::Uri::parse(const HttpRequestMethod& method, const SBuf &rawUrl)
+                 return false;
+             *dst = '\0';
+ 
+-            // bug 3074: received 'path' starting with '?', '#', or '\0' implies '/'
+-            if (*src == '?' || *src == '#' || *src == '\0') {
++            // We are looking at path-abempty.
++            if (*src != '/') {
++                // path-empty, including the end of the `src` c-string cases
+                 urlpath[0] = '/';
+                 dst = &urlpath[1];
+             } else {
+@@ -358,11 +359,6 @@ AnyP::Uri::parse(const HttpRequestMethod& method, const SBuf &rawUrl)
+             /* We -could- be at the end of the buffer here */
+             if (i > l)
+                 return false;
+-            /* If the URL path is empty we set it to be "/" */
+-            if (dst == urlpath) {
+-                *dst = '/';
+-                ++dst;
+-            }
+             *dst = '\0';
+ 
+             foundPort = scheme.defaultPort(); // may be reset later

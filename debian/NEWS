@@ -1,3 +1,13 @@
+squid (4.13-9) unstable; urgency=medium
+
+  Current package flavours: squid (GnuTLS) and squid-openssl share config,
+  logs and cache.  Since 4.13-6 none of them removes the logs on purge, so
+  that you can purge one flavour when switching to the other without loosing
+  the logs.  If you don't need them anymore and want them removed you'll
+  have to do it yourself.
+
+ -- Santiago Garcia Mantinan <manty@debian.org>  Tue, 23 Mar 2021 00:07:36 +0100
+
 squid (4.13-6) unstable; urgency=medium
 
   If you want to transition from squid to squid-openssl or vice versa you

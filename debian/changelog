@@ -1,3 +1,11 @@
+squid (4.13-9) unstable; urgency=medium
+
+  * Clarify on NEWS and scripts that we are no longer removing logs on
+    purge.
+  * Clarify on postrm script the the debhelper code was put manually.
+
+ -- Santiago Garcia Mantinan <manty@debian.org>  Tue, 23 Mar 2021 00:18:11 +0100
+
 squid (4.13-8) unstable; urgency=medium
 
   * Add SQUID-2020_11.patch to fix HTTP Request Smuggling.

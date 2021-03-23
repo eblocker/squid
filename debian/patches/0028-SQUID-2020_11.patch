@@ -1,0 +1,26 @@
+--- a/src/anyp/Uri.cc
++++ b/src/anyp/Uri.cc
+@@ -283,8 +283,9 @@
+             return false;
+         *dst = '\0';
+ 
+-        // bug 3074: received 'path' starting with '?', '#', or '\0' implies '/'
+-        if (*src == '?' || *src == '#' || *src == '\0') {
++        // We are looking at path-abempty.
++        if (*src != '/') {
++            // path-empty, including the end of the `src` c-string cases
+             urlpath[0] = '/';
+             dst = &urlpath[1];
+         } else {
+@@ -298,11 +299,6 @@
+         /* We -could- be at the end of the buffer here */
+         if (i > l)
+             return false;
+-        /* If the URL path is empty we set it to be "/" */
+-        if (dst == urlpath) {
+-            *dst = '/';
+-            ++dst;
+-        }
+         *dst = '\0';
+ 
+         foundPort = scheme.defaultPort(); // may be reset later

@@ -1,8 +1,8 @@
 squid (4.13-9) unstable; urgency=medium
 
-  * Clarify on NEWS and scripts that we are no longer removing logs on
-    purge.
-  * Clarify on postrm script the the debhelper code was put manually.
+  * Clarify on NEWS and scripts that we no longer remove logs on purge.
+  * Clarify on postrm script that the debhelper code was put manually.
+  * Add README.Debian to squid-openssl.
 
  -- Santiago Garcia Mantinan <manty@debian.org>  Tue, 23 Mar 2021 00:18:11 +0100
 

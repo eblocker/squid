@@ -1,10 +1,14 @@
 squid (4.13-10) unstable; urgency=medium
 
-  * Team upload.
+  [ Francisco Vilmar Cardoso Ruviaro ]
   * Add debian/patches/0007-CVE-2021-28651.patch to fix a Denial
     of Service in URN processing. (Closes: #988893, CVE-2021-28651)
 
- -- Francisco Vilmar Cardoso Ruviaro <francisco.ruviaro@riseup.net>  Thu, 27 May 2021 22:53:36 +0000
+  [ Santiago Garcia Mantinan ]
+  * Add patch to fix a Denial of Service in HTTP Response Processing
+    Fixes: CVE-2021-28662. Closes: #988891.
+
+ -- Santiago Garcia Mantinan <manty@debian.org>  Fri, 28 May 2021 12:28:20 +0200
 
 squid (4.13-9) unstable; urgency=medium
 

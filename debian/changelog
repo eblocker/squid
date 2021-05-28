@@ -5,8 +5,10 @@ squid (4.13-10) unstable; urgency=medium
     of Service in URN processing. (Closes: #988893, CVE-2021-28651)
 
   [ Santiago Garcia Mantinan ]
-  * Add patch to fix a Denial of Service in HTTP Response Processing
+  * Add patch to fix a Denial of Service in HTTP Response Processing.
     Fixes: CVE-2021-28662. Closes: #988891.
+  * Add patch to fix a Denial of Service issue in Cache Manager.
+    Fixes: CVE-2021-28652. Closes: #988892.
 
  -- Santiago Garcia Mantinan <manty@debian.org>  Fri, 28 May 2021 12:28:20 +0200
 

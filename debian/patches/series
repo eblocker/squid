@@ -4,3 +4,4 @@
 #0004-upstream-bug5041.patch
 0005-Use-RuntimeDirectory-to-create-run-squid.patch
 0006-SQUID-2020_11.patch
+0007-CVE-2021-28651.patch

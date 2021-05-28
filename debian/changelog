@@ -9,6 +9,8 @@ squid (4.13-10) unstable; urgency=medium
     Fixes: CVE-2021-28662. Closes: #988891.
   * Add patch to fix a Denial of Service issue in Cache Manager.
     Fixes: CVE-2021-28652. Closes: #988892.
+  * Add patch to fix Multiple Issues in HTTP Range header.
+    Fixes: CVE-2021-31806 CVE-2021-31807 CVE-2021-31808. Closes: #989043.
 
  -- Santiago Garcia Mantinan <manty@debian.org>  Fri, 28 May 2021 12:28:20 +0200
 

@@ -1,0 +1,106 @@
+commit 1e05a85bd28c22c9ca5d3ac9f5e86d6269ec0a8c (HEAD -> refs/heads/v4, refs/remotes/origin/v4)
+Author: Alex Rousskov <rousskov@measurement-factory.com>
+Date:   2021-04-02 07:46:20 +0000
+
+    Handle more partial responses (#791)
+
+diff --git a/src/HttpHdrContRange.cc b/src/HttpHdrContRange.cc
+index b0e011fec..be07b4a3d 100644
+--- a/src/HttpHdrContRange.cc
++++ b/src/HttpHdrContRange.cc
+@@ -161,9 +161,13 @@ httpHdrContRangeParseInit(HttpHdrContRange * range, const char *str)
+ 
+     ++p;
+ 
+-    if (*p == '*')
++    if (*p == '*') {
++        if (!known_spec(range->spec.offset)) {
++            debugs(68, 2, "invalid (*/*) content-range-spec near: '" << str << "'");
++            return 0;
++        }
+         range->elength = range_spec_unknown;
+-    else if (!httpHeaderParseOffset(p, &range->elength))
++    } else if (!httpHeaderParseOffset(p, &range->elength))
+         return 0;
+     else if (range->elength <= 0) {
+         /* Additional paranoidal check for BUG2155 - entity-length MUST be > 0 */
+@@ -174,6 +178,12 @@ httpHdrContRangeParseInit(HttpHdrContRange * range, const char *str)
+         return 0;
+     }
+ 
++    // reject unsatisfied-range and such; we only use well-defined ranges today
++    if (!known_spec(range->spec.offset) || !known_spec(range->spec.length)) {
++        debugs(68, 2, "unwanted content-range-spec near: '" << str << "'");
++        return 0;
++    }
++
+     debugs(68, 8, "parsed content-range field: " <<
+            (long int) range->spec.offset << "-" <<
+            (long int) range->spec.offset + range->spec.length - 1 << " / " <<
+diff --git a/src/HttpHeaderRange.h b/src/HttpHeaderRange.h
+index fb2956365..21fc7f6b2 100644
+--- a/src/HttpHeaderRange.h
++++ b/src/HttpHeaderRange.h
+@@ -18,8 +18,11 @@
+ class HttpReply;
+ class Packable;
+ 
+-/* http byte-range-spec */
+-
++// TODO: Refactor to disambiguate and provide message-specific APIs.
++/// either byte-range-spec (in a request Range header)
++/// or suffix-byte-range-spec (in a request Range header)
++/// or byte-range part of byte-range-resp (in a response Content-Range header)
++/// or "*" part of unsatisfied-range (in a response Content-Range header)
+ class HttpHdrRangeSpec
+ {
+     MEMPROXY_CLASS(HttpHdrRangeSpec);
+diff --git a/src/clients/Client.cc b/src/clients/Client.cc
+index b6ce419a6..f5defbb63 100644
+--- a/src/clients/Client.cc
++++ b/src/clients/Client.cc
+@@ -533,8 +533,11 @@ Client::haveParsedReplyHeaders()
+     maybePurgeOthers();
+ 
+     // adaptation may overwrite old offset computed using the virgin response
+-    const bool partial = theFinalReply->contentRange();
+-    currentOffset = partial ? theFinalReply->contentRange()->spec.offset : 0;
++    currentOffset = 0;
++    if (const auto cr = theFinalReply->contentRange()) {
++        if (cr->spec.offset != HttpHdrRangeSpec::UnknownPosition)
++            currentOffset = cr->spec.offset;
++    }
+ }
+ 
+ /// whether to prevent caching of an otherwise cachable response
+diff --git a/src/http/Stream.cc b/src/http/Stream.cc
+index 338503b4a..cea509a55 100644
+--- a/src/http/Stream.cc
++++ b/src/http/Stream.cc
+@@ -163,12 +163,13 @@ Http::Stream::getNextRangeOffset() const
+             return start;
+         }
+ 
+-    } else if (reply && reply->contentRange()) {
++    } else if (const auto cr = reply ? reply->contentRange() : nullptr) {
+         /* request does not have ranges, but reply does */
+         /** \todo FIXME: should use range_iter_pos on reply, as soon as reply->content_range
+          *        becomes HttpHdrRange rather than HttpHdrRangeSpec.
+          */
+-        return http->out.offset + reply->contentRange()->spec.offset;
++        if (cr->spec.offset != HttpHdrRangeSpec::UnknownPosition)
++            return http->out.offset + cr->spec.offset;
+     }
+ 
+     return http->out.offset;
+@@ -232,6 +233,10 @@ Http::Stream::socketState()
+ 
+             // did we get at least what we expected, based on range specs?
+ 
++            // this Content-Range does not tell us how many bytes to expect
++            if (bytesExpected == HttpHdrRangeSpec::UnknownPosition)
++                return STREAM_NONE;
++
+             if (bytesSent == bytesExpected) // got everything
+                 return STREAM_COMPLETE;
+ 

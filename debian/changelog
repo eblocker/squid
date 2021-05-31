@@ -1,7 +1,7 @@
 squid (4.6-1+deb10u6) buster-security; urgency=medium
 
   [ Francisco Vilmar Cardoso Ruviaro ]
-  * Add debian/patches/0007-CVE-2021-28651.patch to fix a Denial
+  * Add debian/patches/0029-CVE-2021-28651.patch to fix a Denial
     of Service in URN processing. (Closes: #988893, CVE-2021-28651)
 
   [ Santiago Garcia Mantinan ]

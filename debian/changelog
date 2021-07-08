@@ -1,3 +1,13 @@
+squid (4.16-1) unstable; urgency=medium
+
+  [ Amos Jeffries <amosjeffries@squid-cache.org> ]
+  * New Upstream Release (Closes: #984351, #943692)
+
+  * debian/patches/
+    - refresh patches for new version
+
+ -- Amos Jeffries <amosjeffries@squid-cache.org>  Thu,  8 Jul 2021 16:09:00 +1300
+
 squid (4.13-10) unstable; urgency=medium
 
   [ Francisco Vilmar Cardoso Ruviaro ]

@@ -36,7 +36,6 @@ Depends: ${shlibs:Depends}, ${misc:Depends}, netbase, logrotate (>= 3.5.4-1), sq
 Suggests: squidclient, squid-cgi, squid-purge, resolvconf (>= 0.40), smbclient, ufw, winbind, apparmor
 Recommends: libcap2-bin [linux-any], ca-certificates
 Conflicts: squid-openssl
-Provides: squid3
 Description: Full featured Web Proxy cache (HTTP proxy GnuTLS flavour)
  Squid is a high-performance proxy caching server for web clients, supporting
  FTP, gopher, ICY and HTTP data objects.
@@ -48,7 +47,6 @@ Depends: ${shlibs:Depends}, ${misc:Depends}, netbase, logrotate (>= 3.5.4-1), sq
 Suggests: squidclient, squid-cgi, squid-purge, resolvconf (>= 0.40), smbclient, ufw, winbind, apparmor
 Recommends: libcap2-bin [linux-any], ca-certificates
 Conflicts: squid
-Provides: squid3
 Description: Full featured Web Proxy cache (HTTP proxy OpenSSL flavour)
  Squid is a high-performance proxy caching server for web clients, supporting
  FTP, gopher, ICY and HTTP data objects.
@@ -57,7 +55,6 @@ Package: squid-common
 Architecture: all
 Multi-Arch: foreign
 Depends: ${misc:Depends}, squid-langpack (>= 20110214-1)
-Provides: squid3-common
 Description: Full featured Web Proxy cache (HTTP proxy) - common files
  Squid is a high-performance proxy caching server for web clients, supporting
  FTP, gopher, ICY and HTTP data objects.
@@ -68,7 +65,6 @@ Package: squidclient
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
 Recommends: ssl-cert, ca-certificates
-Provides: squid3-client
 Description: Full featured Web Proxy cache (HTTP proxy) - HTTP(S) message utility
  Squid is a high-performance proxy caching server for web clients, supporting
  FTP, gopher, ICY and HTTP data objects.
@@ -79,7 +75,6 @@ Description: Full featured Web Proxy cache (HTTP proxy) - HTTP(S) message utilit
 Package: squid-cgi
 Architecture: any
 Depends: apache2 | httpd, ${shlibs:Depends}, ${misc:Depends}
-Provides: squid3-cgi
 Description: Full featured Web Proxy cache (HTTP proxy) - control CGI
  Squid is a high-performance proxy caching server for web clients, supporting
  FTP, gopher, ICY and HTTP data objects.

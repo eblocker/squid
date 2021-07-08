@@ -24,9 +24,6 @@ esac
 if [ "$1" = "purge" ] && ! [ -e /etc/init.d/squid ]; then
 	update-rc.d squid remove >/dev/null
 fi
-dpkg-maintscript-helper rm_conffile /etc/squid3/msntauth.conf 3.5.4-1\~ squid3 -- "$@"
-dpkg-maintscript-helper mv_conffile /etc/squid3/squid.conf /etc/squid/squid.conf 3.5.4-1\~ squid3 -- "$@"
-dpkg-maintscript-helper mv_conffile /etc/squid3/errorpage.css /etc/squid/errorpage.css 3.5.4-1\~ squid3 -- "$@"
 if [ -d /run/systemd/system ] && [ "$1" = remove ]; then
 	systemctl --system daemon-reload >/dev/null || true
 fi

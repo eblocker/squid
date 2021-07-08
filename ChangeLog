@@ -1,3 +1,36 @@
+Changes in squid-4.16 (04 Jul 2021):
+
+	- Regression Fix: --with-valgrind-debug build broken since 4.15
+	- Bug 5129 pt1: remove Lock use from HttpRequestMethod
+	- Bug 5128: Translation: Fix '% i' typo in es/ERR_FORWARDING_DENIED
+	- Bug 4528: ICAP transactions quit on async DNS lookups
+
+Changes in squid-4.15 (10 May 2021):
+
+	- Bug 5112: Excessively loud chunked reply parsing error reporting
+	- Bug 5106: Broken cache manager URL parsing
+	- Bug 5104: Memory leak in RFC 2169 response parsing
+	- Bug 3556: "FD ... is not an open socket" for accept() problems
+	- Profiling: CPU timing implemented for MAC non-x86
+	- Fix HttpHeaderStats definition to include hoErrorDetail
+	- Fix Squid-to-client write_timeout triggers client_lifetime timeout
+	- Limit HeaderLookupTable_t::lookup() to BadHdr and specific IDs
+	- Handle more Range requests
+	- Handle more partial responses
+	- Stop processing a response if the Store entry is gone
+	- ... and some portability fixes
+	- ... and some documentation updates
+
+Changes in squid-4.14 (02 Feb 2021):
+
+	- Regression Fix: support for non-lowercase Transfer-Encoding value
+	- Regression Fix: cachemgr.cgi wrong 403 response to authenticated menu URIs
+	- Bug 5076: WCCP Security Info incorrect
+	- Bug 5073: Compile error: index was not declared in this scope
+	- Bug 5065: url_rewrite_program documentation update
+	- Bug 3074 pt2: improved handling of URI paths implicit '/'
+	- Fix transactions exceeding client_lifetime logged as _ABORTED
+
 Changes to squid-4.13 (23 Aug 2020):
 
 	- Regression Fix: Support parsing GREASEd (and future) TLS handshakes

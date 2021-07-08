@@ -118,6 +118,9 @@
 /* Define to 1 if you have the <byteswap.h> header file. */
 #undef HAVE_BYTESWAP_H
 
+/* Define to 1 if you have the `clock_gettime_nsec_np' function. */
+#undef HAVE_CLOCK_GETTIME_NSEC_NP
+
 /* Define to 1 if you have the `closedir' function. */
 #undef HAVE_CLOSEDIR
 

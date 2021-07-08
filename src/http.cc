@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2020 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2021 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -64,15 +64,6 @@
 #if USE_DELAY_POOLS
 #include "DelayPools.h"
 #endif
-
-#define SQUID_ENTER_THROWING_CODE() try {
-#define SQUID_EXIT_THROWING_CODE(status) \
-    status = true; \
-    } \
-    catch (const std::exception &e) { \
-    debugs (11, 1, "Exception error:" << e.what()); \
-    status = false; \
-    }
 
 CBDATA_CLASS_INIT(HttpStateData);
 
@@ -1235,6 +1226,11 @@ HttpStateData::processReply()
         Must(!flags.headers_parsed);
     }
 
+    if (EBIT_TEST(entry->flags, ENTRY_ABORTED)) {
+        abortTransaction("store entry aborted while we were waiting for processReply()");
+        return;
+    }
+
     if (!flags.headers_parsed) { // have not parsed headers yet?
         PROF_start(HttpStateData_processReplyHeader);
         processReplyHeader();
@@ -1366,26 +1362,25 @@ HttpStateData::writeReplyBody()
 bool
 HttpStateData::decodeAndWriteReplyBody()
 {
-    const char *data = NULL;
-    int len;
-    bool wasThereAnException = false;
     assert(flags.chunked);
     assert(httpChunkDecoder);
-    SQUID_ENTER_THROWING_CODE();
-    MemBuf decodedData;
-    decodedData.init();
-    httpChunkDecoder->setPayloadBuffer(&decodedData);
-    const bool doneParsing = httpChunkDecoder->parse(inBuf);
-    inBuf = httpChunkDecoder->remaining(); // sync buffers after parse
-    len = decodedData.contentSize();
-    data=decodedData.content();
-    addVirginReplyBody(data, len);
-    if (doneParsing) {
-        lastChunk = 1;
-        flags.do_next_read = false;
+    try {
+        MemBuf decodedData;
+        decodedData.init();
+        httpChunkDecoder->setPayloadBuffer(&decodedData);
+        const bool doneParsing = httpChunkDecoder->parse(inBuf);
+        inBuf = httpChunkDecoder->remaining(); // sync buffers after parse
+        addVirginReplyBody(decodedData.content(), decodedData.contentSize());
+        if (doneParsing) {
+            lastChunk = 1;
+            flags.do_next_read = false;
+        }
+        return true;
     }
-    SQUID_EXIT_THROWING_CODE(wasThereAnException);
-    return wasThereAnException;
+    catch (...) {
+        debugs (11, 2, "de-chunking failure: " << CurrentException);
+    }
+    return false;
 }
 
 /**

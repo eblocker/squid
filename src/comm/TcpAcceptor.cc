@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2020 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2021 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -374,7 +374,13 @@ Comm::TcpAcceptor::oldAccept(Comm::ConnectionPointer &details)
     }
 
     Must(sock >= 0);
+
+    // Sync with Comm ASAP so that abandoned details can properly close().
+    // XXX : these are not all HTTP requests. use a note about type and ip:port details->
+    // so we end up with a uniform "(HTTP|FTP-data|HTTPS|...) remote-ip:remote-port"
+    fd_open(sock, FD_SOCKET, "HTTP Request");
     details->fd = sock;
+
     details->remote = *gai;
 
     // lookup the local-end details of this new connection
@@ -419,10 +425,6 @@ Comm::TcpAcceptor::oldAccept(Comm::ConnectionPointer &details)
     }
 
     /* fdstat update */
-    // XXX : these are not all HTTP requests. use a note about type and ip:port details->
-    // so we end up with a uniform "(HTTP|FTP-data|HTTPS|...) remote-ip:remote-port"
-    fd_open(sock, FD_SOCKET, "HTTP Request");
-
     fdd_table[sock].close_file = NULL;
     fdd_table[sock].close_line = 0;
 

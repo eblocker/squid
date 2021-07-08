@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2020 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2021 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -33,6 +33,7 @@
 #include "util.h"
 
 #include <algorithm>
+#include <array>
 
 /* XXX: the whole set of API managing the entries vector should be rethought
  *      after the parse4r-ng effort is complete.
@@ -72,7 +73,7 @@ static HttpHeaderMask ReplyHeadersMask;     /* set run-time using ReplyHeaders *
 
 /* header accounting */
 // NP: keep in sync with enum http_hdr_owner_type
-static HttpHeaderStat HttpHeaderStats[] = {
+static std::array<HttpHeaderStat, hoEnd> HttpHeaderStats = {
     HttpHeaderStat(/*hoNone*/ "all", NULL),
 #if USE_HTCP
     HttpHeaderStat(/*hoHtcpReply*/ "HTCP reply", &ReplyHeadersMask),
@@ -80,11 +81,10 @@ static HttpHeaderStat HttpHeaderStats[] = {
     HttpHeaderStat(/*hoRequest*/ "request", &RequestHeadersMask),
     HttpHeaderStat(/*hoReply*/ "reply", &ReplyHeadersMask)
 #if USE_OPENSSL
-    /* hoErrorDetail */
+    , HttpHeaderStat(/*hoErrorDetail*/ "error detail templates", nullptr)
 #endif
     /* hoEnd */
 };
-static int HttpHeaderStatCount = countof(HttpHeaderStats);
 
 static int HeaderEntryParsedCount = 0;
 
@@ -127,8 +127,8 @@ httpHeaderInitModule(void)
             CBIT_SET(ReplyHeadersMask,h);
     }
 
-    /* header stats initialized by class constructor */
-    assert(HttpHeaderStatCount == hoReply + 1);
+    assert(HttpHeaderStats[0].label && "httpHeaderInitModule() called via main()");
+    assert(HttpHeaderStats[hoEnd-1].label && "HttpHeaderStats created with all elements");
 
     /* init dependent modules */
     httpHdrCcInitModule();
@@ -480,9 +480,9 @@ HttpHeader::parse(const char *header_start, size_t hdrLen)
         delById(Http::HdrType::CONTENT_LENGTH);
         // and clen state becomes irrelevant
 
-        if (rawTe == "chunked") {
+        if (rawTe.caseCmp("chunked") == 0) {
             ; // leave header present for chunked() method
-        } else if (rawTe == "identity") { // deprecated. no coding
+        } else if (rawTe.caseCmp("identity") == 0) { // deprecated. no coding
             delById(Http::HdrType::TRANSFER_ENCODING);
         } else {
             // This also rejects multiple encodings until we support them properly.
@@ -1607,6 +1607,9 @@ httpHeaderStatDump(const HttpHeaderStat * hs, StoreEntry * e)
     assert(hs);
     assert(e);
 
+    if (!hs->owner_mask)
+        return; // these HttpHeaderStat objects were not meant to be dumped here
+
     dump_stat = hs;
     storeAppendPrintf(e, "\nHeader Stats: %s\n", hs->label);
     storeAppendPrintf(e, "\nField type distribution\n");
@@ -1632,7 +1635,6 @@ httpHeaderStatDump(const HttpHeaderStat * hs, StoreEntry * e)
 void
 httpHeaderStoreReport(StoreEntry * e)
 {
-    int i;
     assert(e);
 
     HttpHeaderStats[0].parsedCount =
@@ -1644,9 +1646,8 @@ httpHeaderStoreReport(StoreEntry * e)
     HttpHeaderStats[0].busyDestroyedCount =
         HttpHeaderStats[hoRequest].busyDestroyedCount + HttpHeaderStats[hoReply].busyDestroyedCount;
 
-    for (i = 1; i < HttpHeaderStatCount; ++i) {
-        httpHeaderStatDump(HttpHeaderStats + i, e);
-    }
+    for (const auto &stats: HttpHeaderStats)
+        httpHeaderStatDump(&stats, e);
 
     /* field stats for all messages */
     storeAppendPrintf(e, "\nHttp Fields Stats (replies and requests)\n");

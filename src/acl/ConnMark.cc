@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2020 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2021 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -15,6 +15,8 @@
 #include "Debug.h"
 #include "http/Stream.h"
 #include "sbuf/Stream.h"
+
+#include <limits>
 
 bool
 Acl::ConnMark::empty() const

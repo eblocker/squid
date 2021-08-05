@@ -28,6 +28,7 @@ DEB_CONFIGURE_EXTRA_FLAGS := BUILDCXXFLAGS="$(CXXFLAGS) $(CPPFLAGS) $(LDFLAGS)" 
 		--libexecdir=/usr/lib/squid \
 		--mandir=/usr/share/man \
 		--enable-inline \
+		--enable-dependency-tracking \
 		--disable-arch-native \
 		--enable-async-io=8 \
 		--enable-storeio="ufs,aufs,diskd,rock" \

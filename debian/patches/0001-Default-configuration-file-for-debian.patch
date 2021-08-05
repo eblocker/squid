@@ -42,14 +42,3 @@ index 588e0f81..c1356475 100644
  DOC_END
  
  NAME: mime_table
-@@ -9418,8 +9421,8 @@ DOC_START
- 
- 	WARNING:
- 	  This option will restrict the situations under which IPv6
--	  connectivity is used (and tested). Hiding network problems
--	  which would otherwise be detected and warned about.
-+	  connectivity is used (and tested), potentially hiding network
-+	  problems which would otherwise be detected and warned about.
- DOC_END
- 
- NAME: ipcache_size

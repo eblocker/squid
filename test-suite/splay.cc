@@ -16,6 +16,7 @@
 #include "util.h"
 
 #include <cstdlib>
+#include <functional>
 #if HAVE_UNISTD_H
 #include <unistd.h>
 #endif
@@ -69,7 +70,7 @@ SplayCheck::BeginWalk()
 }
 
 void
-SplayCheck::WalkVoid(void *const &node, void *state)
+SplayCheck::WalkVoid(void *const &node, void *)
 {
     intnode *A = (intnode *)node;
     CheckNode(*A);
@@ -82,23 +83,23 @@ SplayCheck::CheckNode(intnode const &A)
         /* failure */
 
         if (!ExpectedFail)
-            exit (1);
+            exit(EXIT_FAILURE);
     } else
         /* success */
         if (ExpectedFail)
-            exit (1);
+            exit(EXIT_FAILURE);
 
     LastValue = A.i;
 }
 
 void
-SplayCheck::WalkNode (intnode *const &a, void *state)
+SplayCheck::WalkNode (intnode *const &a, void *)
 {
     CheckNode (*a);
 }
 
 void
-SplayCheck::WalkNodeRef (intnode const &a, void *state)
+SplayCheck::WalkNodeRef (intnode const &a, void *)
 {
     CheckNode (a);
 }
@@ -127,7 +128,7 @@ destintref (intnode &)
 {}
 
 int
-main(int argc, char *argv[])
+main(int, char *[])
 {
     std::mt19937 generator;
     xuniform_int_distribution<int> distribution;
@@ -204,10 +205,10 @@ main(int argc, char *argv[])
         Splay<intnode> *safeTop = new Splay<intnode>();
 
         if (safeTop->start() != NULL)
-            exit (1);
+            exit(EXIT_FAILURE);
 
         if (safeTop->finish() != NULL)
-            exit (1);
+            exit(EXIT_FAILURE);
 
         for (int i = 0; i < 100; ++i) {
             intnode I;
@@ -226,16 +227,16 @@ main(int argc, char *argv[])
         }
 
         if (!safeTop->start())
-            exit (1);
+            exit(EXIT_FAILURE);
 
         if (safeTop->start()->data.i != 50)
-            exit (1);
+            exit(EXIT_FAILURE);
 
         if (!safeTop->finish())
-            exit (1);
+            exit(EXIT_FAILURE);
 
         if (safeTop->finish()->data.i != 10000000)
-            exit (1);
+            exit(EXIT_FAILURE);
 
         safeTop->destroy(destintref);
     }
@@ -244,30 +245,30 @@ main(int argc, char *argv[])
         Splay<intnode *> aSplay;
 
         if (aSplay.start() != NULL)
-            exit (1);
+            exit(EXIT_FAILURE);
 
         if (aSplay.size() != 0)
-            exit (1);
+            exit(EXIT_FAILURE);
 
         aSplay.insert (new intnode(5), compareint);
 
         if (aSplay.start() == NULL)
-            exit (1);
+            exit(EXIT_FAILURE);
 
         if (aSplay.size() != 1)
-            exit (1);
+            exit(EXIT_FAILURE);
 
         aSplay.destroy(destint);
 
         if (aSplay.start() != NULL)
-            exit (1);
+            exit(EXIT_FAILURE);
 
         if (aSplay.size() != 0)
-            exit (1);
+            exit(EXIT_FAILURE);
     }
 
     /* TODO: also test the other Splay API */
 
-    return 0;
+    return EXIT_SUCCESS;
 }
 

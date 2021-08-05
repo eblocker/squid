@@ -15,6 +15,7 @@
 #include "cbdata.h"
 #include "client_side.h"
 #include "client_side_request.h"
+#include "clients/HttpTunneler.h"
 #include "comm.h"
 #include "comm/Connection.h"
 #include "comm/ConnOpener.h"
@@ -25,6 +26,7 @@
 #include "fde.h"
 #include "FwdState.h"
 #include "globals.h"
+#include "HappyConnOpener.h"
 #include "http.h"
 #include "http/Stream.h"
 #include "HttpRequest.h"
@@ -34,6 +36,7 @@
 #include "MemBuf.h"
 #include "neighbors.h"
 #include "PeerSelectState.h"
+#include "ResolvedPeers.h"
 #include "sbuf/SBuf.h"
 #include "security/BlindPeerConnector.h"
 #include "SquidConfig.h"
@@ -64,13 +67,13 @@
  *
  * TODO 2: then convert this into a AsyncJob, possibly a child of 'Server'
  */
-class TunnelStateData
+class TunnelStateData: public PeerSelectionInitiator
 {
-    CBDATA_CLASS(TunnelStateData);
+    CBDATA_CHILD(TunnelStateData);
 
 public:
     TunnelStateData(ClientHttpRequest *);
-    ~TunnelStateData();
+    virtual ~TunnelStateData();
     TunnelStateData(const TunnelStateData &); // do not implement
     TunnelStateData &operator =(const TunnelStateData &); // do not implement
 
@@ -80,29 +83,18 @@ public:
     static void WriteClientDone(const Comm::ConnectionPointer &, char *buf, size_t len, Comm::Flag flag, int xerrno, void *data);
     static void WriteServerDone(const Comm::ConnectionPointer &, char *buf, size_t len, Comm::Flag flag, int xerrno, void *data);
 
-    /// Starts reading peer response to our CONNECT request.
-    void readConnectResponse();
-
-    /// Called when we may be done handling a CONNECT exchange with the peer.
-    void connectExchangeCheckpoint();
-
     bool noConnections() const;
+    /// closes both client and server connections
+    void closeConnections();
+
     char *url;
     CbcPointer<ClientHttpRequest> http;
     HttpRequest::Pointer request;
     AccessLogEntryPointer al;
-    Comm::ConnectionList serverDestinations;
 
     const char * getHost() const {
         return (server.conn != NULL && server.conn->getPeer() ? server.conn->getPeer()->host : request->url.host());
     };
-
-    /// Whether we are writing a CONNECT request to a peer.
-    bool waitingForConnectRequest() const { return connectReqWriting; }
-    /// Whether we are reading a CONNECT response from a peer.
-    bool waitingForConnectResponse() const { return connectRespBuf; }
-    /// Whether we are waiting for the CONNECT request/response exchange with the peer.
-    bool waitingForConnectExchange() const { return waitingForConnectRequest() || waitingForConnectResponse(); }
 
     /// Whether the client sent a CONNECT request to us.
     bool clientExpectsConnectResponse() const {
@@ -112,29 +104,37 @@ public:
             return false;
 #if USE_OPENSSL
         // We are bumping and we had already send "OK CONNECTED"
-        if (http.valid() && http->getConn() && http->getConn()->serverBump() && http->getConn()->serverBump()->step > Ssl::bumpStep1)
+        if (http.valid() && http->getConn() && http->getConn()->serverBump() && http->getConn()->serverBump()->at(XactionStep::tlsBump2, XactionStep::tlsBump3))
             return false;
 #endif
         return !(request != NULL &&
                  (request->flags.interceptTproxy || request->flags.intercepted));
     }
 
-    /// Sends "502 Bad Gateway" error response to the client,
-    /// if it is waiting for Squid CONNECT response, closing connections.
-    void informUserOfPeerError(const char *errMsg, size_t);
-
     /// starts connecting to the next hop, either for the first time or while
     /// recovering from the previous connect failure
     void startConnecting();
+    void closePendingConnection(const Comm::ConnectionPointer &conn, const char *reason);
+
+    /// called when negotiations with the peer have been successfully completed
+    void notePeerReadyToShovel(const Comm::ConnectionPointer &);
 
     class Connection
     {
 
     public:
         Connection() : len (0), buf ((char *)xmalloc(SQUID_TCP_SO_RCVBUF)), size_ptr(NULL), delayedLoops(0),
+            dirty(false),
             readPending(NULL), readPendingFunc(NULL) {}
 
         ~Connection();
+
+        /// initiates Comm::Connection ownership, including closure monitoring
+        template <typename Method>
+        void initConnection(const Comm::ConnectionPointer &aConn, Method method, const char *name, TunnelStateData *tunnelState);
+
+        /// reacts to the external closure of our connection
+        void noteClosure();
 
         int bytesWanted(int lower=0, int upper = INT_MAX) const;
         void bytesIn(int const &);
@@ -145,7 +145,7 @@ public:
 
         void error(int const xerrno);
         int debugLevelForError(int const xerrno) const;
-        void closeIfOpen();
+
         void dataSent (size_t amount);
         /// writes 'b' buffer, setting the 'writer' member to 'callback'.
         void write(const char *b, int size, AsyncCall::Pointer &callback, FREE * free_func);
@@ -157,30 +157,74 @@ public:
         Comm::ConnectionPointer conn;    ///< The currently connected connection.
         uint8_t delayedLoops; ///< how many times a read on this connection has been postponed.
 
+        bool dirty; ///< whether write() has been called (at least once)
+
         // XXX: make these an AsyncCall when event API can handle them
         TunnelStateData *readPending;
         EVH *readPendingFunc;
-    private:
+
 #if USE_DELAY_POOLS
 
         DelayId delayId;
 #endif
 
+    private:
+        /// the registered close handler for the connection
+        AsyncCall::Pointer closer;
     };
 
     Connection client, server;
     int *status_ptr;        ///< pointer for logging HTTP status
     LogTags *logTag_ptr;    ///< pointer for logging Squid processing code
-    MemBuf *connectRespBuf; ///< accumulates peer CONNECT response when we need it
-    bool connectReqWriting; ///< whether we are writing a CONNECT request to a peer
+
     SBuf preReadClientData;
     SBuf preReadServerData;
     time_t startTime; ///< object creation time, before any peer selection/connection attempts
+    /// Whether we are waiting for the CONNECT request/response exchange with the peer.
+    bool waitingForConnectExchange;
+    HappyConnOpenerPointer connOpener; ///< current connection opening job
+    ResolvedPeersPointer destinations; ///< paths for forwarding the request
+    bool destinationsFound; ///< At least one candidate path found
+    /// whether another destination may be still attempted if the TCP connection
+    /// was unexpectedly closed
+    bool retriable;
+    // TODO: remove after fixing deferred reads in TunnelStateData::copyRead()
+    CodeContext::Pointer codeContext; ///< our creator context
+
+    // AsyncCalls which we set and may need cancelling.
+    struct {
+        AsyncCall::Pointer connector;  ///< a call linking us to the ConnOpener producing serverConn.
+    } calls;
 
     void copyRead(Connection &from, IOCB *completion);
 
     /// continue to set up connection to a peer, going async for SSL peers
-    void connectToPeer();
+    void connectToPeer(const Comm::ConnectionPointer &);
+    void secureConnectionToPeer(const Comm::ConnectionPointer &);
+
+    /* PeerSelectionInitiator API */
+    virtual void noteDestination(Comm::ConnectionPointer conn) override;
+    virtual void noteDestinationsEnd(ErrorState *selectionError) override;
+
+    void syncHierNote(const Comm::ConnectionPointer &server, const char *origin);
+
+    /// called when a connection has been successfully established or
+    /// when all candidate destinations have been tried and all have failed
+    void noteConnection(HappyConnOpenerAnswer &);
+
+    /// whether we are waiting for HappyConnOpener
+    /// same as calls.connector but may differ from connOpener.valid()
+    bool opening() const { return connOpener.set(); }
+
+    void cancelOpening(const char *reason);
+
+    /// Start using an established connection
+    void connectDone(const Comm::ConnectionPointer &conn, const char *origin, const bool reused);
+
+    void notifyConnOpener();
+
+    void saveError(ErrorState *finalError);
+    void sendError(ErrorState *finalError, const char *reason);
 
 private:
     /// Gives Security::PeerConnector access to Answer in the TunnelStateData callback dialer.
@@ -208,96 +252,114 @@ private:
         Security::EncryptorAnswer answer_;
     };
 
-    /// callback handler after connection setup (including any encryption)
-    void connectedToPeer(Security::EncryptorAnswer &answer);
+    void usePinned();
+
+    /// callback handler for the Security::PeerConnector encryptor
+    void noteSecurityPeerConnectorAnswer(Security::EncryptorAnswer &);
+
+    /// called after connection setup (including any encryption)
+    void connectedToPeer(const Comm::ConnectionPointer &);
+    void establishTunnelThruProxy(const Comm::ConnectionPointer &);
+
+    template <typename StepStart>
+    void advanceDestination(const char *stepDescription, const Comm::ConnectionPointer &conn, const StepStart &startStep);
+
+    /// \returns whether the request should be retried (nil) or the description why it should not
+    const char *checkRetry();
+
+    /// details of the "last tunneling attempt" failure (if it failed)
+    ErrorState *savedError = nullptr;
+
+    /// resumes operations after the (possibly failed) HTTP CONNECT exchange
+    void tunnelEstablishmentDone(Http::TunnelerAnswer &answer);
+
+    void deleteThis();
 
 public:
     bool keepGoingAfterRead(size_t len, Comm::Flag errcode, int xerrno, Connection &from, Connection &to);
     void copy(size_t len, Connection &from, Connection &to, IOCB *);
-    void handleConnectResponse(const size_t chunkSize);
     void readServer(char *buf, size_t len, Comm::Flag errcode, int xerrno);
     void readClient(char *buf, size_t len, Comm::Flag errcode, int xerrno);
     void writeClientDone(char *buf, size_t len, Comm::Flag flag, int xerrno);
     void writeServerDone(char *buf, size_t len, Comm::Flag flag, int xerrno);
 
-    static void ReadConnectResponseDone(const Comm::ConnectionPointer &, char *buf, size_t len, Comm::Flag errcode, int xerrno, void *data);
-    void readConnectResponseDone(char *buf, size_t len, Comm::Flag errcode, int xerrno);
     void copyClientBytes();
     void copyServerBytes();
+
+    /// handles client-to-Squid connection closure; may destroy us
+    void clientClosed();
+
+    /// handles Squid-to-server connection closure; may destroy us
+    void serverClosed();
+
+    /// tries connecting to another destination, if available,
+    /// otherwise, initiates the transaction termination
+    void retryOrBail(const char *context);
 };
 
-static const char *const conn_established = "HTTP/1.1 200 Connection established\r\n\r\n";
-
-static CNCB tunnelConnectDone;
 static ERCB tunnelErrorComplete;
 static CLCB tunnelServerClosed;
 static CLCB tunnelClientClosed;
 static CTCB tunnelTimeout;
-static PSC tunnelPeerSelectComplete;
 static EVH tunnelDelayedClientRead;
 static EVH tunnelDelayedServerRead;
-static void tunnelConnected(const Comm::ConnectionPointer &server, void *);
-static void tunnelRelayConnectRequest(const Comm::ConnectionPointer &server, void *);
 
+/// TunnelStateData::serverClosed() wrapper
 static void
 tunnelServerClosed(const CommCloseCbParams &params)
 {
-    TunnelStateData *tunnelState = (TunnelStateData *)params.data;
-    debugs(26, 3, HERE << tunnelState->server.conn);
-    tunnelState->server.conn = NULL;
-    tunnelState->server.writer = NULL;
-
-    if (tunnelState->request != NULL)
-        tunnelState->request->hier.stopPeerClock(false);
-
-    if (tunnelState->noConnections()) {
-        // ConnStateData pipeline should contain the CONNECT we are performing
-        // but it may be invalid already (bug 4392)
-        if (tunnelState->http.valid() && tunnelState->http->getConn()) {
-            auto ctx = tunnelState->http->getConn()->pipeline.front();
-            if (ctx != nullptr)
-                ctx->finished();
-        }
-        delete tunnelState;
-        return;
-    }
-
-    if (!tunnelState->client.writer) {
-        tunnelState->client.conn->close();
-        return;
-    }
+    const auto tunnelState = reinterpret_cast<TunnelStateData *>(params.data);
+    tunnelState->serverClosed();
 }
 
+void
+TunnelStateData::serverClosed()
+{
+    server.noteClosure();
+}
+
+/// TunnelStateData::clientClosed() wrapper
 static void
 tunnelClientClosed(const CommCloseCbParams &params)
 {
-    TunnelStateData *tunnelState = (TunnelStateData *)params.data;
-    debugs(26, 3, HERE << tunnelState->client.conn);
-    tunnelState->client.conn = NULL;
-    tunnelState->client.writer = NULL;
+    const auto tunnelState = reinterpret_cast<TunnelStateData *>(params.data);
+    tunnelState->clientClosed();
+}
 
-    if (tunnelState->noConnections()) {
-        // ConnStateData pipeline should contain the CONNECT we are performing
-        // but it may be invalid already (bug 4392)
-        if (tunnelState->http.valid() && tunnelState->http->getConn()) {
-            auto ctx = tunnelState->http->getConn()->pipeline.front();
-            if (ctx != nullptr)
+void
+TunnelStateData::clientClosed()
+{
+    client.noteClosure();
+
+    if (noConnections())
+        return deleteThis();
+
+    if (!server.writer)
+        server.conn->close();
+}
+
+/// destroys the tunnel (after performing potentially-throwing cleanup)
+void
+TunnelStateData::deleteThis()
+{
+    assert(noConnections());
+    // ConnStateData pipeline should contain the CONNECT we are performing
+    // but it may be invalid already (bug 4392)
+    if (const auto h = http.valid()) {
+        if (const auto c = h->getConn())
+            if (const auto ctx = c->pipeline.front())
                 ctx->finished();
-        }
-        delete tunnelState;
-        return;
     }
-
-    if (!tunnelState->server.writer) {
-        tunnelState->server.conn->close();
-        return;
-    }
+    delete this;
 }
 
 TunnelStateData::TunnelStateData(ClientHttpRequest *clientRequest) :
-    connectRespBuf(NULL),
-    connectReqWriting(false),
-    startTime(squid_curtime)
+    startTime(squid_curtime),
+    waitingForConnectExchange(false),
+    destinations(new ResolvedPeers()),
+    destinationsFound(false),
+    retriable(true),
+    codeContext(CodeContext::Current())
 {
     debugs(26, 3, "TunnelStateData constructed this=" << this);
     client.readPendingFunc = &tunnelDelayedClientRead;
@@ -306,6 +368,7 @@ TunnelStateData::TunnelStateData(ClientHttpRequest *clientRequest) :
     assert(clientRequest);
     url = xstrdup(clientRequest->uri);
     request = clientRequest->request;
+    Must(request);
     server.size_ptr = &clientRequest->out.size;
     client.size_ptr = &clientRequest->al->http.clientRequestSz.payloadData;
     status_ptr = &clientRequest->al->http.code;
@@ -313,8 +376,7 @@ TunnelStateData::TunnelStateData(ClientHttpRequest *clientRequest) :
     al = clientRequest->al;
     http = clientRequest;
 
-    client.conn = clientRequest->getConn()->clientConnection;
-    comm_add_close_handler(client.conn->fd, tunnelClientClosed, this);
+    client.initConnection(clientRequest->getConn()->clientConnection, tunnelClientClosed, "tunnelClientClosed", this);
 
     AsyncCall::Pointer timeoutCall = commCbCall(5, 4, "tunnelTimeout",
                                      CommTimeoutCbPtrFun(tunnelTimeout, this));
@@ -326,8 +388,9 @@ TunnelStateData::~TunnelStateData()
     debugs(26, 3, "TunnelStateData destructed this=" << this);
     assert(noConnections());
     xfree(url);
-    serverDestinations.clear();
-    delete connectRespBuf;
+    if (opening())
+        cancelOpening("~TunnelStateData");
+    delete savedError;
 }
 
 TunnelStateData::Connection::~Connection()
@@ -336,6 +399,67 @@ TunnelStateData::Connection::~Connection()
         eventDelete(readPendingFunc, readPending);
 
     safe_free(buf);
+}
+
+const char *
+TunnelStateData::checkRetry()
+{
+    if (shutting_down)
+        return "shutting down";
+    if (!FwdState::EnoughTimeToReForward(startTime))
+        return "forwarding timeout";
+    if (!retriable)
+        return "not retriable";
+    if (noConnections())
+        return "no connections";
+    return nullptr;
+}
+
+void
+TunnelStateData::retryOrBail(const char *context)
+{
+    // Since no TCP payload has been passed to client or server, we may
+    // TCP-connect to other destinations (including alternate IPs).
+
+    assert(!server.conn);
+
+    const auto *bailDescription = checkRetry();
+    if (!bailDescription) {
+        if (!destinations->empty())
+            return startConnecting(); // try connecting to another destination
+
+        if (subscribed) {
+            debugs(26, 4, "wait for more destinations to try");
+            return; // expect a noteDestination*() call
+        }
+
+        // fall through to bail
+    }
+
+    /* bail */
+
+    if (request)
+        request->hier.stopPeerClock(false);
+
+    // TODO: Add sendSavedErrorOr(err_type type, Http::StatusCode, context).
+    // Then, the remaining method code (below) should become the common part of
+    // sendNewError() and sendSavedErrorOr(), used in "error detected" cases.
+    if (!savedError)
+        saveError(new ErrorState(ERR_CANNOT_FORWARD, Http::scInternalServerError, request.getRaw(), al));
+    const auto canSendError = Comm::IsConnOpen(client.conn) && !client.dirty &&
+                              clientExpectsConnectResponse();
+    if (canSendError)
+        return sendError(savedError, bailDescription ? bailDescription : context);
+    *status_ptr = savedError->httpStatus;
+
+    if (noConnections())
+        return deleteThis();
+
+    // This is a "Comm::IsConnOpen(client.conn) but !canSendError" case.
+    // Closing the connection (after finishing writing) is the best we can do.
+    if (!client.writer)
+        client.conn->close();
+    // else writeClientDone() must notice a closed server and close the client
 }
 
 int
@@ -358,6 +482,16 @@ TunnelStateData::Connection::bytesIn(int const &count)
 #endif
 
     len += count;
+}
+
+/// update "hierarchy" annotations with a new (possibly failed) destination
+/// \param origin the name of the origin server we were trying to reach
+void
+TunnelStateData::syncHierNote(const Comm::ConnectionPointer &conn, const char *origin)
+{
+    request->hier.resetPeerNotes(conn, origin);
+    if (al)
+        al->hier.resetPeerNotes(conn, origin);
 }
 
 int
@@ -410,136 +544,6 @@ TunnelStateData::readServer(char *, size_t len, Comm::Flag errcode, int xerrno)
 
     if (keepGoingAfterRead(len, errcode, xerrno, server, client))
         copy(len, server, client, WriteClientDone);
-}
-
-/// Called when we read [a part of] CONNECT response from the peer
-void
-TunnelStateData::readConnectResponseDone(char *, size_t len, Comm::Flag errcode, int xerrno)
-{
-    debugs(26, 3, server.conn << ", read " << len << " bytes, err=" << errcode);
-    assert(waitingForConnectResponse());
-
-    if (errcode == Comm::ERR_CLOSING)
-        return;
-
-    if (len > 0) {
-        connectRespBuf->appended(len);
-        server.bytesIn(len);
-        statCounter.server.all.kbytes_in += len;
-        statCounter.server.other.kbytes_in += len;
-        request->hier.notePeerRead();
-    }
-
-    if (keepGoingAfterRead(len, errcode, xerrno, server, client))
-        handleConnectResponse(len);
-}
-
-void
-TunnelStateData::informUserOfPeerError(const char *errMsg, const size_t sz)
-{
-    server.len = 0;
-
-    if (logTag_ptr)
-        *logTag_ptr = LOG_TCP_TUNNEL;
-
-    if (!clientExpectsConnectResponse()) {
-        // closing the connection is the best we can do here
-        debugs(50, 3, server.conn << " closing on error: " << errMsg);
-        server.conn->close();
-        return;
-    }
-
-    // if we have no reply suitable to relay, use 502 Bad Gateway
-    if (!sz || sz > static_cast<size_t>(connectRespBuf->contentSize())) {
-        ErrorState *err = new ErrorState(ERR_CONNECT_FAIL, Http::scBadGateway, request.getRaw());
-        *status_ptr = Http::scBadGateway;
-        err->callback = tunnelErrorComplete;
-        err->callback_data = this;
-        errorSend(http->getConn()->clientConnection, err);
-        return;
-    }
-
-    // if we need to send back the server response. write its headers to the client
-    server.len = sz;
-    memcpy(server.buf, connectRespBuf->content(), server.len);
-    copy(server.len, server, client, TunnelStateData::WriteClientDone);
-    // then close the server FD to prevent any relayed keep-alive causing CVE-2015-5400
-    server.closeIfOpen();
-}
-
-/* Read from client side and queue it for writing to the server */
-void
-TunnelStateData::ReadConnectResponseDone(const Comm::ConnectionPointer &, char *buf, size_t len, Comm::Flag errcode, int xerrno, void *data)
-{
-    TunnelStateData *tunnelState = (TunnelStateData *)data;
-    assert (cbdataReferenceValid (tunnelState));
-
-    tunnelState->readConnectResponseDone(buf, len, errcode, xerrno);
-}
-
-/// Parses [possibly incomplete] CONNECT response and reacts to it.
-/// If the tunnel is being closed or more response data is needed, returns false.
-/// Otherwise, the caller should handle the remaining read data, if any.
-void
-TunnelStateData::handleConnectResponse(const size_t chunkSize)
-{
-    assert(waitingForConnectResponse());
-
-    // Ideally, client and server should use MemBuf or better, but current code
-    // never accumulates more than one read when shoveling data (XXX) so it does
-    // not need to deal with MemBuf complexity. To keep it simple, we use a
-    // dedicated MemBuf for accumulating CONNECT responses. TODO: When shoveling
-    // is optimized, reuse server.buf for CONNEC response accumulation instead.
-
-    /* mimic the basic parts of HttpStateData::processReplyHeader() */
-    HttpReply rep;
-    Http::StatusCode parseErr = Http::scNone;
-    const bool eof = !chunkSize;
-    connectRespBuf->terminate(); // HttpMsg::parse requires terminated string
-    const bool parsed = rep.parse(connectRespBuf->content(), connectRespBuf->contentSize(), eof, &parseErr);
-    if (!parsed) {
-        if (parseErr > 0) { // unrecoverable parsing error
-            informUserOfPeerError("malformed CONNECT response from peer", 0);
-            return;
-        }
-
-        // need more data
-        assert(!eof);
-        assert(!parseErr);
-
-        if (!connectRespBuf->hasSpace()) {
-            informUserOfPeerError("huge CONNECT response from peer", 0);
-            return;
-        }
-
-        // keep reading
-        readConnectResponse();
-        return;
-    }
-
-    // CONNECT response was successfully parsed
-    request->hier.peer_reply_status = rep.sline.status();
-
-    // bail if we did not get an HTTP 200 (Connection Established) response
-    if (rep.sline.status() != Http::scOkay) {
-        // if we ever decide to reuse the peer connection, we must extract the error response first
-        *status_ptr = rep.sline.status(); // we are relaying peer response
-        informUserOfPeerError("unsupported CONNECT response status code", rep.hdr_sz);
-        return;
-    }
-
-    if (rep.hdr_sz < connectRespBuf->contentSize()) {
-        // preserve bytes that the server already sent after the CONNECT response
-        server.len = connectRespBuf->contentSize() - rep.hdr_sz;
-        memcpy(server.buf, connectRespBuf->content()+rep.hdr_sz, server.len);
-    } else {
-        // reset; delay pools were using this field to throttle CONNECT response
-        server.len = 0;
-    }
-
-    delete connectRespBuf;
-    connectRespBuf = NULL;
-    connectExchangeCheckpoint();
 }
 
 void
@@ -719,7 +723,29 @@ void
 TunnelStateData::Connection::write(const char *b, int size, AsyncCall::Pointer &callback, FREE * free_func)
 {
     writer = callback;
+    dirty = true;
     Comm::Write(conn, b, size, callback, free_func);
+}
+
+template <typename Method>
+void
+TunnelStateData::Connection::initConnection(const Comm::ConnectionPointer &aConn, Method method, const char *name, TunnelStateData *tunnelState)
+{
+    Must(!Comm::IsConnOpen(conn));
+    Must(!closer);
+    Must(Comm::IsConnOpen(aConn));
+    conn = aConn;
+    closer = commCbCall(5, 4, name, CommCloseCbPtrFun(method, tunnelState));
+    comm_add_close_handler(conn->fd, closer);
+}
+
+void
+TunnelStateData::Connection::noteClosure()
+{
+    debugs(26, 3, conn);
+    conn = nullptr;
+    closer = nullptr;
+    writer = nullptr; // may already be nil
 }
 
 void
@@ -769,15 +795,25 @@ tunnelTimeout(const CommTimeoutCbParams &io)
     /* Temporary lock to protect our own feets (comm_close -> tunnelClientClosed -> Free) */
     CbcPointer<TunnelStateData> safetyLock(tunnelState);
 
-    tunnelState->client.closeIfOpen();
-    tunnelState->server.closeIfOpen();
+    tunnelState->closeConnections();
 }
 
 void
-TunnelStateData::Connection::closeIfOpen()
+TunnelStateData::closePendingConnection(const Comm::ConnectionPointer &conn, const char *reason)
 {
-    if (Comm::IsConnOpen(conn))
+    debugs(26, 3, "because " << reason << "; " << conn);
+    assert(!server.conn);
+    if (IsConnOpen(conn))
         conn->close();
+}
+
+void
+TunnelStateData::closeConnections()
+{
+    if (Comm::IsConnOpen(server.conn))
+        server.conn->close();
+    if (Comm::IsConnOpen(client.conn))
+        client.conn->close();
 }
 
 static void
@@ -787,10 +823,13 @@ tunnelDelayedClientRead(void *data)
         return;
 
     TunnelStateData *tunnel = static_cast<TunnelStateData*>(data);
+    const auto savedContext = CodeContext::Current();
+    CodeContext::Reset(tunnel->codeContext);
     tunnel->client.readPending = NULL;
     static uint64_t counter=0;
     debugs(26, 7, "Client read(2) delayed " << ++counter << " times");
     tunnel->copyRead(tunnel->client, TunnelStateData::ReadClient);
+    CodeContext::Reset(savedContext);
 }
 
 static void
@@ -800,10 +839,13 @@ tunnelDelayedServerRead(void *data)
         return;
 
     TunnelStateData *tunnel = static_cast<TunnelStateData*>(data);
+    const auto savedContext = CodeContext::Current();
+    CodeContext::Reset(tunnel->codeContext);
     tunnel->server.readPending = NULL;
     static uint64_t counter=0;
     debugs(26, 7, "Server read(2) delayed " << ++counter << " times");
     tunnel->copyRead(tunnel->server, TunnelStateData::ReadServer);
+    CodeContext::Reset(savedContext);
 }
 
 void
@@ -814,6 +856,9 @@ TunnelStateData::copyRead(Connection &from, IOCB *completion)
     // then we schedule an event to try again in a few I/O cycles.
     // Allow at least 1 byte to be read every (0.3*10) seconds.
     int bw = from.bytesWanted(1, SQUID_TCP_SO_RCVBUF);
+    // XXX: Delay pools must not delay client-to-Squid traffic (i.e. when
+    // from.readPendingFunc is tunnelDelayedClientRead()).
+    // XXX: Bug #4913: Use DeferredRead instead.
     if (bw == 1 && ++from.delayedLoops < 10) {
         from.readPending = this;
         eventAdd("tunnelDelayedServerRead", from.readPendingFunc, from.readPending, 0.3, true);
@@ -823,17 +868,6 @@ TunnelStateData::copyRead(Connection &from, IOCB *completion)
     AsyncCall::Pointer call = commCbCall(5,4, "TunnelBlindCopyReadHandler",
                                          CommIoCbPtrFun(completion, this));
     comm_read(from.conn, from.buf, bw, call);
-}
-
-void
-TunnelStateData::readConnectResponse()
-{
-    assert(waitingForConnectResponse());
-
-    AsyncCall::Pointer call = commCbCall(5,4, "readConnectResponseDone",
-                                         CommIoCbPtrFun(ReadConnectResponseDone, this));
-    comm_read(server.conn, connectRespBuf->space(),
-              server.bytesWanted(1, connectRespBuf->spaceSize()), call);
 }
 
 void
@@ -871,10 +905,15 @@ TunnelStateData::copyServerBytes()
 static void
 tunnelStartShoveling(TunnelStateData *tunnelState)
 {
-    assert(!tunnelState->waitingForConnectExchange());
+    assert(!tunnelState->waitingForConnectExchange);
+    assert(tunnelState->server.conn);
+    AsyncCall::Pointer timeoutCall = commCbCall(5, 4, "tunnelTimeout",
+                                     CommTimeoutCbPtrFun(tunnelTimeout, tunnelState));
+    commSetConnTimeout(tunnelState->server.conn, Config.Timeout.read, timeoutCall);
+
     *tunnelState->status_ptr = Http::scOkay;
     if (tunnelState->logTag_ptr)
-        *tunnelState->logTag_ptr = LOG_TCP_TUNNEL;
+        tunnelState->logTag_ptr->update(LOG_TCP_TUNNEL);
     if (cbdataReferenceValid(tunnelState)) {
 
         // Shovel any payload already pushed into reply buffer by the server response
@@ -921,60 +960,67 @@ tunnelConnectedWriteDone(const Comm::ConnectionPointer &conn, char *, size_t len
     tunnelStartShoveling(tunnelState);
 }
 
-/// Called when we are done writing CONNECT request to a peer.
-static void
-tunnelConnectReqWriteDone(const Comm::ConnectionPointer &conn, char *, size_t ioSize, Comm::Flag flag, int, void *data)
+void
+TunnelStateData::tunnelEstablishmentDone(Http::TunnelerAnswer &answer)
 {
-    TunnelStateData *tunnelState = (TunnelStateData *)data;
-    debugs(26, 3, conn << ", flag=" << flag);
-    tunnelState->server.writer = NULL;
-    assert(tunnelState->waitingForConnectRequest());
+    server.len = 0;
 
-    tunnelState->request->hier.notePeerWrite();
+    if (logTag_ptr)
+        logTag_ptr->update(LOG_TCP_TUNNEL);
 
-    if (flag != Comm::OK) {
-        *tunnelState->status_ptr = Http::scInternalServerError;
-        tunnelErrorComplete(conn->fd, data, 0);
+    if (answer.peerResponseStatus != Http::scNone)
+        *status_ptr = answer.peerResponseStatus;
+
+    waitingForConnectExchange = false;
+
+    auto sawProblem = false;
+
+    if (!answer.positive()) {
+        sawProblem = true;
+        Must(!Comm::IsConnOpen(answer.conn));
+    } else if (!Comm::IsConnOpen(answer.conn) || fd_table[answer.conn->fd].closing()) {
+        sawProblem = true;
+        closePendingConnection(answer.conn, "conn was closed while waiting for tunnelEstablishmentDone");
+    }
+
+    if (!sawProblem) {
+        assert(answer.positive()); // paranoid
+        // copy any post-200 OK bytes to our buffer
+        preReadServerData = answer.leftovers;
+        notePeerReadyToShovel(answer.conn);
         return;
     }
 
-    statCounter.server.all.kbytes_out += ioSize;
-    statCounter.server.other.kbytes_out += ioSize;
-
-    tunnelState->connectReqWriting = false;
-    tunnelState->connectExchangeCheckpoint();
+    ErrorState *error = nullptr;
+    if (answer.positive()) {
+        error = new ErrorState(ERR_CANNOT_FORWARD, Http::scServiceUnavailable, request.getRaw(), al);
+    } else {
+        error = answer.squidError.get();
+        Must(error);
+        answer.squidError.clear(); // preserve error for errorSendComplete()
+    }
+    assert(error);
+    saveError(error);
+    retryOrBail("tunneler error");
 }
 
 void
-TunnelStateData::connectExchangeCheckpoint()
+TunnelStateData::notePeerReadyToShovel(const Comm::ConnectionPointer &conn)
 {
-    if (waitingForConnectResponse()) {
-        debugs(26, 5, "still reading CONNECT response on " << server.conn);
-    } else if (waitingForConnectRequest()) {
-        debugs(26, 5, "still writing CONNECT request on " << server.conn);
-    } else {
-        assert(!waitingForConnectExchange());
-        debugs(26, 3, "done with CONNECT exchange on " << server.conn);
-        tunnelConnected(server.conn, this);
-    }
-}
+    assert(!client.dirty);
+    retriable = false;
+    server.initConnection(conn, tunnelServerClosed, "tunnelServerClosed", this);
 
-/*
- * handle the write completion from a proxy request to an upstream origin
- */
-static void
-tunnelConnected(const Comm::ConnectionPointer &server, void *data)
-{
-    TunnelStateData *tunnelState = (TunnelStateData *)data;
-    debugs(26, 3, HERE << server << ", tunnelState=" << tunnelState);
-
-    if (!tunnelState->clientExpectsConnectResponse())
-        tunnelStartShoveling(tunnelState); // ssl-bumped connection, be quiet
+    if (!clientExpectsConnectResponse())
+        tunnelStartShoveling(this); // ssl-bumped connection, be quiet
     else {
-        *tunnelState->status_ptr = Http::scOkay;
+        *status_ptr = Http::scOkay;
         AsyncCall::Pointer call = commCbCall(5,5, "tunnelConnectedWriteDone",
-                                             CommIoCbPtrFun(tunnelConnectedWriteDone, tunnelState));
-        tunnelState->client.write(conn_established, strlen(conn_established), call, NULL);
+                                             CommIoCbPtrFun(tunnelConnectedWriteDone, this));
+        al->reply = HttpReply::MakeConnectionEstablished();
+        const auto mb = al->reply->pack();
+        client.write(mb->content(), mb->contentSize(), call, mb->freeFunc());
+        delete mb;
     }
 }
 
@@ -994,80 +1040,66 @@ tunnelErrorComplete(int fd/*const Comm::ConnectionPointer &*/, void *data, size_
         tunnelState->server.conn->close();
 }
 
-static void
-tunnelConnectDone(const Comm::ConnectionPointer &conn, Comm::Flag status, int xerrno, void *data)
+void
+TunnelStateData::noteConnection(HappyConnOpener::Answer &answer)
 {
-    TunnelStateData *tunnelState = (TunnelStateData *)data;
+    calls.connector = nullptr;
+    connOpener.clear();
 
-    if (status != Comm::OK) {
-        debugs(26, 4, HERE << conn << ", comm failure recovery.");
-        {
-            assert(!tunnelState->serverDestinations.empty());
-            const Comm::Connection &failedDest = *tunnelState->serverDestinations.front();
-            if (CachePeer *peer = failedDest.getPeer())
-                peerConnectFailed(peer);
-            debugs(26, 4, "removing the failed one from " << tunnelState->serverDestinations.size() <<
-                   " destinations: " << failedDest);
-        }
-        /* At this point only the TCP handshake has failed. no data has been passed.
-         * we are allowed to re-try the TCP-level connection to alternate IPs for CONNECT.
-         */
-        tunnelState->serverDestinations.erase(tunnelState->serverDestinations.begin());
-        if (!tunnelState->serverDestinations.empty() && FwdState::EnoughTimeToReForward(tunnelState->startTime)) {
-            debugs(26, 4, "re-forwarding");
-            tunnelState->startConnecting();
-        } else {
-            debugs(26, 4, HERE << "terminate with error.");
-            ErrorState *err = new ErrorState(ERR_CONNECT_FAIL, Http::scServiceUnavailable, tunnelState->request.getRaw());
-            *tunnelState->status_ptr = Http::scServiceUnavailable;
-            err->xerrno = xerrno;
-            // on timeout is this still:    err->xerrno = ETIMEDOUT;
-            err->port = conn->remote.port();
-            err->callback = tunnelErrorComplete;
-            err->callback_data = tunnelState;
-            errorSend(tunnelState->client.conn, err);
-            if (tunnelState->request != NULL)
-                tunnelState->request->hier.stopPeerClock(false);
-        }
+    ErrorState *error = nullptr;
+    if ((error = answer.error.get())) {
+        Must(!Comm::IsConnOpen(answer.conn));
+        syncHierNote(answer.conn, request->url.host());
+        answer.error.clear();
+    } else if (!Comm::IsConnOpen(answer.conn) || fd_table[answer.conn->fd].closing()) {
+        error = new ErrorState(ERR_CANNOT_FORWARD, Http::scServiceUnavailable, request.getRaw(), al);
+        closePendingConnection(answer.conn, "conn was closed while waiting for  noteConnection");
+    }
+
+    if (error) {
+        saveError(error);
+        retryOrBail("tried all destinations");
         return;
     }
+
+    connectDone(answer.conn, request->url.host(), answer.reused);
+}
+
+void
+TunnelStateData::connectDone(const Comm::ConnectionPointer &conn, const char *origin, const bool reused)
+{
+    Must(Comm::IsConnOpen(conn));
+
+    if (reused)
+        ResetMarkingsToServer(request.getRaw(), *conn);
+    // else Comm::ConnOpener already applied proper/current markings
+
+    syncHierNote(conn, origin);
 
 #if USE_DELAY_POOLS
     /* no point using the delayIsNoDelay stuff since tunnel is nice and simple */
     if (conn->getPeer() && conn->getPeer()->options.no_delay)
-        tunnelState->server.setDelayId(DelayId());
+        server.setDelayId(DelayId());
 #endif
 
-    netdbPingSite(tunnelState->request->url.host());
+    netdbPingSite(request->url.host());
 
-    tunnelState->request->hier.resetPeerNotes(conn, tunnelState->getHost());
+    request->peer_host = conn->getPeer() ? conn->getPeer()->host : nullptr;
 
-    tunnelState->server.conn = conn;
-    tunnelState->request->peer_host = conn->getPeer() ? conn->getPeer()->host : NULL;
-    comm_add_close_handler(conn->fd, tunnelServerClosed, tunnelState);
-
-    debugs(26, 4, HERE << "determine post-connect handling pathway.");
-    if (conn->getPeer()) {
-        tunnelState->request->peer_login = conn->getPeer()->login;
-        tunnelState->request->peer_domain = conn->getPeer()->domain;
-        tunnelState->request->flags.auth_no_keytab = conn->getPeer()->options.auth_no_keytab;
-        tunnelState->request->flags.proxying = !(conn->getPeer()->options.originserver);
+    bool toOrigin = false; // same semantics as StateFlags::toOrigin
+    if (const auto * const peer = conn->getPeer()) {
+        request->prepForPeering(*peer);
+        toOrigin = peer->options.originserver;
     } else {
-        tunnelState->request->peer_login = NULL;
-        tunnelState->request->peer_domain = NULL;
-        tunnelState->request->flags.auth_no_keytab = false;
-        tunnelState->request->flags.proxying = false;
+        request->prepForDirect();
+        toOrigin = true;
     }
 
-    if (tunnelState->request->flags.proxying)
-        tunnelState->connectToPeer();
+    if (!toOrigin)
+        connectToPeer(conn);
     else {
-        tunnelConnected(conn, tunnelState);
+        notePeerReadyToShovel(conn);
     }
-
-    AsyncCall::Pointer timeoutCall = commCbCall(5, 4, "tunnelTimeout",
-                                     CommTimeoutCbPtrFun(tunnelTimeout, tunnelState));
-    commSetConnTimeout(conn, Config.Timeout.read, timeoutCall);
 }
 
 void
@@ -1098,7 +1130,7 @@ tunnelStart(ClientHttpRequest * http)
         ch.syncAle(request, http->log_uri);
         if (ch.fastCheck().denied()) {
             debugs(26, 4, HERE << "MISS access forbidden.");
-            err = new ErrorState(ERR_FORWARDING_DENIED, Http::scForbidden, request);
+            err = new ErrorState(ERR_FORWARDING_DENIED, Http::scForbidden, request, http->al);
             http->al->http.code = Http::scForbidden;
             errorSend(http->getConn()->clientConnection, err);
             return;
@@ -1111,158 +1143,262 @@ tunnelStart(ClientHttpRequest * http)
 
     tunnelState = new TunnelStateData(http);
 #if USE_DELAY_POOLS
-    //server.setDelayId called from tunnelConnectDone after server side connection established
+    tunnelState->server.setDelayId(DelayId::DelayClient(http));
 #endif
-
-    peerSelect(&(tunnelState->serverDestinations), request, http->al,
-               NULL,
-               tunnelPeerSelectComplete,
-               tunnelState);
+    tunnelState->startSelectingDestinations(request, http->al, nullptr);
 }
 
 void
-TunnelStateData::connectToPeer()
+TunnelStateData::connectToPeer(const Comm::ConnectionPointer &conn)
 {
-    if (CachePeer *p = server.conn->getPeer()) {
-        if (p->secure.encryptTransport) {
-            AsyncCall::Pointer callback = asyncCall(5,4,
-                                                    "TunnelStateData::ConnectedToPeer",
-                                                    MyAnswerDialer(&TunnelStateData::connectedToPeer, this));
-            auto *connector = new Security::BlindPeerConnector(request, server.conn, callback, al);
-            AsyncJob::Start(connector); // will call our callback
-            return;
-        }
+    if (const auto p = conn->getPeer()) {
+        if (p->secure.encryptTransport)
+            return advanceDestination("secure connection to peer", conn, [this,&conn] {
+            secureConnectionToPeer(conn);
+        });
     }
 
-    Security::EncryptorAnswer nil;
-    connectedToPeer(nil);
+    connectedToPeer(conn);
+}
+
+/// encrypts an established TCP connection to peer
+void
+TunnelStateData::secureConnectionToPeer(const Comm::ConnectionPointer &conn)
+{
+    AsyncCall::Pointer callback = asyncCall(5,4, "TunnelStateData::noteSecurityPeerConnectorAnswer",
+                                            MyAnswerDialer(&TunnelStateData::noteSecurityPeerConnectorAnswer, this));
+    const auto connector = new Security::BlindPeerConnector(request, conn, callback, al);
+    AsyncJob::Start(connector); // will call our callback
+}
+
+/// starts a preparation step for an established connection; retries on failures
+template <typename StepStart>
+void
+TunnelStateData::advanceDestination(const char *stepDescription, const Comm::ConnectionPointer &conn, const StepStart &startStep)
+{
+    // TODO: Extract destination-specific handling from TunnelStateData so that
+    // all the awkward, limited-scope advanceDestination() calls can be replaced
+    // with a single simple try/catch,retry block.
+    try {
+        startStep();
+        // now wait for the step callback
+    } catch (...) {
+        debugs (26, 2, "exception while trying to " << stepDescription << ": " << CurrentException);
+        closePendingConnection(conn, "connection preparation exception");
+        if (!savedError)
+            saveError(new ErrorState(ERR_CANNOT_FORWARD, Http::scInternalServerError, request.getRaw(), al));
+        retryOrBail(stepDescription);
+    }
+}
+
+/// callback handler for the connection encryptor
+void
+TunnelStateData::noteSecurityPeerConnectorAnswer(Security::EncryptorAnswer &answer)
+{
+    ErrorState *error = nullptr;
+    if ((error = answer.error.get())) {
+        Must(!Comm::IsConnOpen(answer.conn));
+        answer.error.clear();
+    } else if (!Comm::IsConnOpen(answer.conn) || fd_table[answer.conn->fd].closing()) {
+        error = new ErrorState(ERR_CANNOT_FORWARD, Http::scServiceUnavailable, request.getRaw(), al);
+        closePendingConnection(answer.conn, "conn was closed while waiting for noteSecurityPeerConnectorAnswer");
+    }
+
+    if (error) {
+        saveError(error);
+        retryOrBail("TLS peer connection error");
+        return;
+    }
+
+    connectedToPeer(answer.conn);
 }
 
 void
-TunnelStateData::connectedToPeer(Security::EncryptorAnswer &answer)
+TunnelStateData::connectedToPeer(const Comm::ConnectionPointer &conn)
 {
-    if (ErrorState *error = answer.error.get()) {
-        *status_ptr = error->httpStatus;
-        error->callback = tunnelErrorComplete;
-        error->callback_data = this;
-        errorSend(client.conn, error);
-        answer.error.clear(); // preserve error for errorSendComplete()
+    advanceDestination("establish tunnel through proxy", conn, [this,&conn] {
+        establishTunnelThruProxy(conn);
+    });
+}
+
+void
+TunnelStateData::establishTunnelThruProxy(const Comm::ConnectionPointer &conn)
+{
+    assert(!waitingForConnectExchange);
+
+    AsyncCall::Pointer callback = asyncCall(5,4,
+                                            "TunnelStateData::tunnelEstablishmentDone",
+                                            Http::Tunneler::CbDialer<TunnelStateData>(&TunnelStateData::tunnelEstablishmentDone, this));
+    const auto tunneler = new Http::Tunneler(conn, request, callback, Config.Timeout.lifetime, al);
+#if USE_DELAY_POOLS
+    tunneler->setDelayId(server.delayId);
+#endif
+    AsyncJob::Start(tunneler);
+    waitingForConnectExchange = true;
+    // and wait for the tunnelEstablishmentDone() call
+}
+
+void
+TunnelStateData::noteDestination(Comm::ConnectionPointer path)
+{
+    destinationsFound = true;
+
+    if (!path) { // decided to use a pinned connection
+        // We can call usePinned() without fear of clashing with an earlier
+        // forwarding attempt because PINNED must be the first destination.
+        assert(destinations->empty());
+        usePinned();
         return;
     }
 
-    tunnelRelayConnectRequest(server.conn, this);
-}
+    destinations->addPath(path);
 
-static void
-tunnelRelayConnectRequest(const Comm::ConnectionPointer &srv, void *data)
-{
-    TunnelStateData *tunnelState = (TunnelStateData *)data;
-    assert(!tunnelState->waitingForConnectExchange());
-    HttpHeader hdr_out(hoRequest);
-    Http::StateFlags flags;
-    debugs(26, 3, HERE << srv << ", tunnelState=" << tunnelState);
-    flags.proxying = tunnelState->request->flags.proxying;
-    MemBuf mb;
-    mb.init();
-    mb.appendf("CONNECT %s HTTP/1.1\r\n", tunnelState->url);
-    HttpStateData::httpBuildRequestHeader(tunnelState->request.getRaw(),
-                                          NULL,         /* StoreEntry */
-                                          tunnelState->al,          /* AccessLogEntry */
-                                          &hdr_out,
-                                          flags);           /* flags */
-    hdr_out.packInto(&mb);
-    hdr_out.clean();
-    mb.append("\r\n", 2);
-
-    debugs(11, 2, "Tunnel Server REQUEST: " << tunnelState->server.conn <<
-           ":\n----------\n" << mb.buf << "\n----------");
-
-    AsyncCall::Pointer writeCall = commCbCall(5,5, "tunnelConnectReqWriteDone",
-                                   CommIoCbPtrFun(tunnelConnectReqWriteDone,
-                                           tunnelState));
-
-    tunnelState->server.write(mb.buf, mb.size, writeCall, mb.freeFunc());
-    tunnelState->connectReqWriting = true;
-
-    tunnelState->connectRespBuf = new MemBuf;
-    // SQUID_TCP_SO_RCVBUF: we should not accumulate more than regular I/O buffer
-    // can hold since any CONNECT response leftovers have to fit into server.buf.
-    // 2*SQUID_TCP_SO_RCVBUF: HttpMsg::parse() zero-terminates, which uses space.
-    tunnelState->connectRespBuf->init(SQUID_TCP_SO_RCVBUF, 2*SQUID_TCP_SO_RCVBUF);
-    tunnelState->readConnectResponse();
-
-    assert(tunnelState->waitingForConnectExchange());
-
-    AsyncCall::Pointer timeoutCall = commCbCall(5, 4, "tunnelTimeout",
-                                     CommTimeoutCbPtrFun(tunnelTimeout, tunnelState));
-    commSetConnTimeout(srv, Config.Timeout.read, timeoutCall);
-}
-
-static Comm::ConnectionPointer
-borrowPinnedConnection(HttpRequest *request, Comm::ConnectionPointer &serverDestination)
-{
-    // pinned_connection may become nil after a pconn race
-    if (ConnStateData *pinned_connection = request ? request->pinnedConnection() : nullptr) {
-        Comm::ConnectionPointer serverConn = pinned_connection->borrowPinnedConnection(request, serverDestination->getPeer());
-        return serverConn;
-    }
-
-    return nullptr;
-}
-
-static void
-tunnelPeerSelectComplete(Comm::ConnectionList *peer_paths, ErrorState *err, void *data)
-{
-    TunnelStateData *tunnelState = (TunnelStateData *)data;
-
-    bool bail = false;
-    if (!peer_paths || peer_paths->empty()) {
-        debugs(26, 3, HERE << "No paths found. Aborting CONNECT");
-        bail = true;
-    }
-
-    if (!bail && tunnelState->serverDestinations[0]->peerType == PINNED) {
-        Comm::ConnectionPointer serverConn = borrowPinnedConnection(tunnelState->request.getRaw(), tunnelState->serverDestinations[0]);
-        debugs(26,7, "pinned peer connection: " << serverConn);
-        if (Comm::IsConnOpen(serverConn)) {
-            tunnelConnectDone(serverConn, Comm::OK, 0, (void *)tunnelState);
-            return;
-        }
-        bail = true;
-    }
-
-    if (bail) {
-        if (!err) {
-            err = new ErrorState(ERR_CANNOT_FORWARD, Http::scServiceUnavailable, tunnelState->request.getRaw());
-        }
-        *tunnelState->status_ptr = err->httpStatus;
-        err->callback = tunnelErrorComplete;
-        err->callback_data = tunnelState;
-        errorSend(tunnelState->client.conn, err);
+    if (Comm::IsConnOpen(server.conn)) {
+        // We are already using a previously opened connection but also
+        // receiving destinations in case we need to re-forward.
+        Must(!opening());
         return;
     }
-    delete err;
 
-    if (tunnelState->request != NULL)
-        tunnelState->request->hier.startPeerClock();
+    if (opening()) {
+        notifyConnOpener();
+        return; // and continue to wait for tunnelConnectDone() callback
+    }
 
-    debugs(26, 3, "paths=" << peer_paths->size() << ", p[0]={" << (*peer_paths)[0] << "}, serverDest[0]={" <<
-           tunnelState->serverDestinations[0] << "}");
+    startConnecting();
+}
 
-    tunnelState->startConnecting();
+void
+TunnelStateData::noteDestinationsEnd(ErrorState *selectionError)
+{
+    PeerSelectionInitiator::subscribed = false;
+    destinations->destinationsFinalized = true;
+    if (!destinationsFound) {
+
+        // XXX: Honor clientExpectsConnectResponse() before replying.
+
+        if (selectionError)
+            return sendError(selectionError, "path selection has failed");
+
+        if (savedError)
+            return sendError(savedError, "all found paths have failed");
+
+        return sendError(new ErrorState(ERR_CANNOT_FORWARD, Http::scInternalServerError, request.getRaw(), al),
+                         "path selection found no paths");
+    }
+    // else continue to use one of the previously noted destinations;
+    // if all of them fail, tunneling as whole will fail
+    Must(!selectionError); // finding at least one path means selection succeeded
+
+    if (Comm::IsConnOpen(server.conn)) {
+        // We are already using a previously opened connection but also
+        // receiving destinations in case we need to re-forward.
+        Must(!opening());
+        return;
+    }
+
+    Must(opening()); // or we would be stuck with nothing to do or wait for
+    notifyConnOpener();
+}
+
+/// remembers an error to be used if there will be no more connection attempts
+void
+TunnelStateData::saveError(ErrorState *error)
+{
+    debugs(26, 4, savedError << " ? " << error);
+    assert(error);
+    delete savedError; // may be nil
+    savedError = error;
+}
+
+/// Starts sending the given error message to the client, leading to the
+/// eventual transaction termination. Call with savedError to send savedError.
+void
+TunnelStateData::sendError(ErrorState *finalError, const char *reason)
+{
+    debugs(26, 3, "aborting transaction for " << reason);
+
+    if (request)
+        request->hier.stopPeerClock(false);
+
+    if (opening())
+        cancelOpening(reason);
+
+    assert(finalError);
+
+    // get rid of any cached error unless that is what the caller is sending
+    if (savedError != finalError)
+        delete savedError; // may be nil
+    savedError = nullptr;
+
+    // we cannot try other destinations after responding with an error
+    PeerSelectionInitiator::subscribed = false; // may already be false
+
+    *status_ptr = finalError->httpStatus;
+    finalError->callback = tunnelErrorComplete;
+    finalError->callback_data = this;
+    errorSend(client.conn, finalError);
+}
+
+/// Notify connOpener that we no longer need connections. We do not have to do
+/// this -- connOpener would eventually notice on its own, but notifying reduces
+/// waste and speeds up spare connection opening for other transactions (that
+/// could otherwise wait for this transaction to use its spare allowance).
+void
+TunnelStateData::cancelOpening(const char *reason)
+{
+    assert(calls.connector);
+    calls.connector->cancel(reason);
+    calls.connector = nullptr;
+    notifyConnOpener();
+    connOpener.clear();
 }
 
 void
 TunnelStateData::startConnecting()
 {
-    Comm::ConnectionPointer &dest = serverDestinations.front();
-    GetMarkingsToServer(request.getRaw(), *dest);
+    if (request)
+        request->hier.startPeerClock();
 
-    const time_t connectTimeout = dest->connectTimeout(startTime);
-    AsyncCall::Pointer call = commCbCall(26,3, "tunnelConnectDone", CommConnectCbPtrFun(tunnelConnectDone, this));
-    Comm::ConnOpener *cs = new Comm::ConnOpener(dest, call, connectTimeout);
-    cs->setHost(url);
+    assert(!destinations->empty());
+    assert(!opening());
+    calls.connector = asyncCall(17, 5, "TunnelStateData::noteConnection", HappyConnOpener::CbDialer<TunnelStateData>(&TunnelStateData::noteConnection, this));
+    const auto cs = new HappyConnOpener(destinations, calls.connector, request, startTime, 0, al);
+    cs->setHost(request->url.host());
+    cs->setRetriable(false);
+    cs->allowPersistent(false);
+    destinations->notificationPending = true; // start() is async
+    connOpener = cs;
     AsyncJob::Start(cs);
+}
+
+/// send request on an existing connection dedicated to the requesting client
+void
+TunnelStateData::usePinned()
+{
+    Must(request);
+    const auto connManager = request->pinnedConnection();
+    try {
+        const auto serverConn = ConnStateData::BorrowPinnedConnection(request.getRaw(), al);
+        debugs(26, 7, "pinned peer connection: " << serverConn);
+
+        // Set HttpRequest pinned related flags for consistency even if
+        // they are not really used by tunnel.cc code.
+        request->flags.pinned = true;
+        if (connManager->pinnedAuth())
+            request->flags.auth = true;
+
+        // the server may close the pinned connection before this request
+        const auto reused = true;
+        connectDone(serverConn, connManager->pinning.host, reused);
+    } catch (ErrorState * const error) {
+        syncHierNote(nullptr, connManager ? connManager->pinning.host : request->url.host());
+        // XXX: Honor clientExpectsConnectResponse() before replying.
+        // a PINNED path failure is fatal; do not wait for more paths
+        sendError(error, "pinned path failure");
+        return;
+    }
+
 }
 
 CBDATA_CLASS_INIT(TunnelStateData);
@@ -1282,10 +1418,31 @@ TunnelStateData::Connection::setDelayId(DelayId const &newDelay)
 
 #endif
 
-#if USE_OPENSSL
+/// makes sure connOpener knows that destinations have changed
 void
-switchToTunnel(HttpRequest *request, Comm::ConnectionPointer &clientConn, Comm::ConnectionPointer &srvConn)
+TunnelStateData::notifyConnOpener()
 {
+    if (destinations->notificationPending) {
+        debugs(17, 7, "reusing pending notification");
+    } else {
+        destinations->notificationPending = true;
+        CallJobHere(17, 5, connOpener, HappyConnOpener, noteCandidatesChange);
+    }
+}
+
+/**
+ * Sets up a TCP tunnel through Squid and starts shoveling traffic.
+ * \param request the request that initiated/caused this tunnel
+ * \param clientConn the already accepted client-to-Squid TCP connection
+ * \param srvConn the already established Squid-to-server TCP connection
+ * \param preReadServerData server-sent bytes to be forwarded to the client
+ */
+void
+switchToTunnel(HttpRequest *request, const Comm::ConnectionPointer &clientConn, const Comm::ConnectionPointer &srvConn, const SBuf &preReadServerData)
+{
+    Must(Comm::IsConnOpen(clientConn));
+    Must(Comm::IsConnOpen(srvConn));
+
     debugs(26,5, "Revert to tunnel FD " << clientConn->fd << " with FD " << srvConn->fd);
 
     /* Create state structure. */
@@ -1300,48 +1457,28 @@ switchToTunnel(HttpRequest *request, Comm::ConnectionPointer &clientConn, Comm::
     debugs(26, 3, request->method << " " << context->http->uri << " " << request->http_ver);
 
     TunnelStateData *tunnelState = new TunnelStateData(context->http);
-
-    fd_table[clientConn->fd].read_method = &default_read_method;
-    fd_table[clientConn->fd].write_method = &default_write_method;
+    tunnelState->retriable = false;
 
     request->hier.resetPeerNotes(srvConn, tunnelState->getHost());
 
-    tunnelState->server.conn = srvConn;
+    tunnelState->server.initConnection(srvConn, tunnelServerClosed, "tunnelServerClosed", tunnelState);
 
 #if USE_DELAY_POOLS
     /* no point using the delayIsNoDelay stuff since tunnel is nice and simple */
-    if (srvConn->getPeer() && srvConn->getPeer()->options.no_delay)
+    if (!srvConn->getPeer() || !srvConn->getPeer()->options.no_delay)
         tunnelState->server.setDelayId(DelayId::DelayClient(context->http));
 #endif
 
     request->peer_host = srvConn->getPeer() ? srvConn->getPeer()->host : nullptr;
-    comm_add_close_handler(srvConn->fd, tunnelServerClosed, tunnelState);
 
     debugs(26, 4, "determine post-connect handling pathway.");
-    if (srvConn->getPeer()) {
-        request->peer_login = srvConn->getPeer()->login;
-        request->peer_domain = srvConn->getPeer()->domain;
-        request->flags.auth_no_keytab = srvConn->getPeer()->options.auth_no_keytab;
-        request->flags.proxying = !(srvConn->getPeer()->options.originserver);
-    } else {
-        request->peer_login = nullptr;
-        request->peer_domain = nullptr;
-        request->flags.auth_no_keytab = false;
-        request->flags.proxying = false;
-    }
+    if (const auto peer = srvConn->getPeer())
+        request->prepForPeering(*peer);
+    else
+        request->prepForDirect();
 
-    AsyncCall::Pointer timeoutCall = commCbCall(5, 4, "tunnelTimeout",
-                                     CommTimeoutCbPtrFun(tunnelTimeout, tunnelState));
-    commSetConnTimeout(srvConn, Config.Timeout.read, timeoutCall);
-    fd_table[srvConn->fd].read_method = &default_read_method;
-    fd_table[srvConn->fd].write_method = &default_write_method;
+    tunnelState->preReadServerData = preReadServerData;
 
-    auto ssl = fd_table[srvConn->fd].ssl.get();
-    assert(ssl);
-    BIO *b = SSL_get_rbio(ssl);
-    Ssl::ServerBio *srvBio = static_cast<Ssl::ServerBio *>(BIO_get_data(b));
-    tunnelState->preReadServerData = srvBio->rBufData();
     tunnelStartShoveling(tunnelState);
 }
-#endif //USE_OPENSSL
 

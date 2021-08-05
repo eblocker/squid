@@ -14,6 +14,8 @@
 #define STUB_API "comm.cc"
 #include "tests/STUB.h"
 
+#include <ostream>
+
 void comm_read(const Comm::ConnectionPointer &conn, char *buf, int size, IOCB *handler, void *handler_data) STUB
 void comm_read(const Comm::ConnectionPointer &conn, char*, int, AsyncCall::Pointer &callback) STUB
 

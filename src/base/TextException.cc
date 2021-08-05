@@ -36,9 +36,9 @@ TextException::~TextException() throw()
 std::ostream &
 TextException::print(std::ostream &os) const
 {
-    os << std::runtime_error::what() << "\n" <<
-       "    exception location: " << where << "\n";
-    // TODO: error_detail: " << (ERR_DETAIL_EXCEPTION_START+id()) << "\n";
+    os << std::runtime_error::what() <<
+       Debug::Extra << "exception location: " << where;
+    // TODO: ...error_detail: " << (ERR_DETAIL_EXCEPTION_START+id());
     return os;
 }
 
@@ -59,11 +59,21 @@ TextException::what() const throw()
 }
 
 std::ostream &
+operator <<(std::ostream &os, const TextException &ex)
+{
+    ex.print(os);
+    return os;
+}
+
+std::ostream &
 CurrentException(std::ostream &os)
 {
     if (std::current_exception()) {
         try {
             throw; // re-throw to recognize the exception type
+        }
+        catch (const TextException &ex) {
+            os << ex; // optimization: this is a lot cheaper than what() below
         }
         catch (const std::exception &ex) {
             os << ex.what();

@@ -103,7 +103,7 @@ am__aclocal_m4_deps = $(top_srcdir)/acinclude/ax_with_prog.m4 \
 	$(top_srcdir)/acinclude/compiler-flags.m4 \
 	$(top_srcdir)/acinclude/os-deps.m4 \
 	$(top_srcdir)/acinclude/krb5.m4 $(top_srcdir)/acinclude/pam.m4 \
-	$(top_srcdir)/acinclude/pkg.m4 \
+	$(top_srcdir)/acinclude/pkg.m4 $(top_srcdir)/acinclude/tdb.m4 \
 	$(top_srcdir)/acinclude/lib-checks.m4 \
 	$(top_srcdir)/acinclude/ax_cxx_compile_stdcxx_11.m4 \
 	$(top_srcdir)/acinclude/ax_cxx_0x_types.m4 \
@@ -145,6 +145,7 @@ am__aclocal_m4_deps = $(top_srcdir)/acinclude/ax_with_prog.m4 \
 	$(top_srcdir)/src/acl/external/eDirectory_userip/required.m4 \
 	$(top_srcdir)/src/acl/external/file_userip/required.m4 \
 	$(top_srcdir)/src/acl/external/kerberos_ldap_group/required.m4 \
+	$(top_srcdir)/src/acl/external/kerberos_sid_group/required.m4 \
 	$(top_srcdir)/src/acl/external/session/required.m4 \
 	$(top_srcdir)/src/acl/external/time_quota/required.m4 \
 	$(top_srcdir)/src/acl/external/unix_group/required.m4 \
@@ -168,11 +169,11 @@ CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
 LTLIBRARIES = $(noinst_LTLIBRARIES)
 libcompatsquid_la_DEPENDENCIES = $(LTLIBOBJS)
-am_libcompatsquid_la_OBJECTS = assert.lo compat.lo debug.lo \
-	eui64_aton.lo getaddrinfo.lo getnameinfo.lo GnuRegex.lo \
-	inet_ntop.lo inet_pton.lo memrchr.lo shm.lo statvfs.lo \
-	strnstr.lo strnrchr.lo xalloc.lo xstrerror.lo xstring.lo \
-	xstrto.lo mswindows.lo
+am_libcompatsquid_la_OBJECTS = GnuRegex.lo assert.lo compat.lo \
+	debug.lo eui64_aton.lo getaddrinfo.lo getnameinfo.lo \
+	inet_ntop.lo inet_pton.lo memrchr.lo mswindows.lo shm.lo \
+	statvfs.lo strnrchr.lo strnstr.lo xalloc.lo xstrerror.lo \
+	xstring.lo xstrto.lo
 libcompatsquid_la_OBJECTS = $(am_libcompatsquid_la_OBJECTS)
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
@@ -561,11 +562,13 @@ KRB5LIBS = @KRB5LIBS@
 LBERLIB = @LBERLIB@
 LD = @LD@
 LDAPLIB = @LDAPLIB@
+LDAPSEARCH = @LDAPSEARCH@
 LDFLAGS = @LDFLAGS@
 LIBADD_DL = @LIBADD_DL@
 LIBADD_DLD_LINK = @LIBADD_DLD_LINK@
 LIBADD_DLOPEN = @LIBADD_DLOPEN@
 LIBADD_SHL_LOAD = @LIBADD_SHL_LOAD@
+LIBBDB_LIBS = @LIBBDB_LIBS@
 LIBCPPUNIT_CFLAGS = @LIBCPPUNIT_CFLAGS@
 LIBCPPUNIT_LIBS = @LIBCPPUNIT_LIBS@
 LIBGNUTLS_CFLAGS = @LIBGNUTLS_CFLAGS@
@@ -577,6 +580,8 @@ LIBOPENSSL_LIBS = @LIBOPENSSL_LIBS@
 LIBPTHREADS = @LIBPTHREADS@
 LIBS = @LIBS@
 LIBSASL = @LIBSASL@
+LIBTDB_CFLAGS = @LIBTDB_CFLAGS@
+LIBTDB_LIBS = @LIBTDB_LIBS@
 LIBTOOL = @LIBTOOL@
 LIBXML2_CFLAGS = @LIBXML2_CFLAGS@
 LIBXML2_LIBS = @LIBXML2_LIBS@
@@ -755,25 +760,25 @@ subst_perlshell = sed -e 's,[@]PERL[@],$(PERL),g' <$(srcdir)/$@.pl.in >$@ || ($(
 # Port Specific Configurations
 noinst_LTLIBRARIES = libcompatsquid.la
 libcompatsquid_la_SOURCES = \
+	GnuRegex.c \
+	GnuRegex.h \
 	assert.cc \
 	assert.h \
 	cmsg.h \
 	compat.cc \
 	compat.h \
 	compat_shared.h \
-	cpu.h \
 	cppunit.h \
+	cpu.h \
 	debug.cc \
 	debug.h \
-	eui64_aton.h \
 	eui64_aton.c \
+	eui64_aton.h \
 	fdsetsize.h \
 	getaddrinfo.cc \
 	getaddrinfo.h \
 	getnameinfo.cc \
 	getnameinfo.h \
-	GnuRegex.c \
-	GnuRegex.h \
 	inet_ntop.cc \
 	inet_ntop.h \
 	inet_pton.cc \
@@ -781,19 +786,37 @@ libcompatsquid_la_SOURCES = \
 	initgroups.h \
 	memrchr.cc \
 	memrchr.h \
+	mswindows.cc \
 	openssl.h \
+	os/aix.h \
+	os/android.h \
+	os/dragonfly.h \
+	os/freebsd.h \
+	os/hpux.h \
+	os/linux.h \
+	os/macosx.h \
+	os/mswindows.h \
+	os/netbsd.h \
+	os/next.h \
+	os/openbsd.h \
+	os/opensolaris_10_netdb.h \
+	os/os2.h \
+	os/qnx.h \
+	os/sgi.h \
+	os/solaris.h \
+	os/sunos.h \
 	osdetect.h \
 	psignal.h \
 	shm.cc \
 	shm.h \
-	statvfs.h \
 	statvfs.cc \
+	statvfs.h \
 	stdio.h \
 	stdvarargs.h \
+	strnrchr.c \
+	strnrchr.h \
 	strnstr.cc \
 	strtoll.h \
-	strnrchr.h \
-	strnrchr.c \
 	tempnam.h \
 	types.h \
 	valgrind.h \
@@ -805,31 +828,12 @@ libcompatsquid_la_SOURCES = \
 	xstring.cc \
 	xstring.h \
 	xstrto.cc \
-	xstrto.h \
-	\
-	os/aix.h \
-	os/android.h \
-	os/dragonfly.h \
-	os/freebsd.h \
-	os/hpux.h \
-	os/linux.h \
-	os/macosx.h \
-	os/mswindows.h \
-	mswindows.cc \
-	os/netbsd.h \
-	os/next.h \
-	os/openbsd.h \
-	os/opensolaris_10_netdb.h \
-	os/os2.h \
-	os/qnx.h \
-	os/sgi.h \
-	os/solaris.h \
-	os/sunos.h
+	xstrto.h
 
 libcompatsquid_la_LIBADD = $(LTLIBOBJS)
 testPreCompiler_SOURCES = \
-	testPreCompiler.h \
-	testPreCompiler.cc
+	testPreCompiler.cc \
+	testPreCompiler.h
 
 testPreCompiler_LDADD = $(LIBCPPUNIT_LIBS)
 testPreCompiler_LDFLAGS = 

@@ -12,10 +12,10 @@
 #include "anyp/Uri.h"
 #include "base/CbcPointer.h"
 #include "dns/forward.h"
-#include "err_type.h"
+#include "error/Error.h"
 #include "HierarchyLogEntry.h"
+#include "http/Message.h"
 #include "http/RequestMethod.h"
-#include "HttpMsg.h"
 #include "MasterXaction.h"
 #include "Notes.h"
 #include "RequestFlags.h"
@@ -34,17 +34,18 @@
 #include "eui/Eui64.h"
 #endif
 
-class ConnStateData;
-class Downloader;
 class AccessLogEntry;
 typedef RefCount<AccessLogEntry> AccessLogEntryPointer;
+class CachePeer;
+class ConnStateData;
+class Downloader;
 
 /*  Http Request */
 void httpRequestPack(void *obj, Packable *p);
 
 class HttpHdrRange;
 
-class HttpRequest: public HttpMsg
+class HttpRequest: public Http::Message
 {
     MEMPROXY_CLASS(HttpRequest);
 
@@ -87,10 +88,17 @@ public:
     Adaptation::Icap::History::Pointer icapHistory() const;
 #endif
 
+    /* If a request goes through several destinations, then the following two
+     * methods will be called several times, in destinations-dependent order. */
+    /// get ready to be sent to the given cache_peer, including originserver
+    void prepForPeering(const CachePeer &peer);
+    /// get ready to be sent directly to an origin server, excluding originserver
+    void prepForDirect();
+
     void recordLookup(const Dns::LookupDetails &detail);
 
     /// sets error detail if no earlier detail was available
-    void detailError(err_type aType, int aDetail);
+    void detailError(const err_type c, const ErrorDetail::Pointer &d) { error.update(c, d); }
     /// clear error details, useful for retries/repeats
     void clearError();
 
@@ -150,8 +158,7 @@ public:
 
     int dnsWait; ///< sum of DNS lookup delays in milliseconds, for %dt
 
-    err_type errType;
-    int errDetail; ///< errType-specific detail about the transaction error
+    Error error; ///< the first transaction problem encountered (or falsy)
 
     char *peer_login;       /* Configured peer login:password */
 
@@ -165,8 +172,6 @@ public:
     char *peer_domain;      /* Configured peer forceddomain */
 
     String myportname; // Internal tag name= value from port this requests arrived in.
-
-    NotePairs::Pointer notes; ///< annotations added by the note directive and helpers
 
     String tag;         /* Internal tag for this request */
 
@@ -236,9 +241,26 @@ public:
     void ignoreRange(const char *reason);
     int64_t getRangeOffsetLimit(); /* the result of this function gets cached in rangeOffsetLimit */
 
+    /// \returns existing non-empty transaction annotations,
+    /// creates and returns empty annotations otherwise
+    NotePairs::Pointer notes();
+    bool hasNotes() const { return bool(theNotes) && !theNotes->empty(); }
+
+    virtual void configureContentLengthInterpreter(Http::ContentLengthInterpreter &) {}
+
+    /// Parses request header using Parser.
+    /// Use it in contexts where the Parser object is available.
+    bool parseHeader(Http1::Parser &hp);
+    /// Parses request header from the buffer.
+    /// Use it in contexts where the Parser object not available.
+    bool parseHeader(const char *buffer, const size_t size);
+
 private:
     mutable int64_t rangeOffsetLimit;  /* caches the result of getRangeOffsetLimit */
 
+    /// annotations added by the note directive and helpers
+    /// and(or) by annotate_transaction/annotate_client ACLs.
+    NotePairs::Pointer theNotes;
 protected:
     virtual void packFirstLineInto(Packable * p, bool full_uri) const;
 
@@ -246,8 +268,18 @@ protected:
 
     virtual void hdrCacheInit();
 
-    virtual bool inheritProperties(const HttpMsg *aMsg);
+    virtual bool inheritProperties(const Http::Message *);
 };
+
+class ConnStateData;
+/**
+ * Updates ConnStateData ids and HttpRequest notes from helpers received notes.
+ */
+void UpdateRequestNotes(ConnStateData *csd, HttpRequest &request, NotePairs const &notes);
+
+/// \returns listening/*_port address used by the client connection (or nil)
+/// nil parameter(s) indicate missing caller information and are handled safely
+const Ip::Address *FindListeningPortAddress(const HttpRequest *, const AccessLogEntry *);
 
 #endif /* SQUID_HTTPREQUEST_H */
 

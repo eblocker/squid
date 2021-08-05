@@ -7,13 +7,13 @@
  */
 
 #include "squid.h"
+#include "../helper.h"
 #include "anyp/PortCfg.h"
 #include "fs_io.h"
 #include "helper/Reply.h"
 #include "SquidConfig.h"
 #include "SquidString.h"
 #include "SquidTime.h"
-#include "src/helper.h"
 #include "ssl/cert_validate_message.h"
 #include "ssl/Config.h"
 #include "ssl/helper.h"
@@ -81,7 +81,7 @@ void Ssl::Helper::Init()
     if (!found)
         return;
 
-    ssl_crtd = new helper(Ssl::TheConfig.ssl_crtd);
+    ssl_crtd = new helper("sslcrtd_program");
     ssl_crtd->childs.updateLimits(Ssl::TheConfig.ssl_crtdChildren);
     ssl_crtd->ipc_type = IPC_STREAM;
     // The crtd messages may contain the eol ('\n') character. We are

@@ -282,7 +282,7 @@ void
 ESIVarState::addVariable(char const *name, size_t len, Variable *aVariable)
 {
     String temp;
-    temp.limitInit (name, len);
+    temp.assign(name, len);
     removeVariable (temp);
     variables.add(name, len, aVariable);
     variablesForCleanup.push_back(aVariable);
@@ -380,10 +380,10 @@ ESIVariableCookie::eval (ESIVarState &state, char const *subref, char const *fou
         if (!subref)
             s = state.header().getStr (Http::HdrType::COOKIE);
         else {
-            String S = state.header().getListMember (Http::HdrType::COOKIE, subref, ';');
+            const auto subCookie = state.header().getListMember(Http::HdrType::COOKIE, subref, ';');
 
-            if (S.size())
-                ESISegment::ListAppend (state.getOutput(), S.rawBuf(), S.size());
+            if (subCookie.length())
+                ESISegment::ListAppend(state.getOutput(), subCookie.rawContent(), subCookie.length());
             else if (found_default)
                 ESISegment::ListAppend (state.getOutput(), found_default, strlen (found_default));
         }
@@ -805,7 +805,7 @@ ESIVariableProcessor::~ESIVariableProcessor()
     delete currentFunction;
 }
 
-/* XXX FIXME: this should be comma delimited, no? */
+/* XXX: this should be comma delimited, no? */
 void
 ESIVarState::buildVary (HttpReply *rep)
 {

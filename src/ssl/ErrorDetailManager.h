@@ -25,7 +25,7 @@ namespace Ssl
 class ErrorDetailEntry
 {
 public:
-    Security::ErrorCode error_no; ///< The SSL error code
+    Security::ErrorCode error_no = 0; ///< TLS error; \see Security::ErrorCode
     String name; ///< a name for the error
     String detail; ///< for error page %D macro expansion; may contain macros
     String descr;  ///< short error description (for use in debug messages or error pages)
@@ -68,7 +68,7 @@ public:
      * Retrieve error details for an error. This method examine the Accept-Language
      * of the request to retrieve the error details for  requested language else return
      * the default error details.
-     * \param vale the error code
+     * \param value the error code
      * \param request the current HTTP request.
      * \param entry where to store error details
      * \return true on success, false otherwise

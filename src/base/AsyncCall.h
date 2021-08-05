@@ -9,6 +9,7 @@
 #ifndef SQUID_ASYNCCALL_H
 #define SQUID_ASYNCCALL_H
 
+#include "base/CodeContext.h"
 #include "base/InstanceId.h"
 #include "event.h"
 #include "RefCount.h"
@@ -36,11 +37,6 @@
 class CallDialer;
 class AsyncCallQueue;
 
-/**
- \todo add unique call IDs
- \todo CBDATA_CLASS kids
- \ingroup AsyncCallsAPI
- */
 class AsyncCall: public RefCountable
 {
 public:
@@ -74,6 +70,10 @@ public:
 
 public:
     const char *const name;
+
+    /// what the callee is expected to work on
+    CodeContext::Pointer codeContext;
+
     const int debugSection;
     const int debugLevel;
     const InstanceId<AsyncCall> id;

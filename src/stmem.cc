@@ -10,6 +10,7 @@
 
 #include "squid.h"
 #include "Generic.h"
+#include "HttpReply.h"
 #include "mem_node.h"
 #include "MemObject.h"
 #include "profiler/Profiler.h"
@@ -103,7 +104,7 @@ mem_hdr::freeDataUpto(int64_t target_offset)
 int
 mem_hdr::appendToNode(mem_node *aNode, const char *data, int maxLength)
 {
-    size_t result = writeAvailable (aNode, aNode->nodeBuffer.offset + aNode->nodeBuffer.length ,maxLength, data);
+    size_t result = writeAvailable (aNode, aNode->nodeBuffer.offset + aNode->nodeBuffer.length,maxLength, data);
     return result;
 }
 
@@ -214,7 +215,7 @@ mem_hdr::debugDump() const
     debugs (19, 0, "mem_hdr::debugDump: Current available data is: " << result.str() << ".");
 }
 
-/* FIXME: how do we deal with sparse results -
+/* XXX: how do we deal with sparse results -
  * where we have (say)
  * 0-500 and 1000-1500, but are asked for
  * 0-2000

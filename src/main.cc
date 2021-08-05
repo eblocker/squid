@@ -14,6 +14,8 @@
 #include "acl/Asn.h"
 #include "acl/forward.h"
 #include "anyp/UriScheme.h"
+#include "auth/Config.h"
+#include "auth/Gadgets.h"
 #include "AuthReg.h"
 #include "base/RunnersRegistry.h"
 #include "base/Subscription.h"
@@ -92,9 +94,6 @@
 #include "adaptation/icap/Config.h"
 #include "adaptation/icap/icap_log.h"
 #endif
-#if USE_AUTH
-#include "auth/Gadgets.h"
-#endif
 #if USE_DELAY_POOLS
 #include "ClientDelayConfig.h"
 #endif
@@ -156,7 +155,7 @@ static volatile int do_reconfigure = 0;
 static volatile int do_rotate = 0;
 static volatile int do_shutdown = 0;
 static volatile int do_revive_kids = 0;
-static volatile int shutdown_status = 0;
+static volatile int shutdown_status = EXIT_SUCCESS;
 static volatile int do_handle_stopped_child = 0;
 
 static int RotateSignal = -1;
@@ -786,7 +785,7 @@ shut_down(int sig)
     ShutdownSignal = sig;
 #if defined(SIGTTIN)
     if (SIGTTIN == sig)
-        shutdown_status = 1;
+        shutdown_status = EXIT_FAILURE;
 #endif
 
 #if !_SQUID_WINDOWS_
@@ -992,7 +991,7 @@ mainReconfigureFinish(void *)
 
     redirectReconfigure();
 #if USE_AUTH
-    authenticateInit(&Auth::TheConfig);
+    authenticateInit(&Auth::TheConfig.schemes);
 #endif
     externalAclInit();
 
@@ -1056,7 +1055,7 @@ mainRotate(void)
     icmpEngine.Open();
     redirectInit();
 #if USE_AUTH
-    authenticateInit(&Auth::TheConfig);
+    authenticateInit(&Auth::TheConfig.schemes);
 #endif
     externalAclInit();
 }
@@ -1133,9 +1132,6 @@ mainSetCwd(void)
 static void
 mainInitialize(void)
 {
-    /* chroot if configured to run inside chroot */
-    mainSetCwd();
-
     if (opt_catch_signals) {
         squid_signal(SIGSEGV, death, SA_NODEFER | SA_RESETHAND);
         squid_signal(SIGBUS, death, SA_NODEFER | SA_RESETHAND);
@@ -1149,12 +1145,6 @@ mainInitialize(void)
 
     if (icpPortNumOverride != 1)
         Config.Port.icp = (unsigned short) icpPortNumOverride;
-
-    _db_init(Debug::cache_log, Debug::debugOptions);
-
-    // Do not register cache.log descriptor with Comm (for now).
-    // See https://bugs.squid-cache.org/show_bug.cgi?id=4796
-    // fd_open(fileno(debug_log), FD_LOG, Debug::cache_log);
 
     debugs(1, DBG_CRITICAL, "Starting Squid Cache version " << version_string << " for " << CONFIG_HOST_TYPE << "...");
     debugs(1, DBG_CRITICAL, "Service Name: " << service_name);
@@ -1204,7 +1194,7 @@ mainInitialize(void)
 
     redirectInit();
 #if USE_AUTH
-    authenticateInit(&Auth::TheConfig);
+    authenticateInit(&Auth::TheConfig.schemes);
 #endif
     externalAclInit();
 
@@ -1233,36 +1223,34 @@ mainInitialize(void)
 
 #endif
 
-    if (!configured_once) {
-        if (unlinkdNeeded())
-            unlinkdInit();
+    if (unlinkdNeeded())
+        unlinkdInit();
 
-        urlInitialize();
-        statInit();
-        storeInit();
-        mainSetCwd();
-        mimeInit(Config.mimeTablePathname);
-        refreshInit();
+    urlInitialize();
+    statInit();
+    storeInit();
+    mainSetCwd();
+    mimeInit(Config.mimeTablePathname);
+    refreshInit();
 #if USE_DELAY_POOLS
-        DelayPools::Init();
+    DelayPools::Init();
 #endif
 
-        FwdState::initModule();
-        /* register the modules in the cache manager menus */
+    FwdState::initModule();
+    /* register the modules in the cache manager menus */
 
-        cbdataRegisterWithCacheManager();
-        SBufStatsAction::RegisterWithCacheManager();
+    cbdataRegisterWithCacheManager();
+    SBufStatsAction::RegisterWithCacheManager();
 
-        /* These use separate calls so that the comm loops can eventually
-         * coexist.
-         */
+    /* These use separate calls so that the comm loops can eventually
+     * coexist.
+     */
 
-        eventInit();
+    eventInit();
 
-        // TODO: pconn is a good candidate for new-style registration
-        // PconnModule::GetInstance()->registerWithCacheManager();
-        //   moved to PconnModule::PconnModule()
-    }
+    // TODO: pconn is a good candidate for new-style registration
+    // PconnModule::GetInstance()->registerWithCacheManager();
+    // moved to PconnModule::PconnModule()
 
     if (IamPrimaryProcess()) {
 #if USE_WCCP
@@ -1340,24 +1328,22 @@ mainInitialize(void)
     Config.ClientDelay.finalize();
 #endif
 
-    if (!configured_once) {
-        eventAdd("storeMaintain", Store::Maintain, NULL, 1.0, 1);
+    eventAdd("storeMaintain", Store::Maintain, nullptr, 1.0, 1);
 
-        if (Config.onoff.announce)
-            eventAdd("start_announce", start_announce, NULL, 3600.0, 1);
+    if (Config.onoff.announce)
+        eventAdd("start_announce", start_announce, nullptr, 3600.0, 1);
 
-        eventAdd("ipcache_purgelru", ipcache_purgelru, NULL, 10.0, 1);
+    eventAdd("ipcache_purgelru", ipcache_purgelru, nullptr, 10.0, 1);
 
-        eventAdd("fqdncache_purgelru", fqdncache_purgelru, NULL, 15.0, 1);
+    eventAdd("fqdncache_purgelru", fqdncache_purgelru, nullptr, 15.0, 1);
 
 #if USE_XPROF_STATS
 
-        eventAdd("cpuProfiling", xprof_event, NULL, 1.0, 1);
+    eventAdd("cpuProfiling", xprof_event, nullptr, 1.0, 1);
 
 #endif
 
-        eventAdd("memPoolCleanIdlePools", Mem::CleanIdlePools, NULL, 15.0, 1);
-    }
+    eventAdd("memPoolCleanIdlePools", Mem::CleanIdlePools, nullptr, 15.0, 1);
 
     configured_once = 1;
 }
@@ -1418,7 +1404,7 @@ SquidMainSafe(int argc, char **argv)
     } catch (...) {
         debugs(1, DBG_CRITICAL, "FATAL: " << CurrentException);
     }
-    return -1; // TODO: return EXIT_FAILURE instead
+    return EXIT_FAILURE;
 }
 
 /// computes name and ID for the current kid process
@@ -1448,10 +1434,55 @@ ConfigureCurrentKid(const CommandLine &cmdLine)
     }
 }
 
-static void StartUsingConfig()
+/// Start directing debugs() messages to the configured cache.log.
+/// Until this function is called, all allowed messages go to stderr.
+static void
+ConfigureDebugging()
+{
+    if (opt_no_daemon) {
+        fd_open(0, FD_LOG, "stdin");
+        fd_open(1, FD_LOG, "stdout");
+        fd_open(2, FD_LOG, "stderr");
+    }
+    // we should not create cache.log outside chroot environment, if any
+    // XXX: With Config.chroot_dir set, SMP master process never calls db_init().
+    if (!Config.chroot_dir || Chrooted)
+        _db_init(Debug::cache_log, Debug::debugOptions);
+}
+
+static void
+RunConfigUsers()
 {
     RunRegisteredHere(RegisteredRunner::claimMemoryNeeds);
     RunRegisteredHere(RegisteredRunner::useConfig);
+}
+
+static void
+StartUsingConfig()
+{
+    setMaxFD();
+    fde::Init();
+    const auto skipCwdAdjusting = IamMasterProcess() && InDaemonMode();
+    if (skipCwdAdjusting) {
+        ConfigureDebugging();
+        RunConfigUsers();
+    } else if (Config.chroot_dir) {
+        RunConfigUsers();
+        enter_suid();
+        // TODO: don't we need to RunConfigUsers() in the configured
+        // chroot environment?
+        mainSetCwd();
+        leave_suid();
+        ConfigureDebugging();
+    } else {
+        ConfigureDebugging();
+        RunConfigUsers();
+        enter_suid();
+        // TODO: since RunConfigUsers() may use a relative path, we
+        // need to change the process root first
+        mainSetCwd();
+        leave_suid();
+    }
 }
 
 int
@@ -1590,18 +1621,6 @@ SquidMain(int argc, char **argv)
     if (opt_send_signal == -1 && IamMasterProcess())
         Instance::ThrowIfAlreadyRunning();
 
-#if TEST_ACCESS
-
-    comm_init();
-
-    mainInitialize();
-
-    test_access();
-
-    return 0;
-
-#endif
-
     /* send signal to running copy and exit */
     if (opt_send_signal != -1) {
         /* chroot if configured to run inside chroot */
@@ -1633,9 +1652,6 @@ SquidMain(int argc, char **argv)
     enter_suid();
 
     if (opt_create_swap_dirs) {
-        /* chroot if configured to run inside chroot */
-        mainSetCwd();
-
         setEffectiveUser();
         debugs(0, DBG_CRITICAL, "Creating missing swap directories");
         Store::Root().create();
@@ -1647,17 +1663,8 @@ SquidMain(int argc, char **argv)
         CpuAffinityCheck();
     CpuAffinityInit();
 
-    setMaxFD();
-
     /* init comm module */
     comm_init();
-
-    if (opt_no_daemon) {
-        /* we have to init fdstat here. */
-        fd_open(0, FD_LOG, "stdin");
-        fd_open(1, FD_LOG, "stdout");
-        fd_open(2, FD_LOG, "stderr");
-    }
 
 #if USE_WIN32_SERVICE
 

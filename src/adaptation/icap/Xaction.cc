@@ -20,13 +20,11 @@
 #include "comm/Read.h"
 #include "comm/Write.h"
 #include "CommCalls.h"
-#include "err_detail_type.h"
+#include "error/Detail.h"
 #include "fde.h"
 #include "FwdState.h"
 #include "globals.h"
-#include "HttpMsg.h"
 #include "HttpReply.h"
-#include "HttpRequest.h"
 #include "icap_log.h"
 #include "ipcache.h"
 #include "pconn.h"
@@ -222,10 +220,8 @@ Adaptation::Icap::Xaction::dnsLookupDone(const ipcache_addrs *ia)
         return;
     }
 
-    assert(ia->cur < ia->count);
-
     connection = new Comm::Connection;
-    connection->remote = ia->in_addrs[ia->cur];
+    connection->remote = ia->current();
     connection->remote.port(s.cfg().port);
     getOutgoingAddress(NULL, connection);
 
@@ -334,7 +330,8 @@ void Adaptation::Icap::Xaction::dieOnConnectionFailure()
     debugs(93, 2, HERE << typeName <<
            " failed to connect to " << service().cfg().uri);
     service().noteConnectionFailed("failure");
-    detailError(ERR_DETAIL_ICAP_XACT_START);
+    static const auto d = MakeNamedErrorDetail("ICAP_XACT_START");
+    detailError(d);
     throw TexcHere("cannot connect to the ICAP service");
 }
 
@@ -404,7 +401,8 @@ void Adaptation::Icap::Xaction::noteCommClosed(const CommCloseCbParams &)
 
 void Adaptation::Icap::Xaction::handleCommClosed()
 {
-    detailError(ERR_DETAIL_ICAP_XACT_CLOSE);
+    static const auto d = MakeNamedErrorDetail("ICAP_XACT_CLOSE");
+    detailError(d);
     mustStop("ICAP service connection externally closed");
 }
 
@@ -530,7 +528,8 @@ void Adaptation::Icap::Xaction::cancelRead()
     }
 }
 
-bool Adaptation::Icap::Xaction::parseHttpMsg(HttpMsg *msg)
+bool
+Adaptation::Icap::Xaction::parseHttpMsg(Http::Message *msg)
 {
     debugs(93, 5, "have " << readBuf.length() << " head bytes to parse");
 
@@ -585,7 +584,8 @@ void Adaptation::Icap::Xaction::noteInitiatorAborted()
     if (theInitiator.set()) {
         debugs(93,4, HERE << "Initiator gone before ICAP transaction ended");
         clearInitiator();
-        detailError(ERR_DETAIL_ICAP_INIT_GONE);
+        static const auto d = MakeNamedErrorDetail("ICAP_INIT_GONE");
+        detailError(d);
         setOutcome(xoGone);
         mustStop("initiator aborted");
     }
@@ -767,7 +767,8 @@ Adaptation::Icap::Xaction::handleSecuredPeer(Security::EncryptorAnswer &answer)
         debugs(93, 2, typeName <<
                " TLS negotiation to " << service().cfg().uri << " failed");
         service().noteConnectionFailed("failure");
-        detailError(ERR_DETAIL_ICAP_XACT_SSL_START);
+        static const auto d = MakeNamedErrorDetail("ICAP_XACT_SSL_START");
+        detailError(d);
         throw TexcHere("cannot connect to the TLS ICAP service");
     }
 

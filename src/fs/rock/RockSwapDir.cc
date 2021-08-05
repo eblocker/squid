@@ -411,14 +411,17 @@ Rock::SwapDir::parseTimeOption(char const *option, const char *value, int reconf
     else
         return false;
 
-    if (!value)
+    if (!value) {
         self_destruct();
+        return false;
+    }
 
     // TODO: handle time units and detect parsing errors better
     const int64_t parsedValue = strtoll(value, NULL, 10);
     if (parsedValue < 0) {
         debugs(3, DBG_CRITICAL, "FATAL: cache_dir " << path << ' ' << option << " must not be negative but is: " << parsedValue);
         self_destruct();
+        return false;
     }
 
     const time_msec_t newTime = static_cast<time_msec_t>(parsedValue);
@@ -453,14 +456,17 @@ Rock::SwapDir::parseRateOption(char const *option, const char *value, int isaRec
     else
         return false;
 
-    if (!value)
+    if (!value) {
         self_destruct();
+        return false;
+    }
 
     // TODO: handle time units and detect parsing errors better
     const int64_t parsedValue = strtoll(value, NULL, 10);
     if (parsedValue < 0) {
         debugs(3, DBG_CRITICAL, "FATAL: cache_dir " << path << ' ' << option << " must not be negative but is: " << parsedValue);
         self_destruct();
+        return false;
     }
 
     const int newRate = static_cast<int>(parsedValue);
@@ -468,6 +474,7 @@ Rock::SwapDir::parseRateOption(char const *option, const char *value, int isaRec
     if (newRate < 0) {
         debugs(3, DBG_CRITICAL, "FATAL: cache_dir " << path << ' ' << option << " must not be negative but is: " << newRate);
         self_destruct();
+        return false;
     }
 
     if (!isaReconfig)
@@ -499,19 +506,23 @@ Rock::SwapDir::parseSizeOption(char const *option, const char *value, int reconf
     else
         return false;
 
-    if (!value)
+    if (!value) {
         self_destruct();
+        return false;
+    }
 
     // TODO: handle size units and detect parsing errors better
     const uint64_t newSize = strtoll(value, NULL, 10);
     if (newSize <= 0) {
         debugs(3, DBG_CRITICAL, "FATAL: cache_dir " << path << ' ' << option << " must be positive; got: " << newSize);
         self_destruct();
+        return false;
     }
 
     if (newSize <= sizeof(DbCellHeader)) {
         debugs(3, DBG_CRITICAL, "FATAL: cache_dir " << path << ' ' << option << " must exceed " << sizeof(DbCellHeader) << "; got: " << newSize);
         self_destruct();
+        return false;
     }
 
     if (!reconfig)
@@ -743,7 +754,7 @@ void
 Rock::SwapDir::noteFreeMapSlice(const Ipc::StoreMapSliceId sliceId)
 {
     Ipc::Mem::PageId pageId;
-    pageId.pool = index+1;
+    pageId.pool = Ipc::Mem::PageStack::IdForSwapDirSpace(index);
     pageId.number = sliceId+1;
     if (waitingForPage) {
         *waitingForPage = pageId;
@@ -1125,17 +1136,14 @@ void Rock::SwapDirRr::create()
             mapOwners.push_back(mapOwner);
 
             // TODO: somehow remove pool id and counters from PageStack?
+            Ipc::Mem::PageStack::Config config;
+            config.poolId = Ipc::Mem::PageStack::IdForSwapDirSpace(i);
+            config.pageSize = 0; // this is an index of slots on _disk_
+            config.capacity = capacity;
+            config.createFull = false; // Rebuild finds and pushes free slots
             Ipc::Mem::Owner<Ipc::Mem::PageStack> *const freeSlotsOwner =
-                shm_new(Ipc::Mem::PageStack)(sd->freeSlotsPath(),
-                                             i+1, capacity, 0);
+                shm_new(Ipc::Mem::PageStack)(sd->freeSlotsPath(), config);
             freeSlotsOwners.push_back(freeSlotsOwner);
-
-            // TODO: add method to initialize PageStack with no free pages
-            while (true) {
-                Ipc::Mem::PageId pageId;
-                if (!freeSlotsOwner->object()->pop(pageId))
-                    break;
-            }
         }
     }
 }

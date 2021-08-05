@@ -102,7 +102,7 @@ am__aclocal_m4_deps = $(top_srcdir)/acinclude/ax_with_prog.m4 \
 	$(top_srcdir)/acinclude/compiler-flags.m4 \
 	$(top_srcdir)/acinclude/os-deps.m4 \
 	$(top_srcdir)/acinclude/krb5.m4 $(top_srcdir)/acinclude/pam.m4 \
-	$(top_srcdir)/acinclude/pkg.m4 \
+	$(top_srcdir)/acinclude/pkg.m4 $(top_srcdir)/acinclude/tdb.m4 \
 	$(top_srcdir)/acinclude/lib-checks.m4 \
 	$(top_srcdir)/acinclude/ax_cxx_compile_stdcxx_11.m4 \
 	$(top_srcdir)/acinclude/ax_cxx_0x_types.m4 \
@@ -144,6 +144,7 @@ am__aclocal_m4_deps = $(top_srcdir)/acinclude/ax_with_prog.m4 \
 	$(top_srcdir)/src/acl/external/eDirectory_userip/required.m4 \
 	$(top_srcdir)/src/acl/external/file_userip/required.m4 \
 	$(top_srcdir)/src/acl/external/kerberos_ldap_group/required.m4 \
+	$(top_srcdir)/src/acl/external/kerberos_sid_group/required.m4 \
 	$(top_srcdir)/src/acl/external/session/required.m4 \
 	$(top_srcdir)/src/acl/external/time_quota/required.m4 \
 	$(top_srcdir)/src/acl/external/unix_group/required.m4 \
@@ -168,9 +169,9 @@ CONFIG_CLEAN_VPATH_FILES =
 LTLIBRARIES = $(noinst_LTLIBRARIES)
 libadaptation_la_DEPENDENCIES = $(am__append_3) $(am__append_5)
 am_libadaptation_la_OBJECTS = AccessCheck.lo AccessRule.lo Answer.lo \
-	Config.lo DynamicGroupCfg.lo Elements.lo Initiate.lo \
-	Initiator.lo Iterator.lo Message.lo Service.lo \
-	ServiceConfig.lo ServiceGroups.lo ServiceFilter.lo History.lo
+	Config.lo DynamicGroupCfg.lo Elements.lo History.lo \
+	Initiate.lo Initiator.lo Iterator.lo Message.lo Service.lo \
+	ServiceConfig.lo ServiceFilter.lo ServiceGroups.lo
 libadaptation_la_OBJECTS = $(am_libadaptation_la_OBJECTS)
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
@@ -586,11 +587,13 @@ KRB5LIBS = @KRB5LIBS@
 LBERLIB = @LBERLIB@
 LD = @LD@
 LDAPLIB = @LDAPLIB@
+LDAPSEARCH = @LDAPSEARCH@
 LDFLAGS = @LDFLAGS@
 LIBADD_DL = @LIBADD_DL@
 LIBADD_DLD_LINK = @LIBADD_DLD_LINK@
 LIBADD_DLOPEN = @LIBADD_DLOPEN@
 LIBADD_SHL_LOAD = @LIBADD_SHL_LOAD@
+LIBBDB_LIBS = @LIBBDB_LIBS@
 LIBCPPUNIT_CFLAGS = @LIBCPPUNIT_CFLAGS@
 LIBCPPUNIT_LIBS = @LIBCPPUNIT_LIBS@
 LIBGNUTLS_CFLAGS = @LIBGNUTLS_CFLAGS@
@@ -602,6 +605,8 @@ LIBOPENSSL_LIBS = @LIBOPENSSL_LIBS@
 LIBPTHREADS = @LIBPTHREADS@
 LIBS = @LIBS@
 LIBSASL = @LIBSASL@
+LIBTDB_CFLAGS = @LIBTDB_CFLAGS@
+LIBTDB_LIBS = @LIBTDB_LIBS@
 LIBTOOL = @LIBTOOL@
 LIBXML2_CFLAGS = @LIBXML2_CFLAGS@
 LIBXML2_LIBS = @LIBXML2_LIBS@
@@ -791,7 +796,8 @@ libadaptation_la_SOURCES = \
 	DynamicGroupCfg.h \
 	Elements.cc \
 	Elements.h \
-	forward.h \
+	History.cc \
+	History.h \
 	Initiate.cc \
 	Initiate.h \
 	Initiator.cc \
@@ -804,12 +810,11 @@ libadaptation_la_SOURCES = \
 	Service.h \
 	ServiceConfig.cc \
 	ServiceConfig.h \
-	ServiceGroups.cc \
-	ServiceGroups.h \
 	ServiceFilter.cc \
 	ServiceFilter.h \
-	History.cc \
-	History.h
+	ServiceGroups.cc \
+	ServiceGroups.h \
+	forward.h
 
 libadaptation_la_LIBADD = $(am__append_3) $(am__append_5)
 all: all-recursive

@@ -29,7 +29,6 @@
  */
 
 #include "mem/Meter.h"
-#include "splay.h"
 #include "util.h"
 
 #if HAVE_GNUMALLOC_H
@@ -63,7 +62,7 @@ class MemImplementingAllocator;
 class MemPoolStats;
 
 /// \ingroup MemPoolsAPI
-/// \todo Kill this typedef for C++
+/// TODO: Kill this typedef for C++
 typedef struct _MemPoolGlobalStats MemPoolGlobalStats;
 
 /// \ingroup MemPoolsAPI
@@ -157,7 +156,7 @@ public:
      * Suitable frequency for cleanup is in range of few tens of seconds to
      * few minutes, depending of memory activity.
      *
-     \todo DOCS: Re-write this shorter!
+     * TODO: DOCS: Re-write this shorter!
      *
      \param maxage   Release all totally idle chunks that
      *               have not been referenced for maxage seconds.
@@ -165,10 +164,11 @@ public:
     void clean(time_t maxage);
 
     void setDefaultPoolChunking(bool const &);
-    MemImplementingAllocator *pools;
-    ssize_t mem_idle_limit;
-    int poolCount;
-    bool defaultIsChunked;
+
+    MemImplementingAllocator *pools = nullptr;
+    ssize_t mem_idle_limit = (2 << 20) /* 2MB */;
+    int poolCount = 0;
+    bool defaultIsChunked = false;
 };
 
 /**
@@ -299,7 +299,7 @@ public:
 };
 
 /// \ingroup MemPoolsAPI
-/// \todo Classify and add constructor/destructor to initialize properly.
+/// TODO: Classify and add constructor/destructor to initialize properly.
 struct _MemPoolGlobalStats {
     MemPoolMeter *TheMeter;
 
@@ -346,7 +346,6 @@ extern void memPoolIterateDone(MemPoolIterator ** iter);
 
 /**
  \ingroup MemPoolsAPI
- \todo Stats API - not sured how to refactor yet
  *
  * Fills a MemPoolGlobalStats with statistical data about overall
  * usage for all pools.

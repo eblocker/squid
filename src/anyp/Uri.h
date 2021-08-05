@@ -11,7 +11,6 @@
 
 #include "anyp/UriScheme.h"
 #include "ip/Address.h"
-#include "parser/Tokenizer.h"
 #include "rfc2181.h"
 #include "sbuf/SBuf.h"
 
@@ -94,6 +93,8 @@ public:
 
     void port(unsigned short p) {port_=p; touch();}
     unsigned short port() const {return port_;}
+    /// reset the port to the default port number for the current scheme
+    void defaultPort() { port(getScheme().defaultPort()); }
 
     void path(const char *p) {path_=p; touch();}
     void path(const SBuf &p) {path_=p; touch();}
@@ -258,7 +259,7 @@ enum MatchDomainNameFlags {
  * \retval 1 means the host is greater than the domain
  * \retval -1 means the host is less than the domain
  */
-int matchDomainName(const char *host, const char *domain, uint8_t flags = mdnNone);
+int matchDomainName(const char *host, const char *domain, MatchDomainNameFlags flags = mdnNone);
 int urlCheckRequest(const HttpRequest *);
 void urlExtMethodConfigure(void);
 

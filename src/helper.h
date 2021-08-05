@@ -20,12 +20,14 @@
 #include "helper/forward.h"
 #include "helper/Reply.h"
 #include "helper/Request.h"
+#include "helper/ReservationId.h"
 #include "ip/Address.h"
 #include "sbuf/SBuf.h"
 
 #include <list>
 #include <map>
 #include <queue>
+#include <unordered_map>
 
 class Packable;
 class wordlist;
@@ -42,6 +44,7 @@ public:
 };
 }
 
+class HelperServerBase;
 /**
  * Managers a set of individual helper processes with a common queue of requests.
  *
@@ -62,6 +65,7 @@ class helper
     CBDATA_CLASS(helper);
 
 public:
+    /// \param name admin-visible helper category (with this process lifetime)
     inline helper(const char *name) :
         cmdline(NULL),
         id_name(name),
@@ -93,6 +97,11 @@ public:
     /// whether the helper will be in "overloaded" state after one more request
     /// already overloaded helpers return true
     bool willOverload() const;
+
+    /// Updates interall statistics and start new helper server processes after
+    /// an unexpected server exit
+    /// \param needsNewServers true if new servers must started, false otherwise
+    void handleKilledServer(HelperServerBase *srv, bool &needsNewServers);
 
 public:
     wordlist *cmdline;
@@ -134,24 +143,36 @@ class statefulhelper : public helper
     CBDATA_CLASS(statefulhelper);
 
 public:
-    inline statefulhelper(const char *name) : helper(name), datapool(NULL) {}
+    typedef std::unordered_map<Helper::ReservationId, helper_stateful_server *> Reservations;
+
+    inline statefulhelper(const char *name) : helper(name) {}
     inline ~statefulhelper() {}
 
 public:
-    MemAllocator *datapool;
+    /// reserve the given server
+    void reserveServer(helper_stateful_server * srv);
+
+    /// undo reserveServer(), clear the reservation and kick the queue
+    void cancelReservation(const Helper::ReservationId reservation);
 
 private:
-    friend void helperStatefulSubmit(statefulhelper * hlp, const char *buf, HLPCB * callback, void *data, helper_stateful_server * lastserver);
-    void submit(const char *buf, HLPCB * callback, void *data, helper_stateful_server *lastserver);
-    bool trySubmit(const char *buf, HLPCB * callback, void *data, helper_stateful_server *lastserver);
+    friend void helperStatefulSubmit(statefulhelper * hlp, const char *buf, HLPCB * callback, void *data, const Helper::ReservationId & reservation);
+
+    /// \return the previously reserved server (if the reservation is still valid) or nil
+    helper_stateful_server *findServer(const Helper::ReservationId & reservation);
+
+    void submit(const char *buf, HLPCB * callback, void *data, const Helper::ReservationId & reservation);
+    bool trySubmit(const char *buf, HLPCB * callback, void *data, const Helper::ReservationId & reservation);
+
+    ///< reserved servers indexed by reservation IDs
+    Reservations reservations;
 };
 
-/**
- * Fields shared between stateless and stateful helper servers.
- */
-class HelperServerBase
+/// represents a single helper process abstraction
+class HelperServerBase: public CbdataParent
 {
 public:
+    virtual ~HelperServerBase();
     /** Closes pipes to the helper safely.
      * Handles the case where the read and write pipes are the same FD.
      *
@@ -166,6 +187,16 @@ public:
      * \param name displayed for the helper being shutdown if logging an error
      */
     void closeWritePipeSafely(const char *name);
+
+    // TODO: Teach each child to report its child-specific state instead.
+    /// whether the server is locked for exclusive use by a client
+    virtual bool reserved() = 0;
+
+    /// dequeues and sends a Helper::Unknown answer to all queued requests
+    virtual void dropQueued();
+
+    /// the helper object that created this server
+    virtual helper *getParent() const = 0;
 
 public:
     /// Helper program identifier; does not change when contents do,
@@ -190,7 +221,6 @@ public:
         bool writing;
         bool closing;
         bool shutdown;
-        bool reserved;
     } flags;
 
     typedef std::list<Helper::Xaction *> Requests;
@@ -209,9 +239,11 @@ public:
 class MemBuf;
 class CommTimeoutCbParams;
 
+// TODO: Rename to StatelessHelperServer and rename HelperServerBase to HelperServer.
+/// represents a single "stateless helper" process
 class helper_server : public HelperServerBase
 {
-    CBDATA_CLASS(helper_server);
+    CBDATA_CHILD(helper_server);
 
 public:
     uint64_t nextRequestId;
@@ -234,6 +266,7 @@ public:
     typedef std::map<uint64_t, Requests::iterator> RequestIndex;
     RequestIndex requestsIndex; ///< maps request IDs to requests
 
+    virtual ~helper_server();
     /// Search in queue for the request with requestId, return the related
     /// Xaction object and remove it from queue.
     /// If concurrency is disabled then the requestId is ignored and the
@@ -244,32 +277,53 @@ public:
     /// or the configured "on timeout response" for timedout requests.
     void checkForTimedOutRequests(bool const retry);
 
+    /*HelperServerBase API*/
+    virtual bool reserved() override {return false;}
+    virtual void dropQueued() override;
+    virtual helper *getParent() const override {return parent;}
+
     /// Read timeout handler
     static void requestTimeout(const CommTimeoutCbParams &io);
+
+    /// close handler to handle exited server processes
+    static void HelperServerClosed(helper_server *srv);
 };
 
+// TODO: Rename to StatefulHelperServer and rename HelperServerBase to HelperServer.
+/// represents a single "stateful helper" process
 class helper_stateful_server : public HelperServerBase
 {
-    CBDATA_CLASS(helper_stateful_server);
+    CBDATA_CHILD(helper_stateful_server);
 
 public:
-    /* MemBuf wqueue; */
-    /* MemBuf writebuf; */
+    virtual ~helper_stateful_server();
+    void reserve();
+    void clearReservation();
+
+    /* HelperServerBase API */
+    virtual bool reserved() override {return reservationId.reserved();}
+    virtual helper *getParent() const override {return parent;}
+
+    /// close handler to handle exited server processes
+    static void HelperServerClosed(helper_stateful_server *srv);
 
     statefulhelper *parent;
 
-    void *data;         /* State data used by the calling routines */
+    // Reservations temporary lock the server for an exclusive "client" use. The
+    // client keeps the reservation ID as a proof of her reservation. If a
+    // reservation expires, and the server is reserved for another client, then
+    // the reservation ID presented by the late client will not match ours.
+    Helper::ReservationId reservationId; ///< "confirmation ID" of the last
+    time_t reservationStart; ///< when the last `reservation` was made
 };
 
 /* helper.c */
 void helperOpenServers(helper * hlp);
 void helperStatefulOpenServers(statefulhelper * hlp);
 void helperSubmit(helper * hlp, const char *buf, HLPCB * callback, void *data);
-void helperStatefulSubmit(statefulhelper * hlp, const char *buf, HLPCB * callback, void *data, helper_stateful_server * lastserver);
+void helperStatefulSubmit(statefulhelper * hlp, const char *buf, HLPCB * callback, void *data, uint64_t reservation);
 void helperShutdown(helper * hlp);
 void helperStatefulShutdown(statefulhelper * hlp);
-void helperStatefulReleaseServer(helper_stateful_server * srv);
-void *helperStatefulServerGetData(helper_stateful_server * srv);
 
 #endif /* SQUID_HELPER_H */
 

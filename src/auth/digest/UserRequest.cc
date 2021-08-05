@@ -12,7 +12,6 @@
 #include "auth/digest/User.h"
 #include "auth/digest/UserRequest.h"
 #include "auth/State.h"
-#include "charset.h"
 #include "format/Format.h"
 #include "helper.h"
 #include "helper/Reply.h"
@@ -127,7 +126,7 @@ Auth::Digest::UserRequest::authenticate(HttpRequest * request, ConnStateData *, 
             return;
         }
 
-        if (static_cast<Auth::Digest::Config*>(Auth::Config::Find("digest"))->PostWorkaround && request->method != Http::METHOD_GET) {
+        if (static_cast<Auth::Digest::Config*>(Auth::SchemeConfig::Find("digest"))->PostWorkaround && request->method != Http::METHOD_GET) {
             /* Ugly workaround for certain very broken browsers using the
              * wrong method to calculate the request-digest on POST request.
              * This should be deleted once Digest authentication becomes more
@@ -233,7 +232,7 @@ Auth::Digest::UserRequest::addAuthenticationInfoHeader(HttpReply * rep, int acce
         return;
 #endif
 
-    if ((static_cast<Auth::Digest::Config*>(Auth::Config::Find("digest"))->authenticateProgram) && authDigestNonceLastRequest(nonce)) {
+    if ((static_cast<Auth::Digest::Config*>(Auth::SchemeConfig::Find("digest"))->authenticateProgram) && authDigestNonceLastRequest(nonce)) {
         flags.authinfo_sent = true;
         Auth::Digest::User *digest_user = dynamic_cast<Auth::Digest::User *>(user().getRaw());
         if (!digest_user)
@@ -291,26 +290,17 @@ Auth::Digest::UserRequest::startHelperLookup(HttpRequest *request, AccessLogEntr
     assert(user() != NULL && user()->auth_type == Auth::AUTH_DIGEST);
     debugs(29, 9, HERE << "'\"" << user()->username() << "\":\"" << realm << "\"'");
 
-    if (static_cast<Auth::Digest::Config*>(Auth::Config::Find("digest"))->authenticateProgram == NULL) {
+    if (static_cast<Auth::Digest::Config*>(Auth::SchemeConfig::Find("digest"))->authenticateProgram == NULL) {
         debugs(29, DBG_CRITICAL, "ERROR: No Digest authentication program configured.");
         handler(data);
         return;
     }
 
     const char *keyExtras = helperRequestKeyExtras(request, al);
-    if (static_cast<Auth::Digest::Config*>(Auth::Config::Find("digest"))->utf8) {
-        char userstr[1024];
-        latin1_to_utf8(userstr, sizeof(userstr), user()->username());
-        if (keyExtras)
-            snprintf(buf, 8192, "\"%s\":\"%s\" %s\n", userstr, realm, keyExtras);
-        else
-            snprintf(buf, 8192, "\"%s\":\"%s\"\n", userstr, realm);
-    } else {
-        if (keyExtras)
-            snprintf(buf, 8192, "\"%s\":\"%s\" %s\n", user()->username(), realm, keyExtras);
-        else
-            snprintf(buf, 8192, "\"%s\":\"%s\"\n", user()->username(), realm);
-    }
+    if (keyExtras)
+        snprintf(buf, 8192, "\"%s\":\"%s\" %s\n", user()->username(), realm, keyExtras);
+    else
+        snprintf(buf, 8192, "\"%s\":\"%s\"\n", user()->username(), realm);
 
     helperSubmit(digestauthenticators, buf, Auth::Digest::UserRequest::HandleReply,
                  new Auth::StateData(this, handler, data));
@@ -327,7 +317,8 @@ Auth::Digest::UserRequest::HandleReply(void *data, const Helper::Reply &reply)
 
     // add new helper kv-pair notes to the credentials object
     // so that any transaction using those credentials can access them
-    auth_user_request->user()->notes.appendNewOnly(&reply.notes);
+    static const NotePairs::Names appendables = { SBuf("group"), SBuf("nonce"), SBuf("tag") };
+    auth_user_request->user()->notes.replaceOrAddOrAppend(&reply.notes, appendables);
     // remove any private credentials detail which got added.
     auth_user_request->user()->notes.remove("ha1");
 
@@ -355,8 +346,7 @@ Auth::Digest::UserRequest::HandleReply(void *data, const Helper::Reply &reply)
         Auth::Digest::User *digest_user = dynamic_cast<Auth::Digest::User *>(auth_user_request->user().getRaw());
         assert(digest_user != NULL);
 
-        const char *ha1Note = reply.notes.findFirst("ha1");
-        if (ha1Note != NULL) {
+        if (const char *ha1Note = reply.notes.findFirst("ha1")) {
             CvtBin(ha1Note, digest_user->HA1);
             digest_user->HA1created = 1;
         } else {
@@ -381,9 +371,9 @@ Auth::Digest::UserRequest::HandleReply(void *data, const Helper::Reply &reply)
         digest_request->user()->credentials(Auth::Failed);
         digest_request->flags.invalid_password = true;
 
-        const char *msgNote = reply.notes.find("message");
-        if (msgNote != NULL) {
-            digest_request->setDenyMessage(msgNote);
+        SBuf msgNote;
+        if (reply.notes.find(msgNote, "message")) {
+            digest_request->setDenyMessage(msgNote.c_str());
         } else if (reply.other().hasContent()) {
             // old helpers did send ERR result but a bare message string instead of message= key name.
             digest_request->setDenyMessage(reply.other().content());

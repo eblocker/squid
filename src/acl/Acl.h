@@ -109,14 +109,16 @@ typedef enum {
 } aclMatchCode;
 
 /// \ingroup ACLAPI
-/// ACL check answer; TODO: Rename to Acl::Answer
-class allow_t
+/// ACL check answer
+namespace Acl {
+
+class Answer
 {
 public:
-    // not explicit: allow "aclMatchCode to allow_t" conversions (for now)
-    allow_t(const aclMatchCode aCode, int aKind = 0): code(aCode), kind(aKind) {}
+    // not explicit: allow "aclMatchCode to Acl::Answer" conversions (for now)
+    Answer(const aclMatchCode aCode, int aKind = 0): code(aCode), kind(aKind) {}
 
-    allow_t(): code(ACCESS_DUNNO), kind(0) {}
+    Answer() = default;
 
     bool operator ==(const aclMatchCode aCode) const {
         return code == aCode;
@@ -126,7 +128,7 @@ public:
         return !(*this == aCode);
     }
 
-    bool operator ==(const allow_t allow) const {
+    bool operator ==(const Answer allow) const {
         return code == allow.code && kind == allow.kind;
     }
 
@@ -146,16 +148,22 @@ public:
     /// See also: allowed().
     bool denied() const { return code == ACCESS_DENIED; }
 
-    /// whether there was either a default rule, a rule without any ACLs, or a
-    /// a rule with ACLs that all matched
-    bool someRuleMatched() const { return allowed() || denied(); }
+    /// whether Squid is uncertain about the allowed() or denied() answer
+    bool conflicted() const { return !allowed() && !denied(); }
 
-    aclMatchCode code; ///< ACCESS_* code
-    int kind; ///< which custom access list verb matched
+    aclMatchCode code = ACCESS_DUNNO; ///< ACCESS_* code
+
+    /// the matched custom access list verb (or zero)
+    int kind = 0;
+
+    /// whether we were computed by the "negate the last explicit action" rule
+    bool implicit = false;
 };
 
+} // namespace Acl
+
 inline std::ostream &
-operator <<(std::ostream &o, const allow_t a)
+operator <<(std::ostream &o, const Acl::Answer a)
 {
     switch (a) {
     case ACCESS_DENIED:

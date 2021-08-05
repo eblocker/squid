@@ -11,6 +11,7 @@
 
 #include "anyp/forward.h"
 #include "comm/forward.h"
+#include "log/forward.h"
 #include "mgr/Action.h"
 #include "mgr/ActionProfile.h"
 #include "mgr/Command.h"
@@ -43,7 +44,7 @@ public:
     Mgr::Action::Pointer createRequestedAction(const Mgr::ActionParams &);
     const Menu& menu() const { return menu_; }
 
-    void Start(const Comm::ConnectionPointer &client, HttpRequest * request, StoreEntry * entry);
+    void start(const Comm::ConnectionPointer &client, HttpRequest *request, StoreEntry *entry, const AccessLogEntryPointer &ale);
 
     static CacheManager* GetInstance();
     const char *ActionProtection(const Mgr::ActionProfilePointer &profile);

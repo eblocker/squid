@@ -51,7 +51,7 @@ fatal(const char *message)
 
     fatal_common(message);
 
-    exit(1);
+    exit(EXIT_FAILURE);
 }
 
 /* used by fatalf */

@@ -18,8 +18,6 @@
 /**
  \defgroup PConnAPI Persistent Connection API
  \ingroup Component
- *
- \todo CLEANUP: Break multiple classes out of the generic pconn.h header
  */
 
 class PconnPool;
@@ -124,6 +122,7 @@ public:
     /**
      * Returns either a pointer to a popped connection to dest or nil.
      * Closes the connection before returning its pointer unless keepOpen.
+     * For connection going to a cache_peer, supports standby connection pools.
      *
      * A caller with a non-retriable transaction should set keepOpen to false
      * and call pop() anyway, even though the caller does not want a pconn.
@@ -150,6 +149,8 @@ public:
 private:
 
     static const char *key(const Comm::ConnectionPointer &destLink, const char *domain);
+
+    Comm::ConnectionPointer popStored(const Comm::ConnectionPointer &dest, const char *domain, const bool keepOpen);
 
     int hist[PCONN_HIST_SZ];
     hash_table *table;

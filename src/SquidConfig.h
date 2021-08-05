@@ -12,11 +12,16 @@
 #include "acl/forward.h"
 #include "base/RefCount.h"
 #include "base/YesNoNone.h"
+#if USE_DELAY_POOLS
 #include "ClientDelayConfig.h"
 #include "DelayConfig.h"
+#endif
 #include "helper/ChildConfig.h"
 #include "HttpHeaderTools.h"
 #include "ip/Address.h"
+#if USE_DELAY_POOLS
+#include "MessageDelayPools.h"
+#endif
 #include "Notes.h"
 #include "security/forward.h"
 #include "SquidTime.h"
@@ -42,6 +47,7 @@ class external_acl;
 class HeaderManglers;
 class RefreshPattern;
 class RemovalPolicySettings;
+class HttpUpgradeProtocolAccess;
 
 namespace AnyP
 {
@@ -203,9 +209,6 @@ public:
 
     Helper::ChildConfig redirectChildren;
     Helper::ChildConfig storeIdChildren;
-    time_t authenticateGCInterval;
-    time_t authenticateTTL;
-    time_t authenticateIpTTL;
 
     struct {
         char *surrogate_id;
@@ -236,13 +239,12 @@ public:
         Ip::Address snmp_incoming;
         Ip::Address snmp_outgoing;
 #endif
-        /* FIXME INET6 : this should really be a CIDR value */
+        // TODO: this should really be a CIDR value
         Ip::Address client_netmask;
     } Addrs;
     size_t tcpRcvBufsz;
     size_t udpMaxHitObjsz;
     wordlist *mcast_group_list;
-    wordlist *dns_nameservers;
     CachePeer *peers;
     int npeers;
 
@@ -344,7 +346,7 @@ public:
 #endif
     } onoff;
 
-    int64_t collapsed_forwarding_shared_entries_limit;
+    int64_t shared_transient_entries_limit;
 
     int pipeline_max_prefetch;
 
@@ -401,6 +403,7 @@ public:
 
         acl_access *forceRequestBodyContinuation;
         acl_access *serverPconnForNonretriable;
+        acl_access *collapsedForwardingAccess;
     } accessList;
     AclDenyInfoList *denyInfoList;
 
@@ -441,6 +444,7 @@ public:
 
     DelayConfig Delay;
     ClientDelayConfig ClientDelay;
+    MessageDelayConfig MessageDelay;
 #endif
 
     struct {
@@ -471,6 +475,8 @@ public:
     HeaderWithAclList *request_header_add;
     ///reply_header_add access list
     HeaderWithAclList *reply_header_add;
+    /// http_upgrade_request_protocols
+    HttpUpgradeProtocolAccess *http_upgrade_request_protocols;
     ///note
     Notes notes;
     char *coredump_dir;
@@ -538,10 +544,16 @@ public:
     char *storeId_extras;
 
     struct {
+        SBufList nameservers;
         int v4_first;       ///< Place IPv4 first in the order of DNS results.
         ssize_t packet_max; ///< maximum size EDNS advertised for DNS replies.
     } dns;
 
+    struct {
+        int connect_limit;
+        int connect_gap;
+        int connect_timeout;
+    } happyEyeballs;
 };
 
 extern SquidConfig Config;

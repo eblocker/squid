@@ -9,10 +9,12 @@
 /* DEBUG: section 16    Cache Manager Objects */
 
 #include "squid.h"
+#include "AccessLogEntry.h"
 #include "base/TextException.h"
 #include "CacheManager.h"
 #include "comm/Connection.h"
 #include "Debug.h"
+#include "error/ExceptionErrorDetail.h"
 #include "errorpage.h"
 #include "fde.h"
 #include "HttpReply.h"
@@ -310,7 +312,7 @@ CacheManager::CheckPassword(const Mgr::Command &cmd)
  * all needed internal work and renders the response.
  */
 void
-CacheManager::Start(const Comm::ConnectionPointer &client, HttpRequest * request, StoreEntry * entry)
+CacheManager::start(const Comm::ConnectionPointer &client, HttpRequest *request, StoreEntry *entry, const AccessLogEntry::Pointer &ale)
 {
     debugs(16, 3, "request-url= '" << request->url << "', entry-url='" << entry->url() << "'");
 
@@ -320,8 +322,9 @@ CacheManager::Start(const Comm::ConnectionPointer &client, HttpRequest * request
 
     } catch (...) {
         debugs(16, 2, "request URL error: " << CurrentException);
-        const auto err = new ErrorState(ERR_INVALID_URL, Http::scNotFound, request);
+        const auto err = new ErrorState(ERR_INVALID_URL, Http::scNotFound, request, ale);
         err->url = xstrdup(entry->url());
+        err->detailError(new ExceptionErrorDetail(Here().id()));
         errorAppendEntry(entry, err);
         entry->expires = squid_curtime;
         return;
@@ -343,7 +346,7 @@ CacheManager::Start(const Comm::ConnectionPointer &client, HttpRequest * request
 
     if (CheckPassword(*cmd) != 0) {
         /* build error message */
-        ErrorState errState(ERR_CACHE_MGR_ACCESS_DENIED, Http::scUnauthorized, request);
+        ErrorState errState(ERR_CACHE_MGR_ACCESS_DENIED, Http::scUnauthorized, request, ale);
         /* warn if user specified incorrect password */
 
         if (cmd->params.password.size()) {
@@ -397,7 +400,7 @@ CacheManager::Start(const Comm::ConnectionPointer &client, HttpRequest * request
 
     // special case: /squid-internal-mgr/ index page
     if (!strcmp(cmd->profile->name, "index")) {
-        ErrorState err(MGR_INDEX, Http::scOkay, request);
+        ErrorState err(MGR_INDEX, Http::scOkay, request, ale);
         err.url = xstrdup(entry->url());
         HttpReply *rep = err.BuildHttpReply();
         if (strncmp(rep->body.content(),"Internal Error:", 15) == 0)
@@ -417,7 +420,7 @@ CacheManager::Start(const Comm::ConnectionPointer &client, HttpRequest * request
 
     if (UsingSmp() && IamWorkerProcess()) {
         // is client the right connection to pass here?
-        AsyncJob::Start(new Mgr::Forwarder(client, cmd->params, request, entry));
+        AsyncJob::Start(new Mgr::Forwarder(client, cmd->params, request, entry, ale));
         return;
     }
 

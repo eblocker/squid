@@ -7,7 +7,18 @@
  */
 
 #include "squid.h"
+#include "Debug.h"
 #include "LogTags.h"
+
+void
+LogTagsErrors::update(const LogTagsErrors &other)
+{
+    ignored = ignored || other.ignored;
+    timedout = timedout || other.timedout;
+    aborted = aborted || other.aborted;
+}
+
+/* LogTags */
 
 // old deprecated tag strings
 const char * LogTags::Str_[] = {
@@ -39,6 +50,14 @@ const char * LogTags::Str_[] = {
     "TYPE_MAX"
 };
 
+void
+LogTags::update(const LogTags_ot t)
+{
+    assert(t < LOG_TYPE_MAX);
+    debugs(83, 7, Str_[oldType] << " to " << Str_[t]);
+    oldType = t;
+}
+
 /*
  * This method is documented in http://wiki.squid-cache.org/SquidFaq/SquidLogs#Squid_result_codes
  * Please keep the wiki up to date
@@ -51,10 +70,20 @@ LogTags::c_str() const
     int pos = 0;
 
     // source tags
-    if (oldType && oldType < LOG_TYPE_MAX)
-        pos += snprintf(buf, sizeof(buf), "%s",Str_[oldType]);
+    const int protoLen = 3;
+    if (oldType && oldType < LOG_TYPE_MAX) {
+        assert(Str_[oldType][protoLen] == '_');
+        snprintf(buf, protoLen + 1, "%s", Str_[oldType]);
+        pos += protoLen;
+    }
     else
         pos += snprintf(buf, sizeof(buf), "NONE");
+
+    if (collapsingHistory.collapsed())
+        pos += snprintf(buf + pos, sizeof(buf) - pos, "_CF");
+
+    const char *tag = Str_[oldType] + protoLen;
+    pos += snprintf(buf + pos, sizeof(buf) - pos, "%s", tag);
 
     if (err.ignored)
         pos += snprintf(buf+pos,sizeof(buf)-pos, "_IGNORED");

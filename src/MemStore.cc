@@ -30,11 +30,6 @@ static const char *SpaceLabel = "cache_mem_space";
 static const char *ExtrasLabel = "cache_mem_ex";
 // TODO: sync with Rock::SwapDir::*Path()
 
-// We store free slot IDs (i.e., "space") as Page objects so that we can use
-// Ipc::Mem::PageStack. Pages require pool IDs. The value here is not really
-// used except for a positivity test. A unique value is handy for debugging.
-static const uint32_t SpacePoolId = 510716;
-
 /// Packs to shared memory, allocating new slots/pages as needed.
 /// Requires an Ipc::StoreMapAnchor locked for writing.
 class ShmWriter: public Packable
@@ -177,7 +172,7 @@ MemStore::init()
 {
     const int64_t entryLimit = EntryLimit();
     if (entryLimit <= 0)
-        return; // no memory cache configured or a misconfiguration
+        return; // no shared memory cache configured or a misconfiguration
 
     // check compatibility with the disk cache, if any
     if (Config.cacheSwap.n_configured > 0) {
@@ -360,10 +355,7 @@ MemStore::updateHeadersOrThrow(Ipc::StoreMapUpdate &update)
     // our +/- hdr_sz math below does not work if the chains differ [in size]
     Must(update.stale.anchor->basics.swap_file_sz == update.fresh.anchor->basics.swap_file_sz);
 
-    const HttpReply *rawReply = update.entry->getReply();
-    Must(rawReply);
-    const HttpReply &reply = *rawReply;
-    const uint64_t staleHdrSz = reply.hdr_sz;
+    const uint64_t staleHdrSz = update.entry->mem().baseReply().hdr_sz;
     debugs(20, 7, "stale hdr_sz: " << staleHdrSz);
 
     /* we will need to copy same-slice payload after the stored headers later */
@@ -374,7 +366,7 @@ MemStore::updateHeadersOrThrow(Ipc::StoreMapUpdate &update)
 
     Must(update.stale.anchor);
     ShmWriter writer(*this, update.entry, update.fresh.fileNo);
-    reply.packHeadersUsingSlowPacker(writer);
+    update.entry->mem().freshestReply().packHeadersUsingSlowPacker(writer);
     const uint64_t freshHdrSz = writer.totalWritten;
     debugs(20, 7, "fresh hdr_sz: " << freshHdrSz << " diff: " << (freshHdrSz - staleHdrSz));
 
@@ -546,8 +538,8 @@ MemStore::copyFromShmSlice(StoreEntry &e, const StoreIOBuffer &buf, bool eof)
 
     // from store_client::readBody()
     // parse headers if needed; they might span multiple slices!
-    HttpReply *rep = (HttpReply *)e.getReply();
-    if (rep->pstate < psParsed) {
+    const auto rep = &e.mem().adjustableBaseReply();
+    if (rep->pstate < Http::Message::psParsed) {
         // XXX: have to copy because httpMsgParseStep() requires 0-termination
         MemBuf mb;
         mb.init(buf.length+1, buf.length+1);
@@ -555,7 +547,7 @@ MemStore::copyFromShmSlice(StoreEntry &e, const StoreIOBuffer &buf, bool eof)
         mb.terminate();
         const int result = rep->httpMsgParseStep(mb.buf, buf.length, eof);
         if (result > 0) {
-            assert(rep->pstate == psParsed);
+            assert(rep->pstate == Http::Message::psParsed);
         } else if (result < 0) {
             debugs(20, DBG_IMPORTANT, "Corrupted mem-cached headers: " << e);
             return false;
@@ -813,7 +805,7 @@ MemStore::noteFreeMapSlice(const Ipc::StoreMapSliceId sliceId)
     debugs(20, 9, "slice " << sliceId << " freed " << pageId);
     assert(pageId);
     Ipc::Mem::PageId slotId;
-    slotId.pool = SpacePoolId;
+    slotId.pool = Ipc::Mem::PageStack::IdForMemStoreSpace();
     slotId.number = sliceId + 1;
     if (!waitingFor) {
         // must zero pageId before we give slice (and pageId extras!) to others
@@ -931,12 +923,18 @@ MemStore::disconnect(StoreEntry &e)
     }
 }
 
+bool
+MemStore::Requested()
+{
+    return Config.memShared && Config.memMaxSize > 0;
+}
+
 /// calculates maximum number of entries we need to store and map
 int64_t
 MemStore::EntryLimit()
 {
-    if (!Config.memShared || !Config.memMaxSize)
-        return 0; // no memory cache configured
+    if (!Requested())
+        return 0;
 
     const int64_t minEntrySize = Ipc::Mem::PageSize();
     const int64_t entryLimit = Config.memMaxSize / minEntrySize;
@@ -987,6 +985,12 @@ MemStoreRr::finalizeConfig()
         debugs(20, DBG_IMPORTANT, "WARNING: memory_cache_shared is on, but only"
                " a single worker is running");
     }
+
+    if (MemStore::Requested() && Config.memMaxSize < Ipc::Mem::PageSize()) {
+        debugs(20, DBG_IMPORTANT, "WARNING: mem-cache size is too small (" <<
+               (Config.memMaxSize / 1024.0) << " KB), should be >= " <<
+               (Ipc::Mem::PageSize() / 1024.0) << " KB");
+    }
 }
 
 void
@@ -999,22 +1003,19 @@ MemStoreRr::useConfig()
 void
 MemStoreRr::create()
 {
-    if (!Config.memShared)
+    if (!MemStore::Enabled())
         return;
 
     const int64_t entryLimit = MemStore::EntryLimit();
-    if (entryLimit <= 0) {
-        if (Config.memMaxSize > 0) {
-            debugs(20, DBG_IMPORTANT, "WARNING: mem-cache size is too small ("
-                   << (Config.memMaxSize / 1024.0) << " KB), should be >= " <<
-                   (Ipc::Mem::PageSize() / 1024.0) << " KB");
-        }
-        return; // no memory cache configured or a misconfiguration
-    }
+    assert(entryLimit > 0);
 
+    Ipc::Mem::PageStack::Config spaceConfig;
+    spaceConfig.poolId = Ipc::Mem::PageStack::IdForMemStoreSpace(),
+    spaceConfig.pageSize = 0; // the pages are stored in Ipc::Mem::Pages
+    spaceConfig.capacity = entryLimit;
+    spaceConfig.createFull = true; // all pages are initially available
     Must(!spaceOwner);
-    spaceOwner = shm_new(Ipc::Mem::PageStack)(SpaceLabel, SpacePoolId,
-                 entryLimit, 0);
+    spaceOwner = shm_new(Ipc::Mem::PageStack)(SpaceLabel, spaceConfig);
     Must(!mapOwner);
     mapOwner = MemStoreMap::Init(MapLabel, entryLimit);
     Must(!extrasOwner);

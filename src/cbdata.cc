@@ -70,7 +70,7 @@ public:
     MEMPROXY_CLASS(cbdata);
 #endif
 
-    /** \todo examine making cbdata templated on this - so we get type
+    /* TODO: examine making cbdata templated on this - so we get type
      * safe access to data - RBC 20030902 */
 public:
 #if USE_CBDATA_DEBUG
@@ -490,6 +490,17 @@ cbdataDump(StoreEntry * sentry)
 #endif
 
     storeAppendPrintf(sentry, "\nsee also \"Memory utilization\" for detailed per type statistics\n");
+}
+
+CallbackData &
+CallbackData::operator =(const CallbackData &other)
+{
+    if (data_ != other.data_) { // assignment to self and no-op assignments
+        auto old = data_;
+        data_ = cbdataReference(other.data_);
+        cbdataReferenceDone(old);
+    }
+    return *this;
 }
 
 CBDATA_CLASS_INIT(generic_cbdata);

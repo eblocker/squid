@@ -1,4 +1,4 @@
-squid (5.1-1) unstable; urgency=medium
+squid (5.1-1~exp1) unstable; urgency=medium
 
   [ Amos Jeffries <amosjeffries@squid-cache.org> ]
   * New Upstream Release (Closes: #984351, #943692)
@@ -6,10 +6,14 @@ squid (5.1-1) unstable; urgency=medium
   * debian/patches/
     - refresh patches for new version
 
+  * debian/rules
+    - override autotools-vars.mk defaults for ./configure
+      to void build failure with Squid-5 makefiles
+
   * Drop squid3 upgrade compatibility. Debian has not contained
     a squid3 package for at least two full release cycles.
 
- -- Amos Jeffries <amosjeffries@squid-cache.org>  Thu,  5 Aug 2021 23:09:00 +1300
+ -- Amos Jeffries <amosjeffries@squid-cache.org>  Fri,  6 Aug 2021 02:015:00 +1300
 
 squid (4.13-10) unstable; urgency=medium
 

@@ -19,6 +19,10 @@ DEB_INSTALL_DOCS_squid-common := debian/copyright CONTRIBUTORS CREDITS QUICKSTAR
 
 BUILDINFO := $(shell lsb_release -si 2>/dev/null)
 
+# Squid-5 FTBFS with --disable-dependency-tracking
+# override autotools-vars.mk defaults for ./configure
+DEB_CONFIGURE_NORMAL_ARGS = $(DEB_CONFIGURE_CROSSBUILD_ARGS) $(DEB_CONFIGURE_PATH_ARGS)
+
 DEB_CONFIGURE_EXTRA_FLAGS := BUILDCXXFLAGS="$(CXXFLAGS) $(CPPFLAGS) $(LDFLAGS)" \
 		BUILDCXX=$(CXX_FOR_BUILD) \
 		--with-build-environment=default \
@@ -28,7 +32,6 @@ DEB_CONFIGURE_EXTRA_FLAGS := BUILDCXXFLAGS="$(CXXFLAGS) $(CPPFLAGS) $(LDFLAGS)" 
 		--libexecdir=/usr/lib/squid \
 		--mandir=/usr/share/man \
 		--enable-inline \
-		--enable-dependency-tracking \
 		--disable-arch-native \
 		--enable-async-io=8 \
 		--enable-storeio="ufs,aufs,diskd,rock" \

@@ -55,7 +55,7 @@ public:
 
     /**
      * Output stats to the provided store entry.
-     \todo make these calls asynchronous
+     * TODO: make these calls asynchronous
      */
     virtual void stat(StoreEntry &e) const = 0;
 
@@ -76,11 +76,6 @@ public:
 
     /// prepare for shutdown
     virtual void sync() {}
-
-    /// whether this storage is capable of serving multiple workers;
-    /// a true result does not imply [lack of] non-SMP support because
-    /// [only] some SMP-aware storages also support non-SMP configss
-    virtual bool smpAware() const = 0;
 };
 
 } // namespace Store

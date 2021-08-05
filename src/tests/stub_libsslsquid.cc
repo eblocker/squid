@@ -11,6 +11,7 @@
 #if USE_OPENSSL
 
 #include "fatal.h"
+#include "sbuf/SBuf.h"
 
 /* Stub File for the ssl/libsslsquid.la convenience library */
 
@@ -42,25 +43,22 @@ void Ssl::GlobalContextStorage::reconfigureStart() STUB
 
 #include "ssl/ErrorDetail.h"
 Security::ErrorCode parseErrorString(const char *name) STUB_RETVAL(0)
-//const char *Ssl::getErrorName(Security::ErrorCode value) STUB_RETVAL(NULL)
-Ssl::ErrorDetail::ErrorDetail(Security::ErrorCode, X509 *, X509 *, const char *) STUB
-Ssl::ErrorDetail::ErrorDetail(ErrorDetail const &) STUB
-const String & Ssl::ErrorDetail::toString() const STUB_RETSTATREF(String)
 
 #include "ssl/support.h"
 namespace Ssl
 {
 int AskPasswordCb(char *, int, int, void *) STUB_RETVAL(0)
 bool InitServerContext(Security::ContextPointer &, AnyP::PortCfg &) STUB_RETVAL(false)
-bool InitClientContext(Security::ContextPointer &, Security::PeerOptions &, const char *) STUB_RETVAL(false)
-void SetupVerifyCallback(Security::ContextPointer &) STUB
+bool InitClientContext(Security::ContextPointer &, Security::PeerOptions &, Security::ParsedPortFlags) STUB_RETVAL(false)
+void ConfigurePeerVerification(Security::ContextPointer &, const Security::ParsedPortFlags) STUB
+void DisablePeerVerification(Security::ContextPointer &) STUB
 void MaybeSetupRsaCallback(Security::ContextPointer &) STUB
 } // namespace Ssl
 const char *sslGetUserEmail(SSL *ssl) STUB_RETVAL(NULL)
 const char *sslGetUserAttribute(SSL *ssl, const char *attribute_name) STUB_RETVAL(NULL)
 const char *sslGetCAAttribute(SSL *ssl, const char *attribute_name) STUB_RETVAL(NULL)
-const char *sslGetUserCertificatePEM(SSL *ssl) STUB_RETVAL(NULL)
-const char *sslGetUserCertificateChainPEM(SSL *ssl) STUB_RETVAL(NULL)
+SBuf sslGetUserCertificatePEM(SSL *ssl) STUB_RETVAL(SBuf())
+SBuf sslGetUserCertificateChainPEM(SSL *ssl) STUB_RETVAL(SBuf())
 namespace Ssl
 {
 //GETX509ATTRIBUTE GetX509UserAttribute;
@@ -75,6 +73,7 @@ int matchX509CommonNames(X509 *peer_cert, void *check_data, int (*check_func)(vo
 bool checkX509ServerValidity(X509 *cert, const char *server) STUB_RETVAL(false)
 int asn1timeToString(ASN1_TIME *tm, char *buf, int len) STUB_RETVAL(0)
 void setClientSNI(SSL *ssl, const char *fqdn) STUB
+SBuf GetX509PEM(SSL *ssl) STUB_RETVAL(SBuf())
 } //namespace Ssl
 
 #endif

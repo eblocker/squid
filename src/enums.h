@@ -37,8 +37,12 @@ typedef enum _mem_status_t {
 } mem_status_t;
 
 typedef enum {
+    /// Has not considered whether to send ICP queries to peers yet.
     PING_NONE,
+    /// Sent ICP queries to peers and still awaiting responses.
     PING_WAITING,
+    /// Not waiting for ICP responses now and will not send ICP queries later.
+    /// The ICP queries may (or may not) have been sent earlier.
     PING_DONE
 } ping_status_t;
 
@@ -108,7 +112,10 @@ enum {
     ENTRY_NEGCACHED,
     ENTRY_VALIDATED,
     ENTRY_BAD_LENGTH,
-    ENTRY_ABORTED
+    ENTRY_ABORTED,
+    /// Whether the entry serves collapsed hits now.
+    /// Meaningful only for public entries.
+    ENTRY_REQUIRES_COLLAPSING
 };
 
 /*
@@ -152,14 +159,6 @@ enum {
     STORE_LOG_RELEASE,
     STORE_LOG_SWAPOUTFAIL
 };
-
-/* parse state of HttpReply or HttpRequest */
-typedef enum {
-    psReadyToParseStartLine = 0,
-    psReadyToParseHeaders,
-    psParsed,
-    psError
-} HttpMsgParseState;
 
 enum {
     PCTILE_HTTP,

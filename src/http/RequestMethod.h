@@ -38,6 +38,9 @@ public:
         return *this;
     }
 
+    /// whether the method is set/known
+    explicit operator bool() const { return theMethod != Http::METHOD_NONE; }
+
     bool operator == (Http::MethodType const & aMethod) const { return theMethod == aMethod; }
     bool operator == (HttpRequestMethod const & aMethod) const {
         return theMethod == aMethod.theMethod &&

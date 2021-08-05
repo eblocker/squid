@@ -35,7 +35,8 @@ int Store::Controller::store_dirs_rebuilding = 1;
 
 Store::Controller::Controller() :
     swapDir(new Disks),
-    memStore(NULL),
+    sharedMemStore(nullptr),
+    localMemStore(false),
     transients(NULL)
 {
     assert(!store_table);
@@ -43,7 +44,7 @@ Store::Controller::Controller() :
 
 Store::Controller::~Controller()
 {
-    delete memStore;
+    delete sharedMemStore;
     delete transients;
     delete swapDir;
 
@@ -57,15 +58,18 @@ Store::Controller::~Controller()
 void
 Store::Controller::init()
 {
-    if (Config.memShared && IamWorkerProcess()) {
-        memStore = new MemStore;
-        memStore->init();
+    if (IamWorkerProcess()) {
+        if (MemStore::Enabled()) {
+            sharedMemStore = new MemStore;
+            sharedMemStore->init();
+        } else if (Config.memMaxSize > 0) {
+            localMemStore = true;
+        }
     }
 
     swapDir->init();
 
-    if (UsingSmp() && IamWorkerProcess() && Config.onoff.collapsed_forwarding &&
-            smpAware()) {
+    if (Transients::Enabled() && IamWorkerProcess()) {
         transients = new Transients;
         transients->init();
     }
@@ -110,14 +114,20 @@ Store::Controller::maintain()
 void
 Store::Controller::getStats(StoreInfoStats &stats) const
 {
-    if (memStore)
-        memStore->getStats(stats);
+    if (sharedMemStore)
+        sharedMemStore->getStats(stats);
     else {
         // move this code to a non-shared memory cache class when we have it
         stats.mem.shared = false;
         stats.mem.capacity = Config.memMaxSize;
         stats.mem.size = mem_node::StoreMemSize();
-        stats.mem.count = hot_obj_count;
+        if (localMemStore) {
+            // XXX: also count internal/in-transit objects
+            stats.mem.count = hot_obj_count;
+        } else {
+            // XXX: count internal/in-transit objects instead
+            stats.mem.count = hot_obj_count;
+        }
     }
 
     swapDir->getStats(stats);
@@ -141,8 +151,8 @@ Store::Controller::stat(StoreEntry &output) const
                       Math::doublePercent(currentSize(), maxSize()),
                       Math::doublePercent((maxSize() - currentSize()), maxSize()));
 
-    if (memStore)
-        memStore->stat(output);
+    if (sharedMemStore)
+        sharedMemStore->stat(output);
 
     /* now the swapDir */
     swapDir->stat(output);
@@ -211,8 +221,8 @@ Store::Controller::search()
 void
 Store::Controller::sync(void)
 {
-    if (memStore)
-        memStore->sync();
+    if (sharedMemStore)
+        sharedMemStore->sync();
     swapDir->sync();
 }
 
@@ -247,8 +257,8 @@ Store::Controller::referenceBusy(StoreEntry &e)
         swapDir->reference(e);
 
     // Notify the memory cache that we're referencing this object again
-    if (memStore && e.mem_status == IN_MEMORY)
-        memStore->reference(e);
+    if (sharedMemStore && e.mem_status == IN_MEMORY)
+        sharedMemStore->reference(e);
 
     // TODO: move this code to a non-shared memory cache class when we have it
     if (e.mem_obj) {
@@ -268,22 +278,31 @@ Store::Controller::dereferenceIdle(StoreEntry &e, bool wantsLocalMemory)
 
     bool keepInStoreTable = false; // keep only if somebody needs it there
 
-    /* Notify the fs that we're not referencing this object any more */
+    // Notify the fs that we are not referencing this object any more. This
+    // should be done even if we overwrite keepInStoreTable afterwards.
 
     if (e.hasDisk())
         keepInStoreTable = swapDir->dereference(e) || keepInStoreTable;
 
     // Notify the memory cache that we're not referencing this object any more
-    if (memStore && e.mem_status == IN_MEMORY)
-        keepInStoreTable = memStore->dereference(e) || keepInStoreTable;
+    if (sharedMemStore && e.mem_status == IN_MEMORY)
+        keepInStoreTable = sharedMemStore->dereference(e) || keepInStoreTable;
 
     // TODO: move this code to a non-shared memory cache class when we have it
     if (e.mem_obj) {
         if (mem_policy->Dereferenced)
             mem_policy->Dereferenced(mem_policy, &e, &e.mem_obj->repl);
         // non-shared memory cache relies on store_table
-        if (!memStore)
+        if (localMemStore)
             keepInStoreTable = wantsLocalMemory || keepInStoreTable;
+    }
+
+    if (e.hittingRequiresCollapsing()) {
+        // If we were writing this now-locally-idle entry, then we did not
+        // finish and should now destroy an incomplete entry. Otherwise, do not
+        // leave this idle StoreEntry behind because handleIMSReply() lacks
+        // freshness checks when hitting a collapsed revalidation entry.
+        keepInStoreTable = false; // may overrule fs decisions made above
     }
 
     return keepInStoreTable;
@@ -311,6 +330,28 @@ Store::Controller::hasReadableDiskEntry(const StoreEntry &e) const
     return swapDir->hasReadableEntry(e);
 }
 
+/// flags problematic entries before find() commits to finalizing/returning them
+void
+Store::Controller::checkFoundCandidate(const StoreEntry &entry) const
+{
+    checkTransients(entry);
+
+    // The "hittingRequiresCollapsing() has an active writer" checks below
+    // protect callers from getting stuck and/or from using a stale revalidation
+    // reply. However, these protections are not reliable because the writer may
+    // disappear at any time and/or without a trace. Collapsing adds risks...
+    if (entry.hittingRequiresCollapsing()) {
+        if (entry.hasTransients()) {
+            // Too late to check here because the writer may be gone by now, but
+            // Transients do check when they setCollapsingRequirement().
+        } else {
+            // a local writer must hold a lock on its writable entry
+            if (!(entry.locked() && entry.isAccepting()))
+                throw TextException("no local writer", Here());
+        }
+    }
+}
+
 StoreEntry *
 Store::Controller::find(const cache_key *key)
 {
@@ -318,13 +359,13 @@ Store::Controller::find(const cache_key *key)
         try {
             if (!entry->key)
                 allowSharing(*entry, key);
-            checkTransients(*entry);
+            checkFoundCandidate(*entry);
             entry->touch();
             referenceBusy(*entry);
             return entry;
         } catch (const std::exception &ex) {
             debugs(20, 2, "failed with " << *entry << ": " << ex.what());
-            entry->release(true);
+            entry->release();
             // fall through
         }
     }
@@ -341,10 +382,24 @@ Store::Controller::allowSharing(StoreEntry &entry, const cache_key *key)
     addReading(&entry, key);
 
     if (entry.hasTransients()) {
+        // store hadWriter before computing `found`; \see Transients::get()
+        const auto hadWriter = transients->hasWriter(entry);
         bool inSync = false;
         const bool found = anchorToCache(entry, inSync);
         if (found && !inSync)
             throw TexcHere("cannot sync");
+        if (!found) {
+            // !found should imply hittingRequiresCollapsing() regardless of writer presence
+            if (!entry.hittingRequiresCollapsing()) {
+                debugs(20, DBG_IMPORTANT, "BUG: missing ENTRY_REQUIRES_COLLAPSING for " << entry);
+                throw TextException("transients entry missing ENTRY_REQUIRES_COLLAPSING", Here());
+            }
+
+            if (!hadWriter) {
+                // prevent others from falling into the same trap
+                throw TextException("unattached transients entry missing writer", Here());
+            }
+        }
     }
 }
 
@@ -403,8 +458,8 @@ Store::Controller::peek(const cache_key *key)
         }
     }
 
-    if (memStore) {
-        if (StoreEntry *e = memStore->get(key)) {
+    if (sharedMemStore) {
+        if (StoreEntry *e = sharedMemStore->get(key)) {
             debugs(20, 3, HERE << "got mem-cached entry: " << *e);
             return e;
         }
@@ -465,8 +520,8 @@ Store::Controller::evictIfFound(const cache_key *key)
         return;
     }
 
-    if (memStore)
-        memStore->evictIfFound(key);
+    if (sharedMemStore)
+        sharedMemStore->evictIfFound(key);
     if (swapDir)
         swapDir->evictIfFound(key);
     if (transients)
@@ -546,9 +601,9 @@ void
 Store::Controller::memoryOut(StoreEntry &e, const bool preserveSwappable)
 {
     bool keepInLocalMemory = false;
-    if (memStore)
-        memStore->write(e); // leave keepInLocalMemory false
-    else
+    if (sharedMemStore)
+        sharedMemStore->write(e); // leave keepInLocalMemory false
+    else if (localMemStore)
         keepInLocalMemory = keepForLocalMemoryCache(e);
 
     debugs(20, 7, HERE << "keepInLocalMemory: " << keepInLocalMemory);
@@ -563,8 +618,8 @@ void
 Store::Controller::memoryEvictCached(StoreEntry &e)
 {
     // TODO: Untangle memory caching from mem_obj.
-    if (memStore)
-        memStore->evictCached(e);
+    if (sharedMemStore)
+        sharedMemStore->evictCached(e);
     else // TODO: move into [non-shared] memory cache class when we have one
         if (!e.locked())
             e.destroyMemObject();
@@ -573,8 +628,8 @@ Store::Controller::memoryEvictCached(StoreEntry &e)
 void
 Store::Controller::memoryDisconnect(StoreEntry &e)
 {
-    if (memStore)
-        memStore->disconnect(e);
+    if (sharedMemStore)
+        sharedMemStore->disconnect(e);
     // else nothing to do for non-shared memory cache
 }
 
@@ -614,6 +669,13 @@ Store::Controller::transientsDisconnect(StoreEntry &e)
 }
 
 void
+Store::Controller::transientsClearCollapsingRequirement(StoreEntry &e)
+{
+    if (transients)
+        transients->clearCollapsingRequirement(e);
+}
+
+void
 Store::Controller::handleIdleEntry(StoreEntry &e)
 {
     bool keepInLocalMemory = false;
@@ -623,9 +685,9 @@ Store::Controller::handleIdleEntry(StoreEntry &e)
         // have a dedicated storage for them (that would not purge them).
         // They are not managed [well] by any specific Store handled below.
         keepInLocalMemory = true;
-    } else if (memStore) {
-        // leave keepInLocalMemory false; memStore maintains its own cache
-    } else {
+    } else if (sharedMemStore) {
+        // leave keepInLocalMemory false; sharedMemStore maintains its own cache
+    } else if (localMemStore) {
         keepInLocalMemory = keepForLocalMemoryCache(e) && // in good shape and
                             // the local memory cache is not overflowing
                             memoryCacheHasSpaceFor(memoryPagesDebt_);
@@ -660,20 +722,36 @@ Store::Controller::handleIdleEntry(StoreEntry &e)
 }
 
 void
-Store::Controller::updateOnNotModified(StoreEntry *old, const StoreEntry &newer)
+Store::Controller::updateOnNotModified(StoreEntry *old, StoreEntry &e304)
 {
-    /* update the old entry object */
     Must(old);
-    HttpReply *oldReply = const_cast<HttpReply*>(old->getReply());
-    Must(oldReply);
+    Must(old->mem_obj);
+    Must(e304.mem_obj);
 
-    const bool modified = oldReply->updateOnNotModified(newer.getReply());
-    if (!old->timestampsSet() && !modified)
+    // updateOnNotModified() may be called many times for the same old entry.
+    // e304.mem_obj->appliedUpdates value distinguishes two cases:
+    //   false: Independent store clients revalidating the same old StoreEntry.
+    //          Each such update uses its own e304. The old StoreEntry
+    //          accumulates such independent updates.
+    //   true: Store clients feeding off the same 304 response. Each such update
+    //         uses the same e304. For timestamps correctness and performance
+    //         sake, it is best to detect and skip such repeated update calls.
+    if (e304.mem_obj->appliedUpdates) {
+        debugs(20, 5, "ignored repeated update of " << *old << " with " << e304);
         return;
+    }
+    e304.mem_obj->appliedUpdates = true;
 
-    // XXX: Call memStore->updateHeaders(old) and swapDir->updateHeaders(old) to
-    // update stored headers, stored metadata, and in-transit metadata.
-    debugs(20, 3, *old << " headers were modified: " << modified);
+    if (!old->updateOnNotModified(e304)) {
+        debugs(20, 5, "updated nothing in " << *old << " with " << e304);
+        return;
+    }
+
+    if (sharedMemStore && old->mem_status == IN_MEMORY && !EBIT_TEST(old->flags, ENTRY_SPECIAL))
+        sharedMemStore->updateHeaders(old);
+
+    if (old->swap_dirn > -1)
+        swapDir->updateHeaders(old);
 }
 
 bool
@@ -681,11 +759,15 @@ Store::Controller::allowCollapsing(StoreEntry *e, const RequestFlags &reqFlags,
                                    const HttpRequestMethod &reqMethod)
 {
     const KeyScope keyScope = reqFlags.refresh ? ksRevalidation : ksDefault;
+    // set the flag now so that it gets copied into the Transients entry
+    e->setCollapsingRequirement(true);
     if (e->makePublic(keyScope)) { // this is needed for both local and SMP collapsing
         debugs(20, 3, "may " << (transients && e->hasTransients() ?
                                  "SMP-" : "locally-") << "collapse " << *e);
         return true;
     }
+    // paranoid cleanup; the flag is meaningless for private entries
+    e->setCollapsingRequirement(false);
     return false;
 }
 
@@ -735,11 +817,15 @@ Store::Controller::syncCollapsed(const sfileno xitIndex)
 
     debugs(20, 7, "syncing " << *collapsed);
 
-    bool abortedByWriter = false;
-    bool waitingToBeFreed = false;
-    transients->status(*collapsed, abortedByWriter, waitingToBeFreed);
+    Transients::EntryStatus entryStatus;
+    transients->status(*collapsed, entryStatus);
 
-    if (waitingToBeFreed) {
+    if (!entryStatus.collapsed) {
+        debugs(20, 5, "removing collapsing requirement for " << *collapsed << " since remote writer probably got headers");
+        collapsed->setCollapsingRequirement(false);
+    }
+
+    if (entryStatus.waitingToBeFreed) {
         debugs(20, 3, "will release " << *collapsed << " due to waitingToBeFreed");
         collapsed->release(true); // may already be marked
     }
@@ -749,21 +835,27 @@ Store::Controller::syncCollapsed(const sfileno xitIndex)
 
     assert(transients->isReader(*collapsed));
 
-    if (abortedByWriter) {
+    if (entryStatus.abortedByWriter) {
         debugs(20, 3, "aborting " << *collapsed << " because its writer has aborted");
+        collapsed->abort();
+        return;
+    }
+
+    if (entryStatus.collapsed && !collapsed->hittingRequiresCollapsing()) {
+        debugs(20, 3, "aborting " << *collapsed << " due to writer/reader collapsing state mismatch");
         collapsed->abort();
         return;
     }
 
     bool found = false;
     bool inSync = false;
-    if (memStore && collapsed->mem_obj->memCache.io == MemObject::ioDone) {
+    if (sharedMemStore && collapsed->mem_obj->memCache.io == MemObject::ioDone) {
         found = true;
         inSync = true;
         debugs(20, 7, "fully mem-loaded " << *collapsed);
-    } else if (memStore && collapsed->hasMemStore()) {
+    } else if (sharedMemStore && collapsed->hasMemStore()) {
         found = true;
-        inSync = memStore->updateAnchored(*collapsed);
+        inSync = sharedMemStore->updateAnchored(*collapsed);
         // TODO: handle entries attached to both memory and disk
     } else if (swapDir && collapsed->hasDisk()) {
         found = true;
@@ -772,7 +864,7 @@ Store::Controller::syncCollapsed(const sfileno xitIndex)
         found = anchorToCache(*collapsed, inSync);
     }
 
-    if (waitingToBeFreed && !found) {
+    if (entryStatus.waitingToBeFreed && !found) {
         debugs(20, 3, "aborting unattached " << *collapsed <<
                " because it was marked for deletion before we could attach it");
         collapsed->abort();
@@ -807,8 +899,8 @@ Store::Controller::anchorToCache(StoreEntry &entry, bool &inSync)
     debugs(20, 7, "anchoring " << entry);
 
     bool found = false;
-    if (memStore)
-        found = memStore->anchorToCache(entry, inSync);
+    if (sharedMemStore)
+        found = sharedMemStore->anchorToCache(entry, inSync);
     if (!found && swapDir)
         found = swapDir->anchorToCache(entry, inSync);
 
@@ -825,9 +917,9 @@ Store::Controller::anchorToCache(StoreEntry &entry, bool &inSync)
 }
 
 bool
-Store::Controller::smpAware() const
+Store::Controller::SmpAware()
 {
-    return memStore || (swapDir && swapDir->smpAware());
+    return MemStore::Enabled() || Disks::SmpAware();
 }
 
 void

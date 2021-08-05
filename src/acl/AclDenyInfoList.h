@@ -9,10 +9,11 @@
 #ifndef SQUID_ACLDENYINFOLIST_H_
 #define SQUID_ACLDENYINFOLIST_H_
 
-#include "acl/AclNameList.h"
-#include "err_type.h"
+#include "acl/forward.h"
+#include "error/forward.h"
 #include "errorpage.h"
 #include "mem/forward.h"
+#include "sbuf/forward.h"
 
 /// deny_info representation. Currently a POD.
 class AclDenyInfoList
@@ -20,13 +21,12 @@ class AclDenyInfoList
     MEMPROXY_CLASS(AclDenyInfoList);
 
 public:
-    AclDenyInfoList(const char *t) {
+    AclDenyInfoList(const char *t, const SBuf &aCfgLocation) {
         err_page_name = xstrdup(t);
-        err_page_id = errorReservePageId(t);
+        err_page_id = errorReservePageId(t, aCfgLocation);
     }
     ~AclDenyInfoList() {
         xfree(err_page_name);
-        delete acl_list;
         while (next) {
             auto *a = next;
             next = a->next;
@@ -36,7 +36,7 @@ public:
     }
     err_type err_page_id = ERR_NONE;
     char *err_page_name = nullptr;
-    AclNameList *acl_list = nullptr;
+    SBufList acl_list; ///< ACL names in configured order
     AclDenyInfoList *next = nullptr;
 };
 

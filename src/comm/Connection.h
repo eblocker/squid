@@ -11,6 +11,8 @@
 #ifndef _SQUIDCONNECTIONDETAIL_H_
 #define _SQUIDCONNECTIONDETAIL_H_
 
+#include "base/CodeContext.h"
+#include "base/InstanceId.h"
 #include "comm/forward.h"
 #include "defines.h"
 #if USE_SQUID_EUI
@@ -47,6 +49,9 @@ namespace Comm
 #define COMM_DOBIND             0x08  // requires a bind()
 #define COMM_TRANSPARENT        0x10  // arrived via TPROXY
 #define COMM_INTERCEPTION       0x20  // arrived via NAT
+#define COMM_REUSEPORT          0x40 //< needs SO_REUSEPORT
+/// not registered with Comm and not owned by any connection-closing code
+#define COMM_ORPHANED           0x40
 
 /**
  * Store data about the physical and logical attributes of a connection.
@@ -62,7 +67,7 @@ namespace Comm
  * These objects should not be passed around directly,
  * but a Comm::ConnectionPointer should be passed instead.
  */
-class Connection : public RefCountable
+class Connection: public CodeContext
 {
     MEMPROXY_CLASS(Comm::Connection);
 
@@ -70,12 +75,20 @@ public:
     Connection();
 
     /** Clear the connection properties and close any open socket. */
-    ~Connection();
+    virtual ~Connection();
 
-    /** Copy an existing connections IP and properties.
-     * This excludes the FD. The new copy will be a closed connection.
-     */
-    ConnectionPointer copyDetails() const;
+    /// Create a new (closed) IDENT Connection object based on our from-Squid
+    /// connection properties.
+    ConnectionPointer cloneIdentDetails() const;
+
+    /// Create a new (closed) Connection object pointing to the same destination
+    /// as this from-Squid connection.
+    ConnectionPointer cloneDestinationDetails() const;
+
+    /// close the still-open connection when its last reference is gone
+    void enterOrphanage() { flags |= COMM_ORPHANED; }
+    /// resume relying on owner(s) to initiate an explicit connection closure
+    void leaveOrphanage() { flags &= ~COMM_ORPHANED; }
 
     /** Close any open socket. */
     void close();
@@ -123,11 +136,19 @@ public:
     Security::NegotiationHistory *tlsNegotiations();
     const Security::NegotiationHistory *hasTlsNegotiations() const {return tlsHistory;}
 
+    /* CodeContext API */
+    virtual ScopedId codeContextGist() const override;
+    virtual std::ostream &detailCodeContext(std::ostream &os) const override;
+
 private:
-    /** These objects may not be exactly duplicated. Use copyDetails() instead. */
+    /** These objects may not be exactly duplicated. Use cloneIdentDetails() or
+     * cloneDestinationDetails() instead.
+     */
     Connection(const Connection &c);
 
-    /** These objects may not be exactly duplicated. Use copyDetails() instead. */
+    /** These objects may not be exactly duplicated. Use cloneIdentDetails() or
+     * cloneDestinationDetails() instead.
+     */
     Connection & operator =(const Connection &c);
 
 public:
@@ -146,8 +167,18 @@ public:
     /** Quality of Service TOS values currently sent on this connection */
     tos_t tos;
 
-    /** Netfilter MARK values currently sent on this connection */
+    /** Netfilter MARK values currently sent on this connection
+     * In case of FTP, the MARK will be sent on data connections as well.
+     */
     nfmark_t nfmark;
+
+    /** Netfilter CONNMARK value previously retrieved from this connection
+     * In case of FTP, the CONNMARK will NOT be applied to data connections, for one main reason:
+     * the CONNMARK could be set by a third party like iptables and overwriting it in squid may
+     * cause side effects and break CONNMARK-based policy. In other words, data connection is
+     * related to control connection, but it's not the same.
+     */
+    nfmark_t nfConnmark = 0;
 
     /** COMM flags set on this connection */
     int flags;
@@ -158,6 +189,8 @@ public:
     Eui::Eui48 remoteEui48;
     Eui::Eui64 remoteEui64;
 #endif
+
+    InstanceId<Connection> id;
 
 private:
     /** cache_peer data object (if any) */
@@ -172,24 +205,7 @@ private:
 
 }; // namespace Comm
 
-// NP: Order and namespace here is very important.
-//     * The second define inlines the first.
-//     * Stream inheritance overloading is searched in the global scope first.
-
-inline std::ostream &
-operator << (std::ostream &os, const Comm::Connection &conn)
-{
-    os << "local=" << conn.local << " remote=" << conn.remote;
-    if (conn.fd >= 0)
-        os << " FD " << conn.fd;
-    if (conn.flags != COMM_UNSET)
-        os << " flags=" << conn.flags;
-#if USE_IDENT
-    if (*conn.rfc931)
-        os << " IDENT::" << conn.rfc931;
-#endif
-    return os;
-}
+std::ostream &operator << (std::ostream &os, const Comm::Connection &conn);
 
 inline std::ostream &
 operator << (std::ostream &os, const Comm::ConnectionPointer &conn)

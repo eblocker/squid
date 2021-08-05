@@ -1157,7 +1157,7 @@ wccp2HandleUdp(int sock, void *)
 
     Comm::SetSelect(sock, COMM_SELECT_READ, wccp2HandleUdp, NULL, 0);
 
-    /* FIXME INET6 : drop conversion boundary */
+    // TODO: drop conversion boundary
     Ip::Address from_tmp;
     from_tmp.setIPv4();
 
@@ -1176,7 +1176,7 @@ wccp2HandleUdp(int sock, void *)
     if (ntohl(wccp2_i_see_you.type) != WCCP2_I_SEE_YOU)
         return;
 
-    /* FIXME INET6 : drop conversion boundary */
+    // XXX: drop conversion boundary
     from_tmp.getSockAddr(from);
 
     debugs(80, 3, "Incoming WCCPv2 I_SEE_YOU length " << ntohs(wccp2_i_see_you.length) << ".");
@@ -1966,7 +1966,7 @@ wccp2AssignBuckets(void *)
             if (ntohl(router_list_ptr->num_caches)) {
                 /* send packet */
 
-                /* FIXME INET6 : drop temp conversion */
+                // XXX: drop temp conversion
                 Ip::Address tmp_rtr(router);
 
                 if (wccp2_numrouters > 1) {
@@ -2006,6 +2006,7 @@ parse_wccp2_method(int *method)
     if ((t = ConfigParser::NextToken()) == NULL) {
         debugs(80, DBG_CRITICAL, "wccp2_*_method: missing setting.");
         self_destruct();
+        return;
     }
 
     /* update configuration if its valid */
@@ -2053,6 +2054,7 @@ parse_wccp2_amethod(int *method)
     if ((t = ConfigParser::NextToken()) == NULL) {
         debugs(80, DBG_CRITICAL, "wccp2_assignment_method: missing setting.");
         self_destruct();
+        return;
     }
 
     /* update configuration if its valid */
@@ -2109,6 +2111,7 @@ parse_wccp2_service(void *)
     if ((t = ConfigParser::NextToken()) == NULL) {
         debugs(80, DBG_CRITICAL, "wccp2ParseServiceInfo: missing service info type (standard|dynamic)");
         self_destruct();
+        return;
     }
 
     if (strcmp(t, "standard") == 0) {
@@ -2118,6 +2121,7 @@ parse_wccp2_service(void *)
     } else {
         debugs(80, DBG_CRITICAL, "wccp2ParseServiceInfo: bad service info type (expected standard|dynamic, got " << t << ")");
         self_destruct();
+        return;
     }
 
     /* Snarf the ID */
@@ -2126,6 +2130,7 @@ parse_wccp2_service(void *)
     if (service_id < 0 || service_id > 255) {
         debugs(80, DBG_CRITICAL, "ERROR: invalid WCCP service id " << service_id << " (must be between 0 .. 255)");
         self_destruct();
+        return;
     }
 
     memset(wccp_password, 0, sizeof(wccp_password));
@@ -2293,6 +2298,7 @@ parse_wccp2_service_info(void *)
     if (service_id < 0 || service_id > 255) {
         debugs(80, DBG_CRITICAL, "ERROR: invalid WCCP service id " << service_id << " (must be between 0 .. 255)");
         self_destruct();
+        return;
     }
 
     /* Next: find the (hopefully!) existing service */

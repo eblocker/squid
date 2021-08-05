@@ -17,7 +17,7 @@
 /**
  \defgroup FileSystems  Storage Filesystems
  *
- \section Introduction Introduction
+ \section FileSystemsIntroduction Introduction
  \par
  * Traditionally, Squid has always used the Unix filesystem (\link UFS UFS\endlink)
  * to store cache objects on disk.  Over the years, the
@@ -42,8 +42,8 @@
  * configure.ac must be updated to autogenerate a Makefile in
  * \em src/fs/foo/ from a Makefile.in file.
  *
- \todo DOCS: add template addition to configure.ac for storage module addition.
- \todo DOCS: add template Makefile.am for storage module addition.
+ * TODO: DOCS: add template addition to configure.ac for storage module addition.
+ * TODO: DOCS: add template Makefile.am for storage module addition.
  *
  \par
  * configure will take a list of storage types through the

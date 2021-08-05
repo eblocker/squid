@@ -94,6 +94,43 @@ Ipc::StoreMap::forgetWritingEntry(sfileno fileno)
     debugs(54, 8, "closed entry " << fileno << " for writing " << path);
 }
 
+const Ipc::StoreMap::Anchor *
+Ipc::StoreMap::openOrCreateForReading(const cache_key *const key, sfileno &fileno, const StoreEntry &entry)
+{
+    debugs(54, 5, "opening/creating entry with key " << storeKeyText(key)
+           << " for reading " << path);
+
+    // start with reading so that we do not overwrite an existing unlocked entry
+    auto idx = fileNoByKey(key);
+    if (const auto anchor = openForReadingAt(idx)) {
+        fileno = idx;
+        return anchor;
+    }
+
+    // the competing openOrCreateForReading() workers race to create a new entry
+    idx = fileNoByKey(key);
+    if (auto anchor = openForWritingAt(idx)) {
+        anchor->set(entry, key);
+        anchor->lock.switchExclusiveToShared();
+        // race ended
+        assert(anchor->complete());
+        fileno = idx;
+        debugs(54, 5, "switched entry " << fileno << " from writing to reading " << path);
+        return anchor;
+    }
+
+    // we lost the above race; see if the winner-created entry is now readable
+    // TODO: Do some useful housekeeping work here to give the winner more time.
+    idx = fileNoByKey(key);
+    if (const auto anchor = openForReadingAt(idx)) {
+        fileno = idx;
+        return anchor;
+    }
+
+    // slow entry creator or some other problem
+    return nullptr;
+}
+
 Ipc::StoreMap::Anchor *
 Ipc::StoreMap::openForWriting(const cache_key *const key, sfileno &fileno)
 {
@@ -247,10 +284,18 @@ Ipc::StoreMap::peekAtReader(const sfileno fileno) const
     const Anchor &s = anchorAt(fileno);
     if (s.reading())
         return &s; // immediate access by lock holder so no locking
+    assert(s.writing()); // must be locked for reading or writing
+    return nullptr;
+}
+
+const Ipc::StoreMap::Anchor *
+Ipc::StoreMap::peekAtWriter(const sfileno fileno) const
+{
+    const Anchor &s = anchorAt(fileno);
     if (s.writing())
-        return NULL; // the caller is not a read lock holder
-    assert(false); // must be locked for reading or writing
-    return NULL;
+        return &s; // immediate access by lock holder so no locking
+    assert(s.reading()); // must be locked for reading or writing
+    return nullptr;
 }
 
 const Ipc::StoreMap::Anchor &
@@ -442,6 +487,23 @@ Ipc::StoreMap::closeForReading(const sfileno fileno)
     debugs(54, 5, "closed entry " << fileno << " for reading " << path);
 }
 
+void
+Ipc::StoreMap::closeForReadingAndFreeIdle(const sfileno fileno)
+{
+    auto &s = anchorAt(fileno);
+    assert(s.reading());
+
+    if (!s.lock.unlockSharedAndSwitchToExclusive()) {
+        debugs(54, 5, "closed entry " << fileno << " for reading " << path);
+        return;
+    }
+
+    assert(s.writing());
+    assert(!s.reading());
+    freeChain(fileno, s, false);
+    debugs(54, 5, "closed idle entry " << fileno << " for reading " << path);
+}
+
 bool
 Ipc::StoreMap::openForUpdating(Update &update, const sfileno fileNoHint)
 {
@@ -582,7 +644,10 @@ Ipc::StoreMap::closeForUpdating(Update &update)
     update.stale.anchor->splicingPoint = update.stale.splicingPoint;
     freeEntry(update.stale.fileNo);
 
-    // make the stale anchor/chain reusable, reachable via its new location
+    // Make the stale anchor/chain reusable, reachable via update.fresh.name. If
+    // update.entry->swap_filen is still update.stale.fileNo, and the entry is
+    // using store, then the entry must have a lock on update.stale.fileNo,
+    // preventing its premature reuse by others.
     relocate(update.fresh.name, update.stale.fileNo);
 
     const Update updateSaved = update; // for post-close debugging below
@@ -810,7 +875,12 @@ Ipc::StoreMapAnchor::exportInto(StoreEntry &into) const
     into.lastModified(basics.lastmod);
     into.swap_file_sz = basics.swap_file_sz;
     into.refcount = basics.refcount;
+    const bool collapsingRequired = into.hittingRequiresCollapsing();
     into.flags = basics.flags;
+    // There are possibly several flags we do not need to overwrite,
+    // and ENTRY_REQUIRES_COLLAPSING is one of them.
+    // TODO: check for other flags.
+    into.setCollapsingRequirement(collapsingRequired);
 }
 
 void

@@ -20,6 +20,7 @@
 #include "auth/digest/UserRequest.h"
 #include "auth/Gadgets.h"
 #include "auth/State.h"
+#include "auth/toUtf.h"
 #include "base/LookupTable.h"
 #include "cache_cf.h"
 #include "event.h"
@@ -31,6 +32,7 @@
 #include "mgr/Registration.h"
 #include "rfc2617.h"
 #include "sbuf/SBuf.h"
+#include "sbuf/StringConvert.h"
 #include "SquidTime.h"
 #include "Store.h"
 #include "StrList.h"
@@ -214,7 +216,7 @@ authenticateDigestNonceSetup(void)
     if (!digest_nonce_cache) {
         digest_nonce_cache = hash_create((HASHCMP *) strcmp, 7921, hash_string);
         assert(digest_nonce_cache);
-        eventAdd("Digest nonce cache maintenance", authenticateDigestNonceCacheCleanup, NULL, static_cast<Auth::Digest::Config*>(Auth::Config::Find("digest"))->nonceGCInterval, 1);
+        eventAdd("Digest nonce cache maintenance", authenticateDigestNonceCacheCleanup, NULL, static_cast<Auth::Digest::Config*>(Auth::SchemeConfig::Find("digest"))->nonceGCInterval, 1);
     }
 }
 
@@ -277,8 +279,8 @@ authenticateDigestNonceCacheCleanup(void *)
 
     debugs(29, 3, "Finished cleaning the nonce cache.");
 
-    if (static_cast<Auth::Digest::Config*>(Auth::Config::Find("digest"))->active())
-        eventAdd("Digest nonce cache maintenance", authenticateDigestNonceCacheCleanup, NULL, static_cast<Auth::Digest::Config*>(Auth::Config::Find("digest"))->nonceGCInterval, 1);
+    if (static_cast<Auth::Digest::Config*>(Auth::SchemeConfig::Find("digest"))->active())
+        eventAdd("Digest nonce cache maintenance", authenticateDigestNonceCacheCleanup, NULL, static_cast<Auth::Digest::Config*>(Auth::SchemeConfig::Find("digest"))->nonceGCInterval, 1);
 }
 
 static void
@@ -354,12 +356,12 @@ authDigestNonceIsValid(digest_nonce_h * nonce, char nc[9])
     }
 
     /* is the nonce-count ok ? */
-    if (!static_cast<Auth::Digest::Config*>(Auth::Config::Find("digest"))->CheckNonceCount) {
+    if (!static_cast<Auth::Digest::Config*>(Auth::SchemeConfig::Find("digest"))->CheckNonceCount) {
         /* Ignore client supplied NC */
         intnc = nonce->nc + 1;
     }
 
-    if ((static_cast<Auth::Digest::Config*>(Auth::Config::Find("digest"))->NonceStrictness && intnc != nonce->nc + 1) ||
+    if ((static_cast<Auth::Digest::Config*>(Auth::SchemeConfig::Find("digest"))->NonceStrictness && intnc != nonce->nc + 1) ||
             intnc < nonce->nc + 1) {
         debugs(29, 4, "Nonce count doesn't match");
         nonce->flags.valid = false;
@@ -387,10 +389,10 @@ authDigestNonceIsStale(digest_nonce_h * nonce)
         return -1;
 
     /* has it's max duration expired? */
-    if (nonce->noncedata.creationtime + static_cast<Auth::Digest::Config*>(Auth::Config::Find("digest"))->noncemaxduration < current_time.tv_sec) {
+    if (nonce->noncedata.creationtime + static_cast<Auth::Digest::Config*>(Auth::SchemeConfig::Find("digest"))->noncemaxduration < current_time.tv_sec) {
         debugs(29, 4, "Nonce is too old. " <<
                nonce->noncedata.creationtime << " " <<
-               static_cast<Auth::Digest::Config*>(Auth::Config::Find("digest"))->noncemaxduration << " " <<
+               static_cast<Auth::Digest::Config*>(Auth::SchemeConfig::Find("digest"))->noncemaxduration << " " <<
                current_time.tv_sec);
 
         nonce->flags.valid = false;
@@ -403,7 +405,7 @@ authDigestNonceIsStale(digest_nonce_h * nonce)
         return -1;
     }
 
-    if (nonce->nc > static_cast<Auth::Digest::Config*>(Auth::Config::Find("digest"))->noncemaxuses) {
+    if (nonce->nc > static_cast<Auth::Digest::Config*>(Auth::SchemeConfig::Find("digest"))->noncemaxuses) {
         debugs(29, 4, "Nonce count over user limit");
         nonce->flags.valid = false;
         return -1;
@@ -428,7 +430,7 @@ authDigestNonceLastRequest(digest_nonce_h * nonce)
         return -1;
     }
 
-    if (nonce->nc >= static_cast<Auth::Digest::Config*>(Auth::Config::Find("digest"))->noncemaxuses - 1) {
+    if (nonce->nc >= static_cast<Auth::Digest::Config*>(Auth::SchemeConfig::Find("digest"))->noncemaxuses - 1) {
         debugs(29, 4, "Nonce count about to hit user limit");
         return -1;
     }
@@ -466,16 +468,15 @@ Auth::Digest::Config::rotateHelpers()
 }
 
 bool
-Auth::Digest::Config::dump(StoreEntry * entry, const char *name, Auth::Config * scheme) const
+Auth::Digest::Config::dump(StoreEntry * entry, const char *name, Auth::SchemeConfig * scheme) const
 {
-    if (!Auth::Config::dump(entry, name, scheme))
+    if (!Auth::SchemeConfig::dump(entry, name, scheme))
         return false;
 
     storeAppendPrintf(entry, "%s %s nonce_max_count %d\n%s %s nonce_max_duration %d seconds\n%s %s nonce_garbage_interval %d seconds\n",
                       name, "digest", noncemaxuses,
                       name, "digest", (int) noncemaxduration,
                       name, "digest", (int) nonceGCInterval);
-    storeAppendPrintf(entry, "%s digest utf8 %s\n", name, utf8 ? "on" : "off");
     return true;
 }
 
@@ -534,7 +535,7 @@ Auth::Digest::Config::fixHeader(Auth::UserRequest::Pointer auth_user_request, Ht
 /* Initialize helpers and the like for this auth scheme. Called AFTER parsing the
  * config file */
 void
-Auth::Digest::Config::init(Auth::Config *)
+Auth::Digest::Config::init(Auth::SchemeConfig *)
 {
     if (authenticateProgram) {
         authenticateDigestNonceSetup();
@@ -565,7 +566,7 @@ Auth::Digest::Config::registerWithCacheManager(void)
 void
 Auth::Digest::Config::done()
 {
-    Auth::Config::done();
+    Auth::SchemeConfig::done();
 
     authdigest_initialised = 0;
 
@@ -588,21 +589,13 @@ Auth::Digest::Config::Config() :
     noncemaxuses(50),
     NonceStrictness(0),
     CheckNonceCount(1),
-    PostWorkaround(0),
-    utf8(0)
+    PostWorkaround(0)
 {}
 
 void
-Auth::Digest::Config::parse(Auth::Config * scheme, int n_configured, char *param_str)
+Auth::Digest::Config::parse(Auth::SchemeConfig * scheme, int n_configured, char *param_str)
 {
-    if (strcmp(param_str, "program") == 0) {
-        if (authenticateProgram)
-            wordlistDestroy(&authenticateProgram);
-
-        parse_wordlist(&authenticateProgram);
-
-        requirePathnameExists("auth_param digest program", authenticateProgram->key);
-    } else if (strcmp(param_str, "nonce_garbage_interval") == 0) {
+    if (strcmp(param_str, "nonce_garbage_interval") == 0) {
         parse_time_t(&nonceGCInterval);
     } else if (strcmp(param_str, "nonce_max_duration") == 0) {
         parse_time_t(&noncemaxduration);
@@ -614,10 +607,8 @@ Auth::Digest::Config::parse(Auth::Config * scheme, int n_configured, char *param
         parse_onoff(&CheckNonceCount);
     } else if (strcmp(param_str, "post_workaround") == 0) {
         parse_onoff(&PostWorkaround);
-    } else if (strcmp(param_str, "utf8") == 0) {
-        parse_onoff(&utf8);
     } else
-        Auth::Config::parse(scheme, n_configured, param_str);
+        Auth::SchemeConfig::parse(scheme, n_configured, param_str);
 }
 
 const char *
@@ -714,7 +705,7 @@ authDigestLogUsername(char *username, Auth::UserRequest::Pointer auth_user_reque
 
     /* log the username */
     debugs(29, 9, "Creating new user for logging '" << (username?username:"[no username]") << "'");
-    Auth::User::Pointer digest_user = new Auth::Digest::User(static_cast<Auth::Digest::Config*>(Auth::Config::Find("digest")), requestRealm);
+    Auth::User::Pointer digest_user = new Auth::Digest::User(static_cast<Auth::Digest::Config*>(Auth::SchemeConfig::Find("digest")), requestRealm);
     /* save the credentials */
     digest_user->username(username);
     /* set the auth_user type */
@@ -729,7 +720,7 @@ authDigestLogUsername(char *username, Auth::UserRequest::Pointer auth_user_reque
  * Auth_user structure.
  */
 Auth::UserRequest::Pointer
-Auth::Digest::Config::decode(char const *proxy_auth, const char *aRequestRealm)
+Auth::Digest::Config::decode(char const *proxy_auth, const HttpRequest *request, const char *aRequestRealm)
 {
     const char *item;
     const char *p;
@@ -776,16 +767,16 @@ Auth::Digest::Config::decode(char const *proxy_auth, const char *aRequestRealm)
                 // domain is Special. Not a quoted-string, must not be de-quoted. But is wrapped in '"'
                 // BUG 3077: uri= can also be sent to us in a mangled (invalid!) form like domain
                 if (vlen > 1 && *p == '"' && *(p + vlen -1) == '"') {
-                    value.limitInit(p+1, vlen-2);
+                    value.assign(p+1, vlen-2);
                 }
             } else if (keyName == SBuf("qop",3)) {
                 // qop is more special.
                 // On request this must not be quoted-string de-quoted. But is several values wrapped in '"'
                 // On response this is a single un-quoted token.
                 if (vlen > 1 && *p == '"' && *(p + vlen -1) == '"') {
-                    value.limitInit(p+1, vlen-2);
+                    value.assign(p+1, vlen-2);
                 } else {
-                    value.limitInit(p, vlen);
+                    value.assign(p, vlen);
                 }
             } else if (*p == '"') {
                 if (!httpHeaderParseQuotedString(p, vlen, &value)) {
@@ -793,7 +784,7 @@ Auth::Digest::Config::decode(char const *proxy_auth, const char *aRequestRealm)
                     continue;
                 }
             } else {
-                value.limitInit(p, vlen);
+                value.assign(p, vlen);
             }
         } else {
             debugs(29, 9, "Failed to parse attribute '" << item << "' in '" << temp << "'");
@@ -806,8 +797,14 @@ Auth::Digest::Config::decode(char const *proxy_auth, const char *aRequestRealm)
         switch (t) {
         case DIGEST_USERNAME:
             safe_free(username);
-            if (value.size() != 0)
+            if (value.size() != 0) {
+                const auto v = value.termedBuf();
+                if (utf8 && !isValidUtf8String(v, v + value.size())) {
+                    auto str = isCP1251EncodingAllowed(request) ? Cp1251ToUtf8(v) : Latin1ToUtf8(v);
+                    value = SBufToString(str);
+                }
                 username = xstrndup(value.rawBuf(), value.size() + 1);
+            }
             debugs(29, 9, "Found Username '" << username << "'");
             break;
 

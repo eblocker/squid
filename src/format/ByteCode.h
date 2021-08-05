@@ -110,11 +110,11 @@ typedef enum {
     /*LFT_REQUEST_SIZE_BODY, */
     /*LFT_REQUEST_SIZE_BODY_NO_TE, */
 
-    /* original Status-Line details recieved from server */
-    // XXX: todo
+    /* original Status-Line details received from server */
+    // TODO: implement server detail logging
 
     /* Status-Line details sent to the client */
-    // XXX: todo
+    // TODO: implement server detail logging
 
     /* response Status-Line details (legacy, filtered) */
     LFT_HTTP_SENT_STATUS_CODE_OLD_30,
@@ -220,6 +220,7 @@ typedef enum {
     LFT_SSL_SERVER_CERT_SUBJECT,
     LFT_SSL_SERVER_CERT_ISSUER,
     LFT_SSL_SERVER_CERT_ERRORS,
+    LFT_SSL_SERVER_CERT_WHOLE,
     LFT_TLS_CLIENT_NEGOTIATED_VERSION,
     LFT_TLS_SERVER_NEGOTIATED_VERSION,
     LFT_TLS_CLIENT_NEGOTIATED_CIPHER,
@@ -232,6 +233,7 @@ typedef enum {
 
     LFT_NOTE,
     LFT_PERCENT,            /* special string cases for escaped chars */
+    LFT_MASTER_XACTION,
 
     // TODO assign better bytecode names and Token strings for these
 #if USE_OPENSSL
@@ -243,8 +245,12 @@ typedef enum {
     LFT_EXT_ACL_CLIENT_EUI48,
     LFT_EXT_ACL_CLIENT_EUI64,
     LFT_EXT_ACL_NAME,
-    LFT_EXT_ACL_DATA
+    LFT_EXT_ACL_DATA,
 
+    /* PROXY protocol details */
+    LFT_PROXY_PROTOCOL_RECEIVED_HEADER,
+    LFT_PROXY_PROTOCOL_RECEIVED_HEADER_ELEM,
+    LFT_PROXY_PROTOCOL_RECEIVED_ALL_HEADERS
 } ByteCode_t;
 
 /// Quoting style for a format output.

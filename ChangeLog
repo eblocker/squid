@@ -1,3 +1,125 @@
+Changes in squid-5.1 (01 Aug 2021):
+
+	- Bug 4696: Fix leaky String move assignment operator
+	- Fix ACL-related reconfiguration memory leak
+	- Fix SSL-Bump reconfiguration leaking public key memory
+	- Fix build on RISC-V
+	- Fix build on Ubuntu 21.04
+
+Changes in squid-5.0.7 (04 Jul 2021):
+
+	- Fix a helper logging issues
+	- Fix some helper connection issues
+	- Cleanup: remove much unused code
+	- ... and all fixes from 4.16
+
+Changes in squid-5.0.6 (10 May 2021):
+
+	- Bug 5057: Generated response lacks status code
+	- TLS: Handling missing issuer certificates for TLSv1.3
+	- TLS: Detail certificate validation errors during TLS handshake
+	- TLS: Detail client closures of CONNECT tunnels during TLS handshake
+	- TLS: %ssl::<negotiated_version and %ssl::>negotiated_version for TLS/1.3
+	- HTTP: Allow 1xx and 204 responses with Transfer-Encoding headers
+	- Maintenance: Start following Inclusive Naming Initiative advice
+	- Maintenance: Sort source file lists in Makefiles
+	- Maintenance: Support plugin-style scripts for source format enforcement
+	- Cleanup: Deduplicating IPC strand messages
+	- ... and some compile and debugging fixes
+	- ... and all fixes from 4.15
+
+Changes in squid-5.0.5 (02 Feb 2021):
+
+	- HTTP: Do not send Connection:keep-alive/close in HTTP Upgrade requests
+	- Translations: Add es-mx dialect translation of error pages
+	- Fix missing port in request-target of CONNECT requests to peers
+	- Fix some warnings about client_lifetime timeout
+	- ... and several documentation updates
+	- ... and some debug improvements
+	- ... and all fixes from 4.14
+
+Changes in squid-5.0.4 (23 Aug 2020):
+
+	- Bug 5054: mark dns_v4_first as obsolete in cf.data.pre
+	- Bug 5048: ResolvedPeers.cc:35: "found != paths_.end()" assertion
+	- Reforward CONNECT after TLS handshake failure with peer
+	- Do not send keep-alive in 101 (Switching Protocols) responses
+	- Add http_port sslflags=CONDITIONAL_AUTH
+	- ... and several documentation changes
+	- ... and some compile fixes
+	- ... and all fixes from 4.13
+
+Changes in squid-5.0.3 (05 Jun 2020):
+
+	- Bug 5046: FreeBSD lacks open(2) O_DSYNC flag
+	- Happy Eyeballs: Do not discard viable reforwarding destinations
+	- Reduced startup time with large rock cache_dirs
+	- Fix the ABA problem with Ipc::Mem::PageStack::pop() in v5.0.1
+	- Fix sending of unknown validation errors to certificate validator
+	- ... and several debug improvements
+	- ... and all fixes from 4.12
+
+Changes in squid-5.0.2 (18 Apr 2020):
+
+	- Bug 5030: Negative responses are never cached
+	- Bug 4796: comm.cc !isOpen(conn->fd) assertion when rotating logs
+	- Support worker-dedicated listening queues (SO_REUSEPORT)
+	- High precision time units
+	- Ban reserved annotations in "note", "adaptation_meta" directives
+	- ESI: convert parse exceptions into 500 status response
+	- Fix PURGE error responses
+	- ... and several documentation changes
+	- ... and some compile fixes
+	- ... and all fixes from 4.11
+
+Changes in squid-5.0.1 (14 Jan 2020):
+
+	- Bug 4989: Leaking StoreEntry objects on Cache Digest rebuilds
+	- Bug 4912: same-name notes being appended instead of replaced
+	- Bug 4864: !Comm::MonitorsRead assertion in maybeReadVirginBody()
+	- Bug 4579: cannot hit an entry being written by another worker
+	- ICAP: Initial support for trailers
+	- Add auth_schemes to control schemes presence and order in 401s/407s
+	- Make CONNECT ACL a built-in default
+	- Remove USE_CHUNKEDMEMPOOLS compiler flag
+	- Two new ACLs implemented: annotate_transaction and annotate_client
+	- Add response delay pools feature for Squid-to-client speed limiting
+	- QA: allow test-suite to be run without a full build
+	- Happy Eyeballs: Use each fully resolved forwarding destination ASAP
+	- Support selective CF: collapsed_forwarding_access
+	- Reworked packet/connection marking
+	- Add new deny_info %A macro
+	- Identify collapsed transactions
+	- Add sample Kerberos group authentication external_acl helper
+	- Optimization: Fewer memory (re)allocations for HTTP headers
+	- Add TrivialDB support
+	- Do not send Content-Length in 1xx or 204 responses
+	- negotiate_kerberos_auth: fix memory leaks
+	- ntlm_fake_auth: add ability to test delayed responses
+	- Add %ssl::<cert macro for logging server X.509 certificate
+	- Reuse reserved Negotiate and NTLM helpers after an idle timeout
+	- Log PROXY protocol v2 TLVs
+	- Support logformat %codes in error page templates
+	- Fix incremental parsing of chunked quoted extensions
+	- Peering support for SslBump
+	- RFC 8586: Loop Detection in Content Delivery Networks
+	- Prevent TLS transaction stalls by preserving flags.read_pending
+	- Fix "BUG: Lost previously bumped from-Squid connection"
+	- Add %master_xaction logformat code
+	- Log "-" instead of the made-up method "NONE"
+	- Add GeneratingCONNECT step for the existing at_step ACL
+	- Report context of level-0/1 cache.log messages
+	- Re-enabled updates of stored headers on HTTP 304 responses
+	- Translations: Fix grammatical error in French error pages
+	- Smarter auth_param utf8 handling, including CP1251 support
+	- Fix rock disk entry contamination related to aborted swapouts
+	- Send HTTP/500 (Internal Server Error) when lacking peers
+	- Fix prohibitively slow search for new SMP shm pages
+	- Centralized PagePool/PageStack ID generation
+	- ... and many documentation changes
+	- ... and much code cleanup and polishing
+	- ... and all fixes from 4.10
+
 Changes in squid-4.16 (04 Jul 2021):
 
 	- Regression Fix: --with-valgrind-debug build broken since 4.15
@@ -163,13 +285,13 @@ Changes to squid-4.5 (01 Jan 2019):
 
 Changes to squid-4.4 (28 Oct 2018):
 
-       - Bug 4893: Malformed %>ru URIs for CONNECT requests
-       - Fix %USER_CA_CERT_xx and %USER_CERT_xx crashes
-       - SSL: support compilation with minimal OpenSSL
-       - SSL: certificate fields injection via %D in ERR_SECURE_CONNECT_FAIL
-       - Fix netdb not saving to disk
-       - Fix memory leak when parsing SNMP packet
-       - ... and some compile issues
+	- Bug 4893: Malformed %>ru URIs for CONNECT requests
+	- Fix %USER_CA_CERT_xx and %USER_CERT_xx crashes
+	- SSL: support compilation with minimal OpenSSL
+	- SSL: certificate fields injection via %D in ERR_SECURE_CONNECT_FAIL
+	- Fix netdb not saving to disk
+	- Fix memory leak when parsing SNMP packet
+	- ... and some compile issues
 
 Changes to squid-4.3 (01 Oct 2018):
 

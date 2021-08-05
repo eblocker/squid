@@ -13,7 +13,7 @@
 #include "acl/Checklist.h"
 #include "acl/forward.h"
 #include "base/CbcPointer.h"
-#include "err_type.h"
+#include "error/forward.h"
 #include "ip/Address.h"
 #if USE_AUTH
 #include "auth/UserRequest.h"
@@ -37,6 +37,11 @@ public:
     ACLFilledChecklist();
     ACLFilledChecklist(const acl_access *, HttpRequest *, const char *ident = nullptr);
     ~ACLFilledChecklist();
+
+    /// configure client request-related fields for the first time
+    void setRequest(HttpRequest *);
+    /// configure rfc931 user identity for the first time
+    void setIdent(const char *userIdentity);
 
 public:
     /// The client connection manager

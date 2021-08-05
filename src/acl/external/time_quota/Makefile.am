@@ -12,10 +12,10 @@ man_MANS= ext_time_quota_acl.8
 
 DEFS += -DDEFAULT_QUOTA_DB=\"$(localstatedir)/ext_time_quota.db\"
 
-ext_time_quota_acl_SOURCES= \
+ext_time_quota_acl_SOURCES = \
 	ext_time_quota_acl.cc
 ext_time_quota_acl_LDADD = \
 	$(COMPAT_LIB) \
-	-ldb
+	$(LIBTDB_LIBS)
 
 EXTRA_DIST= ext_time_quota_acl.8 required.m4

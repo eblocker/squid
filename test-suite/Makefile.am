@@ -38,7 +38,6 @@ TESTS += debug \
 	syntheticoperators \
 	VirtualDeleteOperator \
 	splay\
-	MemPoolTest\
 	mem_node_test\
 	mem_hdr_test\
 	$(ESI_TESTS) \
@@ -47,7 +46,6 @@ TESTS += debug \
 ## Sort by alpha - any build failures are significant.
 check_PROGRAMS += debug \
 		$(ESI_TESTS) \
-		MemPoolTest\
 		mem_node_test\
 		mem_hdr_test \
 		splay \
@@ -97,35 +95,49 @@ STUB.h: $(top_srcdir)/src/tests/STUB.h
 ## XXX: somewhat broken. Its meant to test our debugs() implementation.
 ## but it has never been linked to the actual src/debug.cc implementation !!
 ## all it tests are the stream operators and macro in src/Debug.h
-debug_SOURCES = debug.cc stub_libmem.cc $(DEBUG_SOURCE) 
+debug_SOURCES = \
+	$(DEBUG_SOURCE) \
+	debug.cc \
+	stub_libmem.cc
 
-ESIExpressions_SOURCES = ESIExpressions.cc stub_libmem.cc $(DEBUG_SOURCE)
+ESIExpressions_SOURCES = \
+	$(DEBUG_SOURCE) \
+	ESIExpressions.cc \
+	stub_libmem.cc
 ESIExpressions_LDADD = $(top_builddir)/src/esi/Expression.o \
 		$(LDADD)
 
-mem_node_test_SOURCES = mem_node_test.cc $(DEBUG_SOURCE)
+mem_node_test_SOURCES = \
+	$(DEBUG_SOURCE) \
+	mem_node_test.cc
 mem_node_test_LDADD = \
 	$(top_builddir)/src/mem_node.o \
 	$(top_builddir)/src/mem/libmem.la \
 	$(LDADD)
 
-mem_hdr_test_SOURCES = mem_hdr_test.cc $(DEBUG_SOURCE)
+mem_hdr_test_SOURCES = \
+	$(DEBUG_SOURCE) \
+	mem_hdr_test.cc
 mem_hdr_test_LDADD = \
 	$(top_builddir)/src/stmem.o \
 	$(top_builddir)/src/mem_node.o \
 	$(top_builddir)/src/mem/libmem.la \
 	$(LDADD)
 
-MemPoolTest_SOURCES = MemPoolTest.cc $(DEBUG_SOURCE)
-MemPoolTest_LDADD = \
-	$(top_builddir)/src/mem/libmem.la \
-	$(LDADD)
+splay_SOURCES = \
+	$(DEBUG_SOURCE) \
+	splay.cc \
+	stub_libmem.cc
 
-splay_SOURCES = splay.cc stub_libmem.cc $(DEBUG_SOURCE)
+syntheticoperators_SOURCES = \
+	$(DEBUG_SOURCE) \
+	stub_libmem.cc \
+	syntheticoperators.cc
 
-syntheticoperators_SOURCES = syntheticoperators.cc stub_libmem.cc $(DEBUG_SOURCE)
-
-VirtualDeleteOperator_SOURCES = VirtualDeleteOperator.cc stub_libmem.cc $(DEBUG_SOURCE)
+VirtualDeleteOperator_SOURCES = \
+	$(DEBUG_SOURCE) \
+	VirtualDeleteOperator.cc \
+	stub_libmem.cc
 
 ## membanger won't link today. Bitrot..
 ##CC	= gcc

@@ -11,10 +11,12 @@
 #ifndef SQUID_URN_H_
 #define SQUID_URN_H_
 
+#include "log/forward.h"
+
 class HttpRequest;
 class StoreEntry;
 
-void urnStart(HttpRequest *, StoreEntry *);
+void urnStart(HttpRequest *, StoreEntry *, const AccessLogEntryPointer &ale);
 
 #endif /* SQUID_URN_H_ */
 

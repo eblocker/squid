@@ -100,7 +100,7 @@ am__aclocal_m4_deps = $(top_srcdir)/acinclude/ax_with_prog.m4 \
 	$(top_srcdir)/acinclude/compiler-flags.m4 \
 	$(top_srcdir)/acinclude/os-deps.m4 \
 	$(top_srcdir)/acinclude/krb5.m4 $(top_srcdir)/acinclude/pam.m4 \
-	$(top_srcdir)/acinclude/pkg.m4 \
+	$(top_srcdir)/acinclude/pkg.m4 $(top_srcdir)/acinclude/tdb.m4 \
 	$(top_srcdir)/acinclude/lib-checks.m4 \
 	$(top_srcdir)/acinclude/ax_cxx_compile_stdcxx_11.m4 \
 	$(top_srcdir)/acinclude/ax_cxx_0x_types.m4 \
@@ -142,6 +142,7 @@ am__aclocal_m4_deps = $(top_srcdir)/acinclude/ax_with_prog.m4 \
 	$(top_srcdir)/src/acl/external/eDirectory_userip/required.m4 \
 	$(top_srcdir)/src/acl/external/file_userip/required.m4 \
 	$(top_srcdir)/src/acl/external/kerberos_ldap_group/required.m4 \
+	$(top_srcdir)/src/acl/external/kerberos_sid_group/required.m4 \
 	$(top_srcdir)/src/acl/external/session/required.m4 \
 	$(top_srcdir)/src/acl/external/time_quota/required.m4 \
 	$(top_srcdir)/src/acl/external/unix_group/required.m4 \
@@ -165,16 +166,16 @@ CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
 LTLIBRARIES = $(noinst_LTLIBRARIES)
 libDiskThreads_la_LIBADD =
-am__libDiskThreads_la_SOURCES_DIST = async_io.cc CommIO.cc CommIO.h \
-	DiskThreads.h DiskThreadsDiskFile.cc DiskThreadsDiskFile.h \
+am__libDiskThreads_la_SOURCES_DIST = CommIO.cc CommIO.h DiskThreads.h \
+	DiskThreadsDiskFile.cc DiskThreadsDiskFile.h \
 	DiskThreadsDiskIOModule.cc DiskThreadsDiskIOModule.h \
-	DiskThreadsIOStrategy.cc DiskThreadsIOStrategy.h \
+	DiskThreadsIOStrategy.cc DiskThreadsIOStrategy.h async_io.cc \
 	aiops_win32.cc aiops.cc
 @ENABLE_WIN32_AIOPS_TRUE@am__objects_1 = aiops_win32.lo
 @ENABLE_WIN32_AIOPS_FALSE@am__objects_2 = aiops.lo
-am_libDiskThreads_la_OBJECTS = async_io.lo CommIO.lo \
-	DiskThreadsDiskFile.lo DiskThreadsDiskIOModule.lo \
-	DiskThreadsIOStrategy.lo $(am__objects_1) $(am__objects_2)
+am_libDiskThreads_la_OBJECTS = CommIO.lo DiskThreadsDiskFile.lo \
+	DiskThreadsDiskIOModule.lo DiskThreadsIOStrategy.lo \
+	async_io.lo $(am__objects_1) $(am__objects_2)
 libDiskThreads_la_OBJECTS = $(am_libDiskThreads_la_OBJECTS)
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
@@ -547,11 +548,13 @@ KRB5LIBS = @KRB5LIBS@
 LBERLIB = @LBERLIB@
 LD = @LD@
 LDAPLIB = @LDAPLIB@
+LDAPSEARCH = @LDAPSEARCH@
 LDFLAGS = @LDFLAGS@
 LIBADD_DL = @LIBADD_DL@
 LIBADD_DLD_LINK = @LIBADD_DLD_LINK@
 LIBADD_DLOPEN = @LIBADD_DLOPEN@
 LIBADD_SHL_LOAD = @LIBADD_SHL_LOAD@
+LIBBDB_LIBS = @LIBBDB_LIBS@
 LIBCPPUNIT_CFLAGS = @LIBCPPUNIT_CFLAGS@
 LIBCPPUNIT_LIBS = @LIBCPPUNIT_LIBS@
 LIBGNUTLS_CFLAGS = @LIBGNUTLS_CFLAGS@
@@ -563,6 +566,8 @@ LIBOPENSSL_LIBS = @LIBOPENSSL_LIBS@
 LIBPTHREADS = @LIBPTHREADS@
 LIBS = @LIBS@
 LIBSASL = @LIBSASL@
+LIBTDB_CFLAGS = @LIBTDB_CFLAGS@
+LIBTDB_LIBS = @LIBTDB_LIBS@
 LIBTOOL = @LIBTOOL@
 LIBXML2_CFLAGS = @LIBXML2_CFLAGS@
 LIBXML2_LIBS = @LIBXML2_LIBS@
@@ -737,10 +742,10 @@ AM_CPPFLAGS = -I$(top_srcdir) -I$(top_srcdir)/include \
 COMPAT_LIB = $(top_builddir)/compat/libcompatsquid.la $(LIBPROFILER)
 subst_perlshell = sed -e 's,[@]PERL[@],$(PERL),g' <$(srcdir)/$@.pl.in >$@ || ($(RM) -f $@ ; exit 1)
 noinst_LTLIBRARIES = libDiskThreads.la
-libDiskThreads_la_SOURCES = async_io.cc CommIO.cc CommIO.h \
-	DiskThreads.h DiskThreadsDiskFile.cc DiskThreadsDiskFile.h \
+libDiskThreads_la_SOURCES = CommIO.cc CommIO.h DiskThreads.h \
+	DiskThreadsDiskFile.cc DiskThreadsDiskFile.h \
 	DiskThreadsDiskIOModule.cc DiskThreadsDiskIOModule.h \
-	DiskThreadsIOStrategy.cc DiskThreadsIOStrategy.h \
+	DiskThreadsIOStrategy.cc DiskThreadsIOStrategy.h async_io.cc \
 	$(am__append_2) $(am__append_3)
 @ENABLE_WIN32_AIOPS_FALSE@EXTRA_DIST = aiops_win32.cc
 @ENABLE_WIN32_AIOPS_TRUE@EXTRA_DIST = aiops.cc

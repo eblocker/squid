@@ -152,7 +152,7 @@ Adaptation::Ecap::Engine::kickAsyncServices(timeval &timeout)
 /* Adaptation::Ecap::ServiceRep */
 
 Adaptation::Ecap::ServiceRep::ServiceRep(const ServiceConfigPointer &cfg):
-/*AsyncJob("Adaptation::Ecap::ServiceRep"),*/ Adaptation::Service(cfg),
+    /*AsyncJob("Adaptation::Ecap::ServiceRep"),*/ Adaptation::Service(cfg),
     isDetached(false)
 {
 }
@@ -248,7 +248,7 @@ bool Adaptation::Ecap::ServiceRep::wantsUrl(const SBuf &urlPath) const
 }
 
 Adaptation::Initiate *
-Adaptation::Ecap::ServiceRep::makeXactLauncher(HttpMsg *virgin,
+Adaptation::Ecap::ServiceRep::makeXactLauncher(Http::Message *virgin,
         HttpRequest *cause, AccessLogEntry::Pointer &alp)
 {
     Must(up());

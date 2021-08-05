@@ -92,7 +92,7 @@ testHdrVisit()
 }
 
 int
-main(int argc, char **argv)
+main(int, char *[])
 {
     assert (mem_node::InUseCount() == 0);
     testLowAndHigh();
@@ -101,6 +101,6 @@ main(int argc, char **argv)
     assert (mem_node::InUseCount() == 0);
     testHdrVisit();
     assert (mem_node::InUseCount() == 0);
-    return 0;
+    return EXIT_SUCCESS;
 }
 

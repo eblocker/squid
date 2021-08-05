@@ -28,7 +28,7 @@
 #include "clientStream.h"
 #include "comm/Connection.h"
 #include "comm/Write.h"
-#include "err_detail_type.h"
+#include "error/Detail.h"
 #include "errorpage.h"
 #include "fd.h"
 #include "fde.h"
@@ -41,12 +41,14 @@
 #include "HttpHdrCc.h"
 #include "HttpReply.h"
 #include "HttpRequest.h"
+#include "ip/NfMarkConfig.h"
 #include "ip/QosConfig.h"
 #include "ipcache.h"
 #include "log/access_log.h"
 #include "MemObject.h"
 #include "Parsing.h"
 #include "profiler/Profiler.h"
+#include "proxyp/Header.h"
 #include "redirect.h"
 #include "rfc1738.h"
 #include "SquidConfig.h"
@@ -79,24 +81,24 @@
 static const char *const crlf = "\r\n";
 
 #if FOLLOW_X_FORWARDED_FOR
-static void clientFollowXForwardedForCheck(allow_t answer, void *data);
+static void clientFollowXForwardedForCheck(Acl::Answer answer, void *data);
 #endif /* FOLLOW_X_FORWARDED_FOR */
 
-ErrorState *clientBuildError(err_type, Http::StatusCode, char const *url, Ip::Address &, HttpRequest *);
+ErrorState *clientBuildError(err_type, Http::StatusCode, char const *url, Ip::Address &, HttpRequest *, const AccessLogEntry::Pointer &);
 
 CBDATA_CLASS_INIT(ClientRequestContext);
 
 /* Local functions */
 /* other */
-static void clientAccessCheckDoneWrapper(allow_t, void *);
+static void clientAccessCheckDoneWrapper(Acl::Answer, void *);
 #if USE_OPENSSL
-static void sslBumpAccessCheckDoneWrapper(allow_t, void *);
+static void sslBumpAccessCheckDoneWrapper(Acl::Answer, void *);
 #endif
 static int clientHierarchical(ClientHttpRequest * http);
 static void clientInterpretRequestHeaders(ClientHttpRequest * http);
 static HLPCB clientRedirectDoneWrapper;
 static HLPCB clientStoreIdDoneWrapper;
-static void checkNoCacheDoneWrapper(allow_t, void *);
+static void checkNoCacheDoneWrapper(Acl::Answer, void *);
 SQUIDCEXTERN CSR clientGetMoreData;
 SQUIDCEXTERN CSS clientReplyStatus;
 SQUIDCEXTERN CSD clientReplyDetach;
@@ -131,8 +133,7 @@ ClientRequestContext::ClientRequestContext(ClientHttpRequest *anHttp) :
     store_id_done(false),
     no_cache_done(false),
     interpreted_req_hdrs(false),
-    tosToClientDone(false),
-    nfmarkToClientDone(false),
+    toClientMarkingDone(false),
 #if USE_OPENSSL
     sslBumpCheckDone(false),
 #endif
@@ -152,12 +153,11 @@ ClientHttpRequest::ClientHttpRequest(ConnStateData * aConn) :
     uri(NULL),
     log_uri(NULL),
     req_sz(0),
-    logType(LOG_TAG_NONE),
     calloutContext(NULL),
     maxReplyBodySize_(0),
     entry_(NULL),
     loggingEntry_(NULL),
-    conn_(NULL)
+    conn_(cbdataReference(aConn))
 #if USE_OPENSSL
     , sslBumpNeed_(Ssl::bumpEnd)
 #endif
@@ -166,13 +166,15 @@ ClientHttpRequest::ClientHttpRequest(ConnStateData * aConn) :
     , request_satisfaction_offset(0)
 #endif
 {
-    setConn(aConn);
     al = new AccessLogEntry;
+    CodeContext::Reset(al);
     al->cache.start_time = current_time;
     if (aConn) {
         al->tcpClient = clientConnection = aConn->clientConnection;
         al->cache.port = aConn->port;
         al->cache.caddr = aConn->log_addr;
+        al->proxyProtocolHeader = aConn->proxyProtocolHeader();
+        al->updateError(aConn->bareError);
 
 #if USE_OPENSSL
         if (aConn->clientConnection != NULL && aConn->clientConnection->isOpen()) {
@@ -283,7 +285,7 @@ ClientHttpRequest::~ClientHttpRequest()
     loggingEntry(NULL);
 
     if (request)
-        checkFailureRatio(request->errType, al->hier.code);
+        checkFailureRatio(request->error.category, al->hier.code);
 
     freeResources();
 
@@ -370,10 +372,7 @@ clientBeginRequest(const HttpRequestMethod& method, char const *url, CSCB * stre
     /* this is an internally created
      * request, not subject to acceleration
      * target overrides */
-    /*
-     * FIXME? Do we want to detect and handle internal requests of internal
-     * objects ?
-     */
+    // TODO: detect and handle internal requests of internal objects?
 
     /* Internally created requests cannot have bodies today */
     request->content_length = 0;
@@ -437,7 +436,7 @@ ClientRequestContext::httpStateIsValid()
  * ++ indirect_client_addr contains the remote direct client from the trusted peers viewpoint.
  */
 static void
-clientFollowXForwardedForCheck(allow_t answer, void *data)
+clientFollowXForwardedForCheck(Acl::Answer answer, void *data)
 {
     ClientRequestContext *calloutContext = (ClientRequestContext *) data;
 
@@ -504,7 +503,7 @@ clientFollowXForwardedForCheck(allow_t answer, void *data)
     request->x_forwarded_for_iterator.clean();
     request->flags.done_follow_x_forwarded_for = true;
 
-    if (!answer.someRuleMatched()) {
+    if (answer.conflicted()) {
         debugs(28, DBG_CRITICAL, "ERROR: Processing X-Forwarded-For. Stopping at IP address: " << request->indirect_client_addr );
     }
 
@@ -528,17 +527,12 @@ ClientRequestContext::hostHeaderIpVerify(const ipcache_addrs* ia, const Dns::Loo
     // note the DNS details for the transaction stats.
     http->request->recordLookup(dns);
 
-    if (ia != NULL && ia->count > 0) {
-        // Is the NAT destination IP in DNS?
-        for (int i = 0; i < ia->count; ++i) {
-            if (clientConn->local.matchIPAddr(ia->in_addrs[i]) == 0) {
-                debugs(85, 3, HERE << "validate IP " << clientConn->local << " possible from Host:");
-                http->request->flags.hostVerified = true;
-                http->doCallouts();
-                return;
-            }
-            debugs(85, 3, HERE << "validate IP " << clientConn->local << " non-match from Host: IP " << ia->in_addrs[i]);
-        }
+    // Is the NAT destination IP in DNS?
+    if (ia && ia->have(clientConn->local)) {
+        debugs(85, 3, "validate IP " << clientConn->local << " possible from Host:");
+        http->request->flags.hostVerified = true;
+        http->doCallouts();
+        return;
     }
     debugs(85, 3, HERE << "FAIL: validate IP " << clientConn->local << " possible from Host:");
     hostHeaderVerifyFailed("local IP", "any domain IP");
@@ -732,7 +726,7 @@ ClientRequestContext::clientAccessCheck2()
 }
 
 void
-clientAccessCheckDoneWrapper(allow_t answer, void *data)
+clientAccessCheckDoneWrapper(Acl::Answer answer, void *data)
 {
     ClientRequestContext *calloutContext = (ClientRequestContext *) data;
 
@@ -743,7 +737,7 @@ clientAccessCheckDoneWrapper(allow_t answer, void *data)
 }
 
 void
-ClientRequestContext::clientAccessCheckDone(const allow_t &answer)
+ClientRequestContext::clientAccessCheckDone(const Acl::Answer &answer)
 {
     acl_checklist = NULL;
     err_type page_id;
@@ -781,7 +775,7 @@ ClientRequestContext::clientAccessCheckDone(const allow_t &answer)
          */
         page_id = aclGetDenyInfoPage(&Config.denyInfoList, AclMatchedName, answer != ACCESS_AUTH_REQUIRED);
 
-        http->logType = LOG_TCP_DENIED;
+        http->logType.update(LOG_TCP_DENIED);
 
         if (auth_challenge) {
 #if USE_AUTH
@@ -813,7 +807,7 @@ ClientRequestContext::clientAccessCheckDone(const allow_t &answer)
         error = clientBuildError(page_id, status,
                                  NULL,
                                  http->getConn() != NULL ? http->getConn()->clientConnection->remote : tmpnoaddr,
-                                 http->request
+                                 http->request, http->al
                                 );
 
 #if USE_AUTH
@@ -865,7 +859,7 @@ ClientHttpRequest::noteAdaptationAclCheckDone(Adaptation::ServiceGroupPointer g)
 #endif
 
 static void
-clientRedirectAccessCheckDone(allow_t answer, void *data)
+clientRedirectAccessCheckDone(Acl::Answer answer, void *data)
 {
     ClientRequestContext *context = (ClientRequestContext *)data;
     ClientHttpRequest *http = context->http;
@@ -883,7 +877,7 @@ void
 ClientRequestContext::clientRedirectStart()
 {
     debugs(33, 5, HERE << "'" << http->uri << "'");
-    (void)SyncNotes(*http->al, *http->request);
+    http->al->syncNotes(http->request);
     if (Config.accessList.redirector) {
         acl_checklist = clientAclChecklistCreate(Config.accessList.redirector, http);
         acl_checklist->nonBlockingCheck(clientRedirectAccessCheckDone, this);
@@ -896,7 +890,7 @@ ClientRequestContext::clientRedirectStart()
  * Will handle as "ERR" (no change) in a case Access is not allowed.
  */
 static void
-clientStoreIdAccessCheckDone(allow_t answer, void *data)
+clientStoreIdAccessCheckDone(Acl::Answer answer, void *data)
 {
     ClientRequestContext *context = static_cast<ClientRequestContext *>(data);
     ClientHttpRequest *http = context->http;
@@ -1123,8 +1117,6 @@ clientInterpretRequestHeaders(ClientHttpRequest * http)
          */
 
         if (strListIsSubstr(&s, ThisCache2, ',')) {
-            debugObj(33, 1, "WARNING: Forwarding loop detected for:\n",
-                     request, (ObjPackMethod) & httpRequestPack);
             request->flags.loopDetected = true;
         }
 
@@ -1134,6 +1126,19 @@ clientInterpretRequestHeaders(ClientHttpRequest * http)
 #endif
 
         s.clean();
+    }
+
+    // headers only relevant to reverse-proxy
+    if (request->flags.accelerated) {
+        // check for a cdn-info member with a cdn-id matching surrogate_id
+        // XXX: HttpHeader::hasListMember() does not handle OWS around ";" yet
+        if (req_hdr->hasListMember(Http::HdrType::CDN_LOOP, Config.Accel.surrogate_id, ','))
+            request->flags.loopDetected = true;
+    }
+
+    if (request->flags.loopDetected) {
+        debugObj(33, DBG_IMPORTANT, "WARNING: Forwarding loop detected for:\n",
+                 request, (ObjPackMethod) & httpRequestPack);
     }
 
 #if USE_FORW_VIA_DB
@@ -1192,15 +1197,16 @@ ClientRequestContext::clientRedirectDone(const Helper::Reply &reply)
 
     // Put helper response Notes into the transaction state record (ALE) eventually
     // do it early to ensure that no matter what the outcome the notes are present.
-    if (http->al != NULL)
-        (void)SyncNotes(*http->al, *old_request);
+    if (http->al)
+        http->al->syncNotes(old_request);
 
     UpdateRequestNotes(http->getConn(), *old_request, reply.notes);
 
     switch (reply.result) {
     case Helper::TimedOut:
         if (Config.onUrlRewriteTimeout.action != toutActBypass) {
-            http->calloutsError(ERR_GATEWAY_FAILURE, ERR_DETAIL_REDIRECTOR_TIMEDOUT);
+            static const auto d = MakeNamedErrorDetail("REDIRECTOR_TIMEDOUT");
+            http->calloutsError(ERR_GATEWAY_FAILURE, d);
             debugs(85, DBG_IMPORTANT, "ERROR: URL rewrite helper: Timedout");
         }
         break;
@@ -1287,7 +1293,7 @@ ClientRequestContext::clientRedirectDone(const Helper::Reply &reply)
     break;
     }
 
-    /* FIXME PIPELINE: This is innacurate during pipelining */
+    /* XXX PIPELINE: This is inaccurate during pipelining */
 
     if (http->getConn() != NULL && Comm::IsConnOpen(http->getConn()->clientConnection))
         fd_note(http->getConn()->clientConnection->fd, http->uri);
@@ -1310,8 +1316,8 @@ ClientRequestContext::clientStoreIdDone(const Helper::Reply &reply)
 
     // Put helper response Notes into the transaction state record (ALE) eventually
     // do it early to ensure that no matter what the outcome the notes are present.
-    if (http->al != NULL)
-        (void)SyncNotes(*http->al, *old_request);
+    if (http->al)
+        http->al->syncNotes(old_request);
 
     UpdateRequestNotes(http->getConn(), *old_request, reply.notes);
 
@@ -1366,7 +1372,7 @@ ClientRequestContext::checkNoCache()
 }
 
 static void
-checkNoCacheDoneWrapper(allow_t answer, void *data)
+checkNoCacheDoneWrapper(Acl::Answer answer, void *data)
 {
     ClientRequestContext *calloutContext = (ClientRequestContext *) data;
 
@@ -1377,7 +1383,7 @@ checkNoCacheDoneWrapper(allow_t answer, void *data)
 }
 
 void
-ClientRequestContext::checkNoCacheDone(const allow_t &answer)
+ClientRequestContext::checkNoCacheDone(const Acl::Answer &answer)
 {
     acl_checklist = NULL;
     if (answer.denied()) {
@@ -1464,7 +1470,7 @@ ClientRequestContext::sslBumpAccessCheck()
  * as ACLFilledChecklist callback
  */
 static void
-sslBumpAccessCheckDoneWrapper(allow_t answer, void *data)
+sslBumpAccessCheckDoneWrapper(Acl::Answer answer, void *data)
 {
     ClientRequestContext *calloutContext = static_cast<ClientRequestContext *>(data);
 
@@ -1474,7 +1480,7 @@ sslBumpAccessCheckDoneWrapper(allow_t answer, void *data)
 }
 
 void
-ClientRequestContext::sslBumpAccessCheckDone(const allow_t &answer)
+ClientRequestContext::sslBumpAccessCheckDone(const Acl::Answer &answer)
 {
     if (!httpStateIsValid())
         return;
@@ -1530,7 +1536,8 @@ void
 ClientHttpRequest::httpStart()
 {
     PROF_start(httpStart);
-    logType = LOG_TAG_NONE;
+    // XXX: Re-initializes rather than updates. Should not be needed at all.
+    logType.update(LOG_TAG_NONE);
     debugs(85, 4, logType.c_str() << " for '" << uri << "'");
 
     /* no one should have touched this */
@@ -1574,10 +1581,6 @@ ClientHttpRequest::sslBumpEstablish(Comm::Flag errflag)
         return;
     }
 
-    // We lack HttpReply which logRequest() uses to log the status code.
-    // TODO: Use HttpReply instead of the "200 Connection established" string.
-    al->http.code = 200;
-
 #if USE_AUTH
     // Preserve authentication info for the ssl-bumped request
     if (request->auth_user_request != NULL)
@@ -1585,7 +1588,7 @@ ClientHttpRequest::sslBumpEstablish(Comm::Flag errflag)
 #endif
 
     assert(sslBumpNeeded());
-    getConn()->switchToHttps(request, sslBumpNeed_);
+    getConn()->switchToHttps(this, sslBumpNeed_);
 }
 
 void
@@ -1606,20 +1609,32 @@ ClientHttpRequest::sslBumpStart()
         return;
     }
 
+    al->reply = HttpReply::MakeConnectionEstablished();
+
+    const auto mb = al->reply->pack();
     // send an HTTP 200 response to kick client SSL negotiation
     // TODO: Unify with tunnel.cc and add a Server(?) header
-    static const char *const conn_established = "HTTP/1.1 200 Connection established\r\n\r\n";
-    Comm::Write(getConn()->clientConnection, conn_established, strlen(conn_established), bumpCall, NULL);
+    Comm::Write(getConn()->clientConnection, mb, bumpCall);
+    delete mb;
 }
 
 #endif
 
+void
+ClientHttpRequest::updateError(const Error &error)
+{
+    if (request)
+        request->error.update(error);
+    else
+        al->updateError(error);
+}
+
 bool
 ClientHttpRequest::gotEnough() const
 {
-    /** TODO: should be querying the stream. */
+    // TODO: See also (and unify with) clientReplyContext::storeNotOKTransferDone()
     int64_t contentLength =
-        memObject()->getReply()->bodySize(request->method);
+        memObject()->baseReply().bodySize(request->method);
     assert(contentLength >= 0);
 
     if (out.offset < contentLength)
@@ -1651,19 +1666,15 @@ ClientHttpRequest::initRequest(HttpRequest *aRequest)
 {
     assignRequest(aRequest);
     if (const auto csd = getConn()) {
-        if (!csd->connectionTag().isEmpty()) {
-            if (!request->notes)
-                request->notes = new NotePairs;
-            // TODO: assert if "clt_conn_tag" already added?
-            request->notes->add("clt_conn_tag", SBuf(csd->connectionTag()).c_str());
-        }
+        if (!csd->notes()->empty())
+            request->notes()->appendNewOnly(csd->notes().getRaw());
     }
     // al is created in the constructor
     assert(al);
     if (!al->request) {
         al->request = request;
         HTTPMSGLOCK(al->request);
-        (void)SyncNotes(*al, *request);
+        al->syncNotes(request);
     }
 }
 
@@ -1729,7 +1740,7 @@ ClientHttpRequest::clearRequest()
  */
 
 tos_t aclMapTOS (acl_tos * head, ACLChecklist * ch);
-nfmark_t aclMapNfmark (acl_nfmark * head, ACLChecklist * ch);
+Ip::NfMarkConfig aclFindNfMarkConfig (acl_nfmark * head, ACLChecklist * ch);
 
 void
 ClientHttpRequest::doCallouts()
@@ -1808,31 +1819,27 @@ ClientHttpRequest::doCallouts()
         }
     } //  if !calloutContext->error
 
-    if (!calloutContext->tosToClientDone) {
-        calloutContext->tosToClientDone = true;
-        if (getConn() != NULL && Comm::IsConnOpen(getConn()->clientConnection)) {
-            ACLFilledChecklist ch(NULL, request, NULL);
-            ch.al = calloutContext->http->al;
-            ch.src_addr = request->client_addr;
-            ch.my_addr = request->my_addr;
-            ch.syncAle(request, log_uri);
+    // Set appropriate MARKs and CONNMARKs if needed.
+    if (getConn() && Comm::IsConnOpen(getConn()->clientConnection)) {
+        ACLFilledChecklist ch(nullptr, request, nullptr);
+        ch.al = calloutContext->http->al;
+        ch.src_addr = request->client_addr;
+        ch.my_addr = request->my_addr;
+        ch.syncAle(request, log_uri);
+
+        if (!calloutContext->toClientMarkingDone) {
+            calloutContext->toClientMarkingDone = true;
             tos_t tos = aclMapTOS(Ip::Qos::TheConfig.tosToClient, &ch);
             if (tos)
                 Ip::Qos::setSockTos(getConn()->clientConnection, tos);
-        }
-    }
 
-    if (!calloutContext->nfmarkToClientDone) {
-        calloutContext->nfmarkToClientDone = true;
-        if (getConn() != NULL && Comm::IsConnOpen(getConn()->clientConnection)) {
-            ACLFilledChecklist ch(NULL, request, NULL);
-            ch.al = calloutContext->http->al;
-            ch.src_addr = request->client_addr;
-            ch.my_addr = request->my_addr;
-            ch.syncAle(request, log_uri);
-            nfmark_t mark = aclMapNfmark(Ip::Qos::TheConfig.nfmarkToClient, &ch);
-            if (mark)
-                Ip::Qos::setSockNfmark(getConn()->clientConnection, mark);
+            const auto packetMark = aclFindNfMarkConfig(Ip::Qos::TheConfig.nfmarkToClient, &ch);
+            if (!packetMark.isEmpty())
+                Ip::Qos::setSockNfmark(getConn()->clientConnection, packetMark.mark);
+
+            const auto connmark = aclFindNfMarkConfig(Ip::Qos::TheConfig.nfConnmarkToClient, &ch);
+            if (!connmark.isEmpty())
+                Ip::Qos::setNfConnmark(getConn()->clientConnection, Ip::Qos::dirAccepted, connmark);
         }
     }
 
@@ -1858,7 +1865,7 @@ ClientHttpRequest::doCallouts()
             // We have to serve an error, so bump the client first.
             sslBumpNeed(Ssl::bumpClientFirst);
             // set final error but delay sending until we bump
-            Ssl::ServerBump *srvBump = new Ssl::ServerBump(request, e, Ssl::bumpClientFirst);
+            Ssl::ServerBump *srvBump = new Ssl::ServerBump(this, e, Ssl::bumpClientFirst);
             errorAppendEntry(e, calloutContext->error);
             calloutContext->error = NULL;
             getConn()->setServerBump(srvBump);
@@ -1947,10 +1954,6 @@ ClientHttpRequest::setErrorUri(const char *aUri)
     al->setVirginUrlForMissingRequest(errorUri);
 }
 
-#if !_USE_INLINE_
-#include "client_side_request.cci"
-#endif
-
 // XXX: This should not be a _request_ method. Move range_iter elsewhere.
 int64_t
 ClientHttpRequest::prepPartialResponseGeneration()
@@ -2000,26 +2003,27 @@ ClientHttpRequest::noteAdaptationAnswer(const Adaptation::Answer &answer)
 
     switch (answer.kind) {
     case Adaptation::Answer::akForward:
-        handleAdaptedHeader(const_cast<HttpMsg*>(answer.message.getRaw()));
+        handleAdaptedHeader(const_cast<Http::Message*>(answer.message.getRaw()));
         break;
 
     case Adaptation::Answer::akBlock:
         handleAdaptationBlock(answer);
         break;
 
-    case Adaptation::Answer::akError:
-        handleAdaptationFailure(ERR_DETAIL_CLT_REQMOD_ABORT, !answer.final);
+    case Adaptation::Answer::akError: {
+        static const auto d = MakeNamedErrorDetail("CLT_REQMOD_ABORT");
+        handleAdaptationFailure(d, !answer.final);
         break;
+    }
     }
 }
 
 void
-ClientHttpRequest::handleAdaptedHeader(HttpMsg *msg)
+ClientHttpRequest::handleAdaptedHeader(Http::Message *msg)
 {
     assert(msg);
 
     if (HttpRequest *new_req = dynamic_cast<HttpRequest*>(msg)) {
-
         // update the new message to flag whether URL re-writing was done on it
         if (request->effectiveRequestUri() != new_req->effectiveRequestUri())
             new_req->flags.redirected = true;
@@ -2045,6 +2049,8 @@ ClientHttpRequest::handleAdaptedHeader(HttpMsg *msg)
         storeEntry()->replaceHttpReply(new_rep);
         storeEntry()->timestampsSet();
 
+        al->reply = new_rep;
+
         if (!adaptedBodySource) // no body
             storeEntry()->complete();
         clientGetMoreData(node, this);
@@ -2060,7 +2066,8 @@ ClientHttpRequest::handleAdaptedHeader(HttpMsg *msg)
 void
 ClientHttpRequest::handleAdaptationBlock(const Adaptation::Answer &answer)
 {
-    request->detailError(ERR_ACCESS_DENIED, ERR_DETAIL_REQMOD_BLOCK);
+    static const auto d = MakeNamedErrorDetail("REQMOD_BLOCK");
+    request->detailError(ERR_ACCESS_DENIED, d);
     AclMatchedName = answer.ruleId.termedBuf();
     assert(calloutContext);
     calloutContext->clientAccessCheckDone(ACCESS_DENIED);
@@ -2141,17 +2148,19 @@ ClientHttpRequest::noteBodyProducerAborted(BodyPipe::Pointer)
 
     debugs(85,3, HERE << "REQMOD body production failed");
     if (request_satisfaction_mode) { // too late to recover or serve an error
-        request->detailError(ERR_ICAP_FAILURE, ERR_DETAIL_CLT_REQMOD_RESP_BODY);
+        static const auto d = MakeNamedErrorDetail("CLT_REQMOD_RESP_BODY");
+        request->detailError(ERR_ICAP_FAILURE, d);
         const Comm::ConnectionPointer c = getConn()->clientConnection;
         Must(Comm::IsConnOpen(c));
         c->close(); // drastic, but we may be writing a response already
     } else {
-        handleAdaptationFailure(ERR_DETAIL_CLT_REQMOD_REQ_BODY);
+        static const auto d = MakeNamedErrorDetail("CLT_REQMOD_REQ_BODY");
+        handleAdaptationFailure(d);
     }
 }
 
 void
-ClientHttpRequest::handleAdaptationFailure(int errDetail, bool bypassable)
+ClientHttpRequest::handleAdaptationFailure(const ErrorDetail::Pointer &errDetail, bool bypassable)
 {
     debugs(85,3, HERE << "handleAdaptationFailure(" << bypassable << ")");
 
@@ -2197,7 +2206,7 @@ ClientHttpRequest::callException(const std::exception &ex)
 
 // XXX: modify and use with ClientRequestContext::clientAccessCheckDone too.
 void
-ClientHttpRequest::calloutsError(const err_type error, const int errDetail)
+ClientHttpRequest::calloutsError(const err_type error, const ErrorDetail::Pointer &errDetail)
 {
     // The original author of the code also wanted to pass an errno to
     // setReplyToError, but it seems unlikely that the errno reflects the
@@ -2209,7 +2218,8 @@ ClientHttpRequest::calloutsError(const err_type error, const int errDetail)
         calloutContext->error = clientBuildError(error, Http::scInternalServerError,
                                 NULL,
                                 c != NULL ? c->clientConnection->remote : noAddr,
-                                request
+                                request,
+                                al
                                                 );
 #if USE_AUTH
         calloutContext->error->auth_user_request =

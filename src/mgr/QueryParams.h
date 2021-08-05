@@ -13,7 +13,7 @@
 
 #include "ipc/forward.h"
 #include "mgr/QueryParam.h"
-#include "parser/Tokenizer.h"
+#include "parser/forward.h"
 #include "SquidString.h"
 
 #include <utility>

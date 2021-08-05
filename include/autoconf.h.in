@@ -155,9 +155,6 @@
 /* define if the compiler supports basic C++11 syntax */
 #undef HAVE_CXX11
 
-/* Define to 1 if you have the <db_185.h> header file. */
-#undef HAVE_DB_185_H
-
 /* Define to 1 if you have the <db.h> header file. */
 #undef HAVE_DB_H
 
@@ -524,6 +521,9 @@
 
 /* "Define to 1 if the OPENSSL_LH_strhash() OpenSSL API function exists" */
 #undef HAVE_LIBCRYPTO_OPENSSL_LH_STRHASH
+
+/* "Define to 1 if the X509_chain_up_ref() OpenSSL API function exists" */
+#undef HAVE_LIBCRYPTO_X509_CHAIN_UP_REF
 
 /* "Define to 1 if the X509_CRL_up_ref() OpenSSL API function exists" */
 #undef HAVE_LIBCRYPTO_X509_CRL_UP_REF
@@ -987,6 +987,9 @@
 /* SSL_CTX_get0_certificate is available */
 #undef HAVE_SSL_CTX_GET0_CERTIFICATE
 
+/* "Define to 1 of the SSL_get0_param() OpenSSL API function exists" */
+#undef HAVE_SSL_GET0_PARAM
+
 /* Define if sockaddr_storage has field ss_len */
 #undef HAVE_SS_LEN_IN_SS
 
@@ -1184,6 +1187,9 @@
 /* Define to 1 if you have the <sys/wait.h> header file. */
 #undef HAVE_SYS_WAIT_H
 
+/* Define to 1 if you have the <tdb.h> header file. */
+#undef HAVE_TDB_H
+
 /* Define to 1 if you have the `tempnam' function. */
 #undef HAVE_TEMPNAM
 
@@ -1252,6 +1258,10 @@
 
 /* Define to 1 if you have the <ws2tcpip.h> header file. */
 #undef HAVE_WS2TCPIP_H
+
+/* "Define to 1 if the X509_VERIFY_PARAM_set_auth_level() OpenSSL API function
+   exists" */
+#undef HAVE_X509_VERIFY_PARAM_SET_AUTH_LEVEL
 
 /* Define to 1 if you have the `__htole16' function. */
 #undef HAVE___HTOLE16
@@ -1464,14 +1474,14 @@
 /* Enable support for authentication */
 #undef USE_AUTH
 
+/* BerkleyDB support is available */
+#undef USE_BERKLEYDB
+
 /* Use Cache Digests for locating objects in neighbor caches. */
 #undef USE_CACHE_DIGESTS
 
 /* Enable support for cbdata debug information */
 #undef USE_CBDATA_DEBUG
-
-/* Enable chunked Memory Pools support (experimental) */
-#undef USE_CHUNKEDMEMPOOLS
 
 /* Traffic management via "delay pools". */
 #undef USE_DELAY_POOLS
@@ -1601,6 +1611,9 @@
 #endif
 
 
+/* Samba TrivialDB support is available */
+#undef USE_TRIVIALDB
+
 /* Enable useage of unlinkd */
 #undef USE_UNLINKD
 
@@ -1679,9 +1692,6 @@
    <pthread.h>, or <semaphore.h> is not used. If the typedef were allowed, the
    #define below would cause a syntax error. */
 #undef _UINT8_T
-
-/* Include inline methods into header file */
-#undef _USE_INLINE_
 
 /* Define so that glibc/gnulib argp.h does not typedef error_t. */
 #undef __error_t_defined

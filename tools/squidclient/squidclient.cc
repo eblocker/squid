@@ -125,7 +125,7 @@ usage(const char *progname)
             << "    -w password  Proxy authentication password" << std::endl
             << "    -W password  WWW authentication password" << std::endl
             ;
-    exit(1);
+    exit(EXIT_FAILURE);
 }
 
 static void
@@ -443,7 +443,7 @@ main(int argc, char *argv[])
         if (put_fd < 0) {
             int xerrno = errno;
             std::cerr << "ERROR: can't open file (" << xstrerr(xerrno) << ")" << std::endl;
-            exit(-1);
+            exit(EXIT_FAILURE);
         }
 #if _SQUID_WINDOWS_
         setmode(put_fd, O_BINARY);
@@ -635,7 +635,7 @@ main(int argc, char *argv[])
 
     Ping::DisplayStats();
     Transport::ShutdownTls();
-    return 0;
+    return EXIT_SUCCESS;
 }
 
 void
@@ -655,7 +655,7 @@ set_our_signal(void)
 
     if (sigaction(SIGPIPE, &sa, NULL) < 0) {
         std::cerr << "ERROR: Cannot set PIPE signal." << std::endl;
-        exit(-1);
+        exit(EXIT_FAILURE);
     }
 #else
     signal(SIGPIPE, pipe_handler);

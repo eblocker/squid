@@ -116,7 +116,7 @@ CreateSession(const Security::ContextPointer &ctx, const Comm::ConnectionPointer
 #if USE_OPENSSL || USE_GNUTLS
 
     const char *errAction = "with no TLS/SSL library";
-    int errCode = 0;
+    Security::LibErrorCode errCode = 0;
 #if USE_OPENSSL
     Security::SessionPointer session(Security::NewSessionObject(ctx));
     if (!session) {
@@ -159,9 +159,9 @@ CreateSession(const Security::ContextPointer &ctx, const Comm::ConnectionPointer
 #endif
 
             debugs(83, 5, "link FD " << fd << " to TLS session=" << (void*)session.get());
+
             fd_table[fd].ssl = session;
-            fd_table[fd].read_method = &tls_read_method;
-            fd_table[fd].write_method = &tls_write_method;
+            fd_table[fd].useBufferedIo(&tls_read_method, &tls_write_method);
             fd_note(fd, squidCtx);
             return true;
         }

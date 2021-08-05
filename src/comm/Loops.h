@@ -25,9 +25,6 @@ namespace Comm
 /// Initialize the module on Squid startup
 void SelectLoopInit(void);
 
-/// Mark an FD to be watched for its IO status.
-void SetSelect(int, unsigned int, PF *, void *, time_t);
-
 /// reset/undo/unregister the watch for an FD which was set by Comm::SetSelect()
 inline void
 ResetSelect(int fd)

@@ -18,6 +18,8 @@
 #include "acl/Tree.h"
 #include "anyp/PortCfg.h"
 #include "anyp/UriScheme.h"
+#include "auth/Config.h"
+#include "auth/Scheme.h"
 #include "AuthReg.h"
 #include "base/RunnersRegistry.h"
 #include "cache_cf.h"
@@ -31,15 +33,18 @@
 #include "ftp/Elements.h"
 #include "globals.h"
 #include "HttpHeaderTools.h"
+#include "HttpUpgradeProtocolAccess.h"
 #include "icmp/IcmpConfig.h"
 #include "ident/Config.h"
 #include "ip/Intercept.h"
+#include "ip/NfMarkConfig.h"
 #include "ip/QosConfig.h"
 #include "ip/tools.h"
 #include "ipc/Kids.h"
 #include "log/Config.h"
 #include "log/CustomLog.h"
 #include "MemBuf.h"
+#include "MessageDelayPools.h"
 #include "mgr/ActionPasswordList.h"
 #include "mgr/Registration.h"
 #include "neighbors.h"
@@ -52,6 +57,7 @@
 #include "RefreshPattern.h"
 #include "rfc1738.h"
 #include "sbuf/List.h"
+#include "sbuf/Stream.h"
 #include "SquidConfig.h"
 #include "SquidString.h"
 #include "ssl/ProxyCerts.h"
@@ -77,10 +83,6 @@
 #include "ssl/Config.h"
 #include "ssl/support.h"
 #endif
-#if USE_AUTH
-#include "auth/Config.h"
-#include "auth/Scheme.h"
-#endif
 #if USE_SQUID_ESI
 #include "esi/Parser.h"
 #endif
@@ -91,6 +93,7 @@
 #if HAVE_GLOB_H
 #include <glob.h>
 #endif
+#include <chrono>
 #include <limits>
 #include <list>
 #if HAVE_PWD_H
@@ -98,6 +101,9 @@
 #endif
 #if HAVE_GRP_H
 #include <grp.h>
+#endif
+#if HAVE_SYS_SOCKET_H
+#include <sys/socket.h>
 #endif
 #if HAVE_SYS_STAT_H
 #include <sys/stat.h>
@@ -133,6 +139,8 @@ static void free_ecap_service_type(Adaptation::Ecap::Config *);
 
 static peer_t parseNeighborType(const char *s);
 
+static const char *const T_NANOSECOND_STR = "nanosecond";
+static const char *const T_MICROSECOND_STR = "microsecond";
 static const char *const T_MILLISECOND_STR = "millisecond";
 static const char *const T_SECOND_STR = "second";
 static const char *const T_MINUTE_STR = "minute";
@@ -151,6 +159,9 @@ static const char *const B_GBYTES_STR = "GB";
 
 static const char *const list_sep = ", \t\n\r";
 
+// std::chrono::years requires C++20. Do our own rough calculation for now.
+static const double HoursPerYear = 24*365.2522;
+
 static void parse_access_log(CustomLog ** customlog_definitions);
 static int check_null_access_log(CustomLog *customlog_definitions);
 static void dump_access_log(StoreEntry * entry, const char *name, CustomLog * definitions);
@@ -159,7 +170,6 @@ static bool setLogformat(CustomLog *cl, const char *name, const bool dieWhenMiss
 
 static void configDoConfigure(void);
 static void parse_refreshpattern(RefreshPattern **);
-static uint64_t parseTimeUnits(const char *unit,  bool allowMsec);
 static void parse_u_short(unsigned short * var);
 static void parse_string(char **);
 static void default_all(void);
@@ -241,6 +251,10 @@ static void free_configuration_includes_quoted_values(bool *recognizeQuotedValue
 static void parse_on_unsupported_protocol(acl_access **access);
 static void dump_on_unsupported_protocol(StoreEntry *entry, const char *name, acl_access *access);
 static void free_on_unsupported_protocol(acl_access **access);
+static void ParseAclWithAction(acl_access **access, const Acl::Answer &action, const char *desc, ACL *acl = nullptr);
+static void parse_http_upgrade_request_protocols(HttpUpgradeProtocolAccess **protoGuards);
+static void dump_http_upgrade_request_protocols(StoreEntry *entry, const char *name, HttpUpgradeProtocolAccess *protoGuards);
+static void free_http_upgrade_request_protocols(HttpUpgradeProtocolAccess **protoGuards);
 
 /*
  * LegacyParser is a parser for legacy code that uses the global
@@ -534,9 +548,17 @@ parseOneConfigFile(const char *file_name, unsigned int depth)
             /* Handle includes here */
             if (tmp_line_len >= 9 && strncmp(tmp_line, "include", 7) == 0 && xisspace(tmp_line[7])) {
                 err_count += parseManyConfigFiles(tmp_line + 8, depth + 1);
-            } else if (!parse_line(tmp_line)) {
-                debugs(3, DBG_CRITICAL, HERE << cfg_filename << ":" << config_lineno << " unrecognized: '" << tmp_line << "'");
-                ++err_count;
+            } else {
+                try {
+                    if (!parse_line(tmp_line)) {
+                        debugs(3, DBG_CRITICAL, ConfigParser::CurrentLocation() << ": unrecognized: '" << tmp_line << "'");
+                        ++err_count;
+                    }
+                } catch (...) {
+                    // fatal for now
+                    debugs(3, DBG_CRITICAL, "configuration error: " << CurrentException);
+                    self_destruct();
+                }
             }
         }
 
@@ -588,13 +610,6 @@ parseConfigFileOrThrow(const char *file_name)
      * uid values.
      */
     configDoConfigure();
-
-    if (!Config.chroot_dir) {
-        leave_suid();
-        setUmask(Config.umask);
-        _db_init(Debug::cache_log, Debug::debugOptions);
-        enter_suid();
-    }
 
     if (opt_send_signal == -1) {
         Mgr::RegisterAction("config",
@@ -954,11 +969,19 @@ configDoConfigure(void)
      * state will be preserved.
      */
     if (Config.pipeline_max_prefetch > 0) {
-        Auth::Config *nego = Auth::Config::Find("Negotiate");
-        Auth::Config *ntlm = Auth::Config::Find("NTLM");
+        Auth::SchemeConfig *nego = Auth::SchemeConfig::Find("Negotiate");
+        Auth::SchemeConfig *ntlm = Auth::SchemeConfig::Find("NTLM");
         if ((nego && nego->active()) || (ntlm && ntlm->active())) {
             debugs(3, DBG_PARSE_NOTE(DBG_IMPORTANT), "WARNING: pipeline_prefetch breaks NTLM and Negotiate authentication. Forced pipeline_prefetch 0.");
             Config.pipeline_max_prefetch = 0;
+        }
+    }
+
+    for (auto &authSchemes : Auth::TheConfig.schemeLists) {
+        authSchemes.expand();
+        if (authSchemes.authConfigs.empty()) {
+            debugs(3, DBG_CRITICAL, "auth_schemes: at least one scheme name is required; got: " << authSchemes.rawSchemes);
+            self_destruct();
         }
     }
 #endif
@@ -1031,88 +1054,133 @@ parse_obsolete(const char *name)
     }
 }
 
-/* Parse a time specification from the config file.  Store the
- * result in 'tptr', after converting it to 'units' */
-static time_msec_t
-parseTimeLine(const char *units,  bool allowMsec,  bool expectMoreArguments = false)
+template <class MinimalUnit>
+static const char *
+TimeUnitToString()
 {
-    time_msec_t u = parseTimeUnits(units, allowMsec);
-    if (u == 0) {
-        self_destruct();
-        return 0;
+    const auto minUnit = MinimalUnit(1);
+    if(minUnit == std::chrono::nanoseconds(1))
+        return T_NANOSECOND_STR;
+    else if (minUnit == std::chrono::microseconds(1))
+        return T_MICROSECOND_STR;
+    else if (minUnit == std::chrono::milliseconds(1))
+        return T_MILLISECOND_STR;
+    else {
+        assert(minUnit >= std::chrono::seconds(1));
+        return T_SECOND_STR;
+    }
+}
+
+/// Assigns 'ns' the number of nanoseconds corresponding to 'unitName'.
+/// \param MinimalUnit is a chrono duration type specifying the minimal
+/// allowed time unit.
+/// \returns true if unitName is correct and its time unit is not less
+/// than MinimalUnit.
+template <class MinimalUnit>
+static bool
+parseTimeUnit(const char *unitName, std::chrono::nanoseconds &ns)
+{
+    if (!unitName)
+        throw TexcHere("missing time unit");
+
+    if (!strncasecmp(unitName, T_NANOSECOND_STR, strlen(T_NANOSECOND_STR)))
+        ns = std::chrono::nanoseconds(1);
+    else if (!strncasecmp(unitName, T_MICROSECOND_STR, strlen(T_MICROSECOND_STR)))
+        ns = std::chrono::microseconds(1);
+    else if (!strncasecmp(unitName, T_MILLISECOND_STR, strlen(T_MILLISECOND_STR)))
+        ns = std::chrono::milliseconds(1);
+    else if (!strncasecmp(unitName, T_SECOND_STR, strlen(T_SECOND_STR)))
+        ns = std::chrono::seconds(1);
+    else if (!strncasecmp(unitName, T_MINUTE_STR, strlen(T_MINUTE_STR)))
+        ns = std::chrono::minutes(1);
+    else if (!strncasecmp(unitName, T_HOUR_STR, strlen(T_HOUR_STR)))
+        ns = std::chrono::hours(1);
+    else if (!strncasecmp(unitName, T_DAY_STR, strlen(T_DAY_STR)))
+        ns = std::chrono::hours(24);
+    else if (!strncasecmp(unitName, T_WEEK_STR, strlen(T_WEEK_STR)))
+        ns = std::chrono::hours(24 * 7);
+    else if (!strncasecmp(unitName, T_FORTNIGHT_STR, strlen(T_FORTNIGHT_STR)))
+        ns = std::chrono::hours(24 * 14);
+    else if (!strncasecmp(unitName, T_MONTH_STR, strlen(T_MONTH_STR)))
+        ns = std::chrono::hours(24 * 30);
+    else if (!strncasecmp(unitName, T_YEAR_STR, strlen(T_YEAR_STR)))
+        ns = std::chrono::hours(static_cast<std::chrono::hours::rep>(HoursPerYear));
+    else if (!strncasecmp(unitName, T_DECADE_STR, strlen(T_DECADE_STR)))
+        ns = std::chrono::hours(static_cast<std::chrono::hours::rep>(HoursPerYear * 10));
+    else
+        return false;
+
+    if (ns < MinimalUnit(1)) {
+        throw TexcHere(ToSBuf("time unit '", unitName, "' is too small to be used in this context, the minimal unit is ",
+                              TimeUnitToString<MinimalUnit>()));
     }
 
-    char *token = ConfigParser::NextToken();
-    if (!token) {
-        self_destruct();
-        return 0;
+    return true;
+}
+
+static std::chrono::nanoseconds
+ToNanoSeconds(const double value, const std::chrono::nanoseconds &unit)
+{
+    if (value < 0.0)
+        throw TexcHere("time must have a positive value");
+
+    if (value > (static_cast<double>(std::chrono::nanoseconds::max().count()) / unit.count())) {
+        const auto maxYears = std::chrono::duration_cast<std::chrono::hours>(std::chrono::nanoseconds::max()).count()/HoursPerYear;
+        throw TexcHere(ToSBuf("time values cannot exceed ", maxYears, " years"));
     }
 
-    double d = xatof(token);
+    return std::chrono::duration_cast<std::chrono::nanoseconds>(unit * value);
+}
 
-    time_msec_t m = u; /* default to 'units' if none specified */
-
-    if (d) {
-        if ((token = ConfigParser::PeekAtToken()) && (m = parseTimeUnits(token, allowMsec))) {
-            (void)ConfigParser::NextToken();
-
-        } else if (!expectMoreArguments) {
-            self_destruct();
-            return 0;
-
-        } else {
-            token = NULL; // show default units if dying below
-            debugs(3, DBG_CRITICAL, "WARNING: No units on '" << config_input_line << "', assuming " << d << " " << units);
-        }
-    } else
-        token = NULL; // show default units if dying below.
-
-    const auto result = static_cast<time_msec_t>(m * d);
-
-    if (static_cast<double>(result) * 2 != m * d * 2) {
-        debugs(3, DBG_CRITICAL, "FATAL: Invalid value '" <<
-               d << " " << (token ? token : units) << ": integer overflow (time_msec_t).");
-        self_destruct();
+template <class TimeUnit>
+static TimeUnit
+FromNanoseconds(const std::chrono::nanoseconds &ns, const double parsedValue)
+{
+    const auto result = std::chrono::duration_cast<TimeUnit>(ns);
+    if (!result.count()) {
+        throw TexcHere(ToSBuf("time value '", parsedValue,
+                              "' is too small to be used in this context, the minimal value is 1 ",
+                              TimeUnitToString<TimeUnit>()));
     }
     return result;
 }
 
-static uint64_t
-parseTimeUnits(const char *unit, bool allowMsec)
+/// Parses a time specification from the config file and
+/// returns the time as a chrono duration object of 'TimeUnit' type.
+template <class TimeUnit>
+static TimeUnit
+parseTimeLine()
 {
-    if (allowMsec && !strncasecmp(unit, T_MILLISECOND_STR, strlen(T_MILLISECOND_STR)))
-        return 1;
+    const auto valueToken = ConfigParser::NextToken();
+    if (!valueToken)
+        throw TexcHere("cannot read a time value");
 
-    if (!strncasecmp(unit, T_SECOND_STR, strlen(T_SECOND_STR)))
-        return 1000;
+    const auto parsedValue = xatof(valueToken);
 
-    if (!strncasecmp(unit, T_MINUTE_STR, strlen(T_MINUTE_STR)))
-        return 60 * 1000;
+    if (parsedValue == 0)
+        return TimeUnit::zero();
 
-    if (!strncasecmp(unit, T_HOUR_STR, strlen(T_HOUR_STR)))
-        return 3600 * 1000;
+    std::chrono::nanoseconds parsedUnitDuration;
 
-    if (!strncasecmp(unit, T_DAY_STR, strlen(T_DAY_STR)))
-        return 86400 * 1000;
+    const auto token = ConfigParser::PeekAtToken();
 
-    if (!strncasecmp(unit, T_WEEK_STR, strlen(T_WEEK_STR)))
-        return 86400 * 7 * 1000;
+    if (!parseTimeUnit<TimeUnit>(token, parsedUnitDuration))
+        throw TexcHere(ToSBuf("unknown time unit '", token, "'"));
 
-    if (!strncasecmp(unit, T_FORTNIGHT_STR, strlen(T_FORTNIGHT_STR)))
-        return 86400 * 14 * 1000;
+    (void)ConfigParser::NextToken();
 
-    if (!strncasecmp(unit, T_MONTH_STR, strlen(T_MONTH_STR)))
-        return static_cast<uint64_t>(86400) * 30 * 1000;
+    const auto nanoseconds = ToNanoSeconds(parsedValue, parsedUnitDuration);
 
-    if (!strncasecmp(unit, T_YEAR_STR, strlen(T_YEAR_STR)))
-        return static_cast<uint64_t>(86400 * 1000 * 365.2522);
+    // validate precisions (time-units-small only)
+    if (TimeUnit(1) <= std::chrono::microseconds(1)) {
+        if (0 < nanoseconds.count() && nanoseconds.count() < 3) {
+            debugs(3, DBG_PARSE_NOTE(DBG_IMPORTANT), ConfigParser::CurrentLocation() << ": WARNING: " <<
+                   "Squid time measurement precision is likely to be far worse than " <<
+                   "the nanosecond-level precision implied by the configured value: " << parsedValue << ' ' << token);
+        }
+    }
 
-    if (!strncasecmp(unit, T_DECADE_STR, strlen(T_DECADE_STR)))
-        return static_cast<uint64_t>(86400 * 1000 * 365.2522 * 10);
-
-    debugs(3, DBG_IMPORTANT, "parseTimeUnits: unknown time unit '" << unit << "'");
-
-    return 0;
+    return FromNanoseconds<TimeUnit>(nanoseconds, parsedValue);
 }
 
 static void
@@ -1279,7 +1347,7 @@ parseBytesOptionValue(size_t * bptr, const char *units, char const * value)
     }
 
     String number;
-    number.limitInit(number_begin, number_end - number_begin);
+    number.assign(number_begin, number_end - number_begin);
 
     int d = xatoi(number.termedBuf());
     int m;
@@ -1314,13 +1382,39 @@ parseBytesUnits(const char *unit)
 }
 
 static void
+parse_SBufList(SBufList * list)
+{
+    while (char *token = ConfigParser::NextQuotedToken())
+        list->push_back(SBuf(token));
+}
+
+// just dump a list, no directive name
+static void
 dump_SBufList(StoreEntry * entry, const SBufList &words)
 {
-    for (SBufList::const_iterator i = words.begin(); i != words.end(); ++i) {
-        entry->append(i->rawContent(), i->length());
+    for (const auto &i : words) {
+        entry->append(i.rawContent(), i.length());
         entry->append(" ",1);
     }
     entry->append("\n",1);
+}
+
+// dump a SBufList type directive with name
+static void
+dump_SBufList(StoreEntry * entry, const char *name, SBufList &list)
+{
+    if (!list.empty()) {
+        entry->append(name, strlen(name));
+        entry->append(" ", 1);
+        dump_SBufList(entry, list);
+    }
+}
+
+static void
+free_SBufList(SBufList *list)
+{
+    if (list)
+        list->clear();
 }
 
 static void
@@ -1517,10 +1611,7 @@ static void
 dump_acl_nfmark(StoreEntry * entry, const char *name, acl_nfmark * head)
 {
     for (acl_nfmark *l = head; l; l = l->next) {
-        if (l->nfmark > 0)
-            storeAppendPrintf(entry, "%s 0x%02X", name, l->nfmark);
-        else
-            storeAppendPrintf(entry, "%s none", name);
+        storeAppendPrintf(entry, "%s %s", name, ToSBuf(l->markConfig).c_str());
 
         dump_acl_list(entry, l->aclList);
 
@@ -1531,24 +1622,18 @@ dump_acl_nfmark(StoreEntry * entry, const char *name, acl_nfmark * head)
 static void
 parse_acl_nfmark(acl_nfmark ** head)
 {
-    nfmark_t mark;
-    char *token = ConfigParser::NextToken();
+    SBuf token(ConfigParser::NextToken());
+    const auto mc = Ip::NfMarkConfig::Parse(token);
 
-    if (!token) {
-        self_destruct();
-        return;
-    }
-
-    if (!xstrtoui(token, NULL, &mark, 0, std::numeric_limits<nfmark_t>::max())) {
-        self_destruct();
-        return;
-    }
+    // Packet marking directives should not allow to use masks.
+    const auto pkt_dirs = {"mark_client_packet", "clientside_mark", "tcp_outgoing_mark"};
+    if (mc.hasMask() && std::find(pkt_dirs.begin(), pkt_dirs.end(), cfg_directive) != pkt_dirs.end())
+        throw TexcHere(ToSBuf("'", cfg_directive, "' does not support masked marks"));
 
     acl_nfmark *l = new acl_nfmark;
+    l->markConfig = mc;
 
-    l->nfmark = mark;
-
-    aclParseAclList(LegacyParser, &l->aclList, token);
+    aclParseAclList(LegacyParser, &l->aclList, token.c_str());
 
     acl_nfmark **tail = head;   /* sane name below */
     while (*tail)
@@ -1669,7 +1754,7 @@ parse_delay_pool_access(DelayConfig * cfg)
 static void
 free_client_delay_pool_count(ClientDelayConfig * cfg)
 {
-    cfg->freePoolCount();
+    cfg->freePools();
 }
 
 static void
@@ -1804,7 +1889,7 @@ parse_authparam(Auth::ConfigVector * config)
     }
 
     /* find a configuration for the scheme in the currently parsed configs... */
-    Auth::Config *schemeCfg = Auth::Config::Find(type_str);
+    Auth::SchemeConfig *schemeCfg = Auth::SchemeConfig::Find(type_str);
 
     if (schemeCfg == NULL) {
         /* Create a configuration based on the scheme info */
@@ -1817,7 +1902,7 @@ parse_authparam(Auth::ConfigVector * config)
         }
 
         config->push_back(theScheme->createConfig());
-        schemeCfg = Auth::Config::Find(type_str);
+        schemeCfg = Auth::SchemeConfig::Find(type_str);
         if (schemeCfg == NULL) {
             debugs(3, DBG_CRITICAL, "Parsing Config File: Corruption configuring authentication scheme '" << type_str << "'.");
             self_destruct();
@@ -1843,13 +1928,44 @@ free_authparam(Auth::ConfigVector * cfg)
 static void
 dump_authparam(StoreEntry * entry, const char *name, Auth::ConfigVector cfg)
 {
-    for (Auth::ConfigVector::iterator  i = cfg.begin(); i != cfg.end(); ++i)
-        (*i)->dump(entry, name, (*i));
+    for (auto *scheme : cfg)
+        scheme->dump(entry, name, scheme);
 }
+
+static void
+parse_AuthSchemes(acl_access **authSchemes)
+{
+    const char *tok = ConfigParser::NextQuotedToken();
+    if (!tok) {
+        debugs(29, DBG_CRITICAL, "FATAL: auth_schemes missing the parameter");
+        self_destruct();
+        return;
+    }
+    Auth::TheConfig.schemeLists.emplace_back(tok, ConfigParser::LastTokenWasQuoted());
+    const auto action = Acl::Answer(ACCESS_ALLOWED, Auth::TheConfig.schemeLists.size() - 1);
+    ParseAclWithAction(authSchemes, action, "auth_schemes");
+}
+
+static void
+free_AuthSchemes(acl_access **authSchemes)
+{
+    Auth::TheConfig.schemeLists.clear();
+    free_acl_access(authSchemes);
+}
+
+static void
+dump_AuthSchemes(StoreEntry *entry, const char *name, acl_access *authSchemes)
+{
+    if (authSchemes)
+        dump_SBufList(entry, authSchemes->treeDump(name, [](const Acl::Answer &action) {
+        return Auth::TheConfig.schemeLists.at(action.kind).rawSchemes;
+    }));
+}
+
 #endif /* USE_AUTH */
 
 static void
-ParseAclWithAction(acl_access **access, const allow_t &action, const char *desc, ACL *acl = nullptr)
+ParseAclWithAction(acl_access **access, const Acl::Answer &action, const char *desc, ACL *acl)
 {
     assert(access);
     SBuf name;
@@ -2389,8 +2505,8 @@ dump_denyinfo(StoreEntry * entry, const char *name, AclDenyInfoList * var)
     while (var != NULL) {
         storeAppendPrintf(entry, "%s %s", name, var->err_page_name);
 
-        for (auto *a = var->acl_list; a != NULL; a = a->next)
-            storeAppendPrintf(entry, " %s", a->name);
+        for (const auto &aclName: var->acl_list)
+            storeAppendPrintf(entry, " " SQUIDSBUFPH, SQUIDSBUFPRINT(aclName));
 
         storeAppendPrintf(entry, "\n");
 
@@ -2922,8 +3038,11 @@ dump_time_t(StoreEntry * entry, const char *name, time_t var)
 void
 parse_time_t(time_t * var)
 {
-    time_msec_t tval = parseTimeLine(T_SECOND_STR, false);
-    *var = static_cast<time_t>(tval/1000);
+    const auto maxTime = std::numeric_limits<time_t>::max();
+    const auto seconds = parseTimeLine<std::chrono::seconds>();
+    if (maxTime < seconds.count())
+        throw TexcHere(ToSBuf("directive supports time values up to ", maxTime, " but is given ", seconds.count(), " seconds"));
+    *var = static_cast<time_t>(seconds.count());
 }
 
 static void
@@ -2944,7 +3063,7 @@ dump_time_msec(StoreEntry * entry, const char *name, time_msec_t var)
 void
 parse_time_msec(time_msec_t * var)
 {
-    *var = parseTimeLine(T_SECOND_STR, true);
+    *var = parseTimeLine<std::chrono::milliseconds>().count();
 }
 
 static void
@@ -2952,6 +3071,28 @@ free_time_msec(time_msec_t * var)
 {
     *var = 0;
 }
+
+#if UNUSED_CODE
+// TODO: add a parameter with 'time_nanoseconds' TYPE and uncomment
+static void
+dump_time_nanoseconds(StoreEntry *entry, const char *name, const std::chrono::nanoseconds &var)
+{
+    // std::chrono::nanoseconds::rep is unknown a priori so we cast to (and print) the largest supported integer
+    storeAppendPrintf(entry, "%s %jd nanoseconds\n", name, static_cast<intmax_t>(var.count()));
+}
+
+static void
+parse_time_nanoseconds(std::chrono::nanoseconds *var)
+{
+    *var = parseTimeLine<std::chrono::nanoseconds>();
+}
+
+static void
+free_time_nanoseconds(std::chrono::nanoseconds *var)
+{
+    *var = std::chrono::nanoseconds::zero();
+}
+#endif
 
 #if UNUSED_CODE
 static void
@@ -3464,7 +3605,7 @@ parsePortProtocol(const SBuf &value)
     // HTTP/1.0 not supported because we are version 1.1 which contains a superset of 1.0
     // and RFC 2616 requires us to upgrade 1.0 to 1.1
     if (value.cmp("HTTP") == 0 || value.cmp("HTTP/1.1") == 0)
-        return AnyP::ProtocolVersion(AnyP::PROTO_HTTP, 1,1);
+        return Http::ProtocolVersion(1,1);
 
     if (value.cmp("HTTPS") == 0 || value.cmp("HTTPS/1.1") == 0)
         return AnyP::ProtocolVersion(AnyP::PROTO_HTTPS, 1,1);
@@ -3682,6 +3823,14 @@ parse_port_option(AnyP::PortCfgPointer &s, char *token)
         s->secure.parse(token+4);
     } else if (strcmp(token, "ftp-track-dirs") == 0) {
         s->ftp_track_dirs = true;
+    } else if (strcmp(token, "worker-queues") == 0) {
+#if !defined(SO_REUSEADDR)
+#error missing system #include that #defines SO_* constants
+#endif
+#if !defined(SO_REUSEPORT)
+        throw TexcHere(ToSBuf(cfg_directive, ' ', token, " option requires building Squid where SO_REUSEPORT is supported by the TCP stack"));
+#endif
+        s->workerQueues = true;
     } else {
         debugs(3, DBG_CRITICAL, "FATAL: Unknown " << cfg_directive << " option '" << token << "'.");
         self_destruct();
@@ -4350,8 +4499,6 @@ dump_ecap_service_type(StoreEntry * entry, const char *name, const Adaptation::E
 static void parse_icap_service_failure_limit(Adaptation::Icap::Config *cfg)
 {
     char *token;
-    time_t d;
-    time_t m;
     cfg->service_failure_limit = GetInteger();
 
     if ((token = ConfigParser::NextToken()) == NULL)
@@ -4363,27 +4510,7 @@ static void parse_icap_service_failure_limit(Adaptation::Icap::Config *cfg)
         return;
     }
 
-    if ((token = ConfigParser::NextToken()) == NULL) {
-        self_destruct();
-        return;
-    }
-
-    d = static_cast<time_t> (xatoi(token));
-
-    m = static_cast<time_t> (1);
-
-    if (0 == d)
-        (void) 0;
-    else if ((token = ConfigParser::NextToken()) == NULL) {
-        debugs(3, DBG_CRITICAL, "No time-units on '" << config_input_line << "'");
-        self_destruct();
-        return;
-    } else if ((m = parseTimeUnits(token, false)) == 0) {
-        self_destruct();
-        return;
-    }
-
-    cfg->oldest_service_failure = (m * d);
+    parse_time_t(&cfg->oldest_service_failure);
 }
 
 static void dump_icap_service_failure_limit(StoreEntry *entry, const char *name, const Adaptation::Icap::Config &cfg)
@@ -4595,7 +4722,7 @@ static void parse_sslproxy_ssl_bump(acl_access **ssl_bump)
         sslBumpCfgRr::lastDeprecatedRule = Ssl::bumpEnd;
     }
 
-    allow_t action = allow_t(ACCESS_ALLOWED);
+    auto action = Acl::Answer(ACCESS_ALLOWED);
 
     if (strcmp(bm, Ssl::BumpModeStr[Ssl::bumpClientFirst]) == 0) {
         action.kind = Ssl::bumpClientFirst;
@@ -4658,7 +4785,7 @@ static void parse_sslproxy_ssl_bump(acl_access **ssl_bump)
 static void dump_sslproxy_ssl_bump(StoreEntry *entry, const char *name, acl_access *ssl_bump)
 {
     if (ssl_bump)
-        dump_SBufList(entry, ssl_bump->treeDump(name, [](const allow_t &action) {
+        dump_SBufList(entry, ssl_bump->treeDump(name, [](const Acl::Answer &action) {
         return Ssl::BumpModeStr.at(action.kind);
     }));
 }
@@ -4754,7 +4881,7 @@ static void free_note(Notes *notes)
 static bool FtpEspvDeprecated = false;
 static void parse_ftp_epsv(acl_access **ftp_epsv)
 {
-    allow_t ftpEpsvDeprecatedAction;
+    Acl::Answer ftpEpsvDeprecatedAction;
     bool ftpEpsvIsDeprecatedRule = false;
 
     char *t = ConfigParser::PeekAtToken();
@@ -4766,11 +4893,11 @@ static void parse_ftp_epsv(acl_access **ftp_epsv)
     if (!strcmp(t, "off")) {
         (void)ConfigParser::NextToken();
         ftpEpsvIsDeprecatedRule = true;
-        ftpEpsvDeprecatedAction = allow_t(ACCESS_DENIED);
+        ftpEpsvDeprecatedAction = Acl::Answer(ACCESS_DENIED);
     } else if (!strcmp(t, "on")) {
         (void)ConfigParser::NextToken();
         ftpEpsvIsDeprecatedRule = true;
-        ftpEpsvDeprecatedAction = allow_t(ACCESS_ALLOWED);
+        ftpEpsvDeprecatedAction = Acl::Answer(ACCESS_ALLOWED);
     }
 
     // Check for mixing "ftp_epsv on|off" and "ftp_epsv allow|deny .." rules:
@@ -4789,7 +4916,7 @@ static void parse_ftp_epsv(acl_access **ftp_epsv)
         delete *ftp_epsv;
         *ftp_epsv = nullptr;
 
-        if (ftpEpsvDeprecatedAction == allow_t(ACCESS_DENIED)) {
+        if (ftpEpsvDeprecatedAction == Acl::Answer(ACCESS_DENIED)) {
             if (ACL *a = ACL::FindByName("all"))
                 ParseAclWithAction(ftp_epsv, ftpEpsvDeprecatedAction, "ftp_epsv", a);
             else {
@@ -4815,11 +4942,45 @@ static void free_ftp_epsv(acl_access **ftp_epsv)
     FtpEspvDeprecated = false;
 }
 
+/// Like parseTimeLine() but does not require the timeunit to be specified.
+/// If missed, the default 'second' timeunit is assumed.
+static std::chrono::seconds
+ParseUrlRewriteTimeout()
+{
+    const auto timeValueToken = ConfigParser::NextToken();
+    if (!timeValueToken)
+        throw TexcHere("cannot read a time value");
+
+    using Seconds = std::chrono::seconds;
+
+    const auto parsedTimeValue = xatof(timeValueToken);
+
+    if (parsedTimeValue == 0)
+        return std::chrono::seconds::zero();
+
+    std::chrono::nanoseconds parsedUnitDuration;
+
+    const auto unitToken = ConfigParser::PeekAtToken();
+    if (parseTimeUnit<Seconds>(unitToken, parsedUnitDuration))
+        (void)ConfigParser::NextToken();
+    else {
+        const auto defaultParsed = parseTimeUnit<Seconds>(T_SECOND_STR, parsedUnitDuration);
+        assert(defaultParsed);
+        debugs(3, DBG_PARSE_NOTE(DBG_IMPORTANT), ConfigParser::CurrentLocation() <<
+               ": WARNING: missing time unit, using deprecated default '" << T_SECOND_STR << "'");
+    }
+
+    const auto nanoseconds = ToNanoSeconds(parsedTimeValue, parsedUnitDuration);
+
+    return FromNanoseconds<Seconds>(nanoseconds, parsedTimeValue);
+}
+
 static void
 parse_UrlHelperTimeout(SquidConfig::UrlHelperTimeout *config)
 {
-    const auto tval = parseTimeLine(T_SECOND_STR, false, true);
-    Config.Timeout.urlRewrite = static_cast<time_t>(tval/1000);
+    // TODO: do not allow optional timeunit (as the documentation prescribes)
+    // and use parseTimeLine() instead.
+    Config.Timeout.urlRewrite = ParseUrlRewriteTimeout().count();
 
     char *key, *value;
     while(ConfigParser::NextKvPair(key, value)) {
@@ -4919,7 +5080,7 @@ parse_on_unsupported_protocol(acl_access **access)
         return;
     }
 
-    allow_t action = allow_t(ACCESS_ALLOWED);
+    auto action = Acl::Answer(ACCESS_ALLOWED);
     if (strcmp(tm, "tunnel") == 0)
         action.kind = 1;
     else if (strcmp(tm, "respond") == 0)
@@ -4943,7 +5104,7 @@ dump_on_unsupported_protocol(StoreEntry *entry, const char *name, acl_access *ac
         "respond"
     };
     if (access) {
-        SBufList lines = access->treeDump(name, [](const allow_t &action) {
+        SBufList lines = access->treeDump(name, [](const Acl::Answer &action) {
             return onErrorTunnelMode.at(action.kind);
         });
         dump_SBufList(entry, lines);
@@ -4954,5 +5115,41 @@ static void
 free_on_unsupported_protocol(acl_access **access)
 {
     free_acl_access(access);
+}
+
+static void
+parse_http_upgrade_request_protocols(HttpUpgradeProtocolAccess **protoGuardsPtr)
+{
+    assert(protoGuardsPtr);
+    auto &protoGuards = *protoGuardsPtr;
+    if (!protoGuards)
+        protoGuards = new HttpUpgradeProtocolAccess();
+    protoGuards->configureGuard(LegacyParser);
+}
+
+static void
+dump_http_upgrade_request_protocols(StoreEntry *entry, const char *rawName, HttpUpgradeProtocolAccess *protoGuards)
+{
+    if (!protoGuards)
+        return;
+
+    const SBuf name(rawName);
+    protoGuards->forEach([entry,&name](const SBuf &proto, const acl_access *acls) {
+        SBufList line;
+        line.push_back(name);
+        line.push_back(proto);
+        const auto acld = acls->treeDump("", &Acl::AllowOrDeny);
+        line.insert(line.end(), acld.begin(), acld.end());
+        dump_SBufList(entry, line);
+    });
+}
+
+static void
+free_http_upgrade_request_protocols(HttpUpgradeProtocolAccess **protoGuardsPtr)
+{
+    assert(protoGuardsPtr);
+    auto &protoGuards = *protoGuardsPtr;
+    delete protoGuards;
+    protoGuards = nullptr;
 }
 

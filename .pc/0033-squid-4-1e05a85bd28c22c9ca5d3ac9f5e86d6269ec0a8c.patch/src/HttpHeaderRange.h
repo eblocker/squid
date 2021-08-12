@@ -18,11 +18,8 @@
 class HttpReply;
 class Packable;
 
-// TODO: Refactor to disambiguate and provide message-specific APIs.
-/// either byte-range-spec (in a request Range header)
-/// or suffix-byte-range-spec (in a request Range header)
-/// or byte-range part of byte-range-resp (in a response Content-Range header)
-/// or "*" part of unsatisfied-range (in a response Content-Range header)
+/* http byte-range-spec */
+
 class HttpHdrRangeSpec
 {
     MEMPROXY_CLASS(HttpHdrRangeSpec);

@@ -526,11 +526,8 @@ Client::haveParsedReplyHeaders()
     maybePurgeOthers();
 
     // adaptation may overwrite old offset computed using the virgin response
-    currentOffset = 0;
-    if (const auto cr = theFinalReply->contentRange()) {
-        if (cr->spec.offset != HttpHdrRangeSpec::UnknownPosition)
-            currentOffset = cr->spec.offset;
-    }
+    const bool partial = theFinalReply->contentRange();
+    currentOffset = partial ? theFinalReply->contentRange()->spec.offset : 0;
 }
 
 /// whether to prevent caching of an otherwise cachable response

@@ -1,3 +1,27 @@
+squid (4.6-1+deb10u6) buster-security; urgency=medium
+
+  [ Francisco Vilmar Cardoso Ruviaro ]
+  * Add debian/patches/0029-CVE-2021-28651.patch to fix a Denial
+    of Service in URN processing. (Closes: #988893, CVE-2021-28651)
+
+  [ Santiago Garcia Mantinan ]
+  * Add patch to fix a Denial of Service in HTTP Response Processing.
+    Fixes: CVE-2021-28662. Closes: #988891.
+  * Add patch to fix a Denial of Service issue in Cache Manager.
+    Fixes: CVE-2021-28652. Closes: #988892.
+  * Add patch to fix Multiple Issues in HTTP Range header.
+    Fixes: CVE-2021-31806 CVE-2021-31807 CVE-2021-31808. Closes: #989043.
+  * Add patch to fix a Denial of Service in HTTP Response processing.
+    Fixes: GHSA-572g-rvwr-6c7f.
+
+ -- Santiago Garcia Mantinan <manty@debian.org>  Mon, 31 May 2021 10:39:12 +0200
+
+squid (4.6-1+deb10u5) buster-security; urgency=medium
+
+  * SQUID-2020:11 HTTP Request Smuggling (CVE-2020-25097) (Closes: #985068)
+
+ -- Santiago García Mantiñán <manty@debian.org>  Mon, 22 Mar 2021 10:37:24 +0100
+
 squid (4.6-1+deb10u4) buster-security; urgency=high
 
   * Non-maintainer upload by the Security Team.
@@ -13,7 +37,7 @@ squid (4.6-1+deb10u3) buster-security; urgency=medium
   * CVE-2019-18860
   * CVE-2020-1504
 
- -- Moritz M�hlenhoff <jmm@debian.org>  Tue, 14 Jul 2020 22:25:06 +0200
+ -- Moritz Mühlenhoff <jmm@debian.org>  Tue, 14 Jul 2020 22:25:06 +0200
 
 squid (4.6-1+deb10u2) buster-security; urgency=high
 

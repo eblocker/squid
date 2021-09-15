@@ -1,3 +1,12 @@
+squid (5.1-1) unstable; urgency=medium
+
+  ext_session_acl and ext_time_quota_acl helpers have been switched from
+  deprecated BerkleyDB storage format to Samba TrivialDB. If issues are
+  encountered after upgrade the helper DB file(s) should be manually
+  removed and Squid restarted so the helper can rebuild a clean database.
+
+ -- Amos Jeffries <amosjeffries@squid-cache.org>  Thu, 16 Sep 2021 04:18:00 +1300
+
 squid (4.13-9) unstable; urgency=medium
 
   Current package flavours: squid (GnuTLS) and squid-openssl share config,

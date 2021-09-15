@@ -15,7 +15,6 @@ Build-Depends: ed, libltdl-dev, pkg-config
 	, dh-apparmor
 	, libcppunit-dev
 	, libcap2-dev [linux-any]
-	, libdb-dev
 	, libecap3-dev (>= 1.0.1-2)
 	, libexpat1-dev
 	, libgnutls28-dev (>= 3.5)
@@ -25,6 +24,7 @@ Build-Depends: ed, libltdl-dev, pkg-config
 	, libpam0g-dev
 	, libsasl2-dev
 	, libsystemd-dev [linux-any]
+	, libtdb-dev
 	, libxml2-dev
 	, nettle-dev
 	, libssl-dev

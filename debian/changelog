@@ -3,6 +3,9 @@ squid (5.1-1~exp3) unstable; urgency=medium
   [ Amos Jeffries <amosjeffries@squid-cache.org> ]
   * New Upstream Release (Closes: #984351, #943692)
 
+  * debian/control
+    - switch build-dep to libtdb-dev. libdb is deprecated
+
   * debian/patches/
     - refresh patches for new version
     - add 0004-Change-default-Makefiles-for-debian.patch
@@ -14,7 +17,7 @@ squid (5.1-1~exp3) unstable; urgency=medium
   * Drop squid3 upgrade compatibility. Debian has not contained
     a squid3 package for at least two full release cycles.
 
- -- Amos Jeffries <amosjeffries@squid-cache.org>  Thu, 16 Sep 2021 03:53:00 +1300
+ -- Amos Jeffries <amosjeffries@squid-cache.org>  Thu, 16 Sep 2021 04:18:00 +1300
 
 squid (4.13-10) unstable; urgency=medium
 

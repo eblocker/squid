@@ -6,10 +6,13 @@ squid (5.1-1~exp2) unstable; urgency=medium
   * debian/patches/
     - refresh patches for new version
 
+  * debian/rules
+    - remove basic_nis_auth helper
+
   * Drop squid3 upgrade compatibility. Debian has not contained
     a squid3 package for at least two full release cycles.
 
- -- Amos Jeffries <amosjeffries@squid-cache.org>  Wed, 15 Sep 2021 23:39:43 +1300
+ -- Amos Jeffries <amosjeffries@squid-cache.org>  Wed, 15 Sep 2021 23:43:18 +1300
 
 squid (4.13-10) unstable; urgency=medium
 

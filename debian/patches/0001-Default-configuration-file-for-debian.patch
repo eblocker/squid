@@ -14,7 +14,7 @@ index 588e0f81..c1356475 100644
  #
  # INSERT YOUR OWN RULE(S) HERE TO ALLOW ACCESS FROM YOUR CLIENTS
  #
-+include /etc/squid/conf.d/*
++include /etc/squid/conf.d/*.conf
  
  # Example rule allowing access from your local networks.
  # Adapt localnet in the ACL section to list your (internal) IP networks

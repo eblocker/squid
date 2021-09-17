@@ -19,7 +19,7 @@ squid (5.1-2) unstable; urgency=medium
   * Drop squid3 upgrade compatibility. Debian has not contained
     a squid3 package for at least two full release cycles.
 
- -- Amos Jeffries <amosjeffries@squid-cache.org>  Thu, 16 Sep 2021 14:29:00 +1300
+ -- Luigi Gangitano <luigi@debian.org>  Fri, 17 Sep 2021 09:27:54 +0200
 
 squid (4.13-10) unstable; urgency=medium
 

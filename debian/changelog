@@ -1,3 +1,11 @@
+squid (5.1-3) unstable; urgency=medium
+
+  [ Amos Jeffries <amosjeffries@squid-cache.org> ]
+  * debian/patches/
+    - add squid-6-678a2d29a69ee7b3e88641d2f9038cda72f57c64.patch (Closes: #976131)
+
+ -- Amos Jeffries <amosjeffries@squid-cache.org>  Mon, 20 Sep 2021 21:42:00 +1300
+
 squid (5.1-2) unstable; urgency=medium
 
   [ Amos Jeffries <amosjeffries@squid-cache.org> ]

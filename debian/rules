@@ -99,7 +99,7 @@ override_dh_auto_install:
 override_dh_installinit:
 	dh_installinit -psquid
 	dh_installinit -psquid-openssl --name=squid
-        
+
 execute_after_dh_auto_install:
 	install -m 755 -g root -d $(INSTALLDIR)/usr/lib/cgi-bin
 	install -m 755 -g root -d $(INSTALLDIR)-openssl/usr/lib/cgi-bin
@@ -157,8 +157,8 @@ override_dh_install:
 		--sourcedir=$(INSTALLDIR)-openssl
 
 override_dh_installsystemd:
-	dh_installsystemd -psquid-openssl --name=squid
 	dh_installsystemd -psquid
+	dh_installsystemd -psquid-openssl --name=squid
 
 override_dh_auto_clean:
 	$(RM) -r debian/build* debian/tmp*

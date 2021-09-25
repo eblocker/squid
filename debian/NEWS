@@ -1,4 +1,4 @@
-squid (5.1-1) unstable; urgency=medium
+squid (5.1-2) unstable; urgency=medium
 
   ext_session_acl and ext_time_quota_acl helpers have been switched from
   deprecated BerkleyDB storage format to Samba TrivialDB. If issues are

@@ -1,8 +1,10 @@
-squid (5.1-3) unstable; urgency=medium
+squid (5.2-1) unstable; urgency=medium
 
   [ Amos Jeffries <amosjeffries@squid-cache.org> ]
-  * debian/patches/
-    - add squid-6-678a2d29a69ee7b3e88641d2f9038cda72f57c64.patch (Closes: #976131)
+  * New Upstream Release (Closes: #986804, #976131)
+    Fixes: CVE-2021-28116. Out-Of-Bounds memory access in WCCPv2
+    Fixes: CVE-2021-41611. Improper Certificate Validation of TLS server
+    certificates
 
   [ L.P.H. van Belle <belle@bazuin.nl> ]
   * debian/rules
@@ -11,7 +13,7 @@ squid (5.1-3) unstable; urgency=medium
   * debian/NEWS
     - bump version number to amake Lintian happy
 
- -- Amos Jeffries <amosjeffries@squid-cache.org>  Sat, 25 Sep 2021 15:17:00 +1300
+ -- Amos Jeffries <amosjeffries@squid-cache.org>  Mon, 04 Oct 2021 15:17:00 +1300
 
 squid (5.1-2) unstable; urgency=medium
 

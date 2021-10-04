@@ -3,4 +3,3 @@
 0003-installed-binary-for-debian-ci.patch
 0004-Change-default-Makefiles-for-debian.patch
 0005-Use-RuntimeDirectory-to-create-run-squid.patch
-squid-6-678a2d29a69ee7b3e88641d2f9038cda72f57c64.patch

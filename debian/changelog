@@ -11,9 +11,9 @@ squid (5.2-1) unstable; urgency=medium
     - polish override_dh_installsystemd action to match other sequences
 
   * debian/NEWS
-    - bump version number to amake Lintian happy
+    - bump version number to make Lintian happy
 
- -- Amos Jeffries <amosjeffries@squid-cache.org>  Mon, 04 Oct 2021 15:17:00 +1300
+ -- Luigi Gangitano <luigi@debian.org>  Sat,  9 Oct 2021 17:03:54 +0200
 
 squid (5.1-2) unstable; urgency=medium
 

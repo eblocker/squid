@@ -7,6 +7,7 @@
   #include <abstractions/base>
   #include <abstractions/kerberosclient>
   #include <abstractions/nameservice>
+  #include <abstractions/openssl>
   #include <abstractions/ssl_certs>
 
   # If you are using squid with the default snakeoil certificates, you will

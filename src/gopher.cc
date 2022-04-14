@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2021 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2022 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -87,6 +87,7 @@ public:
         HTML_header_added(0),
         HTML_pre(0),
         type_id(GOPHER_FILE /* '0' */),
+        overflowed(false),
         cso_recno(0),
         len(0),
         buf(NULL),
@@ -97,11 +98,8 @@ public:
         entry->lock("gopherState");
         *replybuf = 0;
     }
-    ~GopherStateData() {if(buf) swanSong();}
 
-    /* AsyncJob API emulated */
-    void deleteThis(const char *aReason);
-    void swanSong();
+    ~GopherStateData();
 
 public:
     StoreEntry *entry;
@@ -117,8 +115,15 @@ public:
     int HTML_pre;
     char type_id;
     char request[MAX_URL];
+
+    /// some received bytes ignored due to internal buffer capacity limits
+    bool overflowed;
+
     int cso_recno;
+
+    /// the number of not-yet-parsed Gopher line bytes in this->buf
     int len;
+
     char *buf;          /* pts to a 4k page */
     Comm::ConnectionPointer serverConn;
     FwdState::Pointer fwd;
@@ -148,30 +153,18 @@ static void
 gopherStateFree(const CommCloseCbParams &params)
 {
     GopherStateData *gopherState = (GopherStateData *)params.data;
-
-    if (gopherState == NULL)
-        return;
-
-    gopherState->deleteThis("gopherStateFree");
+    // Assume that FwdState is monitoring and calls noteClosure(). See XXX about
+    // Connection sharing with FwdState in gopherStart().
+    delete gopherState;
 }
 
-void
-GopherStateData::deleteThis(const char *)
-{
-    swanSong();
-    delete this;
-}
-
-void
-GopherStateData::swanSong()
+GopherStateData::~GopherStateData()
 {
     if (entry)
         entry->unlock("gopherState");
 
-    if (buf) {
+    if (buf)
         memFree(buf, MEM_4K_BUF);
-        buf = nullptr;
-    }
 }
 
 /**
@@ -444,6 +437,7 @@ gopherToHTML(GopherStateData * gopherState, char *inbuf, int len)
         if (gopherState->len + llen >= TEMP_BUF_SIZE) {
             debugs(10, DBG_IMPORTANT, "GopherHTML: Buffer overflow. Lost some data on URL: " << entry->url()  );
             llen = TEMP_BUF_SIZE - gopherState->len - 1;
+            gopherState->overflowed = true; // may already be true
         }
         if (!lpos) {
             /* there is no complete line in inbuf */
@@ -810,6 +804,10 @@ gopherReadReply(const Comm::ConnectionPointer &conn, char *buf, size_t len, Comm
 
         entry->timestampsSet();
         entry->flush();
+
+        if (!gopherState->len && !gopherState->overflowed)
+            gopherState->fwd->markStoredReplyAsWhole("gopher EOF after receiving/storing some bytes");
+
         gopherState->fwd->complete();
         gopherState->serverConn->close();
     } else {
@@ -968,10 +966,12 @@ gopherStart(FwdState * fwd)
         }
 
         gopherToHTML(gopherState, (char *) NULL, 0);
+        fwd->markStoredReplyAsWhole("gopher instant internal request satisfaction");
         fwd->complete();
         return;
     }
 
+    // XXX: Sharing open Connection with FwdState that has its own handlers/etc.
     gopherState->serverConn = fwd->serverConnection();
     gopherSendRequest(fwd->serverConnection()->fd, gopherState);
     AsyncCall::Pointer timeoutCall = commCbCall(5, 4, "gopherTimeout",

@@ -1,5 +1,4 @@
 0001-Default-configuration-file-for-debian.patch
 0002-Change-default-file-locations-for-debian.patch
 0003-installed-binary-for-debian-ci.patch
-0004-Change-default-Makefiles-for-debian.patch
 0005-Use-RuntimeDirectory-to-create-run-squid.patch

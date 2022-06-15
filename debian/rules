@@ -1,7 +1,8 @@
 #! /usr/bin/make -f
 
 export DEB_BUILD_MAINT_OPTIONS = hardening=+all
-export DEB_CFLAGS_MAINT_APPEND = -Wall
+export DEB_CFLAGS_MAINT_APPEND = -Wno-error=deprecated-declarations
+export DEB_CXXFLAGS_MAINT_APPEND = -Wno-error=deprecated-declarations
 
 ifneq (,$(filter $(DEB_HOST_ARCH), armel m68k mips mipsel powerpc powerpcspe sh4))
 	DEB_LDFLAGS_MAINT_APPEND += -latomic

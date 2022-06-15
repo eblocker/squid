@@ -1,3 +1,23 @@
+squid (5.5-1.1) unstable; urgency=medium
+
+  * Non-maintainer upload.
+
+  [ Nicholas Guriev ]
+  * Fixing build against OpenSSL 3.0 (Closes: #1005650, LP: #1946205)
+
+  * debian/rules
+    - Do not fail on errors about deprecated declarations from OpenSSL.
+    - Remove -Wall in CFLAGS from the debian/rules file since upstream build
+      scripts already pass this flag.
+
+  * debian/patches/
+    - New 0006-Fix-build-against-OpenSSL-3-0.patch
+
+  [ Simon Deziel ]
+  * apparmor: allow reading /etc/ssl/openssl.cnf
+
+ -- Nicholas Guriev <guriev-ns@ya.ru>  Tue, 31 May 2022 23:13:38 +0300
+
 squid (5.5-1) unstable; urgency=medium
 
   [ Amos Jeffries <amosjeffries@squid-cache.org> ]

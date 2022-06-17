@@ -633,7 +633,7 @@ uninstall-am:
 .PRECIOUS: Makefile
 
 
-all: 
+all:
 
 install: install-@host_os@
 

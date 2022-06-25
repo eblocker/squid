@@ -2,6 +2,8 @@ squid (4.13-10+deb11u1) bullseye-security; urgency=medium
 
   * Add patch to fix a Denial of Service in Gopher Processing.
     Fixes: CVE-2021-46784.
+  * Add patch to fix Out-Of-Bounds memory access in WCCPv2.
+    Fixes: CVE-2021-28116.
 
  -- Santiago Garcia Mantinan <manty@debian.org>  Sat, 25 Jun 2022 23:43:32 +0200
 

@@ -1,3 +1,15 @@
+squid (5.7-1) UNRELEASED; urgency=medium
+
+  * New upstream version 5.7
+
+  * Exposure of Sensitive Information in Cache Manager (CVE-2022-41317)
+    (Closes: #1020587)
+  * Buffer Over Read in SSPI and SMB Authentication (CVE-2022-41318)
+    (Closes: #1020586)
+  * New upstream version 5.7
+
+ -- Luigi Gangitano <luigi@debian.org>  Fri, 30 Sep 2022 14:44:45 +0200
+
 squid (5.6-1) unstable; urgency=high
 
   * Urgency high due to security fixes

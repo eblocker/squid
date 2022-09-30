@@ -165,6 +165,9 @@ override_dh_auto_clean:
 	$(RM) -r debian/build* debian/tmp*
 	dh_auto_clean
 
+# Disable dh_missing
+override_dh_missing:
+
 debian/copyright: debian/copyright.Debian CREDITS
 	cat $^ | sed -e "s/59 Temple Place.* Suite 330/51 Franklin St, Fifth Floor/" -e "s/MA  \?02111[^, ]*/MA 02110-1301/" -e "s/675 Mass Ave/51 Franklin St, Fifth Floor/" -e "s/Cambridge, MA 02139/Boston, MA 02110-1301/" > $@
 

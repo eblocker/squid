@@ -26,7 +26,7 @@ squid (5.7-1) UNRELEASED; urgency=medium
       - Added to provide CI tests for Salsa
 
   * debian/upstream/metadata
-    - Created upstream metadata file 
+    - Created upstream metadata file
 
  -- Luigi Gangitano <luigi@debian.org>  Fri, 30 Sep 2022 15:11:20 +0200
 
@@ -378,7 +378,7 @@ squid (4.9-1) unstable; urgency=high
     - Disable Apparmor tests
 
   [ Luigi Gangitano <luigi@debian.org> ]
-  * Source only upload (Closes: #943911) 
+  * Source only upload (Closes: #943911)
 
   * debian/squid.resolvconf
     - Avoid reload before squid.pid is available (Closes: #911325)

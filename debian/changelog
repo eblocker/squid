@@ -1,3 +1,10 @@
+squid (5.7-2) UNRELEASED; urgency=medium
+
+  * Add a couple of upstream picked patches to fix some issues on 5.7
+    that upstream has fixed on 5.8.
+
+ -- Santiago Garcia Mantinan <manty@debian.org>  Fri, 28 Apr 2023 08:35:27 +0200
+
 squid (5.7-1) unstable; urgency=medium
 
   * Urgency high due to security fixes

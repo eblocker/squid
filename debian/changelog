@@ -1,3 +1,15 @@
+squid (5.9-1) UNRELEASED; urgency=medium
+
+  [ Amos Jeffries <amosjeffries@squid-cache.org> ]
+  * New Upstream Release
+
+  * debian/patches/
+    - refresh 0001-Default-configuration-file-for-debian.patch for new version
+    - remove 1f13f721263a4cc75e4b798a230022561047899c.patch integrated upstream
+    - remove edad3f150de8af0aeb2f629508be3219b83369b9.patch integrated upstream
+
+ -- Amos Jeffries <amosjeffries@squid-cache.org>  Fri, 16 Jun 2023 19:00:00 +1300
+
 squid (5.7-2) unstable; urgency=medium
 
   * Add a couple of upstream picked patches to fix some issues on 5.7
@@ -14,6 +26,7 @@ squid (5.7-1) unstable; urgency=medium
 
   * Exposure of Sensitive Information in Cache Manager (CVE-2022-41317)
     (Closes: #1020587)
+
   * Buffer Over Read in SSPI and SMB Authentication (CVE-2022-41318)
     (Closes: #1020586)
 

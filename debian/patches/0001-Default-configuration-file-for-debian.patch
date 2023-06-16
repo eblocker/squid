@@ -1,30 +1,24 @@
-From: Luigi Gangitano <luigi@debian.org>
-Date: Sat, 29 Oct 2016 17:55:02 +0200
+From: Amos Jeffries <amosjeffries@squid-cache.org>
+Date: Fri, 16 Jun 2023 19:16:08 +1300
 Subject: Default configuration file for debian
 
 ---
- src/cf.data.pre | 11 +++++++----
- 1 file changed, 7 insertions(+), 4 deletions(-)
+ src/cf.data.pre | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletions(-)
 
 diff --git a/src/cf.data.pre b/src/cf.data.pre
-index 588e0f81..c1356475 100644
+index 46b87c47a..10788a1d8 100644
 --- a/src/cf.data.pre
 +++ b/src/cf.data.pre
-@@ -1693,11 +1693,12 @@ http_access deny manager
+@@ -1877,6 +1877,7 @@ http_access deny to_linklocal
  #
  # INSERT YOUR OWN RULE(S) HERE TO ALLOW ACCESS FROM YOUR CLIENTS
  #
 +include /etc/squid/conf.d/*.conf
  
- # Example rule allowing access from your local networks.
- # Adapt localnet in the ACL section to list your (internal) IP networks
- # from where browsing should be allowed
--http_access allow localnet
-+#http_access allow localnet
- http_access allow localhost
- 
- # And finally deny all other access to this proxy
-@@ -4815,7 +4816,7 @@ DOC_END
+ # For example, to allow access from your local networks, you may uncomment the
+ # following rule (and/or add rules that match your definition of "local"):
+@@ -5313,7 +5314,7 @@ DOC_END
  
  NAME: logfile_rotate
  TYPE: int
@@ -33,7 +27,7 @@ index 588e0f81..c1356475 100644
  LOC: Config.Log.rotateNumber
  DOC_START
  	Specifies the default number of logfile rotations to make when you
-@@ -4839,6 +4840,8 @@ DOC_START
+@@ -5337,6 +5338,8 @@ DOC_START
  	in the habit of using 'squid -k rotate' instead of 'kill -USR1
  	<pid>'.
  

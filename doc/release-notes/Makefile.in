@@ -636,6 +636,14 @@ uninstall-am:
 #	latex $(DOC).tex
 #
 
+@ENABLE_RELEASE_DOCS_TRUE@%.sgml: %.sgml.in
+@ENABLE_RELEASE_DOCS_TRUE@	sed \
+@ENABLE_RELEASE_DOCS_TRUE@        -e "s%[@]SQUID_VERSION[@]%$(VERSION)%g" \
+@ENABLE_RELEASE_DOCS_TRUE@        -e "s%[@]SQUID_RELEASE[@]%$(SQUID_RELEASE)%g" \
+@ENABLE_RELEASE_DOCS_TRUE@        -e "s%[@]SQUID_RELEASE_OLD[@]%$$(( $(SQUID_RELEASE) - 1 ))%g" \
+@ENABLE_RELEASE_DOCS_TRUE@        < $< >$@
+@ENABLE_RELEASE_DOCS_TRUE@	test `grep -c "@SQUID" $@` -eq 0
+
 @ENABLE_RELEASE_DOCS_TRUE@%.txt: %.sgml
 @ENABLE_RELEASE_DOCS_TRUE@	linuxdoc -B txt --filter $<
 

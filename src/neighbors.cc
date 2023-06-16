@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2022 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2023 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -605,7 +605,6 @@ neighborsUdpPing(HttpRequest * request,
     int i;
     int reqnum = 0;
     int flags;
-    int queries_sent = 0;
     int peers_pinged = 0;
     int parent_timeout = 0, parent_exprep = 0;
     int sibling_timeout = 0, sibling_exprep = 0;
@@ -680,8 +679,6 @@ neighborsUdpPing(HttpRequest * request,
                 }
             }
         }
-
-        ++queries_sent;
 
         ++ p->stats.pings_sent;
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2022 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2023 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -378,7 +378,6 @@ main(int argc, char *argv[])
                 } else if (!strcmp(buff, "NOCOMMENT_START")) {
                     state = sNOCOMMENT;
                 } else { // if (buff != NULL) {
-                    assert(buff != NULL);
                     entries.back().doc.push_back(buff);
                 }
                 break;
@@ -387,7 +386,6 @@ main(int argc, char *argv[])
                 if (!strcmp(buff, "NOCOMMENT_END")) {
                     state = sDOC;
                 } else { // if (buff != NULL) {
-                    assert(buff != NULL);
                     entries.back().nocomment.push_back(buff);
                 }
                 break;

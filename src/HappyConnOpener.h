@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2022 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2023 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -258,7 +258,8 @@ private:
     /// the request that needs a to-server connection
     HttpRequestPointer cause;
 
-    /// number of connection opening attempts, including those in the requestor
+    /// number of our finished connection opening attempts (including pconn
+    /// reuses) plus previously finished attempts supplied by the requestor
     int n_tries;
 
     /// Reason to ran out of time or attempts

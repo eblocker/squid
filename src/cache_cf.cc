@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2022 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2023 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -720,7 +720,7 @@ configDoConfigure(void)
      * the extra space is for loop detection in client_side.c -- we search
      * for substrings in the Via header.
      */
-    snprintf(ThisCache2, sizeof(ThisCache), " %s (%s)",
+    snprintf(ThisCache2, sizeof(ThisCache2), " %s (%s)",
              uniqueHostname(),
              visible_appname_string);
 

@@ -727,11 +727,11 @@ am__tests_testDiskIO_SOURCES_DIST = BandwidthBucket.cc \
 	tests/stub_libauth.cc tests/stub_libauth_acls.cc \
 	tests/stub_liberror.cc tests/stub_libeui.cc \
 	tests/stub_libformat.cc tests/stub_libicmp.cc \
-	tests/stub_liblog.cc tests/stub_libsecurity.cc \
-	tests/stub_libstore.cc log/access_log.h mem_node.cc \
-	tests/stub_mime.cc mime.h tests/stub_neighbors.cc \
-	tests/stub_pconn.cc refresh.cc refresh.h repl_modules.h \
-	tests/stub_stat.cc stmem.cc store.cc \
+	tests/stub_libip.cc tests/stub_liblog.cc \
+	tests/stub_libsecurity.cc tests/stub_libstore.cc \
+	log/access_log.h mem_node.cc tests/stub_mime.cc mime.h \
+	tests/stub_neighbors.cc tests/stub_pconn.cc refresh.cc \
+	refresh.h repl_modules.h tests/stub_stat.cc stmem.cc store.cc \
 	tests/stub_store_client.cc store_io.cc store_key_md5.cc \
 	store_key_md5.h tests/stub_store_rebuild.cc store_rebuild.h \
 	tests/stub_store_stats.cc store_swapmeta.cc store_swapout.cc \
@@ -775,13 +775,14 @@ am_tests_testDiskIO_OBJECTS = $(am__objects_3) $(am__objects_11) \
 	tests/stub_libauth.$(OBJEXT) tests/stub_libauth_acls.$(OBJEXT) \
 	tests/stub_liberror.$(OBJEXT) tests/stub_libeui.$(OBJEXT) \
 	tests/stub_libformat.$(OBJEXT) tests/stub_libicmp.$(OBJEXT) \
-	tests/stub_liblog.$(OBJEXT) tests/stub_libsecurity.$(OBJEXT) \
-	tests/stub_libstore.$(OBJEXT) mem_node.$(OBJEXT) \
-	tests/stub_mime.$(OBJEXT) tests/stub_neighbors.$(OBJEXT) \
-	tests/stub_pconn.$(OBJEXT) refresh.$(OBJEXT) \
-	tests/stub_stat.$(OBJEXT) stmem.$(OBJEXT) store.$(OBJEXT) \
-	tests/stub_store_client.$(OBJEXT) store_io.$(OBJEXT) \
-	store_key_md5.$(OBJEXT) tests/stub_store_rebuild.$(OBJEXT) \
+	tests/stub_libip.$(OBJEXT) tests/stub_liblog.$(OBJEXT) \
+	tests/stub_libsecurity.$(OBJEXT) tests/stub_libstore.$(OBJEXT) \
+	mem_node.$(OBJEXT) tests/stub_mime.$(OBJEXT) \
+	tests/stub_neighbors.$(OBJEXT) tests/stub_pconn.$(OBJEXT) \
+	refresh.$(OBJEXT) tests/stub_stat.$(OBJEXT) stmem.$(OBJEXT) \
+	store.$(OBJEXT) tests/stub_store_client.$(OBJEXT) \
+	store_io.$(OBJEXT) store_key_md5.$(OBJEXT) \
+	tests/stub_store_rebuild.$(OBJEXT) \
 	tests/stub_store_stats.$(OBJEXT) store_swapmeta.$(OBJEXT) \
 	store_swapout.$(OBJEXT) tests/stub_time.$(OBJEXT) \
 	tests/stub_tools.$(OBJEXT) wordlist.$(OBJEXT)
@@ -792,7 +793,7 @@ tests_testDiskIO_OBJECTS = $(am_tests_testDiskIO_OBJECTS) \
 tests_testDiskIO_DEPENDENCIES = libsquid.la http/libhttp.la \
 	parser/libparser.la SquidConfig.o CommCalls.o \
 	ident/libident.la acl/libacls.la acl/libstate.la \
-	comm/libcomm.la ip/libip.la fs/libfs.la ipc/libipc.la \
+	comm/libcomm.la fs/libfs.la ipc/libipc.la \
 	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
 	DiskIO/libdiskio.la acl/libapi.la anyp/libanyp.la \
 	mgr/libmgr.la $(SSL_LIBS) ipc/libipc.la dns/libdns.la \
@@ -1444,7 +1445,7 @@ am__tests_testRock_SOURCES_DIST = BandwidthBucket.cc BandwidthBucket.h \
 	tests/stub_ipcache.cc tests/stub_libanyp.cc \
 	tests/stub_libauth.cc tests/stub_liberror.cc \
 	tests/stub_libeui.cc tests/stub_libformat.cc \
-	tests/stub_libicmp.cc tests/stub_liblog.cc \
+	tests/stub_libicmp.cc tests/stub_libip.cc tests/stub_liblog.cc \
 	tests/stub_libmgr.cc tests/stub_libsecurity.cc \
 	log/access_log.h mem_node.cc tests/stub_mime.cc mime.h \
 	tests/stub_neighbors.cc tests/stub_pconn.cc repl_modules.h \
@@ -1512,6 +1513,7 @@ am__tests_testRock_SOURCES_DIST = BandwidthBucket.cc BandwidthBucket.h \
 @ENABLE_FS_ROCK_TRUE@	tests/stub_libeui.$(OBJEXT) \
 @ENABLE_FS_ROCK_TRUE@	tests/stub_libformat.$(OBJEXT) \
 @ENABLE_FS_ROCK_TRUE@	tests/stub_libicmp.$(OBJEXT) \
+@ENABLE_FS_ROCK_TRUE@	tests/stub_libip.$(OBJEXT) \
 @ENABLE_FS_ROCK_TRUE@	tests/stub_liblog.$(OBJEXT) \
 @ENABLE_FS_ROCK_TRUE@	tests/stub_libmgr.$(OBJEXT) \
 @ENABLE_FS_ROCK_TRUE@	tests/stub_libsecurity.$(OBJEXT) \
@@ -1537,7 +1539,7 @@ tests_testRock_OBJECTS = $(am_tests_testRock_OBJECTS) \
 	$(nodist_tests_testRock_OBJECTS)
 @ENABLE_FS_ROCK_TRUE@tests_testRock_DEPENDENCIES = http/libhttp.la \
 @ENABLE_FS_ROCK_TRUE@	parser/libparser.la libsquid.la \
-@ENABLE_FS_ROCK_TRUE@	comm/libcomm.la ip/libip.la fs/libfs.la \
+@ENABLE_FS_ROCK_TRUE@	comm/libcomm.la fs/libfs.la \
 @ENABLE_FS_ROCK_TRUE@	$(am__DEPENDENCIES_1) DiskIO/libdiskio.la \
 @ENABLE_FS_ROCK_TRUE@	acl/libacls.la acl/libapi.la \
 @ENABLE_FS_ROCK_TRUE@	acl/libstate.la anyp/libanyp.la \
@@ -1805,10 +1807,11 @@ am__tests_testUfs_SOURCES_DIST = BandwidthBucket.cc BandwidthBucket.h \
 	tests/stub_libanyp.cc tests/stub_libauth.cc \
 	tests/stub_liberror.cc tests/stub_libeui.cc \
 	tests/stub_libformat.cc tests/stub_libicmp.cc \
-	tests/stub_liblog.cc tests/stub_libsecurity.cc \
-	log/access_log.h mem_node.cc tests/stub_mime.cc mime.h \
-	tests/stub_neighbors.cc tests/stub_pconn.cc refresh.cc \
-	refresh.h repl_modules.h tests/stub_stat.cc stmem.cc store.cc \
+	tests/stub_libip.cc tests/stub_liblog.cc \
+	tests/stub_libsecurity.cc log/access_log.h mem_node.cc \
+	tests/stub_mime.cc mime.h tests/stub_neighbors.cc \
+	tests/stub_pconn.cc refresh.cc refresh.h repl_modules.h \
+	tests/stub_stat.cc stmem.cc store.cc \
 	tests/stub_store_client.cc store_io.cc store_key_md5.cc \
 	store_key_md5.h tests/stub_store_rebuild.cc store_rebuild.h \
 	tests/stub_store_stats.cc store_swapmeta.cc store_swapout.cc \
@@ -1873,6 +1876,7 @@ am__tests_testUfs_SOURCES_DIST = BandwidthBucket.cc BandwidthBucket.h \
 @ENABLE_FS_UFS_TRUE@	tests/stub_libeui.$(OBJEXT) \
 @ENABLE_FS_UFS_TRUE@	tests/stub_libformat.$(OBJEXT) \
 @ENABLE_FS_UFS_TRUE@	tests/stub_libicmp.$(OBJEXT) \
+@ENABLE_FS_UFS_TRUE@	tests/stub_libip.$(OBJEXT) \
 @ENABLE_FS_UFS_TRUE@	tests/stub_liblog.$(OBJEXT) \
 @ENABLE_FS_UFS_TRUE@	tests/stub_libsecurity.$(OBJEXT) \
 @ENABLE_FS_UFS_TRUE@	mem_node.$(OBJEXT) \
@@ -1899,12 +1903,12 @@ tests_testUfs_OBJECTS = $(am_tests_testUfs_OBJECTS) \
 @ENABLE_FS_UFS_TRUE@	parser/libparser.la CommCalls.o \
 @ENABLE_FS_UFS_TRUE@	ident/libident.la acl/libacls.la \
 @ENABLE_FS_UFS_TRUE@	acl/libstate.la acl/libapi.la libsquid.la \
-@ENABLE_FS_UFS_TRUE@	ip/libip.la fs/libfs.la mgr/libmgr.la \
+@ENABLE_FS_UFS_TRUE@	fs/libfs.la mgr/libmgr.la \
 @ENABLE_FS_UFS_TRUE@	$(am__DEPENDENCIES_1) acl/libacls.la \
 @ENABLE_FS_UFS_TRUE@	DiskIO/libdiskio.la acl/libapi.la \
 @ENABLE_FS_UFS_TRUE@	anyp/libanyp.la $(SSL_LIBS) ipc/libipc.la \
 @ENABLE_FS_UFS_TRUE@	comm/libcomm.la dns/libdns.la \
-@ENABLE_FS_UFS_TRUE@	base/libbase.la ip/libip.la mem/libmem.la \
+@ENABLE_FS_UFS_TRUE@	base/libbase.la mem/libmem.la \
 @ENABLE_FS_UFS_TRUE@	store/libstore.la $(am__DEPENDENCIES_1) \
 @ENABLE_FS_UFS_TRUE@	sbuf/libsbuf.la \
 @ENABLE_FS_UFS_TRUE@	$(top_builddir)/lib/libmisccontainers.la \
@@ -2241,8 +2245,9 @@ am__depfiles_remade = ./$(DEPDIR)/AccessLogEntry.Po \
 	tests/$(DEPDIR)/stub_libeui.Po \
 	tests/$(DEPDIR)/stub_libformat.Po \
 	tests/$(DEPDIR)/stub_libhttp.Po \
-	tests/$(DEPDIR)/stub_libicmp.Po tests/$(DEPDIR)/stub_liblog.Po \
-	tests/$(DEPDIR)/stub_libmem.Po tests/$(DEPDIR)/stub_libmgr.Po \
+	tests/$(DEPDIR)/stub_libicmp.Po tests/$(DEPDIR)/stub_libip.Po \
+	tests/$(DEPDIR)/stub_liblog.Po tests/$(DEPDIR)/stub_libmem.Po \
+	tests/$(DEPDIR)/stub_libmgr.Po \
 	tests/$(DEPDIR)/stub_libsecurity.Po \
 	tests/$(DEPDIR)/stub_libsslsquid.Po \
 	tests/$(DEPDIR)/stub_libstore.Po \
@@ -3729,6 +3734,7 @@ tests_testString_LDFLAGS = $(LIBADD_DL)
 @ENABLE_FS_ROCK_TRUE@	tests/stub_libeui.cc \
 @ENABLE_FS_ROCK_TRUE@	tests/stub_libformat.cc \
 @ENABLE_FS_ROCK_TRUE@	tests/stub_libicmp.cc \
+@ENABLE_FS_ROCK_TRUE@	tests/stub_libip.cc \
 @ENABLE_FS_ROCK_TRUE@	tests/stub_liblog.cc \
 @ENABLE_FS_ROCK_TRUE@	tests/stub_libmgr.cc \
 @ENABLE_FS_ROCK_TRUE@	tests/stub_libsecurity.cc \
@@ -3769,7 +3775,6 @@ tests_testString_LDFLAGS = $(LIBADD_DL)
 @ENABLE_FS_ROCK_TRUE@	parser/libparser.la \
 @ENABLE_FS_ROCK_TRUE@	libsquid.la \
 @ENABLE_FS_ROCK_TRUE@	comm/libcomm.la \
-@ENABLE_FS_ROCK_TRUE@	ip/libip.la \
 @ENABLE_FS_ROCK_TRUE@	fs/libfs.la \
 @ENABLE_FS_ROCK_TRUE@	$(COMMON_LIBS) \
 @ENABLE_FS_ROCK_TRUE@	$(REPL_OBJS) \
@@ -3898,6 +3903,7 @@ tests_testString_LDFLAGS = $(LIBADD_DL)
 @ENABLE_FS_UFS_TRUE@	tests/stub_libeui.cc \
 @ENABLE_FS_UFS_TRUE@	tests/stub_libformat.cc \
 @ENABLE_FS_UFS_TRUE@	tests/stub_libicmp.cc \
+@ENABLE_FS_UFS_TRUE@	tests/stub_libip.cc \
 @ENABLE_FS_UFS_TRUE@	tests/stub_liblog.cc \
 @ENABLE_FS_UFS_TRUE@	tests/stub_libsecurity.cc \
 @ENABLE_FS_UFS_TRUE@	log/access_log.h \
@@ -3943,7 +3949,6 @@ tests_testString_LDFLAGS = $(LIBADD_DL)
 @ENABLE_FS_UFS_TRUE@	acl/libstate.la \
 @ENABLE_FS_UFS_TRUE@	acl/libapi.la \
 @ENABLE_FS_UFS_TRUE@	libsquid.la \
-@ENABLE_FS_UFS_TRUE@	ip/libip.la \
 @ENABLE_FS_UFS_TRUE@	fs/libfs.la \
 @ENABLE_FS_UFS_TRUE@	mgr/libmgr.la \
 @ENABLE_FS_UFS_TRUE@	$(REPL_OBJS) \
@@ -3956,7 +3961,6 @@ tests_testString_LDFLAGS = $(LIBADD_DL)
 @ENABLE_FS_UFS_TRUE@	comm/libcomm.la \
 @ENABLE_FS_UFS_TRUE@	dns/libdns.la \
 @ENABLE_FS_UFS_TRUE@	base/libbase.la \
-@ENABLE_FS_UFS_TRUE@	ip/libip.la \
 @ENABLE_FS_UFS_TRUE@	mem/libmem.la \
 @ENABLE_FS_UFS_TRUE@	store/libstore.la \
 @ENABLE_FS_UFS_TRUE@	$(ADAPTATION_LIBS) \
@@ -4238,6 +4242,7 @@ tests_testDiskIO_SOURCES = \
 	tests/stub_libeui.cc \
 	tests/stub_libformat.cc \
 	tests/stub_libicmp.cc \
+	tests/stub_libip.cc \
 	tests/stub_liblog.cc \
 	tests/stub_libsecurity.cc \
 	tests/stub_libstore.cc \
@@ -4285,7 +4290,6 @@ tests_testDiskIO_LDADD = \
 	acl/libacls.la \
 	acl/libstate.la \
 	comm/libcomm.la \
-	ip/libip.la \
 	fs/libfs.la \
 	ipc/libipc.la \
 	$(REPL_OBJS) \
@@ -6229,6 +6233,8 @@ tests/stub_libformat.$(OBJEXT): tests/$(am__dirstamp) \
 	tests/$(DEPDIR)/$(am__dirstamp)
 tests/stub_libicmp.$(OBJEXT): tests/$(am__dirstamp) \
 	tests/$(DEPDIR)/$(am__dirstamp)
+tests/stub_libip.$(OBJEXT): tests/$(am__dirstamp) \
+	tests/$(DEPDIR)/$(am__dirstamp)
 tests/stub_liblog.$(OBJEXT): tests/$(am__dirstamp) \
 	tests/$(DEPDIR)/$(am__dirstamp)
 tests/stub_mime.$(OBJEXT): tests/$(am__dirstamp) \
@@ -6675,6 +6681,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@tests/$(DEPDIR)/stub_libformat.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@tests/$(DEPDIR)/stub_libhttp.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@tests/$(DEPDIR)/stub_libicmp.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@tests/$(DEPDIR)/stub_libip.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@tests/$(DEPDIR)/stub_liblog.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@tests/$(DEPDIR)/stub_libmem.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@tests/$(DEPDIR)/stub_libmgr.Po@am__quote@ # am--include-marker
@@ -7670,6 +7677,7 @@ distclean: distclean-recursive
 	-rm -f tests/$(DEPDIR)/stub_libformat.Po
 	-rm -f tests/$(DEPDIR)/stub_libhttp.Po
 	-rm -f tests/$(DEPDIR)/stub_libicmp.Po
+	-rm -f tests/$(DEPDIR)/stub_libip.Po
 	-rm -f tests/$(DEPDIR)/stub_liblog.Po
 	-rm -f tests/$(DEPDIR)/stub_libmem.Po
 	-rm -f tests/$(DEPDIR)/stub_libmgr.Po
@@ -8002,6 +8010,7 @@ maintainer-clean: maintainer-clean-recursive
 	-rm -f tests/$(DEPDIR)/stub_libformat.Po
 	-rm -f tests/$(DEPDIR)/stub_libhttp.Po
 	-rm -f tests/$(DEPDIR)/stub_libicmp.Po
+	-rm -f tests/$(DEPDIR)/stub_libip.Po
 	-rm -f tests/$(DEPDIR)/stub_liblog.Po
 	-rm -f tests/$(DEPDIR)/stub_libmem.Po
 	-rm -f tests/$(DEPDIR)/stub_libmgr.Po

@@ -772,6 +772,9 @@
 /* Define to 1 if you have the <openssl/crypto.h> header file. */
 #undef HAVE_OPENSSL_CRYPTO_H
 
+/* Define to 1 if you have the <openssl/decoder.h> header file. */
+#undef HAVE_OPENSSL_DECODER_H
+
 /* Define to 1 if you have the <openssl/dh.h> header file. */
 #undef HAVE_OPENSSL_DH_H
 
@@ -1369,9 +1372,6 @@
 
 /* Compiler supports %zu printf macro */
 #undef PRIuSIZE
-
-/* Base type of the second argument to recv(2) */
-#undef RECV_ARG_TYPE
 
 /* The size of `int64_t', as computed by sizeof. */
 #undef SIZEOF_INT64_T

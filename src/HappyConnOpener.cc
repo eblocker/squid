@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2022 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2023 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -568,8 +568,6 @@ HappyConnOpener::openFreshConnection(Attempt &attempt, PeerConnectionPointer &de
     const auto conn = dest->cloneProfile();
     GetMarkingsToServer(cause.getRaw(), *conn);
 
-    ++n_tries;
-
     typedef CommCbMemFunT<HappyConnOpener, CommConnectCbParams> Dialer;
     AsyncCall::Pointer callConnect = asyncCall(48, 5, attempt.callbackMethodName,
                                      Dialer(this, attempt.callbackMethod));
@@ -610,6 +608,8 @@ HappyConnOpener::handleConnOpenerAnswer(Attempt &attempt, const CommConnectCbPar
     auto handledPath = attempt.path;
     handledPath.finalize(params.conn); // closed on errors
     attempt.finish();
+
+    ++n_tries;
 
     if (params.flag == Comm::OK) {
         sendSuccess(handledPath, false, what);

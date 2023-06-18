@@ -15,6 +15,9 @@ squid (6.1-1) UNRELEASED; urgency=medium
   * debian/patches/
     - add Fordwarded tag
 
+  * debian/control
+    - Bumped Standards-Version to 4.6.2, no change needed
+
  -- Amos Jeffries <amosjeffries@squid-cache.org>  Fri, 16 Jun 2023 19:00:00 +1300
 
 squid (5.7-2) unstable; urgency=medium

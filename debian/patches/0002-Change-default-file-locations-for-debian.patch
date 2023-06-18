@@ -1,6 +1,7 @@
 From: Luigi Gangitano <luigi@debian.org>
-Date: Sat, 29 Oct 2016 17:55:55 +0200
+Last-Update: 2023-06-19
 Subject: Change default file locations for debian
+Forwarded: not-needed
 
 ---
  src/Makefile.in | 2 +-

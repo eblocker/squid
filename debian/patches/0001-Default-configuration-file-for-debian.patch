@@ -1,6 +1,7 @@
 From: Amos Jeffries <amosjeffries@squid-cache.org>
-Date: Fri, 16 Jun 2023 19:16:08 +1300
+Last-Update: 2023-06-19
 Subject: Default configuration file for debian
+Forwarded: not-needed
 
 ---
  src/cf.data.pre | 4 +++-

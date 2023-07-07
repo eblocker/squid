@@ -1,0 +1,23 @@
+diff --git a/src/internal.cc b/src/internal.cc
+index be5d61c29b..5345545461 100644
+--- a/src/internal.cc
++++ b/src/internal.cc
+@@ -163,6 +163,8 @@ internalHostname(void)
+     return host;
+ }
+ 
++// XXX: This check mishandles cases where the listening port hostname
++//      does not match the request-target hostname.
+ int
+ internalHostnameIs(const char *arg)
+ {
+@@ -175,6 +177,9 @@ internalHostnameIs(const char *arg)
+         if (0 == strcmp(arg, w->key))
+             return 1;
+ 
++    if (0 == strcmp(arg, "localhost"))
++        return 1;
++
+     return 0;
+ }
+ 

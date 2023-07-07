@@ -6,9 +6,11 @@ Subject: Change default file locations for debian
  src/Makefile.in | 2 +-
  1 files changed, 1 insertions(+), 1 deletions(-)
 
+Index: pkg-squid/src/Common.am
+===================================================================
 --- a/src/Common.am
 +++ b/src/Common.am
-@@ -16,7 +16,7 @@
+@@ -16,7 +16,7 @@ DEFAULT_ICP_PORT	= 3130
  DEFAULT_PREFIX		= $(prefix)
  DEFAULT_CONFIG_DIR	= $(sysconfdir)
  DEFAULT_CONFIG_FILE	= $(DEFAULT_CONFIG_DIR)/squid.conf

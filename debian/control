@@ -8,13 +8,13 @@ Standards-Version: 4.6.1
 Vcs-Git: https://salsa.debian.org/squid-team/squid.git
 Vcs-Browser: https://salsa.debian.org/squid-team/squid
 Build-Depends: ed
-    , libltdl-dev
-    , pkg-config
+	, libltdl-dev
+	, pkg-config
 # The compiler dependencies are relevant for backporting.
-	, g++ (>= 4.9) <!cross> | clang (>= 3.7) <!cross>
-	, gcc (>= 4.9) <!cross> | clang (>= 3.7) <!cross>
+	, g++ (>= 5) <!cross> | clang (>= 3.8) <!cross>
+	, gcc (>= 5) <!cross> | clang (>= 3.8) <!cross>
 	, debhelper-compat (= 13)
-    , lsb-release
+	, lsb-release
 	, dh-apparmor
 	, libcppunit-dev
 	, libcap2-dev [linux-any]
@@ -41,7 +41,7 @@ Recommends: libcap2-bin [linux-any], ca-certificates
 Conflicts: squid-openssl
 Description: Full featured Web Proxy cache (HTTP proxy GnuTLS flavour)
  Squid is a high-performance proxy caching server for web clients, supporting
- FTP, gopher, ICY and HTTP data objects.
+ FTP, ICY and HTTP data objects.
 
 Package: squid-openssl
 Architecture: any
@@ -52,7 +52,7 @@ Recommends: libcap2-bin [linux-any], ca-certificates
 Conflicts: squid
 Description: Full featured Web Proxy cache (HTTP proxy OpenSSL flavour)
  Squid is a high-performance proxy caching server for web clients, supporting
- FTP, gopher, ICY and HTTP data objects.
+ FTP, ICY and HTTP data objects.
 
 Package: squid-common
 Architecture: all
@@ -60,7 +60,7 @@ Multi-Arch: foreign
 Depends: ${misc:Depends}, squid-langpack (>= 20110214-1)
 Description: Full featured Web Proxy cache (HTTP proxy) - common files
  Squid is a high-performance proxy caching server for web clients, supporting
- FTP, gopher, ICY and HTTP data objects.
+ FTP, ICY and HTTP data objects.
  .
  This package contains common files (MIB and icons)
 
@@ -70,7 +70,7 @@ Depends: ${shlibs:Depends}, ${misc:Depends}
 Recommends: ssl-cert, ca-certificates
 Description: Full featured Web Proxy cache (HTTP proxy) - HTTP(S) message utility
  Squid is a high-performance proxy caching server for web clients, supporting
- FTP, gopher, ICY and HTTP data objects.
+ FTP, ICY and HTTP data objects.
  .
  This package contains a small utility that can be used to get URLs from the
  command line.
@@ -80,7 +80,7 @@ Architecture: any
 Depends: apache2 | httpd, ${shlibs:Depends}, ${misc:Depends}
 Description: Full featured Web Proxy cache (HTTP proxy) - control CGI
  Squid is a high-performance proxy caching server for web clients, supporting
- FTP, gopher, ICY and HTTP data objects.
+ FTP, ICY and HTTP data objects.
  .
  This package contains a CGI program that can be used to query and administrate
  a `squid' proxy cache through a web browser.
@@ -90,7 +90,7 @@ Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
 Description: Full featured Web Proxy cache (HTTP proxy) - cache management utility
  Squid is a high-performance proxy caching server for web clients, supporting
- FTP, gopher, ICY and HTTP data objects.
+ FTP, ICY and HTTP data objects.
  .
  This package contains a small utility that can be used to manage the disk cache
  from the command line.

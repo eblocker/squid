@@ -1,15 +1,17 @@
-squid (5.9-2) UNRELEASED; urgency=medium
+squid (6.1-1) UNRELEASED; urgency=medium
 
   [ Amos Jeffries <amosjeffries@squid-cache.org> ]
-  * New Upstream Release
+  * debian/{control,watch}
+    - New Upstream Release
 
   * debian/patches/
-    - add 0004-release-notes-bug.patch to fix upstream texts
-    - refresh 0001-Default-configuration-file-for-debian.patch for new version
+    - refresh for new upstream version
+    - add 0006-upstream-807ae4df2164defbb5f59b99282e24010b4a0b85.patch
+    - remove 0003-installed-binary-for-debian-ci.patch integrated upstream
     - remove 1f13f721263a4cc75e4b798a230022561047899c.patch integrated upstream
     - remove edad3f150de8af0aeb2f629508be3219b83369b9.patch integrated upstream
 
- -- Amos Jeffries <amosjeffries@squid-cache.org>  Mon, 19 Jun 2023 11:43:00 +1300
+ -- Amos Jeffries <amosjeffries@squid-cache.org>  Sat,  8 Jul 2023 03:12:00 +1300
 
 squid (5.7-2) unstable; urgency=medium
 

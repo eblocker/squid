@@ -13,7 +13,7 @@ body
 </head><body id="%c">
 <div id="titles">
 <h1>შეცდომა</h1>
-<h2>მოთხოვნილი რესურსის გამოძახება ვერ მოხერხდა</h2>
+<h2>მოთხოვნილი ბმულის გამოთხოვა ვერ მოხერხდა</h2>
 </div>
 <hr>
 
@@ -21,10 +21,10 @@ body
 <p>The following error was encountered while trying to retrieve the URL: <a href="%U">%U</a></p>
 
 <blockquote id="error">
-<p><b>Unsupported Request Method and Protocol</b></p>
+<p><b>მხარდაუჭერელი მოთხოვნის მეთოდი და პროტოკოლი</b></p>
 </blockquote>
 
-<p>Squid does not support all request methods for all access protocols. For example, you can not POST a Gopher request.</p>
+<p>Squid does not support all request methods for all access protocols.</p>
 
 <p>თქვენი კეშის ადმინისტრატორია <a href="mailto:%w%W">%w</a>.</p>
 <br>

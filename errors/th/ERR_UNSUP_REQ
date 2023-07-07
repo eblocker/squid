@@ -24,7 +24,7 @@ body
 <p><b>ไม่รองรับโปรโตคอลและวิธีการหรือคำสั่งที่เรียกมา (request method)</b></p>
 </blockquote>
 
-<p>Squid does not support all request methods for all access protocols. For example, you can not POST a Gopher request.</p>
+<p>Squid does not support all request methods for all access protocols.</p>
 
 <p>ผู้ดูแลระบบแคชของคุณคือ <a href="mailto:%w%W">%w</a></p>
 <br>

@@ -24,7 +24,7 @@ body
 <p><b>Neatbalstīta pieprasījuma metode un protokols</b></p>
 </blockquote>
 
-<p>Squid neatbalsta visas pieprasījuma metodes visiem protokoliem. Piemēram, Jūs nevarat veikt POST pieprasījumu izmantojot Gopher protokolu.</p>
+<p>Squid does not support all request methods for all access protocols.</p>
 
 <p>Jūsu kešatmiņas administrators ir <a href="mailto:%w%W">%w</a>.</p>
 <br>

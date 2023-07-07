@@ -24,7 +24,7 @@ body
 <p><b>Метод запиту чи протокол не підтримуються</b></p>
 </blockquote>
 
-<p>Squid не підтримує всі методи запитів для всіх наявних протоколів. Як приклад, Ви не можете виконати запит POST для протоколу Gopher.</p>
+<p>Squid does not support all request methods for all access protocols.</p>
 
 <p>Адміністратор даного кешу <a href="mailto:%w%W">%w</a>.</p>
 <br>

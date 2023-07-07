@@ -24,7 +24,7 @@ body
 <p><b>Nepodprta metoda zahteve in protokol</b></p>
 </blockquote>
 
-<p>Squid ne podpira vseh metod zahtev za vse protokole dostopa. Tako npr. metode POST ne morete uporabiti za zahtevo Gopher.</p>
+<p>Squid does not support all request methods for all access protocols.</p>
 
 <p>Skrbnik vašega predpomnilnika je <a href="mailto:%w%W">%w</a>.</p>
 <br>

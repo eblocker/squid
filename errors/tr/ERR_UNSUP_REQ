@@ -24,7 +24,7 @@ body
 <p><b>Desteklenmeyen istek yöntemi ve protokol.</b></p>
 </blockquote>
 
-<p>Squid, bazı erişim protokollerin, bazı istek yöntemlerini desteklemiyor. Örneğin Gopher isteğinizde POST yapamazsınız.</p>
+<p>Squid does not support all request methods for all access protocols.</p>
 
 <p>Önbellk yöneticiniz <a href="mailto:%w%W">%w</a>.</p>
 <br>

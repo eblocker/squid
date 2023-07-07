@@ -24,7 +24,7 @@ body
 <p><b>M&eacute;todo de la petici&oacute;n y protocolo no soportados.</b></p>
 </blockquote>
 
-<p>Squid no admite todos los m&eacute;todos para todos los protocolos de acceso. Por ejemplo, no se puede hacer un POST a un servidor Gopher.</p>
+<p>Squid does not support all request methods for all access protocols.</p>
 
 <p>Su administrador del cach&eacute; es <a href="mailto:%w%W">%w</a>.</p>
 <br>

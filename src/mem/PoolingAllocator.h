@@ -23,21 +23,12 @@ public:
     value_type *allocate(std::size_t n) { return static_cast<value_type*>(memAllocRigid(n*sizeof(value_type))); }
     void deallocate(value_type *vp, std::size_t n) noexcept { memFreeRigid(vp, n*sizeof(value_type)); }
 
-    // The following declarations are only necessary for compilers that do not
-    // fully support C++11 Allocator-related APIs, such as GCC v4.8.
-    // TODO: Remove after dropping support for such compilers.
-
-    using size_type = size_t;
-    using pointer = Value*;
-    using const_pointer = const Value*;
-    using reference = Value&;
-    using const_reference = const Value&;
-
     template <class OtherValue>
     struct rebind {
         typedef PoolingAllocator<OtherValue> other;
     };
 
+    template<class U, class ... Args> void construct(U *p, Args && ... args) { new((void *)p) U(std::forward<Args>(args)...); }
     template<typename OtherValue> void destroy(OtherValue *p) { p->~OtherValue(); }
 };
 

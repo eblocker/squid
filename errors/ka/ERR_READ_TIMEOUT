@@ -13,7 +13,7 @@ body
 </head><body id="%c">
 <div id="titles">
 <h1>შეცდომა</h1>
-<h2>მოთხოვნილი რესურსის გამოძახება ვერ მოხერხდა</h2>
+<h2>მოთხოვნილი ბმულის გამოთხოვა ვერ მოხერხდა</h2>
 </div>
 <hr>
 
@@ -21,12 +21,12 @@ body
 <p>The following error was encountered while trying to retrieve the URL: <a href="%U">%U</a></p>
 
 <blockquote id="error">
-<p><b>Read Timeout</b></p>
+<p><b>წაკითხვის ვადა გავიდა</b></p>
 </blockquote>
 
 <p id="sysmsg">სისტემამ დააბრუნა: <i>%E</i></p>
 
-<p>A Timeout occurred while waiting to read data from the network. The network or server may be down or congested. Please retry your request.</p>
+<p>ქსელიდან მონაცემების წაკითხვის მოლოდინის ვადა ამოიწურა. შეიძლება ქსელი ან სერვერი გათიშულია. თავიდან სცადეთ.</p>
 
 <p>თქვენი კეშის ადმინისტრატორია <a href="mailto:%w%W">%w</a>.</p>
 <br>

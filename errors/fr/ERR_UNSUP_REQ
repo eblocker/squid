@@ -24,7 +24,7 @@ body
 <p><b>La méthode de requête et le protocole ne sont pas pris en charge.</b></p>
 </blockquote>
 
-<p>Squid ne prend pas en charge tous les types de requêtes par rapport à tous les protocoles d'accès. Vous ne pouvez pas par exemple utiliser une requête POST avec le protocole Gopher.</p>
+<p>Squid does not support all request methods for all access protocols.</p>
 
 <p>Votre administrateur proxy est <a href="mailto:%w%W">%w</a>.</p>
 <br>

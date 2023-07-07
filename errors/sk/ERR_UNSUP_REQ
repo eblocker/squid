@@ -24,7 +24,7 @@ body
 <p><b>Nepodporovaná metóda a protokol požiadavky</b></p>
 </blockquote>
 
-<p>Squid nepodporuje všetky typy metód pri všetkých protokoloch. Napríklad: nie je možné použiť metódu POST pri službe Gopher.</p>
+<p>Squid does not support all request methods for all access protocols.</p>
 
 <p>Vaším správcom cache je <a href="mailto:%w%W">%w</a>.</p>
 <br>

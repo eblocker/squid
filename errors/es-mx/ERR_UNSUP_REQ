@@ -24,7 +24,7 @@ body
 <p><b>Método de la petición y protocolo no soportados.</b></p>
 </blockquote>
 
-<p>Squid no soporta todos los métodos de solicitud para algunos protocolos de acceso. Por ejemplo, no es posible hacer una solcitud POST a un servidor Gopher.</p>
+<p>Squid does not support all request methods for all access protocols.</p>
 
 <p>El administrador del cach&eacute; es <a href="mailto:%w%W">%w</a>.</p>
 <br>

@@ -24,7 +24,7 @@ body
 <p><b>尚未支援的要求方式或通訊協定</b></p>
 </blockquote>
 
-<p>因為 Squid （網路快取程式）並未支援所有的連結要求方式在各式通訊協定上。比如說，你不能要求一個 GOPHER 的 POST 連結要求。</p>
+<p>Squid does not support all request methods for all access protocols.</p>
 
 <p>Your cache administrator is <a href="mailto:%w%W">%w</a>.</p>
 <br>

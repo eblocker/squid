@@ -24,7 +24,7 @@ body
 <p><b>Metodo e protocollo della richiesta non sono supportati.</b></p>
 </blockquote>
 
-<p>Squid non consente di utilizzare qualsiasi tipo di richiesta per qualsiasi protocollo (a esempio non consente una richiesta POST su protocollo Gopher).</p>
+<p>Squid does not support all request methods for all access protocols.</p>
 
 <p>L'amministratore del proxy è <a href="mailto:%w%W">%w</a>.</p>
 <br>

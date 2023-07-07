@@ -24,7 +24,7 @@ body
 <p><b>שיטת בקשה ופרוטוקול לא נתמכים</b></p>
 </blockquote>
 
-<p>שרת ה Squid אינו תומך בכל שיטות הבקשה לכל הפרוטוקולים. לדוגמא אינך יכול לשלוח בקשת POST ב-Gopher.</p>
+<p>Squid does not support all request methods for all access protocols.</p>
 
 <p>מנהל השרת הוא <a href="mailto:%w%W">%w</a>. </p>
 <br>

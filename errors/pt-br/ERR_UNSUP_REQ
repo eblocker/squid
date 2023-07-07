@@ -24,7 +24,7 @@ body
 <p><b>Método e Protocolo de Requisição Não-Suportado</b></p>
 </blockquote>
 
-<p>Squid não suporta todos os métodos de requisição para todos os protocolos de acesso. Por exemplo, você não pode emitir uma requisição POST ao protocolo Gopher.</p>
+<p>Squid does not support all request methods for all access protocols.</p>
 
 <p>Seu administrador do cache é <a href="mailto:%w%W">%w</a>.</p>
 <br>

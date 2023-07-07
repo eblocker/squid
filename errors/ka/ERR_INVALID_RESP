@@ -13,12 +13,12 @@ body
 </head><body id="%c">
 <div id="titles">
 <h1>შეცდომა</h1>
-<h2>მოთხოვნილი რესურსის გამოძახება ვერ მოხერხდა</h2>
+<h2>მოთხოვნილი ბმულის გამოთხოვა ვერ მოხერხდა</h2>
 </div>
 <hr>
 
 <div id="content">
-<p><b>Invalid Response</b> error was encountered while trying to process the request:</p>
+<p><b>არასწორი პასუხი</b> შეცდომა მოთხოვნის დამუშავებისას:</p>
 
 <blockquote id="data">
 <pre>%R</pre>

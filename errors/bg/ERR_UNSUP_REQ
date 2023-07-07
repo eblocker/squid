@@ -24,7 +24,7 @@ body
 <p><b>Сървърът не поддържа метода и/или протокола, посочен в заявката</b></p>
 </blockquote>
 
-<p>Кеш сървърът не поддържа всички методи на заявка за всички протоколи. Например, не можете да заявите метод POST за протокол Gopher.</p>
+<p>Squid does not support all request methods for all access protocols.</p>
 
 <p>Вашият кеш администратор е <a href="mailto:%w%W">%w</a>.</p>
 <br>

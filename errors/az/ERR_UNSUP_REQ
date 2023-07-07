@@ -24,7 +24,7 @@ body
 <p><b>Dəstəklənməyən sorğu metodu və protokol</b></p>
 </blockquote>
 
-<p>Squid bütün sorğu metodları və bütün protokollardəstəkləmir. Məsələn, Gopher protokolu üzrə siz POST sorğu metodunu yerinə yetirə bilməzsiniz.</p>
+<p>Squid does not support all request methods for all access protocols.</p>
 
 <p>Your cache administrator is <a href="mailto:%w%W">%w</a>.</p>
 <br>

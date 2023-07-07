@@ -24,7 +24,7 @@ body
 <p><b>Anfragemethode und Protokoll nicht unterstützt</b></p>
 </blockquote>
 
-<p>Squid unterstützt nicht alle Anfragemethoden für alle Protokolle. Sie können zum Beispiel keine POST Anfrage über das Gopher Protokoll senden.</p>
+<p>Squid does not support all request methods for all access protocols.</p>
 
 <p>Ihr Cache Administrator ist <a href="mailto:%w%W">%w</a>.</p>
 <br>

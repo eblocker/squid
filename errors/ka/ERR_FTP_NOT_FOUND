@@ -13,19 +13,19 @@ body
 </head><body id="%c">
 <div id="titles">
 <h1>შეცდომა</h1>
-<h2>მოთხოვნილი რესურსის გამოძახება ვერ მოხერხდა</h2>
+<h2>მოთხოვნილი ბმულის გამოთხოვა ვერ მოხერხდა</h2>
 </div>
 <hr>
 
 <div id="content">
-<p>მოთხოვნილი რესურსის გამოძახება ვერ მოხერხდა: <a href="%U">%U</a></p>
+<p>მოთხოვნილი ბმულია გამოთხოვა ვერ მოხერხდა: <a href="%U">%U</a></p>
 
-<p>Squid sent the following FTP command:</p>
+<p>Squid-მა გააგზავნა შემდეგი FTP ბრძანება:</p>
 <blockquote id="data">
 <pre>%f</pre>
 </blockquote>
 
-<p>The server responded with:</p>
+<p>სერვერის პასუხია:</p>
 <blockquote id="sysmsg">
 <pre>%F</pre>
 <pre>%g</pre>

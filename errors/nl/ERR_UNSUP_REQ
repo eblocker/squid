@@ -24,7 +24,7 @@ body
 <p><b>Niet ondersteunde verzoekmethode of protocol</b></p>
 </blockquote>
 
-<p>Squid ondersteunt niet alle verzoekmethoden voor alle toegangsprotocollen. U kunt bijvoorbeeld geen Gopher verzoek POSTen.</p>
+<p>Squid does not support all request methods for all access protocols.</p>
 
 <p>De beheerder van deze cache is <a href="mailto:%w%W">%w</a>.</p>
 <br>

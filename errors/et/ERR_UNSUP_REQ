@@ -24,7 +24,7 @@ body
 <p><b>Tundmatu p&auml;ringu meetod ja protokoll</b></p>
 </blockquote>
 
-<p>Squid ei toeta k&otilde;iki p&auml;ringu meetodeid k&otilde;ikide protokollidega. N&auml;iteks, te ei saa teha POST operatsiooni Gopher p&auml;ringus.</p>
+<p>Squid does not support all request methods for all access protocols.</p>
 
 <p>Teie teenusepakkuja aadress on <a href="mailto:%w%W">%w</a>.</p>
 <br>

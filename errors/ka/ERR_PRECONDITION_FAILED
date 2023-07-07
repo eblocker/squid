@@ -13,7 +13,7 @@ body
 </head><body id="%c">
 <div id="titles">
 <h1>შეცდომა</h1>
-<h2>მოთხოვნილი რესურსის გამოძახება ვერ მოხერხდა</h2>
+<h2>მოთხოვნილი ბმულის გამოთხოვა ვერ მოხერხდა</h2>
 </div>
 <hr>
 
@@ -21,7 +21,7 @@ body
 <p>The following error was encountered while trying to retrieve the URL: <a href="%U">%U</a></p>
 
 <blockquote id="error">
-<p><b>Precondition Failed.</b></p>
+<p><b>წინასწარი პირობა არ შესრულდა.</b></p>
 </blockquote>
 
 <p>ეს ნიშნავს, რომ:</p>

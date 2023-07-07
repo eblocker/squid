@@ -24,7 +24,7 @@ body
 <p><b>Nem támogatott kéréstípus vagy protokoll</b></p>
 </blockquote>
 
-<p>A proxyszerver nem támogat minden létező kéréstípus és protokoll kombinációt, így pl. nem lehet POST kéréstípust használni egy Gopher kérésben.</p>
+<p>Squid does not support all request methods for all access protocols.</p>
 
 <p>A proxyszerver üzemeltetőjének e-mail címe: <a href="mailto:%w%W">%w</a>.</p>
 <br>

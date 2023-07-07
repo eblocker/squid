@@ -13,7 +13,7 @@ body
 </head><body id="%c">
 <div id="titles">
 <h1>შეცდომა</h1>
-<h2>მოთხოვნილი რესურსის გამოძახება ვერ მოხერხდა</h2>
+<h2>მოთხოვნილი ბმულის გამოთხოვა ვერ მოხერხდა</h2>
 </div>
 <hr>
 
@@ -26,7 +26,7 @@ body
 
 <p id="sysmsg">სისტემამ დააბრუნა: <i>%E</i></p>
 
-<p>The remote host or network may be down. Please try the request again.</p>
+<p>დაშორებული ქსელი ან ჰოსტი გათიშულია. ცოტა ხანში სცადეთ.</p>
 
 <p>თქვენი კეშის ადმინისტრატორია <a href="mailto:%w%W">%w</a>.</p>
 

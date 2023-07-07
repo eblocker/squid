@@ -97,15 +97,17 @@ bool Ip::Qos::Config::isAclTosActive() const STUB_RETVAL(false)
 Ip::Qos::Config Ip::Qos::TheConfig;
 
 #include "ip/Intercept.h"
+bool Ip::Intercept::LookupNat(const Comm::Connection &) STUB_RETVAL(false)
 bool Ip::Intercept::ProbeForTproxy(Ip::Address &) STUB_RETVAL(false)
+void Ip::Intercept::StartTransparency() STUB
 void Ip::Intercept::StopTransparency(const char *) STUB
-bool Ip::Intercept::Lookup(const Comm::ConnectionPointer &newConn, const Comm::ConnectionPointer &listenConn) STUB_RETVAL(false)
+void Ip::Intercept::StartInterception() STUB
 Ip::Intercept Ip::Interceptor;
 
 #include "ip/NfMarkConfig.h"
 Ip::NfMarkConfig Ip::NfMarkConfig::Parse(const SBuf &) STUB_RETSTATREF(Ip::NfMarkConfig)
 nfmark_t Ip::NfMarkConfig::applyToMark(nfmark_t) const STUB_RETVAL(0)
-std::ostream &operator <<(std::ostream &os, Ip::NfMarkConfig) STUB_RETVAL(os)
+std::ostream &Ip::operator <<(std::ostream &os, Ip::NfMarkConfig) STUB_RETVAL(os)
 
 #include "ip/tools.h"
 void Ip::ProbeTransport() STUB

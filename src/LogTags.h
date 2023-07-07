@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2022 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2023 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -53,7 +53,7 @@ typedef enum {
     LOG_TCP_DENIED_REPLY,
     LOG_TCP_OFFLINE_HIT,
     LOG_TCP_REDIRECT,
-    LOG_TCP_TUNNEL,             // a binary tunnel was established for this transaction
+    LOG_TCP_TUNNEL, ///< an attempt to establish a bidirectional TCP tunnel
     LOG_UDP_HIT,
     LOG_UDP_MISS,
     LOG_UDP_DENIED,
@@ -76,6 +76,9 @@ public:
 
     /// determine if the log tag code indicates a cache HIT
     bool isTcpHit() const;
+
+    /// \returns Cache-Status "hit" or "fwd=..." parameter (or nil)
+    const char *cacheStatusSource() const;
 
     /// various problems augmenting the primary log tag
     LogTagsErrors err;

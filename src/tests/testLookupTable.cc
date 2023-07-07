@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2022 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2023 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -47,6 +47,11 @@ testLookupTable::testLookupTableLookup()
     CPPUNIT_ASSERT_EQUAL(lt.lookup(SBuf("five")), ENUM_5);
     CPPUNIT_ASSERT_EQUAL(lt.lookup(SBuf("six")), ENUM_6);
     CPPUNIT_ASSERT_EQUAL(lt.lookup(SBuf("seven")), ENUM_7);
+
+    // element found despite a different key spelling
+    CPPUNIT_ASSERT_EQUAL(lt.lookup(SBuf("One")), ENUM_1);
+    CPPUNIT_ASSERT_EQUAL(lt.lookup(SBuf("fOUr")), ENUM_4);
+    CPPUNIT_ASSERT_EQUAL(lt.lookup(SBuf("seveN")), ENUM_7);
 
     // element not found
     CPPUNIT_ASSERT_EQUAL(lt.lookup(SBuf("eleventy")), ENUM_INVALID);

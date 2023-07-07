@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2022 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2023 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -96,7 +96,7 @@ struct StoreMetaStdLFS {
 struct SquidTLV {
   // create a shallow reference pointing into the "buffer" variable
   // do not copy --> saves times, saves memory.
-  SquidTLV( SquidMetaType _type, size_t _size = 0, void* _data = 0 );
+  SquidTLV( SquidMetaType _type, size_t _size = 0, void* _data = nullptr );
   ~SquidTLV() {}
 
   SquidTLV*      next;

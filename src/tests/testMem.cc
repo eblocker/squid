@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2022 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2023 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -7,7 +7,7 @@
  */
 
 #include "squid.h"
-#include "mem/forward.h"
+#include "mem/Allocator.h"
 #include "mem/Pool.h"
 #include "tests/testMem.h"
 #include "unitTestMain.h"
@@ -34,7 +34,7 @@ public:
 void
 testMem::testMemPool()
 {
-    MemAllocator *Pool = memPoolCreate("Test Pool", sizeof(SomethingToAlloc));
+    const auto Pool = memPoolCreate("Test Pool", sizeof(SomethingToAlloc));
     CPPUNIT_ASSERT(Pool);
 
     auto *something = static_cast<SomethingToAlloc *>(Pool->alloc());

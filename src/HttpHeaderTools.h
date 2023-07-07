@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2022 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2023 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -96,7 +96,7 @@ private:
 class HeaderWithAcl
 {
 public:
-    HeaderWithAcl() : aclList(NULL), valueFormat(NULL), fieldId(Http::HdrType::BAD_HDR), quoted(false) {}
+    HeaderWithAcl() : aclList(nullptr), valueFormat(nullptr), fieldId(Http::HdrType::BAD_HDR), quoted(false) {}
 
     /// HTTP header field name
     std::string fieldName;

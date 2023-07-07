@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2022 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2023 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -137,7 +137,7 @@ extern std::vector<const char *>BumpModeStr;
  */
 inline const char *bumpMode(int bm)
 {
-    return (0 <= bm && bm < Ssl::bumpEnd) ? Ssl::BumpModeStr.at(bm) : NULL;
+    return (0 <= bm && bm < Ssl::bumpEnd) ? Ssl::BumpModeStr.at(bm) : nullptr;
 }
 
 /// certificates indexed by issuer name
@@ -225,7 +225,7 @@ Security::ContextPointer GenerateSslContext(CertificateProperties const &, Secur
   \param properties Check if the context certificate matches the given properties
   \return true if the contexts certificate is valid, false otherwise
  */
-bool verifySslCertificate(Security::ContextPointer &, CertificateProperties const &);
+bool verifySslCertificate(const Security::ContextPointer &, CertificateProperties const &);
 
 /**
   \ingroup ServerProtocolSSLAPI
@@ -254,7 +254,7 @@ void configureUnconfiguredSslContext(Security::ContextPointer &, Ssl::CertSignAl
 
 /**
   \ingroup ServerProtocolSSLAPI
-  * Generates a certificate and a private key using provided properies and set it
+  * Generates a certificate and a private key using provided properties and set it
   * to SSL object.
  */
 bool configureSSL(SSL *ssl, CertificateProperties const &properties, AnyP::PortCfg &port);

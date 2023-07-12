@@ -1,3 +1,11 @@
+squid (6.1-2) UNRELEASED; urgency=low
+
+  [ Amos Jeffries <amosjeffries@squid-cache.org> ]
+  * debian/patches/
+   - add 0007-ftbfs-gnu-hurd.patch to fix GNU/Hurd build
+
+ -- Amos Jeffries <amosjeffries@squid-cache.org>  Thu, 13 Jul 2023 00:02:00 +1200
+
 squid (6.1-1) unstable; urgency=medium
 
   [ Amos Jeffries <amosjeffries@squid-cache.org> ]

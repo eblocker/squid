@@ -602,8 +602,7 @@ am_tests_testCacheManager_OBJECTS = $(am__objects_3) $(am__objects_4) \
 	tests/stub_tunnel.$(OBJEXT) urn.$(OBJEXT) \
 	tests/stub_wccp2.$(OBJEXT) tests/stub_whois.$(OBJEXT) \
 	wordlist.$(OBJEXT)
-nodist_tests_testCacheManager_OBJECTS = $(am__objects_14) \
-	tests/stub_libtime.$(OBJEXT)
+nodist_tests_testCacheManager_OBJECTS = $(am__objects_14)
 tests_testCacheManager_OBJECTS = $(am_tests_testCacheManager_OBJECTS) \
 	$(nodist_tests_testCacheManager_OBJECTS)
 tests_testCacheManager_DEPENDENCIES = libsquid.la \
@@ -617,7 +616,8 @@ tests_testCacheManager_DEPENDENCIES = libsquid.la \
 	$(am__DEPENDENCIES_2) $(SSL_LIBS) anyp/libanyp.la \
 	ipc/libipc.la mgr/libmgr.la $(am__DEPENDENCIES_3) \
 	mem/libmem.la store/libstore.la sbuf/libsbuf.la \
-	debug/libdebug.la $(top_builddir)/lib/libmisccontainers.la \
+	time/libtime.la debug/libdebug.la \
+	$(top_builddir)/lib/libmisccontainers.la \
 	$(top_builddir)/lib/libmiscencoding.la \
 	$(top_builddir)/lib/libmiscutil.la $(am__DEPENDENCIES_1) \
 	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
@@ -4847,8 +4847,7 @@ tests_testCacheManager_SOURCES = \
 	wordlist.h
 
 nodist_tests_testCacheManager_SOURCES = \
-	$(BUILT_SOURCES) \
-	tests/stub_libtime.cc
+	$(BUILT_SOURCES)
 
 # comm.cc only requires comm/libcomm.la until fdc_table is dead.
 tests_testCacheManager_LDADD = \
@@ -4884,6 +4883,7 @@ tests_testCacheManager_LDADD = \
 	mem/libmem.la \
 	store/libstore.la \
 	sbuf/libsbuf.la \
+	time/libtime.la \
 	debug/libdebug.la \
 	$(top_builddir)/lib/libmisccontainers.la \
 	$(top_builddir)/lib/libmiscencoding.la \
@@ -5319,8 +5319,6 @@ tests/stub_wccp2.$(OBJEXT): tests/$(am__dirstamp) \
 	tests/$(DEPDIR)/$(am__dirstamp)
 tests/stub_whois.$(OBJEXT): tests/$(am__dirstamp) \
 	tests/$(DEPDIR)/$(am__dirstamp)
-tests/stub_libtime.$(OBJEXT): tests/$(am__dirstamp) \
-	tests/$(DEPDIR)/$(am__dirstamp)
 
 tests/testCacheManager$(EXEEXT): $(tests_testCacheManager_OBJECTS) $(tests_testCacheManager_DEPENDENCIES) $(EXTRA_tests_testCacheManager_DEPENDENCIES) tests/$(am__dirstamp)
 	@rm -f tests/testCacheManager$(EXEEXT)
@@ -5392,6 +5390,8 @@ tests/stub_store_client.$(OBJEXT): tests/$(am__dirstamp) \
 tests/stub_store_rebuild.$(OBJEXT): tests/$(am__dirstamp) \
 	tests/$(DEPDIR)/$(am__dirstamp)
 tests/stub_tools.$(OBJEXT): tests/$(am__dirstamp) \
+	tests/$(DEPDIR)/$(am__dirstamp)
+tests/stub_libtime.$(OBJEXT): tests/$(am__dirstamp) \
 	tests/$(DEPDIR)/$(am__dirstamp)
 
 tests/testDiskIO$(EXEEXT): $(tests_testDiskIO_OBJECTS) $(tests_testDiskIO_DEPENDENCIES) $(EXTRA_tests_testDiskIO_DEPENDENCIES) tests/$(am__dirstamp)

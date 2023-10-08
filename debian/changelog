@@ -1,3 +1,10 @@
+squid (6.3-2) UNRELEASED; urgency=low
+
+  [ Amos Jeffries <amosjeffries@squid-cache.org> ]
+  * Update debian/tests/upstream-test-suite for new version (Closes: #1053557)
+
+ -- Amos Jeffries <amosjeffries@squid-cache.org>  Mon,  9 Oct 2023 10:12:00 +1200
+
 squid (6.3-1) unstable; urgency=medium
 
   [ Amos Jeffries <amosjeffries@squid-cache.org> ]

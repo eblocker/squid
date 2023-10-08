@@ -6,7 +6,10 @@ dh_update_autotools_config
 dh_autoreconf
 dh_auto_configure -- ${DEB_CONFIGURE_EXTRA_FLAGS} --with-gnutls
 make -C src/base libbase.la
+make -C src/comm libminimal.la
+make -C src/debug libdebug.la
 make -C src/mem libmem.la
+make -C src/time libtime.la
 make -C src globals.o
 make -C lib all
 make -C compat

@@ -1,11 +1,19 @@
-squid (6.4-1) UNRELEASED; urgency=high
+squid (6.5-1) UNRELEASED; urgency=high
 
   [ Amos Jeffries <amosjeffries@squid-cache.org> ]
-  * New Upstream version 6.4
+  * New Upstream Release 6.5
+    Fixes: CVE-2023-46846. SQUID-2023:1 (Closes: #1054537)
+    Fixes: CVE-2023-5842. SQUID-2023:2 (Closes: #1055249)
+    Fixes: CVE-2023-46847. SQUID-2023:3 (Closes: #1055250)
+    Fixes: CVE-2023-46724. SQUID-2023:4 (Closes: #1055252)
+    Fixes: CVE-2023-46848. SQUID-2023:5 (Closes: #1055251)
+    Fixes: CVE-2019-18860. SQUID-2023:6 Cross Site Scripting in cachemgr.cgi
+    Fixes: SQUID-2023:7 Denial of Service in HTTP Message processing
+    Fixes: SQUID-2023:8 Denial of Service in Helper Process management
 
   * Update debian/tests/upstream-test-suite for new version (Closes: #1053557)
 
- -- Amos Jeffries <amosjeffries@squid-cache.org>  Sun, 22 Oct 2023 03:17:00 +1200
+ -- Amos Jeffries <amosjeffries@squid-cache.org>  Mon,  6 Nov 2023 23:20:00 +1200
 
 squid (6.3-1) unstable; urgency=medium
 

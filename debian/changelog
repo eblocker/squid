@@ -1,4 +1,4 @@
-squid (6.5-1) UNRELEASED; urgency=high
+squid (6.5-1) unstable; urgency=high
 
   [ Amos Jeffries <amosjeffries@squid-cache.org> ]
   * New Upstream Release 6.5
@@ -13,7 +13,7 @@ squid (6.5-1) UNRELEASED; urgency=high
 
   * Update debian/tests/upstream-test-suite for new version (Closes: #1053557)
 
- -- Amos Jeffries <amosjeffries@squid-cache.org>  Mon,  6 Nov 2023 23:20:00 +1200
+ -- Luigi Gangitano <luigi@debian.org>  Thu,  9 Nov 2023 15:04:20 +0100
 
 squid (6.3-1) unstable; urgency=medium
 

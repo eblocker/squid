@@ -1,8 +1,8 @@
-diff --git a/src/internal.cc b/src/internal.cc
-index be5d61c29b..5345545461 100644
---- a/src/internal.cc
-+++ b/src/internal.cc
-@@ -163,6 +163,8 @@ internalHostname(void)
+Index: pkg-squid/src/internal.cc
+===================================================================
+--- pkg-squid.orig/src/internal.cc	2024-01-18 12:58:59.829002423 +0100
++++ pkg-squid/src/internal.cc	2024-01-18 12:58:59.825002423 +0100
+@@ -162,6 +162,8 @@
      return host;
  }
  
@@ -11,7 +11,7 @@ index be5d61c29b..5345545461 100644
  int
  internalHostnameIs(const char *arg)
  {
-@@ -175,6 +177,9 @@ internalHostnameIs(const char *arg)
+@@ -174,6 +176,9 @@
          if (0 == strcmp(arg, w->key))
              return 1;
  

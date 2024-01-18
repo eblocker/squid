@@ -4,6 +4,10 @@ squid (6.6-1) unstable; urgency=high
   * New Upstream Release 6.6
     Fixes: CVE-2023-50269. SQUID-2023:10 (Closes: #1058721)
 
+  [ Luigi Gangitano <luigi@debian.org> ]
+  * debian/patches/
+    - Refreshed patches
+
  -- Amos Jeffries <amosjeffries@squid-cache.org>  Wed, 17 Jan 2024 14:58:00 +1200
 
 squid (6.5-1) unstable; urgency=high

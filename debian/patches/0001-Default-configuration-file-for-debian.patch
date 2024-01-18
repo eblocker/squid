@@ -7,11 +7,11 @@ Forwarded: not-needed
  src/cf.data.pre | 4 +++-
  1 file changed, 3 insertions(+), 1 deletions(-)
 
-diff --git a/src/cf.data.pre b/src/cf.data.pre
-index 46b87c47a..10788a1d8 100644
---- a/src/cf.data.pre
-+++ b/src/cf.data.pre
-@@ -1877,6 +1877,7 @@ http_access deny to_linklocal
+Index: pkg-squid/src/cf.data.pre
+===================================================================
+--- pkg-squid.orig/src/cf.data.pre	2024-01-18 12:58:14.645002402 +0100
++++ pkg-squid/src/cf.data.pre	2024-01-18 12:58:14.641002402 +0100
+@@ -1912,6 +1912,7 @@
  #
  # INSERT YOUR OWN RULE(S) HERE TO ALLOW ACCESS FROM YOUR CLIENTS
  #
@@ -19,7 +19,7 @@ index 46b87c47a..10788a1d8 100644
  
  # For example, to allow access from your local networks, you may uncomment the
  # following rule (and/or add rules that match your definition of "local"):
-@@ -5313,7 +5314,7 @@ DOC_END
+@@ -5453,7 +5454,7 @@
  
  NAME: logfile_rotate
  TYPE: int
@@ -28,7 +28,7 @@ index 46b87c47a..10788a1d8 100644
  LOC: Config.Log.rotateNumber
  DOC_START
  	Specifies the default number of logfile rotations to make when you
-@@ -5337,6 +5338,8 @@ DOC_START
+@@ -5477,6 +5478,8 @@
  	in the habit of using 'squid -k rotate' instead of 'kill -USR1
  	<pid>'.
  

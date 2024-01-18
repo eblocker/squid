@@ -11,6 +11,9 @@ squid (6.6-1) unstable; urgency=high
   * debian/squid-openssl.dirs
     - Stop creating empty /lib/systemd/system directory (Closes: #1058860)
 
+  * debian/changelog
+    - Fixed typo in CVE reference
+
  -- Amos Jeffries <amosjeffries@squid-cache.org>  Wed, 17 Jan 2024 14:58:00 +1200
 
 squid (6.5-1) unstable; urgency=high
@@ -18,7 +21,7 @@ squid (6.5-1) unstable; urgency=high
   [ Amos Jeffries <amosjeffries@squid-cache.org> ]
   * New Upstream Release 6.5
     Fixes: CVE-2023-46846. SQUID-2023:1 (Closes: #1054537)
-    Fixes: CVE-2023-5842. SQUID-2023:2 (Closes: #1055249)
+    Fixes: CVE-2023-5824. SQUID-2023:2 (Closes: #1055249)
     Fixes: CVE-2023-46847. SQUID-2023:3 (Closes: #1055250)
     Fixes: CVE-2023-46724. SQUID-2023:4 (Closes: #1055252)
     Fixes: CVE-2023-46848. SQUID-2023:5 (Closes: #1055251)

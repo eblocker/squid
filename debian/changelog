@@ -8,6 +8,9 @@ squid (6.6-1) unstable; urgency=high
   * debian/patches/
     - Refreshed patches
 
+  * debian/squid-openssl.dirs
+    - Stop creating empty /lib/systemd/system directory (Closes: #1058860)
+
  -- Amos Jeffries <amosjeffries@squid-cache.org>  Wed, 17 Jan 2024 14:58:00 +1200
 
 squid (6.5-1) unstable; urgency=high

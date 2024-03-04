@@ -1,8 +1,17 @@
+squid (6.8-1) UNRELEASED; urgency=high
+
+  [ Amos Jeffries <amosjeffries@squid-cache.org> ]
+  * New Upstream Release 6.8
+    Fixes: CVE-2024-25111. SQUID-2024:1
+
+ -- Amos Jeffries <amosjeffries@squid-cache.org>  Mon,  4 Mar 2024 23:41:00 +1200
+
 squid (6.6-1) unstable; urgency=high
 
   [ Amos Jeffries <amosjeffries@squid-cache.org> ]
   * New Upstream Release 6.6
     Fixes: CVE-2023-50269. SQUID-2023:10 (Closes: #1058721)
+    Fixes: CVE-2024-23638. SQUID-2023:11
 
   [ Luigi Gangitano <luigi@debian.org> ]
   * debian/patches/
@@ -25,9 +34,10 @@ squid (6.5-1) unstable; urgency=high
     Fixes: CVE-2023-46847. SQUID-2023:3 (Closes: #1055250)
     Fixes: CVE-2023-46724. SQUID-2023:4 (Closes: #1055252)
     Fixes: CVE-2023-46848. SQUID-2023:5 (Closes: #1055251)
-    Fixes: CVE-2019-18860. SQUID-2023:6 Cross Site Scripting in cachemgr.cgi
-    Fixes: SQUID-2023:7 Denial of Service in HTTP Message processing
-    Fixes: SQUID-2023:8 Denial of Service in Helper Process management
+    Fixes: CVE-2019-18860. SQUID-2023:6
+    Fixes: CVE-2023-49285. SQUID-2023:7
+    Fixes: CVE-2023-49286. SQUID-2023:8
+    Fixes: CVE-2024-25617. SQUID-2024:2
 
   * Update debian/tests/upstream-test-suite for new version (Closes: #1053557)
 

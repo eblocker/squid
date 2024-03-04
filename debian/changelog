@@ -4,6 +4,10 @@ squid (6.8-1) UNRELEASED; urgency=high
   * New Upstream Release 6.8
     Fixes: CVE-2024-25111. SQUID-2024:1
 
+  [ Luigi Gangitano <luigi@debian.org> ]
+  * debian/control
+    - Migrate from pkg-config to pkgconf
+
  -- Amos Jeffries <amosjeffries@squid-cache.org>  Mon,  4 Mar 2024 23:41:00 +1200
 
 squid (6.6-1) unstable; urgency=high

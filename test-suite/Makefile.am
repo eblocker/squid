@@ -162,7 +162,7 @@ VirtualDeleteOperator_SOURCES = \
 squid-conf-tests: $(top_builddir)/src/squid.conf.default $(srcdir)/squidconf/*
 	@failed=0; cfglist="$?"; rm -f $@ || $(TRUE); \
 	for cfg in $$cfglist ; do \
-		$(top_builddir)/src/squid -k parse -f $$cfg || \
+		/usr/sbin/squid -k parse -f $$cfg || \
 			{ echo "FAIL: squid.conf test: $$cfg" | \
 				sed s%$(top_builddir)/src/%% | \
 				sed s%$(srcdir)/squidconf/%% ; \

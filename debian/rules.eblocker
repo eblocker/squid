@@ -72,6 +72,9 @@ DEB_MAKE_CLEAN_TARGET = distclean
 %:
 	dh $@
 
+override_dh_auto_configure:
+	dh_auto_configure -- ${DEB_CONFIGURE_EXTRA_FLAGS}
+
 execute_after_dh_auto_install:
 	install -m 755 -g root -d $(INSTALLDIR)/usr/lib/cgi-bin
 	install -m 644 $(INSTALLDIR)/etc/squid/squid.conf.documented $(INSTALLDIR)/etc/squid/squid.conf

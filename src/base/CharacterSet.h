@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2022 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -40,6 +40,9 @@ public:
 
     /// add a given character to the character set
     CharacterSet & add(const unsigned char c);
+
+    /// remove a given character from the character set
+    CharacterSet & remove(const unsigned char c);
 
     /// add a list of character ranges, expressed as pairs [low,high], including both ends
     CharacterSet & addRange(unsigned char low, unsigned char high);

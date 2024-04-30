@@ -1,4 +1,4 @@
-## Copyright (C) 1996-2019 The Squid Software Foundation and contributors
+## Copyright (C) 1996-2022 The Squid Software Foundation and contributors
 ##
 ## Squid software is distributed under GPLv2+ license and includes
 ## contributions from numerous individuals and organizations.
@@ -12,15 +12,15 @@ noinst_LTLIBRARIES = libDiskDaemon.la
 libexec_PROGRAMS = diskd
 
 libDiskDaemon_la_SOURCES = \
-	diomsg.h \
+	DiskDaemonDiskIOModule.cc \
+	DiskDaemonDiskIOModule.h \
 	DiskdAction.cc \
 	DiskdAction.h \
 	DiskdFile.cc \
 	DiskdFile.h \
 	DiskdIOStrategy.cc \
 	DiskdIOStrategy.h \
-	DiskDaemonDiskIOModule.cc \
-	DiskDaemonDiskIOModule.h
+	diomsg.h
 
 diskd_SOURCES = diskd.cc
 nodist_diskd_SOURCES = time.cc

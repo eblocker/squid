@@ -1,4 +1,4 @@
-## Copyright (C) 1996-2019 The Squid Software Foundation and contributors
+## Copyright (C) 1996-2022 The Squid Software Foundation and contributors
 ##
 ## Squid software is distributed under GPLv2+ license and includes
 ## contributions from numerous individuals and organizations.
@@ -8,7 +8,7 @@
 # This file is supposed to run all the tests required to identify which
 # configured modules are able to be built in this environment
 
-# FIXME: de-duplicate $enable_external_acl_helpers list containing double entries.
+# TODO: de-duplicate $enable_external_acl_helpers list containing double entries.
 
 #define list of modules to build
 auto_ext_acl_modules=no
@@ -50,6 +50,9 @@ if test "x$enable_external_acl_helpers" != "xno" ; then
 
       elif test "x$helper" = "xkerberos_ldap_group" ; then
         m4_include([src/acl/external/kerberos_ldap_group/required.m4])
+
+      elif test "x$helper" = "xkerberos_sid_group" ; then
+        m4_include([src/acl/external/kerberos_sid_group/required.m4])
 
       elif test "x$helper" = "xsession" ; then
         m4_include([src/acl/external/session/required.m4])

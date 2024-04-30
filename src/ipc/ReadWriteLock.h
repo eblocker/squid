@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2022 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -35,6 +35,9 @@ public:
     void unlockExclusive(); ///< undo successful exclusiveLock()
     void unlockHeaders(); ///< undo successful lockHeaders()
     void switchExclusiveToShared(); ///< stop writing, start reading
+    /// same as unlockShared() but also attempts to get a writer lock beforehand
+    /// \returns whether the writer lock was acquired
+    bool unlockSharedAndSwitchToExclusive();
 
     void startAppending(); ///< writer keeps its lock but also allows reading
 
@@ -48,6 +51,8 @@ public:
     std::atomic_flag updating; ///< a reader is updating metadata/headers
 
 private:
+    bool finalizeExclusive();
+
     mutable std::atomic<uint32_t> readLevel; ///< number of users reading (or trying to)
     std::atomic<uint32_t> writeLevel; ///< number of users writing (or trying to write)
 };

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2022 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -40,9 +40,9 @@ Transients::~Transients()
 void
 Transients::init()
 {
+    assert(Enabled());
     const int64_t entryLimit = EntryLimit();
-    if (entryLimit <= 0)
-        return; // no SMP support or a misconfiguration
+    assert(entryLimit > 0);
 
     Must(!map);
     map = new TransientsMap(MapLabel);
@@ -157,15 +157,23 @@ Transients::get(const cache_key *key)
     if (StoreEntry *oldE = locals->at(index)) {
         debugs(20, 3, "not joining private " << *oldE);
         assert(EBIT_TEST(oldE->flags, KEY_PRIVATE));
-        map->closeForReading(index);
+        map->closeForReadingAndFreeIdle(index);
+        return nullptr;
+    }
+
+    // store hadWriter before checking ENTRY_REQUIRES_COLLAPSING to avoid racing
+    // the writer that clears that flag and then leaves
+    const auto hadWriter = map->peekAtWriter(index);
+    if (!hadWriter && EBIT_TEST(anchor->basics.flags, ENTRY_REQUIRES_COLLAPSING)) {
+        debugs(20, 3, "not joining abandoned entry " << index);
+        map->closeForReadingAndFreeIdle(index);
         return nullptr;
     }
 
     StoreEntry *e = new StoreEntry();
     e->createMemObject();
-    e->mem_obj->xitTable.index = index;
-    e->mem_obj->xitTable.io = Store::ioReading;
-    anchor->exportInto(*e);
+    anchorEntry(*e, index, *anchor);
+
     // keep read lock to receive updates from others
     return e;
 }
@@ -184,6 +192,20 @@ Transients::findCollapsed(const sfileno index)
 
     debugs(20, 3, "no entry at " << index << " in " << MapLabel);
     return NULL;
+}
+
+void
+Transients::clearCollapsingRequirement(const StoreEntry &e)
+{
+    assert(map);
+    assert(e.hasTransients());
+    assert(isWriter(e));
+    const auto idx = e.mem_obj->xitTable.index;
+    auto &anchor = map->writeableEntry(idx);
+    if (EBIT_TEST(anchor.basics.flags, ENTRY_REQUIRES_COLLAPSING)) {
+        EBIT_CLR(anchor.basics.flags, ENTRY_REQUIRES_COLLAPSING);
+        CollapsedForwarding::Broadcast(e);
+    }
 }
 
 void
@@ -214,25 +236,71 @@ Transients::addEntry(StoreEntry *e, const cache_key *key, const Store::IoStatus 
 
     Must(map); // configured to track transients
 
+    if (direction == Store::ioWriting)
+        return addWriterEntry(*e, key);
+
+    assert(direction == Store::ioReading);
+    addReaderEntry(*e, key);
+}
+
+/// addEntry() helper used for cache entry creators/writers
+void
+Transients::addWriterEntry(StoreEntry &e, const cache_key *key)
+{
     sfileno index = 0;
-    Ipc::StoreMapAnchor *slot = map->openForWriting(key, index);
-    Must(slot); // no writer collisions
+    const auto anchor = map->openForWriting(key, index);
+    if (!anchor)
+        throw TextException("writer collision", Here());
 
     // set ASAP in hope to unlock the slot if something throws
-    e->mem_obj->xitTable.index = index;
-    e->mem_obj->xitTable.io = Store::ioWriting;
+    // and to provide index to such methods as hasWriter()
+    auto &xitTable = e.mem_obj->xitTable;
+    xitTable.index = index;
+    xitTable.io = Store::ioWriting;
 
-    slot->set(*e, key);
-    if (direction == Store::ioWriting) {
-        // allow reading and receive remote DELETE events, but do not switch to
-        // the reading lock because transientReaders() callers want true readers
-        map->startAppending(index);
-    } else {
-        assert(direction == Store::ioReading);
-        // keep the entry locked (for reading) to receive remote DELETE events
-        map->switchWritingToReading(index);
-        e->mem_obj->xitTable.io = Store::ioReading;
-    }
+    anchor->set(e, key);
+    // allow reading and receive remote DELETE events, but do not switch to
+    // the reading lock because transientReaders() callers want true readers
+    map->startAppending(index);
+}
+
+/// addEntry() helper used for cache readers
+/// readers do not modify the cache, but they must create a Transients entry
+void
+Transients::addReaderEntry(StoreEntry &e, const cache_key *key)
+{
+    sfileno index = 0;
+    const auto anchor = map->openOrCreateForReading(key, index, e);
+    if (!anchor)
+        throw TextException("reader collision", Here());
+
+    anchorEntry(e, index, *anchor);
+    // keep the entry locked (for reading) to receive remote DELETE events
+}
+
+/// fills (recently created) StoreEntry with information currently in Transients
+void
+Transients::anchorEntry(StoreEntry &e, const sfileno index, const Ipc::StoreMapAnchor &anchor)
+{
+    // set ASAP in hope to unlock the slot if something throws
+    // and to provide index to such methods as hasWriter()
+    auto &xitTable = e.mem_obj->xitTable;
+    xitTable.index = index;
+    xitTable.io = Store::ioReading;
+
+    const auto hadWriter = hasWriter(e); // before computing collapsingRequired
+    anchor.exportInto(e);
+    const bool collapsingRequired = EBIT_TEST(anchor.basics.flags, ENTRY_REQUIRES_COLLAPSING);
+    assert(!collapsingRequired || hadWriter);
+    e.setCollapsingRequirement(collapsingRequired);
+}
+
+bool
+Transients::hasWriter(const StoreEntry &e)
+{
+    if (!e.hasTransients())
+        return false;
+    return map->peekAtWriter(e.mem_obj->xitTable.index);
 }
 
 void
@@ -242,15 +310,16 @@ Transients::noteFreeMapSlice(const Ipc::StoreMapSliceId)
 }
 
 void
-Transients::status(const StoreEntry &entry, bool &aborted, bool &waitingToBeFreed) const
+Transients::status(const StoreEntry &entry, Transients::EntryStatus &entryStatus) const
 {
     assert(map);
     assert(entry.hasTransients());
     const auto idx = entry.mem_obj->xitTable.index;
     const auto &anchor = isWriter(entry) ?
                          map->writeableEntry(idx) : map->readableEntry(idx);
-    aborted = anchor.writerHalted;
-    waitingToBeFreed = anchor.waitingToBeFreed;
+    entryStatus.abortedByWriter = anchor.writerHalted;
+    entryStatus.waitingToBeFreed = anchor.waitingToBeFreed;
+    entryStatus.collapsed = EBIT_TEST(anchor.basics.flags, ENTRY_REQUIRES_COLLAPSING);
 }
 
 void
@@ -308,7 +377,7 @@ Transients::disconnect(StoreEntry &entry)
             map->abortWriting(xitTable.index);
         } else {
             assert(isReader(entry));
-            map->closeForReading(xitTable.index);
+            map->closeForReadingAndFreeIdle(xitTable.index);
         }
         locals->at(xitTable.index) = nullptr;
         xitTable.index = -1;
@@ -320,11 +389,8 @@ Transients::disconnect(StoreEntry &entry)
 int64_t
 Transients::EntryLimit()
 {
-    // TODO: we should also check whether any SMP-aware caching is configured
-    if (!UsingSmp() || !Config.onoff.collapsed_forwarding)
-        return 0; // no SMP collapsed forwarding possible or needed
-
-    return Config.collapsed_forwarding_shared_entries_limit;
+    return (UsingSmp() && Store::Controller::SmpAware()) ?
+           Config.shared_transient_entries_limit : 0;
 }
 
 bool
@@ -373,9 +439,6 @@ TransientsRr::useConfig()
 void
 TransientsRr::create()
 {
-    if (!Config.onoff.collapsed_forwarding)
-        return;
-
     const int64_t entryLimit = Transients::EntryLimit();
     if (entryLimit <= 0)
         return; // no SMP configured or a misconfiguration

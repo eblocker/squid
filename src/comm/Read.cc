@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2022 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -19,6 +19,7 @@
 #include "fd.h"
 #include "fde.h"
 #include "sbuf/SBuf.h"
+#include "SquidConfig.h"
 #include "StatCounters.h"
 
 // Does comm check this fd for read readiness?
@@ -100,6 +101,7 @@ Comm::ReadNow(CommIoCbParams &params, SBuf &buf)
     } else if (retval == 0) { // remote closure (somewhat less) common
         // Note - read 0 == socket EOF, which is a valid read.
         params.flag = Comm::ENDFILE;
+        params.size = 0;
 
     } else if (retval < 0) { // connection errors are worst-case
         debugs(5, 3, params.conn << " Comm::COMM_ERROR: " << xstrerr(params.xerrno));
@@ -107,6 +109,7 @@ Comm::ReadNow(CommIoCbParams &params, SBuf &buf)
             params.flag =  Comm::INPROGRESS;
         else
             params.flag =  Comm::COMM_ERROR;
+        params.size = 0;
     }
 
     return params.flag;
@@ -239,5 +242,16 @@ Comm::ReadCancel(int fd, AsyncCall::Pointer &callback)
 
     /* And the IO event */
     Comm::SetSelect(fd, COMM_SELECT_READ, NULL, NULL, 0);
+}
+
+time_t
+Comm::MortalReadTimeout(const time_t startTime, const time_t lifetimeLimit)
+{
+    if (lifetimeLimit > 0) {
+        const time_t timeUsed = (squid_curtime > startTime) ? (squid_curtime - startTime) : 0;
+        const time_t timeLeft = (lifetimeLimit > timeUsed) ? (lifetimeLimit - timeUsed) : 0;
+        return min(::Config.Timeout.read, timeLeft);
+    } else
+        return ::Config.Timeout.read;
 }
 

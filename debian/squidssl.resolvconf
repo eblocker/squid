@@ -3,7 +3,7 @@
 PATH="/usr/sbin:/usr/bin:/sbin:/bin"
 
 # Make squid aware of changes to resolv.conf
-# Avoid reload before /usr is mounted
-if [ -d /usr/sbin ] ; then
-   invoke-rc.d squid reload || true
+# Avoid reload before /usr is mounted and squid.pid is available
+if  [ -d /usr/sbin ] && [ -d /run/systemd/system ] && systemctl -q is-active squid || [ -f /run/squid.pid ] ; then
+   invoke-rc.d squid reload
 fi

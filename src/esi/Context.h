@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2022 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -10,7 +10,7 @@
 #define SQUID_ESICONTEXT_H
 
 #include "clientStream.h"
-#include "err_type.h"
+#include "error/forward.h"
 #include "esi/Element.h"
 #include "esi/Esi.h"
 #include "esi/Parser.h"
@@ -128,8 +128,8 @@ public:
     private:
         bool inited_;
     }
+    parserState; // TODO: refactor this to somewhere else
 
-    parserState; /* todo factor this off somewhere else; */
     ESIVarState *varState;
     ESIElement::Pointer tree;
 

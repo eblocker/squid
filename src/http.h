@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2022 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -15,8 +15,11 @@
 #include "http/StateFlags.h"
 #include "sbuf/SBuf.h"
 
+#include <optional>
+
 class FwdState;
 class HttpHeader;
+class String;
 
 class HttpStateData : public Client
 {
@@ -69,12 +72,16 @@ public:
     bool ignoreCacheControl;
     bool surrogateNoStore;
 
+    /// Upgrade header value sent to the origin server or cache peer.
+    String *upgradeHeaderOut = nullptr;
+
     void processSurrogateControl(HttpReply *);
 
 protected:
     void processReply();
     void proceedAfter1xx();
     void handle1xx(HttpReply *msg);
+    void drop1xx(const char *reason);
 
 private:
     /**
@@ -107,16 +114,9 @@ private:
 
     void abortTransaction(const char *reason) { abortAll(reason); } // abnormal termination
 
-    /**
-     * determine if read buffer can have space made available
-     * for a read.
-     *
-     * \param grow  whether to actually expand the buffer
-     *
-     * \return whether the buffer can be grown to provide space
-     *         regardless of whether the grow actually happened.
-     */
-    bool maybeMakeSpaceAvailable(bool grow);
+    size_t calcReadBufferCapacityLimit() const;
+    std::optional<size_t> canBufferMoreReplyBytes() const;
+    size_t maybeMakeSpaceAvailable(size_t maxReadSize);
 
     // consuming request body
     virtual void handleMoreRequestBodyAvailable();
@@ -135,8 +135,10 @@ private:
     void httpTimeout(const CommTimeoutCbParams &params);
 
     mb_size_t buildRequestPrefix(MemBuf * mb);
+    void forwardUpgrade(HttpHeader&);
     static bool decideIfWeDoRanges (HttpRequest * orig_request);
     bool peerSupportsConnectionPinning() const;
+    const char *blockSwitchingProtocols(const HttpReply&) const;
 
     /// Parser being used at present to parse the HTTP/ICY server response.
     Http1::ResponseParserPointer hp;

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2022 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -113,9 +113,6 @@
  * may be used instead with explicit configuration.
  */
 #include "compat/GnuRegex.h"
-
-/* cppunit is not quite C++0x compatible yet */
-#include "compat/cppunit.h"
 
 #endif /* _SQUID_COMPAT_H */
 

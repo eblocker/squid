@@ -1,4 +1,4 @@
-## Copyright (C) 1996-2019 The Squid Software Foundation and contributors
+## Copyright (C) 1996-2022 The Squid Software Foundation and contributors
 ##
 ## Squid software is distributed under GPLv2+ license and includes
 ## contributions from numerous individuals and organizations.
@@ -11,7 +11,7 @@ include $(top_srcdir)/src/TestHeaders.am
 noinst_LTLIBRARIES = libcomm.la
 
 ## Library holding comm socket handlers
-libcomm_la_SOURCES= \
+libcomm_la_SOURCES = \
 	AcceptLimiter.cc \
 	AcceptLimiter.h \
 	ConnOpener.cc \
@@ -19,7 +19,6 @@ libcomm_la_SOURCES= \
 	Connection.cc \
 	Connection.h \
 	Flag.h \
-	forward.h \
 	IoCallback.cc \
 	IoCallback.h \
 	Loops.h \
@@ -36,5 +35,5 @@ libcomm_la_SOURCES= \
 	UdpOpenDialer.h \
 	Write.cc \
 	Write.h \
-	\
-	comm_internal.h
+	comm_internal.h \
+	forward.h

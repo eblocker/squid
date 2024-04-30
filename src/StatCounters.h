@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2022 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -21,7 +21,7 @@ public:
     int falseHits = 0;
     int trueMisses = 0;
     int falseMisses = 0;
-    int closeHits = 0;     /// \todo: temporary remove it later
+    int closeHits = 0;     // TODO: temporary. remove it later
 };
 #endif
 
@@ -59,7 +59,7 @@ public:
             int errors = 0;
             ByteCounter kbytes_in;
             ByteCounter kbytes_out;
-        } all , http, ftp, other;
+        } all, http, ftp, other;
     } server;
 
     struct {

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2022 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -23,7 +23,7 @@ class SquidConfig;
  * It has a runtime extension facility to allow it to
  * efficiently support new methods
  */
-class HttpRequestMethod : public RefCountable
+class HttpRequestMethod
 {
 public:
     HttpRequestMethod() : theMethod(Http::METHOD_NONE), theImage() {}
@@ -32,17 +32,14 @@ public:
 
     void HttpRequestMethodXXX(char const *); // deprecated old c-string to SBuf converter.
 
-    HttpRequestMethod & operator = (const HttpRequestMethod& aMethod) {
-        theMethod = aMethod.theMethod;
-        theImage = aMethod.theImage;
-        return *this;
-    }
-
     HttpRequestMethod & operator = (Http::MethodType const aMethod) {
         theMethod = aMethod;
         theImage.clear();
         return *this;
     }
+
+    /// whether the method is set/known
+    explicit operator bool() const { return theMethod != Http::METHOD_NONE; }
 
     bool operator == (Http::MethodType const & aMethod) const { return theMethod == aMethod; }
     bool operator == (HttpRequestMethod const & aMethod) const {

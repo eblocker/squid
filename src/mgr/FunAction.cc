@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2022 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -12,6 +12,7 @@
 #include "base/TextException.h"
 #include "comm/Connection.h"
 #include "globals.h"
+#include "ipc/RequestId.h"
 #include "ipc/UdsOp.h"
 #include "mgr/Command.h"
 #include "mgr/Filler.h"

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2022 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -87,7 +87,7 @@ httpHeaderAddContRange(HttpHeader * hdr, HttpHdrRangeSpec spec, int64_t ent_len)
  * \note if no Connection header exists we may check the Proxy-Connection header
  */
 bool
-httpHeaderHasConnDir(const HttpHeader * hdr, const char *directive)
+httpHeaderHasConnDir(const HttpHeader * hdr, const SBuf &directive)
 {
     String list;
 
@@ -229,7 +229,7 @@ httpHeaderParseQuotedString(const char *start, const int len, String *val)
     }
     /* Make sure it's defined even if empty "" */
     if (!val->termedBuf())
-        val->limitInit("", 0);
+        val->assign("", 0);
     return 1;
 }
 
@@ -273,7 +273,7 @@ httpHeaderQuoteString(const char *raw)
  * \retval 1    Header has no access controls to test
  */
 static int
-httpHdrMangle(HttpHeaderEntry * e, HttpRequest * request, HeaderManglers *hms)
+httpHdrMangle(HttpHeaderEntry * e, HttpRequest * request, HeaderManglers *hms, const AccessLogEntryPointer &al)
 {
     int retval;
 
@@ -289,6 +289,16 @@ httpHdrMangle(HttpHeaderEntry * e, HttpRequest * request, HeaderManglers *hms)
 
     ACLFilledChecklist checklist(hm->access_list, request, NULL);
 
+    checklist.al = al;
+    if (al && al->reply) {
+        checklist.reply = al->reply.getRaw();
+        HTTPMSGLOCK(checklist.reply);
+    }
+
+    // XXX: The two "It was denied" clauses below mishandle cases with no
+    // matching rules, violating the "If no rules within the set have matching
+    // ACLs, the header field is left as is" promise in squid.conf.
+    // TODO: Use Acl::Answer::implicit. See HttpStateData::forwardUpgrade().
     if (checklist.fastCheck().allowed()) {
         /* aclCheckFast returns true for allow. */
         debugs(66, 7, "checklist for mangler is positive. Mangle");
@@ -296,6 +306,7 @@ httpHdrMangle(HttpHeaderEntry * e, HttpRequest * request, HeaderManglers *hms)
     } else if (NULL == hm->replacement) {
         /* It was denied, and we don't have any replacement */
         debugs(66, 7, "checklist denied, we have no replacement. Pass");
+        // XXX: We said "Pass", but the caller will delete on zero retval.
         retval = 0;
     } else {
         /* It was denied, but we have a replacement. Replace the
@@ -335,7 +346,7 @@ httpHdrMangleList(HttpHeader *l, HttpRequest *request, const AccessLogEntryPoint
     if (hms) {
         int headers_deleted = 0;
         while ((e = l->getEntry(&p))) {
-            if (0 == httpHdrMangle(e, request, hms))
+            if (httpHdrMangle(e, request, hms, al) == 0)
                 l->delAt(p, headers_deleted);
         }
 
@@ -456,7 +467,8 @@ HeaderManglers::find(const HttpHeaderEntry &e) const
     if (e.id == Http::HdrType::OTHER) {
         // does it have an ACL list configured?
         // Optimize: use a name type that we do not need to convert to here
-        const ManglersByName::const_iterator i = custom.find(e.name.termedBuf());
+        SBuf tmp(e.name); // XXX: performance regression. c_str() reallocates
+        const ManglersByName::const_iterator i = custom.find(tmp.c_str());
         if (i != custom.end())
             return &i->second;
     }
@@ -477,6 +489,12 @@ httpHdrAdd(HttpHeader *heads, HttpRequest *request, const AccessLogEntryPointer 
 {
     ACLFilledChecklist checklist(NULL, request, NULL);
 
+    checklist.al = al;
+    if (al && al->reply) {
+        checklist.reply = al->reply.getRaw();
+        HTTPMSGLOCK(checklist.reply);
+    }
+
     for (HeaderWithAclList::const_iterator hwa = headersAdd.begin(); hwa != headersAdd.end(); ++hwa) {
         if (!hwa->aclList || checklist.fastCheck(hwa->aclList).allowed()) {
             const char *fieldValue = NULL;
@@ -494,8 +512,7 @@ httpHdrAdd(HttpHeader *heads, HttpRequest *request, const AccessLogEntryPointer 
             if (!fieldValue || fieldValue[0] == '\0')
                 fieldValue = "-";
 
-            HttpHeaderEntry *e = new HttpHeaderEntry(hwa->fieldId, hwa->fieldName.c_str(),
-                    fieldValue);
+            HttpHeaderEntry *e = new HttpHeaderEntry(hwa->fieldId, SBuf(hwa->fieldName), fieldValue);
             heads->addEntry(e);
         }
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2022 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -152,7 +152,7 @@ Adaptation::Ecap::Engine::kickAsyncServices(timeval &timeout)
 /* Adaptation::Ecap::ServiceRep */
 
 Adaptation::Ecap::ServiceRep::ServiceRep(const ServiceConfigPointer &cfg):
-/*AsyncJob("Adaptation::Ecap::ServiceRep"),*/ Adaptation::Service(cfg),
+    /*AsyncJob("Adaptation::Ecap::ServiceRep"),*/ Adaptation::Service(cfg),
     isDetached(false)
 {
 }
@@ -248,7 +248,7 @@ bool Adaptation::Ecap::ServiceRep::wantsUrl(const SBuf &urlPath) const
 }
 
 Adaptation::Initiate *
-Adaptation::Ecap::ServiceRep::makeXactLauncher(HttpMsg *virgin,
+Adaptation::Ecap::ServiceRep::makeXactLauncher(Http::Message *virgin,
         HttpRequest *cause, AccessLogEntry::Pointer &alp)
 {
     Must(up());

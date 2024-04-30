@@ -1,4 +1,4 @@
-## Copyright (C) 1996-2019 The Squid Software Foundation and contributors
+## Copyright (C) 1996-2022 The Squid Software Foundation and contributors
 ##
 ## Squid software is distributed under GPLv2+ license and includes
 ## contributions from numerous individuals and organizations.
@@ -12,10 +12,10 @@ man_MANS= ext_time_quota_acl.8
 
 DEFS += -DDEFAULT_QUOTA_DB=\"$(localstatedir)/ext_time_quota.db\"
 
-ext_time_quota_acl_SOURCES= \
+ext_time_quota_acl_SOURCES = \
 	ext_time_quota_acl.cc
 ext_time_quota_acl_LDADD = \
 	$(COMPAT_LIB) \
-	-ldb
+	$(LIBTDB_LIBS)
 
 EXTRA_DIST= ext_time_quota_acl.8 required.m4

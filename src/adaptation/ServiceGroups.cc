@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2022 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -129,7 +129,7 @@ Adaptation::ServicePointer Adaptation::ServiceGroup::at(const Pos pos) const
     return FindService(services[pos]);
 }
 
-/// \todo: optimize to cut search short instead of looking for the best svc
+// TODO: optimize to cut search short instead of looking for the best svc
 bool
 Adaptation::ServiceGroup::wants(const ServiceFilter &filter) const
 {
@@ -252,7 +252,7 @@ Adaptation::DynamicServiceChain::Split(const ServiceFilter &filter,
     const char *pos = NULL;
     while (strListGetItem(&ids, ',', &item, &ilen, &pos)) {
         String id;
-        id.limitInit(item, ilen);
+        id.assign(item, ilen);
         ServicePointer service = FindService(id);
         if (doingCurrent) {
             if (!service || // cannot tell or matches current location

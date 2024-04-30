@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2022 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -68,6 +68,12 @@
 #endif
 #ifdef HAVE_NETDB_H
 #include <netdb.h>
+#endif
+#ifdef HAVE_SYS_SOCKET_H
+#include <sys/socket.h>
+#endif
+#ifdef HAVE_NETINET_IN_H
+#include <netinet/in.h>
 #endif
 
 #ifdef HELPER_INPUT_BUFFER
@@ -1337,7 +1343,7 @@ SigTrap(int s)
         CloseLDAP(&edui_ldap);
 
     debug("Terminating, Signal: %d\n", s);
-    exit(0);
+    exit(EXIT_SUCCESS);
 }
 
 /*
@@ -1606,7 +1612,7 @@ MainSafe(int argc, char **argv)
         /* BINARY DEBUGGING *
                     local_printfx("while() -> bufa[%" PRIuSIZE "]: %s", k, bufa);
                     for (i = 0; i < k; ++i)
-                      local_printfx("%02X", bufa[i]);
+                      local_printfx("%02X", static_cast<unsigned int>(static_cast<unsigned char>(bufa[i])));
                     local_printfx("\n");
         * BINARY DEBUGGING */
         /* Check for CRLF */

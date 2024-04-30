@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2022 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -9,6 +9,7 @@
 /* DEBUG: section 16    Cache Manager API */
 
 #include "squid.h"
+#include "AccessLogEntry.h"
 #include "base/AsyncJobCalls.h"
 #include "base/TextException.h"
 #include "comm/Connection.h"
@@ -26,9 +27,12 @@
 CBDATA_NAMESPACED_CLASS_INIT(Mgr, Forwarder);
 
 Mgr::Forwarder::Forwarder(const Comm::ConnectionPointer &aConn, const ActionParams &aParams,
-                          HttpRequest* aRequest, StoreEntry* anEntry):
-    Ipc::Forwarder(new Request(KidIdentifier, 0, aConn, aParams), 10),
-    httpRequest(aRequest), entry(anEntry), conn(aConn)
+                          HttpRequest* aRequest, StoreEntry* anEntry, const AccessLogEntryPointer &anAle):
+    // TODO: Add virtual Forwarder::makeRequest() to avoid prematurely creating
+    // this dummy request with a dummy ID that are finalized by Ipc::Forwarder.
+    // Same for Snmp::Forwarder.
+    Ipc::Forwarder(new Request(KidIdentifier, Ipc::RequestId(/*XXX*/), aConn, aParams), 10),
+    httpRequest(aRequest), entry(anEntry), conn(aConn), ale(anAle)
 {
     debugs(16, 5, HERE << conn);
     Must(Comm::IsConnOpen(conn));
@@ -72,14 +76,14 @@ void
 Mgr::Forwarder::handleError()
 {
     debugs(16, DBG_CRITICAL, "ERROR: uri " << entry->url() << " exceeds buffer size");
-    sendError(new ErrorState(ERR_INVALID_URL, Http::scUriTooLong, httpRequest));
+    sendError(new ErrorState(ERR_INVALID_URL, Http::scUriTooLong, httpRequest, ale));
     mustStop("long URI");
 }
 
 void
 Mgr::Forwarder::handleTimeout()
 {
-    sendError(new ErrorState(ERR_LIFETIME_EXP, Http::scRequestTimeout, httpRequest));
+    sendError(new ErrorState(ERR_LIFETIME_EXP, Http::scRequestTimeout, httpRequest, ale));
     Ipc::Forwarder::handleTimeout();
 }
 
@@ -87,7 +91,7 @@ void
 Mgr::Forwarder::handleException(const std::exception &e)
 {
     if (entry != NULL && httpRequest != NULL && Comm::IsConnOpen(conn))
-        sendError(new ErrorState(ERR_INVALID_RESP, Http::scInternalServerError, httpRequest));
+        sendError(new ErrorState(ERR_INVALID_RESP, Http::scInternalServerError, httpRequest, ale));
     Ipc::Forwarder::handleException(e);
 }
 
@@ -96,7 +100,11 @@ void
 Mgr::Forwarder::noteCommClosed(const CommCloseCbParams &)
 {
     debugs(16, 5, HERE);
-    conn = NULL; // needed?
+    closer = nullptr;
+    if (conn) {
+        conn->noteClosure();
+        conn = nullptr;
+    }
     mustStop("commClosed");
 }
 

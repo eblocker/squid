@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2022 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -9,6 +9,7 @@
 #include "squid.h"
 #include "AccessLogEntry.h"
 #include "comm/Connection.h"
+#include "Downloader.h"
 #include "HttpRequest.h"
 
 #define STUB_API "security/libsecurity.la"
@@ -28,14 +29,32 @@ Security::EncryptorAnswer::~EncryptorAnswer() {}
 std::ostream &Security::operator <<(std::ostream &os, const Security::EncryptorAnswer &) STUB_RETVAL(os)
 
 #include "security/Handshake.h"
-Security::HandshakeParser::HandshakeParser() STUB
+Security::HandshakeParser::HandshakeParser(MessageSource) STUB
 bool Security::HandshakeParser::parseHello(const SBuf &) STUB_RETVAL(false)
+
+#include "security/Io.h"
+Security::IoResult Security::Accept(Comm::Connection &) STUB_RETVAL(IoResult(IoResult::ioError))
+Security::IoResult Security::Connect(Comm::Connection &) STUB_RETVAL(IoResult(IoResult::ioError))
+void Security::ForgetErrors() STUB
 
 #include "security/KeyData.h"
 namespace Security
 {
 void KeyData::loadFromFiles(const AnyP::PortCfg &, const char *) STUB
 }
+
+#include "security/ErrorDetail.h"
+Security::ErrorDetail::ErrorDetail(ErrorCode, const CertPointer &, const CertPointer &, const char *) STUB
+#if USE_OPENSSL
+Security::ErrorDetail::ErrorDetail(ErrorCode, int, int) STUB
+#elif USE_GNUTLS
+Security::ErrorDetail::ErrorDetail(ErrorCode, LibErrorCode, int) STUB
+#endif
+void Security::ErrorDetail::setPeerCertificate(const CertPointer &) STUB
+SBuf Security::ErrorDetail::verbose(const HttpRequestPointer &) const STUB_RETVAL(SBuf())
+SBuf Security::ErrorDetail::brief() const STUB_RETVAL(SBuf())
+Security::ErrorCode Security::ErrorCodeFromName(const char *) STUB_RETVAL(0)
+const char *Security::ErrorNameFromCode(ErrorCode, bool) STUB_RETVAL("")
 
 #include "security/NegotiationHistory.h"
 Security::NegotiationHistory::NegotiationHistory() STUB
@@ -45,31 +64,34 @@ const char *Security::NegotiationHistory::cipherName() const STUB
 const char *Security::NegotiationHistory::printTlsVersion(AnyP::ProtocolVersion const &v) const STUB
 
 #include "security/PeerConnector.h"
+class TlsNegotiationDetails: public RefCountable {};
 CBDATA_NAMESPACED_CLASS_INIT(Security, PeerConnector);
 namespace Security
 {
 PeerConnector::PeerConnector(const Comm::ConnectionPointer &, AsyncCall::Pointer &, const AccessLogEntryPointer &, const time_t) :
     AsyncJob("Security::PeerConnector") {STUB}
-PeerConnector::~PeerConnector() {STUB}
+PeerConnector::~PeerConnector() STUB
 void PeerConnector::start() STUB
 bool PeerConnector::doneAll() const STUB_RETVAL(true)
 void PeerConnector::swanSong() STUB
 const char *PeerConnector::status() const STUB_RETVAL("")
 void PeerConnector::commCloseHandler(const CommCloseCbParams &) STUB
-void PeerConnector::connectionClosed(const char *) STUB
-bool PeerConnector::prepareSocket() STUB_RETVAL(false)
-void PeerConnector::setReadTimeout() STUB
+void PeerConnector::commTimeoutHandler(const CommTimeoutCbParams &) STUB
 bool PeerConnector::initialize(Security::SessionPointer &) STUB_RETVAL(false)
 void PeerConnector::negotiate() STUB
 bool PeerConnector::sslFinalized() STUB_RETVAL(false)
-void PeerConnector::handleNegotiateError(const int) STUB
+void PeerConnector::handleNegotiationResult(const Security::IoResult &) STUB;
 void PeerConnector::noteWantRead() STUB
 void PeerConnector::noteWantWrite() STUB
-void PeerConnector::noteNegotiationError(const int, const int, const int) STUB
+void PeerConnector::noteNegotiationError(const Security::ErrorDetailPointer &) STUB
 //    virtual Security::ContextPointer getTlsContext() = 0;
 void PeerConnector::bail(ErrorState *) STUB
+void PeerConnector::sendSuccess() STUB
 void PeerConnector::callBack() STUB
+void PeerConnector::disconnect() STUB
+void PeerConnector::countFailingConnection() STUB
 void PeerConnector::recordNegotiationDetails() STUB
+EncryptorAnswer &PeerConnector::answer() STUB_RETREF(EncryptorAnswer)
 }
 
 #include "security/PeerOptions.h"
@@ -86,6 +108,7 @@ void Security::PeerOptions::updateTlsVersionLimits() STUB
 Security::ContextPointer Security::PeerOptions::createBlankContext() const STUB_RETVAL(Security::ContextPointer())
 void Security::PeerOptions::updateContextCa(Security::ContextPointer &) STUB
 void Security::PeerOptions::updateContextCrl(Security::ContextPointer &) STUB
+void Security::PeerOptions::updateContextTrust(Security::ContextPointer &) STUB
 void Security::PeerOptions::updateSessionOptions(Security::SessionPointer &) STUB
 void Security::PeerOptions::dumpCfg(Packable*, char const*) const STUB
 void Security::PeerOptions::parseOptions() STUB
@@ -109,7 +132,7 @@ void Security::ServerOptions::updateContextSessionId(Security::ContextPointer &)
 #include "security/Session.h"
 namespace Security {
 bool CreateClientSession(const Security::ContextPointer &, const Comm::ConnectionPointer &, const char *) STUB_RETVAL(false)
-bool CreateServerSession(const Security::ContextPointer &, const Comm::ConnectionPointer &, const char *) STUB_RETVAL(false)
+bool CreateServerSession(const Security::ContextPointer &, const Comm::ConnectionPointer &, Security::PeerOptions &, const char *) STUB_RETVAL(false)
 void SessionSendGoodbye(const Security::SessionPointer &) STUB
 bool SessionIsResumed(const Security::SessionPointer &) STUB_RETVAL(false)
 void MaybeGetSessionResumeData(const Security::SessionPointer &, Security::SessionStatePointer &) STUB

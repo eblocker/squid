@@ -1,4 +1,4 @@
-## Copyright (C) 1996-2019 The Squid Software Foundation and contributors
+## Copyright (C) 1996-2022 The Squid Software Foundation and contributors
 ##
 ## Squid software is distributed under GPLv2+ license and includes
 ## contributions from numerous individuals and organizations.
@@ -12,16 +12,19 @@ SUBDIRS= cert_generators cert_validators
 
 noinst_LTLIBRARIES = libsecurity.la
 
-libsecurity_la_SOURCES= \
+libsecurity_la_SOURCES = \
 	BlindPeerConnector.cc \
 	BlindPeerConnector.h \
 	CertError.h \
 	Context.h \
 	EncryptorAnswer.cc \
 	EncryptorAnswer.h \
+	ErrorDetail.cc \
+	ErrorDetail.h \
 	Handshake.cc \
 	Handshake.h \
-	forward.h \
+	Io.cc \
+	Io.h \
 	KeyData.cc \
 	KeyData.h \
 	LockingPointer.h \
@@ -34,4 +37,5 @@ libsecurity_la_SOURCES= \
 	ServerOptions.cc \
 	ServerOptions.h \
 	Session.cc \
-	Session.h
+	Session.h \
+	forward.h

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2022 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -14,7 +14,7 @@
 #include "comm/Connection.h"
 #include "comm/forward.h"
 #include "comm/Write.h"
-#include "err_detail_type.h"
+#include "error/Detail.h"
 #include "errorpage.h"
 #include "fd.h"
 #include "HttpHdrContRange.h"
@@ -36,27 +36,13 @@
 // implemented in client_side_reply.cc until sides have a common parent
 void purgeEntriesByUrl(HttpRequest * req, const char *url);
 
-Client::Client(FwdState *theFwdState): AsyncJob("Client"),
-    completed(false),
-    currentOffset(0),
-    responseBodyBuffer(NULL),
+Client::Client(FwdState *theFwdState) :
+    AsyncJob("Client"),
     fwd(theFwdState),
-    requestSender(NULL),
-#if USE_ADAPTATION
-    adaptedHeadSource(NULL),
-    adaptationAccessCheckPending(false),
-    startedAdaptation(false),
-#endif
-    receivedWholeRequestBody(false),
-    doneWithFwd(nullptr),
-    theVirginReply(NULL),
-    theFinalReply(NULL)
+    request(fwd->request)
 {
     entry = fwd->entry;
     entry->lock("Client");
-
-    request = fwd->request;
-    HTTPMSGLOCK(request);
 }
 
 Client::~Client()
@@ -70,7 +56,6 @@ Client::~Client()
 
     entry->unlock("Client");
 
-    HTTPMSGUNLOCK(request);
     HTTPMSGUNLOCK(theVirginReply);
     HTTPMSGUNLOCK(theFinalReply);
 
@@ -136,6 +121,8 @@ Client::setVirginReply(HttpReply *rep)
     assert(rep);
     theVirginReply = rep;
     HTTPMSGLOCK(theVirginReply);
+    if (fwd->al)
+        fwd->al->reply = theVirginReply;
     return theVirginReply;
 }
 
@@ -155,6 +142,8 @@ Client::setFinalReply(HttpReply *rep)
     assert(rep);
     theFinalReply = rep;
     HTTPMSGLOCK(theFinalReply);
+    if (fwd->al)
+        fwd->al->reply = theFinalReply;
 
     // give entry the reply because haveParsedReplyHeaders() expects it there
     entry->replaceHttpReply(theFinalReply, false); // but do not write yet
@@ -164,6 +153,27 @@ Client::setFinalReply(HttpReply *rep)
     entry->startWriting(); // write the updated entry to store
 
     return theFinalReply;
+}
+
+void
+Client::markParsedVirginReplyAsWhole(const char *reasonWeAreSure)
+{
+    assert(reasonWeAreSure);
+    debugs(11, 3, reasonWeAreSure);
+
+    // The code storing adapted reply takes care of markStoredReplyAsWhole().
+    // We need to take care of the remaining regular network-to-store case.
+#if USE_ADAPTATION
+    if (startedAdaptation) {
+        debugs(11, 5, "adaptation handles markStoredReplyAsWhole()");
+        return;
+    }
+#endif
+
+    // Convert the "parsed whole virgin reply" event into the "stored..." event
+    // because, without adaptation, we store everything we parse: There is no
+    // buffer for parsed content; addVirginReplyBody() stores every parsed byte.
+    fwd->markStoredReplyAsWhole(reasonWeAreSure);
 }
 
 // called when no more server communication is expected; may quit
@@ -178,9 +188,7 @@ Client::serverComplete()
     }
 
     completed = true;
-
-    HttpRequest *r = originalRequest();
-    r->hier.stopPeerClock(true);
+    originalRequest()->hier.stopPeerClock(true);
 
     if (requestBodySource != NULL)
         stopConsumingFrom(requestBodySource);
@@ -231,7 +239,7 @@ Client::completeForwarding()
 // Register to receive request body
 bool Client::startRequestBodyFlow()
 {
-    HttpRequest *r = originalRequest();
+    HttpRequestPointer r(originalRequest());
     assert(r->body_pipe != NULL);
     requestBodySource = r->body_pipe;
     if (requestBodySource->setConsumerIfNotLate(this)) {
@@ -381,7 +389,7 @@ Client::sentRequestBody(const CommIoCbParams &io)
     if (io.flag) {
         debugs(11, DBG_IMPORTANT, "sentRequestBody error: FD " << io.fd << ": " << xstrerr(io.xerrno));
         ErrorState *err;
-        err = new ErrorState(ERR_WRITE_ERROR, Http::scBadGateway, fwd->request);
+        err = new ErrorState(ERR_WRITE_ERROR, Http::scBadGateway, fwd->request, fwd->al);
         err->xerrno = io.xerrno;
         fwd->fail(err);
         abortOnData("I/O error while sending request body");
@@ -439,7 +447,7 @@ Client::getMoreRequestBody(MemBuf &buf)
 static bool
 sameUrlHosts(const char *url1, const char *url2)
 {
-    // XXX: Want urlHostname() here, but it uses static storage and copying
+    // XXX: Want AnyP::Uri::parse() here, but it uses static storage and copying
     const char *host1 = strchr(url1, ':');
     const char *host2 = strchr(url2, ':');
 
@@ -466,35 +474,42 @@ sameUrlHosts(const char *url1, const char *url2)
 
 // purges entries that match the value of a given HTTP [response] header
 static void
-purgeEntriesByHeader(HttpRequest *req, const char *reqUrl, HttpMsg *rep, Http::HdrType hdr)
+purgeEntriesByHeader(HttpRequest *req, const char *reqUrl, Http::Message *rep, Http::HdrType hdr)
 {
-    const char *hdrUrl, *absUrl;
-
-    absUrl = NULL;
-    hdrUrl = rep->header.getStr(hdr);
-    if (hdrUrl == NULL) {
+    const auto hdrUrl = rep->header.getStr(hdr);
+    if (!hdrUrl)
         return;
-    }
 
     /*
      * If the URL is relative, make it absolute so we can find it.
      * If it's absolute, make sure the host parts match to avoid DOS attacks
      * as per RFC 2616 13.10.
      */
+    SBuf absUrlMaker;
+    const char *absUrl = nullptr;
     if (urlIsRelative(hdrUrl)) {
-        absUrl = urlMakeAbsolute(req, hdrUrl);
-        if (absUrl != NULL) {
-            hdrUrl = absUrl;
+        if (req->method.id() == Http::METHOD_CONNECT)
+            absUrl = hdrUrl; // TODO: merge authority-uri and hdrUrl
+        else if (req->url.getScheme() == AnyP::PROTO_URN)
+            absUrl = req->url.absolute().c_str();
+        else {
+            AnyP::Uri tmpUrl = req->url;
+            if (*hdrUrl == '/') {
+                // RFC 3986 section 4.2: absolute-path reference
+                // for this logic replace the entire request-target URI path
+                tmpUrl.path(hdrUrl);
+            } else {
+                tmpUrl.addRelativePath(reqUrl);
+            }
+            absUrlMaker = tmpUrl.absolute();
+            absUrl = absUrlMaker.c_str();
         }
     } else if (!sameUrlHosts(reqUrl, hdrUrl)) {
         return;
-    }
+    } else
+        absUrl = hdrUrl;
 
-    purgeEntriesByUrl(req, hdrUrl);
-
-    if (absUrl != NULL) {
-        safe_free(absUrl);
-    }
+    purgeEntriesByUrl(req, absUrl);
 }
 
 // some HTTP methods should purge matching cache entries
@@ -513,9 +528,9 @@ Client::maybePurgeOthers()
     SBuf tmp(request->effectiveRequestUri());
     const char *reqUrl = tmp.c_str();
     debugs(88, 5, "maybe purging due to " << request->method << ' ' << tmp);
-    purgeEntriesByUrl(request, reqUrl);
-    purgeEntriesByHeader(request, reqUrl, theFinalReply, Http::HdrType::LOCATION);
-    purgeEntriesByHeader(request, reqUrl, theFinalReply, Http::HdrType::CONTENT_LOCATION);
+    purgeEntriesByUrl(request.getRaw(), reqUrl);
+    purgeEntriesByHeader(request.getRaw(), reqUrl, theFinalReply, Http::HdrType::LOCATION);
+    purgeEntriesByHeader(request.getRaw(), reqUrl, theFinalReply, Http::HdrType::CONTENT_LOCATION);
 }
 
 /// called when we have final (possibly adapted) reply headers; kids extend
@@ -540,9 +555,10 @@ Client::blockCaching()
     if (const Acl::Tree *acl = Config.accessList.storeMiss) {
         // This relatively expensive check is not in StoreEntry::checkCachable:
         // That method lacks HttpRequest and may be called too many times.
-        ACLFilledChecklist ch(acl, originalRequest(), NULL);
-        ch.reply = const_cast<HttpReply*>(entry->getReply()); // ACLFilledChecklist API bug
+        ACLFilledChecklist ch(acl, originalRequest().getRaw());
+        ch.reply = const_cast<HttpReply*>(&entry->mem().freshestReply()); // ACLFilledChecklist API bug
         HTTPMSGLOCK(ch.reply);
+        ch.al = fwd->al;
         if (!ch.fastCheck().allowed()) { // when in doubt, block
             debugs(20, 3, "store_miss prohibits caching");
             return true;
@@ -551,7 +567,7 @@ Client::blockCaching()
     return false;
 }
 
-HttpRequest *
+HttpRequestPointer
 Client::originalRequest()
 {
     return request;
@@ -685,7 +701,7 @@ Client::noteAdaptationAnswer(const Adaptation::Answer &answer)
 
     switch (answer.kind) {
     case Adaptation::Answer::akForward:
-        handleAdaptedHeader(const_cast<HttpMsg*>(answer.message.getRaw()));
+        handleAdaptedHeader(const_cast<Http::Message*>(answer.message.getRaw()));
         break;
 
     case Adaptation::Answer::akBlock:
@@ -699,7 +715,7 @@ Client::noteAdaptationAnswer(const Adaptation::Answer &answer)
 }
 
 void
-Client::handleAdaptedHeader(HttpMsg *msg)
+Client::handleAdaptedHeader(Http::Message *msg)
 {
     if (abortOnBadEntry("entry went bad while waiting for adapted headers")) {
         // If the adapted response has a body, the ICAP side needs to know
@@ -727,6 +743,7 @@ Client::handleAdaptedHeader(HttpMsg *msg)
         assert(result);
     } else {
         // no body
+        fwd->markStoredReplyAsWhole("setFinalReply() stored header-only adapted reply");
         if (doneWithAdaptation()) // we may still be sending virgin response
             handleAdaptationCompleted();
     }
@@ -801,6 +818,9 @@ Client::handleAdaptedBodyProductionEnded()
     if (abortOnBadEntry("entry went bad while waiting for adapted body eof"))
         return;
 
+    // distinguish this code path from handleAdaptedBodyProducerAborted()
+    receivedWholeAdaptedReply = true;
+
     // end consumption if we consumed everything
     if (adaptedBodySource != NULL && adaptedBodySource->exhausted())
         endAdaptedBodyConsumption();
@@ -811,6 +831,14 @@ void
 Client::endAdaptedBodyConsumption()
 {
     stopConsumingFrom(adaptedBodySource);
+
+    if (receivedWholeAdaptedReply) {
+        // We received the entire adapted reply per receivedWholeAdaptedReply.
+        // We are called when we consumed everything received (per our callers).
+        // We consume only what we store per handleMoreAdaptedBodyAvailable().
+        fwd->markStoredReplyAsWhole("received,consumed=>stored the entire RESPMOD reply");
+    }
+
     handleAdaptationCompleted();
 }
 
@@ -831,7 +859,6 @@ void Client::handleAdaptedBodyProducerAborted()
     if (handledEarlyAdaptationAbort())
         return;
 
-    entry->lengthWentBad("body adaptation aborted");
     handleAdaptationCompleted(); // the user should get a truncated response
 }
 
@@ -876,16 +903,19 @@ Client::handledEarlyAdaptationAbort()
 {
     if (entry->isEmpty()) {
         debugs(11,8, "adaptation failure with an empty entry: " << *entry);
-        ErrorState *err = new ErrorState(ERR_ICAP_FAILURE, Http::scInternalServerError, request);
-        err->detailError(ERR_DETAIL_ICAP_RESPMOD_EARLY);
+        const auto err = new ErrorState(ERR_ICAP_FAILURE, Http::scInternalServerError, request.getRaw(), fwd->al);
+        static const auto d = MakeNamedErrorDetail("ICAP_RESPMOD_EARLY");
+        err->detailError(d);
         fwd->fail(err);
         fwd->dontRetry(true);
         abortAll("adaptation failure with an empty entry");
         return true; // handled
     }
 
-    if (request) // update logged info directly
-        request->detailError(ERR_ICAP_FAILURE, ERR_DETAIL_ICAP_RESPMOD_LATE);
+    if (request) { // update logged info directly
+        static const auto d = MakeNamedErrorDetail("ICAP_RESPMOD_LATE");
+        request->detailError(ERR_ICAP_FAILURE, d);
+    }
 
     return false; // the caller must handle
 }
@@ -900,8 +930,10 @@ Client::handleAdaptationBlocked(const Adaptation::Answer &answer)
         return;
 
     if (!entry->isEmpty()) { // too late to block (should not really happen)
-        if (request)
-            request->detailError(ERR_ICAP_FAILURE, ERR_DETAIL_RESPMOD_BLOCK_LATE);
+        if (request) {
+            static const auto d = MakeNamedErrorDetail("RESPMOD_BLOCK_LATE");
+            request->detailError(ERR_ICAP_FAILURE, d);
+        }
         abortAll("late adaptation block");
         return;
     }
@@ -913,8 +945,9 @@ Client::handleAdaptationBlocked(const Adaptation::Answer &answer)
     if (page_id == ERR_NONE)
         page_id = ERR_ACCESS_DENIED;
 
-    ErrorState *err = new ErrorState(page_id, Http::scForbidden, request);
-    err->detailError(ERR_DETAIL_RESPMOD_BLOCK_EARLY);
+    const auto err = new ErrorState(page_id, Http::scForbidden, request.getRaw(), fwd->al);
+    static const auto d = MakeNamedErrorDetail("RESPMOD_BLOCK_EARLY");
+    err->detailError(d);
     fwd->fail(err);
     fwd->dontRetry(true);
 
@@ -944,7 +977,7 @@ Client::noteAdaptationAclCheckDone(Adaptation::ServiceGroupPointer group)
         return;
     }
 
-    startAdaptation(group, originalRequest());
+    startAdaptation(group, originalRequest().getRaw());
     processReplyBody();
 }
 #endif
@@ -952,7 +985,7 @@ Client::noteAdaptationAclCheckDone(Adaptation::ServiceGroupPointer group)
 void
 Client::sendBodyIsTooLargeError()
 {
-    ErrorState *err = new ErrorState(ERR_TOO_BIG, Http::scForbidden, request);
+    const auto err = new ErrorState(ERR_TOO_BIG, Http::scForbidden, request.getRaw(), fwd->al);
     fwd->fail(err);
     fwd->dontRetry(true);
     abortOnData("Virgin body too large.");
@@ -968,7 +1001,7 @@ Client::adaptOrFinalizeReply()
     // The callback can be called with a NULL service if adaptation is off.
     adaptationAccessCheckPending = Adaptation::AccessCheck::Start(
                                        Adaptation::methodRespmod, Adaptation::pointPreCache,
-                                       originalRequest(), virginReply(), fwd->al, this);
+                                       originalRequest().getRaw(), virginReply(), fwd->al, this);
     debugs(11,5, HERE << "adaptationAccessCheckPending=" << adaptationAccessCheckPending);
     if (adaptationAccessCheckPending)
         return;

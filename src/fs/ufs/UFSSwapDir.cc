@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2022 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -224,13 +224,17 @@ Fs::Ufs::UFSSwapDir::optionIOParse(char const *option, const char *value, int is
         /* silently ignore this */
         return true;
 
-    if (!value)
+    if (!value) {
         self_destruct();
+        return false;
+    }
 
     DiskIOModule *module = DiskIOModule::Find(value);
 
-    if (!module)
+    if (!module) {
         self_destruct();
+        return false;
+    }
 
     changeIO(module);
 
@@ -724,6 +728,9 @@ Fs::Ufs::UFSSwapDir::logFile(char const *ext) const
 void
 Fs::Ufs::UFSSwapDir::openLog()
 {
+    if (!IamWorkerProcess())
+        return;
+
     assert(NumberOfUFSDirs || !UFSDirToGlobalDirMapping);
     ++NumberOfUFSDirs;
     assert(NumberOfUFSDirs <= Config.cacheSwap.n_configured);
@@ -1181,6 +1188,8 @@ Fs::Ufs::UFSSwapDir::evictCached(StoreEntry & e)
     if (!e.hasDisk())
         return; // see evictIfFound()
 
+    // Since these fields grow only after swap out ends successfully,
+    // do not decrement them for e.swappingOut() and e.swapoutFailed().
     if (e.swappedOut()) {
         cur_size -= fs.blksize * sizeInBlocks(e.swap_file_sz);
         --n_disk_objects;
@@ -1270,7 +1279,7 @@ void
 Fs::Ufs::UFSSwapDir::finalizeSwapoutFailure(StoreEntry &entry)
 {
     debugs(47, 5, entry);
-    // rely on the expected subsequent StoreEntry::release(), evictCached(), or
+    // rely on the expected eventual StoreEntry::release(), evictCached(), or
     // a similar call to call unlink(), detachFromDisk(), etc. for the entry.
 }
 

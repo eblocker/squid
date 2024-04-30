@@ -1,19 +1,17 @@
 /*
- * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2022 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
  * Please see the COPYING and CONTRIBUTORS files for details.
  */
 
-/* DEBUG: section 64    HTTP Range Header */
-
 #include "squid.h"
 #include "fatal.h"
 #include "HttpHeader.h"
 #include "HttpHeaderRange.h"
 
-/** \todo CLEANUP: This file should be called something_stub.cc */
+// TODO: refactor as cppunit test
 
 void httpHeaderPutStr(HttpHeader * hdr, Http::HdrType type, const char *str)
 {
@@ -50,7 +48,7 @@ testRangeParser(char const *rangestring)
     HttpHdrRange *range = HttpHdrRange::ParseCreate (&aString);
 
     if (!range)
-        exit (1);
+        exit(EXIT_FAILURE);
 
     HttpHdrRange copy(*range);
 
@@ -70,7 +68,7 @@ rangeFromString(char const *rangestring)
     HttpHdrRange *range = HttpHdrRange::ParseCreate (&aString);
 
     if (!range)
-        exit (1);
+        exit(EXIT_FAILURE);
 
     return range;
 }
@@ -106,7 +104,7 @@ testRangeCanonization()
     /* This passes in the extant code - but should it? */
 
     if (!range->canonize(3))
-        exit(1);
+        exit(EXIT_FAILURE);
 
     assert (range->specs.size() == 3);
 
@@ -118,7 +116,7 @@ testRangeCanonization()
 
     /* 0-3 needs a content length of 4 */
     if (!range->canonize(4))
-        exit(1);
+        exit(EXIT_FAILURE);
 
     delete range;
 
@@ -128,7 +126,7 @@ testRangeCanonization()
 
     /* 3-6 needs a content length of 4 or more */
     if (range->canonize(3))
-        exit(1);
+        exit(EXIT_FAILURE);
 
     delete range;
 
@@ -138,7 +136,7 @@ testRangeCanonization()
 
     /* 3-6 needs a content length of 4 or more */
     if (!range->canonize(4))
-        exit(1);
+        exit(EXIT_FAILURE);
 
     delete range;
 
@@ -147,7 +145,7 @@ testRangeCanonization()
     assert (range->specs.size()== 2);
 
     if (!range->canonize(4))
-        exit(1);
+        exit(EXIT_FAILURE);
 
     assert (range->specs.size() == 2);
 
@@ -170,11 +168,11 @@ main(int argc, char **argv)
         testRangeCanonization();
     } catch (const std::exception &e) {
         printf("Error: dying from an unhandled exception: %s\n", e.what());
-        return 1;
+        return EXIT_FAILURE;
     } catch (...) {
         printf("Error: dying from an unhandled exception.\n");
-        return 1;
+        return EXIT_FAILURE;
     }
-    return 0;
+    return EXIT_SUCCESS;
 }
 

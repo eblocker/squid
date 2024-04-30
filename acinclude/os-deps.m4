@@ -1,4 +1,4 @@
-## Copyright (C) 1996-2019 The Squid Software Foundation and contributors
+## Copyright (C) 1996-2022 The Squid Software Foundation and contributors
 ##
 ## Squid software is distributed under GPLv2+ license and includes
 ## contributions from numerous individuals and organizations.
@@ -86,7 +86,7 @@ dnl check that we have functional libcap2 headers
 dnl sets squid_cv_sys_capability_works to "yes" or "no"
 
 AC_DEFUN([SQUID_CHECK_FUNCTIONAL_LIBCAP2],[
-  AC_CACHE_CHECK([for operational libcap2 headers], 
+  AC_CACHE_CHECK([for operational libcap2 headers],
                  squid_cv_sys_capability_works,
     AC_LINK_IFELSE([AC_LANG_PROGRAM([[
 #include <stdlib.h>
@@ -164,16 +164,11 @@ dnl checks the maximum number of filedescriptor we can open
 dnl sets shell var squid_filedescriptors_num
 
 AC_DEFUN([SQUID_CHECK_MAXFD],[
-AC_CHECK_FUNCS(setrlimit)
+AC_CHECK_FUNCS(getrlimit setrlimit)
 AC_MSG_CHECKING(Maximum number of filedescriptors we can open)
-dnl damn! FreeBSD pthreads break dup2().
 SQUID_STATE_SAVE(maxfd)
-  case $host in
-  i386-unknown-freebsd*)
-      if echo "$LDFLAGS" | grep -q pthread; then
-  	LDFLAGS=`echo $LDFLAGS | sed -e "s/-pthread//"`
-      fi
-  esac
+dnl FreeBSD pthreads break dup2().
+  AS_CASE([$host_os],[freebsd],[ LDFLAGS=`echo $LDFLAGS | sed -e "s/-pthread//"` ])
   AC_RUN_IFELSE([AC_LANG_SOURCE([[
 #include <stdio.h>
 #include <unistd.h>
@@ -191,7 +186,7 @@ int main(int argc, char **argv) {
      */
     i = NOFILE;
 #else
-#if HAVE_SETRLIMIT
+#if HAVE_GETRLIMIT && HAVE_SETRLIMIT
     struct rlimit rl;
 #if defined(RLIMIT_NOFILE)
     if (getrlimit(RLIMIT_NOFILE, &rl) < 0) {
@@ -223,7 +218,7 @@ int main(int argc, char **argv) {
         i = j = 1<<14;
         while (j) {
                 j >>= 1;
-                if (dup2(0, i) < 0) { 
+                if (dup2(0, i) < 0) {
                         i -= j;
                 } else {
                         close(i);
@@ -236,19 +231,33 @@ int main(int argc, char **argv) {
 	fprintf (fp, "%d\n", i & ~0x3F);
 	return 0;
 }
-  ]])],[squid_filedescriptors_num=`cat conftestval`],[squid_filedescriptors_num=256],[squid_filedescriptors_num=256])
+  ]])],[squid_filedescriptors_limit=`cat conftestval`],[],[:])
   dnl Microsoft MSVCRT.DLL supports 2048 maximum FDs
-  case "$host_os" in
-  mingw|mingw32)
-    squid_filedescriptors_num="2048"
-    ;;
-  esac
-  AC_MSG_RESULT($squid_filedescriptors_num)
+  AS_CASE(["$host_os"],[mingw|mingw32],[squid_filedescriptors_limit="2048"])
+  AC_MSG_RESULT($squid_filedescriptors_limit)
+  AS_IF([ test "x$squid_filedescriptors_num" = "x" ],[
+    AS_IF([ test "x$squid_filedescriptors_limit" != "x" ],[
+      squid_filedescriptors_num=$squid_filedescriptors_limit
+    ],[
+      AC_MSG_NOTICE([Unable to detect filedescriptor limits. Assuming 256 is okay.])
+      squid_filedescriptors_num=256
+    ])
+  ])
 SQUID_STATE_ROLLBACK(maxfd)
 
-if test `expr $squid_filedescriptors_num % 64` != 0; then
-    AC_MSG_WARN([$squid_filedescriptors_num is not an multiple of 64. This may cause issues on certain platforms.])
-fi
+AC_MSG_NOTICE([Default number of filedescriptors: $squid_filedescriptors_num])
+
+AS_IF([ test `expr $squid_filedescriptors_num % 64` != 0 ],[
+  AC_MSG_WARN([$squid_filedescriptors_num is not an multiple of 64. This may cause issues on certain platforms.])
+])
+
+AS_IF([ test "$squid_filedescriptors_num" -lt 512 ],[
+  AC_MSG_WARN([$squid_filedescriptors_num may not be enough filedescriptors if your])
+  AC_MSG_WARN([cache will be very busy.  Please see the FAQ page])
+  AC_MSG_WARN([http://wiki.squid-cache.org/SquidFaq/TroubleShooting])
+  AC_MSG_WARN([on how to increase your filedescriptor limit])
+])
+AC_DEFINE_UNQUOTED(SQUID_MAXFD,$squid_filedescriptors_num,[Maximum number of open filedescriptors])
 ])
 
 
@@ -263,7 +272,7 @@ AC_CACHE_CHECK([for sin6_len field in struct sockaddr_in6],
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
-              ]], [[ struct sockaddr_in6 s; s.sin6_len = 1; ]])],[ ac_cv_have_sin6_len_in_struct_sai="yes" ],[ ac_cv_have_sin6_len_in_struct_sai="no" 
+              ]], [[ struct sockaddr_in6 s; s.sin6_len = 1; ]])],[ ac_cv_have_sin6_len_in_struct_sai="yes" ],[ ac_cv_have_sin6_len_in_struct_sai="no"
       ])
 ])
 SQUID_DEFINE_BOOL(HAVE_SIN6_LEN_IN_SAI,$ac_cv_have_sin6_len_in_struct_sai,
@@ -282,7 +291,7 @@ AC_CACHE_CHECK([for ss_len field in struct sockaddr_storage],
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
-		]], [[ struct sockaddr_storage s; s.ss_len = 1; ]])],[ ac_cv_have_ss_len_in_struct_ss="yes" ],[ ac_cv_have_ss_len_in_struct_ss="no" 
+		]], [[ struct sockaddr_storage s; s.ss_len = 1; ]])],[ ac_cv_have_ss_len_in_struct_ss="yes" ],[ ac_cv_have_ss_len_in_struct_ss="no"
 	])
 ])
 SQUID_DEFINE_BOOL(HAVE_SS_LEN_IN_SS,$ac_cv_have_ss_len_in_struct_ss,
@@ -301,7 +310,7 @@ AC_CACHE_CHECK([for sin_len field in struct sockaddr_in],
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
-                ]], [[ struct sockaddr_in s; s.sin_len = 1; ]])],[ ac_cv_have_sin_len_in_struct_sai="yes" ],[ ac_cv_have_sin_len_in_struct_sai="no" 
+                ]], [[ struct sockaddr_in s; s.sin_len = 1; ]])],[ ac_cv_have_sin_len_in_struct_sai="yes" ],[ ac_cv_have_sin_len_in_struct_sai="no"
         ])
 ])
 SQUID_DEFINE_BOOL(HAVE_SIN_LEN_IN_SAI,$ac_cv_have_sin_len_in_struct_sai,[Define if sockaddr_in has field sin_len])
@@ -398,7 +407,7 @@ int main(int argc, char **argv)
         if (getsockopt(fd, SOL_SOCKET, SO_RCVBUF, &val, &len) < 0) return 1;
 #endif
 	if (val <= 0) return 1;
-	fp = fopen("conftestval", "w"); 
+	fp = fopen("conftestval", "w");
 	fprintf (fp, "%d\n", val);
 	return 0;
 }
@@ -448,7 +457,7 @@ int main(int argc, char **argv)
         if (getsockopt(fd, SOL_SOCKET, SO_SNDBUF, &val, &len) < 0) return 1;
 #endif
 	if (val <= 0) return 1;
-	fp = fopen("conftestval", "w"); 
+	fp = fopen("conftestval", "w");
 	fprintf (fp, "%d\n", val);
 	return 0;
 }
@@ -502,7 +511,7 @@ int main(int argc, char **argv)
         if (getsockopt(fd, SOL_SOCKET, SO_RCVBUF, &val, &len) < 0) return 1;
 #endif
 	if (val <= 0) return 1;
-	fp = fopen("conftestval", "w"); 
+	fp = fopen("conftestval", "w");
 	fprintf (fp, "%d\n", val);
 	return 0;
 }
@@ -554,7 +563,7 @@ AC_CACHE_CHECK(for working statvfs() interface,ac_cv_func_statvfs,[
 #include <sys/statvfs.h>
 ]], [[
 struct statvfs sfs;
-sfs.f_blocks = sfs.f_bfree = sfs.f_frsize = 
+sfs.f_blocks = sfs.f_bfree = sfs.f_frsize =
 sfs.f_files = sfs.f_ffree = 0;
 statvfs("/tmp", &sfs);
 ]])],[ac_cv_func_statvfs=yes],[ac_cv_func_statvfs=no])
@@ -577,7 +586,7 @@ AC_CACHE_CHECK([for f_frsize field in struct statfs],
 #if HAVE_SYS_VFS_H
 #include <sts/vfs.h>
 #endif
-                ]], [[ struct statfs s; s.f_frsize = 0; ]])],[ ac_cv_have_f_frsize_in_struct_statfs="yes" ],[ ac_cv_have_f_frsize_in_struct_statfs="no" 
+                ]], [[ struct statfs s; s.f_frsize = 0; ]])],[ ac_cv_have_f_frsize_in_struct_statfs="yes" ],[ ac_cv_have_f_frsize_in_struct_statfs="no"
         ])
 ])
 SQUID_DEFINE_BOOL(HAVE_F_FRSIZE_IN_STATFS,$ac_cv_have_f_frsize_in_struct_statfs,[Define if struct statfs has field f_frsize (Linux 2.6 or later)])
@@ -620,7 +629,7 @@ AC_DEFUN([SQUID_CHECK_RESOLVER_FIELDS],[
 #if HAVE_RESOLV_H
 #include <resolv.h>
 #endif
-    ]], 
+    ]],
     [[_res_ext.nsaddr_list[[0]].s_addr;]])],[
       ac_cv_have_res_ext_nsaddr_list="yes" ],[
       ac_cv_have_res_ext_nsaddr_list="no"]))
@@ -699,7 +708,7 @@ AC_CACHE_CHECK(for _res.nsaddr_list, ac_cv_have_res_nsaddr_list,
 #if HAVE_RESOLV_H
 #include <resolv.h>
 #endif
-  ]], 
+  ]],
   [[_res.ns_list[[0]].addr;]])],
   [ac_cv_have_res_ns_list="yes"],[ac_cv_have_res_ns_list="no"]))
   if test $ac_cv_have_res_ns_list = "yes" ; then
@@ -783,6 +792,7 @@ AC_DEFUN([SQUID_CHECK_FUNCTIONAL_CPU_PROFILER],[
   AC_CACHE_CHECK([for operational CPU clock access], 
                  squid_cv_cpu_profiler_works,
     AC_PREPROC_IFELSE([AC_LANG_SOURCE([[
+#include <ctime>
 #if defined(__GNUC__) && ( defined(__i386) || defined(__i386__) )
 // okay
 #elif defined(__GNUC__) && ( defined(__x86_64) || defined(__x86_64__) )
@@ -790,6 +800,8 @@ AC_DEFUN([SQUID_CHECK_FUNCTIONAL_CPU_PROFILER],[
 #elif defined(__GNUC__) && defined(__alpha)
 // okay
 #elif defined(_M_IX86) && defined(_MSC_VER) /* x86 platform on Microsoft C Compiler ONLY */
+// okay
+#elif defined(HAVE_CLOCK_GETTIME_NSEC_NP) && defined(CLOCK_MONOTONIC_RAW)
 // okay
 #else
 #error This CPU is unsupported. No profiling available here.
@@ -916,10 +928,12 @@ AC_DEFUN([SQUID_CHECK_BROKEN_SOLARIS_IPFILTER],[
 ## Solaris 10+ backported IPv6 NAT to their IPFilter v4.1 instead of using v5
   AC_CHECK_MEMBERS([
     struct natlookup.nl_inipaddr.in6,
-    struct natlookup.nl_realipaddr.in6
-  ],,,[
+    struct natlookup.nl_realipaddr.in6],,,[
 #if USE_SOLARIS_IPFILTER_MINOR_T_HACK
 #define minor_t fubar
+#endif
+#if HAVE_SYS_PARAM_H
+#include <sys/param.h>
 #endif
 #if HAVE_SYS_TYPES_H
 #include <sys/types.h>
@@ -946,7 +960,11 @@ AC_DEFUN([SQUID_CHECK_BROKEN_SOLARIS_IPFILTER],[
 #elif HAVE_NETINET_IP_FIL_H
 #include <netinet/ip_fil.h>
 #endif
+#if HAVE_IP_NAT_H
 #include <ip_nat.h>
+#elif HAVE_NETINET_IP_NAT_H
+#include <netinet/ip_nat.h>
+#endif
   ])
 
 ])

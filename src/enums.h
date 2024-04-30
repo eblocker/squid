@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2022 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -10,7 +10,7 @@
 #define SQUID_ENUMS_H
 
 enum fd_type {
-    FD_NONE,
+    FD_NONE_TYPE,
     FD_LOG,
     FD_FILE,
     FD_SOCKET,
@@ -37,8 +37,12 @@ typedef enum _mem_status_t {
 } mem_status_t;
 
 typedef enum {
+    /// Has not considered whether to send ICP queries to peers yet.
     PING_NONE,
+    /// Sent ICP queries to peers and still awaiting responses.
     PING_WAITING,
+    /// Not waiting for ICP responses now and will not send ICP queries later.
+    /// The ICP queries may (or may not) have been sent earlier.
     PING_DONE
 } ping_status_t;
 
@@ -57,7 +61,11 @@ typedef enum {
     SWAPOUT_WRITING,
     /// StoreEntry is associated with a complete (i.e., fully swapped out) disk store entry.
     /// Guarantees the disk store entry existence.
-    SWAPOUT_DONE
+    SWAPOUT_DONE,
+    /// StoreEntry is associated with an unusable disk store entry.
+    /// Swapout attempt has failed. The entry should be marked for eventual deletion.
+    /// Guarantees the disk store entry existence.
+    SWAPOUT_FAILED
 } swap_status_t;
 
 typedef enum {
@@ -104,7 +112,10 @@ enum {
     ENTRY_NEGCACHED,
     ENTRY_VALIDATED,
     ENTRY_BAD_LENGTH,
-    ENTRY_ABORTED
+    ENTRY_ABORTED,
+    /// Whether the entry serves collapsed hits now.
+    /// Meaningful only for public entries.
+    ENTRY_REQUIRES_COLLAPSING
 };
 
 /*
@@ -148,14 +159,6 @@ enum {
     STORE_LOG_RELEASE,
     STORE_LOG_SWAPOUTFAIL
 };
-
-/* parse state of HttpReply or HttpRequest */
-typedef enum {
-    psReadyToParseStartLine = 0,
-    psReadyToParseHeaders,
-    psParsed,
-    psError
-} HttpMsgParseState;
 
 enum {
     PCTILE_HTTP,

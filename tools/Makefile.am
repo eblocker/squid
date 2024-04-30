@@ -1,4 +1,4 @@
-## Copyright (C) 1996-2019 The Squid Software Foundation and contributors
+## Copyright (C) 1996-2022 The Squid Software Foundation and contributors
 ##
 ## Squid software is distributed under GPLv2+ license and includes
 ## contributions from numerous individuals and organizations.
@@ -31,11 +31,14 @@ include $(top_srcdir)/doc/manuals/Substitute.am
 test_tools.cc: $(top_srcdir)/test-suite/test_tools.cc
 	cp $(top_srcdir)/test-suite/test_tools.cc $@
 
-stub_debug.cc: $(top_srcdir)/src/tests/stub_debug.cc
+tests/stub_debug.cc: $(top_srcdir)/src/tests/stub_debug.cc | tests
 	cp $(top_srcdir)/src/tests/stub_debug.cc $@
 
 Here.cc: $(top_srcdir)/src/base/Here.cc
 	cp $(top_srcdir)/src/base/Here.cc $@
+
+CharacterSet.cc: $(top_srcdir)/src/base/CharacterSet.cc
+	cp $(top_srcdir)/src/base/CharacterSet.cc $@
 
 MemBuf.cc: $(top_srcdir)/src/MemBuf.cc
 	cp $(top_srcdir)/src/MemBuf.cc $@
@@ -43,21 +46,24 @@ MemBuf.cc: $(top_srcdir)/src/MemBuf.cc
 time.cc: $(top_srcdir)/src/time.cc
 	cp $(top_srcdir)/src/time.cc $@
 
-stub_cbdata.cc: $(top_srcdir)/src/tests/stub_cbdata.cc
+tests/stub_cbdata.cc: $(top_srcdir)/src/tests/stub_cbdata.cc | tests
 	cp $(top_srcdir)/src/tests/stub_cbdata.cc $@
 
-stub_libmem.cc: $(top_srcdir)/src/tests/stub_libmem.cc STUB.h
+tests/stub_libmem.cc: $(top_srcdir)/src/tests/stub_libmem.cc | tests
 	cp $(top_srcdir)/src/tests/stub_libmem.cc $@
-	
-STUB.h: $(top_srcdir)/src/tests/STUB.h
+
+tests/STUB.h: $(top_srcdir)/src/tests/STUB.h | tests
 	cp $(top_srcdir)/src/tests/STUB.h $@
+
+tests:
+	mkdir -p $@
 
 # stock tools for unit tests - library independent versions of dlink_list
 # etc.
 # globals.cc is needed by test_tools.cc.
 # Neither of these should be disted from here.
 TESTSOURCES= test_tools.cc
-CLEANFILES += test_tools.cc Here.cc MemBuf.cc stub_debug.cc time.cc stub_cbdata.cc stub_libmem.cc STUB.h
+CLEANFILES += test_tools.cc Here.cc CharacterSet.cc MemBuf.cc tests/stub_debug.cc time.cc tests/stub_cbdata.cc tests/stub_libmem.cc tests/STUB.h
 
 ## Test Scripts
 EXTRA_DIST += helper-ok-dying.pl helper-ok.pl
@@ -68,15 +74,19 @@ DEFAULT_CACHEMGR_CONFIG = $(sysconfdir)/cachemgr.conf
 
 libexec_PROGRAMS = cachemgr$(CGIEXT)
 
-cachemgr__CGIEXT__SOURCES = cachemgr.cc \
+cachemgr__CGIEXT__SOURCES = \
+	CharacterSet.cc \
 	Here.cc \
 	MemBuf.cc \
-	stub_cbdata.cc \
-	stub_debug.cc \
-	stub_libmem.cc \
+	cachemgr.cc \
 	test_tools.cc \
-	STUB.h \
 	time.cc
+
+nodist_cachemgr__CGIEXT__SOURCES = \
+	tests/stub_cbdata.cc \
+	tests/stub_debug.cc \
+	tests/stub_libmem.cc \
+	tests/STUB.h
 
 cachemgr__CGIEXT__CXXFLAGS = -DDEFAULT_CACHEMGR_CONFIG=\"$(DEFAULT_CACHEMGR_CONFIG)\" $(AM_CXXFLAGS)
 

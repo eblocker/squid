@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2022 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -69,8 +69,9 @@ static ExternalACLEntryPointer external_acl_cache_add(external_acl * def, const 
 
 class external_acl
 {
-    /* FIXME: These are not really cbdata, but it is an easy way
+    /* XXX: These are not really cbdata, but it is an easy way
      * to get them pooled, refcounted, accounted and freed properly...
+     * Use RefCountable MEMPROXY_CLASS instead
      */
     CBDATA_CLASS(external_acl);
 
@@ -84,7 +85,7 @@ public:
 
     void trimCache();
 
-    bool maybeCacheable(const allow_t &) const;
+    bool maybeCacheable(const Acl::Answer &) const;
 
     int ttl;
 
@@ -465,7 +466,7 @@ external_acl::trimCache()
 }
 
 bool
-external_acl::maybeCacheable(const allow_t &result) const
+external_acl::maybeCacheable(const Acl::Answer &result) const
 {
     if (cache_size <= 0)
         return false; // cache is disabled
@@ -594,7 +595,7 @@ copyResultsFromEntry(HttpRequest *req, const ExternalACLEntryPointer &entry)
     }
 }
 
-static allow_t
+static Acl::Answer
 aclMatchExternal(external_acl_data *acl, ACLFilledChecklist *ch)
 {
     debugs(82, 9, HERE << "acl=\"" << acl->def->name << "\"");
@@ -631,7 +632,7 @@ aclMatchExternal(external_acl_data *acl, ACLFilledChecklist *ch)
         if (acl->def->require_auth) {
             /* Make sure the user is authenticated */
             debugs(82, 3, HERE << acl->def->name << " check user authenticated.");
-            const allow_t ti = AuthenticateAcl(ch);
+            const auto ti = AuthenticateAcl(ch);
             if (!ti.allowed()) {
                 debugs(82, 2, HERE << acl->def->name << " user not authenticated (" << ti << ")");
                 return ti;
@@ -705,7 +706,7 @@ aclMatchExternal(external_acl_data *acl, ACLFilledChecklist *ch)
 int
 ACLExternal::match(ACLChecklist *checklist)
 {
-    allow_t answer = aclMatchExternal(data, Filled(checklist));
+    auto answer = aclMatchExternal(data, Filled(checklist));
 
     // convert to tri-state ACL match 1,0,-1
     switch (answer) {
@@ -1114,7 +1115,7 @@ externalAclInit(void)
             p->cache = hash_create((HASHCMP *) strcmp, hashPrime(1024), hash4);
 
         if (!p->theHelper)
-            p->theHelper = new helper(p->name);
+            p->theHelper = new helper("external_acl_type");
 
         p->theHelper->cmdline = p->cmdline;
 

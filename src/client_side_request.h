@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2022 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -16,11 +16,11 @@
 #include "http/forward.h"
 #include "HttpHeaderRange.h"
 #include "LogTags.h"
+#include "Store.h"
 
 #if USE_ADAPTATION
 #include "adaptation/forward.h"
 #include "adaptation/Initiator.h"
-class HttpMsg;
 #endif
 
 class ClientRequestContext;
@@ -49,19 +49,22 @@ public:
     void freeResources();
     void updateCounters();
     void logRequest();
-    _SQUID_INLINE_ MemObject * memObject() const;
+    MemObject * memObject() const {
+        return (storeEntry() ? storeEntry()->mem_obj : nullptr);
+    }
     bool multipartRangeRequest() const;
     void processRequest();
     void httpStart();
     bool onlyIfCached()const;
     bool gotEnough() const;
-    _SQUID_INLINE_ StoreEntry *storeEntry() const;
+    StoreEntry *storeEntry() const { return entry_; }
     void storeEntry(StoreEntry *);
-    _SQUID_INLINE_ StoreEntry *loggingEntry() const;
+    StoreEntry *loggingEntry() const { return loggingEntry_; }
     void loggingEntry(StoreEntry *);
 
-    _SQUID_INLINE_ ConnStateData * getConn() const;
-    _SQUID_INLINE_ void setConn(ConnStateData *);
+    ConnStateData * getConn() const {
+        return (cbdataReferenceValid(conn_) ? conn_ : nullptr);
+    }
 
     /// Initializes the current request with the virgin request.
     /// Call this method when the virgin request becomes known.
@@ -79,10 +82,11 @@ public:
     Comm::ConnectionPointer clientConnection;
 
     /// Request currently being handled by ClientHttpRequest.
-    /// Starts as a virgin request; see initRequest().
     /// Usually remains nil until the virgin request header is parsed or faked.
+    /// Starts as a virgin request; see initRequest().
     /// Adaptation and redirections replace it; see resetRequest().
     HttpRequest * const request;
+
     /// Usually starts as a URI received from the client, with scheme and host
     /// added if needed. Is used to create the virgin request for initRequest().
     /// URIs of adapted/redirected requests replace it via resetRequest().
@@ -99,8 +103,16 @@ public:
     struct Out {
         Out() : offset(0), size(0), headers_sz(0) {}
 
+        /// Roughly speaking, this offset points to the next body byte we want
+        /// to receive from Store. Without Ranges (and I/O errors), we should
+        /// have received (and written to the client) all the previous bytes.
+        /// XXX: The offset is updated by various receive-write steps, making
+        /// its exact meaning illusive. Its Out class placement is confusing.
         int64_t offset;
+        /// Response header and body bytes written to the client connection.
         uint64_t size;
+        /// Response header bytes written to the client connection.
+        /// Not to be confused with clientReplyContext::headers_sz.
         size_t headers_sz;
     } out;
 
@@ -154,7 +166,10 @@ public:
     int64_t prepPartialResponseGeneration();
 
     /// Build an error reply. For use with the callouts.
-    void calloutsError(const err_type error, const int errDetail);
+    void calloutsError(const err_type error, const ErrorDetail::Pointer &errDetail);
+
+    /// if necessary, stores new error information (if any)
+    void updateError(const Error &error);
 
 #if USE_ADAPTATION
     // AsyncJob virtual methods
@@ -203,11 +218,11 @@ public:
 private:
     /// Handles an adaptation client request failure.
     /// Bypasses the error if possible, or build an error reply.
-    void handleAdaptationFailure(int errDetail, bool bypassable = false);
+    void handleAdaptationFailure(const ErrorDetail::Pointer &errDetail, bool bypassable = false);
 
     // Adaptation::Initiator API
     virtual void noteAdaptationAnswer(const Adaptation::Answer &answer);
-    void handleAdaptedHeader(HttpMsg *msg);
+    void handleAdaptedHeader(Http::Message *msg);
     void handleAdaptationBlock(const Adaptation::Answer &answer);
     virtual void noteAdaptationAclCheckDone(Adaptation::ServiceGroupPointer group);
 
@@ -224,6 +239,9 @@ private:
     CbcPointer<Adaptation::Initiate> virginHeadSource;
     BodyPipe::Pointer adaptedBodySource;
 
+    /// noteBodyProductionEnded() was called
+    bool receivedWholeAdaptedReply;
+
     bool request_satisfaction_mode;
     int64_t request_satisfaction_offset;
 #endif
@@ -233,16 +251,12 @@ private:
 char *clientConstructTraceEcho(ClientHttpRequest *);
 
 ACLFilledChecklist *clientAclChecklistCreate(const acl_access * acl,ClientHttpRequest * http);
+void clientAclChecklistFill(ACLFilledChecklist &, ClientHttpRequest *);
 int clientHttpRequestStatus(int fd, ClientHttpRequest const *http);
 void clientAccessCheck(ClientHttpRequest *);
 
 /* ones that should be elsewhere */
 void tunnelStart(ClientHttpRequest *);
-
-#if _USE_INLINE_
-#include "client_side_request.cci"
-#include "Store.h"
-#endif
 
 #endif /* SQUID_CLIENTSIDEREQUEST_H */
 

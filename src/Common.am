@@ -1,4 +1,4 @@
-## Copyright (C) 1996-2019 The Squid Software Foundation and contributors
+## Copyright (C) 1996-2022 The Squid Software Foundation and contributors
 ##
 ## Squid software is distributed under GPLv2+ license and includes
 ## contributions from numerous individuals and organizations.
@@ -16,7 +16,7 @@ DEFAULT_ICP_PORT	= 3130
 DEFAULT_PREFIX		= $(prefix)
 DEFAULT_CONFIG_DIR	= $(sysconfdir)
 DEFAULT_CONFIG_FILE	= $(DEFAULT_CONFIG_DIR)/squid.conf
-DEFAULT_MIME_TABLE	= $(DEFAULT_CONFIG_DIR)/mime.conf
+DEFAULT_MIME_TABLE	= $(datadir)/mime.conf
 DEFAULT_SSL_CRTD	= $(libexecdir)/`echo security_file_certgen | sed '$(transform);s/$$/$(EXEEXT)/'`
 DEFAULT_LOG_PREFIX	= $(DEFAULT_LOG_DIR)
 DEFAULT_CACHE_LOG	= $(DEFAULT_LOG_PREFIX)/cache.log
@@ -43,7 +43,7 @@ DEFS += -DDEFAULT_CONFIG_FILE=\"$(DEFAULT_CONFIG_FILE)\" \
 
 ## so that others can always use += for these variables
 CLEANFILES =
-check_PROGRAMS = 
+check_PROGRAMS =
 TESTS =
 
 AM_CPPFLAGS = \

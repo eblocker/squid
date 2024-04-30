@@ -1,4 +1,4 @@
-## Copyright (C) 1996-2019 The Squid Software Foundation and contributors
+## Copyright (C) 1996-2022 The Squid Software Foundation and contributors
 ##
 ## Squid software is distributed under GPLv2+ license and includes
 ## contributions from numerous individuals and organizations.
@@ -57,7 +57,6 @@ EXTRA_libmiscutil_la_SOURCES = \
 
 libmiscencoding_la_SOURCES = \
 	base64.c \
-	charset.c \
 	html_quote.c \
 	md5.c \
 	rfc1738.c \
@@ -67,13 +66,13 @@ libmisccontainers_la_SOURCES = \
 	hash.cc
 
 libmiscutil_la_SOURCES = \
+	$(SNPRINTFSOURCE) \
+	Splay.cc \
 	getfullhostname.c \
 	heap.c \
 	iso3307.c \
 	radix.c \
 	rfc1123.c \
-	$(SNPRINTFSOURCE) \
-	Splay.cc \
 	stub_memaccount.c \
 	util.c \
 	xusleep.c
@@ -82,9 +81,9 @@ TESTS += tests/testRFC1738
 
 check_PROGRAMS += tests/testRFC1738
 
-tests_testRFC1738_SOURCES= \
-	tests/testRFC1738.h \
-	tests/testRFC1738.cc
+tests_testRFC1738_SOURCES = \
+	tests/testRFC1738.cc \
+	tests/testRFC1738.h
 
 tests_testRFC1738_LDADD= \
 	$(top_builddir)/lib/libmiscencoding.la \

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2022 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -10,8 +10,8 @@
 #define SQUID__ADAPTATION__MESSAGE_H
 
 #include "base/RefCount.h"
+#include "http/forward.h"
 
-class HttpMsg;
 class BodyPipe;
 typedef RefCount<BodyPipe> BodyPipePointer;
 
@@ -21,12 +21,12 @@ namespace Adaptation
 // Manages the header and the body of an HTTP message being worked on.
 // Adaptation transactions use this class for virgin and adapted HTTP messages.
 // TODO: remove this class after adding refcounted message pointers and
-// after making sure nobody abruptly clears the HttpMsg::body_pipe pointer.
+// after making sure nobody abruptly clears the Http::Message::body_pipe pointer.
 class Message
 {
 
 public:
-    typedef HttpMsg Header;
+    typedef Http::Message Header;
 
     Message();
     Message(Header *aHeader);
@@ -42,7 +42,7 @@ public:
     Header *header;   // parsed HTTP status/request line and headers
 
     /// Copy of header->body_pipe, in case somebody moves the original.
-    /// \todo Find and fix the code that moves (if any) and remove this.
+    /// TODO: Find and fix the code that moves (if any) and remove this.
     BodyPipePointer body_pipe;
 
 private:

@@ -1,4 +1,4 @@
-## Copyright (C) 1996-2019 The Squid Software Foundation and contributors
+## Copyright (C) 1996-2022 The Squid Software Foundation and contributors
 ##
 ## Squid software is distributed under GPLv2+ license and includes
 ## contributions from numerous individuals and organizations.
@@ -12,7 +12,7 @@ SUBDIRS= id_rewriters
 
 noinst_LTLIBRARIES = libstore.la
 
-libstore_la_SOURCES= \
+libstore_la_SOURCES = \
 	Controlled.h \
 	Controller.cc \
 	Controller.h \
@@ -20,7 +20,7 @@ libstore_la_SOURCES= \
 	Disk.h \
 	Disks.cc \
 	Disks.h \
-	forward.h \
 	LocalSearch.cc \
 	LocalSearch.h \
-	Storage.h
+	Storage.h \
+	forward.h

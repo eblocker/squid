@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2022 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -67,7 +67,7 @@ Ip::Address::cidr() const
             continue ;  /* A short-cut */
         }
 
-        for (caught = 0 , bit= 7 ; !caught && (bit <= 7); --bit) {
+        for (caught = 0, bit= 7 ; !caught && (bit <= 7); --bit) {
             caught = ((ipbyte & 0x80) == 0x00);  /* Found a '0' at 'bit' ? */
 
             if (!caught)
@@ -99,6 +99,13 @@ Ip::Address::applyMask(Ip::Address const &mask_addr)
     }
 
     return changes;
+}
+
+void
+Ip::Address::applyClientMask(const Address &mask)
+{
+    if (!isLocalhost() && isIPv4())
+        (void)applyMask(mask);
 }
 
 bool
@@ -781,16 +788,6 @@ Ip::Address::port(unsigned short prt)
     return prt;
 }
 
-/**
- * toStr Given a buffer writes a readable ascii version of the IPA and/or port stored
- *
- * Buffer must be of a size large enough to hold the converted address.
- * This size is provided in the form of a global defined variable MAX_IPSTRLEN
- * Should a buffer shorter be provided the string result will be truncated
- * at the length of the available buffer.
- *
- * A copy of the buffer is also returned for simple immediate display.
- */
 char *
 Ip::Address::toStr(char* buf, const unsigned int blen, int force) const
 {
@@ -897,13 +894,39 @@ Ip::Address::toUrl(char* buf, unsigned int blen) const
     return buf;
 }
 
+bool
+Ip::Address::fromHost(const char *host)
+{
+    setEmpty();
+
+    if (!host)
+        return false;
+
+    if (host[0] != '[')
+        return lookupHostIP(host, true); // no brackets
+
+    /* unwrap a bracketed [presumably IPv6] address, presumably without port */
+
+    const char *start = host + 1;
+    if (!*start)
+        return false; // missing address after an opening bracket
+
+    // XXX: Check that there is a closing bracket and no trailing garbage.
+
+    char *tmp = xstrdup(start); // XXX: Slow. TODO: Bail on huge strings and use an on-stack buffer.
+    tmp[strlen(tmp)-1] = '\0'; // XXX: Wasteful: xstrdup() just did strlen().
+    const bool result = lookupHostIP(tmp, true);
+    xfree(tmp);
+    return result;
+}
+
 void
 Ip::Address::getSockAddr(struct sockaddr_storage &addr, const int family) const
 {
     struct sockaddr_in *sin = NULL;
 
     if ( family == AF_INET && !isIPv4()) {
-        // FIXME INET6: caller using the wrong socket type!
+        // TODO INET6: caller using the wrong socket type!
         debugs(14, DBG_CRITICAL, HERE << "Ip::Address::getSockAddr : Cannot convert non-IPv4 to IPv4. from " << *this);
         assert(false);
     }

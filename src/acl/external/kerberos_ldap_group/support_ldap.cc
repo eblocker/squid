@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2022 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -75,9 +75,9 @@ LDAP *tool_ldap_open(struct main_args *margs, char *host, int port, char *ssl);
 #define ATTRIBUTE_AD "memberof"
 
 size_t get_attributes(LDAP * ld, LDAPMessage * res,
-                      const char *attribute /* IN */ , char ***out_val /* OUT (caller frees) */ );
+                      const char *attribute /* IN */, char ***out_val /* OUT (caller frees) */ );
 size_t get_bin_attributes(LDAP * ld, LDAPMessage * res,
-                          const char *attribute /* IN */ , char ***out_val,
+                          const char *attribute /* IN */, char ***out_val,
                           int **out_len /* OUT (caller frees) */ );
 int search_group_tree(struct main_args *margs, LDAP * ld, char *bindp,
                       char *ldap_group, char *group, int depth);
@@ -1114,7 +1114,11 @@ get_memberof(struct main_args *margs, char *user, char *domain, char *group)
                   "%s| %s: DEBUG: Error during initialisation of ldap connection: %s\n",
                   LogTime(), PROGRAM, strerror(errno));
         }
-        bindp = convert_domain_to_bind_path(domain);
+        if (margs->lbind) {
+            bindp = xstrdup(margs->lbind);
+        } else {
+            bindp = convert_domain_to_bind_path(domain);
+        }
     }
     if ((!domain || !ld) && margs->lurl && strstr(margs->lurl, "://")) {
         char *hostname;

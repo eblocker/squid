@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2022 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -75,7 +75,7 @@ public:
     bool availableForNew() const; ///< a new transaction may start communicating with the service
     bool availableForOld() const; ///< a transaction notified about connection slot availability may start communicating with the service
 
-    virtual Initiate *makeXactLauncher(HttpMsg *virginHeader, HttpRequest *virginCause, AccessLogEntry::Pointer &alp);
+    virtual Initiate *makeXactLauncher(Http::Message *virginHeader, HttpRequest *virginCause, AccessLogEntry::Pointer &alp);
 
     void callWhenAvailable(AsyncCall::Pointer &cb, bool priority = false);
     void callWhenReady(AsyncCall::Pointer &cb);
@@ -85,7 +85,8 @@ public:
     bool wantsPreview(const SBuf &urlPath, size_t &wantedSize) const;
     bool allows204() const;
     bool allows206() const;
-    Comm::ConnectionPointer getConnection(bool isRetriable, bool &isReused);
+    /// \returns an idle persistent ICAP connection or nil
+    Comm::ConnectionPointer getIdleConnection(bool isRetriable);
     void putConnection(const Comm::ConnectionPointer &conn, bool isReusable, bool sendReset, const char *comment);
     void noteConnectionUse(const Comm::ConnectionPointer &conn);
     void noteConnectionFailed(const char *comment);

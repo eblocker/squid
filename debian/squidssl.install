@@ -3,10 +3,6 @@ etc/squid/conf.d
 etc/squid/errorpage.css
 etc/logrotate.d
 etc/resolvconf
-etc/init.d/squid
-etc/systemd/system/squid.service.d/requires-certvalidator.conf
-etc/systemd/system/squid.service.d/kill-mode-control-group.conf
-etc/systemd/system/squid.service.d/restart.conf
 etc/ufw
 usr/lib/squid
 usr/sbin/squid
@@ -31,3 +27,6 @@ usr/share/man/man8/negotiate_kerberos_auth.8
 usr/share/man/man8/security_fake_certverify.8
 usr/share/man/man8/storeid_file_rewrite.8
 usr/share/man/man8/squid.8
+etc/apparmor.d/disable
+etc/apparmor.d/force-complain
+etc/apparmor.d/usr.sbin.squid

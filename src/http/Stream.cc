@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2022 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -13,6 +13,12 @@
 #include "HttpHeaderTools.h"
 #include "Store.h"
 #include "TimeOrTag.h"
+#if USE_DELAY_POOLS
+#include "acl/FilledChecklist.h"
+#include "ClientInfo.h"
+#include "fde.h"
+#include "MessageDelayPools.h"
+#endif
 
 Http::Stream::Stream(const Comm::ConnectionPointer &aConn, ClientHttpRequest *aReq) :
     clientConnection(aConn),
@@ -48,7 +54,7 @@ Http::Stream::registerWithConn()
     assert(!connRegistered_);
     assert(getConn());
     connRegistered_ = true;
-    getConn()->pipeline.add(Http::StreamPointer(this));
+    getConn()->add(this);
 }
 
 bool
@@ -82,6 +88,8 @@ Http::Stream::writeComplete(size_t size)
     case STREAM_COMPLETE: {
         debugs(33, 5, clientConnection << " Stream complete, keepalive is " <<
                http->request->flags.proxyKeepalive);
+        // XXX: This code assumes we are done with the transaction, but we may
+        // still be receiving request body. TODO: Extend stopSending() instead.
         ConnStateData *c = getConn();
         if (!http->request->flags.proxyKeepalive)
             clientConnection->close();
@@ -165,7 +173,7 @@ Http::Stream::getNextRangeOffset() const
 
     } else if (const auto cr = reply ? reply->contentRange() : nullptr) {
         /* request does not have ranges, but reply does */
-        /** \todo FIXME: should use range_iter_pos on reply, as soon as reply->content_range
+        /* TODO: should use range_iter_pos on reply, as soon as reply->content_range
          *        becomes HttpHdrRange rather than HttpHdrRangeSpec.
          */
         if (cr->spec.offset != HttpHdrRangeSpec::UnknownPosition)
@@ -288,6 +296,24 @@ Http::Stream::sendStartOfMessage(HttpReply *rep, StoreIOBuffer bodyData)
             mb->append(bodyData.data, length);
         }
     }
+#if USE_DELAY_POOLS
+    for (const auto &pool: MessageDelayPools::Instance()->pools) {
+        if (pool->access) {
+            std::unique_ptr<ACLFilledChecklist> chl(clientAclChecklistCreate(pool->access, http));
+            chl->reply = rep;
+            HTTPMSGLOCK(chl->reply);
+            const auto answer = chl->fastCheck();
+            if (answer.allowed()) {
+                writeQuotaHandler = pool->createBucket();
+                fd_table[clientConnection->fd].writeQuotaHandler = writeQuotaHandler;
+                break;
+            } else {
+                debugs(83, 4, "Response delay pool " << pool->poolName <<
+                       " skipped because ACL " << answer);
+            }
+        }
+    }
+#endif
 
     getConn()->write(mb);
     delete mb;
@@ -420,7 +446,7 @@ Http::Stream::buildRangeHeader(HttpReply *rep)
     }
     else if (rep->content_length < 0)
         range_err = "unknown length";
-    else if (rep->content_length != http->memObject()->getReply()->content_length)
+    else if (rep->content_length != http->storeEntry()->mem().baseReply().content_length)
         range_err = "INCONSISTENT length";  /* a bug? */
 
     /* hits only - upstream CachePeer determines correct behaviour on misses,
@@ -504,18 +530,18 @@ Http::Stream::getConn() const
 
 /// remembers the abnormal connection termination for logging purposes
 void
-Http::Stream::noteIoError(const int xerrno)
+Http::Stream::noteIoError(const Error &error, const LogTagsErrors &lte)
 {
     if (http) {
-        http->logType.err.timedout = (xerrno == ETIMEDOUT);
-        // aborted even if xerrno is zero (which means read abort/eof)
-        http->logType.err.aborted = (xerrno != ETIMEDOUT);
+        http->updateError(error);
+        http->logType.err.update(lte);
     }
 }
 
 void
 Http::Stream::finished()
 {
+    CodeContext::Reset(clientConnection);
     ConnStateData *conn = getConn();
 
     /* we can't handle any more stream data - detach */
@@ -592,9 +618,8 @@ Http::Stream::packRange(StoreIOBuffer const &source, MemBuf *mb)
              * multi-range
              */
             if (http->multipartRangeRequest() && i->debt() == i->currentSpec()->length) {
-                assert(http->memObject());
                 clientPackRangeHdr(
-                    http->memObject()->getReply(),  /* original reply */
+                    &http->storeEntry()->mem().freshestReply(),
                     i->currentSpec(),       /* current range */
                     i->boundary,    /* boundary, the same for all */
                     mb);

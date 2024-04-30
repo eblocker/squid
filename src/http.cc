@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2022 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -24,7 +24,7 @@
 #include "comm/Read.h"
 #include "comm/Write.h"
 #include "CommRead.h"
-#include "err_detail_type.h"
+#include "error/Detail.h"
 #include "errorpage.h"
 #include "fd.h"
 #include "fde.h"
@@ -41,10 +41,12 @@
 #include "HttpHeaderTools.h"
 #include "HttpReply.h"
 #include "HttpRequest.h"
+#include "HttpUpgradeProtocolAccess.h"
 #include "log/access_log.h"
 #include "MemBuf.h"
 #include "MemObject.h"
 #include "neighbors.h"
+#include "pconn.h"
 #include "peer_proxy_negotiate_auth.h"
 #include "profiler/Profiler.h"
 #include "refresh.h"
@@ -57,6 +59,7 @@
 #include "StrList.h"
 #include "tools.h"
 #include "util.h"
+#include "SquidMath.h"
 
 #if USE_AUTH
 #include "auth/UserRequest.h"
@@ -64,15 +67,6 @@
 #if USE_DELAY_POOLS
 #include "DelayPools.h"
 #endif
-
-#define SQUID_ENTER_THROWING_CODE() try {
-#define SQUID_EXIT_THROWING_CODE(status) \
-    status = true; \
-    } \
-    catch (const std::exception &e) { \
-    debugs (11, 1, "Exception error:" << e.what()); \
-    status = false; \
-    }
 
 CBDATA_CLASS_INIT(HttpStateData);
 
@@ -99,14 +93,17 @@ HttpStateData::HttpStateData(FwdState *theFwdState) :
     if (fwd->serverConnection() != NULL)
         _peer = cbdataReference(fwd->serverConnection()->getPeer());         /* might be NULL */
 
+    flags.peering =  _peer;
+    flags.tunneling = (_peer && request->flags.sslBumped);
+    flags.toOrigin = (!_peer || _peer->options.originserver || request->flags.sslBumped);
+
     if (_peer) {
-        request->flags.proxying = true;
         /*
          * This NEIGHBOR_PROXY_ONLY check probably shouldn't be here.
          * We might end up getting the object from somewhere else if,
          * for example, the request to this neighbor fails.
          */
-        if (_peer->options.proxy_only)
+        if (!flags.tunneling && _peer->options.proxy_only)
             entry->releaseRequest(true);
 
 #if USE_DELAY_POOLS
@@ -133,6 +130,8 @@ HttpStateData::~HttpStateData()
 
     cbdataReferenceDone(_peer);
 
+    delete upgradeHeaderOut;
+
     debugs(11,5, HERE << "HttpStateData " << this << " destroyed; " << serverConnection);
 }
 
@@ -156,7 +155,7 @@ HttpStateData::httpTimeout(const CommTimeoutCbParams &)
     debugs(11, 4, serverConnection << ": '" << entry->url() << "'");
 
     if (entry->store_status == STORE_PENDING) {
-        fwd->fail(new ErrorState(ERR_READ_TIMEOUT, Http::scGatewayTimeout, fwd->request));
+        fwd->fail(new ErrorState(ERR_READ_TIMEOUT, Http::scGatewayTimeout, fwd->request, fwd->al));
     }
 
     closeServer();
@@ -167,7 +166,7 @@ static StoreEntry *
 findPreviouslyCachedEntry(StoreEntry *newEntry) {
     assert(newEntry->mem_obj);
     return newEntry->mem_obj->request ?
-           storeGetPublicByRequest(newEntry->mem_obj->request) :
+           storeGetPublicByRequest(newEntry->mem_obj->request.getRaw()) :
            storeGetPublic(newEntry->mem_obj->storeId(), newEntry->mem_obj->method);
 }
 
@@ -249,7 +248,7 @@ httpMaybeRemovePublic(StoreEntry * e, Http::StatusCode status)
     if (pe != NULL) {
         assert(e != pe);
 #if USE_HTCP
-        neighborsHtcpClear(e, NULL, e->mem_obj->request, e->mem_obj->method, HTCP_CLR_INVALIDATION);
+        neighborsHtcpClear(e, e->mem_obj->request.getRaw(), e->mem_obj->method, HTCP_CLR_INVALIDATION);
 #endif
         pe->release(true);
     }
@@ -259,14 +258,14 @@ httpMaybeRemovePublic(StoreEntry * e, Http::StatusCode status)
      * changed.
      */
     if (e->mem_obj->request)
-        pe = storeGetPublicByRequestMethod(e->mem_obj->request, Http::METHOD_HEAD);
+        pe = storeGetPublicByRequestMethod(e->mem_obj->request.getRaw(), Http::METHOD_HEAD);
     else
         pe = storeGetPublic(e->mem_obj->storeId(), Http::METHOD_HEAD);
 
     if (pe != NULL) {
         assert(e != pe);
 #if USE_HTCP
-        neighborsHtcpClear(e, NULL, e->mem_obj->request, HttpRequestMethod(Http::METHOD_HEAD), HTCP_CLR_INVALIDATION);
+        neighborsHtcpClear(e, e->mem_obj->request.getRaw(), HttpRequestMethod(Http::METHOD_HEAD), HTCP_CLR_INVALIDATION);
 #endif
         pe->release(true);
     }
@@ -624,11 +623,11 @@ void
 HttpStateData::keepaliveAccounting(HttpReply *reply)
 {
     if (flags.keepalive)
-        if (_peer)
+        if (flags.peering && !flags.tunneling)
             ++ _peer->stats.n_keepalives_sent;
 
     if (reply->keep_alive) {
-        if (_peer)
+        if (flags.peering && !flags.tunneling)
             ++ _peer->stats.n_keepalives_recv;
 
         if (Config.onoff.detect_broken_server_pconns
@@ -643,7 +642,7 @@ HttpStateData::keepaliveAccounting(HttpReply *reply)
 void
 HttpStateData::checkDateSkew(HttpReply *reply)
 {
-    if (reply->date > -1 && !_peer) {
+    if (reply->date > -1 && flags.toOrigin) {
         int skew = abs((int)(reply->date - squid_curtime));
 
         if (skew > 86400)
@@ -680,6 +679,9 @@ HttpStateData::processReplyHeader()
             hp = new Http1::ResponseParser;
 
         bool parsedOk = hp->parse(inBuf);
+        // remember the actual received status-code before returning on errors,
+        // overwriting any previously stored value from earlier forwarding attempts
+        request->hier.peer_reply_status = hp->messageStatus(); // may still be scNone
 
         // sync the buffers after parsing.
         inBuf = hp->remaining();
@@ -729,36 +731,29 @@ HttpStateData::processReplyHeader()
     // XXX: RFC 7230 indicates we MAY ignore the reason phrase,
     //      and use an empty string on unknown status.
     //      We do that now to avoid performance regression from using SBuf::c_str()
-    newrep->sline.set(Http::ProtocolVersion(1,1), hp->messageStatus() /* , hp->reasonPhrase() */);
-    newrep->sline.protocol = newrep->sline.version.protocol = hp->messageProtocol().protocol;
-    newrep->sline.version.major = hp->messageProtocol().major;
-    newrep->sline.version.minor = hp->messageProtocol().minor;
+    newrep->sline.set(hp->messageProtocol(), hp->messageStatus() /* , hp->reasonPhrase() */);
 
     // parse headers
     if (!newrep->parseHeader(*hp)) {
-        // XXX: when Http::ProtocolVersion is a function, remove this hack. just set with messageProtocol()
-        newrep->sline.set(Http::ProtocolVersion(), Http::scInvalidHeader);
-        newrep->sline.version.protocol = hp->messageProtocol().protocol;
-        newrep->sline.version.major = hp->messageProtocol().major;
-        newrep->sline.version.minor = hp->messageProtocol().minor;
+        newrep->sline.set(hp->messageProtocol(), Http::scInvalidHeader);
         debugs(11, 2, "error parsing response headers mime block");
     }
 
     // done with Parser, now process using the HttpReply
     hp = NULL;
 
-    newrep->sources |= request->url.getScheme() == AnyP::PROTO_HTTPS ? HttpMsg::srcHttps : HttpMsg::srcHttp;
+    newrep->sources |= request->url.getScheme() == AnyP::PROTO_HTTPS ? Http::Message::srcHttps : Http::Message::srcHttp;
 
     newrep->removeStaleWarnings();
 
-    if (newrep->sline.protocol == AnyP::PROTO_HTTP && newrep->sline.status() >= 100 && newrep->sline.status() < 200) {
+    if (newrep->sline.version.protocol == AnyP::PROTO_HTTP && Http::Is1xx(newrep->sline.status())) {
         handle1xx(newrep);
         ctx_exit(ctx);
         return;
     }
 
     flags.chunked = false;
-    if (newrep->sline.protocol == AnyP::PROTO_HTTP && newrep->header.chunked()) {
+    if (newrep->sline.version.protocol == AnyP::PROTO_HTTP && newrep->header.chunked()) {
         flags.chunked = true;
         httpChunkDecoder = new Http1::TeChunkedParser;
     }
@@ -775,8 +770,6 @@ HttpStateData::processReplyHeader()
 
     processSurrogateControl (vrep);
 
-    request->hier.peer_reply_status = newrep->sline.status();
-
     ctx_exit(ctx);
 }
 
@@ -784,33 +777,45 @@ HttpStateData::processReplyHeader()
 void
 HttpStateData::handle1xx(HttpReply *reply)
 {
+    if (fwd->al)
+        fwd->al->reply = reply;
+
     HttpReply::Pointer msg(reply); // will destroy reply if unused
 
     // one 1xx at a time: we must not be called while waiting for previous 1xx
     Must(!flags.handling1xx);
     flags.handling1xx = true;
 
-    if (!request->canHandle1xx() || request->forcedBodyContinuation) {
-        debugs(11, 2, "ignoring 1xx because it is " << (request->forcedBodyContinuation ? "already sent" : "not supported by client"));
-        proceedAfter1xx();
-        return;
-    }
+    const auto statusCode = reply->sline.status();
+
+    // drop1xx() needs to handle HTTP 101 (Switching Protocols) responses
+    // specially because they indicate that the server has stopped speaking HTTP
+    Must(!flags.serverSwitchedProtocols);
+    flags.serverSwitchedProtocols = (statusCode == Http::scSwitchingProtocols);
+
+    if (statusCode == Http::scContinue && request->forcedBodyContinuation)
+        return drop1xx("we have sent it already");
+
+    if (!request->canHandle1xx())
+        return drop1xx("the client does not support it");
 
 #if USE_HTTP_VIOLATIONS
     // check whether the 1xx response forwarding is allowed by squid.conf
     if (Config.accessList.reply) {
-        ACLFilledChecklist ch(Config.accessList.reply, originalRequest(), NULL);
+        ACLFilledChecklist ch(Config.accessList.reply, originalRequest().getRaw());
         ch.al = fwd->al;
         ch.reply = reply;
-        ch.syncAle(originalRequest(), nullptr);
+        ch.syncAle(originalRequest().getRaw(), nullptr);
         HTTPMSGLOCK(ch.reply);
-        if (!ch.fastCheck().allowed()) { // TODO: support slow lookups?
-            debugs(11, 3, HERE << "ignoring denied 1xx");
-            proceedAfter1xx();
-            return;
-        }
+        if (!ch.fastCheck().allowed()) // TODO: support slow lookups?
+            return drop1xx("http_reply_access blocked it");
     }
 #endif // USE_HTTP_VIOLATIONS
+
+    if (flags.serverSwitchedProtocols) {
+        if (const auto reason = blockSwitchingProtocols(*reply))
+            return drop1xx(reason);
+    }
 
     debugs(11, 2, HERE << "forwarding 1xx to client");
 
@@ -826,11 +831,75 @@ HttpStateData::handle1xx(HttpReply *reply)
     // for similar reasons without a 1xx response.
 }
 
+/// if possible, safely ignores the received 1xx control message
+/// otherwise, terminates the server connection
+void
+HttpStateData::drop1xx(const char *reason)
+{
+    if (flags.serverSwitchedProtocols) {
+        debugs(11, 2, "bad 101 because " << reason);
+        const auto err = new ErrorState(ERR_INVALID_RESP, Http::scBadGateway, request.getRaw(), fwd->al);
+        fwd->fail(err);
+        closeServer();
+        mustStop("prohibited HTTP/101 response");
+        return;
+    }
+
+    debugs(11, 2, "ignoring 1xx because " << reason);
+    proceedAfter1xx();
+}
+
+/// \retval nil if the HTTP/101 (Switching Protocols) reply should be forwarded
+/// \retval reason why an attempt to switch protocols should be stopped
+const char *
+HttpStateData::blockSwitchingProtocols(const HttpReply &reply) const
+{
+    if (!upgradeHeaderOut)
+        return "Squid offered no Upgrade at all, but server switched to a tunnel";
+
+    // See RFC 7230 section 6.7 for the corresponding MUSTs
+
+    if (!reply.header.has(Http::HdrType::UPGRADE))
+        return "server did not send an Upgrade header field";
+
+    if (!reply.header.hasListMember(Http::HdrType::CONNECTION, "upgrade", ','))
+        return "server did not send 'Connection: upgrade'";
+
+    const auto acceptedProtos = reply.header.getList(Http::HdrType::UPGRADE);
+    const char *pos = nullptr;
+    const char *accepted = nullptr;
+    int acceptedLen = 0;
+    while (strListGetItem(&acceptedProtos, ',', &accepted, &acceptedLen, &pos)) {
+        debugs(11, 5, "server accepted at least" << Raw(nullptr, accepted, acceptedLen));
+        return nullptr; // OK: let the client validate server's selection
+    }
+
+    return "server sent an essentially empty Upgrade header field";
+}
+
 /// restores state and resumes processing after 1xx is ignored or forwarded
 void
 HttpStateData::proceedAfter1xx()
 {
     Must(flags.handling1xx);
+
+    if (flags.serverSwitchedProtocols) {
+        // pass server connection ownership to request->clientConnectionManager
+        ConnStateData::ServerConnectionContext scc(serverConnection, request, inBuf);
+        typedef UnaryMemFunT<ConnStateData, ConnStateData::ServerConnectionContext> MyDialer;
+        AsyncCall::Pointer call = asyncCall(11, 3, "ConnStateData::noteTakeServerConnectionControl",
+                                            MyDialer(request->clientConnectionManager,
+                                                    &ConnStateData::noteTakeServerConnectionControl, scc));
+        ScheduleCallHere(call);
+        fwd->unregister(serverConnection);
+        comm_remove_close_handler(serverConnection->fd, closeHandler);
+        closeHandler = nullptr;
+        serverConnection = nullptr;
+        doneWithFwd = "switched protocols";
+        mustStop(doneWithFwd);
+        return;
+    }
+
     debugs(11, 2, "continuing with " << payloadSeen << " bytes in buffer after 1xx");
     CallJobHere(11, 3, this, HttpStateData, HttpStateData::processReply);
 }
@@ -844,18 +913,22 @@ HttpStateData::peerSupportsConnectionPinning() const
     if (!_peer)
         return true;
 
+    // we are talking "through" rather than "to" our _peer
+    if (flags.tunneling)
+        return true;
+
     /*If this peer does not support connection pinning (authenticated
       connections) return false
      */
     if (!_peer->connection_auth)
         return false;
 
-    const HttpReply *rep = entry->mem_obj->getReply();
+    const auto &rep = entry->mem().freshestReply();
 
     /*The peer supports connection pinning and the http reply status
       is not unauthorized, so the related connection can be pinned
      */
-    if (rep->sline.status() != Http::scUnauthorized)
+    if (rep.sline.status() != Http::scUnauthorized)
         return true;
 
     /*The server respond with Http::scUnauthorized and the peer configured
@@ -884,7 +957,7 @@ HttpStateData::peerSupportsConnectionPinning() const
       reply and has in its list the "Session-Based-Authentication"
       which means that the peer supports connection pinning.
      */
-    if (rep->header.hasListMember(Http::HdrType::PROXY_SUPPORT, "Session-Based-Authentication", ','))
+    if (rep.header.hasListMember(Http::HdrType::PROXY_SUPPORT, "Session-Based-Authentication", ','))
         return true;
 
     return false;
@@ -908,7 +981,7 @@ HttpStateData::haveParsedReplyHeaders()
 
     if (StoreEntry *oldEntry = findPreviouslyCachedEntry(entry)) {
         oldEntry->lock("HttpStateData::haveParsedReplyHeaders");
-        sawDateGoBack = rep->olderThan(oldEntry->getReply());
+        sawDateGoBack = rep->olderThan(oldEntry->hasFreshestReply());
         oldEntry->unlock("HttpStateData::haveParsedReplyHeaders");
     }
 
@@ -921,7 +994,7 @@ HttpStateData::haveParsedReplyHeaders()
             || rep->header.has(Http::HdrType::HDR_X_ACCELERATOR_VARY)
 #endif
        ) {
-        const SBuf vary(httpMakeVaryMark(request, rep));
+        const SBuf vary(httpMakeVaryMark(request.getRaw(), rep));
 
         if (vary.isEmpty()) {
             // TODO: check whether such responses are shareable.
@@ -1032,14 +1105,21 @@ HttpStateData::statusIfComplete() const
     /** \par
      * If the reply wants to close the connection, it takes precedence */
 
-    if (httpHeaderHasConnDir(&rep->header, "close"))
+    static SBuf close("close", 5);
+    if (httpHeaderHasConnDir(&rep->header, close))
         return COMPLETE_NONPERSISTENT_MSG;
 
     /** \par
-     * If we didn't send a keep-alive request header, then this
+     * If we sent a Connection:close request header, then this
      * can not be a persistent connection.
      */
     if (!flags.keepalive)
+        return COMPLETE_NONPERSISTENT_MSG;
+
+    /** \par
+     * If we banned reuse, then this cannot be a persistent connection.
+     */
+    if (flags.forceClose)
         return COMPLETE_NONPERSISTENT_MSG;
 
     /** \par
@@ -1156,18 +1236,27 @@ HttpStateData::readReply(const CommIoCbParams &io)
      * Plus, it breaks our lame *HalfClosed() detection
      */
 
-    Must(maybeMakeSpaceAvailable(true));
-    CommIoCbParams rd(this); // will be expanded with ReadNow results
-    rd.conn = io.conn;
-    rd.size = entry->bytesWanted(Range<size_t>(0, inBuf.spaceSize()));
+    const auto moreDataPermission = canBufferMoreReplyBytes();
+    if (!moreDataPermission) {
+        abortTransaction("ready to read required data, but the read buffer is full and cannot be drained");
+        return;
+    }
 
-    if (rd.size <= 0) {
+    const auto readSizeMax = maybeMakeSpaceAvailable(moreDataPermission.value());
+    // TODO: Move this logic inside maybeMakeSpaceAvailable():
+    const auto readSizeWanted = readSizeMax ? entry->bytesWanted(Range<size_t>(0, readSizeMax)) : 0;
+
+    if (readSizeWanted <= 0) {
         assert(entry->mem_obj);
         AsyncCall::Pointer nilCall;
         entry->mem_obj->delayRead(DeferredRead(readDelayed, this, CommRead(io.conn, NULL, 0, nilCall)));
         return;
     }
 
+
+    CommIoCbParams rd(this); // will be expanded with ReadNow results
+    rd.conn = io.conn;
+    rd.size = readSizeWanted;
     switch (Comm::ReadNow(rd, inBuf)) {
     case Comm::INPROGRESS:
         if (inBuf.isEmpty())
@@ -1210,7 +1299,7 @@ HttpStateData::readReply(const CommIoCbParams &io)
     // case Comm::COMM_ERROR:
     default: // no other flags should ever occur
         debugs(11, 2, io.conn << ": read failure: " << xstrerr(rd.xerrno));
-        ErrorState *err = new ErrorState(ERR_READ_ERROR, Http::scBadGateway, fwd->request);
+        const auto err = new ErrorState(ERR_READ_ERROR, Http::scBadGateway, fwd->request, fwd->al);
         err->xerrno = rd.xerrno;
         fwd->fail(err);
         flags.do_next_read = false;
@@ -1233,6 +1322,11 @@ HttpStateData::processReply()
         debugs(11, 5, HERE << "done with 1xx handling");
         flags.handling1xx = false;
         Must(!flags.headers_parsed);
+    }
+
+    if (EBIT_TEST(entry->flags, ENTRY_ABORTED)) {
+        abortTransaction("store entry aborted while we were waiting for processReply()");
+        return;
     }
 
     if (!flags.headers_parsed) { // have not parsed headers yet?
@@ -1316,7 +1410,7 @@ HttpStateData::continueAfterParsingHeader()
 
     assert(error != ERR_NONE);
     entry->reset();
-    fwd->fail(new ErrorState(error, Http::scBadGateway, fwd->request));
+    fwd->fail(new ErrorState(error, Http::scBadGateway, fwd->request, fwd->al));
     flags.do_next_read = false;
     closeServer();
     mustStop("HttpStateData::continueAfterParsingHeader");
@@ -1361,31 +1455,44 @@ HttpStateData::writeReplyBody()
     int len = inBuf.length();
     addVirginReplyBody(data, len);
     inBuf.consume(len);
+
+    // after addVirginReplyBody() wrote (when not adapting) everything we have
+    // received to Store, check whether we have received/parsed the entire reply
+    int64_t clen = -1;
+    const char *parsedWhole = nullptr;
+    if (!virginReply()->expectingBody(request->method, clen))
+        parsedWhole = "http parsed header-only reply";
+    else if (clen >= 0 && clen == payloadSeen - payloadTruncated)
+        parsedWhole = "http parsed Content-Length body bytes";
+    else if (clen < 0 && eof)
+        parsedWhole = "http parsed body ending with expected/required EOF";
+    if (parsedWhole)
+        markParsedVirginReplyAsWhole(parsedWhole);
 }
 
 bool
 HttpStateData::decodeAndWriteReplyBody()
 {
-    const char *data = NULL;
-    int len;
-    bool wasThereAnException = false;
     assert(flags.chunked);
     assert(httpChunkDecoder);
-    SQUID_ENTER_THROWING_CODE();
-    MemBuf decodedData;
-    decodedData.init();
-    httpChunkDecoder->setPayloadBuffer(&decodedData);
-    const bool doneParsing = httpChunkDecoder->parse(inBuf);
-    inBuf = httpChunkDecoder->remaining(); // sync buffers after parse
-    len = decodedData.contentSize();
-    data=decodedData.content();
-    addVirginReplyBody(data, len);
-    if (doneParsing) {
-        lastChunk = 1;
-        flags.do_next_read = false;
+    try {
+        MemBuf decodedData;
+        decodedData.init();
+        httpChunkDecoder->setPayloadBuffer(&decodedData);
+        const bool doneParsing = httpChunkDecoder->parse(inBuf);
+        inBuf = httpChunkDecoder->remaining(); // sync buffers after parse
+        addVirginReplyBody(decodedData.content(), decodedData.contentSize());
+        if (doneParsing) {
+            lastChunk = 1;
+            flags.do_next_read = false;
+            markParsedVirginReplyAsWhole("http parsed last-chunk");
+        }
+        return true;
     }
-    SQUID_EXIT_THROWING_CODE(wasThereAnException);
-    return wasThereAnException;
+    catch (...) {
+        debugs (11, 2, "de-chunking failure: " << CurrentException);
+    }
+    return false;
 }
 
 /**
@@ -1487,7 +1594,7 @@ HttpStateData::processReplyBody()
                     serverConnectionSaved->close();
                 }
             } else {
-                fwd->pconnPush(serverConnectionSaved, request->url.host());
+                fwdPconnPool->push(serverConnectionSaved, request->url.host());
             }
 
             serverComplete();
@@ -1496,6 +1603,7 @@ HttpStateData::processReplyBody()
 
         case COMPLETE_NONPERSISTENT_MSG:
             debugs(11, 5, "processReplyBody: COMPLETE_NONPERSISTENT_MSG from " << serverConnection);
+
             serverComplete();
             return;
         }
@@ -1519,8 +1627,10 @@ HttpStateData::maybeReadVirginBody()
     if (!Comm::IsConnOpen(serverConnection) || fd_table[serverConnection->fd].closing())
         return;
 
-    if (!maybeMakeSpaceAvailable(false))
+    if (!canBufferMoreReplyBytes()) {
+        abortTransaction("more response bytes required, but the read buffer is full and cannot be drained");
         return;
+    }
 
     // XXX: get rid of the do_next_read flag
     // check for the proper reasons preventing read(2)
@@ -1538,40 +1648,78 @@ HttpStateData::maybeReadVirginBody()
     Comm::Read(serverConnection, call);
 }
 
-bool
-HttpStateData::maybeMakeSpaceAvailable(bool doGrow)
+/// Desired inBuf capacity based on various capacity preferences/limits:
+/// * a smaller buffer may not hold enough for look-ahead header/body parsers;
+/// * a smaller buffer may result in inefficient tiny network reads;
+/// * a bigger buffer may waste memory;
+/// * a bigger buffer may exceed SBuf storage capabilities (SBuf::maxSize);
+size_t
+HttpStateData::calcReadBufferCapacityLimit() const
 {
-    // how much we are allowed to buffer
-    const int limitBuffer = (flags.headers_parsed ? Config.readAheadGap : Config.maxReplyHeaderSize);
+    if (!flags.headers_parsed)
+        return Config.maxReplyHeaderSize;
 
-    if (limitBuffer < 0 || inBuf.length() >= (SBuf::size_type)limitBuffer) {
-        // when buffer is at or over limit already
-        debugs(11, 7, "will not read up to " << limitBuffer << ". buffer has (" << inBuf.length() << "/" << inBuf.spaceSize() << ") from " << serverConnection);
-        debugs(11, DBG_DATA, "buffer has {" << inBuf << "}");
-        // Process next response from buffer
-        processReply();
-        return false;
+    // XXX: Our inBuf is not used to maintain the read-ahead gap, and using
+    // Config.readAheadGap like this creates huge read buffers for large
+    // read_ahead_gap values. TODO: Switch to using tcp_recv_bufsize as the
+    // primary read buffer capacity factor.
+    //
+    // TODO: Cannot reuse throwing NaturalCast() here. Consider removing
+    // .value() dereference in NaturalCast() or add/use NaturalCastOrMax().
+    const auto configurationPreferences = NaturalSum<size_t>(Config.readAheadGap).value_or(SBuf::maxSize);
+
+    // TODO: Honor TeChunkedParser look-ahead and trailer parsing requirements
+    // (when explicit configurationPreferences are set too low).
+
+    return std::min<size_t>(configurationPreferences, SBuf::maxSize);
+}
+
+/// The maximum number of virgin reply bytes we may buffer before we violate
+/// the currently configured response buffering limits.
+/// \retval std::nullopt means that no more virgin response bytes can be read
+/// \retval 0 means that more virgin response bytes may be read later
+/// \retval >0 is the number of bytes that can be read now (subject to other constraints)
+std::optional<size_t>
+HttpStateData::canBufferMoreReplyBytes() const
+{
+#if USE_ADAPTATION
+    // If we do not check this now, we may say the final "no" prematurely below
+    // because inBuf.length() will decrease as adaptation drains buffered bytes.
+    if (responseBodyBuffer) {
+        debugs(11, 3, "yes, but waiting for adaptation to drain read buffer");
+        return 0; // yes, we may be able to buffer more (but later)
+    }
+#endif
+
+    const auto maxCapacity = calcReadBufferCapacityLimit();
+    if (inBuf.length() >= maxCapacity) {
+        debugs(11, 3, "no, due to a full buffer: " << inBuf.length() << '/' << inBuf.spaceSize() << "; limit: " << maxCapacity);
+        return std::nullopt; // no, configuration prohibits buffering more
     }
 
+    const auto maxReadSize = maxCapacity - inBuf.length(); // positive
+    debugs(11, 7, "yes, may read up to " << maxReadSize << " into " << inBuf.length() << '/' << inBuf.spaceSize());
+    return maxReadSize; // yes, can read up to this many bytes (subject to other constraints)
+}
+
+/// prepare read buffer for reading
+/// \return the maximum number of bytes the caller should attempt to read
+/// \retval 0 means that the caller should delay reading
+size_t
+HttpStateData::maybeMakeSpaceAvailable(const size_t maxReadSize)
+{
     // how much we want to read
-    const size_t read_size = calcBufferSpaceToReserve(inBuf.spaceSize(), (limitBuffer - inBuf.length()));
+    const size_t read_size = calcBufferSpaceToReserve(inBuf.spaceSize(), maxReadSize);
 
-    if (!read_size) {
+    if (read_size < 2) {
         debugs(11, 7, "will not read up to " << read_size << " into buffer (" << inBuf.length() << "/" << inBuf.spaceSize() << ") from " << serverConnection);
-        return false;
+        return 0;
     }
-
-    // just report whether we could grow or not, do not actually do it
-    if (doGrow)
-        return (read_size >= 2);
 
     // we may need to grow the buffer
     inBuf.reserveSpace(read_size);
-    debugs(11, 8, (!flags.do_next_read ? "will not" : "may") <<
-           " read up to " << read_size << " bytes info buf(" << inBuf.length() << "/" << inBuf.spaceSize() <<
-           ") from " << serverConnection);
-
-    return (inBuf.spaceSize() >= 2); // only read if there is 1+ bytes of space available
+    debugs(11, 7, "may read up to " << read_size << " bytes info buffer (" << inBuf.length() << "/" << inBuf.spaceSize() << ") from " << serverConnection);
+    return read_size;
 }
 
 /// called after writing the very last request byte (body, last-chunk, etc)
@@ -1600,7 +1748,7 @@ HttpStateData::wroteLast(const CommIoCbParams &io)
     request->hier.notePeerWrite();
 
     if (io.flag) {
-        ErrorState *err = new ErrorState(ERR_WRITE_ERROR, Http::scBadGateway, fwd->request);
+        const auto err = new ErrorState(ERR_WRITE_ERROR, Http::scBadGateway, fwd->request, fwd->al);
         err->xerrno = io.xerrno;
         fwd->fail(err);
         closeServer();
@@ -1656,16 +1804,19 @@ HttpStateData::doneWithServer() const
 static void
 httpFixupAuthentication(HttpRequest * request, const HttpHeader * hdr_in, HttpHeader * hdr_out, const Http::StateFlags &flags)
 {
-    Http::HdrType header = flags.originpeer ? Http::HdrType::AUTHORIZATION : Http::HdrType::PROXY_AUTHORIZATION;
-
     /* Nothing to do unless we are forwarding to a peer */
-    if (!request->flags.proxying)
+    if (!flags.peering)
+        return;
+
+    // This request is going "through" rather than "to" our _peer.
+    if (flags.tunneling)
         return;
 
     /* Needs to be explicitly enabled */
     if (!request->peer_login)
         return;
 
+    const auto header = flags.toOrigin ? Http::HdrType::AUTHORIZATION : Http::HdrType::PROXY_AUTHORIZATION;
     /* Maybe already dealt with? */
     if (hdr_out->has(header))
         return;
@@ -1674,8 +1825,14 @@ httpFixupAuthentication(HttpRequest * request, const HttpHeader * hdr_in, HttpHe
     if (strcmp(request->peer_login, "PASSTHRU") == 0)
         return;
 
-    /* PROXYPASS is a special case, single-signon to servers with the proxy password (basic only) */
-    if (flags.originpeer && strcmp(request->peer_login, "PROXYPASS") == 0 && hdr_in->has(Http::HdrType::PROXY_AUTHORIZATION)) {
+    // Dangerous and undocumented PROXYPASS is a single-signon to servers with
+    // the proxy password. Only Basic Authentication can work this way. This
+    // statement forwards a "basic" Proxy-Authorization value from our client
+    // to an originserver peer. Other PROXYPASS cases are handled lower.
+    if (flags.toOrigin &&
+            strcmp(request->peer_login, "PROXYPASS") == 0 &&
+            hdr_in->has(Http::HdrType::PROXY_AUTHORIZATION)) {
+
         const char *auth = hdr_in->getStr(Http::HdrType::PROXY_AUTHORIZATION);
 
         if (auth && strncasecmp(auth, "basic ", 6) == 0) {
@@ -1778,7 +1935,7 @@ HttpStateData::httpBuildRequestHeader(HttpRequest * request,
     // Add our own If-None-Match field if the cached entry has a strong ETag.
     // copyOneHeaderFromClientsideRequestToUpstreamRequest() adds client ones.
     if (request->etag.size() > 0) {
-        hdr_out->addEntry(new HttpHeaderEntry(Http::HdrType::IF_NONE_MATCH, NULL,
+        hdr_out->addEntry(new HttpHeaderEntry(Http::HdrType::IF_NONE_MATCH, SBuf(),
                                               request->etag.termedBuf()));
     }
 
@@ -1819,8 +1976,9 @@ HttpStateData::httpBuildRequestHeader(HttpRequest * request,
 
         String strFwd = hdr_in->getList(Http::HdrType::X_FORWARDED_FOR);
 
-        // if we cannot double strFwd size, then it grew past 50% of the limit
-        if (!strFwd.canGrowBy(strFwd.size())) {
+        // Detect unreasonably long header values. And paranoidly check String
+        // limits: a String ought to accommodate two reasonable-length values.
+        if (strFwd.size() > 32*1024 || !strFwd.canGrowBy(strFwd.size())) {
             // There is probably a forwarding loop with Via detection disabled.
             // If we do nothing, String will assert on overflow soon.
             // TODO: Terminate all transactions with huge XFF?
@@ -1868,7 +2026,7 @@ HttpStateData::httpBuildRequestHeader(HttpRequest * request,
 
     /* append Authorization if known in URL, not in header and going direct */
     if (!hdr_out->has(Http::HdrType::AUTHORIZATION)) {
-        if (!request->flags.proxying && !request->url.userInfo().isEmpty()) {
+        if (flags.toOrigin && !request->url.userInfo().isEmpty()) {
             static char result[base64_encode_len(MAX_URL*2)]; // should be big enough for a single URI segment
             struct base64_encode_ctx ctx;
             base64_encode_init(&ctx);
@@ -1912,10 +2070,11 @@ HttpStateData::httpBuildRequestHeader(HttpRequest * request,
         delete cc;
     }
 
-    /* maybe append Connection: keep-alive */
-    if (flags.keepalive) {
-        hdr_out->putStr(Http::HdrType::CONNECTION, "keep-alive");
-    }
+    // Always send Connection because HTTP/1.0 servers need explicit
+    // "keep-alive", HTTP/1.1 servers need explicit "close", Upgrade recipients
+    // need bare "upgrade", and we do not always know the server expectations.
+    if (!hdr_out->has(Http::HdrType::CONNECTION)) // forwardUpgrade() may add it
+        hdr_out->putStr(Http::HdrType::CONNECTION, flags.keepalive ? "keep-alive" : "close");
 
     /* append Front-End-Https */
     if (flags.front_end_https) {
@@ -1933,6 +2092,78 @@ HttpStateData::httpBuildRequestHeader(HttpRequest * request,
     httpHdrMangleList(hdr_out, request, al, ROR_REQUEST);
 
     strConnection.clean();
+}
+
+/// copies from-client Upgrade info into the given to-server header while
+/// honoring configuration filters and following HTTP requirements
+void
+HttpStateData::forwardUpgrade(HttpHeader &hdrOut)
+{
+    if (!Config.http_upgrade_request_protocols)
+        return; // forward nothing by default
+
+    /* RFC 7230 section 6.7 paragraph 10:
+     * A server MUST ignore an Upgrade header field that is received in
+     * an HTTP/1.0 request.
+     */
+    if (request->http_ver == Http::ProtocolVersion(1,0))
+        return;
+
+    const auto &hdrIn = request->header;
+    if (!hdrIn.has(Http::HdrType::UPGRADE))
+        return;
+    const auto upgradeIn = hdrIn.getList(Http::HdrType::UPGRADE);
+
+    String upgradeOut;
+
+    ACLFilledChecklist ch(nullptr, request.getRaw());
+    ch.al = fwd->al;
+    const char *pos = nullptr;
+    const char *offeredStr = nullptr;
+    int offeredStrLen = 0;
+    while (strListGetItem(&upgradeIn, ',', &offeredStr, &offeredStrLen, &pos)) {
+        const ProtocolView offeredProto(offeredStr, offeredStrLen);
+        debugs(11, 5, "checks all rules applicable to " << offeredProto);
+        Config.http_upgrade_request_protocols->forApplicable(offeredProto, [&ch, offeredStr, offeredStrLen, &upgradeOut] (const SBuf &cfgProto, const acl_access *guard) {
+            debugs(11, 5, "checks " << cfgProto << " rule(s)");
+            ch.changeAcl(guard);
+            const auto answer = ch.fastCheck();
+            if (answer.implicit)
+                return false; // keep looking for an explicit rule match
+            if (answer.allowed())
+                strListAdd(upgradeOut, offeredStr, offeredStrLen);
+            // else drop the offer (explicitly denied cases and ACL errors)
+            return true; // stop after an explicit rule match or an error
+        });
+    }
+
+    if (upgradeOut.size()) {
+        hdrOut.putStr(Http::HdrType::UPGRADE, upgradeOut.termedBuf());
+
+        /* RFC 7230 section 6.7 paragraph 10:
+         * When Upgrade is sent, the sender MUST also send a Connection header
+         * field that contains an "upgrade" connection option, in
+         * order to prevent Upgrade from being accidentally forwarded by
+         * intermediaries that might not implement the listed protocols.
+         *
+         * NP: Squid does not truly implement the protocol(s) in this Upgrade.
+         * For now we are treating an explicit blind tunnel as "implemented"
+         * regardless of the security implications.
+         */
+        hdrOut.putStr(Http::HdrType::CONNECTION, "upgrade");
+
+        // Connection:close and Connection:keepalive confuse some Upgrade
+        // recipients, so we do not send those headers. Our Upgrade request
+        // implicitly offers connection persistency per HTTP/1.1 defaults.
+        // Update the keepalive flag to reflect that offer.
+        // * If the server upgrades, then we would not be talking HTTP past the
+        //   HTTP 101 control message, and HTTP persistence would be irrelevant.
+        // * Otherwise, our request will contradict onoff.server_pconns=off or
+        //   other no-keepalive conditions (if any). We compensate by copying
+        //   the original no-keepalive decision now and honoring it later.
+        flags.forceClose = !flags.keepalive;
+        flags.keepalive = true; // should already be true in most cases
+    }
 }
 
 /**
@@ -1953,7 +2184,7 @@ copyOneHeaderFromClientsideRequestToUpstreamRequest(const HttpHeaderEntry *e, co
          * Only pass on proxy authentication to peers for which
          * authentication forwarding is explicitly enabled
          */
-        if (!flags.originpeer && flags.proxying && request->peer_login &&
+        if (!flags.toOrigin && request->peer_login &&
                 (strcmp(request->peer_login, "PASS") == 0 ||
                  strcmp(request->peer_login, "PROXYPASS") == 0 ||
                  strcmp(request->peer_login, "PASSTHRU") == 0)) {
@@ -1968,8 +2199,11 @@ copyOneHeaderFromClientsideRequestToUpstreamRequest(const HttpHeaderEntry *e, co
     case Http::HdrType::KEEP_ALIVE:          /** \par Keep-Alive: */
     case Http::HdrType::PROXY_AUTHENTICATE:  /** \par Proxy-Authenticate: */
     case Http::HdrType::TRAILER:             /** \par Trailer: */
-    case Http::HdrType::UPGRADE:             /** \par Upgrade: */
     case Http::HdrType::TRANSFER_ENCODING:   /** \par Transfer-Encoding: */
+        break;
+
+    /// \par Upgrade is hop-by-hop but forwardUpgrade() may send a filtered one
+    case Http::HdrType::UPGRADE:
         break;
 
     /** \par OTHER headers I haven't bothered to track down yet. */
@@ -1978,10 +2212,11 @@ copyOneHeaderFromClientsideRequestToUpstreamRequest(const HttpHeaderEntry *e, co
         /** \par WWW-Authorization:
          * Pass on WWW authentication */
 
-        if (!flags.originpeer) {
+        if (!flags.toOriginPeer()) {
             hdr_out->addEntry(e->clone());
         } else {
-            /** \note In accelerators, only forward authentication if enabled
+            /** \note Assume that talking to a cache_peer originserver makes
+             * us a reverse proxy and only forward authentication if enabled
              * (see also httpFixupAuthentication for special cases)
              */
             if (request->peer_login &&
@@ -2104,8 +2339,7 @@ copyOneHeaderFromClientsideRequestToUpstreamRequest(const HttpHeaderEntry *e, co
         /** \par default.
          * pass on all other header fields
          * which are NOT listed by the special Connection: header. */
-
-        if (strConnection.size()>0 && strListIsMember(&strConnection, e->name.termedBuf(), ',')) {
+        if (strConnection.size()>0 && strListIsMember(&strConnection, e->name, ',')) {
             debugs(11, 2, "'" << e->name << "' header cropped by Connection: definition");
             return;
         }
@@ -2155,7 +2389,7 @@ HttpStateData::buildRequestPrefix(MemBuf * mb)
      * not the one we are sending. Needs checking.
      */
     const AnyP::ProtocolVersion httpver = Http::ProtocolVersion();
-    const SBuf url(_peer && !_peer->options.originserver ? request->effectiveRequestUri() : request->url.path());
+    const SBuf url(flags.toOrigin ? request->url.path() : request->effectiveRequestUri());
     mb->appendf(SQUIDSBUFPH " " SQUIDSBUFPH " %s/%d.%d\r\n",
                 SQUIDSBUFPRINT(request->method.image()),
                 SQUIDSBUFPRINT(url),
@@ -2164,12 +2398,20 @@ HttpStateData::buildRequestPrefix(MemBuf * mb)
     /* build and pack headers */
     {
         HttpHeader hdr(hoRequest);
-        httpBuildRequestHeader(request, entry, fwd->al, &hdr, flags);
+        forwardUpgrade(hdr); // before httpBuildRequestHeader() for CONNECTION
+        httpBuildRequestHeader(request.getRaw(), entry, fwd->al, &hdr, flags);
 
         if (request->flags.pinned && request->flags.connectionAuth)
             request->flags.authSent = true;
         else if (hdr.has(Http::HdrType::AUTHORIZATION))
             request->flags.authSent = true;
+
+        // The late placement of this check supports reply_header_add mangling,
+        // but also complicates optimizing upgradeHeaderOut-like lookups.
+        if (hdr.has(Http::HdrType::UPGRADE)) {
+            assert(!upgradeHeaderOut);
+            upgradeHeaderOut = new String(hdr.getList(Http::HdrType::UPGRADE));
+        }
 
         hdr.packInto(mb);
         hdr.clean();
@@ -2218,9 +2460,6 @@ HttpStateData::sendRequest()
                                     Dialer, this,  HttpStateData::wroteLast);
     }
 
-    flags.originpeer = (_peer != NULL && _peer->options.originserver);
-    flags.proxying = (_peer != NULL && !flags.originpeer);
-
     /*
      * Is keep-alive okay for all request methods?
      */
@@ -2230,6 +2469,9 @@ HttpStateData::sendRequest()
         flags.keepalive = request->persistent();
     else if (!Config.onoff.server_pconns)
         flags.keepalive = false;
+    else if (flags.tunneling)
+        // tunneled non pinned bumped requests must not keepalive
+        flags.keepalive = !request->flags.sslBumped;
     else if (_peer == NULL)
         flags.keepalive = true;
     else if (_peer->stats.n_keepalives_sent < 10)
@@ -2238,7 +2480,7 @@ HttpStateData::sendRequest()
              (double) _peer->stats.n_keepalives_sent > 0.50)
         flags.keepalive = true;
 
-    if (_peer) {
+    if (_peer && !flags.tunneling) {
         /*The old code here was
           if (neighborType(_peer, request->url) == PEER_SIBLING && ...
           which is equivalent to:
@@ -2337,9 +2579,9 @@ HttpStateData::finishingBrokenPost()
         return false;
     }
 
-    ACLFilledChecklist ch(Config.accessList.brokenPosts, originalRequest(), NULL);
+    ACLFilledChecklist ch(Config.accessList.brokenPosts, originalRequest().getRaw());
     ch.al = fwd->al;
-    ch.syncAle(originalRequest(), nullptr);
+    ch.syncAle(originalRequest().getRaw(), nullptr);
     if (!ch.fastCheck().allowed()) {
         debugs(11, 5, HERE << "didn't match brokenPosts");
         return false;
@@ -2438,8 +2680,9 @@ HttpStateData::handleRequestBodyProducerAborted()
         // We might also get here if client-side aborts, but then our response
         // should not matter because either client-side will provide its own or
         // there will be no response at all (e.g., if the the client has left).
-        ErrorState *err = new ErrorState(ERR_ICAP_FAILURE, Http::scInternalServerError, fwd->request);
-        err->detailError(ERR_DETAIL_SRV_REQMOD_REQ_BODY);
+        const auto err = new ErrorState(ERR_ICAP_FAILURE, Http::scInternalServerError, fwd->request, fwd->al);
+        static const auto d = MakeNamedErrorDetail("SRV_REQMOD_REQ_BODY");
+        err->detailError(d);
         fwd->fail(err);
     }
 

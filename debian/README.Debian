@@ -1,18 +1,43 @@
 
-This is the next-generation Squid. In version 3.x squid has been ported to C++
-for code manageability. Since squid 2.x is not developed anymore except for bug
-fixing, this package is where new features will be added.
+This is the next-generation Squid. In version 3.x squid has been ported to
+C++ for code manageability.
 
-Squid 3.5 supports IPv6, WCCPv2, ICAP, Edge Side Include, SSL offloading, etc. Please
-note that not all of the new feature have been enabled in Debian package.
+Squid supports IPv6, WCCPv2, ICAP, Edge Side Include, SSL offloading, etc.
 
-Squid 3.5 is configured by the /etc/squid/squid.conf file. Syntax of that
-file is the same of previous versions of squid and each directive is largely
-commented there. Configuration files from 2.x versions of squid will mostly
-work in squid 3.5. Changes to the configuration file are reported in
+Squid in Debian now comes in two flavours, the GnuTLS flavour, which is the
+one that has been tratitionally supplied by Debian's squid package and a new
+OpenSSL flavour which is provided by the squid-openssl package.
+
+Each flavour has its features, that's why we provide the two. The
+traditional one is better at handling multiple certificates, while the
+openssl flavour comes with SSL-Bump which allows full proxy transparency.
+
+Both flavours have their own specific options to be setup at config files,
+but they share the same config files, both /etc/squid/squid.conf file, as
+well as the new /etc/squid/conf.d/ directory. Syntax of those files is the
+same of previous versions of squid and each directive is largely commented
+there.  Configuration files from 2.x versions of squid will mostly work in
+later versions of squid. Changes to the configuration files are reported in
 /usr/share/doc/squid-common/RELEASENOTES.html
+
+Both flavours of squid share not only the config files but also the log
+files and the cache. When purging squid, the package didn't remove the
+cache files, typically at /var/spool/squid, and now, since version 4.13-6,
+it also doesn't remove the logs at /var/log/squid, this means that if you
+want to migrate to squid-openssl and, afterwards, purge squid, you must make
+sure you have at least version 4.13-6 of squid installed, this way you won't
+loose the logs when you purge squid. So, if you have version 4.13-6 or
+later of the squid packages, you can switch flavours and try each flavour's
+own features without any problem, but first make sure you have at least
+version 4.13-6 of the squid packages, otherwise you'll probably loose the
+config file and the logs.
+
+This also means that if you want to fully purge all squid stuff from your
+system, you must remove by yourself /var/spool/squid (to save time you can
+use mkfs if you have them on a separate filesystem) and /var/log/squid if
+you are completely sure that you don't need those files anymore.
 
 The squid homepage is at http://www.squid-cache.org/
 Squid was downloaded from that site with HTTP.
 
- -- Luigi Gangitano <luigi@debian.org>, Wed 22 Jul 2015 15:57:00 +0200
+ -- The Debian Squid Maintainers <squid@packages.debian.org>, Tue, 23 Mar 2021 11:28:15 +0100

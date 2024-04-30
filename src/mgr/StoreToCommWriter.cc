@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2022 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -9,6 +9,7 @@
 /* DEBUG: section 16    Cache Manager API */
 
 #include "squid.h"
+#include "base/AsyncCbdataCalls.h"
 #include "base/TextException.h"
 #include "comm/Connection.h"
 #include "comm/Write.h"
@@ -57,7 +58,8 @@ Mgr::StoreToCommWriter::start()
     debugs(16, 6, HERE);
     Must(Comm::IsConnOpen(clientConnection));
     Must(entry != NULL);
-    entry->registerAbort(&StoreToCommWriter::Abort, this);
+    AsyncCall::Pointer call = asyncCall(16, 4, "StoreToCommWriter::Abort", cbdataDialer(&StoreToCommWriter::HandleStoreAbort, this));
+    entry->registerAbortCallback(call);
     sc = storeClientListAdd(entry, this);
     Must(sc != NULL);
 
@@ -129,7 +131,11 @@ void
 Mgr::StoreToCommWriter::noteCommClosed(const CommCloseCbParams &)
 {
     debugs(16, 6, HERE);
-    Must(!Comm::IsConnOpen(clientConnection));
+    if (clientConnection) {
+        clientConnection->noteClosure();
+        clientConnection = nullptr;
+    }
+    closer = nullptr;
     mustStop("commClosed");
 }
 
@@ -142,7 +148,7 @@ Mgr::StoreToCommWriter::swanSong()
             storeUnregister(sc, entry, this);
             sc = NULL;
         }
-        entry->unregisterAbort();
+        entry->unregisterAbortCallback("StoreToCommWriter done");
         entry->unlock("Mgr::StoreToCommWriter::swanSong");
         entry = NULL;
     }
@@ -158,9 +164,8 @@ Mgr::StoreToCommWriter::doneAll() const
 }
 
 void
-Mgr::StoreToCommWriter::Abort(void* param)
+Mgr::StoreToCommWriter::HandleStoreAbort(StoreToCommWriter *mgrWriter)
 {
-    StoreToCommWriter* mgrWriter = static_cast<StoreToCommWriter*>(param);
     if (Comm::IsConnOpen(mgrWriter->clientConnection))
         mgrWriter->clientConnection->close();
 }

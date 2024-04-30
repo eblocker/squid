@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2022 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -10,9 +10,11 @@
 
 #include "squid.h"
 #include "anyp/PortCfg.h"
+#include "base/AsyncCbdataCalls.h"
 #include "client_side.h"
 #include "clients/forward.h"
 #include "clients/FtpClient.h"
+#include "error/SysErrorDetail.h"
 #include "ftp/Elements.h"
 #include "ftp/Parsing.h"
 #include "http/Stream.h"
@@ -94,8 +96,8 @@ protected:
 
     /// Inform Ftp::Server that we are done if originWaitInProgress
     void stopOriginWait(int code);
-
-    static void abort(void *d); // TODO: Capitalize this and FwdState::abort().
+    /// called by Store if the entry is no longer usable
+    static void HandleStoreAbort(Relay *);
 
     bool forwardingCompleted; ///< completeForwarding() has been called
 
@@ -161,12 +163,17 @@ Ftp::Relay::Relay(FwdState *const fwdState):
     // Nothing we can do at request creation time can mark the response as
     // uncachable, unfortunately. This prevents "found KEY_PRIVATE" WARNINGs.
     entry->releaseRequest();
-    // TODO: Convert registerAbort() to use AsyncCall
-    entry->registerAbort(Ftp::Relay::abort, this);
+    AsyncCall::Pointer call = asyncCall(9, 4, "Ftp::Relay::Abort", cbdataDialer(&Relay::HandleStoreAbort, this));
+    entry->registerAbortCallback(call);
 }
 
 Ftp::Relay::~Relay()
 {
+    entry->unregisterAbortCallback("Ftp::Relay object destructed");
+    // Client, our parent, calls entry->unlock().
+    // Client does not currently un/registerAbortCallback() because
+    // FwdState does that for other Client kids; \see FwdState::start().
+
     closeServer(); // TODO: move to clients/Client.cc?
     if (savedReply.message)
         wordlistDestroy(&savedReply.message);
@@ -261,7 +268,7 @@ Ftp::Relay::serverState(const Ftp::ServerState newState)
  * (but we may still be waiting for 226 from the FTP server) and
  * also when we get that 226 from the server (and adaptation is done).
  *
- \todo Rewrite FwdState to ignore double completion?
+ * TODO: Rewrite FwdState to ignore double completion?
  */
 void
 Ftp::Relay::completeForwarding()
@@ -292,7 +299,7 @@ Ftp::Relay::failedErrorMessage(err_type error, int xerrno)
     const Http::StatusCode httpStatus = failedHttpStatus(error);
     HttpReply *const reply = createHttpReply(httpStatus);
     entry->replaceHttpReply(reply);
-    fwd->request->detailError(error, xerrno);
+    fwd->request->detailError(error, SysErrorDetail::NewIfAny(xerrno));
 }
 
 void
@@ -376,9 +383,10 @@ Ftp::Relay::forwardReply()
     assert(entry->isEmpty());
 
     HttpReply *const reply = createHttpReply(Http::scNoContent);
-    reply->sources |= HttpMsg::srcFtp;
+    reply->sources |= Http::Message::srcFtp;
 
     setVirginReply(reply);
+    markParsedVirginReplyAsWhole("Ftp::Relay::handleControlReply() does not forward partial replies");
     adaptOrFinalizeReply();
 
     serverComplete();
@@ -449,7 +457,7 @@ Ftp::Relay::startDataDownload()
            " (" << data.conn->local << ")");
 
     HttpReply *const reply = createHttpReply(Http::scOkay, -1);
-    reply->sources |= HttpMsg::srcFtp;
+    reply->sources |= Http::Message::srcFtp;
 
     setVirginReply(reply);
     adaptOrFinalizeReply();
@@ -567,7 +575,7 @@ Ftp::Relay::readReply()
     assert(serverState() == fssConnected ||
            serverState() == fssHandleUploadRequest);
 
-    if (100 <= ctrl.replycode && ctrl.replycode < 200)
+    if (Is1xx(ctrl.replycode))
         forwardPreliminaryReply(&Ftp::Relay::scheduleReadControlReply);
     else
         forwardReply();
@@ -578,7 +586,7 @@ Ftp::Relay::readFeatReply()
 {
     assert(serverState() == fssHandleFeat);
 
-    if (100 <= ctrl.replycode && ctrl.replycode < 200)
+    if (Is1xx(ctrl.replycode))
         return; // ignore preliminary replies
 
     forwardReply();
@@ -589,7 +597,7 @@ Ftp::Relay::readPasvReply()
 {
     assert(serverState() == fssHandlePasv || serverState() == fssHandleEpsv || serverState() == fssHandlePort || serverState() == fssHandleEprt);
 
-    if (100 <= ctrl.replycode && ctrl.replycode < 200)
+    if (Is1xx(ctrl.replycode))
         return; // ignore preliminary replies
 
     if (handlePasvReply(updateMaster().clientDataAddr))
@@ -601,7 +609,7 @@ Ftp::Relay::readPasvReply()
 void
 Ftp::Relay::readEpsvReply()
 {
-    if (100 <= ctrl.replycode && ctrl.replycode < 200)
+    if (Is1xx(ctrl.replycode))
         return; // ignore preliminary replies
 
     if (handleEpsvReply(updateMaster().clientDataAddr)) {
@@ -680,7 +688,7 @@ Ftp::Relay::readCwdOrCdupReply()
 
     debugs(9, 5, "got code " << ctrl.replycode << ", msg: " << ctrl.last_reply);
 
-    if (100 <= ctrl.replycode && ctrl.replycode < 200)
+    if (Is1xx(ctrl.replycode))
         return;
 
     if (weAreTrackingDir()) { // we are tracking
@@ -694,7 +702,7 @@ Ftp::Relay::readCwdOrCdupReply()
 void
 Ftp::Relay::readUserOrPassReply()
 {
-    if (100 <= ctrl.replycode && ctrl.replycode < 200)
+    if (Is1xx(ctrl.replycode))
         return; //Just ignore
 
     if (weAreTrackingDir()) { // we are tracking
@@ -712,7 +720,12 @@ Ftp::Relay::readTransferDoneReply()
 {
     debugs(9, 3, status());
 
-    if (ctrl.replycode != 226 && ctrl.replycode != 250) {
+    // RFC 959 says that code 226 may indicate a successful response to a file
+    // transfer and file abort commands, but since we do not send abort
+    // commands, let's assume it was a successful file transfer.
+    if (ctrl.replycode == 226 || ctrl.replycode == 250) {
+        markParsedVirginReplyAsWhole("Ftp::Relay::readTransferDoneReply() code 226 or 250");
+    } else {
         debugs(9, DBG_IMPORTANT, "got FTP code " << ctrl.replycode <<
                " after reading response data");
     }
@@ -726,7 +739,7 @@ void
 Ftp::Relay::dataChannelConnected(const CommConnectCbParams &io)
 {
     debugs(9, 3, status());
-    data.opener = NULL;
+    dataConnWait.finish();
 
     if (io.flag != Comm::OK) {
         debugs(9, 2, "failed to connect FTP server data channel");
@@ -784,19 +797,16 @@ Ftp::Relay::stopOriginWait(int code)
 }
 
 void
-Ftp::Relay::abort(void *d)
+Ftp::Relay::HandleStoreAbort(Relay *ftpClient)
 {
-    Ftp::Relay *ftpClient = (Ftp::Relay *)d;
     debugs(9, 2, "Client Data connection closed!");
-    if (!cbdataReferenceValid(ftpClient))
-        return;
     if (Comm::IsConnOpen(ftpClient->data.conn))
         ftpClient->dataComplete();
 }
 
-AsyncJob::Pointer
+void
 Ftp::StartRelay(FwdState *const fwdState)
 {
-    return AsyncJob::Start(new Ftp::Relay(fwdState));
+    AsyncJob::Start(new Ftp::Relay(fwdState));
 }
 

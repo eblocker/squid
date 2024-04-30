@@ -3,5 +3,5 @@ Depends: @builddeps@, fakeroot, squid
 Restrictions: allow-stderr
 
 Tests: squid
-Depends: squid, squidclient, elinks, netcat, pygopherd, apparmor-utils, vsftpd, apache2, ssl-cert
+Depends: squid, squidclient, elinks, netcat, apparmor-utils, vsftpd, apache2, ssl-cert, python3-minimal
 Restrictions: needs-root

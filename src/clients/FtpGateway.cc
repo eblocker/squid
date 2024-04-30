@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2022 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -28,7 +28,6 @@
 #include "HttpHeader.h"
 #include "HttpHeaderRange.h"
 #include "HttpReply.h"
-#include "HttpRequest.h"
 #include "ip/tools.h"
 #include "MemBuf.h"
 #include "mime.h"
@@ -154,7 +153,7 @@ public:
     virtual void timeout(const CommTimeoutCbParams &io);
     void ftpAcceptDataConnection(const CommAcceptCbParams &io);
 
-    static HttpReply *ftpAuthRequired(HttpRequest * request, SBuf &realm);
+    static HttpReply *ftpAuthRequired(HttpRequest * request, SBuf &realm, AccessLogEntry::Pointer &);
     SBuf ftpRealm();
     void loginFailed(void);
 
@@ -487,11 +486,9 @@ Ftp::Gateway::timeout(const CommTimeoutCbParams &io)
         flags.pasv_supported = false;
         debugs(9, DBG_IMPORTANT, "FTP Gateway timeout in SENT_PASV state");
 
-        // cancel the data connection setup.
-        if (data.opener != NULL) {
-            data.opener->cancel("timeout");
-            data.opener = NULL;
-        }
+        // cancel the data connection setup, if any
+        dataConnWait.cancel("timeout");
+
         data.close();
     }
 
@@ -563,8 +560,6 @@ ftpListParseParts(const char *buf, struct Ftp::GatewayFlags flags)
     p = (ftpListParts *)xcalloc(1, sizeof(ftpListParts));
 
     n_tokens = 0;
-
-    memset(tokens, 0, sizeof(tokens));
 
     xbuf = xstrdup(buf);
 
@@ -1075,16 +1070,17 @@ Ftp::Gateway::checkAuth(const HttpHeader * req_hdr)
 void
 Ftp::Gateway::checkUrlpath()
 {
-    static SBuf str_type_eq("type=");
-    auto t = request->url.path().rfind(';');
-
-    if (t != SBuf::npos) {
-        auto filenameEnd = t-1;
-        if (request->url.path().substr(++t).cmp(str_type_eq, str_type_eq.length()) == 0) {
-            t += str_type_eq.length();
-            typecode = (char)xtoupper(request->url.path()[t]);
-            request->url.path(request->url.path().substr(0,filenameEnd));
-        }
+    // If typecode was specified, extract it and leave just the filename in
+    // url.path. Tolerate trailing garbage or missing typecode value. Roughly:
+    // [filename] ;type=[typecode char] [trailing garbage]
+    static const SBuf middle(";type=");
+    const auto typeSpecStart = request->url.path().find(middle);
+    if (typeSpecStart != SBuf::npos) {
+        const auto fullPath = request->url.path();
+        const auto typecodePos = typeSpecStart + middle.length();
+        typecode = (typecodePos < fullPath.length()) ?
+                   static_cast<char>(xtoupper(fullPath[typecodePos])) : '\0';
+        request->url.path(fullPath.substr(0, typeSpecStart));
     }
 
     int l = request->url.path().length();
@@ -1148,7 +1144,7 @@ Ftp::Gateway::start()
     if (!checkAuth(&request->header)) {
         /* create appropriate reply */
         SBuf realm(ftpRealm()); // local copy so SBuf will not disappear too early
-        HttpReply *reply = ftpAuthRequired(request, realm);
+        const auto reply = ftpAuthRequired(request.getRaw(), realm, fwd->al);
         entry->replaceHttpReply(reply);
         serverComplete();
         return;
@@ -1223,16 +1219,16 @@ Ftp::Gateway::loginFailed()
     if ((state == SENT_USER || state == SENT_PASS) && ctrl.replycode >= 400) {
         if (ctrl.replycode == 421 || ctrl.replycode == 426) {
             // 421/426 - Service Overload - retry permitted.
-            err = new ErrorState(ERR_FTP_UNAVAILABLE, Http::scServiceUnavailable, fwd->request);
+            err = new ErrorState(ERR_FTP_UNAVAILABLE, Http::scServiceUnavailable, fwd->request, fwd->al);
         } else if (ctrl.replycode >= 430 && ctrl.replycode <= 439) {
             // 43x - Invalid or Credential Error - retry challenge required.
-            err = new ErrorState(ERR_FTP_FORBIDDEN, Http::scUnauthorized, fwd->request);
+            err = new ErrorState(ERR_FTP_FORBIDDEN, Http::scUnauthorized, fwd->request, fwd->al);
         } else if (ctrl.replycode >= 530 && ctrl.replycode <= 539) {
             // 53x - Credentials Missing - retry challenge required
             if (password_url) // but they were in the URI! major fail.
-                err = new ErrorState(ERR_FTP_FORBIDDEN, Http::scForbidden, fwd->request);
+                err = new ErrorState(ERR_FTP_FORBIDDEN, Http::scForbidden, fwd->request, fwd->al);
             else
-                err = new ErrorState(ERR_FTP_FORBIDDEN, Http::scUnauthorized, fwd->request);
+                err = new ErrorState(ERR_FTP_FORBIDDEN, Http::scUnauthorized, fwd->request, fwd->al);
         }
     }
 
@@ -1725,7 +1721,7 @@ void
 Ftp::Gateway::dataChannelConnected(const CommConnectCbParams &io)
 {
     debugs(9, 3, HERE);
-    data.opener = NULL;
+    dataConnWait.finish();
 
     if (io.flag != Comm::OK) {
         debugs(9, 2, HERE << "Failed to connect. Retrying via another method.");
@@ -1931,7 +1927,7 @@ Ftp::Gateway::ftpAcceptDataConnection(const CommAcceptCbParams &io)
         data.listenConn->close();
         data.listenConn = NULL;
         debugs(9, DBG_IMPORTANT, "FTP AcceptDataConnection: " << io.conn << ": " << xstrerr(io.xerrno));
-        /** \todo Need to send error message on control channel*/
+        // TODO: need to send error message on control channel
         ftpFail(this);
         return;
     }
@@ -2261,7 +2257,7 @@ Ftp::Gateway::completedListing()
 {
     assert(entry);
     entry->lock("Ftp::Gateway");
-    ErrorState ferr(ERR_DIR_LISTING, Http::scOkay, request);
+    ErrorState ferr(ERR_DIR_LISTING, Http::scOkay, request.getRaw(), fwd->al);
     ferr.ftp.listing = &listing;
     ferr.ftp.cwd_msg = xstrdup(cwd_message.size()? cwd_message.termedBuf() : "");
     ferr.ftp.server_msg = ctrl.message;
@@ -2283,6 +2279,7 @@ ftpReadTransferDone(Ftp::Gateway * ftpState)
             ftpState->completedListing();
             /* QUIT operation handles sending the reply to client */
         }
+        ftpState->markParsedVirginReplyAsWhole("ftpReadTransferDone code 226 or 250");
         ftpSendQuit(ftpState);
     } else {            /* != 226 */
         debugs(9, DBG_IMPORTANT, HERE << "Got code " << code << " after reading data");
@@ -2435,9 +2432,9 @@ ftpFail(Ftp::Gateway *ftpState)
     }
 
     Http::StatusCode sc = ftpState->failedHttpStatus(error_code);
-    ErrorState *ftperr = new ErrorState(error_code, sc, ftpState->fwd->request);
-    ftpState->failed(error_code, code, ftperr);
-    ftperr->detailError(code);
+    const auto ftperr = new ErrorState(error_code, sc, ftpState->fwd->request, ftpState->fwd->al);
+    ftpState->failed(error_code, 0, ftperr);
+    ftperr->detailError(new Ftp::ErrorDetail(code));
     HttpReply *newrep = ftperr->BuildHttpReply();
     delete ftperr;
 
@@ -2503,7 +2500,7 @@ ftpSendReply(Ftp::Gateway * ftpState)
         http_code = Http::scInternalServerError;
     }
 
-    ErrorState err(err_code, http_code, ftpState->request);
+    ErrorState err(err_code, http_code, ftpState->request.getRaw(), ftpState->fwd->al);
 
     if (ftpState->old_request)
         err.ftp.request = xstrdup(ftpState->old_request);
@@ -2517,10 +2514,9 @@ ftpSendReply(Ftp::Gateway * ftpState)
     else
         err.ftp.reply = xstrdup("");
 
-    // TODO: interpret as FTP-specific error code
-    err.detailError(code);
+    err.detailError(new Ftp::ErrorDetail(code));
 
-    ftpState->entry->replaceHttpReply( err.BuildHttpReply() );
+    ftpState->entry->replaceHttpReply(err.BuildHttpReply());
 
     ftpSendQuit(ftpState);
 }
@@ -2601,7 +2597,7 @@ Ftp::Gateway::appendSuccessHeader()
     if (mime_enc)
         reply->header.putStr(Http::HdrType::CONTENT_ENCODING, mime_enc);
 
-    reply->sources |= HttpMsg::srcFtp;
+    reply->sources |= Http::Message::srcFtp;
     setVirginReply(reply);
     adaptOrFinalizeReply();
 }
@@ -2624,9 +2620,9 @@ Ftp::Gateway::haveParsedReplyHeaders()
 }
 
 HttpReply *
-Ftp::Gateway::ftpAuthRequired(HttpRequest * request, SBuf &realm)
+Ftp::Gateway::ftpAuthRequired(HttpRequest * request, SBuf &realm, AccessLogEntry::Pointer &ale)
 {
-    ErrorState err(ERR_CACHE_ACCESS_DENIED, Http::scUnauthorized, request);
+    ErrorState err(ERR_CACHE_ACCESS_DENIED, Http::scUnauthorized, request, ale);
     HttpReply *newrep = err.BuildHttpReply();
 #if HAVE_AUTH_MODULE_BASIC
     /* add Authenticate header */
@@ -2683,7 +2679,7 @@ Ftp::Gateway::writeReplyBody(const char *dataToWrite, size_t dataLength)
 /**
  * A hack to ensure we do not double-complete on the forward entry.
  *
- \todo Ftp::Gateway logic should probably be rewritten to avoid
+ * TODO: Ftp::Gateway logic should probably be rewritten to avoid
  *  double-completion or FwdState should be rewritten to allow it.
  */
 void
@@ -2729,9 +2725,9 @@ Ftp::Gateway::mayReadVirginReplyBody() const
     return !doneWithServer();
 }
 
-AsyncJob::Pointer
+void
 Ftp::StartGateway(FwdState *const fwdState)
 {
-    return AsyncJob::Start(new Ftp::Gateway(fwdState));
+    AsyncJob::Start(new Ftp::Gateway(fwdState));
 }
 

@@ -1,7 +1,152 @@
-squid (4.6-1+deb10u6) buster-security; urgency=medium
+squid (5.7-2+deb12u1) bookworm-security; urgency=high
+
+  * Non-maintainer upload.
+  * Fix CVE-2023-46724, CVE-2023-46846, CVE-2023-46847, CVE-2023-46848,
+    CVE-2023-49285, CVE-2023-49286, CVE-2023-50269, CVE-2024-23638,
+    CVE-2024-25111, CVE-2024-25617.
+  * Several security vulnerabilities have been discovered in Squid, a full
+    featured web proxy cache. Due to programming errors in Squid's HTTP request
+    parsing, remote attackers may be able to execute a denial of service attack
+    by sending large X-Forwarded-For header or trigger a stack buffer overflow
+    while performing HTTP Digest authentication. Other issues facilitate
+    request smuggling past a firewall or a denial of service against Squid's
+    Helper process management.
+    In regard to CVE-2023-46728: Please note that support for the Gopher
+    protocol has simply been removed in future Squid versions. There are no
+    plans by the upstream developers of Squid to fix this issue. We recommend
+    to reject all Gopher URL requests instead.
+
+ -- Markus Koschany <apo@debian.org>  Tue, 05 Mar 2024 23:14:44 +0100
+
+squid (5.7-2) unstable; urgency=medium
+
+  * Add a couple of upstream picked patches to fix some issues on 5.7
+    that upstream has fixed on 5.8.
+
+ -- Santiago Garcia Mantinan <manty@debian.org>  Fri, 28 Apr 2023 08:35:27 +0200
+
+squid (5.7-1) unstable; urgency=medium
+
+  * Urgency high due to security fixes
+
+  [ Luigi Gangitano <luigi@debian.org> ]
+  * New upstream version 5.7
+
+  * Exposure of Sensitive Information in Cache Manager (CVE-2022-41317)
+    (Closes: #1020587)
+  * Buffer Over Read in SSPI and SMB Authentication (CVE-2022-41318)
+    (Closes: #1020586)
+
+  * debian/patches/
+    - Removed 0006-Fix-build-against-OpenSSL-3-0.patch integrated upstream
+
+  * debian/control
+    - Bumped Standards-Version to 4.6.1, no change needed
+
+  * Using new DH level format. Consequently:
+      - debian/compat: removed.
+      - debian/control:
+          - Changed from 'debhelper' to 'debhelper-compat' in Build-Depends
+            field and bumped level to 13.
+      - debian/rules:
+          - Disable dh_missing
+      - Dropped unnecessary dependencies in Build-Depends field.
+
+  * debian/salsa-ci.yml
+      - Added to provide CI tests for Salsa
+
+  * debian/upstream/metadata
+    - Created upstream metadata file
+
+  * debian/upstream/signing-key.asc
+    - Strip extra signatures from upstream key
+
+ -- Luigi Gangitano <luigi@debian.org>  Tue,  4 Oct 2022 11:04:20 +0200
+
+squid (5.6-1) unstable; urgency=high
+
+  * Urgency high due to security fixes
+
+  [ Amos Jeffries <amosjeffries@squid-cache.org> ]
+  * New Upstream Release
+    Fixes: CVE-2021-46784. Denial of Service in Gopher Processing
+
+ -- Luigi Gangitano <luigi@debian.org>  Sun, 19 Jun 2022 13:39:54 +0200
+
+squid (5.5-1.1) unstable; urgency=medium
+
+  * Non-maintainer upload.
+
+  [ Nicholas Guriev ]
+  * Fixing build against OpenSSL 3.0 (Closes: #1005650, LP: #1946205)
+
+  * debian/rules
+    - Do not fail on errors about deprecated declarations from OpenSSL.
+    - Remove -Wall in CFLAGS from the debian/rules file since upstream build
+      scripts already pass this flag.
+
+  * debian/patches/
+    - New 0006-Fix-build-against-OpenSSL-3-0.patch
+
+  [ Simon Deziel ]
+  * apparmor: allow reading /etc/ssl/openssl.cnf
+
+ -- Nicholas Guriev <guriev-ns@ya.ru>  Tue, 31 May 2022 23:13:38 +0300
+
+squid (5.5-1) unstable; urgency=medium
+
+  [ Amos Jeffries <amosjeffries@squid-cache.org> ]
+  * New Upstream Release
+
+  * debian/patches/
+    - remove upstreamed 0004-Change-default-Makefiles-for-debian.patch
+
+ -- Luigi Gangitano <luigi@debian.org>  Fri, 15 Apr 2022 14:39:54 +0200
+
+squid (5.2-1) unstable; urgency=medium
+
+  [ Amos Jeffries <amosjeffries@squid-cache.org> ]
+  * New Upstream Release (Closes: #986804, #976131)
+    Fixes: CVE-2021-28116. Out-Of-Bounds memory access in WCCPv2
+    Fixes: CVE-2021-41611. Improper Certificate Validation of TLS server
+    certificates
+
+  [ L.P.H. van Belle <belle@bazuin.nl> ]
+  * debian/rules
+    - polish override_dh_installsystemd action to match other sequences
+
+  * debian/NEWS
+    - bump version number to make Lintian happy
+
+ -- Luigi Gangitano <luigi@debian.org>  Sat,  9 Oct 2021 17:03:54 +0200
+
+squid (5.1-2) unstable; urgency=medium
+
+  [ Amos Jeffries <amosjeffries@squid-cache.org> ]
+  * New Upstream Release (Closes: #984351, #943692)
+
+  * debian/control
+    - switch build-dep to libtdb-dev. libdb is deprecated
+    - Bumped Standards-Version to 4.6.0, no change needed
+
+  * debian/patches/
+    - refresh patches for new version
+    - fix 0001-Default-configuration-file-for-debian.patch (Closes: #970025)
+    - add 0004-Change-default-Makefiles-for-debian.patch
+      to fix FTBFS 'cp: cannot create regular file tests/stub_*.cc'
+
+  * debian/rules
+    - remove basic_nis_auth helper
+
+  * Drop squid3 upgrade compatibility. Debian has not contained
+    a squid3 package for at least two full release cycles.
+
+ -- Luigi Gangitano <luigi@debian.org>  Fri, 17 Sep 2021 09:27:54 +0200
+
+squid (4.13-10) unstable; urgency=medium
 
   [ Francisco Vilmar Cardoso Ruviaro ]
-  * Add debian/patches/0029-CVE-2021-28651.patch to fix a Denial
+  * Add debian/patches/0007-CVE-2021-28651.patch to fix a Denial
     of Service in URN processing. (Closes: #988893, CVE-2021-28651)
 
   [ Santiago Garcia Mantinan ]
@@ -14,7 +159,301 @@ squid (4.6-1+deb10u6) buster-security; urgency=medium
   * Add patch to fix a Denial of Service in HTTP Response processing.
     Fixes: GHSA-572g-rvwr-6c7f.
 
- -- Santiago Garcia Mantinan <manty@debian.org>  Mon, 31 May 2021 10:39:12 +0200
+ -- Santiago Garcia Mantinan <manty@debian.org>  Fri, 28 May 2021 12:28:20 +0200
+
+squid (4.13-9) unstable; urgency=medium
+
+  * Clarify on NEWS and scripts that we no longer remove logs on purge.
+  * Clarify on postrm script that the debhelper code was put manually.
+  * Add README.Debian to squid-openssl.
+
+ -- Santiago Garcia Mantinan <manty@debian.org>  Tue, 23 Mar 2021 00:18:11 +0100
+
+squid (4.13-8) unstable; urgency=medium
+
+  * Add SQUID-2020_11.patch to fix HTTP Request Smuggling.
+    Fixes: CVE-2020-25097. Closes: #985068.
+
+ -- Santiago Garcia Mantinan <manty@debian.org>  Sun, 21 Mar 2021 00:58:29 +0100
+
+squid (4.13-7) unstable; urgency=medium
+
+  * Add full postrm scripts while we don't solve #984897 on debhelper.
+    Closes: #984880.
+
+ -- Santiago Garcia Mantinan <manty@debian.org>  Wed, 10 Mar 2021 09:19:32 +0100
+
+squid (4.13-6) unstable; urgency=medium
+
+  * Stop removing cache and config file on postrm. Closes: #984510.
+  * Increase debhelper build dependency to 12.8 as we need that from -5.
+  * Add NEWS note on the problem with purge on previous versions.
+
+ -- Santiago Garcia Mantinan <manty@debian.org>  Thu, 04 Mar 2021 14:45:00 +0100
+
+squid (4.13-5) unstable; urgency=high
+
+  * Have a deeper look and change all dpkg-buildpackage commands
+    for similar dh ones. At least at home it works now.
+
+ -- Santiago Garcia Mantinan <manty@debian.org>  Mon, 08 Feb 2021 21:35:48 +0100
+
+squid (4.13-4) unstable; urgency=high
+
+  * Remove pre-build from upstream-test-suite.
+
+ -- Santiago Garcia Mantinan <manty@debian.org>  Mon, 08 Feb 2021 09:26:25 +0100
+
+squid (4.13-3) unstable; urgency=high
+
+  * Source only upload to allow migration to testing.
+  * At 4.13-2 we also enabled --enable-ssl-crtd. (Closes: #898307)
+  * Fix build dependencies.
+
+ -- Santiago Garcia Mantinan <manty@debian.org>  Sun, 07 Feb 2021 21:58:30 +0100
+
+squid (4.13-2) unstable; urgency=high
+
+  * Add a new brand, the new squid-openssl package compiled
+    with openssl. (Closes: #966395)
+  * Change rules to allow double building the two brands.
+  * Update Standandards-Version.
+
+ -- Santiago Garcia Mantinan <manty@debian.org>  Sun, 07 Feb 2021 01:39:45 +0100
+
+squid (4.13-1) unstable; urgency=high
+
+  [ Amos Jeffries <amosjeffries@squid-cache.org> ]
+  * New Upstream Release
+    - Fixes security issue SQUID-2020:8 (CVE-2020-15811) (Closes: #968932)
+    - Fixes security issue SQUID-2020:9 (Closes: #968933)
+    - Fixes security issue SQUID-2020:10 (CVE-2020-15810) (Closes: #968934)
+
+  * debian/squid.rc: Fix several typos (Closes: #968101)
+
+ -- Luigi Gangitano <luigi@debian.org>  Mon, 24 Aug 2020 17:27:54 +0200
+
+squid (4.12-1) unstable; urgency=high
+
+  [ Sergio Durigan Junior <sergiodj@debian.org> ]
+  * Don't restart squid by hand on postinst script.
+    When installing/upgrading squid, the service is being restarted
+    manually in the postinst script, which can break installations that
+    have the squid apparmor enabled because it will try to restart the
+    service before reloading the apparmor profile.
+    There is no reason to restart squid manually, since the restart will
+    be automatically performed later.
+
+  * Drop conffile check for squid < 2.7
+    squid 2.7 is long, long gone, so it should be safe to drop the
+    postinst code to make sure that /etc/squid/squid.conf was properly
+    upgraded.
+
+  * Fix 'pidfile' on d/t/tests-squid.py.
+    The pidfile lives under '/run/squid/', not '/run/'. (Closes: #960327)
+
+  [ Juri Grabowski <debian@jugra.de> ]
+  * add gbp.conf for squid
+
+  * New upstream version 4.12
+    - Fixes security issue SQUID-2020:5 (CVE-2020-14059)
+    - Fixes security issue SQUID-2020:6 (CVE-2020-14058)
+    - Fixes security issue SQUID-2020:7 (CVE-2020-15049)
+
+  * remove 0004-upstream-bug5041.patch - Fixed in upstream
+
+  [ Luigi Gangitano <luigi@debian.org> ]
+
+  * Move PID file to /run (Closes: #960819)
+
+ -- Luigi Gangitano <luigi@debian.org>  Wed,  1 Jul 2020 10:52:54 +0200
+
+squid (4.11-5) unstable; urgency=medium
+
+  [ Sergio Durigan Junior <sergiodj@debian.org> ]
+  * Don't install /run/squid (use systemd's RuntimeDirectory instead).
+    Debian Policy states that /run is normally cleared at boot time, and
+    therefore packages must not install files/directories under /run.
+    Init scripts should be taught to dynamically handle /run instead.
+    This change uses systemd's RuntimeDirectory and RuntimeDirectoryMode
+    directives when starting the squid service in order to guarantee that
+    /run/squid/ will be created with the correct permission.  This has the
+    added benefit of deleting the directory when the service is stopped.
+    (Closes: #960327)
+  * Allow /run/system/notify to be accessed by squid.
+    When apparmor is enabled and the squid profile is enforced, we must
+    make sure that the daemon will be able to access the
+    /run/system/notify file (because squid's systemd service file type is
+    "notify").
+
+  [ Luigi Gangitano <luigi@debian.org> ]
+  * debian/NEWS
+    - Fix unknown version of latest entry
+
+ -- Luigi Gangitano <luigi@debian.org>  Sat, 16 May 2020 12:00:54 +0200
+
+squid (4.11-4) unstable; urgency=medium
+
+  [ Amos Jeffries <amosjeffries@squid-cache.org> ]
+  * Fix permissions on /run/squid
+
+ -- Luigi Gangitano <luigi@debian.org>  Thu,  7 May 2020 15:30:54 +0200
+
+squid (4.11-3) unstable; urgency=low
+
+  [ Amos Jeffries <amosjeffries@squid-cache.org> ]
+  * Move PID file into /run/squid (Closes: #932593)
+
+  * Mark squid-common package Multi-Arch:foreign
+
+ -- Luigi Gangitano <luigi@debian.org>  Sun,  4 May 2020 18:57:54 +0200
+
+squid (4.11-2) unstable; urgency=high
+
+  [ Amos Jeffries <amosjeffries@squid-cache.org> ]
+  * Add libsystemd-dev dependency on Linux (Closes: 958708)
+    - fixes systemd timeout failure during install
+
+  [ Luigi Gangitano <luigi@debian.org> ]
+  * debian/rules
+    - Removed --as-needed flag
+
+ -- Luigi Gangitano <luigi@debian.org>  Fri, 24 Apr 2020 20:49:54 +0200
+
+squid (4.11-1) unstable; urgency=high
+
+  * Urgency high due to security fixes
+
+  [ Amos Jeffries <amosjeffries@squid-cache.org> ]
+  * New Upstream Release (Closes: #957840, #929574, #910337)
+    - Fixes security issue SQUID-2019:12 (CVE-2019-12519, CVE-2019-12521)
+    - Fixes security issue SQUID-2020:4 (CVE-2020-11945)
+
+  * debian/squid3.{maintscript,postinst,postrm,preinst,rc}
+    - Remove unused and obsolete scripts
+
+  * debian/squid.{postrm,preinst}
+    - Remove obsolete script logic
+
+  * debian/squid-common.postinst
+    - Remove obsolete script
+
+  * debian/changelog
+    - Add missing historic CVE references
+
+  * debian/patches/
+    - Add upstream fix for missing Debug::Extra in systemd builds
+
+ -- Luigi Gangitano <luigi@debian.org>  Thu, 23 Apr 2020 19:34:54 +0200
+
+squid (4.10-1) unstable; urgency=high
+
+  [ Amos Jeffries <amosjeffries@squid-cache.org> ]
+  * New Upstream Release (Closes: #950641)
+    - Fixes security issue SQUID-2020:1 (CVE-2020-8449) (CVE-2020-8450)
+      (Closes: #950802)
+    - Fixes security issue SQUID-2020:2 (CVE-2019-12528) (Closes: #950925)
+    - Fixes security issue SQUID-2020:3 (CVE-2020-8517)
+
+  * debian/NEWS
+    - Fix syntax to make lintian happier
+
+  * debian/control
+    - Bumped Standards-Version to 4.5.0, no change needed
+
+  [ Luigi Gangitano <luigi@debian.org> ]
+  * debian/control
+    - Drop squid3 transitional package (Closes: #940785)
+
+ -- Luigi Gangitano <luigi@debian.org>  Tue, 10 Feb 2020 14:12:54 +0100
+
+squid (4.9-2) unstable; urgency=medium
+
+  [ Andreas Hasenack <andreas@canonical.com> ]
+  * debian/rules
+    - Only use -latomic with the intended architectures, instead of all of them
+
+  * debian/NEWS
+    - Rename d/NEWS.debian to d/NEWS so that dh_installchangelogs can pick it
+
+  * debian/{watch,signing-key.asc}
+    - Check upstream gpg signature
+
+  * debian/test/test-squid.py
+    - Re-enable apparmor test
+
+  [ Luigi Gangitano <luigi@debian.org> ]
+  * debian/squid.rc
+    - Change to --foreground while creating cache dirs to avoid SMP bug
+
+  * debian/squid.resolvconf
+    - Merge previous check for /usr being mounted before restart
+
+ -- Luigi Gangitano <luigi@debian.org>  Thu, 14 Nov 2019 10:12:54 +0100
+
+squid (4.9-1) unstable; urgency=high
+
+  * Urgency high due to security fixes
+
+  [ Amos Jeffries <amosjeffries@squid-cache.org> ]
+  * New Upstream Release (Closes: #943692)
+    - Fixes security issue SQUID-2019:7 (CVE-2019-12526)
+    - Fixes security issue SQUID-2019:8 (CVE-2019-18676) (CVE-2019-12523)
+    - Fixes security issue SQUID-2019:9 (CVE-2019-18677)
+    - Fixes security issue SQUID-2019:10 (CVE-2019-18678)
+    - Fixes security issue SQUID-2019:11 (CVE-2019-18679)
+    - Updates fix for security issue SQUID-2019:6 (CVE-2019-13345)
+
+  * debian/control
+    - Bumped Standards-Version to 4.4.1, no change needed
+
+  * debian/tests/test-squid.py
+    - Disable Apparmor tests
+
+  [ Luigi Gangitano <luigi@debian.org> ]
+  * Source only upload (Closes: #943911)
+
+  * debian/squid.resolvconf
+    - Avoid reload before squid.pid is available (Closes: #911325)
+      thanks to Michael Biebl and Wolfgang Schweer
+
+  * debian/squid.rc
+    - Make squid.rc wait for directory creation (Closes: #933295),
+      thanks to Daniel Reichelt
+
+ -- Luigi Gangitano <luigi@debian.org>  Sun, 10 Nov 2019 20:28:15 +0100
+
+squid (4.8-1) unstable; urgency=high
+
+  [ Amos Jeffries <amosjeffries@squid-cache.org> ]
+  * New Upstream Release
+    - Fixes security issue SQUID-2019:1 (CVE-2019-12824)
+    - Fixes security issue SQUID-2019:2 (CVE-2019-12529)
+    - Fixes security issue SQUID-2019:3 (CVE-2019-12525)
+    - Fixes security issue SQUID-2019:5 (CVE-2019-12527)
+    - Fixes security issue SQUID-2019:6 (CVE-2019-13345) (Closes: #931478)
+
+  * debian/control
+    - Bumped Standards-Version to 4.4.0, no change needed
+
+  * debian/tests/test-squid.py
+    - Skip Apparmor tests when profile not installed
+
+ -- Luigi Gangitano <luigi@debian.org>  Thu, 18 Jul 2019 22:28:15 +0200
+
+squid (4.6-2) unstable; urgency=high
+
+  [ Andreas Hasenack <andreas@canonical.com> ]
+  * Add disabled by default AppArmor profile (Closes: #923213)
+
+ -- Luigi Gangitano <luigi@debian.org>  Mon, 04 Mar 2019 09:28:15 +0100
+
+squid (4.6-1+deb10u6) buster-security; urgency=medium
+
+  [ Francisco Vilmar Cardoso Ruviaro ]
+  * Add debian/patches/0029-CVE-2021-28651.patch to fix a Denial
+
+-- Santiago Garcia Mantinan <manty@debian.org>  Mon, 31 May 2021 10:39:12 +0200
 
 squid (4.6-1+deb10u5) buster-security; urgency=medium
 
@@ -137,8 +576,8 @@ squid (4.4-1) unstable; urgency=high
 
   [ Amos Jeffries <amosjeffries@squid-cache.org> ]
   * New Upstream Release
-    - Fix security issue SQUID-2018:4 (CVE: TBD) (Closes: #912293)
-    - Fix security issue SQUID-2018:5 (CVE: TBD) (Closes: #912294)
+    - Fix security issue SQUID-2018:4 (CVE-2018-19131) (Closes: #912293)
+    - Fix security issue SQUID-2018:5 (CVE-2018-19132) (Closes: #912294)
 
   [ Luigi Gangitano ]
   * debian/squid.preinst
@@ -1430,7 +1869,7 @@ squid3 (3.0.STABLE8-3) unstable; urgency=high
 
   * debian/patches/11-SQUID-2009-1
     - Added upstream patch fixing Denial of Service in request processing
-      (Ref: SQUID-2009-1, CVE: TBA)
+      (Ref: SQUID-2009-1) (CVE-2009-0478)
 
  -- Luigi Gangitano <luigi@debian.org>  Fri, 06 Feb 2009 20:23:57 +0100
 

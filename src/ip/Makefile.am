@@ -1,4 +1,4 @@
-## Copyright (C) 1996-2019 The Squid Software Foundation and contributors
+## Copyright (C) 1996-2022 The Squid Software Foundation and contributors
 ##
 ## Squid software is distributed under GPLv2+ license and includes
 ## contributions from numerous individuals and organizations.
@@ -11,13 +11,14 @@ include $(top_srcdir)/src/TestHeaders.am
 noinst_LTLIBRARIES = libip.la
 
 libip_la_SOURCES = \
-	forward.h \
-	Address.h \
 	Address.cc \
-	Intercept.h \
+	Address.h \
 	Intercept.cc \
-	QosConfig.h \
+	Intercept.h \
+	NfMarkConfig.cc \
+	NfMarkConfig.h \
 	QosConfig.cc \
-	Qos.cci \
+	QosConfig.h \
+	forward.h \
 	tools.cc \
 	tools.h

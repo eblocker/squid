@@ -1,4 +1,4 @@
-## Copyright (C) 1996-2019 The Squid Software Foundation and contributors
+## Copyright (C) 1996-2022 The Squid Software Foundation and contributors
 ##
 ## Squid software is distributed under GPLv2+ license and includes
 ## contributions from numerous individuals and organizations.
@@ -11,7 +11,7 @@ EXTRA_DIST= required.m4
 
 libexec_PROGRAMS= negotiate_wrapper_auth
 
-negotiate_wrapper_auth_SOURCES= \
+negotiate_wrapper_auth_SOURCES = \
 	negotiate_wrapper.cc
 negotiate_wrapper_auth_LDADD= \
 	$(top_builddir)/lib/libmiscencoding.la \

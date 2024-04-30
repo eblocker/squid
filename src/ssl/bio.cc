@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2022 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -245,12 +245,12 @@ Ssl::ServerBio::ServerBio(const int anFd):
     allowSplice(false),
     allowBump(false),
     holdWrite_(false),
-    holdRead_(true),
     record_(false),
     parsedHandshake(false),
     parseError(false),
     bumpMode_(bumpNone),
-    rbufConsumePos(0)
+    rbufConsumePos(0),
+    parser_(Security::HandshakeParser::fromServer)
 {
 }
 
@@ -316,12 +316,6 @@ Ssl::ServerBio::readAndParse(char *buf, const int size, BIO *table)
         debugs(83, 2, "parsing error on FD " << fd_ << ": " << ex.what());
         parsedHandshake = true; // done parsing (due to an error)
         parseError = true;
-    }
-
-    if (holdRead_) {
-        debugs(83, 7, "Hold flag is set, retry latter. (Hold " << size << "bytes)");
-        BIO_set_retry_read(table);
-        return -1;
     }
 
     return giveBuffered(buf, size);
@@ -554,6 +548,13 @@ Ssl::ServerBio::resumingSession()
     return parser_.resumingSession;
 }
 
+bool
+Ssl::ServerBio::encryptedCertificates() const
+{
+    return parser_.details->tlsSupportedVersion &&
+           Security::Tls1p3orLater(parser_.details->tlsSupportedVersion);
+}
+
 /// initializes BIO table after allocation
 static int
 squid_bio_create(BIO *bi)
@@ -715,6 +716,12 @@ applyTlsDetailsToSSL(SSL *ssl, Security::TlsDetails::Pointer const &details, Ssl
 #if defined(SSL_OP_NO_COMPRESSION) /* XXX: OpenSSL 0.9.8k lacks SSL_OP_NO_COMPRESSION */
     if (!details->compressionSupported)
         SSL_set_options(ssl, SSL_OP_NO_COMPRESSION);
+#endif
+
+#if defined(SSL_OP_NO_TLSv1_3)
+    // avoid "inappropriate fallback" OpenSSL error messages
+    if (details->tlsSupportedVersion && Security::Tls1p2orEarlier(details->tlsSupportedVersion))
+        SSL_set_options(ssl, SSL_OP_NO_TLSv1_3);
 #endif
 
 #if defined(TLSEXT_STATUSTYPE_ocsp)

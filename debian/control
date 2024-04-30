@@ -4,17 +4,20 @@ Priority: optional
 Maintainer: Luigi Gangitano <luigi@debian.org>
 Uploaders: Santiago Garcia Mantinan <manty@debian.org>
 Homepage: http://www.squid-cache.org
-Standards-Version: 4.3.0
+Standards-Version: 4.6.1
 Vcs-Git: https://salsa.debian.org/squid-team/squid.git
 Vcs-Browser: https://salsa.debian.org/squid-team/squid
-Build-Depends: ed, libltdl-dev, pkg-config
+Build-Depends: ed
+    , libltdl-dev
+    , pkg-config
 # The compiler dependencies are relevant for backporting.
 	, g++ (>= 4.9) <!cross> | clang (>= 3.7) <!cross>
 	, gcc (>= 4.9) <!cross> | clang (>= 3.7) <!cross>
-	, cdbs, debhelper (>=10), dpkg-dev (>= 1.17.11~), lsb-release
+	, debhelper-compat (= 13)
+    , lsb-release
+	, dh-apparmor
 	, libcppunit-dev
 	, libcap2-dev [linux-any]
-	, libdb-dev
 	, libecap3-dev (>= 1.0.1-2)
 	, libexpat1-dev
 	, libgnutls28-dev (>= 3.5)
@@ -23,39 +26,38 @@ Build-Depends: ed, libltdl-dev, pkg-config
 	, libnetfilter-conntrack-dev [linux-any]
 	, libpam0g-dev
 	, libsasl2-dev
+	, libsystemd-dev [linux-any]
+	, libtdb-dev
 	, libxml2-dev
 	, nettle-dev
-
-Package: squid3
-Architecture: all
-Section: oldlibs
-Priority: optional
-Pre-Depends: squid (>= ${source:Version})
-Depends: ${misc:Depends}, lsb-base
-Description: Transitional package
- Squid is a high-performance proxy caching server for web clients, supporting
- FTP, gopher, ICY and HTTP data objects.
- .
- This is a transitional package used to migrate from squid3 to squid.
+	, libssl-dev
 
 Package: squidssl
 Architecture: any
-Pre-Depends: adduser
+Pre-Depends: ${misc:Pre-Depends}, adduser
 Depends: ${shlibs:Depends}, ${misc:Depends}, netbase, logrotate (>= 3.5.4-1), squidssl-common (>= ${source:Version}), lsb-base, libdbi-perl, eblocker-certificate-validator (>= 1.11)
-Suggests: squidclient, squid-cgi, squid-purge, resolvconf (>= 0.40), smbclient, ufw, winbind
+Suggests: squidclient, squid-cgi, squid-purge, resolvconf (>= 0.40), smbclient, ufw, winbind, apparmor
 Recommends: libcap2-bin [linux-any], ca-certificates
-Conflicts: squid3 (<< ${binary:Version})
-Replaces: squid3
-Description: Full featured Web Proxy cache (HTTP proxy)
+Conflicts: squid-openssl
+Description: Full featured Web Proxy cache (HTTP proxy GnuTLS flavour)
  Squid is a high-performance proxy caching server for web clients, supporting
  FTP, gopher, ICY and HTTP data objects.
 
-Package: squidssl-common
+Package: squid-openssl
+Architecture: any
+Pre-Depends: ${misc:Pre-Depends}, adduser
+Depends: ${shlibs:Depends}, ${misc:Depends}, netbase, logrotate (>= 3.5.4-1), squid-common (>= ${source:Version}), lsb-base, libdbi-perl
+Suggests: squidclient, squid-cgi, squid-purge, resolvconf (>= 0.40), smbclient, ufw, winbind, apparmor
+Recommends: libcap2-bin [linux-any], ca-certificates
+Conflicts: squid
+Description: Full featured Web Proxy cache (HTTP proxy OpenSSL flavour)
+ Squid is a high-performance proxy caching server for web clients, supporting
+ FTP, gopher, ICY and HTTP data objects.
+
+Package: squid-common
 Architecture: all
+Multi-Arch: foreign
 Depends: ${misc:Depends}, squid-langpack (>= 20110214-1)
-Provides: squid3-common
-Conflicts: squid3-common
-Replaces: squid3-common
 Description: Full featured Web Proxy cache (HTTP proxy) - common files
  Squid is a high-performance proxy caching server for web clients, supporting
  FTP, gopher, ICY and HTTP data objects.
@@ -66,9 +68,6 @@ Package: squidclient
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
 Recommends: ssl-cert, ca-certificates
-Provides: squid3-client
-Conflicts: squid3-client
-Replaces: squid3-client
 Description: Full featured Web Proxy cache (HTTP proxy) - HTTP(S) message utility
  Squid is a high-performance proxy caching server for web clients, supporting
  FTP, gopher, ICY and HTTP data objects.
@@ -76,12 +75,9 @@ Description: Full featured Web Proxy cache (HTTP proxy) - HTTP(S) message utilit
  This package contains a small utility that can be used to get URLs from the
  command line.
 
-Package: squidssl-cgi
+Package: squid-cgi
 Architecture: any
 Depends: apache2 | httpd, ${shlibs:Depends}, ${misc:Depends}
-Provides: squid3-cgi
-Conflicts: squid3-cgi
-Replaces: squid3-cgi
 Description: Full featured Web Proxy cache (HTTP proxy) - control CGI
  Squid is a high-performance proxy caching server for web clients, supporting
  FTP, gopher, ICY and HTTP data objects.
@@ -89,7 +85,7 @@ Description: Full featured Web Proxy cache (HTTP proxy) - control CGI
  This package contains a CGI program that can be used to query and administrate
  a `squid' proxy cache through a web browser.
 
-Package: squidssl-purge
+Package: squid-purge
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
 Description: Full featured Web Proxy cache (HTTP proxy) - cache management utility

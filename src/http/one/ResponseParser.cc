@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2022 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -9,9 +9,10 @@
 #include "squid.h"
 #include "Debug.h"
 #include "http/one/ResponseParser.h"
-#include "http/one/Tokenizer.h"
 #include "http/ProtocolVersion.h"
+#include "parser/Tokenizer.h"
 #include "profiler/Profiler.h"
+#include "sbuf/Stream.h"
 #include "SquidConfig.h"
 
 const SBuf Http::One::ResponseParser::IcyMagic("ICY ");
@@ -47,58 +48,62 @@ Http::One::ResponseParser::firstLineSize() const
 // NP: we found the protocol version and consumed it already.
 // just need the status code and reason phrase
 int
-Http::One::ResponseParser::parseResponseStatusAndReason(Http1::Tokenizer &tok, const CharacterSet &WspDelim)
+Http::One::ResponseParser::parseResponseStatusAndReason(Tokenizer &tok)
 {
-    if (!completedStatus_) {
-        debugs(74, 9, "seek status-code in: " << tok.remaining().substr(0,10) << "...");
-        /* RFC 7230 section 3.1.2 - status code is 3 DIGIT octets.
-         * There is no limit on what those octets may be.
-         * 000 through 999 are all valid.
-         */
-        int64_t statusValue;
-        if (tok.int64(statusValue, 10, false, 3) && tok.skipOne(WspDelim)) {
-
-            debugs(74, 6, "found int64 status-code=" << statusValue);
-            statusCode_ = static_cast<Http::StatusCode>(statusValue);
-
+    try {
+        if (!completedStatus_) {
+            debugs(74, 9, "seek status-code in: " << tok.remaining().substr(0,10) << "...");
+            ParseResponseStatus(tok, statusCode_);
             buf_ = tok.remaining(); // resume checkpoint
             completedStatus_ = true;
-
-        } else if (tok.atEnd()) {
-            debugs(74, 6, "Parser needs more data");
-            return 0; // need more to be sure we have it all
-
-        } else {
-            debugs(74, 6, "invalid status-line. invalid code.");
-            return -1; // invalid status, a single SP terminator required
         }
         // NOTE: any whitespace after the single SP is part of the reason phrase.
-    }
 
-    /* RFC 7230 says we SHOULD ignore the reason phrase content
-     * but it has a definite valid vs invalid character set.
-     * We interpret the SHOULD as ignoring absence and syntax, but
-     * producing an error if it contains an invalid octet.
-     */
+        /* RFC 7230 says we SHOULD ignore the reason phrase content
+         * but it has a definite valid vs invalid character set.
+         * We interpret the SHOULD as ignoring absence and syntax, but
+         * producing an error if it contains an invalid octet.
+         */
 
-    debugs(74, 9, "seek reason-phrase in: " << tok.remaining().substr(0,50) << "...");
-
-    // if we got here we are still looking for reason-phrase bytes
-    static const CharacterSet phraseChars = CharacterSet::WSP + CharacterSet::VCHAR + CharacterSet::OBSTEXT;
-    (void)tok.prefix(reasonPhrase_, phraseChars); // optional, no error if missing
-    try {
-        if (skipLineTerminator(tok)) {
-            debugs(74, DBG_DATA, "parse remaining buf={length=" << tok.remaining().length() << ", data='" << tok.remaining() << "'}");
-            buf_ = tok.remaining(); // resume checkpoint
-            return 1;
-        }
+        debugs(74, 9, "seek reason-phrase in: " << tok.remaining().substr(0,50) << "...");
+        // if we got here we are still looking for reason-phrase bytes
+        static const CharacterSet phraseChars = CharacterSet::WSP + CharacterSet::VCHAR + CharacterSet::OBSTEXT;
+        (void)tok.prefix(reasonPhrase_, phraseChars); // optional, no error if missing
+        skipLineTerminator(tok);
+        buf_ = tok.remaining(); // resume checkpoint
+        debugs(74, DBG_DATA, Raw("leftovers", buf_.rawContent(), buf_.length()));
+        return 1;
+    } catch (const InsufficientInput &) {
         reasonPhrase_.clear();
         return 0; // need more to be sure we have it all
-
     } catch (const std::exception &ex) {
         debugs(74, 6, "invalid status-line: " << ex.what());
     }
     return -1;
+}
+
+void
+Http::One::ResponseParser::ParseResponseStatus(Tokenizer &tok, StatusCode &code)
+{
+    int64_t statusValue;
+    if (tok.int64(statusValue, 10, false, 3) && tok.skipOne(Parser::DelimiterCharacters())) {
+        debugs(74, 6, "raw status-code=" << statusValue);
+        code = static_cast<StatusCode>(statusValue); // may be invalid
+
+        // RFC 7230 Section 3.1.2 says status-code is exactly three DIGITs
+        if (code <= 99)
+            throw TextException(ToSBuf("status-code too short: ", code), Here());
+
+        // Codes with a non-standard first digit (a.k.a. response class) are
+        // considered semantically invalid per the following HTTP WG discussion:
+        // https://lists.w3.org/Archives/Public/ietf-http-wg/2010AprJun/0354.html
+        if (code >= 600)
+            throw TextException(ToSBuf("status-code from an invalid response class: ", code), Here());
+    } else if (tok.atEnd()) {
+        throw InsufficientInput();
+    } else {
+        throw TextException("syntactically invalid status-code area", Here());
+    }
 }
 
 /**
@@ -119,15 +124,13 @@ Http::One::ResponseParser::parseResponseStatusAndReason(Http1::Tokenizer &tok, c
 int
 Http::One::ResponseParser::parseResponseFirstLine()
 {
-    Http1::Tokenizer tok(buf_);
-
-    const CharacterSet &WspDelim = DelimiterCharacters();
+    Tokenizer tok(buf_);
 
     if (msgProtocol_.protocol != AnyP::PROTO_NONE) {
         debugs(74, 6, "continue incremental parse for " << msgProtocol_);
         debugs(74, DBG_DATA, "parse remaining buf={length=" << tok.remaining().length() << ", data='" << tok.remaining() << "'}");
         // we already found the magic, but not the full line. keep going.
-        return parseResponseStatusAndReason(tok, WspDelim);
+        return parseResponseStatusAndReason(tok);
 
     } else if (tok.skip(Http1magic)) {
         debugs(74, 6, "found prefix magic " << Http1magic);
@@ -135,6 +138,7 @@ Http::One::ResponseParser::parseResponseFirstLine()
 
         // magic contains major version, still need to find minor DIGIT
         int64_t verMinor;
+        const auto &WspDelim = DelimiterCharacters();
         if (tok.int64(verMinor, 10, false, 1) && tok.skipOne(WspDelim)) {
             msgProtocol_.protocol = AnyP::PROTO_HTTP;
             msgProtocol_.major = 1;
@@ -144,7 +148,7 @@ Http::One::ResponseParser::parseResponseFirstLine()
 
             debugs(74, DBG_DATA, "parse remaining buf={length=" << tok.remaining().length() << ", data='" << tok.remaining() << "'}");
             buf_ = tok.remaining(); // resume checkpoint
-            return parseResponseStatusAndReason(tok, WspDelim);
+            return parseResponseStatusAndReason(tok);
 
         } else if (tok.atEnd())
             return 0; // need more to be sure we have it all
@@ -158,9 +162,14 @@ Http::One::ResponseParser::parseResponseFirstLine()
         // NP: ICY has no /major.minor details
         debugs(74, DBG_DATA, "parse remaining buf={length=" << tok.remaining().length() << ", data='" << tok.remaining() << "'}");
         buf_ = tok.remaining(); // resume checkpoint
-        return parseResponseStatusAndReason(tok, WspDelim);
-
-    } else if (buf_.length() > Http1magic.length() && buf_.length() > IcyMagic.length()) {
+        return parseResponseStatusAndReason(tok);
+    } else if (buf_.length() < Http1magic.length() && Http1magic.startsWith(buf_)) {
+        debugs(74, 7, Raw("valid HTTP/1 prefix", buf_.rawContent(), buf_.length()));
+        return 0;
+    } else if (buf_.length() < IcyMagic.length() && IcyMagic.startsWith(buf_)) {
+        debugs(74, 7, Raw("valid ICY prefix", buf_.rawContent(), buf_.length()));
+        return 0;
+    } else {
         debugs(74, 2, "unknown/missing prefix magic. Interpreting as HTTP/0.9");
         // found something that looks like an HTTP/0.9 response
         // Gateway/Transform it into HTTP/1.1
@@ -180,7 +189,9 @@ Http::One::ResponseParser::parseResponseFirstLine()
         return 1; // no more parsing
     }
 
-    return 0; // need more to parse anything.
+    // unreachable
+    assert(false);
+    return -1;
 }
 
 bool

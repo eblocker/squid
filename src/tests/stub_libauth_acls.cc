@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2022 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -9,13 +9,13 @@
 #include "squid.h"
 
 #define STUB_API "auth/libacls.la"
-#include "STUB.h"
+#include "tests/STUB.h"
 
 #if USE_AUTH
-#include "acl/Acl.h" /* for allow_t */
+#include "acl/Acl.h" /* for Acl::Answer */
 
 #include "auth/Acl.h"
-allow_t AuthenticateAcl(ACLChecklist *) STUB_RETVAL(ACCESS_DENIED)
+Acl::Answer AuthenticateAcl(ACLChecklist *) STUB_RETVAL(ACCESS_DENIED)
 
 #include "auth/AclMaxUserIp.h"
 ACL * ACLMaxUserIP::clone() const STUB_RETVAL(NULL)

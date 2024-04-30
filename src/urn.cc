@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2022 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -9,6 +9,8 @@
 /* DEBUG: section 52    URN Parsing */
 
 #include "squid.h"
+#include "AccessLogEntry.h"
+#include "acl/FilledChecklist.h"
 #include "base/TextException.h"
 #include "cbdata.h"
 #include "errorpage.h"
@@ -33,23 +35,30 @@ class UrnState : public StoreClient
     CBDATA_CLASS(UrnState);
 
 public:
+    explicit UrnState(const AccessLogEntry::Pointer &anAle): ale(anAle) {}
+
     void created (StoreEntry *newEntry);
     void start (HttpRequest *, StoreEntry *);
     void setUriResFromRequest(HttpRequest *);
 
     virtual ~UrnState();
 
-    StoreEntry *entry;
-    store_client *sc;
-    StoreEntry *urlres_e;
+    StoreEntry *entry = nullptr;
+    store_client *sc = nullptr;
+    StoreEntry *urlres_e = nullptr;
     HttpRequest::Pointer request;
     HttpRequest::Pointer urlres_r;
+    AccessLogEntry::Pointer ale; ///< details of the requesting transaction
 
     char reqbuf[URN_REQBUF_SZ] = { '\0' };
     int reqofs = 0;
 
 private:
-    char *urlres;
+    /* StoreClient API */
+    virtual LogTags *loggingTags() { return ale ? &ale->cache.code : nullptr; }
+    virtual void fillChecklist(ACLFilledChecklist &) const;
+
+    char *urlres = nullptr;
 };
 
 typedef struct {
@@ -143,7 +152,7 @@ UrnState::setUriResFromRequest(HttpRequest *r)
 
     if (!urlres_r) {
         debugs(52, 3, "Bad uri-res URL " << local_urlres);
-        ErrorState *err = new ErrorState(ERR_URN_RESOLVE, Http::scNotFound, r);
+        const auto err = new ErrorState(ERR_URN_RESOLVE, Http::scNotFound, r, ale);
         err->url = xstrdup(local_urlres);
         errorAppendEntry(entry, err);
         return;
@@ -170,15 +179,24 @@ UrnState::start(HttpRequest * r, StoreEntry * e)
 }
 
 void
-UrnState::created(StoreEntry *newEntry)
+UrnState::fillChecklist(ACLFilledChecklist &checklist) const
 {
-    urlres_e = newEntry;
+    checklist.setRequest(request.getRaw());
+    checklist.al = ale;
+}
 
-    if (urlres_e->isNull()) {
+void
+UrnState::created(StoreEntry *e)
+{
+    if (!e || (e->hittingRequiresCollapsing() && !startCollapsingOn(*e, false))) {
         urlres_e = storeCreateEntry(urlres, urlres, RequestFlags(), Http::METHOD_GET);
         sc = storeClientListAdd(urlres_e, this);
-        FwdState::fwdStart(Comm::ConnectionPointer(), urlres_e, urlres_r.getRaw());
+        FwdState::Start(Comm::ConnectionPointer(), urlres_e, urlres_r.getRaw(), ale);
+        // TODO: StoreClients must either store/lock or abandon found entries.
+        //if (e)
+        //    e->abandon();
     } else {
+        urlres_e = e;
         urlres_e->lock("UrnState::created");
         sc = storeClientListAdd(urlres_e, this);
     }
@@ -195,9 +213,9 @@ UrnState::created(StoreEntry *newEntry)
 }
 
 void
-urnStart(HttpRequest * r, StoreEntry * e)
+urnStart(HttpRequest *r, StoreEntry *e, const AccessLogEntryPointer &ale)
 {
-    UrnState *anUrn = new UrnState();
+    const auto anUrn = new UrnState(ale);
     anUrn->start (r, e);
 }
 
@@ -230,7 +248,6 @@ urnHandleReply(void *data, StoreIOBuffer result)
     url_entry *urls;
     url_entry *u;
     url_entry *min_u;
-    MemBuf *mb = NULL;
     ErrorState *err;
     int i;
     int urlcnt = 0;
@@ -240,6 +257,12 @@ urnHandleReply(void *data, StoreIOBuffer result)
     debugs(52, 3, "urnHandleReply: Called with size=" << result.length << ".");
 
     if (EBIT_TEST(urlres_e->flags, ENTRY_ABORTED) || result.flags.error) {
+        delete urnState;
+        return;
+    }
+
+    if (!e->isAccepting()) {
+        debugs(52, 3, "terminating due to bad " << *e);
         delete urnState;
         return;
     }
@@ -276,14 +299,14 @@ urnHandleReply(void *data, StoreIOBuffer result)
     }
 
     s = buf + k;
-    assert(urlres_e->getReply());
+    // TODO: Check whether we should parse urlres_e reply, as before 528b2c61.
     rep = new HttpReply;
     rep->parseCharBuf(buf, k);
     debugs(52, 3, "reply exists, code=" << rep->sline.status() << ".");
 
     if (rep->sline.status() != Http::scOkay) {
         debugs(52, 3, "urnHandleReply: failed.");
-        err = new ErrorState(ERR_URN_RESOLVE, Http::scNotFound, urnState->request.getRaw());
+        err = new ErrorState(ERR_URN_RESOLVE, Http::scNotFound, urnState->request.getRaw(), urnState->ale);
         err->url = xstrdup(e->url());
         errorAppendEntry(e, err);
         delete rep;
@@ -300,7 +323,7 @@ urnHandleReply(void *data, StoreIOBuffer result)
 
     if (!urls) {     /* unknown URN error */
         debugs(52, 3, "urnTranslateDone: unknown URN " << e->url());
-        err = new ErrorState(ERR_URN_RESOLVE, Http::scNotFound, urnState->request.getRaw());
+        err = new ErrorState(ERR_URN_RESOLVE, Http::scNotFound, urnState->request.getRaw(), urnState->ale);
         err->url = xstrdup(e->url());
         errorAppendEntry(e, err);
         delete urnState;
@@ -315,8 +338,8 @@ urnHandleReply(void *data, StoreIOBuffer result)
     min_u = urnFindMinRtt(urls, urnState->request->method, NULL);
     qsort(urls, urlcnt, sizeof(*urls), url_entry_sort);
     e->buffer();
-    mb = new MemBuf;
-    mb->init();
+    SBuf body;
+    SBuf *mb = &body; // diff reduction hack; TODO: Remove
     mb->appendf( "<TITLE>Select URL for %s</TITLE>\n"
                  "<STYLE type=\"text/css\"><!--BODY{background-color:#ffffff;font-family:verdana,sans-serif}--></STYLE>\n"
                  "<H2>Select URL for %s</H2>\n"
@@ -345,14 +368,13 @@ urnHandleReply(void *data, StoreIOBuffer result)
         "</ADDRESS>\n",
         APP_FULLNAME, getMyHostname());
     rep = new HttpReply;
-    rep->setHeaders(Http::scFound, NULL, "text/html", mb->contentSize(), 0, squid_curtime);
+    rep->setHeaders(Http::scFound, NULL, "text/html", mb->length(), 0, squid_curtime);
 
     if (min_u) {
         rep->header.putStr(Http::HdrType::LOCATION, min_u->url);
     }
 
-    rep->body.setMb(mb);
-    /* don't clean or delete mb; rep->body owns it now */
+    rep->body.set(body);
     e->replaceHttpReply(rep);
     e->complete();
 
@@ -362,6 +384,7 @@ urnHandleReply(void *data, StoreIOBuffer result)
     }
 
     safe_free(urls);
+
     delete urnState;
 }
 
@@ -370,7 +393,6 @@ urnParseReply(const char *inbuf, const HttpRequestMethod& m)
 {
     char *buf = xstrdup(inbuf);
     char *token;
-    char *host;
     url_entry *list;
     url_entry *old;
     int n = 32;
@@ -389,24 +411,23 @@ urnParseReply(const char *inbuf, const HttpRequestMethod& m)
             safe_free(old);
         }
 
-        host = urlHostname(token);
-
-        if (NULL == host)
+        AnyP::Uri uri;
+        if (!uri.parse(m, SBuf(token)) || !*uri.host())
             continue;
 
 #if USE_ICMP
-        list[i].rtt = netdbHostRtt(host);
+        list[i].rtt = netdbHostRtt(uri.host());
 
         if (0 == list[i].rtt) {
-            debugs(52, 3, "urnParseReply: Pinging " << host);
-            netdbPingSite(host);
+            debugs(52, 3, "Pinging " << uri.host());
+            netdbPingSite(uri.host());
         }
 #else
         list[i].rtt = 0;
 #endif
 
-        list[i].url = xstrdup(token);
-        list[i].host = xstrdup(host);
+        list[i].url = xstrdup(uri.absolute().c_str());
+        list[i].host = xstrdup(uri.host());
         // TODO: Use storeHas() or lock/unlock entry to avoid creating unlocked
         // ones.
         list[i].flags.cached = storeGetPublic(list[i].url, m) ? 1 : 0;

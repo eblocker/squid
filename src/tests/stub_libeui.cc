@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2022 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -9,7 +9,7 @@
 #include "squid.h"
 
 #define STUB_API "eui/libeui.la"
-#include "STUB.h"
+#include "tests/STUB.h"
 
 #include "eui/Config.h"
 Eui::EuiConfig Eui::TheConfig;

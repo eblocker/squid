@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2022 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -115,6 +115,13 @@ public:
      */
     SBuf::size_type skipAll(const CharacterSet &discardables);
 
+    /** skips a given character sequence (string);
+     * does nothing if the sequence is empty
+     *
+     * \throws exception on mismatching prefix or InsufficientInput
+     */
+    void skipRequired(const char *description, const SBuf &tokenToSkip);
+
     /** Removes a single trailing character from the set.
      *
      * \return whether a character was removed
@@ -142,6 +149,19 @@ public:
      * \return whether the parsing was successful
      */
     bool int64(int64_t &result, int base = 0, bool allowSign = true, SBuf::size_type limit = SBuf::npos);
+
+    /*
+     * The methods below mimic their counterparts documented above, but they
+     * throw on errors, including InsufficientInput. The field description
+     * parameter is used for error reporting and debugging.
+     */
+
+    /// prefix() wrapper but throws InsufficientInput if input contains
+    /// nothing but the prefix (i.e. if the prefix is not "terminated")
+    SBuf prefix(const char *description, const CharacterSet &tokenChars, SBuf::size_type limit = SBuf::npos);
+
+    /// int64() wrapper but limited to unsigned decimal integers (for now)
+    int64_t udec64(const char *description, SBuf::size_type limit = SBuf::npos);
 
 protected:
     SBuf consume(const SBuf::size_type n);

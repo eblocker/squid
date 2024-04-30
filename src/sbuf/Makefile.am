@@ -1,4 +1,4 @@
-## Copyright (C) 1996-2019 The Squid Software Foundation and contributors
+## Copyright (C) 1996-2022 The Squid Software Foundation and contributors
 ##
 ## Squid software is distributed under GPLv2+ license and includes
 ## contributions from numerous individuals and organizations.
@@ -15,7 +15,6 @@ libsbuf_la_SOURCES = \
 	Algorithms.h \
 	DetailedStats.cc \
 	DetailedStats.h \
-	forward.h \
 	List.cc \
 	List.h \
 	MemBlob.cc \
@@ -24,4 +23,5 @@ libsbuf_la_SOURCES = \
 	SBuf.h \
 	Stats.cc \
 	Stats.h \
-	Stream.h
+	Stream.h \
+	forward.h

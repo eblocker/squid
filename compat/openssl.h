@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2022 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -22,6 +22,8 @@
 #if !USE_OPENSSL
 #error compat/openssl.h depends on USE_OPENSSL
 #endif
+
+#include <algorithm>
 
 #if HAVE_OPENSSL_ASN1_H
 #include <openssl/asn1.h>
@@ -177,9 +179,9 @@ extern "C" {
     X509_get0_signature(ASN1_BIT_STRING **psig, X509_ALGOR **palg, const X509 *x)
     {
         if (psig)
-            *psig = (ASN1_BIT_STRING *)&x->signature;
+            *psig = x->signature;
         if (palg)
-            *palg = (X509_ALGOR *)&x->sig_alg;
+            *palg = x->sig_alg;
     }
 #endif
 
@@ -222,6 +224,29 @@ extern "C" {
 #endif /* CRYPTO_LOCK_X509 */
 #endif /* X509_up_ref */
 
+#if !HAVE_LIBCRYPTO_X509_CHAIN_UP_REF
+    inline STACK_OF(X509) *
+    X509_chain_up_ref(STACK_OF(X509) *chain)
+    {
+        if (STACK_OF(X509) *newChain = sk_X509_dup(chain)) {
+            bool error = false;
+            int i;
+            for (i = 0; !error && i < sk_X509_num(newChain); i++) {
+                X509 *cert = sk_X509_value(newChain, i);
+                if (!X509_up_ref(cert))
+                    error = true;
+            }
+            if (!error)
+                return newChain;
+
+            for (int k = 0; k < i; k++)
+                X509_free(sk_X509_value(newChain, k));
+            sk_X509_free(newChain);
+        }
+        return nullptr;
+    }
+#endif /* X509_chain_up_ref */
+
 #if !HAVE_LIBCRYPTO_X509_VERIFY_PARAM_GET_DEPTH
     inline int
     X509_VERIFY_PARAM_get_depth(const X509_VERIFY_PARAM *param)
@@ -230,6 +255,13 @@ extern "C" {
     }
 #endif
 
+#if !HAVE_SSL_GET0_PARAM
+    inline X509_VERIFY_PARAM *
+    SSL_get0_param(SSL *ssl)
+    {
+        return ssl->param;
+    }
+#endif
 } /* extern "C" */
 
 inline void

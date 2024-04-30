@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2022 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -9,36 +9,26 @@
 #include "squid.h"
 #include "ssl/gadgets.h"
 
-EVP_PKEY * Ssl::createSslPrivateKey()
+static Security::PrivateKeyPointer
+CreateRsaPrivateKey()
 {
-    Security::PrivateKeyPointer pkey(EVP_PKEY_new());
-
-    if (!pkey)
-        return NULL;
-
-    BIGNUM_Pointer bn(BN_new());
-    if (!bn)
-        return NULL;
-
-    if (!BN_set_word(bn.get(), RSA_F4))
-        return NULL;
-
-    Ssl::RSA_Pointer rsa(RSA_new());
+    Ssl::EVP_PKEY_CTX_Pointer rsa(EVP_PKEY_CTX_new_id(EVP_PKEY_RSA, nullptr));
     if (!rsa)
-        return NULL;
+        return nullptr;
+
+    if (EVP_PKEY_keygen_init(rsa.get()) <= 0)
+        return nullptr;
 
     int num = 2048; // Maybe use 4096 RSA keys, or better make it configurable?
-    if (!RSA_generate_key_ex(rsa.get(), num, bn.get(), NULL))
-        return NULL;
+    if (EVP_PKEY_CTX_set_rsa_keygen_bits(rsa.get(), num) <= 0)
+        return nullptr;
 
-    if (!rsa)
-        return NULL;
+    /* Generate key */
+    EVP_PKEY *pkey = nullptr;
+    if (EVP_PKEY_keygen(rsa.get(), &pkey) <= 0)
+        return nullptr;
 
-    if (!EVP_PKEY_assign_RSA(pkey.get(), (rsa.get())))
-        return NULL;
-
-    rsa.release();
-    return pkey.release();
+    return Security::PrivateKeyPointer(pkey);
 }
 
 /**
@@ -56,7 +46,7 @@ static bool setSerialNumber(ASN1_INTEGER *ai, BIGNUM const* serial)
         if (!bn)
             return false;
 
-        if (!BN_pseudo_rand(bn.get(), 64, 0, 0))
+        if (!BN_rand(bn.get(), 64, 0, 0))
             return false;
     }
 
@@ -118,9 +108,7 @@ bool Ssl::readCertAndPrivateKeyFromMemory(Security::CertPointer & cert, Security
     Ssl::BIO_Pointer bio(BIO_new(BIO_s_mem()));
     BIO_puts(bio.get(), bufferToRead);
 
-    X509 * certPtr = NULL;
-    cert.resetWithoutLocking(PEM_read_bio_X509(bio.get(), &certPtr, 0, 0));
-    if (!cert)
+    if (!(cert = Ssl::ReadX509Certificate(bio)))
         return false;
 
     EVP_PKEY * pkeyPtr = NULL;
@@ -136,9 +124,7 @@ bool Ssl::readCertFromMemory(Security::CertPointer & cert, char const * bufferTo
     Ssl::BIO_Pointer bio(BIO_new(BIO_s_mem()));
     BIO_puts(bio.get(), bufferToRead);
 
-    X509 * certPtr = NULL;
-    cert.resetWithoutLocking(PEM_read_bio_X509(bio.get(), &certPtr, 0, 0));
-    if (!cert)
+    if (!(cert = Ssl::ReadX509Certificate(bio)))
         return false;
 
     return true;
@@ -376,8 +362,14 @@ mimicExtensions(Security::CertPointer & cert, Security::CertPointer const &mimic
         DecipherOnly
     };
 
-    EVP_PKEY *certKey = X509_get_pubkey(mimicCert.get());
-    const bool rsaPkey = (EVP_PKEY_get0_RSA(certKey) != nullptr);
+    // XXX: Add PublicKeyPointer. In OpenSSL, public and private keys are
+    // internally represented by EVP_PKEY pair, but GnuTLS uses distinct types.
+    const Security::PrivateKeyPointer certKey(X509_get_pubkey(mimicCert.get()));
+#if OPENSSL_VERSION_MAJOR < 3
+    const auto rsaPkey = EVP_PKEY_get0_RSA(certKey.get()) != nullptr;
+#else
+    const auto rsaPkey = EVP_PKEY_is_a(certKey.get(), "RSA") == 1;
+#endif
 
     int added = 0;
     int nid;
@@ -504,7 +496,7 @@ static bool buildCertificate(Security::CertPointer & cert, Ssl::CertificatePrope
     if (aTime) {
         if (!X509_set1_notAfter(cert.get(), aTime))
             return false;
-    } else if (!X509_gmtime_adj(X509_getm_notAfter(cert.get()), 60*60*24*356*3))
+    } else if (!X509_gmtime_adj(X509_getm_notAfter(cert.get()), 60*60*24*365*3))
         return false;
 
     int addedExtensions = 0;
@@ -546,13 +538,8 @@ static bool buildCertificate(Security::CertPointer & cert, Ssl::CertificatePrope
 
 static bool generateFakeSslCertificate(Security::CertPointer & certToStore, Security::PrivateKeyPointer & pkeyToStore, Ssl::CertificateProperties const &properties,  Ssl::BIGNUM_Pointer const &serial)
 {
-    Security::PrivateKeyPointer pkey;
     // Use signing certificates private key as generated certificate private key
-    if (properties.signWithPkey.get())
-        pkey.resetAndLock(properties.signWithPkey.get());
-    else // if not exist generate one
-        pkey.resetWithoutLocking(Ssl::createSslPrivateKey());
-
+    const auto pkey = properties.signWithPkey ? properties.signWithPkey : CreateRsaPrivateKey();
     if (!pkey)
         return false;
 
@@ -693,15 +680,11 @@ Ssl::OpenCertsFileForReading(Ssl::BIO_Pointer &bio, const char *filename)
     return true;
 }
 
-bool
-Ssl::ReadX509Certificate(Ssl::BIO_Pointer &bio, Security::CertPointer & cert)
+Security::CertPointer
+Ssl::ReadX509Certificate(const BIO_Pointer &bio)
 {
     assert(bio);
-    if (X509 *certificate = PEM_read_bio_X509(bio.get(), NULL, NULL, NULL)) {
-        cert.resetWithoutLocking(certificate);
-        return true;
-    }
-    return false;
+    return Security::CertPointer(PEM_read_bio_X509(bio.get(), nullptr, nullptr, nullptr));
 }
 
 bool

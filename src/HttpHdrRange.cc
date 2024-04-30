@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2022 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -226,7 +226,7 @@ HttpHdrRange::parseInit(const String * range_spec)
     int ilen;
     assert(range_spec);
     ++ParsedCount;
-    debugs(64, 8, "parsing range field: '" << range_spec << "'");
+    debugs(64, 8, "parsing range field: '" << *range_spec << "'");
     /* check range type */
 
     if (range_spec->caseCmp("bytes=", 6))
@@ -247,7 +247,7 @@ HttpHdrRange::parseInit(const String * range_spec)
                 delete specs.back();
                 specs.pop_back();
             }
-            debugs(64, 2, "ignoring invalid range field: '" << range_spec << "'");
+            debugs(64, 2, "ignoring invalid range field: '" << *range_spec << "'");
             break;
         }
 
@@ -391,7 +391,7 @@ HttpHdrRange::canonize (int64_t newClen)
     merge (goods);
     debugs(64, 3, "HttpHdrRange::canonize: finished with " << specs.size() <<
            " specs");
-    return specs.size() > 0; // fixme, should return bool
+    return specs.size() > 0; // TODO: should return bool
 }
 
 /* hack: returns true if range specs are too "complex" for Squid to handle */

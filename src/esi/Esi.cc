@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2022 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -802,7 +802,7 @@ esiProcessStream (clientStreamNode *thisNode, ClientHttpRequest *http, HttpReply
     }
 
     /* ok.. no data sent, try to pull more data in from upstream.
-     * FIXME: Don't try thisNode if we have finished reading the template
+     * TODO: Don't try thisNode if we have finished reading the template
      */
     if (!context->flags.finishedtemplate && !context->reading()
             && !context->cachedASTInUse) {
@@ -1263,7 +1263,7 @@ ESIContext::parse()
             while (buffered.getRaw() && !flags.error)
                 parseOneBuffer();
 
-        } catch (Esi::ErrorDetail &errMsg) { // FIXME: non-const for c_str()
+        } catch (Esi::ErrorDetail &errMsg) { // XXX: non-const for c_str()
             // level-2: these are protocol/syntax errors from upstream
             debugs(86, 2, "WARNING: ESI syntax error: " << errMsg);
             setError();
@@ -1421,7 +1421,7 @@ ESIContext::freeResources ()
     /* don't touch incoming, it's a pointer into buffered anyway */
 }
 
-ErrorState *clientBuildError (err_type, Http::StatusCode, char const *, Ip::Address &, HttpRequest *);
+ErrorState *clientBuildError(err_type, Http::StatusCode, char const *, Ip::Address &, HttpRequest *, const AccessLogEntry::Pointer &);
 
 /* This can ONLY be used before we have sent *any* data to the client */
 void
@@ -1439,10 +1439,11 @@ ESIContext::fail ()
     flags.error = 1;
     /* create an error object */
     // XXX: with the in-direction on remote IP. does the http->getConn()->clientConnection exist?
-    ErrorState * err = clientBuildError(errorpage, errorstatus, NULL, http->getConn()->clientConnection->remote, http->request);
+    const auto err = clientBuildError(errorpage, errorstatus, nullptr, http->getConn()->clientConnection->remote, http->request, http->al);
     err->err_msg = errormessage;
     errormessage = NULL;
     rep = err->BuildHttpReply();
+    // XXX: Leaking err!
     assert (rep->body.hasContent());
     size_t errorprogress = rep->body.contentSize();
     /* Tell esiSend where to start sending from */
@@ -1594,7 +1595,7 @@ esiLiteral::makeCacheable() const
 }
 
 ESIElement::Pointer
-esiLiteral::makeUsable(esiTreeParentPtr , ESIVarState &newVarState) const
+esiLiteral::makeUsable(esiTreeParentPtr, ESIVarState &newVarState) const
 {
     debugs(86, 5, "esiLiteral::makeUsable: Creating usable literal");
     esiLiteral * result = new esiLiteral (*this);

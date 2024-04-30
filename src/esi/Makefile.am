@@ -1,4 +1,4 @@
-## Copyright (C) 1996-2019 The Squid Software Foundation and contributors
+## Copyright (C) 1996-2022 The Squid Software Foundation and contributors
 ##
 ## Squid software is distributed under GPLv2+ license and includes
 ## contributions from numerous individuals and organizations.
@@ -25,12 +25,12 @@ ESI_PARSER_SOURCES += \
 endif
 
 libesi_la_SOURCES = \
+	$(ESI_PARSER_SOURCES) \
 	Assign.cc \
 	Assign.h \
 	Attempt.h \
 	Context.cc \
 	Context.h \
-	$(ESI_PARSER_SOURCES) \
 	Element.h \
 	Esi.cc \
 	Esi.h \

@@ -1,4 +1,4 @@
-## Copyright (C) 1996-2019 The Squid Software Foundation and contributors
+## Copyright (C) 1996-2022 The Squid Software Foundation and contributors
 ##
 ## Squid software is distributed under GPLv2+ license and includes
 ## contributions from numerous individuals and organizations.
@@ -13,12 +13,13 @@ noinst_LTLIBRARIES = libmem.la
 libmem_la_SOURCES = \
 	AllocatorProxy.cc \
 	AllocatorProxy.h \
-	forward.h \
-	old_api.cc \
 	Meter.h \
 	Pool.cc \
 	Pool.h \
 	PoolChunked.cc \
 	PoolChunked.h \
 	PoolMalloc.cc \
-	PoolMalloc.h
+	PoolMalloc.h \
+	PoolingAllocator.h \
+	forward.h \
+	old_api.cc

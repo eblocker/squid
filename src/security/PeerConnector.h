@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2022 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -12,6 +12,7 @@
 #include "acl/Acl.h"
 #include "base/AsyncCbdataCalls.h"
 #include "base/AsyncJob.h"
+#include "base/JobWait.h"
 #include "CommCalls.h"
 #include "http/forward.h"
 #include "security/EncryptorAnswer.h"
@@ -24,41 +25,23 @@
 #include <queue>
 
 class ErrorState;
+class Downloader;
 class AccessLogEntry;
 typedef RefCount<AccessLogEntry> AccessLogEntryPointer;
 
 namespace Security
 {
 
+class IoResult;
+typedef RefCount<IoResult> IoResultPointer;
+
 /**
- * Initiates encryption on a connection to peers or servers.
- * Despite its name does not perform any connect(2) operations.
+ * Initiates encryption of a given open TCP connection to a peer or server.
+ * Despite its name does not perform any connect(2) operations. Owns the
+ * connection during TLS negotiations. The caller receives EncryptorAnswer.
  *
  * Contains common code and interfaces of various specialized PeerConnector's,
  * including peer certificate validation code.
- \par
- * The caller receives a call back with Security::EncryptorAnswer. If answer.error
- * is not nil, then there was an error and the encryption to the peer or server
- * was not fully established. The error object is suitable for error response
- * generation.
- \par
- * The caller must monitor the connection for closure because this
- * job will not inform the caller about such events.
- \par
- * PeerConnector class currently supports a form of TLS negotiation timeout,
- * which is accounted only when sets the read timeout from encrypted peers/servers.
- * For a complete solution, the caller must monitor the overall connection
- * establishment timeout and close the connection on timeouts. This is probably
- * better than having dedicated (or none at all!) timeouts for peer selection,
- * DNS lookup, TCP handshake, SSL handshake, etc. Some steps may have their
- * own timeout, but not all steps should be forced to have theirs.
- * XXX: tunnel.cc and probably other subsystems do not have an "overall
- * connection establishment" timeout. We need to change their code so that they
- * start monitoring earlier and close on timeouts. This change may need to be
- * discussed on squid-dev.
- \par
- * This job never closes the connection, even on errors. If a 3rd-party
- * closes the connection, this job simply quits without informing the caller.
  */
 class PeerConnector: virtual public AsyncJob
 {
@@ -83,6 +66,9 @@ public:
                   const time_t timeout = 0);
     virtual ~PeerConnector();
 
+    /// hack: whether the connection requires fwdPconnPool->noteUses()
+    bool noteFwdPconnUse;
+
 protected:
     // AsyncJob API
     virtual void start();
@@ -90,20 +76,11 @@ protected:
     virtual void swanSong();
     virtual const char *status() const;
 
+    /// The connection read timeout callback handler.
+    void commTimeoutHandler(const CommTimeoutCbParams &);
+
     /// The comm_close callback handler.
     void commCloseHandler(const CommCloseCbParams &params);
-
-    /// Inform us that the connection is closed. Does the required clean-up.
-    void connectionClosed(const char *reason);
-
-    /// Sets up TCP socket-related notification callbacks if things go wrong.
-    /// If socket already closed return false, else install the comm_close
-    /// handler to monitor the socket.
-    bool prepareSocket();
-
-    /// Sets the read timeout to avoid getting stuck while reading from a
-    /// silent server
-    void setReadTimeout();
 
     /// \returns true on successful TLS session initialization
     virtual bool initialize(Security::SessionPointer &);
@@ -117,23 +94,27 @@ protected:
     /// Otherwise, returns true, regardless of negotiation success/failure.
     bool sslFinalized();
 
-    /// Called when the negotiation step aborted because data needs to
-    /// be transferred to/from server or on error. In the first case
-    /// setups the appropriate Comm::SetSelect handler. In second case
-    /// fill an error and report to the PeerConnector caller.
-    void handleNegotiateError(const int result);
+    /// Called after each negotiation step to handle the result
+    void handleNegotiationResult(const Security::IoResult &);
 
     /// Called when the openSSL SSL_connect fnction request more data from
     /// the remote SSL server. Sets the read timeout and sets the
     /// Squid COMM_SELECT_READ handler.
     void noteWantRead();
 
+    /// Whether TLS negotiation has been paused and not yet resumed
+    bool isSuspended() const { return static_cast<bool>(suspendedError_); }
+
 #if USE_OPENSSL
-    /// Run the certificates list sent by the SSL server and check if there
-    /// are missing certificates. Adds to the urlOfMissingCerts list the
-    /// URLS of missing certificates if this information provided by the
-    /// issued certificates with Authority Info Access extension.
-    bool checkForMissingCertificates();
+    /// Suspends TLS negotiation to download the missing certificates
+    /// \param lastError an error to handle when resuming negotiations
+    void suspendNegotiation(const Security::IoResult &lastError);
+
+    /// Resumes TLS negotiation paused by suspendNegotiation()
+    void resumeNegotiation();
+
+    /// Either initiates fetching of missing certificates or bails with an error
+    void handleMissingCertificates(const Security::IoResult &lastError);
 
     /// Start downloading procedure for the given URL.
     void startCertDownloading(SBuf &url);
@@ -147,10 +128,7 @@ protected:
     virtual void noteWantWrite();
 
     /// Called when the SSL_connect function aborts with an SSL negotiation error
-    /// \param result the SSL_connect return code
-    /// \param ssl_error the error code returned from the SSL_get_error function
-    /// \param ssl_lib_error the error returned from the ERR_Get_Error function
-    virtual void noteNegotiationError(const int result, const int ssl_error, const int ssl_lib_error);
+    virtual void noteNegotiationError(const Security::ErrorDetailPointer &);
 
     /// Called when the SSL negotiation to the server completed and the certificates
     /// validated using the cert validator.
@@ -164,11 +142,20 @@ protected:
     /// mimics FwdState to minimize changes to FwdState::initiate/negotiateSsl
     Comm::ConnectionPointer const &serverConnection() const { return serverConn; }
 
-    void bail(ErrorState *error); ///< Return an error to the PeerConnector caller
+    /// sends the given error to the initiator
+    void bail(ErrorState *error);
 
-    /// Callback the caller class, and pass the ready to communicate secure
-    /// connection or an error if PeerConnector failed.
+    /// sends the encrypted connection to the initiator
+    void sendSuccess();
+
+    /// a bail(), sendSuccess() helper: sends results to the initiator
     void callBack();
+
+    /// a bail(), sendSuccess() helper: stops monitoring the connection
+    void disconnect();
+
+    /// updates connection usage history before the connection is closed
+    void countFailingConnection();
 
     /// If called the certificates validator will not used
     void bypassCertValidator() {useCertValidator_ = false;}
@@ -176,6 +163,9 @@ protected:
     /// Called after negotiation finishes to record connection details for
     /// logging
     void recordNegotiationDetails();
+
+    /// convenience method to get to the answer fields
+    EncryptorAnswer &answer();
 
     HttpRequestPointer request; ///< peer connection trigger or cause
     Comm::ConnectionPointer serverConn; ///< TCP connection to the peer
@@ -186,19 +176,24 @@ private:
     PeerConnector &operator =(const PeerConnector &); // not implemented
 
 #if USE_OPENSSL
+    unsigned int certDownloadNestingLevel() const;
+
     /// Process response from cert validator helper
     void sslCrtvdHandleReply(Ssl::CertValidationResponsePointer);
 
     /// Check SSL errors returned from cert validator against sslproxy_cert_error access list
-    Security::CertErrors *sslCrtvdCheckForErrors(Ssl::CertValidationResponse const &, Ssl::ErrorDetail *&);
+    Security::CertErrors *sslCrtvdCheckForErrors(Ssl::CertValidationResponse const &, ErrorDetailPointer &);
+
+    bool computeMissingCertificateUrls(const Connection &);
 #endif
 
     static void NegotiateSsl(int fd, void *data);
     void negotiateSsl();
 
-    /// The maximum allowed missing certificates downloads.
+    /// The maximum number of missing certificates a single PeerConnector may download
     static const unsigned int MaxCertsDownloads = 10;
-    /// The maximum allowed nested certificates downloads.
+
+    /// The maximum number of inter-dependent Downloader jobs a worker may initiate
     static const unsigned int MaxNestedDownloads = 3;
 
     AsyncCall::Pointer closeHandler; ///< we call this when the connection closed
@@ -208,6 +203,16 @@ private:
     /// The list of URLs where missing certificates should be downloaded.
     std::queue<SBuf> urlsOfMissingCerts;
     unsigned int certsDownloads; ///< the number of downloaded missing certificates
+
+#if USE_OPENSSL
+    /// successfully downloaded intermediate certificates (omitted by the peer)
+    Ssl::X509_STACK_Pointer downloadedCerts;
+#endif
+
+    /// outcome of the last (failed and) suspended negotiation attempt (or nil)
+    Security::IoResultPointer suspendedError_;
+
+    JobWait<Downloader> certDownloadWait; ///< waits for the missing certificate to be downloaded
 };
 
 } // namespace Security

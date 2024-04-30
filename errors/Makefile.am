@@ -1,4 +1,4 @@
-## Copyright (C) 1996-2019 The Squid Software Foundation and contributors
+## Copyright (C) 1996-2022 The Squid Software Foundation and contributors
 ##
 ## Squid software is distributed under GPLv2+ license and includes
 ## contributions from numerous individuals and organizations.
@@ -13,15 +13,15 @@ DEFAULT_ERROR_DIR	= $(errordir)
 DEFAULT_STYLESHEET	= $(sysconfdir)/errorpage.css
 
 ## List of automated translations possible:
-include $(srcdir)/template.list
-include $(srcdir)/language.list
+include $(srcdir)/template.am
+include $(srcdir)/language.am
 
 CLEANFILES = $(TRANSLATE_LANGUAGES) translate-warn
 EXTRA_DIST = \
 	$(ERROR_TEMPLATES) \
 	templates/error-details.txt \
-	language.list \
-	template.list \
+	language.am \
+	template.am \
 	aliases alias-link.sh alias-upgrade errorpage.css TRANSLATORS COPYRIGHT
 
 all: all-am

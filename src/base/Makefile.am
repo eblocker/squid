@@ -1,4 +1,4 @@
-## Copyright (C) 1996-2019 The Squid Software Foundation and contributors
+## Copyright (C) 1996-2022 The Squid Software Foundation and contributors
 ##
 ## Squid software is distributed under GPLv2+ license and includes
 ## contributions from numerous individuals and organizations.
@@ -16,26 +16,34 @@ libbase_la_SOURCES = \
 	AsyncCallQueue.cc \
 	AsyncCallQueue.h \
 	AsyncCbdataCalls.h \
+	AsyncFunCalls.h \
 	AsyncJob.cc \
 	AsyncJob.h \
 	AsyncJobCalls.h \
 	ByteCounter.h \
-	CbcPointer.h \
 	CbDataList.h \
+	CbcPointer.h \
 	CharacterSet.cc \
 	CharacterSet.h \
+	CodeContext.cc \
+	CodeContext.h \
 	EnumIterator.h \
 	File.cc \
 	File.h \
 	HardFun.h \
 	Here.cc \
 	Here.h \
+	InstanceId.cc \
 	InstanceId.h \
+	JobWait.cc \
+	JobWait.h \
 	Lock.h \
 	LookupTable.h \
 	LruMap.h \
 	Packable.h \
 	PackableStream.h \
+	Range.h \
+	RefCount.h \
 	RegexPattern.cc \
 	RegexPattern.h \
 	RunnersRegistry.cc \
@@ -43,4 +51,6 @@ libbase_la_SOURCES = \
 	Subscription.h \
 	TextException.cc \
 	TextException.h \
-	YesNoNone.h
+	TypeTraits.h \
+	YesNoNone.h \
+	forward.h

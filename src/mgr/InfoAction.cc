@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2022 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -14,6 +14,7 @@
 #include "globals.h"
 #include "HttpReply.h"
 #include "ipc/Messages.h"
+#include "ipc/RequestId.h"
 #include "ipc/TypedMsgHdr.h"
 #include "ipc/UdsOp.h"
 #include "mgr/Filler.h"
@@ -27,11 +28,6 @@
 void GetInfo(Mgr::InfoActionData& stats);
 void DumpInfo(Mgr::InfoActionData& stats, StoreEntry* sentry);
 void DumpMallocStatistics(StoreEntry* sentry);
-
-Mgr::InfoActionData::InfoActionData()
-{
-    memset(this, 0, sizeof(*this));
-}
 
 Mgr::InfoActionData&
 Mgr::InfoActionData::operator += (const InfoActionData& stats)

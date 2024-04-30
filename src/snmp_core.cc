@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2022 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -212,7 +212,7 @@ snmpInit(void)
     /* cachePeerTable - 1.3.6.1.4.1.3495.1.5.1 */
     snmpAddNodeStr("1.3.6.1.4.1.3495.1.5", MESH_PTBL, NULL, NULL);
 
-    /* CachePeerTableEntry (version 3) - 1.3.6.1.4.1.3495.1.5.1.3 */
+    /* CachePeerEntry (version 3) - 1.3.6.1.4.1.3495.1.5.1.3 */
     snmpAddNodeStr("1.3.6.1.4.1.3495.1.5.1", 3, NULL, NULL);
     snmpAddNodeStr("1.3.6.1.4.1.3495.1.5.1.3", MESH_PTBL_INDEX, snmp_meshPtblFn, peer_Inst);
     snmpAddNodeStr("1.3.6.1.4.1.3495.1.5.1.3", MESH_PTBL_NAME, snmp_meshPtblFn, peer_Inst);
@@ -744,7 +744,7 @@ peer_Inst(oid * name, snint * len, mib_tree_entry * current, oid_ParseFn ** Fn)
         int no = name[current->len] ;
         int i;
         // Note: This works because the Config.peers keeps its index according to its position.
-        for ( i=0 ; peers && (i < no) ; peers = peers->next , ++i ) ;
+        for ( i=0 ; peers && (i < no) ; peers = peers->next, ++i ) ;
 
         if (peers) {
             debugs(49, 6, "snmp peer_Inst: Encode peer #" << i);
@@ -947,7 +947,7 @@ snmpCreateOidFromStr(const char *str, oid **name, int *nl)
     }
 
     // if we aborted before the lst octet was found, return false.
-    safe_free(name);
+    safe_free(*name);
     return false;
 }
 

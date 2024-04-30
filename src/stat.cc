@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2022 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -1583,7 +1583,8 @@ statPeerSelect(StoreEntry * sentry)
     const int tot_used = f->cd.times_used + f->icp.times_used;
 
     /* totals */
-    cacheDigestGuessStatsReport(&f->cd.guess, sentry, "all peers");
+    static const SBuf label("all peers");
+    cacheDigestGuessStatsReport(&f->cd.guess, sentry, label);
     /* per-peer */
     storeAppendPrintf(sentry, "\nPer-peer statistics:\n");
 
@@ -1884,7 +1885,7 @@ statGraphDump(StoreEntry * e)
     GENGRAPH(client_http.kbytes_in.kb, "client_http.kbytes_in", "Client HTTP kbytes_in/sec");
     GENGRAPH(client_http.kbytes_out.kb, "client_http.kbytes_out", "Client HTTP kbytes_out/sec");
 
-    /* XXX todo: http median service times */
+    // TODO: http median service times
 
     GENGRAPH(server.all.requests, "server.all.requests", "Server requests/sec");
     GENGRAPH(server.all.errors, "server.all.errors", "Server errors/sec");
@@ -1911,8 +1912,8 @@ statGraphDump(StoreEntry * e)
     GENGRAPH(icp.kbytes_sent.kb, "icp.kbytes_sent", "ICP kbytes_sent/sec");
     GENGRAPH(icp.kbytes_recv.kb, "icp.kbytes_recv", "ICP kbytes_received/sec");
 
-    /* XXX todo: icp median service times */
-    /* XXX todo: dns median service times */
+    // TODO: icp median service times
+    // TODO: dns median service times
 
     GENGRAPH(unlink.requests, "unlink.requests", "Cache File unlink requests/sec");
     GENGRAPH(page_faults, "page_faults", "System Page Faults/sec");

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2022 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -186,8 +186,8 @@ public:
     StoreMapUpdate &operator =(const StoreMapUpdate &other) = delete;
 
     StoreEntry *entry; ///< the store entry being updated
-    Edition stale; ///< old anchor and chain being updated
-    Edition fresh; ///< new anchor and updated chain prefix
+    Edition stale; ///< old anchor and chain
+    Edition fresh; ///< new anchor and the updated chain prefix
 };
 
 class StoreMapCleaner;
@@ -259,10 +259,16 @@ public:
     /// undoes partial update, unlocks, and cleans up
     void abortUpdating(Update &update);
 
-    /// only works on locked entries; returns nil unless the slice is readable
+    /// the caller must hold a lock on the entry
+    /// \returns nullptr unless the slice is readable
     const Anchor *peekAtReader(const sfileno fileno) const;
 
-    /// only works on locked entries; returns the corresponding Anchor
+    /// the caller must hold a lock on the entry
+    /// \returns nullptr unless the slice is writeable
+    const Anchor *peekAtWriter(const sfileno fileno) const;
+
+    /// the caller must hold a lock on the entry
+    /// \returns the corresponding Anchor
     const Anchor &peekAtEntry(const sfileno fileno) const;
 
     /// free the entry if possible or mark it as waiting to be freed if not
@@ -282,9 +288,14 @@ public:
     /// opens entry (identified by key) for reading, increments read level
     const Anchor *openForReading(const cache_key *const key, sfileno &fileno);
     /// opens entry (identified by sfileno) for reading, increments read level
-    const Anchor *openForReadingAt(const sfileno fileno);
+    const Anchor *openForReadingAt(const sfileno, const cache_key *const);
     /// closes open entry after reading, decrements read level
     void closeForReading(const sfileno fileno);
+    /// same as closeForReading() but also frees the entry if it is unlocked
+    void closeForReadingAndFreeIdle(const sfileno fileno);
+
+    /// openForReading() but creates a new entry if there is no old one
+    const Anchor *openOrCreateForReading(const cache_key *, sfileno &, const StoreEntry &);
 
     /// writeable slice within an entry chain created by openForWriting()
     Slice &writeableSlice(const AnchorId anchorId, const SliceId sliceId);

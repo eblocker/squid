@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2019 The Squid Software Foundation and contributors
+ * Copyright (C) 1996-2022 The Squid Software Foundation and contributors
  *
  * Squid software is distributed under GPLv2+ license and includes
  * contributions from numerous individuals and organizations.
@@ -41,7 +41,7 @@ class Address
 {
 
 public:
-    /** @name Constructors and Destructor */
+    /** @name Constructors */
     /*@{*/
     Address() { setEmpty(); }
     Address(const struct in_addr &);
@@ -51,7 +51,6 @@ public:
     Address(const struct hostent &);
     Address(const struct addrinfo &);
     Address(const char*);
-    ~Address() {}
     /*@}*/
 
     /** @name Assignment Operators */
@@ -190,6 +189,11 @@ public:
      */
     bool applyMask(const unsigned int cidr, int mtype);
 
+    /// Apply so-called 'privacy masking' to IPv4 addresses,
+    /// except localhost IP.
+    /// IPv6 clients use 'privacy addressing' instead.
+    void applyClientMask(const Address &mask);
+
     /** Return the ASCII equivalent of the address
      *  Semantically equivalent to the IPv4 inet_ntoa()
      *  eg. 127.0.0.1 (IPv4) or ::1 (IPv6)
@@ -222,6 +226,12 @@ public:
      \return amount of buffer filled.
      */
     unsigned int toHostStr(char *buf, const unsigned int len) const;
+
+    /// Empties the address and then slowly imports the IP from a possibly
+    /// [bracketed] portless host. For the semi-reverse operation, see
+    /// toHostStr() which does export the port.
+    /// \returns whether the conversion was successful
+    bool fromHost(const char *hostWithoutPort);
 
     /**
      *  Convert the content into a Reverse-DNS string.
@@ -288,7 +298,7 @@ public:
     bool GetHostByName(const char *s);
 
 public:
-    /* FIXME: When C => C++ conversion is done will be fully private.
+    /* XXX: When C => C++ conversion is done will be fully private.
      * Legacy Transition Methods.
      * These are here solely to simplify the transition
      * when moving from converted code to unconverted

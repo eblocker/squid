@@ -35,7 +35,7 @@ Build-Depends: ed
 Package: squidssl
 Architecture: any
 Pre-Depends: ${misc:Pre-Depends}, adduser
-Depends: ${shlibs:Depends}, ${misc:Depends}, netbase, logrotate (>= 3.5.4-1), squidssl-common (>= ${source:Version}), lsb-base, libdbi-perl, eblocker-certificate-validator (>= 1.11)
+Depends: ${shlibs:Depends}, ${misc:Depends}, netbase, logrotate (>= 3.5.4-1), squid-common (>= ${source:Version}), lsb-base, libdbi-perl, eblocker-certificate-validator (>= 1.11)
 Suggests: squidclient, squid-cgi, squid-purge, resolvconf (>= 0.40), smbclient, ufw, winbind, apparmor
 Recommends: libcap2-bin [linux-any], ca-certificates
 Conflicts: squid-openssl

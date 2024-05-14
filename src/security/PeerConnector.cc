@@ -352,7 +352,7 @@ Security::PeerConnector::sslCrtvdHandleReply(Ssl::CertValidationResponse::Pointe
             clientSni = conn->tlsClientSni();
         }
         debugs(83, DBG_IMPORTANT, "eblkr: "
-	        << " crtvd:" << errDetails->errorNo() << ":" << errDetails->errorName()
+                << " crtvd:" << errDetails->errorNo() << ":" << ErrorNameFromCode(errDetails->errorNo())
                 << " log_addr: " << request->client_addr
                 << " host: " << request->url.host()
                 << " sni: " << (clientSni.isEmpty() ? "<null>" : clientSni.c_str())

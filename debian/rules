@@ -77,7 +77,7 @@ override_dh_auto_configure:
 
 execute_after_dh_auto_install:
 	install -m 755 -g root -d $(INSTALLDIR)/usr/lib/cgi-bin
-	install -m 644 $(INSTALLDIR)/etc/squid/squid.conf.documented $(INSTALLDIR)/etc/squid/squid.conf
+	install -m 644 $(INSTALLDIR)/etc/squid/squid.conf.documented $(INSTALLDIR)/etc/squid/default.conf
 	install -m 755 -g root -d $(INSTALLDIR)/etc/squid/conf.d
 	install -m 644 -g root debian/debian.conf $(INSTALLDIR)/etc/squid/conf.d/debian.conf
 	mv $(INSTALLDIR)/usr/lib/squid/cachemgr.cgi $(INSTALLDIR)/usr/lib/cgi-bin/cachemgr.cgi
@@ -86,9 +86,9 @@ execute_after_dh_auto_install:
 	install -m 755 -g root -d $(INSTALLDIR)/etc/resolvconf
 	install -m 755 -g root -d $(INSTALLDIR)/etc/resolvconf/update-libc.d
 	install -m 755 -g root -d $(INSTALLDIR)/etc/ufw/applications.d
-	install -m 755 -g root debian/squid.resolvconf $(INSTALLDIR)/etc/resolvconf/update-libc.d/squid
-	install -m 644 -g root debian/squid.logrotate $(INSTALLDIR)/etc/logrotate.d/squid
-	install -m 644 -g root debian/squid.ufw.profile $(INSTALLDIR)/etc/ufw/applications.d/squid
+	install -m 755 -g root debian/squidssl.resolvconf $(INSTALLDIR)/etc/resolvconf/update-libc.d/squid
+	install -m 644 -g root debian/squidssl.logrotate $(INSTALLDIR)/etc/logrotate.d/squid
+	install -m 644 -g root debian/squidssl.ufw.profile $(INSTALLDIR)/etc/ufw/applications.d/squid
 	install -m 755 -g root -d debian/squid/var/log
 	install -m 755 -g root -d debian/squid/var/spool
 	install -m 750 -o proxy -g proxy -d debian/squid/var/log/squid
@@ -99,7 +99,7 @@ execute_after_dh_auto_install:
 	install -m 755 -g root -d $(INSTALLDIR)/etc/apparmor.d/force-complain
 	install -m 755 -g root -d $(INSTALLDIR)/etc/apparmor.d/disable
 	install -m 644 -g root debian/usr.sbin.squid $(INSTALLDIR)/etc/apparmor.d
-	dh_apparmor --profile-name=usr.sbin.squid -psquid
+	dh_apparmor --profile-name=usr.sbin.squid -psquidssl
 
 # Disable dh_missing
 override_dh_missing:

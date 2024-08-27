@@ -4,3 +4,13 @@ edad3f150de8af0aeb2f629508be3219b83369b9.patch
 0002-Change-default-file-locations-for-debian.patch
 0003-installed-binary-for-debian-ci.patch
 0005-Use-RuntimeDirectory-to-create-run-squid.patch
+CVE-2023-46724.patch
+CVE-2023-46846.patch
+CVE-2023-46847.patch
+CVE-2023-46848.patch
+CVE-2023-49285.patch
+CVE-2023-49286.patch
+CVE-2023-50269.patch
+CVE-2024-23638.patch
+CVE-2024-25111.patch
+CVE-2024-25617.patch

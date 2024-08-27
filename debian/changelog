@@ -1,3 +1,23 @@
+squid (5.7-2+deb12u1) bookworm-security; urgency=high
+
+  * Non-maintainer upload.
+  * Fix CVE-2023-46724, CVE-2023-46846, CVE-2023-46847, CVE-2023-46848,
+    CVE-2023-49285, CVE-2023-49286, CVE-2023-50269, CVE-2024-23638,
+    CVE-2024-25111, CVE-2024-25617.
+  * Several security vulnerabilities have been discovered in Squid, a full
+    featured web proxy cache. Due to programming errors in Squid's HTTP request
+    parsing, remote attackers may be able to execute a denial of service attack
+    by sending large X-Forwarded-For header or trigger a stack buffer overflow
+    while performing HTTP Digest authentication. Other issues facilitate
+    request smuggling past a firewall or a denial of service against Squid's
+    Helper process management.
+    In regard to CVE-2023-46728: Please note that support for the Gopher
+    protocol has simply been removed in future Squid versions. There are no
+    plans by the upstream developers of Squid to fix this issue. We recommend
+    to reject all Gopher URL requests instead.
+
+ -- Markus Koschany <apo@debian.org>  Tue, 05 Mar 2024 23:14:44 +0100
+
 squid (5.7-2) unstable; urgency=medium
 
   * Add a couple of upstream picked patches to fix some issues on 5.7

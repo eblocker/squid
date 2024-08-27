@@ -1,3 +1,9 @@
+squid (5.7-2+deb12u2) bookworm-security; urgency=medium
+
+  * CVE-2024-37894 (Closes: #1074284)
+
+ -- Moritz Mühlenhoff <jmm@debian.org>  Fri, 16 Aug 2024 17:02:55 +0200
+
 squid (5.7-2+deb12u1) bookworm-security; urgency=high
 
   * Non-maintainer upload.

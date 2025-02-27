@@ -12,7 +12,10 @@ After=network.target network-online.target nss-lookup.target
 
 [Service]
 Type=notify
-PIDFile=/var/run/squid.pid
+PIDFile=/run/squid.pid
+Group=proxy
+RuntimeDirectory=squid
+RuntimeDirectoryMode=0775
 ExecStartPre=/usr/sbin/squid --foreground -z
 ExecStart=/usr/sbin/squid --foreground -sYC
 ExecReload=/bin/kill -HUP $MAINPID
